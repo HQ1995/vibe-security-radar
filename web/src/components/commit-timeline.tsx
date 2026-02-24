@@ -2,10 +2,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { BugCommit, FixCommit } from "@/lib/types";
 
+function buildCommitUrl(repoUrl: string, sha: string): string {
+  const base = repoUrl.replace(/\/+$/, "");
+  return `${base}/commit/${sha}`;
+}
+
 // --- Bug commits timeline ---
 
 interface BugCommitTimelineProps {
   readonly commits: readonly BugCommit[];
+  readonly repoUrl?: string;
 }
 
 function formatDate(dateString: string): string {
@@ -35,7 +41,10 @@ function hasAiSignals(commit: BugCommit): boolean {
   return commit.ai_signals.length > 0;
 }
 
-export function BugCommitTimeline({ commits }: BugCommitTimelineProps) {
+export function BugCommitTimeline({
+  commits,
+  repoUrl,
+}: BugCommitTimelineProps) {
   if (commits.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -54,9 +63,20 @@ export function BugCommitTimeline({ commits }: BugCommitTimelineProps) {
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
               <div className="flex items-center gap-2">
-                <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
-                  {commit.sha.slice(0, 7)}
-                </code>
+                {repoUrl ? (
+                  <a
+                    href={buildCommitUrl(repoUrl, commit.sha)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
+                  >
+                    {commit.sha.slice(0, 7)}
+                  </a>
+                ) : (
+                  <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
+                    {commit.sha.slice(0, 7)}
+                  </code>
+                )}
                 {hasAiSignals(commit) && (
                   <Badge className="bg-purple-600 text-white hover:bg-purple-600">
                     AI
@@ -105,9 +125,20 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
         <Card key={commit.sha}>
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
-                {commit.sha.slice(0, 7)}
-              </code>
+              {commit.repo_url ? (
+                <a
+                  href={buildCommitUrl(commit.repo_url, commit.sha)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
+                >
+                  {commit.sha.slice(0, 7)}
+                </a>
+              ) : (
+                <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
+                  {commit.sha.slice(0, 7)}
+                </code>
+              )}
               {commit.repo_url ? (
                 <a
                   href={commit.repo_url}

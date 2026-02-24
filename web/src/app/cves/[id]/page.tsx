@@ -131,11 +131,24 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
 
       {cve.cwes.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {cve.cwes.map((cwe) => (
-            <Badge key={cwe} variant="outline" className="font-mono text-xs">
-              {cwe}
-            </Badge>
-          ))}
+          {cve.cwes.map((cwe) => {
+            const cweNum = cwe.replace(/^CWE-/, "");
+            return (
+              <a
+                key={cwe}
+                href={`https://cwe.mitre.org/data/definitions/${cweNum}.html`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Badge
+                  variant="outline"
+                  className="font-mono text-xs hover:bg-muted"
+                >
+                  {cwe}
+                </Badge>
+              </a>
+            );
+          })}
         </div>
       )}
 
@@ -232,8 +245,10 @@ function AiSignalsSection({
 
 function BugCommitsSection({
   commits,
+  repoUrl,
 }: {
   readonly commits: readonly BugCommit[];
+  readonly repoUrl?: string;
 }) {
   return (
     <section className="space-y-4">
@@ -243,7 +258,7 @@ function BugCommitsSection({
           ({commits.length})
         </span>
       </h2>
-      <BugCommitTimeline commits={commits} />
+      <BugCommitTimeline commits={commits} repoUrl={repoUrl} />
     </section>
   );
 }
@@ -320,7 +335,10 @@ export default async function CveDetailPage({
       <DescriptionSection description={cve.description} />
       <HowIntroducedSection cve={cve} />
       <AiSignalsSection commits={cve.bug_commits} />
-      <BugCommitsSection commits={cve.bug_commits} />
+      <BugCommitsSection
+        commits={cve.bug_commits}
+        repoUrl={cve.fix_commits[0]?.repo_url}
+      />
       <FixCommitsSection commits={cve.fix_commits} />
       <ReferencesSection references={cve.references} />
     </main>
