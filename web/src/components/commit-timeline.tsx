@@ -1,40 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  buildCommitUrl,
+  formatDate,
+  formatBlameConfidence,
+  firstLine,
+} from "@/lib/commit-utils";
 import type { BugCommit, FixCommit } from "@/lib/types";
-
-function buildCommitUrl(repoUrl: string, sha: string): string {
-  const base = repoUrl.replace(/\/+$/, "");
-  return `${base}/commit/${sha}`;
-}
 
 // --- Bug commits timeline ---
 
 interface BugCommitTimelineProps {
   readonly commits: readonly BugCommit[];
   readonly repoUrl?: string;
-}
-
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateString;
-  }
-}
-
-function formatBlameConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
-
-function firstLine(message: string): string {
-  const newlineIndex = message.indexOf("\n");
-  if (newlineIndex === -1) return message;
-  return message.slice(0, newlineIndex);
 }
 
 function hasAiSignals(commit: BugCommit): boolean {
