@@ -109,10 +109,9 @@ export default function AboutPage() {
         <p className="text-lg leading-relaxed text-muted-foreground">
           Vibe Security Radar is a public tracker that monitors CVEs where AI
           coding tools — such as GitHub Copilot, Cursor, and Claude Code —
-          introduced the vulnerability. The goal is to bring transparency to
-          the security implications of AI-assisted development so that
-          developers, maintainers, and security teams can make informed
-          decisions.
+          introduced the vulnerability. The goal is to bring transparency to the
+          security implications of AI-assisted development so that developers,
+          maintainers, and security teams can make informed decisions.
         </p>
       </section>
 
@@ -147,9 +146,9 @@ export default function AboutPage() {
           AI Tools Monitored
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          We detect signatures from {AI_TOOLS.length} AI coding tools.
-          Detection relies on co-author trailers, bot email addresses, and
-          other metadata that these tools embed in git commits.
+          We detect signatures from {AI_TOOLS.length} AI coding tools. Detection
+          relies on co-author trailers, bot email addresses, and other metadata
+          that these tools embed in git commits.
         </p>
         <ul className="flex flex-wrap gap-2">
           {AI_TOOLS.map((tool) => (
@@ -183,24 +182,6 @@ export default function AboutPage() {
             </li>
           ))}
         </ul>
-      </section>
-
-      {/* Open Source */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Open Source</h2>
-        <p className="leading-relaxed text-muted-foreground">
-          Vibe Security Radar is open source. The underlying CVE analysis
-          pipeline is available as a standalone tool called{" "}
-          <a
-            href="https://github.com/example/cve-analyzer"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
-          >
-            cve-analyzer
-          </a>
-          . Contributions, bug reports, and feature requests are welcome.
-        </p>
       </section>
 
       {/* Limitations */}
