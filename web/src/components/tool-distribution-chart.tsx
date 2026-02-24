@@ -8,22 +8,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-
-const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
-  claude_code: "Claude Code",
-  cursor: "Cursor",
-  aider: "Aider",
-  github_copilot: "GitHub Copilot",
-  devin: "Devin",
-  windsurf: "Windsurf",
-  codeium: "Codeium",
-  amazon_q: "Amazon Q",
-  sweep: "Sweep",
-  openai_codex: "OpenAI Codex",
-  google_gemini: "Google Gemini",
-  google_jules: "Google Jules",
-  unknown_ai: "Unknown AI",
-};
+import { getToolDisplayName } from "@/lib/constants";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -36,17 +21,13 @@ const CHART_COLORS = [
   "oklch(0.70 0.15 60)",
 ] as const;
 
-function getDisplayName(tool: string): string {
-  return TOOL_DISPLAY_NAMES[tool] ?? tool;
-}
-
 interface ToolDistributionChartProps {
   readonly data: Readonly<Record<string, number>>;
 }
 
 export function ToolDistributionChart({ data }: ToolDistributionChartProps) {
   const chartData = Object.entries(data).map(([tool, count]) => ({
-    name: getDisplayName(tool),
+    name: getToolDisplayName(tool),
     value: count,
   }));
 

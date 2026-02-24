@@ -8,31 +8,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  severityBadgeClass,
+  truncate,
+  formatConfidence,
+} from "@/lib/constants";
 import type { CveEntry } from "@/lib/types";
 
 interface RecentCvesTableProps {
   readonly cves: readonly CveEntry[];
-}
-
-const SEVERITY_COLORS: Readonly<Record<string, string>> = {
-  CRITICAL: "bg-red-600 text-white hover:bg-red-600",
-  HIGH: "bg-orange-500 text-white hover:bg-orange-500",
-  MEDIUM: "bg-yellow-500 text-black hover:bg-yellow-500",
-  LOW: "bg-green-600 text-white hover:bg-green-600",
-  UNKNOWN: "bg-zinc-500 text-white hover:bg-zinc-500",
-};
-
-function severityBadgeClass(severity: string): string {
-  return SEVERITY_COLORS[severity] ?? SEVERITY_COLORS["UNKNOWN"];
-}
-
-function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}...`;
-}
-
-function formatConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
 }
 
 export function RecentCvesTable({ cves }: RecentCvesTableProps) {

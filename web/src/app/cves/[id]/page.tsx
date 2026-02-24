@@ -9,40 +9,13 @@ import {
   BugCommitTimeline,
   FixCommitTimeline,
 } from "@/components/commit-timeline";
+import {
+  severityBadgeClass,
+  getToolDisplayName,
+  getSignalTypeLabel,
+  formatConfidence,
+} from "@/lib/constants";
 import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
-
-// --- Constants ---
-
-const SEVERITY_COLORS: Readonly<Record<string, string>> = {
-  CRITICAL: "bg-red-600 text-white hover:bg-red-600",
-  HIGH: "bg-orange-500 text-white hover:bg-orange-500",
-  MEDIUM: "bg-yellow-500 text-black hover:bg-yellow-500",
-  LOW: "bg-green-600 text-white hover:bg-green-600",
-  UNKNOWN: "bg-zinc-500 text-white hover:bg-zinc-500",
-};
-
-const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
-  claude_code: "Claude Code",
-  cursor: "Cursor",
-  aider: "Aider",
-  github_copilot: "GitHub Copilot",
-  devin: "Devin",
-  windsurf: "Windsurf",
-  codeium: "Codeium",
-  amazon_q: "Amazon Q",
-  sweep: "Sweep",
-  openai_codex: "OpenAI Codex",
-  google_gemini: "Google Gemini",
-  google_jules: "Google Jules",
-  unknown_ai: "Unknown AI",
-};
-
-const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
-  co_author_trailer: "co-author trailer",
-  author_email: "author email",
-  commit_message: "commit message",
-  branch_name: "branch name",
-};
 
 // --- Static generation ---
 
@@ -68,22 +41,6 @@ export async function generateMetadata({
 }
 
 // --- Helpers ---
-
-function severityBadgeClass(severity: string): string {
-  return SEVERITY_COLORS[severity] ?? SEVERITY_COLORS["UNKNOWN"];
-}
-
-function getToolDisplayName(tool: string): string {
-  return TOOL_DISPLAY_NAMES[tool] ?? tool;
-}
-
-function getSignalTypeLabel(signalType: string): string {
-  return SIGNAL_TYPE_LABELS[signalType] ?? signalType.replaceAll("_", " ");
-}
-
-function formatConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
 
 function collectUniqueSignalTypes(
   commits: readonly BugCommit[],

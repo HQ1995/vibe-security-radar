@@ -1,43 +1,7 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
-  claude_code: "Claude Code",
-  cursor: "Cursor",
-  aider: "Aider",
-  github_copilot: "GitHub Copilot",
-  devin: "Devin",
-  windsurf: "Windsurf",
-  codeium: "Codeium",
-  amazon_q: "Amazon Q",
-  sweep: "Sweep",
-  openai_codex: "OpenAI Codex",
-  google_gemini: "Google Gemini",
-  google_jules: "Google Jules",
-  unknown_ai: "Unknown AI",
-};
-
-const SEVERITY_COLORS: Readonly<Record<string, string>> = {
-  CRITICAL: "bg-red-600 text-white hover:bg-red-600",
-  HIGH: "bg-orange-500 text-white hover:bg-orange-500",
-  MEDIUM: "bg-yellow-500 text-black hover:bg-yellow-500",
-  LOW: "bg-green-600 text-white hover:bg-green-600",
-  UNKNOWN: "bg-zinc-500 text-white hover:bg-zinc-500",
-};
-
-function getDisplayName(tool: string): string {
-  return TOOL_DISPLAY_NAMES[tool] ?? tool;
-}
-
-function severityBadgeClass(severity: string): string {
-  return SEVERITY_COLORS[severity] ?? SEVERITY_COLORS["UNKNOWN"];
-}
+import { getToolDisplayName, severityBadgeClass } from "@/lib/constants";
 
 interface ToolCardProps {
   readonly tool: string;
@@ -46,7 +10,7 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, count, severities }: ToolCardProps) {
-  const displayName = getDisplayName(tool);
+  const displayName = getToolDisplayName(tool);
 
   return (
     <Link href={`/cves?tool=${encodeURIComponent(tool)}`}>
