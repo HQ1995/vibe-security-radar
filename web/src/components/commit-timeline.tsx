@@ -1,10 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { BugCommit, FixCommit } from "@/lib/types";
 
 // --- Bug commits timeline ---
@@ -52,7 +47,10 @@ export function BugCommitTimeline({ commits }: BugCommitTimelineProps) {
   return (
     <div className="space-y-3">
       {commits.map((commit) => (
-        <Card key={commit.sha} className={hasAiSignals(commit) ? "border-primary/40" : ""}>
+        <Card
+          key={commit.sha}
+          className={hasAiSignals(commit) ? "border-primary/40" : ""}
+        >
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
               <div className="flex items-center gap-2">
@@ -97,9 +95,7 @@ interface FixCommitTimelineProps {
 export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
   if (commits.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No fix commits recorded.
-      </p>
+      <p className="text-sm text-muted-foreground">No fix commits recorded.</p>
     );
   }
 
@@ -122,7 +118,9 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
                   {commit.repo_url}
                 </a>
               ) : (
-                <span className="text-sm text-muted-foreground">No repo URL</span>
+                <span className="text-sm text-muted-foreground">
+                  No repo URL
+                </span>
               )}
               <Badge variant="outline" className="ml-auto text-xs">
                 {commit.source}
