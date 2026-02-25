@@ -244,6 +244,47 @@ def load_ghsa_published_dates(
     return index
 
 
+# GHSA severity uses "MODERATE" but our website uses "MEDIUM"
+_GHSA_SEV_MAP = {
+    "CRITICAL": "CRITICAL",
+    "HIGH": "HIGH",
+    "MODERATE": "MEDIUM",
+    "MEDIUM": "MEDIUM",
+    "LOW": "LOW",
+}
+
+
+def load_ghsa_severities(
+    ghsa_db_dir: str = DEFAULT_GHSA_DB_DIR,
+) -> dict[str, str]:
+    """Build a {vuln_id: severity} index from the GHSA advisory DB.
+
+    Maps both the GHSA ID and all aliases (CVE-xxxx, PYSEC-xxxx, etc.)
+    to the normalized severity label.
+    """
+    index: dict[str, str] = {}
+    if not os.path.isdir(ghsa_db_dir):
+        return index
+    for subdir in ("github-reviewed", "github-unreviewed"):
+        pattern = os.path.join(ghsa_db_dir, subdir, "**", "*.json")
+        for filepath in glob.glob(pattern, recursive=True):
+            try:
+                with open(filepath, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                raw_sev = data.get("database_specific", {}).get("severity", "")
+                normalized = _GHSA_SEV_MAP.get(raw_sev.upper(), "")
+                if not normalized:
+                    continue
+                ghsa_id = data.get("id", "")
+                aliases = data.get("aliases", [])
+                for vid in [ghsa_id] + aliases:
+                    if vid:
+                        index[vid] = normalized
+            except (json.JSONDecodeError, OSError):
+                pass
+    return index
+
+
 # ---------------------------------------------------------------------------
 # Filtering
 # ---------------------------------------------------------------------------
@@ -359,7 +400,11 @@ def _build_bug_commit(bic: dict) -> dict:
     }
 
 
-def build_cve_entry(result: dict, nvd_dates: dict[str, str] | None = None) -> dict:
+def build_cve_entry(
+    result: dict,
+    nvd_dates: dict[str, str] | None = None,
+    ghsa_severities: dict[str, str] | None = None,
+) -> dict:
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
     ai_signals = result.get("ai_signals", [])
@@ -380,11 +425,19 @@ def build_cve_entry(result: dict, nvd_dates: dict[str, str] | None = None) -> di
     if not published:
         published = _extract_published_year(result)
 
+    # Severity: prefer CVSS vector parsing, fall back to GHSA database
+    severity = _parse_severity_label(severity_str)
+    cvss = _extract_cvss_score(severity_str)
+    if severity == "UNKNOWN" and ghsa_severities:
+        ghsa_sev = ghsa_severities.get(cve_id, "")
+        if ghsa_sev:
+            severity = ghsa_sev
+
     return {
         "id": cve_id,
         "description": result.get("description", ""),
-        "severity": _parse_severity_label(severity_str),
-        "cvss": _extract_cvss_score(severity_str),
+        "severity": severity,
+        "cvss": cvss,
         "cwes": result.get("cwes", []),
         "ecosystem": "",
         "published": published,
@@ -494,6 +547,10 @@ def main(argv: list[str] | None = None) -> None:
     ghsa_dates = load_ghsa_published_dates()
     print(f"  Indexed {len(ghsa_dates)} GHSA published dates.")
 
+    print(f"Loading GHSA severities from {DEFAULT_GHSA_DB_DIR} ...")
+    ghsa_severities = load_ghsa_severities()
+    print(f"  Indexed {len(ghsa_severities)} GHSA severity entries.")
+
     # Merge: NVD takes precedence, GHSA fills gaps
     nvd_dates.update({k: v for k, v in ghsa_dates.items() if k not in nvd_dates})
 
@@ -502,7 +559,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  {len(filtered)} results with AI signals (confidence >= {args.min_confidence}).")
 
     # Transform
-    entries = [build_cve_entry(r, nvd_dates) for r in filtered]
+    entries = [build_cve_entry(r, nvd_dates, ghsa_severities) for r in filtered]
     # Sort by confidence descending
     entries = sorted(entries, key=lambda e: e.get("confidence", 0), reverse=True)
 
