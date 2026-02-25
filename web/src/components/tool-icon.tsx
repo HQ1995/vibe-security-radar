@@ -1,5 +1,8 @@
 import { getToolDisplayName } from "@/lib/constants";
 
+/** Tools that have separate light/dark SVGs (e.g. foo.svg + foo_dark.svg). */
+const THEMED_ICONS = new Set(["github_copilot", "cursor"]);
+
 /** Map of tool keys that have dedicated SVG icon files in /icons/tools/. */
 const TOOLS_WITH_ICONS = new Set([
   "claude_code",
@@ -57,6 +60,29 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
       >
         {displayName}
       </span>
+    );
+  }
+
+  if (THEMED_ICONS.has(tool)) {
+    return (
+      <>
+        <img
+          src={`/icons/tools/${tool}.svg`}
+          alt={displayName}
+          title={displayName}
+          width={size}
+          height={size}
+          className="inline-block shrink-0 dark:hidden"
+        />
+        <img
+          src={`/icons/tools/${tool}_dark.svg`}
+          alt={displayName}
+          title={displayName}
+          width={size}
+          height={size}
+          className="hidden shrink-0 dark:inline-block"
+        />
+      </>
     );
   }
 
