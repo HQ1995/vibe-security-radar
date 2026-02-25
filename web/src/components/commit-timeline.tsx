@@ -119,12 +119,12 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
               )}
               {commit.repo_url ? (
                 <a
-                  href={commit.repo_url}
+                  href={buildCommitUrl(commit.repo_url, commit.sha)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-primary underline-offset-4 hover:underline"
+                  className="truncate text-sm text-primary underline-offset-4 hover:underline"
                 >
-                  {commit.repo_url}
+                  {commit.repo_url.replace(/^https?:\/\//, "")}
                 </a>
               ) : (
                 <span className="text-sm text-muted-foreground">
