@@ -27,7 +27,7 @@ export function TrendChart({ data }: TrendChartProps) {
 
   return (
     <section>
-      <h2 className="mb-4 text-xl font-semibold">CVEs by Month</h2>
+      <h2 className="mb-4 text-xl font-semibold">Vulnerabilities by Month</h2>
       <div className="h-72 w-full rounded-xl border border-border bg-card p-4">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart

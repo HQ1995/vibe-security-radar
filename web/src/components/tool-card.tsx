@@ -22,7 +22,7 @@ export function ToolCard({ tool, count, severities }: ToolCardProps) {
           <p className="text-3xl font-bold tabular-nums">
             {count}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
-              {count === 1 ? "CVE" : "CVEs"}
+              {count === 1 ? "vulnerability" : "vulnerabilities"}
             </span>
           </p>
           <div className="flex flex-wrap gap-1.5">

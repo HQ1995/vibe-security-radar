@@ -10,7 +10,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   severityBadgeClass,
-  truncate,
   formatConfidence,
 } from "@/lib/constants";
 import type { CveEntry } from "@/lib/types";
@@ -22,15 +21,15 @@ interface RecentCvesTableProps {
 export function RecentCvesTable({ cves }: RecentCvesTableProps) {
   return (
     <section>
-      <h2 className="mb-4 text-xl font-semibold">Recent CVEs</h2>
-      <div className="rounded-xl border border-border">
-        <Table>
+      <h2 className="mb-4 text-xl font-semibold">Recent Vulnerabilities</h2>
+      <div className="rounded-xl border border-border overflow-x-auto">
+        <Table className="table-fixed w-full min-w-[700px]">
           <TableHeader>
             <TableRow>
-              <TableHead>CVE ID</TableHead>
-              <TableHead>Severity</TableHead>
-              <TableHead>AI Tool(s)</TableHead>
-              <TableHead className="text-right">Confidence</TableHead>
+              <TableHead className="w-[180px]">ID</TableHead>
+              <TableHead className="w-[100px]">Severity</TableHead>
+              <TableHead className="w-[140px]">AI Tool(s)</TableHead>
+              <TableHead className="w-[100px] text-right">Confidence</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
           </TableHeader>
@@ -57,10 +56,10 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                   {formatConfidence(cve.confidence)}
                 </TableCell>
                 <TableCell
-                  className="max-w-xs text-sm text-muted-foreground"
+                  className="text-sm text-muted-foreground truncate"
                   title={cve.description}
                 >
-                  {truncate(cve.description, 80)}
+                  {cve.description}
                 </TableCell>
               </TableRow>
             ))}

@@ -32,7 +32,7 @@ export async function generateMetadata({
   const { id } = await params;
   const cve = getCveById(id);
   if (!cve) {
-    return { title: "CVE Not Found - Vibe Security Radar" };
+    return { title: "Vulnerability Not Found - Vibe Security Radar" };
   }
   return {
     title: `${cve.id} - Vibe Security Radar`,
@@ -69,7 +69,7 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
         href="/cves"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        &larr; Back to CVE Database
+        &larr; Back to Vulnerability Database
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">

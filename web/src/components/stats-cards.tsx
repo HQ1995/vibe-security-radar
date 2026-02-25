@@ -16,7 +16,7 @@ function computeMetrics(stats: StatsData) {
   const ecosystems = Object.keys(stats.by_ecosystem).length;
 
   return [
-    { label: "Total CVEs", value: totalCves },
+    { label: "Total Vulnerabilities", value: totalCves },
     { label: "AI Tools Detected", value: aiToolsDetected },
     { label: "Critical / High", value: criticalHigh },
     { label: "Ecosystems", value: ecosystems },

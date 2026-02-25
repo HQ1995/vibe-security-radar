@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
   description:
-    "Methodology and data sources behind Vibe Security Radar, a public tracker for CVEs introduced by AI coding tools.",
+    "Methodology and data sources behind Vibe Security Radar, a public tracker for vulnerabilities introduced by AI coding tools.",
 };
 
 const AI_TOOLS = [
@@ -107,11 +107,12 @@ export default function AboutPage() {
           About Vibe Security Radar
         </h1>
         <p className="text-lg leading-relaxed text-muted-foreground">
-          Vibe Security Radar is a public tracker that monitors CVEs where AI
-          coding tools — such as GitHub Copilot, Cursor, and Claude Code —
-          introduced the vulnerability. The goal is to bring transparency to the
-          security implications of AI-assisted development so that developers,
-          maintainers, and security teams can make informed decisions.
+          Vibe Security Radar is a public tracker that monitors vulnerabilities
+          (CVEs and GHSAs) where AI coding tools — such as GitHub Copilot,
+          Cursor, and Claude Code — introduced the vulnerability. The goal is to
+          bring transparency to the security implications of AI-assisted
+          development so that developers, maintainers, and security teams can
+          make informed decisions.
         </p>
       </section>
 
@@ -119,8 +120,8 @@ export default function AboutPage() {
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold tracking-tight">Methodology</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Every CVE is processed through a multi-tier analysis pipeline that
-          traces vulnerability fixes back to the commits that introduced the
+          Every vulnerability is processed through a multi-tier analysis
+          pipeline that traces fixes back to the commits that introduced the
           bug, then checks those commits for AI tool signatures.
         </p>
         <ol className="space-y-4">
