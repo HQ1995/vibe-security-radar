@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import gzip
 import json
 import math
 import os
@@ -28,6 +29,10 @@ from pathlib import Path
 
 DEFAULT_CACHE_DIR = os.path.expanduser("~/.cache/cve-analyzer/results")
 DEFAULT_REVIEWS_DIR = os.path.expanduser("~/.cache/cve-analyzer/reviews")
+DEFAULT_NVD_FEEDS_DIR = os.path.expanduser("~/.cache/cve-analyzer/nvd-feeds")
+DEFAULT_GHSA_DB_DIR = os.path.expanduser(
+    "~/.cache/cve-analyzer/advisory-database/advisories"
+)
 DEFAULT_OUTPUT_DIR = "web/data"
 DEFAULT_MIN_CONFIDENCE = 0.0
 
@@ -186,6 +191,59 @@ def load_reviews(reviews_dir: str = DEFAULT_REVIEWS_DIR) -> dict[str, dict]:
     return reviews
 
 
+def load_nvd_published_dates(
+    nvd_feeds_dir: str = DEFAULT_NVD_FEEDS_DIR,
+) -> dict[str, str]:
+    """Build a {cve_id: published_date} index from NVD feed .json.gz files.
+
+    The published_date is an ISO 8601 string like "2025-10-03T19:15:43.490".
+    Returns an empty dict if the feeds directory does not exist.
+    """
+    index: dict[str, str] = {}
+    if not os.path.isdir(nvd_feeds_dir):
+        return index
+    pattern = os.path.join(nvd_feeds_dir, "*.json.gz")
+    for filepath in sorted(glob.glob(pattern)):
+        try:
+            with gzip.open(filepath, "rt", encoding="utf-8") as fh:
+                feed = json.load(fh)
+            for vuln in feed.get("vulnerabilities", []):
+                cve = vuln.get("cve", {})
+                cve_id = cve.get("id", "")
+                published = cve.get("published", "")
+                if cve_id and published:
+                    index[cve_id] = published
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"Warning: skipping NVD feed {filepath}: {exc}", file=sys.stderr)
+    return index
+
+
+def load_ghsa_published_dates(
+    ghsa_db_dir: str = DEFAULT_GHSA_DB_DIR,
+) -> dict[str, str]:
+    """Build a {ghsa_id: published_date} index from the GHSA advisory DB.
+
+    Scans github-reviewed and github-unreviewed directories.
+    Returns an empty dict if the directory does not exist.
+    """
+    index: dict[str, str] = {}
+    if not os.path.isdir(ghsa_db_dir):
+        return index
+    for subdir in ("github-reviewed", "github-unreviewed"):
+        pattern = os.path.join(ghsa_db_dir, subdir, "**", "*.json")
+        for filepath in glob.glob(pattern, recursive=True):
+            try:
+                with open(filepath, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                ghsa_id = data.get("id", "")
+                published = data.get("published", "")
+                if ghsa_id and published:
+                    index[ghsa_id] = published
+            except (json.JSONDecodeError, OSError):
+                pass
+    return index
+
+
 # ---------------------------------------------------------------------------
 # Filtering
 # ---------------------------------------------------------------------------
@@ -249,7 +307,7 @@ def _build_bug_commit(bic: dict) -> dict:
     }
 
 
-def build_cve_entry(result: dict) -> dict:
+def build_cve_entry(result: dict, nvd_dates: dict[str, str] | None = None) -> dict:
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
     ai_signals = result.get("ai_signals", [])
@@ -262,14 +320,22 @@ def build_cve_entry(result: dict) -> dict:
         for bic in result.get("bug_introducing_commits", [])
     ]
 
+    # Use NVD published date if available, fall back to year from CVE ID
+    cve_id = result.get("cve_id", "")
+    published = ""
+    if nvd_dates and cve_id in nvd_dates:
+        published = nvd_dates[cve_id]
+    if not published:
+        published = _extract_published_year(result)
+
     return {
-        "id": result.get("cve_id", ""),
+        "id": cve_id,
         "description": result.get("description", ""),
         "severity": _parse_severity_label(severity_str),
         "cvss": _extract_cvss_score(severity_str),
         "cwes": result.get("cwes", []),
         "ecosystem": "",
-        "published": _extract_published_year(result),
+        "published": published,
         "ai_tools": ai_tools,
         "confidence": result.get("ai_confidence", 0),
         "how_introduced": "",
@@ -319,29 +385,15 @@ def build_stats(entries: list[dict]) -> dict:
     }
 
 
-def _extract_month(entry: dict, published_year: str) -> str:
-    """Extract a YYYY-MM string from the entry's bug commits or published year.
+def _extract_month(entry: dict, published: str) -> str:
+    """Extract a YYYY-MM string from the entry's published date.
 
-    Tries the earliest bug commit date first. Falls back to published year with
-    unknown month.
+    Uses the CVE publication date (from NVD or CVE ID year).
     """
-    dates: list[str] = []
-    for bc in entry.get("bug_commits", []):
-        date_str = bc.get("date", "")
-        if date_str and len(date_str) >= 7:
-            dates.append(date_str[:7])  # "YYYY-MM"
-
-    if dates:
-        return min(dates)
-
-    # Fallback: use published field (could be "YYYY" or "YYYY-MM")
-    if published_year:
-        if len(published_year) >= 7:
-            # Already in YYYY-MM or longer format
-            return published_year[:7]
-        if len(published_year) == 4:
-            return published_year
-
+    if published and len(published) >= 7:
+        return published[:7]
+    if published and len(published) == 4:
+        return published
     return ""
 
 
@@ -382,12 +434,23 @@ def main(argv: list[str] | None = None) -> None:
     reviews = load_reviews()
     print(f"  Found {len(reviews)} reviews.")
 
+    print(f"Loading NVD published dates from {DEFAULT_NVD_FEEDS_DIR} ...")
+    nvd_dates = load_nvd_published_dates()
+    print(f"  Indexed {len(nvd_dates)} CVE published dates.")
+
+    print(f"Loading GHSA published dates from {DEFAULT_GHSA_DB_DIR} ...")
+    ghsa_dates = load_ghsa_published_dates()
+    print(f"  Indexed {len(ghsa_dates)} GHSA published dates.")
+
+    # Merge: NVD takes precedence, GHSA fills gaps
+    nvd_dates.update({k: v for k, v in ghsa_dates.items() if k not in nvd_dates})
+
     # Filter
     filtered = filter_ai_results(results, min_confidence=args.min_confidence)
     print(f"  {len(filtered)} results with AI signals (confidence >= {args.min_confidence}).")
 
     # Transform
-    entries = [build_cve_entry(r) for r in filtered]
+    entries = [build_cve_entry(r, nvd_dates) for r in filtered]
     # Sort by confidence descending
     entries = sorted(entries, key=lambda e: e.get("confidence", 0), reverse=True)
 

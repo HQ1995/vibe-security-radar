@@ -15,6 +15,7 @@ import {
   getSignalTypeLabel,
   formatConfidence,
 } from "@/lib/constants";
+import { formatPublished } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
 
 // --- Static generation ---
@@ -110,7 +111,7 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
       )}
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-        {cve.published && <span>Published: {cve.published}</span>}
+        {cve.published && <span>Published: {formatPublished(cve.published)}</span>}
         {cve.ecosystem && <span>Ecosystem: {cve.ecosystem}</span>}
         <span>AI Confidence: {formatConfidence(cve.confidence)}</span>
       </div>

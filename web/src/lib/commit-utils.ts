@@ -19,6 +19,23 @@ export function formatDate(dateString: string): string {
   }
 }
 
+export function formatPublished(published: string): string {
+  if (!published) return "";
+  // Year-only (e.g., "2025")
+  if (/^\d{4}$/.test(published)) return published;
+  try {
+    const date = new Date(published);
+    if (isNaN(date.getTime())) return published;
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return published;
+  }
+}
+
 export function formatBlameConfidence(confidence: number): string {
   return `${Math.round(confidence * 100)}%`;
 }

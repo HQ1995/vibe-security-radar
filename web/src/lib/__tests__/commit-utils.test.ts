@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildCommitUrl,
   formatDate,
+  formatPublished,
   formatBlameConfidence,
   firstLine,
 } from "../commit-utils";
@@ -34,6 +35,32 @@ describe("formatDate", () => {
   it("handles date-only string", () => {
     const result = formatDate("2025-12-01");
     expect(result).toContain("2025");
+  });
+});
+
+describe("formatPublished", () => {
+  it("formats ISO datetime string", () => {
+    const result = formatPublished("2026-01-12T23:15:53.063");
+    expect(result).toContain("Jan");
+    expect(result).toContain("2026");
+  });
+
+  it("returns year-only string as-is", () => {
+    expect(formatPublished("2025")).toBe("2025");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(formatPublished("")).toBe("");
+  });
+
+  it("formats ISO date with timezone", () => {
+    const result = formatPublished("2025-10-03T19:15:43.490");
+    expect(result).toContain("Oct");
+    expect(result).toContain("2025");
+  });
+
+  it("returns original string for unparseable input", () => {
+    expect(formatPublished("not-a-date")).toBe("not-a-date");
   });
 });
 
