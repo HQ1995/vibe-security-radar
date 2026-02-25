@@ -4,6 +4,12 @@ export interface AiSignalEntry {
   readonly confidence: number;
 }
 
+export interface LlmVerdict {
+  readonly verdict: "CONFIRMED" | "UNLIKELY" | "UNRELATED";
+  readonly reasoning: string;
+  readonly model: string;
+}
+
 export interface BugCommit {
   readonly sha: string;
   readonly author: string;
@@ -12,6 +18,7 @@ export interface BugCommit {
   readonly ai_signals: readonly AiSignalEntry[];
   readonly blamed_file: string;
   readonly blame_confidence: number;
+  readonly llm_verdict: LlmVerdict | null;
 }
 
 export interface FixCommit {

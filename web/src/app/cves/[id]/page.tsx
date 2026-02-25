@@ -132,6 +132,58 @@ function DescriptionSection({ description }: { readonly description: string }) {
   );
 }
 
+function VerdictIcon({ verdict }: { readonly verdict: string }) {
+  if (verdict === "CONFIRMED") return <span className="text-green-600">&#10003;</span>;
+  if (verdict === "UNLIKELY") return <span className="text-yellow-600">?</span>;
+  return <span className="text-muted-foreground">&#10007;</span>;
+}
+
+function verdictBorderClass(verdict: string): string {
+  if (verdict === "CONFIRMED") return "border-green-500/40 bg-green-500/5";
+  if (verdict === "UNLIKELY") return "border-yellow-500/40 bg-yellow-500/5";
+  return "border-muted bg-muted/30";
+}
+
+function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit[] }) {
+  const withVerdict = commits.filter((c) => c.llm_verdict !== null);
+  if (withVerdict.length === 0) return null;
+
+  const model = withVerdict[0].llm_verdict!.model;
+
+  return (
+    <div className="mt-4 space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        LLM Causality Analysis
+      </h3>
+      <div className="space-y-2">
+        {withVerdict.map((commit) => {
+          const v = commit.llm_verdict!;
+          return (
+            <div
+              key={commit.sha}
+              className={`rounded-md border p-3 text-sm ${verdictBorderClass(v.verdict)}`}
+            >
+              <div className="flex items-start gap-2">
+                <VerdictIcon verdict={v.verdict} />
+                <div>
+                  <span className="font-semibold">{v.verdict}</span>
+                  {" — "}
+                  <span className="font-mono text-xs">{commit.sha.slice(0, 12)}</span>
+                  {" "}
+                  <span className="text-muted-foreground">{v.reasoning}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground text-right">
+        Verified by {model}
+      </p>
+    </div>
+  );
+}
+
 function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
   const hasExplicitExplanation = cve.how_introduced.length > 0;
   const signalTypes = collectUniqueSignalTypes(cve.bug_commits);
@@ -167,6 +219,7 @@ function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
             )}
           </div>
         )}
+        <LlmCausalitySection commits={cve.bug_commits} />
       </CardContent>
     </Card>
   );

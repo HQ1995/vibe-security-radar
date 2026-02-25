@@ -289,6 +289,7 @@ def _first_line(message: str) -> str:
 def _build_bug_commit(bic: dict) -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
+    llm_v = bic.get("llm_verdict")
     return {
         "sha": commit.get("sha", ""),
         "author": commit.get("author_name", ""),
@@ -304,6 +305,11 @@ def _build_bug_commit(bic: dict) -> dict:
         ],
         "blamed_file": bic.get("blamed_file", ""),
         "blame_confidence": bic.get("blame_confidence", 0),
+        "llm_verdict": {
+            "verdict": llm_v.get("verdict", ""),
+            "reasoning": llm_v.get("reasoning", ""),
+            "model": llm_v.get("model", ""),
+        } if llm_v else None,
     }
 
 
