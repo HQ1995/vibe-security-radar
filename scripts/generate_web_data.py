@@ -118,34 +118,122 @@ def _compute_cvss_score(metrics: dict[str, str]) -> float:
 def _extract_cvss_score(severity_str: str) -> float:
     """Extract a numeric CVSS score from a CVSS vector string.
 
+    Handles CVSS V3 (exact) and V4 (approximate).
     Returns 0.0 for empty or unparseable strings.
     """
     if not severity_str:
         return 0.0
-    metrics = _parse_cvss_vector(severity_str)
-    if not metrics:
-        return 0.0
-    return _compute_cvss_score(metrics)
+    # CVSS V3: exact scoring
+    if severity_str.startswith("CVSS:3"):
+        metrics = _parse_cvss_vector(severity_str)
+        if metrics:
+            return _compute_cvss_score(metrics)
+    # CVSS V4: approximate from severity label
+    if severity_str.startswith("CVSS:4"):
+        label = _parse_cvss4_severity(severity_str)
+        # Return midpoint of range as approximate score
+        approx = {"CRITICAL": 9.5, "HIGH": 8.0, "MEDIUM": 5.5, "LOW": 2.5}
+        return approx.get(label, 0.0)
+    return 0.0
+
+
+def _parse_cvss4_severity(vector_str: str) -> str:
+    """Approximate severity label from a CVSS 4.0 vector string.
+
+    CVSS 4.0 scoring is complex; we approximate using the impact metrics
+    (VC/VI/VA for the vulnerable system) and exploitability (AV/AC/AT/PR/UI).
+
+    Returns one of: CRITICAL, HIGH, MEDIUM, LOW, or empty string if unparseable.
+    """
+    if not vector_str or not vector_str.startswith("CVSS:4"):
+        return ""
+
+    metrics: dict[str, str] = {}
+    parts = vector_str.split("/")
+    for part in parts[1:]:
+        if ":" in part:
+            key, value = part.split(":", 1)
+            metrics[key] = value
+
+    # Vulnerable system impact: VC, VI, VA (H=High, L=Low, N=None)
+    vc = metrics.get("VC", "N")
+    vi = metrics.get("VI", "N")
+    va = metrics.get("VA", "N")
+
+    # Exploitability factors
+    av = metrics.get("AV", "N")  # N=Network, A=Adjacent, L=Local, P=Physical
+    ac = metrics.get("AC", "L")  # L=Low, H=High
+    pr = metrics.get("PR", "N")  # N=None, L=Low, H=High
+    ui = metrics.get("UI", "N")  # N=None, P=Passive, A=Active
+
+    # Simple heuristic scoring
+    impact_high = sum(1 for x in (vc, vi, va) if x == "H")
+    impact_low = sum(1 for x in (vc, vi, va) if x == "L")
+    no_impact = (vc == "N" and vi == "N" and va == "N")
+
+    if no_impact:
+        # Check subsequent system impact (SC/SI/SA)
+        sc = metrics.get("SC", "N")
+        si = metrics.get("SI", "N")
+        sa = metrics.get("SA", "N")
+        sub_high = sum(1 for x in (sc, si, sa) if x == "H")
+        sub_low = sum(1 for x in (sc, si, sa) if x == "L")
+        if sub_high == 0 and sub_low == 0:
+            return "LOW"
+        impact_high = sub_high
+        impact_low = sub_low
+
+    easy_exploit = (av == "N" and ac == "L" and pr == "N" and ui == "N")
+    moderate_exploit = (av == "N" and ac == "L")
+
+    if impact_high >= 3 and easy_exploit:
+        return "CRITICAL"
+    if impact_high >= 2 and moderate_exploit:
+        return "CRITICAL" if easy_exploit else "HIGH"
+    if impact_high >= 1:
+        return "HIGH" if moderate_exploit else "MEDIUM"
+    if impact_low >= 2:
+        return "MEDIUM" if moderate_exploit else "LOW"
+    if impact_low >= 1:
+        return "LOW"
+    return "LOW"
 
 
 def _parse_severity_label(severity_str: str) -> str:
-    """Convert a CVSS vector string to a severity label.
+    """Convert a severity string to a label.
 
+    Handles: CVSS V3 vectors, CVSS V4 vectors, plain text labels.
     Returns one of: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN.
     """
-    score = _extract_cvss_score(severity_str)
-    if score == 0.0 and not severity_str:
+    if not severity_str:
         return "UNKNOWN"
-    if score == 0.0 and severity_str:
-        # Had a string but could not parse it
-        return "UNKNOWN"
-    if score >= 9.0:
-        return "CRITICAL"
-    if score >= 7.0:
-        return "HIGH"
-    if score >= 4.0:
-        return "MEDIUM"
-    return "LOW"
+
+    # Plain text label (from GitHub Advisory API or GHSA database_specific)
+    upper = severity_str.strip().upper()
+    if upper == "MODERATE":
+        upper = "MEDIUM"
+    if upper in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        return upper
+
+    # CVSS V3 vector
+    if severity_str.startswith("CVSS:3"):
+        score = _extract_cvss_score(severity_str)
+        if score > 0:
+            if score >= 9.0:
+                return "CRITICAL"
+            if score >= 7.0:
+                return "HIGH"
+            if score >= 4.0:
+                return "MEDIUM"
+            return "LOW"
+
+    # CVSS V4 vector
+    if severity_str.startswith("CVSS:4"):
+        label = _parse_cvss4_severity(severity_str)
+        if label:
+            return label
+
+    return "UNKNOWN"
 
 
 # ---------------------------------------------------------------------------
@@ -425,9 +513,25 @@ def build_cve_entry(
     if not published:
         published = _extract_published_year(result)
 
-    # Severity: prefer CVSS vector parsing, fall back to GHSA database
+    # Severity: prefer pre-computed cvss_score from CNA (cvelistV5),
+    # then CVSS vector parsing, then GHSA database fallback
+    pre_score = result.get("cvss_score", 0.0)
     severity = _parse_severity_label(severity_str)
-    cvss = _extract_cvss_score(severity_str)
+    if pre_score > 0:
+        cvss = pre_score
+        # If severity is still UNKNOWN or came from an unparseable V4 vector,
+        # derive it from the pre-computed score
+        if severity == "UNKNOWN":
+            if pre_score >= 9.0:
+                severity = "CRITICAL"
+            elif pre_score >= 7.0:
+                severity = "HIGH"
+            elif pre_score >= 4.0:
+                severity = "MEDIUM"
+            else:
+                severity = "LOW"
+    else:
+        cvss = _extract_cvss_score(severity_str)
     if severity == "UNKNOWN" and ghsa_severities:
         ghsa_sev = ghsa_severities.get(cve_id, "")
         if ghsa_sev:
