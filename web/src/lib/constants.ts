@@ -58,6 +58,20 @@ export function formatVerifiedBy(verifiedBy: string): string {
   return verifiedBy;
 }
 
+/** Short label for the verified-by badge shown in table columns. */
+export function verifiedByLabel(verifiedBy: string): string {
+  if (!verifiedBy) return "";
+  if (verifiedBy === "osv") return "OSV";
+  return "LLM";
+}
+
+/** Tooltip text for the verified-by badge. */
+export function verifiedByTooltip(verifiedBy: string): string {
+  if (!verifiedBy) return "Not yet verified";
+  if (verifiedBy === "osv") return "Verified via OSV advisory data";
+  return `Verified by ${verifiedBy}`;
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;
