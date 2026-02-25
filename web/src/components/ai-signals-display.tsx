@@ -5,26 +5,43 @@ import {
   getSignalTypeLabel,
   formatConfidence,
 } from "@/lib/constants";
+import { buildCommitUrl } from "@/lib/commit-utils";
 import type { AiSignalEntry } from "@/lib/types";
 
 interface AiSignalsDisplayProps {
   readonly signals: readonly AiSignalEntry[];
   readonly commitSha: string;
+  readonly repoUrl?: string;
 }
 
 export function AiSignalsDisplay({
   signals,
   commitSha,
+  repoUrl,
 }: AiSignalsDisplayProps) {
   if (signals.length === 0) {
     return null;
   }
 
+  const shaFragment = commitSha.slice(0, 7);
+
   return (
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          AI Signals in {commitSha.slice(0, 7)}
+          AI Signals in{" "}
+          {repoUrl ? (
+            <a
+              href={buildCommitUrl(repoUrl, commitSha)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-primary underline-offset-4 hover:underline"
+            >
+              {shaFragment}
+            </a>
+          ) : (
+            <span className="font-mono">{shaFragment}</span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>

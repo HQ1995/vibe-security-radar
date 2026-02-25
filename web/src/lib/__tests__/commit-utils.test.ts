@@ -1,11 +1,44 @@
 import { describe, it, expect } from "vitest";
 import {
+  extractRepoName,
   buildCommitUrl,
   formatDate,
   formatPublished,
   formatBlameConfidence,
   firstLine,
 } from "../commit-utils";
+
+describe("extractRepoName", () => {
+  it("extracts owner/repo from GitHub URL", () => {
+    expect(extractRepoName("https://github.com/alexei-led/aws-mcp-server")).toBe(
+      "alexei-led/aws-mcp-server",
+    );
+  });
+
+  it("strips trailing slash", () => {
+    expect(extractRepoName("https://github.com/owner/repo/")).toBe("owner/repo");
+  });
+
+  it("handles GitLab URLs", () => {
+    expect(extractRepoName("https://gitlab.com/group/project")).toBe(
+      "group/project",
+    );
+  });
+
+  it("handles nested paths (subgroups)", () => {
+    expect(extractRepoName("https://gitlab.com/group/sub/project")).toBe(
+      "group/sub/project",
+    );
+  });
+
+  it("falls back to stripping protocol for invalid URL", () => {
+    expect(extractRepoName("not-a-url")).toBe("not-a-url");
+  });
+
+  it("falls back gracefully for URL with only protocol", () => {
+    expect(extractRepoName("https://github.com")).toBe("");
+  });
+});
 
 describe("buildCommitUrl", () => {
   it("builds url from repo url and sha", () => {

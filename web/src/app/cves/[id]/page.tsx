@@ -16,7 +16,7 @@ import {
   getSignalTypeLabel,
   formatVerifiedBy,
 } from "@/lib/constants";
-import { formatPublished } from "@/lib/commit-utils";
+import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
 
 // --- Static generation ---
@@ -153,7 +153,7 @@ function formatVerificationSource(models: readonly string[]): string {
   return sources.join(" + ");
 }
 
-function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit[] }) {
+function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly BugCommit[]; readonly repoUrl?: string }) {
   const withVerdict = commits.filter((c) => c.llm_verdict !== null);
   if (withVerdict.length === 0) return null;
 
@@ -167,6 +167,7 @@ function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit
       <div className="space-y-2">
         {withVerdict.map((commit) => {
           const v = commit.llm_verdict!;
+          const shaText = commit.sha.slice(0, 12);
           return (
             <div
               key={commit.sha}
@@ -177,7 +178,18 @@ function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit
                 <div>
                   <span className="font-semibold">{v.verdict}</span>
                   {" — "}
-                  <span className="font-mono text-xs">{commit.sha.slice(0, 12)}</span>
+                  {repoUrl ? (
+                    <a
+                      href={buildCommitUrl(repoUrl, commit.sha)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-primary underline-offset-4 hover:underline"
+                    >
+                      {shaText}
+                    </a>
+                  ) : (
+                    <span className="font-mono text-xs">{shaText}</span>
+                  )}
                   {" "}
                   <span className="text-muted-foreground">{v.reasoning}</span>
                 </div>
@@ -193,7 +205,7 @@ function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit
   );
 }
 
-function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
+function HowIntroducedSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly repoUrl?: string }) {
   const hasExplicitExplanation = cve.how_introduced.length > 0;
   const signalTypes = collectUniqueSignalTypes(cve.bug_commits);
 
@@ -232,7 +244,7 @@ function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
             )}
           </div>
         )}
-        <LlmCausalitySection commits={cve.bug_commits} />
+        <LlmCausalitySection commits={cve.bug_commits} repoUrl={repoUrl} />
       </CardContent>
     </Card>
   );
@@ -240,8 +252,10 @@ function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
 
 function AiSignalsSection({
   commits,
+  repoUrl,
 }: {
   readonly commits: readonly BugCommit[];
+  readonly repoUrl?: string;
 }) {
   const aiCommits = commitsWithAiSignals(commits);
 
@@ -260,6 +274,7 @@ function AiSignalsSection({
             key={commit.sha}
             signals={commit.ai_signals}
             commitSha={commit.sha}
+            repoUrl={repoUrl}
           />
         ))}
       </div>
@@ -357,8 +372,8 @@ export default async function CveDetailPage({
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
       <PageHeader cve={cve} />
       <DescriptionSection description={cve.description} />
-      <HowIntroducedSection cve={cve} />
-      <AiSignalsSection commits={cve.bug_commits} />
+      <HowIntroducedSection cve={cve} repoUrl={cve.fix_commits[0]?.repo_url} />
+      <AiSignalsSection commits={cve.bug_commits} repoUrl={cve.fix_commits[0]?.repo_url} />
       <BugCommitsSection
         commits={cve.bug_commits}
         repoUrl={cve.fix_commits[0]?.repo_url}

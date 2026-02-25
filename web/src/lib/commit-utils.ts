@@ -1,3 +1,13 @@
+export function extractRepoName(repoUrl: string): string {
+  try {
+    const url = new URL(repoUrl);
+    // Remove leading slash and trailing slashes, e.g. "/owner/repo/" -> "owner/repo"
+    return url.pathname.replace(/^\/|\/$/g, "");
+  } catch {
+    return repoUrl.replace(/^https?:\/\//, "");
+  }
+}
+
 export function buildCommitUrl(repoUrl: string, sha: string): string {
   const base = repoUrl.replace(/\/+$/, "");
   return `${base}/commit/${sha}`;
