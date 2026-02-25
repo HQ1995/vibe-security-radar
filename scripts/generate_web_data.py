@@ -29,7 +29,7 @@ from pathlib import Path
 DEFAULT_CACHE_DIR = os.path.expanduser("~/.cache/cve-analyzer/results")
 DEFAULT_REVIEWS_DIR = os.path.expanduser("~/.cache/cve-analyzer/reviews")
 DEFAULT_OUTPUT_DIR = "web/data"
-DEFAULT_MIN_CONFIDENCE = 0.1
+DEFAULT_MIN_CONFIDENCE = 0.0
 
 
 # ---------------------------------------------------------------------------
