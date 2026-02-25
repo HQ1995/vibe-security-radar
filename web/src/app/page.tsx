@@ -2,10 +2,15 @@ import { getCves, getStats } from "@/lib/data";
 import { StatsCards } from "@/components/stats-cards";
 import { TrendChart } from "@/components/trend-chart";
 import { RecentCvesTable } from "@/components/recent-cves-table";
+import { compareCves } from "@/lib/sort";
 
 export default function HomePage() {
   const stats = getStats();
   const cves = getCves();
+
+  const recentCves = [...cves.cves]
+    .sort((a, b) => compareCves(a, b, { key: "published", direction: "desc" }))
+    .slice(0, 10);
 
   return (
     <main className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
@@ -22,7 +27,7 @@ export default function HomePage() {
 
       <TrendChart data={stats.by_month} />
 
-      <RecentCvesTable cves={cves.cves.slice(0, 10)} />
+      <RecentCvesTable cves={recentCves} />
     </main>
   );
 }
