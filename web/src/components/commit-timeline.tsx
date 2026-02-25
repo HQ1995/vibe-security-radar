@@ -140,28 +140,14 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
                   href={buildCommitUrl(commit.repo_url, commit.sha)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
+                  className="truncate rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
                 >
-                  {commit.sha.slice(0, 7)}
+                  {extractRepoName(commit.repo_url)}/{commit.sha.slice(0, 7)}
                 </a>
               ) : (
                 <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
                   {commit.sha.slice(0, 7)}
                 </code>
-              )}
-              {commit.repo_url ? (
-                <a
-                  href={commit.repo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="truncate text-sm text-primary underline-offset-4 hover:underline"
-                >
-                  {extractRepoName(commit.repo_url)}
-                </a>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  No repo URL
-                </span>
               )}
               <Badge variant="outline" className="ml-auto text-xs">
                 {commit.source}
