@@ -37,6 +37,7 @@ export interface CveEntry {
   readonly published: string;
   readonly ai_tools: readonly string[];
   readonly confidence: number;
+  readonly verified_by: string;
   readonly how_introduced: string;
   readonly bug_commits: readonly BugCommit[];
   readonly fix_commits: readonly FixCommit[];

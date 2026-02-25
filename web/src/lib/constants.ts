@@ -53,6 +53,11 @@ export function formatConfidence(confidence: number): string {
   return `${Math.round(confidence * 100)}%`;
 }
 
+export function formatVerifiedBy(verifiedBy: string): string {
+  if (!verifiedBy) return "Unverified";
+  return verifiedBy;
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;

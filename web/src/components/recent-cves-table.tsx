@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   severityBadgeClass,
-  formatConfidence,
+  formatVerifiedBy,
 } from "@/lib/constants";
 import type { CveEntry } from "@/lib/types";
 
@@ -29,7 +29,7 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
               <TableHead className="w-[180px]">ID</TableHead>
               <TableHead className="w-[100px]">Severity</TableHead>
               <TableHead className="w-[140px]">AI Tool(s)</TableHead>
-              <TableHead className="w-[100px] text-right">Confidence</TableHead>
+              <TableHead className="w-[130px]">Verified by</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
           </TableHeader>
@@ -52,8 +52,8 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                 <TableCell className="text-sm text-muted-foreground">
                   {cve.ai_tools.join(", ")}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm">
-                  {formatConfidence(cve.confidence)}
+                <TableCell className={`text-sm ${cve.verified_by ? "" : "text-muted-foreground/50"}`}>
+                  {formatVerifiedBy(cve.verified_by)}
                 </TableCell>
                 <TableCell
                   className="text-sm text-muted-foreground truncate"
