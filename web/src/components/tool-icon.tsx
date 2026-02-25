@@ -30,6 +30,14 @@ const TOOLS_WITH_ICONS = new Set([
   "augment_code",
   "trae",
   "gitlab_duo",
+  "gemini_cli",
+  "kimi_code",
+  "google_antigravity",
+  "kilo_code",
+  "codegeex",
+  "bolt_new",
+  "zencoder",
+  "codegpt",
   "unknown_ai",
 ]);
 

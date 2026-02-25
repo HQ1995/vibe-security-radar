@@ -43,6 +43,14 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   augment_code: "Augment Code",
   trae: "Trae",
   gitlab_duo: "GitLab Duo",
+  gemini_cli: "Gemini CLI",
+  kimi_code: "Kimi Code",
+  google_antigravity: "Google Antigravity",
+  kilo_code: "Kilo Code",
+  codegeex: "CodeGeeX",
+  bolt_new: "Bolt.new",
+  zencoder: "Zencoder",
+  codegpt: "CodeGPT",
   unknown_ai: "Unknown AI",
 };
 
