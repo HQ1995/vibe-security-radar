@@ -49,8 +49,8 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
             <TableRow>
               <TableHead className="w-[180px]">ID</TableHead>
               <TableHead className="w-[100px]">Severity</TableHead>
-              <TableHead className="w-[100px]">Tools</TableHead>
-              <TableHead className="w-[70px] text-center">Verified</TableHead>
+              <TableHead className="w-[72px]">Tools</TableHead>
+              <TableHead className="w-[80px] text-center">Verified</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
           </TableHeader>
