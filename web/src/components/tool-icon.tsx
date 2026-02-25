@@ -1,20 +1,5 @@
 import { getToolDisplayName } from "@/lib/constants";
 
-/** Monochrome SVGs from Simple Icons — need dark:invert for dark mode. */
-const MONOCHROME_ICONS = new Set([
-  "github_copilot",
-  "cursor",
-  "google_gemini",
-  "google_jules",
-  "windsurf",
-  "jetbrains_junie",
-  "gitlab_duo",
-  "qodo",
-  "replit_agent",
-  "gemini_cli",
-  "google_antigravity",
-]);
-
 /** Map of tool keys that have dedicated SVG icon files in /icons/tools/. */
 const TOOLS_WITH_ICONS = new Set([
   "claude_code",
@@ -75,8 +60,6 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
     );
   }
 
-  const darkClass = MONOCHROME_ICONS.has(tool) ? " dark:invert" : "";
-
   return (
     <img
       src={`/icons/tools/${tool}.svg`}
@@ -84,7 +67,7 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
       title={displayName}
       width={size}
       height={size}
-      className={`inline-block shrink-0${darkClass}`}
+      className="inline-block shrink-0"
     />
   );
 }
