@@ -21,6 +21,8 @@ const AI_TOOLS = [
   "OpenAI Codex",
   "Google Gemini",
   "Google Jules",
+  "Gemini CLI",
+  "Google Antigravity",
   "OpenCode",
   "Kiro",
   "JetBrains Junie",
@@ -35,6 +37,12 @@ const AI_TOOLS = [
   "Augment Code",
   "Trae",
   "GitLab Duo",
+  "Kimi Code",
+  "Kilo Code",
+  "CodeGeeX",
+  "Bolt.new",
+  "Zencoder",
+  "CodeGPT",
 ] as const;
 
 const DATA_SOURCES = [
