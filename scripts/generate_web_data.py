@@ -492,6 +492,7 @@ def build_cve_entry(
     result: dict,
     nvd_dates: dict[str, str] | None = None,
     ghsa_severities: dict[str, str] | None = None,
+    reviews: dict[str, dict] | None = None,
 ) -> dict:
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
@@ -537,6 +538,20 @@ def build_cve_entry(
         if ghsa_sev:
             severity = ghsa_sev
 
+    # Compute verified_by from LLM verdicts and manual reviews
+    models: set[str] = set()
+    for bic in result.get("bug_introducing_commits", []):
+        llm_v = bic.get("llm_verdict")
+        if llm_v and llm_v.get("model"):
+            models.add(llm_v["model"])
+
+    verified_by = ""
+    review = reviews.get(cve_id) if reviews else None
+    if review and review.get("verdict") in ("confirmed", "uncertain"):
+        verified_by = "Manual"
+    elif models:
+        verified_by = ", ".join(sorted(models))
+
     return {
         "id": cve_id,
         "description": result.get("description", ""),
@@ -547,6 +562,7 @@ def build_cve_entry(
         "published": published,
         "ai_tools": ai_tools,
         "confidence": result.get("ai_confidence", 0),
+        "verified_by": verified_by,
         "how_introduced": "",
         "bug_commits": bug_commits,
         "fix_commits": result.get("fix_commits", []),
@@ -663,7 +679,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  {len(filtered)} results with AI signals (confidence >= {args.min_confidence}).")
 
     # Transform
-    entries = [build_cve_entry(r, nvd_dates, ghsa_severities) for r in filtered]
+    entries = [build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered]
     # Sort by confidence descending
     entries = sorted(entries, key=lambda e: e.get("confidence", 0), reverse=True)
 

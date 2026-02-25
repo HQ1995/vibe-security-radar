@@ -13,7 +13,7 @@ import {
   severityBadgeClass,
   getToolDisplayName,
   getSignalTypeLabel,
-  formatConfidence,
+  formatVerifiedBy,
 } from "@/lib/constants";
 import { formatPublished } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
@@ -113,7 +113,7 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
         {cve.published && <span>Published: {formatPublished(cve.published)}</span>}
         {cve.ecosystem && <span>Ecosystem: {cve.ecosystem}</span>}
-        <span>AI Confidence: {formatConfidence(cve.confidence)}</span>
+        <span>Verified by: {formatVerifiedBy(cve.verified_by)}</span>
       </div>
     </div>
   );

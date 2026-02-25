@@ -5,6 +5,7 @@ export type SortKey =
   | "id"
   | "severity"
   | "tools"
+  | "verified"
   | "confidence"
   | "description"
   | "published";
@@ -28,6 +29,13 @@ export function compareCves(a: CveEntry, b: CveEntry, sort: SortState): number {
     }
     case "tools":
       return dir * a.ai_tools.join(", ").localeCompare(b.ai_tools.join(", "));
+    case "verified": {
+      // Verified entries sort before unverified
+      const aVerified = a.verified_by ? 0 : 1;
+      const bVerified = b.verified_by ? 0 : 1;
+      if (aVerified !== bVerified) return dir * (aVerified - bVerified);
+      return dir * a.verified_by.localeCompare(b.verified_by);
+    }
     case "confidence":
       return dir * (a.confidence - b.confidence);
     case "description":
