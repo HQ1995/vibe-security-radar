@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ToolIcon } from "@/components/tool-icon";
 import {
   severityBadgeClass,
   verifiedByLabel,
@@ -48,7 +49,7 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
             <TableRow>
               <TableHead className="w-[180px]">ID</TableHead>
               <TableHead className="w-[100px]">Severity</TableHead>
-              <TableHead className="w-[140px]">AI Tool(s)</TableHead>
+              <TableHead className="w-[100px]">Tools</TableHead>
               <TableHead className="w-[70px] text-center">Verified</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
@@ -69,8 +70,12 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                     {cve.severity}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {cve.ai_tools.join(", ")}
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    {cve.ai_tools.map((tool) => (
+                      <ToolIcon key={tool} tool={tool} size={18} />
+                    ))}
+                  </div>
                 </TableCell>
                 <TableCell className="text-center">
                   <VerifiedBadge verifiedBy={cve.verified_by} />

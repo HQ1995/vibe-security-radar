@@ -9,6 +9,7 @@ import {
   BugCommitTimeline,
   FixCommitTimeline,
 } from "@/components/commit-timeline";
+import { ToolIcon } from "@/components/tool-icon";
 import {
   severityBadgeClass,
   getToolDisplayName,
@@ -195,7 +196,6 @@ function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit
 function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
   const hasExplicitExplanation = cve.how_introduced.length > 0;
   const signalTypes = collectUniqueSignalTypes(cve.bug_commits);
-  const toolNames = cve.ai_tools.map(getToolDisplayName);
 
   return (
     <Card>
@@ -216,11 +216,16 @@ function HowIntroducedSection({ cve }: { readonly cve: CveEntry }) {
                 : "analysis pipeline"}
               .
             </p>
-            {toolNames.length > 0 && (
+            {cve.ai_tools.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {toolNames.map((name) => (
-                  <Badge key={name} variant="secondary">
-                    {name}
+                {cve.ai_tools.map((tool) => (
+                  <Badge
+                    key={tool}
+                    variant="secondary"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <ToolIcon tool={tool} size={14} />
+                    {getToolDisplayName(tool)}
                   </Badge>
                 ))}
               </div>

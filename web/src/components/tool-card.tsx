@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToolIcon } from "@/components/tool-icon";
 import { getToolDisplayName, severityBadgeClass } from "@/lib/constants";
 
 interface ToolCardProps {
@@ -16,7 +17,10 @@ export function ToolCard({ tool, count, severities }: ToolCardProps) {
     <Link href={`/cves?tool=${encodeURIComponent(tool)}`}>
       <Card className="transition-colors hover:border-primary/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">{displayName}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ToolIcon tool={tool} size={22} />
+            {displayName}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-3xl font-bold tabular-nums">
