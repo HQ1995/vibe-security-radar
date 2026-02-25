@@ -144,16 +144,24 @@ function verdictBorderClass(verdict: string): string {
   return "border-muted bg-muted/30";
 }
 
+function formatVerificationSource(models: readonly string[]): string {
+  const sources: string[] = [];
+  const llmModels = models.filter((m) => m !== "osv");
+  if (models.includes("osv")) sources.push("OSV vulnerability database");
+  if (llmModels.length > 0) sources.push(llmModels[0]);
+  return sources.join(" + ");
+}
+
 function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit[] }) {
   const withVerdict = commits.filter((c) => c.llm_verdict !== null);
   if (withVerdict.length === 0) return null;
 
-  const model = withVerdict[0].llm_verdict!.model;
+  const models = Array.from(new Set(withVerdict.map((c) => c.llm_verdict!.model)));
 
   return (
     <div className="mt-4 space-y-2">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-        LLM Causality Analysis
+        Causality Analysis
       </h3>
       <div className="space-y-2">
         {withVerdict.map((commit) => {
@@ -178,7 +186,7 @@ function LlmCausalitySection({ commits }: { readonly commits: readonly BugCommit
         })}
       </div>
       <p className="text-xs text-muted-foreground text-right">
-        Verified by {model}
+        Verified by {formatVerificationSource(models)}
       </p>
     </div>
   );

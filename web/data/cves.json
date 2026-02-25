@@ -1,7 +1,75 @@
 {
-  "generated_at": "2026-02-25T15:01:43.968242+00:00",
+  "generated_at": "2026-02-25T15:09:09.836827+00:00",
   "total": 103,
   "cves": [
+    {
+      "id": "CVE-2025-12489",
+      "description": "evernote-mcp-server openBrowser Command Injection Privilege Escalation Vulnerability. This vulnerability allows local attackers to escalate privileges on affected installations of evernote-mcp-server. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability.\n\nThe specific flaw exists within the openBrowser function. The issue results from the lack of proper validation of a user-supplied string before using it to execute ",
+      "severity": "HIGH",
+      "cvss": 7.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-11-06T21:15:39.800",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "confidence": 0.95,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "e08547bcdb42aaa86190c6e2dfc64159fcd3a146",
+          "author": "brentmid",
+          "date": "2025-06-16T15:42:34-04:00",
+          "message": "Add comprehensive OAuth 1.0a authentication and testing suite",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "auth.js",
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `auth.js` file which includes the `openBrowser` function using `exec` for command execution, directly leading to the command injection vulnerability fixed in the other diff.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "613ce9c4e952edc98b57e7d9be53df70bf07e65d",
+          "author": "brentmid",
+          "date": "2025-06-17T10:03:53-04:00",
+          "message": "Fix JSON-RPC logging conflicts and update documentation",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "auth.js",
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit modified the `openBrowser` function to use `exec` with a user-supplied URL, which is the exact pattern exploited by the vulnerability fixed in the other commit.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
+          "repo_url": "https://github.com/brentmid/evernote-mcp-server",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://www.zerodayinitiative.com/advisories/ZDI-25-983/"
+      ]
+    },
     {
       "id": "CVE-2026-22804",
       "description": "Termix has a Stored XSS in File Manager leading to Local File Inclusion (LFI) in Electron and Session Hijacking in Browser",
@@ -38,7 +106,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         },
         {
           "sha": "a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a",
@@ -59,7 +131,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         }
       ],
       "fix_commits": [
@@ -78,6 +154,68 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22804.json",
         "https://github.com/Termix-SSH/Termix/security/advisories/GHSA-m3cv-5hgp-hv35",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-22804"
+      ]
+    },
+    {
+      "id": "CVE-2026-25481",
+      "description": "Langroid has WAF Bypass Leading to RCE in TableChatAgent",
+      "severity": "UNKNOWN",
+      "cvss": 0.0,
+      "cwes": [
+        "CWE-94"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-04T20:16:07.447",
+      "ai_tools": [
+        "claude_code",
+        "github_copilot"
+      ],
+      "confidence": 0.95,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6",
+          "author": "Prasad Chalasani",
+          "date": "2025-05-17T14:02:11-04:00",
+          "message": "fixes to code-injection mitigation PR #841 (#850)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "langroid/utils/pandas_utils.py",
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `CommandValidator` class and its `visit_Attribute` method, which is directly responsible for blocking unsafe attribute access, including dunder attributes, that was part of the vulnerability.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "65f2e5ecafafdb5027236a94253021fce287cdac",
+          "repo_url": "https://github.com/langroid/langroid",
+          "source": "osv"
+        },
+        {
+          "sha": "30abbc1a854dee22fbd2f8b2f575dfdabdb603ea",
+          "repo_url": "https://github.com/langroid/langroid",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/25xxx/CVE-2026-25481.json",
+        "https://github.com/langroid/langroid/security/advisories/GHSA-jqq5-wc57-f8hj",
+        "https://github.com/langroid/langroid/security/advisories/GHSA-x34r-63hx-w57f",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-25481"
       ]
     },
     {
@@ -111,7 +249,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         }
       ],
       "fix_commits": [
@@ -377,8 +519,12 @@
             }
           ],
           "blamed_file": "src/modules/mavlink/mavlink_log_handler.cpp",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the use of a fixed-size buffer `filepath[PX4_MAX_FILEPATH]` and a `sscanf` format string `\"%255s\"` which, when combined with the lack of a size check on the input `line`, allows for a buffer overflow if `line` contains a filepath longer than 255 characters.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "086c044f471bf6d79c4072481838f50f2ea08dfd",
@@ -554,66 +700,6 @@
       ]
     },
     {
-      "id": "CVE-2025-12489",
-      "description": "evernote-mcp-server openBrowser Command Injection Privilege Escalation Vulnerability. This vulnerability allows local attackers to escalate privileges on affected installations of evernote-mcp-server. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability.\n\nThe specific flaw exists within the openBrowser function. The issue results from the lack of proper validation of a user-supplied string before using it to execute ",
-      "severity": "HIGH",
-      "cvss": 7.8,
-      "cwes": [
-        "CWE-78"
-      ],
-      "ecosystem": "",
-      "published": "2025-11-06T21:15:39.800",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "confidence": 0.855,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "e08547bcdb42aaa86190c6e2dfc64159fcd3a146",
-          "author": "brentmid",
-          "date": "2025-06-16T15:42:34-04:00",
-          "message": "Add comprehensive OAuth 1.0a authentication and testing suite",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "auth.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "613ce9c4e952edc98b57e7d9be53df70bf07e65d",
-          "author": "brentmid",
-          "date": "2025-06-17T10:03:53-04:00",
-          "message": "Fix JSON-RPC logging conflicts and update documentation",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "auth.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
-          "repo_url": "https://github.com/brentmid/evernote-mcp-server",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://www.zerodayinitiative.com/advisories/ZDI-25-983/"
-      ]
-    },
-    {
       "id": "GHSA-vh5j-5fhq-9xwg",
       "description": "Taylor has race condition in /get-patch that allows purchase token replay",
       "severity": "UNKNOWN",
@@ -692,8 +778,12 @@
             }
           ],
           "blamed_file": "templates/backend-in-a-box/index.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit is the initial creation of the file and does not contain the logic that was later modified to fix the vulnerability.",
+            "model": "gemini-2.5-flash-lite"
+          }
         }
       ],
       "fix_commits": [
@@ -1116,64 +1206,6 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/27xxx/CVE-2026-27203.json",
         "https://github.com/YosefHayim/ebay-mcp/security/advisories/GHSA-97rm-xj73-33jh",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-27203"
-      ]
-    },
-    {
-      "id": "CVE-2026-25481",
-      "description": "Langroid has WAF Bypass Leading to RCE in TableChatAgent",
-      "severity": "UNKNOWN",
-      "cvss": 0.0,
-      "cwes": [
-        "CWE-94"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-04T20:16:07.447",
-      "ai_tools": [
-        "claude_code",
-        "github_copilot"
-      ],
-      "confidence": 0.665,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6",
-          "author": "Prasad Chalasani",
-          "date": "2025-05-17T14:02:11-04:00",
-          "message": "fixes to code-injection mitigation PR #841 (#850)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "langroid/utils/pandas_utils.py",
-          "blame_confidence": 0.7,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "65f2e5ecafafdb5027236a94253021fce287cdac",
-          "repo_url": "https://github.com/langroid/langroid",
-          "source": "osv"
-        },
-        {
-          "sha": "30abbc1a854dee22fbd2f8b2f575dfdabdb603ea",
-          "repo_url": "https://github.com/langroid/langroid",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/25xxx/CVE-2026-25481.json",
-        "https://github.com/langroid/langroid/security/advisories/GHSA-jqq5-wc57-f8hj",
-        "https://github.com/langroid/langroid/security/advisories/GHSA-x34r-63hx-w57f",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-25481"
       ]
     },
     {
@@ -1766,7 +1798,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         }
       ],
       "fix_commits": [
@@ -1842,7 +1878,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         }
       ],
       "fix_commits": [
@@ -1906,7 +1946,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         },
         {
           "sha": "717595da8e7ca090a326116bfffb6aa4d4c74004",
@@ -1945,77 +1989,6 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/26xxx/CVE-2026-26267.json",
         "https://github.com/stellar/rs-soroban-sdk/security/advisories/GHSA-4chv-4c6w-w254",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26267"
-      ]
-    },
-    {
-      "id": "CVE-2026-22038",
-      "description": "AutoGPT's API Keys and Secrets Logged in Plaintext in Stagehand Integration Blocks",
-      "severity": "HIGH",
-      "cvss": 8.1,
-      "cwes": [
-        "CWE-532"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-04T23:15:56.057",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "confidence": 0.4936,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "44d739386b5cb9f583f53e1a92b8b86b5061594b",
-          "author": "Swifty",
-          "date": "2025-08-27T10:33:41+02:00",
-          "message": "feat(platform/blocks): Added stagehand integration (#10751)",
-          "ai_signals": [],
-          "blamed_file": "autogpt_platform/backend/backend/blocks/stagehand/blocks.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "c5069ca48f1e7f5ccd29e504affb91e2560ce8b1",
-          "author": "Ubbe",
-          "date": "2026-01-22T16:43:42+07:00",
-          "message": "fix(frontend): chat UX improvements (#11804)",
-          "ai_signals": [],
-          "blamed_file": "autogpt_platform/frontend/src/app/(platform)/copilot/helpers.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "b94c83aacc9093ce480aa270971ac5baa177f311",
-          "author": "Ubbe",
-          "date": "2026-01-29T17:46:36+07:00",
-          "message": "feat(frontend): Copilot speech to text via Whisper model (#11871)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "autogpt_platform/frontend/src/components/contextual/Chat/components/ChatInput/ChatInput.tsx",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "7e5b84cc5c963979e3e7c35d768a155c70bd643e",
-          "repo_url": "https://github.com/significant-gravitas/autogpt",
-          "source": "osv"
-        },
-        {
-          "sha": "1eabc604842fa876c09d69af43d2d1e8fb9b8eb9",
-          "repo_url": "https://github.com/Significant-Gravitas/AutoGPT",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22038.json",
-        "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-rc89-6g7g-v5v7",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-22038"
       ]
     },
     {
@@ -2273,73 +2246,6 @@
         "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-4hg8-92x6-h2f3",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26319"
-      ]
-    },
-    {
-      "id": "CVE-2025-58747",
-      "description": "Dify MCP OAuth Flow Vulnerable to XSS",
-      "severity": "UNKNOWN",
-      "cvss": 0.0,
-      "cwes": [
-        "CWE-79"
-      ],
-      "ecosystem": "",
-      "published": "2025-10-17T16:15:38.620",
-      "ai_tools": [
-        "github_copilot",
-        "google_gemini"
-      ],
-      "confidence": 0.4455,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "5375d9bb27c19fc6dd6dfc4f63cfef33fbf6f7e4",
-          "author": "Joel",
-          "date": "2025-07-10T14:14:02+08:00",
-          "message": "feat: the frontend part of mcp (#22131)",
-          "ai_signals": [],
-          "blamed_file": "web/hooks/use-oauth.ts",
-          "blame_confidence": 0.7,
-          "llm_verdict": null
-        },
-        {
-          "sha": "9a5f21462361c5154a5e785c906bb22d1b3c6931",
-          "author": "-LAN-",
-          "date": "2025-10-19T21:29:04+08:00",
-          "message": "refactor: replace localStorage with HTTP-only cookies for auth tokens (#24365)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "confidence": 0.7
-            },
-            {
-              "tool": "google_gemini",
-              "signal_type": "co_author_trailer_generic",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "web/app/components/swr-initializer.tsx",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "ec871819e46de82f2f9ee33a71a61d96a58bdb37",
-          "repo_url": "https://github.com/langgenius/dify",
-          "source": "osv"
-        },
-        {
-          "sha": "bfda4ce7e6f39d43a4420e97e23a18edcfe3e3d3",
-          "repo_url": "https://github.com/langgenius/dify",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58747.json",
-        "https://github.com/langgenius/dify/security/advisories/GHSA-9jch-j9qf-vqfw",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-58747"
       ]
     },
     {
@@ -2624,77 +2530,6 @@
       ]
     },
     {
-      "id": "CVE-2026-27584",
-      "description": "ActualBudget server is Missing Authentication for SimpleFIN and Pluggy AI bank sync endpoints",
-      "severity": "UNKNOWN",
-      "cvss": 0.0,
-      "cwes": [
-        "CWE-306"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-24T15:21:39.010",
-      "ai_tools": [
-        "cursor"
-      ],
-      "confidence": 0.3637,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "0c95eb483897a2f5ba35962e4525f2149f1c000c",
-          "author": "Matiss Janis Aboltins",
-          "date": "2025-12-06T03:23:44+00:00",
-          "message": "Add ESM loader support and update sync-server modules (#6179)",
-          "ai_signals": [
-            {
-              "tool": "cursor",
-              "signal_type": "co_author_trailer_generic",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "packages/sync-server/src/app-pluggyai/app-pluggyai.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "d5e2030d2359f9807c47e868694efcf7fed1cdbb",
-          "author": "lelemm",
-          "date": "2025-03-04T08:07:58-03:00",
-          "message": "Pluggy.ai bank sync (#4049)",
-          "ai_signals": [],
-          "blamed_file": "packages/sync-server/src/app-pluggyai/app-pluggyai.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "e7f6348d9ae7d35dcfe4aa529a7eac09287c194e",
-          "author": "Zach Whelchel",
-          "date": "2024-01-20T17:35:30-05:00",
-          "message": "SimpleFin (#296)",
-          "ai_signals": [],
-          "blamed_file": "packages/sync-server/src/app-simplefin/app-simplefin.js",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "0f77d333ca2609a2401413a6d4a2ffa6f89d760b",
-          "repo_url": "https://github.com/actualbudget/actual",
-          "source": "osv"
-        },
-        {
-          "sha": "ea937d100956ca56689ff852d99c28589e2a7d88",
-          "repo_url": "https://github.com/actualbudget/actual",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/27xxx/CVE-2026-27584.json",
-        "https://github.com/actualbudget/actual/security/advisories/GHSA-m2cq-xjgm-f668",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-27584"
-      ]
-    },
-    {
       "id": "CVE-2026-0863",
       "description": "Using string formatting and exception handling, an attacker may bypass n8n's python-task-executor sandbox restrictions and run arbitrary unrestricted Python code in the underlying operating system.\n\nThe vulnerability can be exploited via the Code block by an authenticated user with basic permissions and can lead to a full n8n instance takeover on instances operating under \"Internal\" execution mode.\n\nIf the instance is operating under the  \"External\" execution mode (ex. n8n's official Docker imag",
       "severity": "CRITICAL",
@@ -2735,7 +2570,11 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "Directly identified by vulnerability database (OSV introduced commit)",
+            "model": "osv"
+          }
         }
       ],
       "fix_commits": [
@@ -4768,433 +4607,6 @@
       ]
     },
     {
-      "id": "CVE-2025-66212",
-      "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in Dynamic Proxy Configuration Filename",
-      "severity": "UNKNOWN",
-      "cvss": 0.0,
-      "cwes": [
-        "CWE-78"
-      ],
-      "ecosystem": "",
-      "published": "2025-12-23T22:15:52.510",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "confidence": 0.289,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "e958b3761d993fda8b312c259f109d15a8c9cb3d",
-          "author": "Andras Bacsai",
-          "date": "2025-08-19T11:04:23+02:00",
-          "message": "feat(cleanup): add command for sanitizing name fields across models",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/CleanupNames.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7817c9cad759d7fc670f3ea639a9b28c7840798c",
-          "author": "Andras Bacsai",
-          "date": "2025-07-07T09:47:11+02:00",
-          "message": "refactor(redis): enhance CleanupRedis command with dry-run option and improved key deletion logic",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/CleanupRedis.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "c6a2d1fe0ab8942bfc792e099f1804397e69fc3f",
-          "author": "Andras Bacsai",
-          "date": "2025-10-23T10:07:33+02:00",
-          "message": "Fix stale lock issue causing scheduled tasks to stop (#4539)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "app/Console/Commands/CleanupRedis.php",
-          "blame_confidence": 0.09000000000000001,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit adds functionality for clearing cache locks, which is unrelated to the CVE description concerning dynamic proxy configuration filenames.",
-            "model": "gemini-2.5-flash-lite"
-          }
-        },
-        {
-          "sha": "b22e79caec94195eed721cae0cc3e7cf68bf6e2a",
-          "author": "Andras Bacsai",
-          "date": "2025-11-10T11:11:18+01:00",
-          "message": "feat(jobs): improve scheduled tasks with retry logic and queue cleanup",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/CleanupRedis.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "f6d8ad1775a4f1c87690dc412e6461871f09dd93",
-          "author": "Andras Bacsai",
-          "date": "2025-11-26T10:52:20+01:00",
-          "message": "feat: add support for syncing versions.json to GitHub repository via PR",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/SyncBunny.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "c6df243623f08855691ac3e91ff5f07e9920fd64",
-          "author": "Andras Bacsai",
-          "date": "2024-08-31T00:01:34+02:00",
-          "message": "chore: Update Coolify version to 4.0.0-beta.324 and fix file paths in upgrade script",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/SyncBunny.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0c3ed3d3934b5ec1a67687e91f780b7e64e98dcd",
-          "author": "Andras Bacsai",
-          "date": "2024-02-05T10:17:40+01:00",
-          "message": "Update BunnyCDN sync and version numbers",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/SyncBunny.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "23a3b4701184166a0698d9a44279304e5976fe4f",
-          "author": "Andras Bacsai",
-          "date": "2025-11-05T14:54:13+01:00",
-          "message": "refactor: rename sync function and improve error handling",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/SyncBunny.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "84e5b39830521655e401ce1bb95a6c6dc4124194",
-          "author": "Andras Bacsai",
-          "date": "2023-09-28T13:07:52+02:00",
-          "message": "fix: prevent sync version (it needs an option)",
-          "ai_signals": [],
-          "blamed_file": "app/Console/Commands/SyncBunny.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "f4575e531f4d6caf278e7f8bb21f54380aac2593",
-          "author": "Andras Bacsai",
-          "date": "2025-02-03T21:49:13+01:00",
-          "message": "fix(backup): escape special characters in database backup commands",
-          "ai_signals": [],
-          "blamed_file": "app/Jobs/DatabaseBackupJob.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1c7ca56756b817af3e864e2fc2fb802394a66e06",
-          "author": "Andras Bacsai",
-          "date": "2024-10-03T12:39:45+02:00",
-          "message": "feat: backup all databases for mysql,mariadb,postgresql",
-          "ai_signals": [],
-          "blamed_file": "app/Jobs/DatabaseBackupJob.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "159c4aa7ac02fdae6849d8c6db7a7a837dd8f01a",
-          "author": "peaklabs-dev",
-          "date": "2024-10-18T21:08:45+02:00",
-          "message": "remove old init script on server if it is renamed",
-          "ai_signals": [],
-          "blamed_file": "app/Livewire/Project/Database/Postgresql/General.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7f393eb2c26c470cdf1a86820ed40a8cf33bea01",
-          "author": "peaklabs-dev",
-          "date": "2024-10-18T20:51:51+02:00",
-          "message": "fix indexing after deletion and make sure init script is removed form the server",
-          "ai_signals": [],
-          "blamed_file": "app/Livewire/Project/Database/Postgresql/General.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "63fcc0ebc3a41a91eb4a48265d9d637f80afcf31",
-          "author": "Andras Bacsai",
-          "date": "2025-08-26T10:27:31+02:00",
-          "message": "feat(acl): Change views/backend code to able to use proper ACL's later on. Currently it is not enabled.",
-          "ai_signals": [],
-          "blamed_file": "app/Livewire/Server/Proxy/DynamicConfigurationNavbar.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "154b1b05e4e055e16d061f826a77c8ff036a20ce",
-          "author": "Andras Bacsai",
-          "date": "2024-02-22T13:29:28+01:00",
-          "message": "feat: able to add dynamic configurations from proxy dashboard",
-          "ai_signals": [],
-          "blamed_file": "app/Livewire/Server/Proxy/NewDynamicConfiguration.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "133e72336a0c24f6ca6e5d1956037394dd528775",
-          "author": "Andras Bacsai",
-          "date": "2025-09-15T17:56:48+02:00",
-          "message": "Revert \"refactor(file-transfer): replace base64 encoding with direct file transfer method in various components for improved clarity and efficiency\"",
-          "ai_signals": [],
-          "blamed_file": "app/Livewire/Server/Proxy/NewDynamicConfiguration.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "237246acee8337a84290b91fc8c2d57243e905ef",
-          "author": "Andras Bacsai",
-          "date": "2025-11-01T13:28:56+01:00",
-          "message": "fix: Remove duplicate custom_labels from config hash calculation",
-          "ai_signals": [],
-          "blamed_file": "app/Models/Application.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1fe4dd722b84cc0c22205ce87645ae9ccc8fff3b",
-          "author": "Andras Bacsai",
-          "date": "2025-01-07T15:31:43+01:00",
-          "message": "Revert \"rector: arrrrr\"",
-          "ai_signals": [],
-          "blamed_file": "app/Models/EnvironmentVariable.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "fb478c79b3d679fb1ce7431ea22dfaf471b0a70a",
-          "author": "Andras Bacsai",
-          "date": "2024-01-23T17:13:23+01:00",
-          "message": "feat: shared environments",
-          "ai_signals": [],
-          "blamed_file": "app/Models/EnvironmentVariable.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0e54ed13430048c6afb46104a7d916b0d3cfe03f",
-          "author": "Andras Bacsai",
-          "date": "2024-08-12T16:06:24+02:00",
-          "message": "feat: preserve git repository with advanced file storages",
-          "ai_signals": [],
-          "blamed_file": "app/Models/LocalFileVolume.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "64ce41df0f55958ea9c66fea124b020be82e06f7",
-          "author": "Andras Bacsai",
-          "date": "2023-09-29T21:38:11+02:00",
-          "message": "fix: file/dir based volumes are now read from the server",
-          "ai_signals": [],
-          "blamed_file": "app/Models/LocalFileVolume.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "ea5101c81498e97b799870cef69008f4065766a2",
-          "author": "Andras Bacsai",
-          "date": "2024-08-05T20:00:57+02:00",
-          "message": "fix: file storages (dir/file mount) handled properly",
-          "ai_signals": [],
-          "blamed_file": "app/Models/LocalFileVolume.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "8ffbccf7db072896cefacd7527dbeb1733d44536",
-          "author": "Andras Bacsai",
-          "date": "2024-07-22T09:18:15+02:00",
-          "message": "fix: create file storage even if content is empty",
-          "ai_signals": [],
-          "blamed_file": "app/Models/LocalFileVolume.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "a0bc4dac55e5f9255376dc017874035eb8642fa7",
-          "author": "Andras Bacsai",
-          "date": "2025-07-24T09:39:27+02:00",
-          "message": "fix(application): streamline environment variable updates for Docker Compose services and enhance FQDN generation logic",
-          "ai_signals": [],
-          "blamed_file": "bootstrap/helpers/parsers.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "e8892b3d29290b69b796a6f2bddeab84d323b392",
-          "author": "Andras Bacsai",
-          "date": "2025-08-04T10:46:59+02:00",
-          "message": "feat(core): finally fqdn is fqdn and url is url. haha",
-          "ai_signals": [],
-          "blamed_file": "bootstrap/helpers/parsers.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "56f32d0f87609d48c4f9f8d766c96c183bcd60f9",
-          "author": "Andras Bacsai",
-          "date": "2025-11-18T22:26:11+01:00",
-          "message": "fix: properly handle SERVICE_URL and SERVICE_FQDN for abbreviated service names (#7243)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            },
-            {
-              "tool": "claude_code",
-              "signal_type": "message_keyword",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "bootstrap/helpers/parsers.php",
-          "blame_confidence": 0.27,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit refactors how FQDN and URL environment variables are parsed and generated, but the fix commit specifically addresses potential duplication of path segments in dynamic proxy configurations, which is not present in the blamed commit's changes.",
-            "model": "gemini-2.5-flash-lite"
-          }
-        },
-        {
-          "sha": "ad58dfc62e6c97434182975e7057578bfff549aa",
-          "author": "Andras Bacsai",
-          "date": "2025-09-09T09:00:42+02:00",
-          "message": "feat(sudo-helper): add helper functions for command parsing and ownership management with sudo",
-          "ai_signals": [],
-          "blamed_file": "bootstrap/helpers/sudo.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "01635e8b80ae368c8fe89ca486bffa6f9932b08d",
-          "author": "Andras Bacsai",
-          "date": "2025-11-26T13:44:53+01:00",
-          "message": "fix: add bash control structure keywords to sudo command processing",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "bootstrap/helpers/sudo.php",
-          "blame_confidence": 0.27,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit expanded the list of commands that should not be prefixed with 'sudo', but the fix commit refactored the logic entirely to use regex for more robust keyword matching.",
-            "model": "gemini-2.5-flash-lite"
-          }
-        },
-        {
-          "sha": "4f87b251b0bcc2a4c672d30dc69563261197bb8f",
-          "author": "Andras Bacsai",
-          "date": "2025-11-26T10:50:03+01:00",
-          "message": "fix: update version number to 4.0.0-beta.450",
-          "ai_signals": [],
-          "blamed_file": "config/constants.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "c79b5f1e5c26f4ad0f7fd571985933e56a9d80b8",
-          "author": "Andras Bacsai",
-          "date": "2025-11-19T10:54:19+01:00",
-          "message": "feat: add environment variable autocomplete component",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "confidence": 0.95
-            },
-            {
-              "tool": "claude_code",
-              "signal_type": "message_keyword",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "resources/views/components/forms/env-var-input.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "99fd4b424d186c6557c3f48aa43708935c827bef",
-          "author": "Andras Bacsai",
-          "date": "2025-09-19T14:17:10+02:00",
-          "message": "feat(environment): add dynamic checkbox options for environment variable settings based on user permissions and variable types",
-          "ai_signals": [],
-          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2a9d4992513d80b67fce23f819c12cea7796a9e7",
-          "author": "Andras Bacsai",
-          "date": "2024-12-17T10:38:32+01:00",
-          "message": "feat: migrate env variables to polymorphic relationship",
-          "ai_signals": [],
-          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "c0ddf73b753e54cf69396ec0581d2393fa5ce34a",
-          "author": "peaklabs-dev",
-          "date": "2025-09-18T19:14:34+02:00",
-          "message": "fix(ui): change order and fix ui on small screens",
-          "ai_signals": [],
-          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "bfaefed1aea4864eb30e6c813a919279bae4e785",
-          "author": "Andras Bacsai",
-          "date": "2025-09-19T13:45:37+02:00",
-          "message": "refactor(environment): streamline rendering of Docker Build Secrets checkbox and adjust layout for environment variable settings",
-          "ai_signals": [],
-          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "f33df13c4eebe15c2c08500bf4a22860820a5d52",
-          "author": "Andras Bacsai",
-          "date": "2025-09-18T18:14:54+02:00",
-          "message": "feat(environment): replace is_buildtime_only with is_runtime and is_buildtime flags for environment variables, updating related logic and views",
-          "ai_signals": [],
-          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "d9ec105430869a98d0b3415c76a5d519403269a0",
-          "repo_url": "https://github.com/coollabsio/coolify",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/66xxx/CVE-2025-66212.json",
-        "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
-        "https://github.com/coollabsio/coolify/security/advisories/GHSA-q7rg-2j7p-83gp",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-66212"
-      ]
-    },
-    {
       "id": "CVE-2025-14116",
       "description": "A vulnerability was detected in xerrors Yuxi-Know up to 0.4.0. This vulnerability affects the function OtherEmbedding.aencode of the file /src/models/embed.py. Performing manipulation of the argument health_url results in server-side request forgery. The attack can be initiated remotely. The exploit is now public and may be used. The patch is named 0ff771dc1933d5a6b78f804115e78a7d8625c3f3. To fix this issue, it is recommended to deploy a patch. The vendor responded with a vulnerability confirmat",
       "severity": "UNKNOWN",
@@ -6419,8 +5831,12 @@
             }
           ],
           "blamed_file": "src/fastmcp/prompts/prompt.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced logic to append JSON schema information to parameter descriptions, which is directly related to how arguments are handled and described, a core part of the vulnerability.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "7d520ec5d14f36422343355abc9a8047f364dc9f",
@@ -8367,8 +7783,12 @@
             }
           ],
           "blamed_file": "app/Models/InstanceSettings.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit modified the logic for clearing the trusted hosts cache when the FQDN changes, which is unrelated to the command injection vulnerability in docker-compose.yaml parameters.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "62ae845f4b0d0607bf2b30b936d59f3cd2029f5b",
@@ -8568,8 +7988,12 @@
             }
           ],
           "blamed_file": "database/migrations/2025_10_10_120000_create_cloud_init_scripts_table.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit adds a 'description' column to a database migration, which is unrelated to the command injection vulnerability in docker-compose.yaml parameters.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "6b5f87eec844e32c4c1e06e031e44fc929ad9812",
@@ -9842,6 +9266,81 @@
       ]
     },
     {
+      "id": "CVE-2026-22038",
+      "description": "AutoGPT's API Keys and Secrets Logged in Plaintext in Stagehand Integration Blocks",
+      "severity": "HIGH",
+      "cvss": 8.1,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-04T23:15:56.057",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "confidence": 0.1481,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "44d739386b5cb9f583f53e1a92b8b86b5061594b",
+          "author": "Swifty",
+          "date": "2025-08-27T10:33:41+02:00",
+          "message": "feat(platform/blocks): Added stagehand integration (#10751)",
+          "ai_signals": [],
+          "blamed_file": "autogpt_platform/backend/backend/blocks/stagehand/blocks.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "c5069ca48f1e7f5ccd29e504affb91e2560ce8b1",
+          "author": "Ubbe",
+          "date": "2026-01-22T16:43:42+07:00",
+          "message": "fix(frontend): chat UX improvements (#11804)",
+          "ai_signals": [],
+          "blamed_file": "autogpt_platform/frontend/src/app/(platform)/copilot/helpers.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "b94c83aacc9093ce480aa270971ac5baa177f311",
+          "author": "Ubbe",
+          "date": "2026-01-29T17:46:36+07:00",
+          "message": "feat(frontend): Copilot speech to text via Whisper model (#11871)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "autogpt_platform/frontend/src/components/contextual/Chat/components/ChatInput/ChatInput.tsx",
+          "blame_confidence": 0.27,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit refactors the chat input component and introduces voice recording functionality, but the specific fix for logging API keys in plaintext is not present in this diff.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7e5b84cc5c963979e3e7c35d768a155c70bd643e",
+          "repo_url": "https://github.com/significant-gravitas/autogpt",
+          "source": "osv"
+        },
+        {
+          "sha": "1eabc604842fa876c09d69af43d2d1e8fb9b8eb9",
+          "repo_url": "https://github.com/Significant-Gravitas/AutoGPT",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22038.json",
+        "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-rc89-6g7g-v5v7",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-22038"
+      ]
+    },
+    {
       "id": "CVE-2026-25232",
       "description": "Gogs has a Protected Branch Deletion Bypass in Web Interface",
       "severity": "UNKNOWN",
@@ -11077,8 +10576,12 @@
             }
           ],
           "blamed_file": "src/backend/base/langflow/services/flow/flow_runner.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit modifies the initialization and logging configuration of the LangflowRunnerExperimental class, which is unrelated to the CORS and cookie handling that causes the vulnerability.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "e50476b30a6d3426e50aa9666ed93de9f78e20fb",
@@ -11363,8 +10866,12 @@
             }
           ],
           "blamed_file": "src/backend/tests/unit/base/mcp/test_mcp_util.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit introduces tests for field name conversion, which is unrelated to the CORS and cookie vulnerability described in the CVE.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "cea4b4294d95016bd3c3336fc3e479c61d93845d",
@@ -14214,6 +13721,152 @@
         "https://github.com/silverbucket/webfinger.js/releases/tag/v2.8.1",
         "https://github.com/silverbucket/webfinger.js/security/advisories/GHSA-8xq3-w9fx-74rv",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-54590"
+      ]
+    },
+    {
+      "id": "CVE-2025-58747",
+      "description": "Dify MCP OAuth Flow Vulnerable to XSS",
+      "severity": "UNKNOWN",
+      "cvss": 0.0,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2025-10-17T16:15:38.620",
+      "ai_tools": [
+        "github_copilot",
+        "google_gemini"
+      ],
+      "confidence": 0.1336,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "5375d9bb27c19fc6dd6dfc4f63cfef33fbf6f7e4",
+          "author": "Joel",
+          "date": "2025-07-10T14:14:02+08:00",
+          "message": "feat: the frontend part of mcp (#22131)",
+          "ai_signals": [],
+          "blamed_file": "web/hooks/use-oauth.ts",
+          "blame_confidence": 0.7,
+          "llm_verdict": null
+        },
+        {
+          "sha": "9a5f21462361c5154a5e785c906bb22d1b3c6931",
+          "author": "-LAN-",
+          "date": "2025-10-19T21:29:04+08:00",
+          "message": "refactor: replace localStorage with HTTP-only cookies for auth tokens (#24365)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "confidence": 0.7
+            },
+            {
+              "tool": "google_gemini",
+              "signal_type": "co_author_trailer_generic",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "web/app/components/swr-initializer.tsx",
+          "blame_confidence": 0.27,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit refactors token handling and removes localStorage checks, while the fix commit addresses the logic flow after a redirect, indicating the vulnerability was not introduced by the blamed commit.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ec871819e46de82f2f9ee33a71a61d96a58bdb37",
+          "repo_url": "https://github.com/langgenius/dify",
+          "source": "osv"
+        },
+        {
+          "sha": "bfda4ce7e6f39d43a4420e97e23a18edcfe3e3d3",
+          "repo_url": "https://github.com/langgenius/dify",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58747.json",
+        "https://github.com/langgenius/dify/security/advisories/GHSA-9jch-j9qf-vqfw",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58747"
+      ]
+    },
+    {
+      "id": "CVE-2026-27584",
+      "description": "ActualBudget server is Missing Authentication for SimpleFIN and Pluggy AI bank sync endpoints",
+      "severity": "UNKNOWN",
+      "cvss": 0.0,
+      "cwes": [
+        "CWE-306"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-24T15:21:39.010",
+      "ai_tools": [
+        "cursor"
+      ],
+      "confidence": 0.1091,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "0c95eb483897a2f5ba35962e4525f2149f1c000c",
+          "author": "Matiss Janis Aboltins",
+          "date": "2025-12-06T03:23:44+00:00",
+          "message": "Add ESM loader support and update sync-server modules (#6179)",
+          "ai_signals": [
+            {
+              "tool": "cursor",
+              "signal_type": "co_author_trailer_generic",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "packages/sync-server/src/app-pluggyai/app-pluggyai.js",
+          "blame_confidence": 0.27,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit only updated import paths and did not introduce the missing authentication middleware that was added in the fix commit.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "d5e2030d2359f9807c47e868694efcf7fed1cdbb",
+          "author": "lelemm",
+          "date": "2025-03-04T08:07:58-03:00",
+          "message": "Pluggy.ai bank sync (#4049)",
+          "ai_signals": [],
+          "blamed_file": "packages/sync-server/src/app-pluggyai/app-pluggyai.js",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "e7f6348d9ae7d35dcfe4aa529a7eac09287c194e",
+          "author": "Zach Whelchel",
+          "date": "2024-01-20T17:35:30-05:00",
+          "message": "SimpleFin (#296)",
+          "ai_signals": [],
+          "blamed_file": "packages/sync-server/src/app-simplefin/app-simplefin.js",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0f77d333ca2609a2401413a6d4a2ffa6f89d760b",
+          "repo_url": "https://github.com/actualbudget/actual",
+          "source": "osv"
+        },
+        {
+          "sha": "ea937d100956ca56689ff852d99c28589e2a7d88",
+          "repo_url": "https://github.com/actualbudget/actual",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/27xxx/CVE-2026-27584.json",
+        "https://github.com/actualbudget/actual/security/advisories/GHSA-m2cq-xjgm-f668",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-27584"
       ]
     },
     {
@@ -17406,8 +17059,12 @@
             }
           ],
           "blamed_file": "backend/open_webui/routers/scim.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduces the `scim.py` file which contains the `user_to_scim` and `group_to_scim` functions, and the fix commit modifies these exact functions to pass a database session, indicating the blamed commit introduced the vulnerable code pattern.",
+            "model": "gemini-2.5-flash-lite"
+          }
         },
         {
           "sha": "0c0505e1cd0e0fb5edb41ea775bc0b3902f9e4eb",
@@ -19715,918 +19372,6 @@
       ]
     },
     {
-      "id": "CVE-2026-24777",
-      "description": "OpenProject has Improper Access Control on User Management allows user managers to lock admin accounts",
-      "severity": "MEDIUM",
-      "cvss": 6.7,
-      "cwes": [
-        "CWE-862"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-09T19:15:50.200",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "confidence": 0.0917,
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "cc90002befb72ac4aa1470d697f3eb7605a3cf91",
-          "author": "Henriette Darge",
-          "date": "2025-06-17T08:55:57+02:00",
-          "message": "Take care that the main menu resizer toggles when the menu is collapsed/expanded",
-          "ai_signals": [],
-          "blamed_file": "app/components/open_project/common/main_menu_toggle_component.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "bb66d0d5b484a752c1bc997a1a70fb2dea3ded4a",
-          "author": "Henriette Darge",
-          "date": "2025-06-13T16:26:40+02:00",
-          "message": "Move toggleButton for menu into the sidebar",
-          "ai_signals": [],
-          "blamed_file": "app/components/open_project/common/main_menu_toggle_component.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "cbe2b6dd75c6961956c8861dd11993007b3f5ba0",
-          "author": "Dombi Attila",
-          "date": "2025-11-24T12:51:52+02:00",
-          "message": "Pass template to the project creation footer.",
-          "ai_signals": [],
-          "blamed_file": "app/components/projects/project_creation_footer_component.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "db4b927e3ddc660d7c6ad228500b4fae0fc59b5e",
-          "author": "Dombi Attila",
-          "date": "2023-05-18T14:39:34+03:00",
-          "message": "[#47016] Replace Users::TableCell by ViewComponent",
-          "ai_signals": [],
-          "blamed_file": "app/components/users/row_component.rb",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "b78b62df8d1fd34321cffd3785121da98f64265b",
-          "author": "Jean-Philippe Lang",
-          "date": "2008-06-08T16:48:21+00:00",
-          "message": "SCM browser: ability to download raw unified diffs.",
-          "ai_signals": [],
-          "blamed_file": "app/controllers/repositories_controller.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "5ea185ef66a4b3f556394e60afd39edfcc3604da",
-          "author": "ulferts",
-          "date": "2021-02-04T09:52:56+01:00",
-          "message": "Placeholder user project members (#8961)",
-          "ai_signals": [],
-          "blamed_file": "app/controllers/users_controller.rb",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "ac8a0964882c6ff4bbfc312ce80555beb9bcf7fc",
-          "author": "Markus Kahl",
-          "date": "2015-09-10T18:02:13+01:00",
-          "message": "polish considering remarks through review and houndci",
-          "ai_signals": [],
-          "blamed_file": "app/controllers/users_controller.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "40e4e9a9c77f6200ba91d61501cf2435edf15898",
-          "author": "Michael Frister",
-          "date": "2013-07-05T17:25:47+02:00",
-          "message": "User/edit: Add buttons for changing user status incl. unblocking",
-          "ai_signals": [],
-          "blamed_file": "app/controllers/users_controller.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "a44493320ee2a7047c98090f306f5fc1ab655630",
-          "author": "ulferts",
-          "date": "2021-08-18T10:10:28+02:00",
-          "message": "don`t include a non hidden closed reference in daily summary",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "96c88c87a5a8f7eb1659d4a26a3ec9c1aab97afb",
-          "author": "Jens Ulferts",
-          "date": "2013-08-08T14:27:05+02:00",
-          "message": "extends link_to_work_package to replace link_to_planning_element",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "aef5a76af412a625c455ddb2d9dc83dcbb7ab470",
-          "author": "Alex Coles",
-          "date": "2014-11-03T21:10:56+01:00",
-          "message": "Use 1.9+ Hash syntax in (Rails) helpers",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1bdd2ab9aeb23c8bbdf38fac653a91f8bd9dd195",
-          "author": "ulferts",
-          "date": "2021-02-11T16:02:18+01:00",
-          "message": "safe automatic fixes by rubocop (#8994)",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "6fdd122534437d7bf6c19bae89c9601b90a4957b",
-          "author": "Jens Ulferts",
-          "date": "2017-08-29T13:10:01+02:00",
-          "message": "merge wp tree and relations into typed_dag",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "67381bf59e63059db818bab3ce099f85790937d1",
-          "author": "Philipp Tessenow",
-          "date": "2013-10-25T17:45:48+02:00",
-          "message": "fix unfiltered subject in work pakcage helper",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "3f6f3527da95f40f2260774544a227b254a0a541",
-          "author": "Ion Biziiac",
-          "date": "2014-05-30T15:13:27+03:00",
-          "message": "Add status title to the work package links wiki, comments, etc.",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "77181114dd0dd3d562dd8012408e767bb67e75b1",
-          "author": "Jens Ulferts",
-          "date": "2014-07-11T09:48:18+02:00",
-          "message": "explicitly calls I18n to prevent undefined method t",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "51213056b067b1956c4b049524dc1942c15a2103",
-          "author": "Alexander Brandon Coles",
-          "date": "2025-07-15T18:15:13+01:00",
-          "message": "Replace .hidden-for-sighted with Primer's .sr-only",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "b3f6c210e8e7c1f7373bac7aa42ecceef575f502",
-          "author": "Henriette Dinger",
-          "date": "2017-01-26T14:27:32+01:00",
-          "message": "Make icons percievable",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "fa5d03eae00bc8931f99598a74ffd76e0cbca3da",
-          "author": "Ivan Kuchin",
-          "date": "2024-05-30T14:28:42+02:00",
-          "message": "rubocop safe autocorrect all except Rails/WhereRange",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "e6abd839bdc4be084aed870b9a9658dfd0fc0c46",
-          "author": "Oliver Günther",
-          "date": "2016-03-07T15:12:26+01:00",
-          "message": "Extend quick info with path_info option",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "8c554ba0c98b7b84ec0dc20e5fbd18f88ca2df30",
-          "author": "ulferts",
-          "date": "2020-11-24T08:25:35+01:00",
-          "message": "Feature/mentions rewrite (#8853)",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "48a4f1b6adb1e847a90a61f2ab277f28bcd77608",
-          "author": "Christophe Bliard",
-          "date": "2022-05-31T11:55:27+02:00",
-          "message": "lint with rubocop --autocorrect (safe cops only)",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.54,
-          "llm_verdict": null
-        },
-        {
-          "sha": "9e5cfbf2c9f61c1aa083260e5affc87a7444fe63",
-          "author": "Alex Coles",
-          "date": "2015-04-15T11:40:28+02:00",
-          "message": "Correct styles used by #send_notification_option",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "ac747266965b4b434b621756131149264ec41ac6",
-          "author": "ulferts",
-          "date": "2024-02-28T18:46:03+01:00",
-          "message": "apply draggable autocompleter to admin work package column selection",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "4d96b1c2a1a43e91a31cedd2b91afccf6c365783",
-          "author": "Jens Ulferts",
-          "date": "2014-07-10T22:17:31+02:00",
-          "message": "refactors so that content_tag is not used - causes error",
-          "ai_signals": [],
-          "blamed_file": "app/helpers/work_packages_helper.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "fc0a47bf351ce7e0cc62f577df201d0f929f10c9",
-          "author": "ulferts",
-          "date": "2025-10-22T11:16:01+02:00",
-          "message": "always use table_name",
-          "ai_signals": [],
-          "blamed_file": "app/models/journable/historic_active_record_relation.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "54bb7a6468fc19a3a81e4397655d95fff1190590",
-          "author": "Dombi Attila",
-          "date": "2026-01-09T21:50:22+02:00",
-          "message": "Move the project custom field validation changes to the service level instead of the model level.",
-          "ai_signals": [],
-          "blamed_file": "app/services/base_services/set_attributes.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "42c4713734827cf3c0d3d79f358c22c9bc3d6eb0",
-          "author": "Dombi Attila",
-          "date": "2026-01-09T22:28:12+02:00",
-          "message": "Use custom_field_values, because that one has all the values initialized.",
-          "ai_signals": [],
-          "blamed_file": "app/services/base_services/set_attributes.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2aae862d8adb1393cb9c5f3607ad5059168328b9",
-          "author": "Dombi Attila",
-          "date": "2025-06-26T20:50:14+03:00",
-          "message": "[#63550] Allow editing of individual work package/project attributes even if certain other attributes are invalid (eg. required field empty)",
-          "ai_signals": [],
-          "blamed_file": "app/services/base_services/set_attributes.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2667cd15817ca72721a56d5c8c490ba777253aec",
-          "author": "Benjamin Bädorf",
-          "date": "2021-04-06T09:09:06+00:00",
-          "message": "Refactor/app header (#9110)",
-          "ai_signals": [],
-          "blamed_file": "app/views/layouts/base.html.erb",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "60fc13b609bebeaadcca2f2b3c25631d829fb068",
-          "author": "Oliver Günther",
-          "date": "2023-06-15T10:30:50+02:00",
-          "message": "Introduce controller",
-          "ai_signals": [],
-          "blamed_file": "app/views/layouts/base.html.erb",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "5a1f86b1d2316865e5d30ab3ba0e4e58fe4e6475",
-          "author": "Oliver Günther",
-          "date": "2018-06-01T10:30:48+02:00",
-          "message": "Add angular cli manifest helper",
-          "ai_signals": [],
-          "blamed_file": "app/views/layouts/base.html.erb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "17d2349dcafc446edc7b10e684bf32122d65a86b",
-          "author": "Henriette Darge",
-          "date": "2025-07-07T10:45:32+02:00",
-          "message": "Avoid that the menu button floats in the middle of nowhere and align it with the top bar waffle icon",
-          "ai_signals": [],
-          "blamed_file": "app/views/layouts/base.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "bd3fb5393228988dd17a54abb89bed9c2c1401b5",
-          "author": "Alexander Brandon Coles",
-          "date": "2025-10-15T15:09:39+01:00",
-          "message": "Replace toggleable fieldsets: Versions index",
-          "ai_signals": [],
-          "blamed_file": "app/views/versions/index.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1bf4b018822abcbff34d37dd14520fca20be8cd3",
-          "author": "ulferts",
-          "date": "2025-01-23T20:37:50+01:00",
-          "message": "Revert \"use former version of chrome until chromedriver fixes issues with 132 in selenium\"",
-          "ai_signals": [],
-          "blamed_file": "docker/ci/Dockerfile",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "39c42a35ef95197a079da63cb56b241c14bbd699",
-          "author": "Oliver Günther",
-          "date": "2025-08-14T20:47:17+03:00",
-          "message": "Allow configuration of base image",
-          "ai_signals": [],
-          "blamed_file": "docker/prod/Dockerfile",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "acbb059c8820da8236cee1f43dc0796d83836259",
-          "author": "Oliver Günther",
-          "date": "2026-01-14T10:48:18+01:00",
-          "message": "Release OpenProject 17.0.0",
-          "ai_signals": [],
-          "blamed_file": "docker/prod/Dockerfile",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2bc8e3dce7e2be07cad67340acc41998b713bb4d",
-          "author": "Cyril Rohr",
-          "date": "2024-05-14T10:44:15+02:00",
-          "message": "Upgrade base ruby image for docker images (#15534)",
-          "ai_signals": [],
-          "blamed_file": "docker/prod/setup/preinstall-common.sh",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "3a877457adaa3804e8219d0b73435c50aad679f2",
-          "author": "Benjamin Bädorf",
-          "date": "2021-07-08T15:38:01+00:00",
-          "message": "Feat/frontend linting (#9424)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "36679051376b996e91882718d250aabfe4ad9b3e",
-          "author": "Wieland Lindenthal",
-          "date": "2018-06-11T15:23:45+02:00",
-          "message": "Force open main menu when my-controller was requested.",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "68f556efd4ebbb77ea8ec89bc6a87891410efad5",
-          "author": "Henriette Darge",
-          "date": "2024-02-19T11:36:51+01:00",
-          "message": "Increase the breakpoint at which the main menu will be collapsed to the Primer `lg` (1012px)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "5e48ad29277a09e2527eb61d5edc84585931d964",
-          "author": "Oliver Günther",
-          "date": "2024-11-05T06:46:17+01:00",
-          "message": "Lint",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1b16dbcc072418792c389e10d8783dc1c3a8c020",
-          "author": "ulferts",
-          "date": "2020-03-11T13:24:32+01:00",
-          "message": "avoid double submit of form configuration",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "9c5c58c42ea93995f5e91bd69fc127166b15ed31",
-          "author": "Alexander Brandon Coles",
-          "date": "2025-10-28T13:32:50+00:00",
-          "message": "[#65618] Remove jQuery from core",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "64ce0071c0e876c5f7108df7c576f6627e67280f",
-          "author": "Oliver Günther",
-          "date": "2020-02-13T08:16:11+01:00",
-          "message": "Trigger form submission through mousedown",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "fbee3b0889bba7b9e0afd3973c162943e02cab65",
-          "author": "Oliver Günther",
-          "date": "2023-09-19T21:18:11+02:00",
-          "message": "Fix form submissions when mixing primer with named submit buttons",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/editor/components/ckeditor-augmented-textarea/ckeditor-augmented-textarea.component.ts",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "21a7eea8320227645d5ad0cc240e47b80a1639cc",
-          "author": "Jonas Jabari",
-          "date": "2024-06-11T18:58:12+02:00",
-          "message": "implemented sticky bottom editor approach, file upload and mentions not working yet via ckeditor",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/editor/components/ckeditor-augmented-textarea/ckeditor-augmented-textarea.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "549cf77dafb077594a9ddf40b1d970cdedb8b5b1",
-          "author": "Oliver Günther",
-          "date": "2024-08-15T09:26:29+02:00",
-          "message": "Linting",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "9d9430f2e984aae84afdd860507d186ea28b39b9",
-          "author": "Eric Schubert",
-          "date": "2024-06-03T13:29:16+02:00",
-          "message": "[#52670] rework main menu resizer",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "85e9c35a9c9361e0038637188a645cba25065d78",
-          "author": "Oliver Günther",
-          "date": "2020-03-12T10:08:33+01:00",
-          "message": "Introduce base mixin for observing until component destroyed",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "d63ea57a7cfc50aa72a495b0179f66c3b7e7f74a",
-          "author": "Oliver Günther",
-          "date": "2018-06-05T12:18:29+02:00",
-          "message": "Merge remote-tracking branch 'origin/fix/hamburger-icon-dev' into angular-cli",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "d0b3549740ab9612aeebe9239c9e60c1489fdb0a",
-          "author": "copilot-swe-agent[bot]",
-          "date": "2025-11-05T13:17:17+00:00",
-          "message": "Fix ESLint errors: auto-fix with eslint --fix and manually fix TypeScript compilation errors",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_email",
-              "confidence": 0.95
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_name",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "8452a389cf9cf7ddc35cb35a1391d5b16e1fc8bd",
-          "author": "Wieland Lindenthal",
-          "date": "2018-04-30T18:10:47+02:00",
-          "message": "Spike: rezizable main menu that toggles.",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "3b78be087be98c1021ebe24da1bac80ca10f1028",
-          "author": "Oliver Günther",
-          "date": "2021-03-05T21:34:26+01:00",
-          "message": "Migrate tslint to eslint (#9064)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.35999999999999993,
-          "llm_verdict": null
-        },
-        {
-          "sha": "4eea96fa9e4b7a89351b66430b4ed6edfc5a5063",
-          "author": "Roman Roelofsen",
-          "date": "2018-01-18T17:08:53+01:00",
-          "message": "Angular 4 support and upgraded timeline header directive  (#5984)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "df6fbc65e9fea74a1d2eeb1f3d718c6543f9e6ca",
-          "author": "Wieland Lindenthal",
-          "date": "2018-04-27T12:58:32+02:00",
-          "message": "Migrate WP-Resize from AngularJS to Angular",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "48f85890879c1234105677613db4b581a7801780",
-          "author": "Henriette Dinger",
-          "date": "2017-08-29T08:49:24+02:00",
-          "message": "[26183] Size of the split view should be changeable (#5882)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "213823dfad29cbb912d791b71bfa4ff94b047660",
-          "author": "Jens Ulferts",
-          "date": "2018-12-12T13:12:46+01:00",
-          "message": "extract resizing functionality into separate component",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "95e595bf194301ef92e7cb393bfec5375ab09b02",
-          "author": "Oliver Günther",
-          "date": "2020-03-24T13:45:27+01:00",
-          "message": "[29220] Reuse resizer component in wp-resizer",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "f152337cec942f9fba14e9e471329f951d1fa187",
-          "author": "Oliver Günther",
-          "date": "2017-12-08T15:49:21+01:00",
-          "message": "[26740] Trigger resize event in timeline (#6051)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1c2d38f385eff05afbac94e18f25bdca89f8c8c9",
-          "author": "Bruno Pagno",
-          "date": "2025-11-13T13:01:52+01:00",
-          "message": "show live list of connected users on documents",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/stimulus/controllers/dynamic/documents/init-yjs-provider.controller.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7538d01413fad8811675a64b8898abeb4ceec9fe",
-          "author": "Kabiru Mwenja",
-          "date": "2025-12-11T16:48:10+03:00",
-          "message": "bug/69722 Properly clean up event listeners and ydoc provider instances (#21401)",
-          "ai_signals": [],
-          "blamed_file": "frontend/src/stimulus/controllers/dynamic/documents/init-yjs-provider.controller.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "e03d626897ceaa0b0bd054ace9075c122f048787",
-          "author": "Christophe Bliard",
-          "date": "2024-05-22T14:45:39+02:00",
-          "message": "[49409] Update cause messages for status changes",
-          "ai_signals": [],
-          "blamed_file": "lib/open_project/journal_formatter/cause.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "5c46d66b419a6005cddb9dac9d291f9a25b34b1a",
-          "author": "ulferts",
-          "date": "2019-06-12T16:12:07+02:00",
-          "message": "redirect attachments calls to api v3",
-          "ai_signals": [],
-          "blamed_file": "lib/open_project/object_linking.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7ebac37c145b2e3e4ddd50b1763d03e0bd2c1fe0",
-          "author": "Oliver Günther",
-          "date": "2015-06-16T15:38:40+02:00",
-          "message": "Repository Management - Refactoring and Preparation",
-          "ai_signals": [],
-          "blamed_file": "lib/open_project/scm/adapters/git.rb",
-          "blame_confidence": 0.18000000000000002,
-          "llm_verdict": null
-        },
-        {
-          "sha": "3b2121f7333f0ce7f3515b29c760c0580c31a245",
-          "author": "ulferts",
-          "date": "2024-03-21T11:31:17+01:00",
-          "message": "Revert \"Merge remote-tracking branch 'origin/release/13.4' into dev\"",
-          "ai_signals": [],
-          "blamed_file": "lib/open_project/scm/adapters/git.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2b0904e42101405dcdcfe2dfd3199d1f9fcdc310",
-          "author": "Oliver Günther",
-          "date": "2026-01-14T10:48:18+01:00",
-          "message": "Bumped version to 17.0.1",
-          "ai_signals": [],
-          "blamed_file": "lib/open_project/version.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "6bfd2a8f99e88a031f26380686d04eaff3a972cc",
-          "author": "Bruno Pagno",
-          "date": "2025-12-15T07:35:18+01:00",
-          "message": "disable controls for readonly users",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "90f2ee4380f6870914d716584997a44dc578491d",
-          "author": "Bruno Pagno",
-          "date": "2025-11-26T08:46:26+01:00",
-          "message": "make BlockNote editor read only when the user cannot edit a document",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7681259bffecafe2c88bcf7b585f573016c1ca9f",
-          "author": "Bruno Pagno",
-          "date": "2025-11-25T10:33:01+01:00",
-          "message": "use resource id instead of document title",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "2c95063054fc77ba05b62e536e9020b1325531fa",
-          "author": "Bruno Pagno",
-          "date": "2025-11-21T17:22:16+01:00",
-          "message": "encrypt oauth token for usage with hocuspocus",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/controllers/documents_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7cd4e5f74a4c8f0ced1b1e4656b6e548f469657a",
-          "author": "Kabiru Mwenja",
-          "date": "2025-11-12T20:15:08+03:00",
-          "message": "Reinstate oauth token setup to controller",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/controllers/documents_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "75d01345c2b7d1b89a967bf23a26df289aa56f65",
-          "author": "Kabiru Mwenja",
-          "date": "2025-11-06T12:00:38+03:00",
-          "message": "Add block note editor with basic layout",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/app/forms/documents/block_note_editor_form.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "7bf3a0e81f44a971efb41da881ba6061eda4d93b",
-          "author": "Bruno Pagno",
-          "date": "2025-10-22T15:23:25+02:00",
-          "message": "do not generate oauth token when the user is not allowed to edit documents",
-          "ai_signals": [],
-          "blamed_file": "modules/documents/spec/controllers/documents_controller_spec.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "16588d0cc1073a78fdd0fc08e5c0d64d7f093b3c",
-          "author": "Jonas Jabari",
-          "date": "2023-09-19T16:36:52+02:00",
-          "message": "[37297] automatic meeting agendas and minutes linked to work packages",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/meeting_agenda_items_controller.rb",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "bb40ef2b7ae748a98f7a689b59af8feb6c5cd0e2",
-          "author": "Mir Bhatia",
-          "date": "2025-10-01T17:39:07+02:00",
-          "message": "Clean up implementation and use with_item_group in submenu",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/meeting_agenda_items_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "82987747291a80684fa8da9ba748e3a690756c49",
-          "author": "Mir Bhatia",
-          "date": "2025-02-13T18:47:16+01:00",
-          "message": "Add outcome components and new/create methods",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/meeting_outcomes_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "78a1c9f925eb5fbbbf4341cc882777945f8a3187",
-          "author": "Mir Bhatia",
-          "date": "2025-02-19T13:29:57+01:00",
-          "message": "Update component layout & add edit/update methods",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/meeting_outcomes_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "74dafecb0ec32b038475f208fcfe1eaa19e9f6bc",
-          "author": "Mir Bhatia",
-          "date": "2025-08-12T18:36:09+02:00",
-          "message": "Rework participants components",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/meeting_participants_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "1a9d031a77bbb2e067ec2e6a7429e5f846cfe169",
-          "author": "jjabari-op",
-          "date": "2023-09-28T14:48:07+02:00",
-          "message": "Feature/49951 meetings tab on work package page (#13749)",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/work_package_meetings_tab_controller.rb",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "6a05f32757f66e2756eb560d533924a768f38754",
-          "author": "Mir Bhatia",
-          "date": "2025-05-02T16:54:23+02:00",
-          "message": "Update which section wps are added to",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/controllers/work_package_meetings_tab_controller.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "dc8a7fed090679f3a6fa4d68d5a6eaa820abf1da",
-          "author": "Jonas Jabari",
-          "date": "2024-04-16T16:32:54+02:00",
-          "message": "added nested drag and drop support as introduced on project custom fields",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/app/services/meeting_agenda_items/drop_service.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "3549c6e5b85946e276a63a02c8da21c2086676cd",
-          "author": "Klaus Zanders",
-          "date": "2025-10-21T17:25:34+02:00",
-          "message": "Fix outcome specs",
-          "ai_signals": [],
-          "blamed_file": "modules/meeting/spec/features/meeting_outcomes_crud_spec.rb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "14c88b9711f1dfaa6de8bf808f7c27ded6adf509",
-          "author": "Ivan Kuchin",
-          "date": "2025-02-06T18:19:02+01:00",
-          "message": "erb_lint auto fix hash style",
-          "ai_signals": [],
-          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/enter_backup_code.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "f20fc3d3145ce9f95780a8a06242defc49fdf9bc",
-          "author": "Klaus Zanders",
-          "date": "2023-06-29T13:53:42+02:00",
-          "message": "Implement authentication with WebAuthn device on login",
-          "ai_signals": [],
-          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
-          "blame_confidence": 0.7200000000000001,
-          "llm_verdict": null
-        },
-        {
-          "sha": "fb715f21b92d5115268e2cf0790e37f2922535e3",
-          "author": "Ivan Kuchin",
-          "date": "2025-02-06T17:24:51+01:00",
-          "message": "erb_lint auto fix quotes",
-          "ai_signals": [],
-          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        },
-        {
-          "sha": "8a952954d431b2c49d322ec82f789e3a8e0b14e9",
-          "author": "Oliver Günther",
-          "date": "2024-09-13T14:11:20+02:00",
-          "message": "Opt out of turbo for resend",
-          "ai_signals": [],
-          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
-          "blame_confidence": 0.9,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "87a8cdc7632de8ab06475ba373fd354e0be30e2a",
-          "repo_url": "https://github.com/opf/openproject",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/24xxx/CVE-2026-24777.json",
-        "https://github.com/opf/openproject/releases/tag/v17.0.2",
-        "https://github.com/opf/openproject/security/advisories/GHSA-fq66-cwg6-qq69",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-24777"
-      ]
-    },
-    {
       "id": "CVE-2025-66209",
       "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in Database Backup",
       "severity": "CRITICAL",
@@ -21917,6 +20662,437 @@
         "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
         "https://github.com/coollabsio/coolify/security/advisories/GHSA-24mp-fc9q-c884",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-66211"
+      ]
+    },
+    {
+      "id": "CVE-2025-66212",
+      "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in Dynamic Proxy Configuration Filename",
+      "severity": "UNKNOWN",
+      "cvss": 0.0,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-23T22:15:52.510",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "confidence": 0.0867,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "e958b3761d993fda8b312c259f109d15a8c9cb3d",
+          "author": "Andras Bacsai",
+          "date": "2025-08-19T11:04:23+02:00",
+          "message": "feat(cleanup): add command for sanitizing name fields across models",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/CleanupNames.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7817c9cad759d7fc670f3ea639a9b28c7840798c",
+          "author": "Andras Bacsai",
+          "date": "2025-07-07T09:47:11+02:00",
+          "message": "refactor(redis): enhance CleanupRedis command with dry-run option and improved key deletion logic",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/CleanupRedis.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "c6a2d1fe0ab8942bfc792e099f1804397e69fc3f",
+          "author": "Andras Bacsai",
+          "date": "2025-10-23T10:07:33+02:00",
+          "message": "Fix stale lock issue causing scheduled tasks to stop (#4539)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Console/Commands/CleanupRedis.php",
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit adds functionality for clearing cache locks, which is unrelated to the CVE description concerning dynamic proxy configuration filenames.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "b22e79caec94195eed721cae0cc3e7cf68bf6e2a",
+          "author": "Andras Bacsai",
+          "date": "2025-11-10T11:11:18+01:00",
+          "message": "feat(jobs): improve scheduled tasks with retry logic and queue cleanup",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/CleanupRedis.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "f6d8ad1775a4f1c87690dc412e6461871f09dd93",
+          "author": "Andras Bacsai",
+          "date": "2025-11-26T10:52:20+01:00",
+          "message": "feat: add support for syncing versions.json to GitHub repository via PR",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/SyncBunny.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "c6df243623f08855691ac3e91ff5f07e9920fd64",
+          "author": "Andras Bacsai",
+          "date": "2024-08-31T00:01:34+02:00",
+          "message": "chore: Update Coolify version to 4.0.0-beta.324 and fix file paths in upgrade script",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/SyncBunny.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "0c3ed3d3934b5ec1a67687e91f780b7e64e98dcd",
+          "author": "Andras Bacsai",
+          "date": "2024-02-05T10:17:40+01:00",
+          "message": "Update BunnyCDN sync and version numbers",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/SyncBunny.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "23a3b4701184166a0698d9a44279304e5976fe4f",
+          "author": "Andras Bacsai",
+          "date": "2025-11-05T14:54:13+01:00",
+          "message": "refactor: rename sync function and improve error handling",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/SyncBunny.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "84e5b39830521655e401ce1bb95a6c6dc4124194",
+          "author": "Andras Bacsai",
+          "date": "2023-09-28T13:07:52+02:00",
+          "message": "fix: prevent sync version (it needs an option)",
+          "ai_signals": [],
+          "blamed_file": "app/Console/Commands/SyncBunny.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "f4575e531f4d6caf278e7f8bb21f54380aac2593",
+          "author": "Andras Bacsai",
+          "date": "2025-02-03T21:49:13+01:00",
+          "message": "fix(backup): escape special characters in database backup commands",
+          "ai_signals": [],
+          "blamed_file": "app/Jobs/DatabaseBackupJob.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1c7ca56756b817af3e864e2fc2fb802394a66e06",
+          "author": "Andras Bacsai",
+          "date": "2024-10-03T12:39:45+02:00",
+          "message": "feat: backup all databases for mysql,mariadb,postgresql",
+          "ai_signals": [],
+          "blamed_file": "app/Jobs/DatabaseBackupJob.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "159c4aa7ac02fdae6849d8c6db7a7a837dd8f01a",
+          "author": "peaklabs-dev",
+          "date": "2024-10-18T21:08:45+02:00",
+          "message": "remove old init script on server if it is renamed",
+          "ai_signals": [],
+          "blamed_file": "app/Livewire/Project/Database/Postgresql/General.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7f393eb2c26c470cdf1a86820ed40a8cf33bea01",
+          "author": "peaklabs-dev",
+          "date": "2024-10-18T20:51:51+02:00",
+          "message": "fix indexing after deletion and make sure init script is removed form the server",
+          "ai_signals": [],
+          "blamed_file": "app/Livewire/Project/Database/Postgresql/General.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "63fcc0ebc3a41a91eb4a48265d9d637f80afcf31",
+          "author": "Andras Bacsai",
+          "date": "2025-08-26T10:27:31+02:00",
+          "message": "feat(acl): Change views/backend code to able to use proper ACL's later on. Currently it is not enabled.",
+          "ai_signals": [],
+          "blamed_file": "app/Livewire/Server/Proxy/DynamicConfigurationNavbar.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "154b1b05e4e055e16d061f826a77c8ff036a20ce",
+          "author": "Andras Bacsai",
+          "date": "2024-02-22T13:29:28+01:00",
+          "message": "feat: able to add dynamic configurations from proxy dashboard",
+          "ai_signals": [],
+          "blamed_file": "app/Livewire/Server/Proxy/NewDynamicConfiguration.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "133e72336a0c24f6ca6e5d1956037394dd528775",
+          "author": "Andras Bacsai",
+          "date": "2025-09-15T17:56:48+02:00",
+          "message": "Revert \"refactor(file-transfer): replace base64 encoding with direct file transfer method in various components for improved clarity and efficiency\"",
+          "ai_signals": [],
+          "blamed_file": "app/Livewire/Server/Proxy/NewDynamicConfiguration.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "237246acee8337a84290b91fc8c2d57243e905ef",
+          "author": "Andras Bacsai",
+          "date": "2025-11-01T13:28:56+01:00",
+          "message": "fix: Remove duplicate custom_labels from config hash calculation",
+          "ai_signals": [],
+          "blamed_file": "app/Models/Application.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1fe4dd722b84cc0c22205ce87645ae9ccc8fff3b",
+          "author": "Andras Bacsai",
+          "date": "2025-01-07T15:31:43+01:00",
+          "message": "Revert \"rector: arrrrr\"",
+          "ai_signals": [],
+          "blamed_file": "app/Models/EnvironmentVariable.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "fb478c79b3d679fb1ce7431ea22dfaf471b0a70a",
+          "author": "Andras Bacsai",
+          "date": "2024-01-23T17:13:23+01:00",
+          "message": "feat: shared environments",
+          "ai_signals": [],
+          "blamed_file": "app/Models/EnvironmentVariable.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "0e54ed13430048c6afb46104a7d916b0d3cfe03f",
+          "author": "Andras Bacsai",
+          "date": "2024-08-12T16:06:24+02:00",
+          "message": "feat: preserve git repository with advanced file storages",
+          "ai_signals": [],
+          "blamed_file": "app/Models/LocalFileVolume.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "64ce41df0f55958ea9c66fea124b020be82e06f7",
+          "author": "Andras Bacsai",
+          "date": "2023-09-29T21:38:11+02:00",
+          "message": "fix: file/dir based volumes are now read from the server",
+          "ai_signals": [],
+          "blamed_file": "app/Models/LocalFileVolume.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "ea5101c81498e97b799870cef69008f4065766a2",
+          "author": "Andras Bacsai",
+          "date": "2024-08-05T20:00:57+02:00",
+          "message": "fix: file storages (dir/file mount) handled properly",
+          "ai_signals": [],
+          "blamed_file": "app/Models/LocalFileVolume.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "8ffbccf7db072896cefacd7527dbeb1733d44536",
+          "author": "Andras Bacsai",
+          "date": "2024-07-22T09:18:15+02:00",
+          "message": "fix: create file storage even if content is empty",
+          "ai_signals": [],
+          "blamed_file": "app/Models/LocalFileVolume.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "a0bc4dac55e5f9255376dc017874035eb8642fa7",
+          "author": "Andras Bacsai",
+          "date": "2025-07-24T09:39:27+02:00",
+          "message": "fix(application): streamline environment variable updates for Docker Compose services and enhance FQDN generation logic",
+          "ai_signals": [],
+          "blamed_file": "bootstrap/helpers/parsers.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "e8892b3d29290b69b796a6f2bddeab84d323b392",
+          "author": "Andras Bacsai",
+          "date": "2025-08-04T10:46:59+02:00",
+          "message": "feat(core): finally fqdn is fqdn and url is url. haha",
+          "ai_signals": [],
+          "blamed_file": "bootstrap/helpers/parsers.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "56f32d0f87609d48c4f9f8d766c96c183bcd60f9",
+          "author": "Andras Bacsai",
+          "date": "2025-11-18T22:26:11+01:00",
+          "message": "fix: properly handle SERVICE_URL and SERVICE_FQDN for abbreviated service names (#7243)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "bootstrap/helpers/parsers.php",
+          "blame_confidence": 0.27,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit refactors how FQDN and URL environment variables are parsed and generated, but the fix commit specifically addresses potential duplication of path segments in dynamic proxy configurations, which is not present in the blamed commit's changes.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "ad58dfc62e6c97434182975e7057578bfff549aa",
+          "author": "Andras Bacsai",
+          "date": "2025-09-09T09:00:42+02:00",
+          "message": "feat(sudo-helper): add helper functions for command parsing and ownership management with sudo",
+          "ai_signals": [],
+          "blamed_file": "bootstrap/helpers/sudo.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "01635e8b80ae368c8fe89ca486bffa6f9932b08d",
+          "author": "Andras Bacsai",
+          "date": "2025-11-26T13:44:53+01:00",
+          "message": "fix: add bash control structure keywords to sudo command processing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "bootstrap/helpers/sudo.php",
+          "blame_confidence": 0.27,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit expanded the list of commands that should not be prefixed with 'sudo', but the fix commit refactored the logic entirely to use regex for more robust keyword matching.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "4f87b251b0bcc2a4c672d30dc69563261197bb8f",
+          "author": "Andras Bacsai",
+          "date": "2025-11-26T10:50:03+01:00",
+          "message": "fix: update version number to 4.0.0-beta.450",
+          "ai_signals": [],
+          "blamed_file": "config/constants.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "c79b5f1e5c26f4ad0f7fd571985933e56a9d80b8",
+          "author": "Andras Bacsai",
+          "date": "2025-11-19T10:54:19+01:00",
+          "message": "feat: add environment variable autocomplete component",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "resources/views/components/forms/env-var-input.blade.php",
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit created a new blade component for environment variable input, while the fix commit modified this existing component to add a password visibility toggle.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "99fd4b424d186c6557c3f48aa43708935c827bef",
+          "author": "Andras Bacsai",
+          "date": "2025-09-19T14:17:10+02:00",
+          "message": "feat(environment): add dynamic checkbox options for environment variable settings based on user permissions and variable types",
+          "ai_signals": [],
+          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2a9d4992513d80b67fce23f819c12cea7796a9e7",
+          "author": "Andras Bacsai",
+          "date": "2024-12-17T10:38:32+01:00",
+          "message": "feat: migrate env variables to polymorphic relationship",
+          "ai_signals": [],
+          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "c0ddf73b753e54cf69396ec0581d2393fa5ce34a",
+          "author": "peaklabs-dev",
+          "date": "2025-09-18T19:14:34+02:00",
+          "message": "fix(ui): change order and fix ui on small screens",
+          "ai_signals": [],
+          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "bfaefed1aea4864eb30e6c813a919279bae4e785",
+          "author": "Andras Bacsai",
+          "date": "2025-09-19T13:45:37+02:00",
+          "message": "refactor(environment): streamline rendering of Docker Build Secrets checkbox and adjust layout for environment variable settings",
+          "ai_signals": [],
+          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "f33df13c4eebe15c2c08500bf4a22860820a5d52",
+          "author": "Andras Bacsai",
+          "date": "2025-09-18T18:14:54+02:00",
+          "message": "feat(environment): replace is_buildtime_only with is_runtime and is_buildtime flags for environment variables, updating related logic and views",
+          "ai_signals": [],
+          "blamed_file": "resources/views/livewire/project/shared/environment-variable/show.blade.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d9ec105430869a98d0b3415c76a5d519403269a0",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/66xxx/CVE-2025-66212.json",
+        "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-q7rg-2j7p-83gp",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-66212"
       ]
     },
     {
@@ -31954,6 +31130,922 @@
         "https://github.com/opf/openproject/releases/tag/v17.0.2",
         "https://github.com/opf/openproject/security/advisories/GHSA-p9v8-w9ph-hqmf",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-24776"
+      ]
+    },
+    {
+      "id": "CVE-2026-24777",
+      "description": "OpenProject has Improper Access Control on User Management allows user managers to lock admin accounts",
+      "severity": "MEDIUM",
+      "cvss": 6.7,
+      "cwes": [
+        "CWE-862"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-09T19:15:50.200",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "confidence": 0.0092,
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "cc90002befb72ac4aa1470d697f3eb7605a3cf91",
+          "author": "Henriette Darge",
+          "date": "2025-06-17T08:55:57+02:00",
+          "message": "Take care that the main menu resizer toggles when the menu is collapsed/expanded",
+          "ai_signals": [],
+          "blamed_file": "app/components/open_project/common/main_menu_toggle_component.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "bb66d0d5b484a752c1bc997a1a70fb2dea3ded4a",
+          "author": "Henriette Darge",
+          "date": "2025-06-13T16:26:40+02:00",
+          "message": "Move toggleButton for menu into the sidebar",
+          "ai_signals": [],
+          "blamed_file": "app/components/open_project/common/main_menu_toggle_component.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "cbe2b6dd75c6961956c8861dd11993007b3f5ba0",
+          "author": "Dombi Attila",
+          "date": "2025-11-24T12:51:52+02:00",
+          "message": "Pass template to the project creation footer.",
+          "ai_signals": [],
+          "blamed_file": "app/components/projects/project_creation_footer_component.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "db4b927e3ddc660d7c6ad228500b4fae0fc59b5e",
+          "author": "Dombi Attila",
+          "date": "2023-05-18T14:39:34+03:00",
+          "message": "[#47016] Replace Users::TableCell by ViewComponent",
+          "ai_signals": [],
+          "blamed_file": "app/components/users/row_component.rb",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "b78b62df8d1fd34321cffd3785121da98f64265b",
+          "author": "Jean-Philippe Lang",
+          "date": "2008-06-08T16:48:21+00:00",
+          "message": "SCM browser: ability to download raw unified diffs.",
+          "ai_signals": [],
+          "blamed_file": "app/controllers/repositories_controller.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "5ea185ef66a4b3f556394e60afd39edfcc3604da",
+          "author": "ulferts",
+          "date": "2021-02-04T09:52:56+01:00",
+          "message": "Placeholder user project members (#8961)",
+          "ai_signals": [],
+          "blamed_file": "app/controllers/users_controller.rb",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "ac8a0964882c6ff4bbfc312ce80555beb9bcf7fc",
+          "author": "Markus Kahl",
+          "date": "2015-09-10T18:02:13+01:00",
+          "message": "polish considering remarks through review and houndci",
+          "ai_signals": [],
+          "blamed_file": "app/controllers/users_controller.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "40e4e9a9c77f6200ba91d61501cf2435edf15898",
+          "author": "Michael Frister",
+          "date": "2013-07-05T17:25:47+02:00",
+          "message": "User/edit: Add buttons for changing user status incl. unblocking",
+          "ai_signals": [],
+          "blamed_file": "app/controllers/users_controller.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "a44493320ee2a7047c98090f306f5fc1ab655630",
+          "author": "ulferts",
+          "date": "2021-08-18T10:10:28+02:00",
+          "message": "don`t include a non hidden closed reference in daily summary",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "96c88c87a5a8f7eb1659d4a26a3ec9c1aab97afb",
+          "author": "Jens Ulferts",
+          "date": "2013-08-08T14:27:05+02:00",
+          "message": "extends link_to_work_package to replace link_to_planning_element",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "aef5a76af412a625c455ddb2d9dc83dcbb7ab470",
+          "author": "Alex Coles",
+          "date": "2014-11-03T21:10:56+01:00",
+          "message": "Use 1.9+ Hash syntax in (Rails) helpers",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1bdd2ab9aeb23c8bbdf38fac653a91f8bd9dd195",
+          "author": "ulferts",
+          "date": "2021-02-11T16:02:18+01:00",
+          "message": "safe automatic fixes by rubocop (#8994)",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "6fdd122534437d7bf6c19bae89c9601b90a4957b",
+          "author": "Jens Ulferts",
+          "date": "2017-08-29T13:10:01+02:00",
+          "message": "merge wp tree and relations into typed_dag",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "67381bf59e63059db818bab3ce099f85790937d1",
+          "author": "Philipp Tessenow",
+          "date": "2013-10-25T17:45:48+02:00",
+          "message": "fix unfiltered subject in work pakcage helper",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "3f6f3527da95f40f2260774544a227b254a0a541",
+          "author": "Ion Biziiac",
+          "date": "2014-05-30T15:13:27+03:00",
+          "message": "Add status title to the work package links wiki, comments, etc.",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "77181114dd0dd3d562dd8012408e767bb67e75b1",
+          "author": "Jens Ulferts",
+          "date": "2014-07-11T09:48:18+02:00",
+          "message": "explicitly calls I18n to prevent undefined method t",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "51213056b067b1956c4b049524dc1942c15a2103",
+          "author": "Alexander Brandon Coles",
+          "date": "2025-07-15T18:15:13+01:00",
+          "message": "Replace .hidden-for-sighted with Primer's .sr-only",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "b3f6c210e8e7c1f7373bac7aa42ecceef575f502",
+          "author": "Henriette Dinger",
+          "date": "2017-01-26T14:27:32+01:00",
+          "message": "Make icons percievable",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "fa5d03eae00bc8931f99598a74ffd76e0cbca3da",
+          "author": "Ivan Kuchin",
+          "date": "2024-05-30T14:28:42+02:00",
+          "message": "rubocop safe autocorrect all except Rails/WhereRange",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "e6abd839bdc4be084aed870b9a9658dfd0fc0c46",
+          "author": "Oliver Günther",
+          "date": "2016-03-07T15:12:26+01:00",
+          "message": "Extend quick info with path_info option",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "8c554ba0c98b7b84ec0dc20e5fbd18f88ca2df30",
+          "author": "ulferts",
+          "date": "2020-11-24T08:25:35+01:00",
+          "message": "Feature/mentions rewrite (#8853)",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "48a4f1b6adb1e847a90a61f2ab277f28bcd77608",
+          "author": "Christophe Bliard",
+          "date": "2022-05-31T11:55:27+02:00",
+          "message": "lint with rubocop --autocorrect (safe cops only)",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.54,
+          "llm_verdict": null
+        },
+        {
+          "sha": "9e5cfbf2c9f61c1aa083260e5affc87a7444fe63",
+          "author": "Alex Coles",
+          "date": "2015-04-15T11:40:28+02:00",
+          "message": "Correct styles used by #send_notification_option",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "ac747266965b4b434b621756131149264ec41ac6",
+          "author": "ulferts",
+          "date": "2024-02-28T18:46:03+01:00",
+          "message": "apply draggable autocompleter to admin work package column selection",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "4d96b1c2a1a43e91a31cedd2b91afccf6c365783",
+          "author": "Jens Ulferts",
+          "date": "2014-07-10T22:17:31+02:00",
+          "message": "refactors so that content_tag is not used - causes error",
+          "ai_signals": [],
+          "blamed_file": "app/helpers/work_packages_helper.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "fc0a47bf351ce7e0cc62f577df201d0f929f10c9",
+          "author": "ulferts",
+          "date": "2025-10-22T11:16:01+02:00",
+          "message": "always use table_name",
+          "ai_signals": [],
+          "blamed_file": "app/models/journable/historic_active_record_relation.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "54bb7a6468fc19a3a81e4397655d95fff1190590",
+          "author": "Dombi Attila",
+          "date": "2026-01-09T21:50:22+02:00",
+          "message": "Move the project custom field validation changes to the service level instead of the model level.",
+          "ai_signals": [],
+          "blamed_file": "app/services/base_services/set_attributes.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "42c4713734827cf3c0d3d79f358c22c9bc3d6eb0",
+          "author": "Dombi Attila",
+          "date": "2026-01-09T22:28:12+02:00",
+          "message": "Use custom_field_values, because that one has all the values initialized.",
+          "ai_signals": [],
+          "blamed_file": "app/services/base_services/set_attributes.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2aae862d8adb1393cb9c5f3607ad5059168328b9",
+          "author": "Dombi Attila",
+          "date": "2025-06-26T20:50:14+03:00",
+          "message": "[#63550] Allow editing of individual work package/project attributes even if certain other attributes are invalid (eg. required field empty)",
+          "ai_signals": [],
+          "blamed_file": "app/services/base_services/set_attributes.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2667cd15817ca72721a56d5c8c490ba777253aec",
+          "author": "Benjamin Bädorf",
+          "date": "2021-04-06T09:09:06+00:00",
+          "message": "Refactor/app header (#9110)",
+          "ai_signals": [],
+          "blamed_file": "app/views/layouts/base.html.erb",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "60fc13b609bebeaadcca2f2b3c25631d829fb068",
+          "author": "Oliver Günther",
+          "date": "2023-06-15T10:30:50+02:00",
+          "message": "Introduce controller",
+          "ai_signals": [],
+          "blamed_file": "app/views/layouts/base.html.erb",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "5a1f86b1d2316865e5d30ab3ba0e4e58fe4e6475",
+          "author": "Oliver Günther",
+          "date": "2018-06-01T10:30:48+02:00",
+          "message": "Add angular cli manifest helper",
+          "ai_signals": [],
+          "blamed_file": "app/views/layouts/base.html.erb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "17d2349dcafc446edc7b10e684bf32122d65a86b",
+          "author": "Henriette Darge",
+          "date": "2025-07-07T10:45:32+02:00",
+          "message": "Avoid that the menu button floats in the middle of nowhere and align it with the top bar waffle icon",
+          "ai_signals": [],
+          "blamed_file": "app/views/layouts/base.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "bd3fb5393228988dd17a54abb89bed9c2c1401b5",
+          "author": "Alexander Brandon Coles",
+          "date": "2025-10-15T15:09:39+01:00",
+          "message": "Replace toggleable fieldsets: Versions index",
+          "ai_signals": [],
+          "blamed_file": "app/views/versions/index.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1bf4b018822abcbff34d37dd14520fca20be8cd3",
+          "author": "ulferts",
+          "date": "2025-01-23T20:37:50+01:00",
+          "message": "Revert \"use former version of chrome until chromedriver fixes issues with 132 in selenium\"",
+          "ai_signals": [],
+          "blamed_file": "docker/ci/Dockerfile",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "39c42a35ef95197a079da63cb56b241c14bbd699",
+          "author": "Oliver Günther",
+          "date": "2025-08-14T20:47:17+03:00",
+          "message": "Allow configuration of base image",
+          "ai_signals": [],
+          "blamed_file": "docker/prod/Dockerfile",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "acbb059c8820da8236cee1f43dc0796d83836259",
+          "author": "Oliver Günther",
+          "date": "2026-01-14T10:48:18+01:00",
+          "message": "Release OpenProject 17.0.0",
+          "ai_signals": [],
+          "blamed_file": "docker/prod/Dockerfile",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2bc8e3dce7e2be07cad67340acc41998b713bb4d",
+          "author": "Cyril Rohr",
+          "date": "2024-05-14T10:44:15+02:00",
+          "message": "Upgrade base ruby image for docker images (#15534)",
+          "ai_signals": [],
+          "blamed_file": "docker/prod/setup/preinstall-common.sh",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "3a877457adaa3804e8219d0b73435c50aad679f2",
+          "author": "Benjamin Bädorf",
+          "date": "2021-07-08T15:38:01+00:00",
+          "message": "Feat/frontend linting (#9424)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "36679051376b996e91882718d250aabfe4ad9b3e",
+          "author": "Wieland Lindenthal",
+          "date": "2018-06-11T15:23:45+02:00",
+          "message": "Force open main menu when my-controller was requested.",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "68f556efd4ebbb77ea8ec89bc6a87891410efad5",
+          "author": "Henriette Darge",
+          "date": "2024-02-19T11:36:51+01:00",
+          "message": "Increase the breakpoint at which the main menu will be collapsed to the Primer `lg` (1012px)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/core/main-menu/main-menu-toggle.service.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "5e48ad29277a09e2527eb61d5edc84585931d964",
+          "author": "Oliver Günther",
+          "date": "2024-11-05T06:46:17+01:00",
+          "message": "Lint",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1b16dbcc072418792c389e10d8783dc1c3a8c020",
+          "author": "ulferts",
+          "date": "2020-03-11T13:24:32+01:00",
+          "message": "avoid double submit of form configuration",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "9c5c58c42ea93995f5e91bd69fc127166b15ed31",
+          "author": "Alexander Brandon Coles",
+          "date": "2025-10-28T13:32:50+00:00",
+          "message": "[#65618] Remove jQuery from core",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "64ce0071c0e876c5f7108df7c576f6627e67280f",
+          "author": "Oliver Günther",
+          "date": "2020-02-13T08:16:11+01:00",
+          "message": "Trigger form submission through mousedown",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/features/admin/types/type-form-configuration.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "fbee3b0889bba7b9e0afd3973c162943e02cab65",
+          "author": "Oliver Günther",
+          "date": "2023-09-19T21:18:11+02:00",
+          "message": "Fix form submissions when mixing primer with named submit buttons",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/editor/components/ckeditor-augmented-textarea/ckeditor-augmented-textarea.component.ts",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "21a7eea8320227645d5ad0cc240e47b80a1639cc",
+          "author": "Jonas Jabari",
+          "date": "2024-06-11T18:58:12+02:00",
+          "message": "implemented sticky bottom editor approach, file upload and mentions not working yet via ckeditor",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/editor/components/ckeditor-augmented-textarea/ckeditor-augmented-textarea.component.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "549cf77dafb077594a9ddf40b1d970cdedb8b5b1",
+          "author": "Oliver Günther",
+          "date": "2024-08-15T09:26:29+02:00",
+          "message": "Linting",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "9d9430f2e984aae84afdd860507d186ea28b39b9",
+          "author": "Eric Schubert",
+          "date": "2024-06-03T13:29:16+02:00",
+          "message": "[#52670] rework main menu resizer",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "85e9c35a9c9361e0038637188a645cba25065d78",
+          "author": "Oliver Günther",
+          "date": "2020-03-12T10:08:33+01:00",
+          "message": "Introduce base mixin for observing until component destroyed",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "d63ea57a7cfc50aa72a495b0179f66c3b7e7f74a",
+          "author": "Oliver Günther",
+          "date": "2018-06-05T12:18:29+02:00",
+          "message": "Merge remote-tracking branch 'origin/fix/hamburger-icon-dev' into angular-cli",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "d0b3549740ab9612aeebe9239c9e60c1489fdb0a",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-11-05T13:17:17+00:00",
+          "message": "Fix ESLint errors: auto-fix with eslint --fix and manually fix TypeScript compilation errors",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.09000000000000001,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit only changes a variable declaration from `private resizeEvent:string = 'main-menu-resize';` to `private resizeEvent = 'main-menu-resize';`, which is a minor stylistic change and does not introduce the IDOR vulnerability.",
+            "model": "gemini-2.5-flash-lite"
+          }
+        },
+        {
+          "sha": "8452a389cf9cf7ddc35cb35a1391d5b16e1fc8bd",
+          "author": "Wieland Lindenthal",
+          "date": "2018-04-30T18:10:47+02:00",
+          "message": "Spike: rezizable main menu that toggles.",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "3b78be087be98c1021ebe24da1bac80ca10f1028",
+          "author": "Oliver Günther",
+          "date": "2021-03-05T21:34:26+01:00",
+          "message": "Migrate tslint to eslint (#9064)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.35999999999999993,
+          "llm_verdict": null
+        },
+        {
+          "sha": "4eea96fa9e4b7a89351b66430b4ed6edfc5a5063",
+          "author": "Roman Roelofsen",
+          "date": "2018-01-18T17:08:53+01:00",
+          "message": "Angular 4 support and upgraded timeline header directive  (#5984)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "df6fbc65e9fea74a1d2eeb1f3d718c6543f9e6ca",
+          "author": "Wieland Lindenthal",
+          "date": "2018-04-27T12:58:32+02:00",
+          "message": "Migrate WP-Resize from AngularJS to Angular",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "48f85890879c1234105677613db4b581a7801780",
+          "author": "Henriette Dinger",
+          "date": "2017-08-29T08:49:24+02:00",
+          "message": "[26183] Size of the split view should be changeable (#5882)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "213823dfad29cbb912d791b71bfa4ff94b047660",
+          "author": "Jens Ulferts",
+          "date": "2018-12-12T13:12:46+01:00",
+          "message": "extract resizing functionality into separate component",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "95e595bf194301ef92e7cb393bfec5375ab09b02",
+          "author": "Oliver Günther",
+          "date": "2020-03-24T13:45:27+01:00",
+          "message": "[29220] Reuse resizer component in wp-resizer",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "f152337cec942f9fba14e9e471329f951d1fa187",
+          "author": "Oliver Günther",
+          "date": "2017-12-08T15:49:21+01:00",
+          "message": "[26740] Trigger resize event in timeline (#6051)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/app/shared/components/resizer/resizer/main-menu-resizer.component.ts",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1c2d38f385eff05afbac94e18f25bdca89f8c8c9",
+          "author": "Bruno Pagno",
+          "date": "2025-11-13T13:01:52+01:00",
+          "message": "show live list of connected users on documents",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/stimulus/controllers/dynamic/documents/init-yjs-provider.controller.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7538d01413fad8811675a64b8898abeb4ceec9fe",
+          "author": "Kabiru Mwenja",
+          "date": "2025-12-11T16:48:10+03:00",
+          "message": "bug/69722 Properly clean up event listeners and ydoc provider instances (#21401)",
+          "ai_signals": [],
+          "blamed_file": "frontend/src/stimulus/controllers/dynamic/documents/init-yjs-provider.controller.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "e03d626897ceaa0b0bd054ace9075c122f048787",
+          "author": "Christophe Bliard",
+          "date": "2024-05-22T14:45:39+02:00",
+          "message": "[49409] Update cause messages for status changes",
+          "ai_signals": [],
+          "blamed_file": "lib/open_project/journal_formatter/cause.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "5c46d66b419a6005cddb9dac9d291f9a25b34b1a",
+          "author": "ulferts",
+          "date": "2019-06-12T16:12:07+02:00",
+          "message": "redirect attachments calls to api v3",
+          "ai_signals": [],
+          "blamed_file": "lib/open_project/object_linking.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7ebac37c145b2e3e4ddd50b1763d03e0bd2c1fe0",
+          "author": "Oliver Günther",
+          "date": "2015-06-16T15:38:40+02:00",
+          "message": "Repository Management - Refactoring and Preparation",
+          "ai_signals": [],
+          "blamed_file": "lib/open_project/scm/adapters/git.rb",
+          "blame_confidence": 0.18000000000000002,
+          "llm_verdict": null
+        },
+        {
+          "sha": "3b2121f7333f0ce7f3515b29c760c0580c31a245",
+          "author": "ulferts",
+          "date": "2024-03-21T11:31:17+01:00",
+          "message": "Revert \"Merge remote-tracking branch 'origin/release/13.4' into dev\"",
+          "ai_signals": [],
+          "blamed_file": "lib/open_project/scm/adapters/git.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2b0904e42101405dcdcfe2dfd3199d1f9fcdc310",
+          "author": "Oliver Günther",
+          "date": "2026-01-14T10:48:18+01:00",
+          "message": "Bumped version to 17.0.1",
+          "ai_signals": [],
+          "blamed_file": "lib/open_project/version.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "6bfd2a8f99e88a031f26380686d04eaff3a972cc",
+          "author": "Bruno Pagno",
+          "date": "2025-12-15T07:35:18+01:00",
+          "message": "disable controls for readonly users",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "90f2ee4380f6870914d716584997a44dc578491d",
+          "author": "Bruno Pagno",
+          "date": "2025-11-26T08:46:26+01:00",
+          "message": "make BlockNote editor read only when the user cannot edit a document",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7681259bffecafe2c88bcf7b585f573016c1ca9f",
+          "author": "Bruno Pagno",
+          "date": "2025-11-25T10:33:01+01:00",
+          "message": "use resource id instead of document title",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/components/documents/show_edit_view/block_note_editor_component.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "2c95063054fc77ba05b62e536e9020b1325531fa",
+          "author": "Bruno Pagno",
+          "date": "2025-11-21T17:22:16+01:00",
+          "message": "encrypt oauth token for usage with hocuspocus",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/controllers/documents_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7cd4e5f74a4c8f0ced1b1e4656b6e548f469657a",
+          "author": "Kabiru Mwenja",
+          "date": "2025-11-12T20:15:08+03:00",
+          "message": "Reinstate oauth token setup to controller",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/controllers/documents_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "75d01345c2b7d1b89a967bf23a26df289aa56f65",
+          "author": "Kabiru Mwenja",
+          "date": "2025-11-06T12:00:38+03:00",
+          "message": "Add block note editor with basic layout",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/app/forms/documents/block_note_editor_form.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "7bf3a0e81f44a971efb41da881ba6061eda4d93b",
+          "author": "Bruno Pagno",
+          "date": "2025-10-22T15:23:25+02:00",
+          "message": "do not generate oauth token when the user is not allowed to edit documents",
+          "ai_signals": [],
+          "blamed_file": "modules/documents/spec/controllers/documents_controller_spec.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "16588d0cc1073a78fdd0fc08e5c0d64d7f093b3c",
+          "author": "Jonas Jabari",
+          "date": "2023-09-19T16:36:52+02:00",
+          "message": "[37297] automatic meeting agendas and minutes linked to work packages",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/meeting_agenda_items_controller.rb",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "bb40ef2b7ae748a98f7a689b59af8feb6c5cd0e2",
+          "author": "Mir Bhatia",
+          "date": "2025-10-01T17:39:07+02:00",
+          "message": "Clean up implementation and use with_item_group in submenu",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/meeting_agenda_items_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "82987747291a80684fa8da9ba748e3a690756c49",
+          "author": "Mir Bhatia",
+          "date": "2025-02-13T18:47:16+01:00",
+          "message": "Add outcome components and new/create methods",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/meeting_outcomes_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "78a1c9f925eb5fbbbf4341cc882777945f8a3187",
+          "author": "Mir Bhatia",
+          "date": "2025-02-19T13:29:57+01:00",
+          "message": "Update component layout & add edit/update methods",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/meeting_outcomes_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "74dafecb0ec32b038475f208fcfe1eaa19e9f6bc",
+          "author": "Mir Bhatia",
+          "date": "2025-08-12T18:36:09+02:00",
+          "message": "Rework participants components",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/meeting_participants_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "1a9d031a77bbb2e067ec2e6a7429e5f846cfe169",
+          "author": "jjabari-op",
+          "date": "2023-09-28T14:48:07+02:00",
+          "message": "Feature/49951 meetings tab on work package page (#13749)",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/work_package_meetings_tab_controller.rb",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "6a05f32757f66e2756eb560d533924a768f38754",
+          "author": "Mir Bhatia",
+          "date": "2025-05-02T16:54:23+02:00",
+          "message": "Update which section wps are added to",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/controllers/work_package_meetings_tab_controller.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "dc8a7fed090679f3a6fa4d68d5a6eaa820abf1da",
+          "author": "Jonas Jabari",
+          "date": "2024-04-16T16:32:54+02:00",
+          "message": "added nested drag and drop support as introduced on project custom fields",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/app/services/meeting_agenda_items/drop_service.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "3549c6e5b85946e276a63a02c8da21c2086676cd",
+          "author": "Klaus Zanders",
+          "date": "2025-10-21T17:25:34+02:00",
+          "message": "Fix outcome specs",
+          "ai_signals": [],
+          "blamed_file": "modules/meeting/spec/features/meeting_outcomes_crud_spec.rb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "14c88b9711f1dfaa6de8bf808f7c27ded6adf509",
+          "author": "Ivan Kuchin",
+          "date": "2025-02-06T18:19:02+01:00",
+          "message": "erb_lint auto fix hash style",
+          "ai_signals": [],
+          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/enter_backup_code.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "f20fc3d3145ce9f95780a8a06242defc49fdf9bc",
+          "author": "Klaus Zanders",
+          "date": "2023-06-29T13:53:42+02:00",
+          "message": "Implement authentication with WebAuthn device on login",
+          "ai_signals": [],
+          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
+          "blame_confidence": 0.7200000000000001,
+          "llm_verdict": null
+        },
+        {
+          "sha": "fb715f21b92d5115268e2cf0790e37f2922535e3",
+          "author": "Ivan Kuchin",
+          "date": "2025-02-06T17:24:51+01:00",
+          "message": "erb_lint auto fix quotes",
+          "ai_signals": [],
+          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "8a952954d431b2c49d322ec82f789e3a8e0b14e9",
+          "author": "Oliver Günther",
+          "date": "2024-09-13T14:11:20+02:00",
+          "message": "Opt out of turbo for resend",
+          "ai_signals": [],
+          "blamed_file": "modules/two_factor_authentication/app/views/two_factor_authentication/authentication/request_otp.html.erb",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "87a8cdc7632de8ab06475ba373fd354e0be30e2a",
+          "repo_url": "https://github.com/opf/openproject",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/24xxx/CVE-2026-24777.json",
+        "https://github.com/opf/openproject/releases/tag/v17.0.2",
+        "https://github.com/opf/openproject/security/advisories/GHSA-fq66-cwg6-qq69",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-24777"
       ]
     },
     {
