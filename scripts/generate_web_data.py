@@ -248,17 +248,63 @@ def load_ghsa_published_dates(
 # Filtering
 # ---------------------------------------------------------------------------
 
+def _is_all_negative_verdict(result: dict) -> bool:
+    """Return True if every AI-signaled BIC has an LLM verdict of UNLIKELY or UNRELATED.
+
+    CVEs where the LLM determined that *none* of the AI-authored commits
+    actually introduced the vulnerability are false positives and should
+    be excluded from the website.
+
+    Returns False (keep) when:
+    - No BICs have AI signals (shouldn't happen for AI results, but safe)
+    - Any BIC with AI signals lacks an LLM verdict (benefit of the doubt)
+    - Any BIC has a CONFIRMED verdict
+    """
+    ai_bics = [
+        bic for bic in result.get("bug_introducing_commits", [])
+        if bic.get("commit", {}).get("ai_signals")
+    ]
+    if not ai_bics:
+        return False
+
+    for bic in ai_bics:
+        llm_v = bic.get("llm_verdict")
+        if not llm_v or not llm_v.get("verdict"):
+            # No verdict → keep (benefit of the doubt)
+            return False
+        if llm_v["verdict"] == "CONFIRMED":
+            return False
+
+    # All AI BICs have verdicts and none are CONFIRMED
+    return True
+
+
 def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
 ) -> list[dict]:
-    """Keep only results with ai_confidence > 0 and above the threshold, with no errors."""
-    return [
-        r for r in results
-        if r.get("ai_confidence", 0) > 0
-        and r.get("ai_confidence", 0) >= min_confidence
-        and not r.get("error", "")
-    ]
+    """Keep only results with ai_confidence > 0 and above the threshold, with no errors.
+
+    Also excludes results where LLM verification determined that all
+    AI-signaled bug-introducing commits are UNLIKELY or UNRELATED
+    (false positives from coarse git blame).
+    """
+    filtered = []
+    excluded_by_verdict = 0
+    for r in results:
+        if r.get("ai_confidence", 0) <= 0:
+            continue
+        if r.get("ai_confidence", 0) < min_confidence:
+            continue
+        if r.get("error", ""):
+            continue
+        if _is_all_negative_verdict(r):
+            excluded_by_verdict += 1
+            continue
+        filtered.append(r)
+    if excluded_by_verdict:
+        print(f"  Excluded {excluded_by_verdict} CVEs with all-negative LLM verdicts.")
+    return filtered
 
 
 # ---------------------------------------------------------------------------
