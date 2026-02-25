@@ -2,7 +2,6 @@ import { getToolDisplayName } from "@/lib/constants";
 
 /** Monochrome SVGs from Simple Icons — need dark:invert for dark mode. */
 const MONOCHROME_ICONS = new Set([
-  "claude_code",
   "github_copilot",
   "cursor",
   "google_gemini",
