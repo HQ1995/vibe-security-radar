@@ -13,13 +13,13 @@ function computeMetrics(stats: StatsData) {
   const criticalHigh =
     (stats.by_severity["CRITICAL"] ?? 0) + (stats.by_severity["HIGH"] ?? 0);
 
-  const ecosystems = Object.keys(stats.by_ecosystem).length;
+  const totalAnalyzed = stats.total_analyzed;
 
   return [
-    { label: "Total Vulnerabilities", value: totalCves },
+    { label: "AI-Linked Vulnerabilities", value: totalCves },
     { label: "AI Tools Detected", value: aiToolsDetected },
     { label: "Critical / High", value: criticalHigh },
-    { label: "Ecosystems", value: ecosystems },
+    { label: "CVEs Analyzed", value: totalAnalyzed.toLocaleString() },
   ] as const;
 }
 

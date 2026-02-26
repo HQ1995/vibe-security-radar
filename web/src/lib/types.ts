@@ -53,8 +53,8 @@ export interface CvesData {
 export interface StatsData {
   readonly generated_at: string;
   readonly total_cves: number;
+  readonly total_analyzed: number;
   readonly by_tool: Readonly<Record<string, number>>;
   readonly by_severity: Readonly<Record<string, number>>;
-  readonly by_ecosystem: Readonly<Record<string, number>>;
   readonly by_month: readonly { readonly month: string; readonly count: number }[];
 }

@@ -574,7 +574,7 @@ def build_cve_entry(
 # Statistics
 # ---------------------------------------------------------------------------
 
-def build_stats(entries: list[dict]) -> dict:
+def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
     """Aggregate statistics from a list of web CVE entries."""
     by_tool: dict[str, int] = {}
     by_severity: dict[str, int] = {}
@@ -603,9 +603,9 @@ def build_stats(entries: list[dict]) -> dict:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total_cves": len(entries),
+        "total_analyzed": total_analyzed,
         "by_tool": by_tool,
         "by_severity": by_severity,
-        "by_ecosystem": {},
         "by_month": by_month,
     }
 
@@ -689,7 +689,7 @@ def main(argv: list[str] | None = None) -> None:
         "total": len(entries),
         "cves": entries,
     }
-    stats_output = build_stats(entries)
+    stats_output = build_stats(entries, total_analyzed=len(results))
 
     # Write
     output_dir = Path(args.output_dir)
