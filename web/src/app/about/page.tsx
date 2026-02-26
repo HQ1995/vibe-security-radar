@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
   description:
-    "Methodology and data sources behind Vibe Security Radar, a public tracker for vulnerabilities introduced by AI coding tools.",
+    "Methodology and data sources behind Vibe Security Radar — a public tracker for security vulnerabilities introduced by AI coding tools.",
 };
 
 const AI_TOOLS = [
@@ -21,7 +21,6 @@ const AI_TOOLS = [
   "OpenAI Codex",
   "Google Gemini",
   "Google Jules",
-  "Gemini CLI",
   "Google Antigravity",
   "OpenCode",
   "Kiro",
@@ -33,7 +32,7 @@ const AI_TOOLS = [
   "Fine Dev",
   "Replit Agent",
   "Qodo",
-  "Continue Dev",
+  "Continue",
   "Augment Code",
   "Trae",
   "GitLab Duo",
@@ -128,7 +127,8 @@ export default function AboutPage() {
         </h1>
         <p className="text-lg leading-relaxed text-muted-foreground">
           Vibe Security Radar is a public tracker that monitors vulnerabilities
-          (CVEs and GHSAs) where AI coding tools introduced the vulnerable code.
+          (CVEs, GHSAs, RustSec, and other advisories) where AI coding tools
+          introduced the vulnerable code.
           The goal is to bring transparency to the security implications of
           AI-assisted development so that developers, maintainers, and security
           teams can make informed decisions.

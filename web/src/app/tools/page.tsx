@@ -14,7 +14,7 @@ export default function ToolsPage() {
       <section className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">AI Tools Analysis</h1>
         <p className="text-lg text-muted-foreground">
-          CVE distribution across AI coding tools
+          Vulnerability distribution across AI coding tools
         </p>
       </section>
 

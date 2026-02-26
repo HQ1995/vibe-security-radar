@@ -19,7 +19,7 @@ function computeMetrics(stats: StatsData) {
     { label: "AI-Linked Vulnerabilities", value: totalCves },
     { label: "AI Tools Detected", value: aiToolsDetected },
     { label: "Critical / High", value: criticalHigh },
-    { label: "CVEs Analyzed", value: totalAnalyzed.toLocaleString() },
+    { label: "Advisories Analyzed", value: totalAnalyzed.toLocaleString() },
   ] as const;
 }
 
