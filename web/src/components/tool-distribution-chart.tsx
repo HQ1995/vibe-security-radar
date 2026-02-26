@@ -40,7 +40,6 @@ const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
   augment_code: "#2DD4BF",   // teal
   trae: "#6366F1",           // indigo
   gitlab_duo: "#FC6D26",     // GitLab orange
-  gemini_cli: "#4285F4",     // Google blue
   kimi_code: "#5046E5",      // Kimi indigo
   bolt_new: "#F97316",       // Bolt orange
   zencoder: "#0EA5E9",       // sky blue
