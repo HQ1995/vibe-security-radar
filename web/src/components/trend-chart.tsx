@@ -5,6 +5,7 @@ import {
   Bar,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -34,31 +35,39 @@ export function TrendChart({ data }: TrendChartProps) {
             data={chartData}
             margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
           >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="var(--color-border)"
+            />
             <XAxis
               dataKey="month"
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-              axisLine={{ stroke: "hsl(var(--border))" }}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+              axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
+              trigger="hover"
+              isAnimationActive={false}
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
+                backgroundColor: "var(--color-card)",
+                border: "1px solid var(--color-border)",
                 borderRadius: "0.5rem",
-                color: "hsl(var(--card-foreground))",
+                color: "var(--color-card-foreground)",
               }}
-              cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+              cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
             />
             <Bar
               dataKey="count"
-              fill="hsl(var(--chart-1))"
+              fill="var(--color-chart-1)"
               radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
             />
           </BarChart>
         </ResponsiveContainer>

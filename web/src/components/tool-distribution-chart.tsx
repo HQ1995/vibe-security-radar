@@ -89,15 +89,15 @@ export function ToolDistributionChart({ data }: ToolDistributionChartProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
+                backgroundColor: "var(--color-card)",
+                border: "1px solid var(--color-border)",
                 borderRadius: "0.5rem",
-                color: "hsl(var(--card-foreground))",
+                color: "var(--color-card-foreground)",
               }}
             />
             <Legend
               formatter={(value: string) => (
-                <span style={{ color: "hsl(var(--card-foreground))" }}>
+                <span style={{ color: "var(--color-card-foreground)" }}>
                   {value}
                 </span>
               )}
