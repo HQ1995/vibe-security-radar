@@ -63,7 +63,7 @@ export function ToolDistributionChart({ data }: ToolDistributionChartProps) {
   return (
     <section>
       <h2 className="mb-4 text-xl font-semibold">Tool Distribution</h2>
-      <div className="h-80 w-full rounded-xl border border-border bg-card p-4">
+      <div className="h-80 w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
