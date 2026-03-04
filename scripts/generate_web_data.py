@@ -18,7 +18,10 @@ import gzip
 import json
 import math
 import os
+import re
+import subprocess
 import sys
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
@@ -337,7 +340,6 @@ def load_ghsa_published_dates(
 
 def _repo_url_to_dir(repo_url: str) -> str | None:
     """Convert a GitHub repo URL to a local cache directory name (owner_repo)."""
-    import re
     m = re.match(r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/*$", repo_url.rstrip("/"))
     if m:
         return f"{m.group(1)}_{m.group(2)}"
@@ -353,8 +355,6 @@ def load_fix_commit_dates(
     For each result without a published date, looks up the earliest fix commit
     date in the locally cloned repository. Returns {cve_id: date_iso}.
     """
-    import subprocess
-
     index: dict[str, str] = {}
     if not os.path.isdir(repos_dir):
         return index
@@ -376,25 +376,28 @@ def load_fix_commit_dates(
             continue
 
         # Get the earliest fix commit date
-        earliest: str | None = None
+        earliest_dt: datetime | None = None
+        earliest_str: str | None = None
         for fc in fix_commits:
             sha = fc.get("sha", "")
             if not sha:
                 continue
             try:
                 out = subprocess.run(
-                    ["git", "log", "--format=%aI", sha, "-1"],
+                    ["git", "log", "--format=%aI", "-1", "--", sha],
                     cwd=repo_path, capture_output=True, text=True, timeout=5,
                 )
                 if out.returncode == 0 and out.stdout.strip():
                     date_str = out.stdout.strip()
-                    if earliest is None or date_str < earliest:
-                        earliest = date_str
-            except (subprocess.TimeoutExpired, OSError):
+                    dt = datetime.fromisoformat(date_str)
+                    if earliest_dt is None or dt < earliest_dt:
+                        earliest_dt = dt
+                        earliest_str = date_str
+            except (subprocess.TimeoutExpired, OSError, ValueError):
                 pass
 
-        if earliest:
-            index[cve_id] = earliest
+        if earliest_str:
+            index[cve_id] = earliest_str
 
     return index
 
@@ -411,7 +414,9 @@ def fetch_ghsa_published_dates_api(
     if not token:
         return {}
     index: dict[str, str] = {}
-    for ghsa_id in ghsa_ids:
+    for i, ghsa_id in enumerate(ghsa_ids):
+        if i > 0:
+            time.sleep(0.72)  # ~1.39 req/s, matching GitHubAdvisoryRateLimiter
         url = f"https://api.github.com/advisories/{ghsa_id}"
         req = urllib.request.Request(
             url,
