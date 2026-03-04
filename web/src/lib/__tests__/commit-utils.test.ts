@@ -52,6 +52,29 @@ describe("buildCommitUrl", () => {
       "https://github.com/owner/repo/commit/abc1234",
     );
   });
+
+  it("returns # for javascript: protocol", () => {
+    expect(buildCommitUrl("javascript:alert(1)", "abc123")).toBe("#");
+  });
+
+  it("returns # for non-https protocol", () => {
+    expect(buildCommitUrl("ftp://example.com/owner/repo", "abc123")).toBe("#");
+    expect(buildCommitUrl("http://example.com/owner/repo", "abc123")).toBe("#");
+  });
+
+  it("returns # for invalid URL", () => {
+    expect(buildCommitUrl("not-a-url", "abc123")).toBe("#");
+  });
+
+  it("strips non-hex characters from sha", () => {
+    const result = buildCommitUrl("https://github.com/owner/repo", "abc/../etc");
+    expect(result).not.toContain("..");
+    expect(result).toContain("/commit/abcec");
+  });
+
+  it("returns # for empty sha after stripping", () => {
+    expect(buildCommitUrl("https://github.com/owner/repo", "!!!")).toBe("#");
+  });
 });
 
 describe("formatDate", () => {

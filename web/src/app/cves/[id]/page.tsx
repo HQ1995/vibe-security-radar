@@ -168,7 +168,7 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
         {withVerdict.map((commit) => {
           const v = commit.llm_verdict!;
           const shaText = commit.sha.slice(0, 12);
-          const hasRichData = v.verdict === "CONFIRMED" && (v.vuln_type || v.causal_chain);
+          const hasRichData = v.verdict === "CONFIRMED" && (v.vuln_type || v.causal_chain || v.vuln_description || v.vulnerable_pattern);
           return (
             <div
               key={commit.sha}
@@ -380,7 +380,7 @@ function ReferencesSection({
           {references.map((ref) => (
             <li key={ref}>
               <a
-                href={ref}
+                href={/^https?:\/\//i.test(ref) ? ref : "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary underline-offset-4 hover:underline break-all"
