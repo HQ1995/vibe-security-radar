@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -9,6 +9,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import {
   getToolDisplayName,
@@ -25,7 +26,7 @@ interface MonthEntry {
   readonly by_tool: Readonly<Record<string, number>>;
 }
 
-interface TrendChartProps {
+export interface TrendChartProps {
   readonly data: readonly MonthEntry[];
 }
 
@@ -72,33 +73,6 @@ function CustomTooltip({
 
 export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-  const [chartKey, setChartKey] = useState(0);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setSize({ width, height });
-        }
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Force a second render of the SVG so Chrome rebuilds hit-testing regions
-  useEffect(() => {
-    if (!size || chartKey > 0) return;
-    const timer = setTimeout(() => setChartKey(1), 50);
-    return () => clearTimeout(timer);
-  }, [size, chartKey]);
 
   // Collect all unique tool names across all months
   const allTools = useMemo(() => {
@@ -181,13 +155,10 @@ export function TrendChart({ data }: TrendChartProps) {
         )}
       </div>
 
-      <div ref={containerRef} className="h-72 w-full rounded-xl border border-border bg-card p-4" style={{ transform: "translateZ(0)" }}>
-        {size ? (
+      <div className="h-72 w-full rounded-xl border border-border bg-card p-4">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            key={chartKey}
             data={visibleData}
-            width={size.width}
-            height={size.height}
             margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
           >
             <CartesianGrid
@@ -225,11 +196,7 @@ export function TrendChart({ data }: TrendChartProps) {
               />
             ))}
           </BarChart>
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Loading chart...
-          </div>
-        )}
+        </ResponsiveContainer>
       </div>
 
       {/* Inline legend for visible tools */}
