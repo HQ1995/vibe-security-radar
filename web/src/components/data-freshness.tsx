@@ -10,7 +10,7 @@ export function DataFreshness({ generatedAt }: DataFreshnessProps) {
 
   return (
     <p className="text-xs text-muted-foreground">
-      Data as of {formatted}
+      Coverage: May 2025 &ndash; {formatted}
     </p>
   );
 }
