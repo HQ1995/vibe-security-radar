@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 import {
   getToolDisplayName,
@@ -73,10 +72,24 @@ function CustomTooltip({
 
 export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+
   useEffect(() => {
-    const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setSize({ width, height });
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Collect all unique tool names across all months
@@ -160,15 +173,12 @@ export function TrendChart({ data }: TrendChartProps) {
         )}
       </div>
 
-      <div className="h-72 w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
-        {!mounted ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Loading chart...
-          </div>
-        ) : (
-        <ResponsiveContainer width="100%" height="100%">
+      <div ref={containerRef} className="h-72 w-full rounded-xl border border-border bg-card p-4">
+        {size ? (
           <BarChart
             data={visibleData}
+            width={size.width}
+            height={size.height}
             margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
           >
             <CartesianGrid
@@ -206,7 +216,10 @@ export function TrendChart({ data }: TrendChartProps) {
               />
             ))}
           </BarChart>
-        </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Loading chart...
+          </div>
         )}
       </div>
 
