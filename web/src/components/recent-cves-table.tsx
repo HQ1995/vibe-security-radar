@@ -26,12 +26,12 @@ function VerifiedBadge({ verifiedBy }: { readonly verifiedBy: string }) {
     return <span className="text-muted-foreground/40 text-xs">—</span>;
   }
   const color =
-    label === "LLM"
-      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-      : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25";
+    label === "OSV"
+      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25"
+      : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25";
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${color}`}
+      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold max-w-full truncate ${color}`}
       title={verifiedByTooltip(verifiedBy)}
     >
       {label}
@@ -44,13 +44,13 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
     <section>
       <h2 className="mb-4 text-xl font-semibold">Recent Vulnerabilities</h2>
       <div className="rounded-xl border border-border overflow-x-auto">
-        <Table className="table-fixed w-full min-w-[700px]">
+        <Table className="table-fixed w-full min-w-[820px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[180px]">ID</TableHead>
               <TableHead className="w-[100px]">Severity</TableHead>
               <TableHead className="w-[72px]">Tools</TableHead>
-              <TableHead className="w-[80px] text-center">Verified</TableHead>
+              <TableHead className="w-[200px] text-center">Verified</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
           </TableHeader>

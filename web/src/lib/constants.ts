@@ -85,7 +85,7 @@ export function formatVerifiedBy(verifiedBy: string): string {
 export function verifiedByLabel(verifiedBy: string): string {
   if (!verifiedBy) return "";
   if (verifiedBy === "osv") return "OSV";
-  return "LLM";
+  return verifiedBy;
 }
 
 /** Tooltip text for the verified-by badge. */

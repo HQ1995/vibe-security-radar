@@ -19,6 +19,8 @@ import json
 import math
 import os
 import sys
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,6 +35,7 @@ DEFAULT_NVD_FEEDS_DIR = os.path.expanduser("~/.cache/cve-analyzer/nvd-feeds")
 DEFAULT_GHSA_DB_DIR = os.path.expanduser(
     "~/.cache/cve-analyzer/advisory-database/advisories"
 )
+DEFAULT_REPOS_DIR = os.path.expanduser("~/.cache/cve-analyzer/repos")
 DEFAULT_OUTPUT_DIR = "web/data"
 DEFAULT_MIN_CONFIDENCE = 0.0
 
@@ -329,6 +332,102 @@ def load_ghsa_published_dates(
                     index[ghsa_id] = published
             except (json.JSONDecodeError, OSError):
                 pass
+    return index
+
+
+def _repo_url_to_dir(repo_url: str) -> str | None:
+    """Convert a GitHub repo URL to a local cache directory name (owner_repo)."""
+    import re
+    m = re.match(r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/*$", repo_url.rstrip("/"))
+    if m:
+        return f"{m.group(1)}_{m.group(2)}"
+    return None
+
+
+def load_fix_commit_dates(
+    results: list[dict],
+    repos_dir: str = DEFAULT_REPOS_DIR,
+) -> dict[str, str]:
+    """Extract published dates from fix commit timestamps in local git repos.
+
+    For each result without a published date, looks up the earliest fix commit
+    date in the locally cloned repository. Returns {cve_id: date_iso}.
+    """
+    import subprocess
+
+    index: dict[str, str] = {}
+    if not os.path.isdir(repos_dir):
+        return index
+
+    for result in results:
+        cve_id = result.get("cve_id", "")
+        fix_commits = result.get("fix_commits", [])
+        if not fix_commits:
+            continue
+
+        # Find repo dir from first fix commit
+        repo_url = fix_commits[0].get("repo_url", "")
+        repo_dir_name = _repo_url_to_dir(repo_url)
+        if not repo_dir_name:
+            continue
+
+        repo_path = os.path.join(repos_dir, repo_dir_name)
+        if not os.path.isdir(repo_path):
+            continue
+
+        # Get the earliest fix commit date
+        earliest: str | None = None
+        for fc in fix_commits:
+            sha = fc.get("sha", "")
+            if not sha:
+                continue
+            try:
+                out = subprocess.run(
+                    ["git", "log", "--format=%aI", sha, "-1"],
+                    cwd=repo_path, capture_output=True, text=True, timeout=5,
+                )
+                if out.returncode == 0 and out.stdout.strip():
+                    date_str = out.stdout.strip()
+                    if earliest is None or date_str < earliest:
+                        earliest = date_str
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+
+        if earliest:
+            index[cve_id] = earliest
+
+    return index
+
+
+def fetch_ghsa_published_dates_api(
+    ghsa_ids: list[str],
+) -> dict[str, str]:
+    """Fetch published dates for GHSA IDs via the GitHub REST API.
+
+    Requires GITHUB_TOKEN in the environment. Returns {ghsa_id: published_iso}
+    for successfully resolved entries; silently skips failures.
+    """
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        return {}
+    index: dict[str, str] = {}
+    for ghsa_id in ghsa_ids:
+        url = f"https://api.github.com/advisories/{ghsa_id}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+            published = data.get("published_at", "")
+            if published:
+                index[ghsa_id] = published
+        except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError):
+            pass
     return index
 
 
@@ -689,6 +788,29 @@ def main(argv: list[str] | None = None) -> None:
     # Filter
     filtered = filter_ai_results(results, min_confidence=args.min_confidence)
     print(f"  {len(filtered)} results with AI signals (confidence >= {args.min_confidence}).")
+
+    # Identify GHSA IDs still missing published dates and fetch via API
+    missing_ghsa_ids = [
+        r.get("cve_id", "")
+        for r in filtered
+        if r.get("cve_id", "").startswith("GHSA-") and r.get("cve_id", "") not in nvd_dates
+    ]
+    if missing_ghsa_ids:
+        print(f"Fetching {len(missing_ghsa_ids)} missing GHSA published dates via API ...")
+        api_dates = fetch_ghsa_published_dates_api(missing_ghsa_ids)
+        nvd_dates.update(api_dates)
+        print(f"  Resolved {len(api_dates)} of {len(missing_ghsa_ids)} via API.")
+
+    # Final fallback: use fix commit dates from local repos
+    still_missing = [
+        r for r in filtered
+        if r.get("cve_id", "") not in nvd_dates
+    ]
+    if still_missing:
+        print(f"Looking up {len(still_missing)} fix commit dates from local repos ...")
+        commit_dates = load_fix_commit_dates(still_missing)
+        nvd_dates.update(commit_dates)
+        print(f"  Resolved {len(commit_dates)} of {len(still_missing)} from git history.")
 
     # Transform
     entries = [build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered]
