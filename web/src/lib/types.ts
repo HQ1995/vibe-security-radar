@@ -61,5 +61,9 @@ export interface StatsData {
   readonly total_analyzed: number;
   readonly by_tool: Readonly<Record<string, number>>;
   readonly by_severity: Readonly<Record<string, number>>;
-  readonly by_month: readonly { readonly month: string; readonly count: number }[];
+  readonly by_month: readonly {
+    readonly month: string;
+    readonly count: number;
+    readonly by_tool: Readonly<Record<string, number>>;
+  }[];
 }

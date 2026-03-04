@@ -7,7 +7,7 @@ export function getCves(): CvesData {
 }
 
 export function getStats(): StatsData {
-  return statsJson as StatsData;
+  return statsJson as unknown as StatsData;
 }
 
 export function getCveById(id: string): CveEntry | null {

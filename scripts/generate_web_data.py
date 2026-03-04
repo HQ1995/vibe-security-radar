@@ -713,6 +713,7 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
     by_tool: dict[str, int] = {}
     by_severity: dict[str, int] = {}
     month_counts: dict[str, int] = {}
+    month_tool_counts: dict[str, dict[str, int]] = {}
 
     for entry in entries:
         # Tools
@@ -728,9 +729,15 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
         month_key = _extract_month(entry, published)
         if month_key:
             month_counts[month_key] = month_counts.get(month_key, 0) + 1
+            if month_key not in month_tool_counts:
+                month_tool_counts[month_key] = {}
+            for tool in entry.get("ai_tools", []):
+                month_tool_counts[month_key][tool] = (
+                    month_tool_counts[month_key].get(tool, 0) + 1
+                )
 
     by_month = [
-        {"month": m, "count": c}
+        {"month": m, "count": c, "by_tool": month_tool_counts.get(m, {})}
         for m, c in sorted(month_counts.items())
     ]
 

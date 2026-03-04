@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-04T13:22:00.351341+00:00",
-  "total": 58,
+  "generated_at": "2026-03-04T19:27:08.473256+00:00",
+  "total": 59,
   "cves": [
     {
       "id": "CVE-2025-14116",
@@ -3893,7 +3893,7 @@
         "CWE-863"
       ],
       "ecosystem": "",
-      "published": "2026-03-02T21:54:30Z",
+      "published": "2026-02-27T15:16:21+05:30",
       "ai_tools": [
         "claude_code"
       ],
@@ -4340,7 +4340,7 @@
         "CWE-1333"
       ],
       "ecosystem": "",
-      "published": "2026-03-02T22:17:30Z",
+      "published": "2026-02-19T23:41:36+11:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -4408,7 +4408,7 @@
         "CWE-863"
       ],
       "ecosystem": "",
-      "published": "2026-03-03T23:03:49Z",
+      "published": "2026-02-24T22:55:03+00:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -4466,7 +4466,7 @@
         "CWE-863"
       ],
       "ecosystem": "",
-      "published": "2026-03-03T21:41:38Z",
+      "published": "2026-02-22T18:54:24+01:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -4640,7 +4640,7 @@
         "CWE-284"
       ],
       "ecosystem": "",
-      "published": "2026-03-02T21:53:45Z",
+      "published": "2026-03-01T13:34:11+00:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -4968,7 +4968,7 @@
         "CWE-863"
       ],
       "ecosystem": "",
-      "published": "2026-03-03T23:12:21Z",
+      "published": "2026-02-22T21:03:09+01:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -5060,7 +5060,7 @@
         "CWE-22"
       ],
       "ecosystem": "",
-      "published": "2026-03-03T19:58:32Z",
+      "published": "2026-02-19T14:15:34+01:00",
       "ai_tools": [
         "claude_code"
       ],
@@ -5182,6 +5182,88 @@
         }
       ],
       "references": []
+    },
+    {
+      "id": "CVE-2023-25578",
+      "description": "Starlite DoS vulnerability when parsing multipart request body",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2023-02-15T11:05:56+10:00",
+      "ai_tools": [
+        "sourcegraph_cody"
+      ],
+      "confidence": 0.7,
+      "verified_by": "gemini-3.1-flash-lite-preview",
+      "how_introduced": "The application failed to properly limit the size or number of parts in a multipart request body, allowing an attacker to exhaust system resources by sending specially crafted requests.",
+      "bug_commits": [
+        {
+          "sha": "624b0693c34b81f272b24fd385c2eb6bd77c5328",
+          "author": "Peter Schutt",
+          "date": "2023-01-08T08:08:27+10:00",
+          "message": "Ensure http requests with invalid payloads return 400. (#1048)",
+          "ai_signals": [],
+          "blamed_file": "starlite/multipart.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        },
+        {
+          "sha": "5f5b843a9f54e0159a9b8c32e37ee5ddf88a6e3f",
+          "author": "Na'aman Hirschfeld",
+          "date": "2022-12-04T19:25:44+01:00",
+          "message": "898 enhancement add a new multipart parser inside starlite (#901)",
+          "ai_signals": [
+            {
+              "tool": "sourcegraph_cody",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Cody",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "starlite/multipart.py",
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the initial implementation of `parse_multipart_form`, which lacked any mechanism to limit the number of multipart components. The fix commit subsequently added the `multipart_form_part_limit` parameter and validation logic to address this specific vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service (DoS)",
+            "vuln_description": "The application failed to properly limit the size or number of parts in a multipart request body, allowing an attacker to exhaust system resources by sending specially crafted requests.",
+            "vulnerable_pattern": "unbounded parsing of multipart/form-data request bodies",
+            "causal_chain": "The blamed commit created the `parse_multipart_form` function using an unbounded `body.split(boundary)` operation, which directly enabled the DoS vulnerability by allowing an attacker to provide an arbitrary number of parts."
+          }
+        },
+        {
+          "sha": "ab5993bd79b4cc2df8aeb6d4787d27ef53030b54",
+          "author": "provinzkraut",
+          "date": "2022-12-08T21:09:31+01:00",
+          "message": "`MessagePack` support and serialization with `msgspec` (#891)",
+          "ai_signals": [],
+          "blamed_file": "starlite/multipart.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "95c84e96227222f6324a911c389f38a65b2642e3",
+          "repo_url": "https://github.com/starlite-api/starlite",
+          "source": "osv"
+        },
+        {
+          "sha": "9674fe803628f986c03fe60769048cbc55b5bf83",
+          "repo_url": "https://github.com/starlite-api/starlite",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2023/25xxx/CVE-2023-25578.json",
+        "https://github.com/starlite-api/starlite/releases/tag/v1.51.2",
+        "https://github.com/starlite-api/starlite/security/advisories/GHSA-p24m-863f-fm6q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2023-25578"
+      ]
     },
     {
       "id": "CVE-2025-44004",
