@@ -5,30 +5,20 @@ import { getCves, getStats } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToolIcon } from "@/components/tool-icon";
-import {
-  severityBadgeClass,
-  getToolDisplayName,
-  SEVERITY_ORDER,
-} from "@/lib/constants";
+import { severityBadgeClass, getToolDisplayName } from "@/lib/constants";
 import { formatPublished } from "@/lib/commit-utils";
-import type { CveEntry } from "@/lib/types";
+import {
+  formatMonthLabel,
+  computeSeverityBreakdown,
+  computeToolBreakdown,
+  sortCvesByPriority,
+} from "@/lib/month-utils";
 
 // --- Static generation ---
 
 export function generateStaticParams() {
   const stats = getStats();
   return stats.by_month.map((entry) => ({ month: entry.month }));
-}
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-function formatMonthLabel(month: string): string {
-  // "2025-05" -> "May 2025"
-  const [year, m] = month.split("-");
-  return `${MONTH_NAMES[Number(m) - 1] ?? m} ${year}`;
 }
 
 export async function generateMetadata({
@@ -46,38 +36,9 @@ export async function generateMetadata({
 
 // --- Helpers ---
 
-function getCvesForMonth(month: string): readonly CveEntry[] {
+function getCvesForMonth(month: string) {
   const data = getCves();
   return data.cves.filter((cve) => cve.published.startsWith(month));
-}
-
-function computeSeverityBreakdown(
-  cves: readonly CveEntry[],
-): { severity: string; count: number }[] {
-  const counts: Record<string, number> = {};
-  for (const cve of cves) {
-    counts[cve.severity] = (counts[cve.severity] ?? 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort(
-      ([a], [b]) =>
-        (SEVERITY_ORDER[a] ?? 99) - (SEVERITY_ORDER[b] ?? 99),
-    )
-    .map(([severity, count]) => ({ severity, count }));
-}
-
-function computeToolBreakdown(
-  cves: readonly CveEntry[],
-): { tool: string; count: number }[] {
-  const counts: Record<string, number> = {};
-  for (const cve of cves) {
-    for (const tool of cve.ai_tools) {
-      counts[tool] = (counts[tool] ?? 0) + 1;
-    }
-  }
-  return Object.entries(counts)
-    .sort(([, a], [, b]) => b - a)
-    .map(([tool, count]) => ({ tool, count }));
 }
 
 // --- Page component ---
@@ -184,15 +145,7 @@ export default async function MonthDetailPage({
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">All Vulnerabilities</h2>
         <div className="space-y-3">
-          {[...cves]
-            .sort((a, b) => {
-              // Sort by severity first (critical first), then by published date
-              const sa = SEVERITY_ORDER[a.severity] ?? 99;
-              const sb = SEVERITY_ORDER[b.severity] ?? 99;
-              if (sa !== sb) return sa - sb;
-              return b.published.localeCompare(a.published);
-            })
-            .map((cve) => (
+          {sortCvesByPriority(cves).map((cve) => (
               <Link
                 key={cve.id}
                 href={`/cves/${cve.id}`}
