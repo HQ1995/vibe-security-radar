@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getStats } from "@/lib/data";
+import { DataFreshness } from "@/components/data-freshness";
 
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
@@ -74,8 +76,9 @@ const DATA_SOURCES = [
 const LIMITATIONS = [
   "Only detects AI involvement when explicit signatures exist (co-author trailers, bot emails, commit message markers).",
   "AI tools that do not leave signatures in commits cannot be detected.",
-  "Git blame may attribute lines to the wrong commit in some edge cases; LLM verification reduces but does not eliminate this.",
-  "LLM verification uses a small model (Gemini 2.5 Flash Lite) and may occasionally misclassify borderline cases.",
+  "Git blame may attribute lines to the wrong commit in some edge cases; two-phase LLM verification reduces but does not eliminate this.",
+  "LLM verification uses a lightweight model (Gemini 3.1 Flash Lite) and may occasionally misclassify borderline cases.",
+  "Only publicly disclosed vulnerabilities with available fix commits can be analyzed; vulnerabilities in closed-source code or without public patches are not covered.",
 ] as const;
 
 const PIPELINE_STEPS = [
@@ -101,23 +104,25 @@ const PIPELINE_STEPS = [
     tier: "Tier 4",
     title: "Git blame analysis",
     description:
-      "Clone the affected repository, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits.",
+      "Clone the affected repository, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. Only security-relevant files (identified by LLM analysis in Tier 6) are blamed, reducing noise from unrelated changes in the fix commit.",
   },
   {
     tier: "Tier 5",
     title: "AI signature detection",
     description:
-      "Check each bug-introducing commit for AI coding tool signatures: co-author trailers, bot email addresses, commit message markers, and tool-specific metadata.",
+      "Check each bug-introducing commit for AI coding tool signatures: co-author trailers, bot email addresses, commit message markers, and tool-specific metadata. Known CI/CD bots (Dependabot, Renovate, GitHub Actions, etc.) are explicitly filtered out.",
   },
   {
     tier: "Tier 6",
-    title: "LLM causality verification",
+    title: "Two-phase LLM causality verification",
     description:
-      "For commits with AI signals, an LLM (Gemini 2.5 Flash Lite) reviews the fix diff and blamed diff side-by-side to confirm the blamed commit actually introduced the vulnerability, filtering out git-blame false positives.",
+      "Phase 1 (per-CVE): An LLM analyzes the fix commit to understand the vulnerability — its type, root cause, vulnerable code pattern, and which files are security-relevant. Phase 2 (per-commit): For each AI-signaled commit, the LLM uses Phase 1 context to verify whether the commit actually introduced the vulnerability, producing a structured verdict with causal chain analysis. This two-phase approach eliminates false positives from commits that merely touch the same file as the vulnerability.",
   },
 ] as const;
 
 export default function AboutPage() {
+  const stats = getStats();
+
   return (
     <main className="mx-auto max-w-3xl space-y-14 px-4 py-10 sm:px-6">
       {/* Hero */}
@@ -133,17 +138,24 @@ export default function AboutPage() {
           AI-assisted development so that developers, maintainers, and security
           teams can make informed decisions.
         </p>
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+          <span>{stats.total_cves} AI-linked vulnerabilities tracked</span>
+          <span>{stats.total_analyzed.toLocaleString()} advisories analyzed</span>
+          <DataFreshness generatedAt={stats.generated_at} />
+        </div>
       </section>
 
       {/* Methodology */}
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold tracking-tight">Methodology</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Every vulnerability is processed through a multi-tier pipeline. Bulk
+          Every vulnerability is processed through a six-tier pipeline. Bulk
           local data is preferred for throughput; API calls serve as fallbacks.
           Fix commits are traced back to bug-introducing commits via git blame,
-          then each commit is checked for AI tool signatures and verified by an
-          LLM to confirm causality.
+          then each commit is checked for AI tool signatures. A two-phase LLM
+          verification process confirms causality — first understanding the
+          vulnerability itself, then evaluating whether each AI-authored commit
+          actually introduced it.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -160,6 +172,28 @@ export default function AboutPage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      {/* Verification Details */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          LLM Verification
+        </h2>
+        <p className="leading-relaxed text-muted-foreground">
+          Each CVE with AI-signaled commits goes through a two-phase LLM
+          analysis using Gemini 3.1 Flash Lite. The first phase analyzes the
+          fix commit to understand the vulnerability: its type (e.g., command
+          injection, XSS), root cause, and vulnerable code pattern. The second
+          phase evaluates each blamed commit against this context to determine
+          whether it causally introduced the vulnerability.
+        </p>
+        <p className="leading-relaxed text-muted-foreground">
+          Each verdict includes structured data — vulnerability type, root cause
+          description, vulnerable pattern, and a causal chain explaining how the
+          commit led to the vulnerability. CVEs where all AI-signaled commits
+          are judged UNRELATED or UNLIKELY are filtered out, significantly
+          reducing false positives compared to file-level blame alone.
+        </p>
       </section>
 
       {/* AI Tools Monitored */}

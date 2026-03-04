@@ -1,5 +1,6 @@
 import { getCves } from "@/lib/data";
 import { CveListClient } from "@/components/cve-list";
+import { DataFreshness } from "@/components/data-freshness";
 
 export const metadata = {
   title: "Vulnerability Database - Vibe Security Radar",
@@ -16,6 +17,7 @@ export default function CvesPage() {
         <p className="text-muted-foreground">
           All vulnerabilities with detected AI coding tool involvement
         </p>
+        <DataFreshness generatedAt={data.generated_at} />
       </div>
       <CveListClient cves={data.cves} />
     </main>

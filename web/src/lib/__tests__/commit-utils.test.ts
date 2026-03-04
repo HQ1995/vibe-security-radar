@@ -115,6 +115,12 @@ describe("formatPublished", () => {
     expect(result).toContain("2025");
   });
 
+  it("formats ISO datetime with UTC offset", () => {
+    const result = formatPublished("2026-03-04T02:38:37.627213+00:00");
+    expect(result).toContain("Mar");
+    expect(result).toContain("2026");
+  });
+
   it("returns original string for unparseable input", () => {
     expect(formatPublished("not-a-date")).toBe("not-a-date");
   });
