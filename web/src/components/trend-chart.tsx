@@ -74,7 +74,10 @@ function CustomTooltip({
 export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   // Collect all unique tool names across all months
   const allTools = useMemo(() => {
