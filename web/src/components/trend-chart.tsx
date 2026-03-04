@@ -173,7 +173,7 @@ export function TrendChart({ data }: TrendChartProps) {
         )}
       </div>
 
-      <div ref={containerRef} className="h-72 w-full rounded-xl border border-border bg-card p-4">
+      <div ref={containerRef} className="h-72 w-full rounded-xl border border-border bg-card p-4" style={{ transform: "translateZ(0)" }}>
         {size ? (
           <BarChart
             data={visibleData}
