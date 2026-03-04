@@ -741,10 +741,16 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
         for m, c in sorted(month_counts.items())
     ]
 
+    sorted_months = sorted(month_counts.keys())
+    coverage_from = sorted_months[0] if sorted_months else ""
+    coverage_to = sorted_months[-1] if sorted_months else ""
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total_cves": len(entries),
         "total_analyzed": total_analyzed,
+        "coverage_from": coverage_from,
+        "coverage_to": coverage_to,
         "by_tool": by_tool,
         "by_severity": by_severity,
         "by_month": by_month,

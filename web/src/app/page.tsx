@@ -22,7 +22,7 @@ export default function HomePage() {
         <p className="text-lg text-muted-foreground">
           Tracking the security cost of vibe coding
         </p>
-        <DataFreshness generatedAt={stats.generated_at} />
+        <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} />
       </section>
 
       <StatsCards stats={stats} />

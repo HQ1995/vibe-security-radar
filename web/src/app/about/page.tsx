@@ -141,7 +141,7 @@ export default function AboutPage() {
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
           <span>{stats.total_cves} AI-linked vulnerabilities tracked</span>
           <span>{stats.total_analyzed.toLocaleString()} advisories analyzed</span>
-          <DataFreshness generatedAt={stats.generated_at} />
+          <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} />
         </div>
       </section>
 
