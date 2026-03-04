@@ -1,25 +1,9 @@
-import dynamic from "next/dynamic";
 import { getCves, getStats } from "@/lib/data";
 import { StatsCards } from "@/components/stats-cards";
 import { RecentCvesTable } from "@/components/recent-cves-table";
 import { DataFreshness } from "@/components/data-freshness";
 import { compareCves } from "@/lib/sort";
-import type { TrendChartProps } from "@/components/trend-chart";
-
-const TrendChart = dynamic<TrendChartProps>(
-  () => import("@/components/trend-chart").then((mod) => mod.TrendChart),
-  {
-    ssr: false,
-    loading: () => (
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">Vulnerabilities by Month</h2>
-        <div className="h-72 w-full rounded-xl border border-border bg-card p-4 flex items-center justify-center text-sm text-muted-foreground">
-          Loading chart...
-        </div>
-      </section>
-    ),
-  },
-);
+import { TrendChart } from "@/components/trend-chart";
 
 export default function HomePage() {
   const stats = getStats();
