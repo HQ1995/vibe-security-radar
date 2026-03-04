@@ -871,7 +871,13 @@ def main(argv: list[str] | None = None) -> None:
         "total": len(entries),
         "cves": entries,
     }
-    stats_output = build_stats(entries, total_analyzed=len(results))
+    # Count advisories published within the coverage window
+    coverage_from = min((e.get("published", "")[:7] for e in entries if e.get("published")), default="")
+    total_in_range = sum(
+        1 for cve_id, pub in nvd_dates.items()
+        if pub[:7] >= coverage_from
+    ) if coverage_from else len(results)
+    stats_output = build_stats(entries, total_analyzed=total_in_range)
 
     # Write
     output_dir = Path(args.output_dir)

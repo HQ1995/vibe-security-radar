@@ -19,12 +19,7 @@ function computeMetrics(stats: StatsData) {
     { label: "AI-Linked Vulnerabilities", value: totalCves },
     { label: "AI Tools Detected", value: aiToolsDetected },
     { label: "Critical / High", value: criticalHigh },
-    {
-      label: stats.coverage_from && stats.coverage_to
-        ? `Advisories Analyzed (${stats.coverage_from} \u2013 ${stats.coverage_to})`
-        : "Advisories Analyzed",
-      value: totalAnalyzed.toLocaleString(),
-    },
+    { label: "Advisories Analyzed", value: totalAnalyzed.toLocaleString() },
   ] as const;
 }
 
