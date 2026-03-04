@@ -516,11 +516,11 @@ def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
 ) -> list[dict]:
-    """Keep only results with ai_confidence > 0 and above the threshold, with no errors.
+    """Keep only results whose recomputed AI confidence is above zero and meets the threshold.
 
-    Also excludes results where LLM verification determined that all
-    AI-signaled bug-introducing commits are UNLIKELY or UNRELATED
-    (false positives from coarse git blame).
+    Also excludes results with errors or where LLM verification
+    determined that all AI-signaled bug-introducing commits are
+    UNLIKELY or UNRELATED (false positives from coarse git blame).
     """
     filtered = []
     excluded_by_verdict = 0
@@ -603,6 +603,9 @@ def _recompute_ai_confidence(result: dict) -> float:
 
     Uses best signal_confidence * blame_confidence without ratio penalty.
     LLM verification handles quality filtering instead.
+
+    Mirrors _compute_ai_confidence() in cve_analyzer/pipeline.py.
+    Keep both in sync when the scoring formula changes.
     """
     max_score = 0.0
     for bic in result.get("bug_introducing_commits", []):
