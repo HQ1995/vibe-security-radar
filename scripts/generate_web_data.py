@@ -525,9 +525,10 @@ def filter_ai_results(
     filtered = []
     excluded_by_verdict = 0
     for r in results:
-        if r.get("ai_confidence", 0) <= 0:
+        conf = _recompute_ai_confidence(r)
+        if conf <= 0:
             continue
-        if r.get("ai_confidence", 0) < min_confidence:
+        if conf < min_confidence:
             continue
         if r.get("error", ""):
             continue
@@ -595,6 +596,24 @@ def _build_bug_commit(bic: dict) -> dict:
             "causal_chain": llm_v.get("causal_chain", ""),
         } if llm_v else None,
     }
+
+
+def _recompute_ai_confidence(result: dict) -> float:
+    """Recompute AI confidence from raw BIC data.
+
+    Uses best signal_confidence * blame_confidence without ratio penalty.
+    LLM verification handles quality filtering instead.
+    """
+    max_score = 0.0
+    for bic in result.get("bug_introducing_commits", []):
+        signals = bic.get("commit", {}).get("ai_signals", [])
+        if not signals:
+            continue
+        best_signal = max(s.get("confidence", 0) for s in signals)
+        score = best_signal * bic.get("blame_confidence", 0)
+        if score > max_score:
+            max_score = score
+    return round(max_score, 4)
 
 
 def build_cve_entry(
@@ -678,7 +697,7 @@ def build_cve_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
-        "confidence": result.get("ai_confidence", 0),
+        "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
         "how_introduced": how_introduced,
         "bug_commits": bug_commits,
@@ -820,8 +839,20 @@ def main(argv: list[str] | None = None) -> None:
 
     # Transform
     entries = [build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered]
-    # Sort by confidence descending
-    entries = sorted(entries, key=lambda e: e.get("confidence", 0), reverse=True)
+    # Sort: LLM-confirmed first, then by confidence descending
+    entries = sorted(
+        entries,
+        key=lambda e: (
+            # 1. Has any CONFIRMED verdict
+            any(
+                (bc.get("llm_verdict") or {}).get("verdict") == "CONFIRMED"
+                for bc in e.get("bug_commits", [])
+            ),
+            # 2. Then by confidence
+            e.get("confidence", 0),
+        ),
+        reverse=True,
+    )
 
     # Build output
     cves_output = {
