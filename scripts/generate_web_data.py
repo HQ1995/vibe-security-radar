@@ -380,11 +380,11 @@ def load_fix_commit_dates(
         earliest_str: str | None = None
         for fc in fix_commits:
             sha = fc.get("sha", "")
-            if not sha:
+            if not sha or not re.fullmatch(r"[0-9a-fA-F]+", sha):
                 continue
             try:
                 out = subprocess.run(
-                    ["git", "log", "--format=%aI", "-1", "--", sha],
+                    ["git", "log", "--format=%aI", "-1", sha],
                     cwd=repo_path, capture_output=True, text=True, timeout=5,
                 )
                 if out.returncode == 0 and out.stdout.strip():
