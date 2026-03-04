@@ -871,12 +871,30 @@ def main(argv: list[str] | None = None) -> None:
         "total": len(entries),
         "cves": entries,
     }
-    # Count advisories published within the coverage window
+    # Count only cached (actually analyzed) advisories within the coverage window.
+    # Use published date when available; for IDs without a date, use year from
+    # the CVE ID prefix (e.g. CVE-2025-xxxx → 2025).  Non-CVE IDs (GHSA, JLSEC)
+    # that lack a published date are included since they likely fall in range.
     coverage_from = min((e.get("published", "")[:7] for e in entries if e.get("published")), default="")
-    total_in_range = sum(
-        1 for cve_id, pub in nvd_dates.items()
-        if pub[:7] >= coverage_from
-    ) if coverage_from else len(results)
+    coverage_year = int(coverage_from[:4]) if coverage_from else 0
+    if coverage_from:
+        total_in_range = 0
+        for r in results:
+            cve_id = r.get("cve_id", "")
+            pub = nvd_dates.get(cve_id, "")
+            if pub:
+                if pub[:7] >= coverage_from:
+                    total_in_range += 1
+            elif cve_id.startswith("CVE-"):
+                # Extract year from CVE-YYYY-nnnnn
+                parts = cve_id.split("-")
+                if len(parts) >= 2 and parts[1].isdigit() and int(parts[1]) >= coverage_year:
+                    total_in_range += 1
+            else:
+                # GHSA, JLSEC, etc. — no year in ID, include conservatively
+                total_in_range += 1
+    else:
+        total_in_range = len(results)
     stats_output = build_stats(entries, total_analyzed=total_in_range)
 
     # Write
