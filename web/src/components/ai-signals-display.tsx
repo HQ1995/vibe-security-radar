@@ -67,6 +67,11 @@ function SignalPill({ signal }: { readonly signal: AiSignalEntry }) {
       <span className="text-xs text-muted-foreground">
         {getSignalTypeLabel(signal.signal_type)}
       </span>
+      {signal.matched_text && (
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+          {signal.matched_text}
+        </code>
+      )}
       <Badge variant="outline" className="ml-1 font-mono text-xs">
         {formatConfidence(signal.confidence)}
       </Badge>

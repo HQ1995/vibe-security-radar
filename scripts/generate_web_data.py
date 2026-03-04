@@ -578,6 +578,7 @@ def _build_bug_commit(bic: dict) -> dict:
             {
                 "tool": sig.get("tool", ""),
                 "signal_type": sig.get("signal_type", ""),
+                "matched_text": sig.get("matched_text", ""),
                 "confidence": sig.get("confidence", 0),
             }
             for sig in commit.get("ai_signals", [])

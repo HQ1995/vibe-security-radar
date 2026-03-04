@@ -1,6 +1,7 @@
 export interface AiSignalEntry {
   readonly tool: string;
   readonly signal_type: string;
+  readonly matched_text: string;
   readonly confidence: number;
 }
 
