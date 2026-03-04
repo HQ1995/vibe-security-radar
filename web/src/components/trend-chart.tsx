@@ -117,7 +117,7 @@ export function TrendChart({ data }: TrendChartProps) {
   const handleBarClick = useCallback(
     (monthData: Record<string, string | number>) => {
       if (monthData?.month) {
-        router.push(`/cves?month=${monthData.month as string}`);
+        router.push(`/cves/month/${monthData.month as string}`);
       }
     },
     [router],
