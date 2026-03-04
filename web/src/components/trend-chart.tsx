@@ -115,9 +115,11 @@ export function TrendChart({ data }: TrendChartProps) {
   }, [allTools, visibleData]);
 
   const handleBarClick = useCallback(
-    (monthData: Record<string, string | number>) => {
-      if (monthData?.month) {
-        router.push(`/cves/month/${monthData.month as string}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (data: any) => {
+      const month = data?.payload?.month;
+      if (month) {
+        router.push(`/cves/month/${month}`);
       }
     },
     [router],
@@ -158,14 +160,6 @@ export function TrendChart({ data }: TrendChartProps) {
           <BarChart
             data={visibleData}
             margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
-            onClick={(state) => {
-              const payload = (
-                state as { activePayload?: Array<{ payload: Record<string, string | number> }> }
-              )?.activePayload?.[0]?.payload;
-              if (payload?.month) {
-                handleBarClick(payload);
-              }
-            }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -198,6 +192,7 @@ export function TrendChart({ data }: TrendChartProps) {
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 style={{ cursor: "pointer" }}
+                onClick={handleBarClick}
               />
             ))}
           </BarChart>
