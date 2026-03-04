@@ -74,6 +74,7 @@ export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const [chartKey, setChartKey] = useState(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -91,6 +92,13 @@ export function TrendChart({ data }: TrendChartProps) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Force a second render of the SVG so Chrome rebuilds hit-testing regions
+  useEffect(() => {
+    if (!size || chartKey > 0) return;
+    const timer = setTimeout(() => setChartKey(1), 50);
+    return () => clearTimeout(timer);
+  }, [size, chartKey]);
 
   // Collect all unique tool names across all months
   const allTools = useMemo(() => {
@@ -176,6 +184,7 @@ export function TrendChart({ data }: TrendChartProps) {
       <div ref={containerRef} className="h-72 w-full rounded-xl border border-border bg-card p-4" style={{ transform: "translateZ(0)" }}>
         {size ? (
           <BarChart
+            key={chartKey}
             data={visibleData}
             width={size.width}
             height={size.height}
