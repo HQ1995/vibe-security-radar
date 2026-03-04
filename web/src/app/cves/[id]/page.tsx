@@ -168,6 +168,7 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
         {withVerdict.map((commit) => {
           const v = commit.llm_verdict!;
           const shaText = commit.sha.slice(0, 12);
+          const hasRichData = v.verdict === "CONFIRMED" && (v.vuln_type || v.causal_chain);
           return (
             <div
               key={commit.sha}
@@ -175,23 +176,63 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
             >
               <div className="flex items-start gap-2">
                 <VerdictIcon verdict={v.verdict} />
-                <div>
-                  <span className="font-semibold">{v.verdict}</span>
-                  {" — "}
-                  {repoUrl ? (
-                    <a
-                      href={buildCommitUrl(repoUrl, commit.sha)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-xs text-primary underline-offset-4 hover:underline"
-                    >
-                      {shaText}
-                    </a>
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <span className="font-semibold">{v.verdict}</span>
+                    {" — "}
+                    {repoUrl ? (
+                      <a
+                        href={buildCommitUrl(repoUrl, commit.sha)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-primary underline-offset-4 hover:underline"
+                      >
+                        {shaText}
+                      </a>
+                    ) : (
+                      <span className="font-mono text-xs">{shaText}</span>
+                    )}
+                  </div>
+                  {hasRichData ? (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                      {v.vuln_type && (
+                        <>
+                          <dt className="font-medium text-muted-foreground">Vulnerability</dt>
+                          <dd className="capitalize">{v.vuln_type}</dd>
+                        </>
+                      )}
+                      {v.vuln_description && (
+                        <>
+                          <dt className="font-medium text-muted-foreground">Root Cause</dt>
+                          <dd className="text-muted-foreground">{v.vuln_description}</dd>
+                        </>
+                      )}
+                      {v.vulnerable_pattern && (
+                        <>
+                          <dt className="font-medium text-muted-foreground">Pattern</dt>
+                          <dd>
+                            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                              {v.vulnerable_pattern}
+                            </code>
+                          </dd>
+                        </>
+                      )}
+                      {v.causal_chain && (
+                        <>
+                          <dt className="font-medium text-muted-foreground">Causal Chain</dt>
+                          <dd className="text-muted-foreground">{v.causal_chain}</dd>
+                        </>
+                      )}
+                      {v.reasoning && (
+                        <>
+                          <dt className="font-medium text-muted-foreground">Reasoning</dt>
+                          <dd className="text-muted-foreground">{v.reasoning}</dd>
+                        </>
+                      )}
+                    </dl>
                   ) : (
-                    <span className="font-mono text-xs">{shaText}</span>
+                    <p className="text-muted-foreground">{v.reasoning}</p>
                   )}
-                  {" "}
-                  <span className="text-muted-foreground">{v.reasoning}</span>
                 </div>
               </div>
             </div>

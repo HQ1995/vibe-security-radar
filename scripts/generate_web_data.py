@@ -484,6 +484,10 @@ def _build_bug_commit(bic: dict) -> dict:
             "verdict": llm_v.get("verdict", ""),
             "reasoning": llm_v.get("reasoning", ""),
             "model": llm_v.get("model", ""),
+            "vuln_type": llm_v.get("vuln_type", ""),
+            "vuln_description": llm_v.get("vuln_description", ""),
+            "vulnerable_pattern": llm_v.get("vulnerable_pattern", ""),
+            "causal_chain": llm_v.get("causal_chain", ""),
         } if llm_v else None,
     }
 
@@ -552,6 +556,14 @@ def build_cve_entry(
     elif models:
         verified_by = ", ".join(sorted(models))
 
+    # Populate how_introduced from first CONFIRMED verdict's vuln_description
+    how_introduced = ""
+    for bic in result.get("bug_introducing_commits", []):
+        llm_v = bic.get("llm_verdict")
+        if llm_v and llm_v.get("verdict") == "CONFIRMED" and llm_v.get("vuln_description"):
+            how_introduced = llm_v["vuln_description"]
+            break
+
     return {
         "id": cve_id,
         "description": result.get("description", ""),
@@ -563,7 +575,7 @@ def build_cve_entry(
         "ai_tools": ai_tools,
         "confidence": result.get("ai_confidence", 0),
         "verified_by": verified_by,
-        "how_introduced": "",
+        "how_introduced": how_introduced,
         "bug_commits": bug_commits,
         "fix_commits": result.get("fix_commits", []),
         "references": result.get("references", []),

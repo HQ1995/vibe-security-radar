@@ -9,8 +9,15 @@ export function extractRepoName(repoUrl: string): string {
 }
 
 export function buildCommitUrl(repoUrl: string, sha: string): string {
-  const base = repoUrl.replace(/\/+$/, "");
-  return `${base}/commit/${sha}`;
+  try {
+    const url = new URL(repoUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "#";
+    const safeSha = sha.replace(/[^a-f0-9]/gi, "");
+    if (!safeSha) return "#";
+    return `${url.origin}${url.pathname.replace(/\/+$/, "")}/commit/${safeSha}`;
+  } catch {
+    return "#";
+  }
 }
 
 export function formatDate(dateString: string): string {

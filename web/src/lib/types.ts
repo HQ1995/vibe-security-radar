@@ -8,6 +8,10 @@ export interface LlmVerdict {
   readonly verdict: "CONFIRMED" | "UNLIKELY" | "UNRELATED";
   readonly reasoning: string;
   readonly model: string;
+  readonly vuln_type?: string;
+  readonly vuln_description?: string;
+  readonly vulnerable_pattern?: string;
+  readonly causal_chain?: string;
 }
 
 export interface BugCommit {
