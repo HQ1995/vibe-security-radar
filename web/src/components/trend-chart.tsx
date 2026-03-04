@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -73,6 +73,8 @@ function CustomTooltip({
 
 export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Collect all unique tool names across all months
   const allTools = useMemo(() => {
@@ -156,6 +158,11 @@ export function TrendChart({ data }: TrendChartProps) {
       </div>
 
       <div className="h-72 w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
+        {!mounted ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Loading chart...
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={visibleData}
@@ -197,6 +204,7 @@ export function TrendChart({ data }: TrendChartProps) {
             ))}
           </BarChart>
         </ResponsiveContainer>
+        )}
       </div>
 
       {/* Inline legend for visible tools */}
