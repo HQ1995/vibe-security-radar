@@ -411,20 +411,15 @@ def fetch_ghsa_published_dates_api(
     for successfully resolved entries; silently skips failures.
     """
     token = os.environ.get("GITHUB_TOKEN", "")
-    if not token:
-        return {}
     index: dict[str, str] = {}
     for i, ghsa_id in enumerate(ghsa_ids):
         if i > 0:
             time.sleep(0.72)  # ~1.39 req/s, matching GitHubAdvisoryRateLimiter
         url = f"https://api.github.com/advisories/{ghsa_id}"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {token}",
-            },
-        )
+        headers = {"Accept": "application/vnd.github+json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(url, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
