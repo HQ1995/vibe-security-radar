@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getCves } from "@/lib/data";
 import { CveListClient } from "@/components/cve-list";
 import { DataFreshness } from "@/components/data-freshness";
@@ -19,7 +20,9 @@ export default function CvesPage() {
         </p>
         <DataFreshness generatedAt={data.generated_at} />
       </div>
-      <CveListClient cves={data.cves} />
+      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading filters…</div>}>
+        <CveListClient cves={data.cves} />
+      </Suspense>
     </main>
   );
 }

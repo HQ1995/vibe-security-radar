@@ -17,6 +17,7 @@ function makeCve(overrides: Partial<CveEntry> = {}): CveEntry {
     ecosystem: "",
     published: "2026-01-15",
     ai_tools: ["cursor"],
+    languages: [],
     confidence: 0.85,
     verified_by: "",
     how_introduced: "",
