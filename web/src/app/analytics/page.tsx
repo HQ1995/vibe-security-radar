@@ -73,18 +73,15 @@ export default function AnalyticsPage() {
       {repoData.length > 0 && (
         <section>
           <h2 className="mb-4 text-xl font-semibold">Top Repositories</h2>
-          <div className="overflow-x-auto">
-            <div className="flex gap-4">
-              {repoData.map((rd) => (
-                <div key={rd.repo} className="w-72 shrink-0">
-                  <RepoCard
-                    repo={rd.repo}
-                    count={rd.count}
-                    severities={rd.severities}
-                  />
-                </div>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {repoData.map((rd) => (
+              <RepoCard
+                key={rd.repo}
+                repo={rd.repo}
+                count={rd.count}
+                severities={rd.severities}
+              />
+            ))}
           </div>
         </section>
       )}

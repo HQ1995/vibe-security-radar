@@ -23,9 +23,9 @@ export function EntityCard({
     <Link href={href}>
       <Card className="transition-colors hover:border-primary/50">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 text-lg min-w-0">
             {icon}
-            {label}
+            <span className="truncate" title={label}>{label}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">

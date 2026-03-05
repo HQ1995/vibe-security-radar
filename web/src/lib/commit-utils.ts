@@ -40,6 +40,16 @@ export function formatPublished(published: string): string {
   if (!published) return "";
   // Year-only (e.g., "2025")
   if (/^\d{4}$/.test(published)) return published;
+  // Year-month only (e.g., "2025-05") → "May 2025"
+  if (/^\d{4}-\d{2}$/.test(published)) {
+    const [year, month] = published.split("-");
+    const date = new Date(Number(year), Number(month) - 1);
+    if (isNaN(date.getTime())) return published;
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+    });
+  }
   try {
     const date = new Date(published);
     if (isNaN(date.getTime())) return published;
