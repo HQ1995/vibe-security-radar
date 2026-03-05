@@ -34,9 +34,9 @@ uv run ruff check src/ tests/                # Lint
 
 Default batch start date: **May 2025**. CVEs before 2025-05 are outside coverage.
 
-## Regression Baseline
+## Regression
 
-`cve-analyzer/regression/baseline-2026-03-05/` — 58 per-CVE markdown files. Diff against these after pipeline changes to catch lost BICs or dropped AI signals.
+Baseline: `cve-analyzer/regression/baseline-2026-03-05.md` (74 TPs). Use `/regression` after pipeline changes to check for lost or new true positives.
 
 ## Code Conventions
 
