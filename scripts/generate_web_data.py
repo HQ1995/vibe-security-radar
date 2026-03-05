@@ -698,13 +698,35 @@ def build_cve_entry(
 ) -> dict:
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
-    ai_signals = result.get("ai_signals", [])
 
-    # Deduplicated list of AI tool names
-    ai_tools = sorted(set(sig.get("tool", "") for sig in ai_signals if sig.get("tool")))
+    # Deduplicated list of AI tool names — only from BICs whose LLM verdict
+    # is CONFIRMED or missing (benefit of the doubt).  UNRELATED/UNLIKELY
+    # commits should not contribute their tools to the CVE's ai_tools list.
+    ai_tools_set: set[str] = set()
+    for bic in result.get("bug_introducing_commits", []):
+        commit = bic.get("commit", {})
+        signals = commit.get("ai_signals", [])
+        if not signals:
+            continue
+        llm_v = bic.get("llm_verdict")
+        verdict = llm_v.get("verdict", "") if llm_v else ""
+        if verdict in ("UNLIKELY", "UNRELATED"):
+            continue
+        for sig in signals:
+            tool = sig.get("tool", "")
+            if tool:
+                ai_tools_set.add(tool)
+    ai_tools = sorted(ai_tools_set)
 
+    # Only include BICs with AI signals whose verdict is CONFIRMED or missing.
+    # Skip commits without AI signals (plain human commits from git blame)
+    # and those the LLM judged UNLIKELY/UNRELATED.
     raw_bics = result.get("bug_introducing_commits", [])
-    bug_commits = [_build_bug_commit(bic) for bic in raw_bics]
+    bug_commits = [
+        _build_bug_commit(bic) for bic in raw_bics
+        if bic.get("commit", {}).get("ai_signals")
+        and (bic.get("llm_verdict") or {}).get("verdict", "") not in ("UNLIKELY", "UNRELATED")
+    ]
 
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
@@ -769,7 +791,7 @@ def build_cve_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
-        "languages": _determine_languages(raw_bics),
+        "languages": _determine_languages(bug_commits),
         "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
         "how_introduced": how_introduced,
