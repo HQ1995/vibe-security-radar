@@ -42,6 +42,69 @@ DEFAULT_REPOS_DIR = os.path.expanduser("~/.cache/cve-analyzer/repos")
 DEFAULT_OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "web" / "data")
 DEFAULT_MIN_CONFIDENCE = 0.0
 
+# File extension → language mapping for language analytics
+EXTENSION_TO_LANGUAGE: dict[str, str] = {
+    ".py": "Python",
+    ".js": "JavaScript",
+    ".mjs": "JavaScript",
+    ".cjs": "JavaScript",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".go": "Go",
+    ".rs": "Rust",
+    ".rb": "Ruby",
+    ".java": "Java",
+    ".kt": "Kotlin",
+    ".php": "PHP",
+    ".c": "C",
+    ".h": "C",
+    ".cpp": "C++",
+    ".cc": "C++",
+    ".cxx": "C++",
+    ".hpp": "C++",
+    ".hxx": "C++",
+    ".cs": "C#",
+    ".swift": "Swift",
+    ".vue": "Vue",
+    ".dart": "Dart",
+    ".scala": "Scala",
+    ".r": "R",
+    ".lua": "Lua",
+    ".ex": "Elixir",
+    ".exs": "Elixir",
+    ".erl": "Erlang",
+    ".zig": "Zig",
+    ".nim": "Nim",
+    ".pl": "Perl",
+    ".pm": "Perl",
+    ".sh": "Shell",
+    ".bash": "Shell",
+    ".zsh": "Shell",
+}
+
+
+def _file_extension_to_language(filepath: str) -> str | None:
+    """Map a file path to a programming language via its extension.
+
+    Returns None if the extension is not recognized.
+    """
+    if not filepath:
+        return None
+    ext = os.path.splitext(filepath)[1].lower()
+    # Special-case: .h could be C or C++, but we default to C
+    return EXTENSION_TO_LANGUAGE.get(ext)
+
+
+def _determine_languages(bug_commits: list[dict]) -> list[str]:
+    """Extract sorted unique languages from blamed_file extensions in bug commits."""
+    languages: set[str] = set()
+    for bc in bug_commits:
+        filepath = bc.get("blamed_file", "")
+        lang = _file_extension_to_language(filepath)
+        if lang:
+            languages.add(lang)
+    return sorted(languages)
+
 
 # ---------------------------------------------------------------------------
 # CVSS 3.1 scoring (simplified but accurate for common vectors)
@@ -338,12 +401,25 @@ def load_ghsa_published_dates(
     return index
 
 
+def _parse_github_owner_repo(repo_url: str) -> tuple[str, str] | None:
+    """Extract (owner, repo) from a GitHub URL, or None if unparseable."""
+    m = re.match(r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/*$", repo_url.rstrip("/"))
+    return (m.group(1), m.group(2)) if m else None
+
+
 def _repo_url_to_dir(repo_url: str) -> str | None:
     """Convert a GitHub repo URL to a local cache directory name (owner_repo)."""
-    m = re.match(r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/*$", repo_url.rstrip("/"))
-    if m:
-        return f"{m.group(1)}_{m.group(2)}"
-    return None
+    parts = _parse_github_owner_repo(repo_url)
+    return f"{parts[0]}_{parts[1]}" if parts else None
+
+
+def _repo_url_to_display_name(repo_url: str) -> str | None:
+    """Extract 'owner/repo' from a GitHub URL, lowercased for dedup.
+
+    Returns None for non-GitHub or unparseable URLs.
+    """
+    parts = _parse_github_owner_repo(repo_url)
+    return f"{parts[0]}/{parts[1]}".lower() if parts else None
 
 
 def load_fix_commit_dates(
@@ -627,10 +703,8 @@ def build_cve_entry(
     # Deduplicated list of AI tool names
     ai_tools = sorted(set(sig.get("tool", "") for sig in ai_signals if sig.get("tool")))
 
-    bug_commits = [
-        _build_bug_commit(bic)
-        for bic in result.get("bug_introducing_commits", [])
-    ]
+    raw_bics = result.get("bug_introducing_commits", [])
+    bug_commits = [_build_bug_commit(bic) for bic in raw_bics]
 
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
@@ -695,6 +769,7 @@ def build_cve_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
+        "languages": _determine_languages(raw_bics),
         "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
         "how_introduced": how_introduced,
@@ -712,6 +787,8 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
     """Aggregate statistics from a list of web CVE entries."""
     by_tool: dict[str, int] = {}
     by_severity: dict[str, int] = {}
+    by_language: dict[str, int] = {}
+    by_repo: dict[str, int] = {}
     month_counts: dict[str, int] = {}
     month_tool_counts: dict[str, dict[str, int]] = {}
 
@@ -719,6 +796,18 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
         # Tools
         for tool in entry.get("ai_tools", []):
             by_tool[tool] = by_tool.get(tool, 0) + 1
+
+        # Languages (count each CVE once per language it touches)
+        for lang in entry.get("languages", []):
+            by_language[lang] = by_language.get(lang, 0) + 1
+
+        # Repos (count each CVE once per unique repo)
+        seen_repos: set[str] = set()
+        for fc in entry.get("fix_commits", []):
+            name = _repo_url_to_display_name(fc.get("repo_url", ""))
+            if name and name not in seen_repos:
+                seen_repos.add(name)
+                by_repo[name] = by_repo.get(name, 0) + 1
 
         # Severity
         sev = entry.get("severity", "UNKNOWN")
@@ -753,6 +842,8 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
         "coverage_to": coverage_to,
         "by_tool": by_tool,
         "by_severity": by_severity,
+        "by_language": by_language,
+        "by_repo": by_repo,
         "by_month": by_month,
     }
 

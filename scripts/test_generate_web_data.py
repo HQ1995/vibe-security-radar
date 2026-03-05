@@ -15,7 +15,10 @@ from generate_web_data import (
     filter_ai_results,
     load_cached_results,
     _extract_cvss_score,
+    _file_extension_to_language,
+    _determine_languages,
     _parse_severity_label,
+    _repo_url_to_display_name,
 )
 
 
@@ -105,7 +108,12 @@ class TestFilterAiResults:
     def test_filters_zero_confidence(self):
         results = [
             _make_result(cve_id="CVE-A", ai_confidence=0.9),
-            _make_result(cve_id="CVE-B", ai_confidence=0.0),
+            _make_result(
+                cve_id="CVE-B",
+                ai_confidence=0.0,
+                bug_introducing_commits=[],
+                ai_signals=[],
+            ),
         ]
         filtered = filter_ai_results(results)
         ids = [r["cve_id"] for r in filtered]
@@ -123,12 +131,39 @@ class TestFilterAiResults:
         assert "CVE-B" not in ids
 
     def test_respects_min_confidence_threshold(self):
+        # _recompute_ai_confidence uses best signal * blame_confidence.
+        # Build BICs with specific confidence values to test the threshold.
+        def _bic(signal_conf: float, blame_conf: float) -> list[dict]:
+            return [
+                {
+                    "commit": {
+                        "sha": "abc",
+                        "author_name": "dev",
+                        "author_email": "dev@example.com",
+                        "committer_name": "dev",
+                        "committer_email": "dev@example.com",
+                        "message": "fix",
+                        "authored_date": "2026-01-15T00:00:00Z",
+                        "ai_signals": [
+                            {"tool": "cursor", "signal_type": "co_author_trailer",
+                             "matched_text": "x", "confidence": signal_conf}
+                        ],
+                    },
+                    "blamed_file": "main.py",
+                    "blamed_lines": [1],
+                    "blame_confidence": blame_conf,
+                }
+            ]
+
         results = [
-            _make_result(cve_id="CVE-A", ai_confidence=0.5),
-            _make_result(cve_id="CVE-B", ai_confidence=0.1),
-            _make_result(cve_id="CVE-C", ai_confidence=0.05),
+            # 0.9 * 0.9 = 0.81 → above 0.5
+            _make_result(cve_id="CVE-A", bug_introducing_commits=_bic(0.9, 0.9)),
+            # 0.3 * 0.3 = 0.09 → below 0.5
+            _make_result(cve_id="CVE-B", bug_introducing_commits=_bic(0.3, 0.3)),
+            # 0.1 * 0.1 = 0.01 → below 0.5
+            _make_result(cve_id="CVE-C", bug_introducing_commits=_bic(0.1, 0.1)),
         ]
-        filtered = filter_ai_results(results, min_confidence=0.2)
+        filtered = filter_ai_results(results, min_confidence=0.5)
         ids = [r["cve_id"] for r in filtered]
         assert "CVE-A" in ids
         assert "CVE-B" not in ids
@@ -269,11 +304,14 @@ class TestBuildCveEntry:
 class TestBuildStats:
     """build_stats aggregates statistics from web entries."""
 
-    def _make_entry(self, cve_id="CVE-1", severity="HIGH", ai_tools=None, published="2026-01"):
+    def _make_entry(self, cve_id="CVE-1", severity="HIGH", ai_tools=None,
+                    published="2026-01", languages=None, fix_commits=None):
         return {
             "id": cve_id,
             "severity": severity,
             "ai_tools": ai_tools or ["cursor"],
+            "languages": languages or [],
+            "fix_commits": fix_commits or [],
             "confidence": 0.8,
             "published": published,
             "ecosystem": "",
@@ -343,3 +381,237 @@ class TestLoadCachedResults:
         with tempfile.TemporaryDirectory() as tmpdir:
             results = load_cached_results(tmpdir)
             assert results == []
+
+
+# ---------------------------------------------------------------------------
+# TestFileExtensionToLanguage
+# ---------------------------------------------------------------------------
+
+class TestFileExtensionToLanguage:
+    """_file_extension_to_language maps file extensions to language names."""
+
+    def test_python_extension(self):
+        assert _file_extension_to_language("src/main.py") == "Python"
+
+    def test_javascript_extension(self):
+        assert _file_extension_to_language("index.js") == "JavaScript"
+
+    def test_typescript_extensions(self):
+        assert _file_extension_to_language("app.ts") == "TypeScript"
+        assert _file_extension_to_language("component.tsx") == "TypeScript"
+
+    def test_go_extension(self):
+        assert _file_extension_to_language("main.go") == "Go"
+
+    def test_rust_extension(self):
+        assert _file_extension_to_language("lib.rs") == "Rust"
+
+    def test_c_extensions(self):
+        assert _file_extension_to_language("main.c") == "C"
+        assert _file_extension_to_language("header.h") == "C"
+
+    def test_cpp_extensions(self):
+        assert _file_extension_to_language("main.cpp") == "C++"
+        assert _file_extension_to_language("main.cc") == "C++"
+
+    def test_unknown_extension_returns_none(self):
+        assert _file_extension_to_language("data.csv") is None
+        assert _file_extension_to_language("Makefile") is None
+
+    def test_empty_string_returns_none(self):
+        assert _file_extension_to_language("") is None
+
+    def test_case_insensitive(self):
+        assert _file_extension_to_language("main.PY") == "Python"
+        assert _file_extension_to_language("app.JS") == "JavaScript"
+
+
+# ---------------------------------------------------------------------------
+# TestDetermineLanguages
+# ---------------------------------------------------------------------------
+
+class TestDetermineLanguages:
+    """_determine_languages extracts sorted unique languages from bug commits."""
+
+    def test_single_language(self):
+        commits = [{"blamed_file": "src/main.py"}]
+        assert _determine_languages(commits) == ["Python"]
+
+    def test_multiple_languages(self):
+        commits = [
+            {"blamed_file": "src/main.py"},
+            {"blamed_file": "lib/util.js"},
+        ]
+        assert _determine_languages(commits) == ["JavaScript", "Python"]
+
+    def test_deduplicates(self):
+        commits = [
+            {"blamed_file": "src/a.py"},
+            {"blamed_file": "src/b.py"},
+        ]
+        assert _determine_languages(commits) == ["Python"]
+
+    def test_empty_commits(self):
+        assert _determine_languages([]) == []
+
+    def test_unknown_extensions_excluded(self):
+        commits = [
+            {"blamed_file": "src/main.py"},
+            {"blamed_file": "data.csv"},
+        ]
+        assert _determine_languages(commits) == ["Python"]
+
+    def test_missing_blamed_file(self):
+        commits = [{"blamed_file": ""}]
+        assert _determine_languages(commits) == []
+
+
+# ---------------------------------------------------------------------------
+# TestBuildCveEntryLanguages
+# ---------------------------------------------------------------------------
+
+class TestBuildCveEntryLanguages:
+    """build_cve_entry includes languages derived from bug commit blamed_files."""
+
+    def test_entry_has_languages_field(self):
+        result = _make_result()
+        entry = build_cve_entry(result)
+        assert "languages" in entry
+        assert entry["languages"] == ["Python"]
+
+    def test_entry_multiple_languages(self):
+        result = _make_result(
+            bug_introducing_commits=[
+                {
+                    "commit": {
+                        "sha": "abc123",
+                        "author_name": "dev",
+                        "author_email": "dev@example.com",
+                        "committer_name": "dev",
+                        "committer_email": "dev@example.com",
+                        "message": "fix",
+                        "authored_date": "2026-01-15T00:00:00Z",
+                        "ai_signals": [{"tool": "cursor", "signal_type": "co_author_trailer", "matched_text": "x", "confidence": 0.9}],
+                    },
+                    "blamed_file": "src/main.py",
+                    "blamed_lines": [1],
+                    "blame_confidence": 0.9,
+                },
+                {
+                    "commit": {
+                        "sha": "def456",
+                        "author_name": "dev",
+                        "author_email": "dev@example.com",
+                        "committer_name": "dev",
+                        "committer_email": "dev@example.com",
+                        "message": "fix",
+                        "authored_date": "2026-01-15T00:00:00Z",
+                        "ai_signals": [{"tool": "cursor", "signal_type": "co_author_trailer", "matched_text": "x", "confidence": 0.9}],
+                    },
+                    "blamed_file": "lib/util.js",
+                    "blamed_lines": [1],
+                    "blame_confidence": 0.9,
+                },
+            ]
+        )
+        entry = build_cve_entry(result)
+        assert entry["languages"] == ["JavaScript", "Python"]
+
+
+# ---------------------------------------------------------------------------
+# TestBuildStatsLanguages
+# ---------------------------------------------------------------------------
+
+class TestBuildStatsLanguages:
+    """build_stats includes by_language counts."""
+
+    def test_by_language_counts(self):
+        entries = [
+            {"id": "CVE-1", "severity": "HIGH", "ai_tools": ["cursor"], "languages": ["Python"], "confidence": 0.8, "published": "2026-01", "ecosystem": ""},
+            {"id": "CVE-2", "severity": "HIGH", "ai_tools": ["cursor"], "languages": ["Python", "JavaScript"], "confidence": 0.8, "published": "2026-01", "ecosystem": ""},
+            {"id": "CVE-3", "severity": "HIGH", "ai_tools": ["cursor"], "languages": ["Go"], "confidence": 0.8, "published": "2026-01", "ecosystem": ""},
+        ]
+        stats = build_stats(entries)
+        assert stats["by_language"]["Python"] == 2
+        assert stats["by_language"]["JavaScript"] == 1
+        assert stats["by_language"]["Go"] == 1
+
+    def test_by_language_empty(self):
+        stats = build_stats([])
+        assert stats["by_language"] == {}
+
+
+# ---------------------------------------------------------------------------
+# TestRepoUrlToDisplayName
+# ---------------------------------------------------------------------------
+
+class TestRepoUrlToDisplayName:
+    """_repo_url_to_display_name extracts owner/repo from GitHub URLs."""
+
+    def test_github_url(self):
+        assert _repo_url_to_display_name("https://github.com/Owner/Repo") == "owner/repo"
+
+    def test_github_url_with_git_suffix(self):
+        assert _repo_url_to_display_name("https://github.com/owner/repo.git") == "owner/repo"
+
+    def test_non_github_url(self):
+        assert _repo_url_to_display_name("https://gitlab.com/owner/repo") is None
+
+    def test_empty_string(self):
+        assert _repo_url_to_display_name("") is None
+
+    def test_trailing_slash(self):
+        assert _repo_url_to_display_name("https://github.com/owner/repo/") == "owner/repo"
+
+
+# ---------------------------------------------------------------------------
+# TestBuildStatsRepo
+# ---------------------------------------------------------------------------
+
+class TestBuildStatsRepo:
+    """build_stats includes by_repo counts."""
+
+    def test_by_repo_counts(self):
+        entries = [
+            {
+                "id": "CVE-1", "severity": "HIGH", "ai_tools": ["cursor"],
+                "languages": ["Python"], "confidence": 0.8, "published": "2026-01",
+                "ecosystem": "",
+                "fix_commits": [{"sha": "a", "repo_url": "https://github.com/owner/repo-a", "source": "osv"}],
+            },
+            {
+                "id": "CVE-2", "severity": "HIGH", "ai_tools": ["cursor"],
+                "languages": ["Python"], "confidence": 0.8, "published": "2026-01",
+                "ecosystem": "",
+                "fix_commits": [{"sha": "b", "repo_url": "https://github.com/owner/repo-a", "source": "osv"}],
+            },
+            {
+                "id": "CVE-3", "severity": "CRITICAL", "ai_tools": ["cursor"],
+                "languages": ["Go"], "confidence": 0.8, "published": "2026-01",
+                "ecosystem": "",
+                "fix_commits": [{"sha": "c", "repo_url": "https://github.com/other/repo-b", "source": "osv"}],
+            },
+        ]
+        stats = build_stats(entries)
+        assert stats["by_repo"]["owner/repo-a"] == 2
+        assert stats["by_repo"]["other/repo-b"] == 1
+
+    def test_by_repo_dedupes_per_cve(self):
+        """A CVE with two fix commits in the same repo counts once."""
+        entries = [
+            {
+                "id": "CVE-1", "severity": "HIGH", "ai_tools": ["cursor"],
+                "languages": [], "confidence": 0.8, "published": "2026-01",
+                "ecosystem": "",
+                "fix_commits": [
+                    {"sha": "a", "repo_url": "https://github.com/owner/repo", "source": "osv"},
+                    {"sha": "b", "repo_url": "https://github.com/owner/repo", "source": "osv"},
+                ],
+            },
+        ]
+        stats = build_stats(entries)
+        assert stats["by_repo"]["owner/repo"] == 1
+
+    def test_by_repo_empty(self):
+        stats = build_stats([])
+        assert stats["by_repo"] == {}

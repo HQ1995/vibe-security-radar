@@ -11,7 +11,7 @@ describe("getCves", () => {
   it("cves have required fields", () => {
     const data = getCves();
     for (const cve of data.cves) {
-      expect(cve.id).toMatch(/^(CVE-|GHSA-)/);
+      expect(cve.id).toMatch(/^(CVE-|GHSA-|OSV-)/);
       expect(typeof cve.confidence).toBe("number");
       expect(Array.isArray(cve.ai_tools)).toBe(true);
     }

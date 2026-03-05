@@ -40,6 +40,10 @@ export const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
 
 export const TOOL_BRAND_FALLBACK_COLOR = "#71717A";
 
+export function getToolColor(tool: string): string {
+  return TOOL_BRAND_COLORS[tool] ?? TOOL_BRAND_FALLBACK_COLOR;
+}
+
 export const SEVERITY_COLORS: Readonly<Record<string, string>> = {
   CRITICAL: "bg-red-600 text-white hover:bg-red-600",
   HIGH: "bg-orange-500 text-white hover:bg-orange-500",
@@ -101,6 +105,40 @@ export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   commit_message: "Commit message",
   branch_name: "Branch name",
 };
+
+/** Brand colors for programming languages. */
+export const LANGUAGE_COLORS: Readonly<Record<string, string>> = {
+  Python: "#3572A5",
+  JavaScript: "#F7DF1E",
+  TypeScript: "#3178C6",
+  Go: "#00ADD8",
+  Rust: "#DEA584",
+  Ruby: "#CC342D",
+  Java: "#B07219",
+  Kotlin: "#A97BFF",
+  PHP: "#4F5D95",
+  C: "#555555",
+  "C++": "#F34B7D",
+  "C#": "#178600",
+  Swift: "#F05138",
+  Vue: "#41B883",
+  Dart: "#00B4AB",
+  Scala: "#DC322F",
+  R: "#198CE7",
+  Lua: "#000080",
+  Elixir: "#6E4A7E",
+  Erlang: "#B83998",
+  Zig: "#F7A41D",
+  Nim: "#FFE953",
+  Perl: "#0298C3",
+  Shell: "#89E051",
+};
+
+export const LANGUAGE_FALLBACK_COLOR = "#71717A";
+
+export function getLanguageColor(language: string): string {
+  return LANGUAGE_COLORS[language] ?? LANGUAGE_FALLBACK_COLOR;
+}
 
 export function severityBadgeClass(severity: string): string {
   return SEVERITY_COLORS[severity] ?? SEVERITY_COLORS["UNKNOWN"];

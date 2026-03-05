@@ -13,8 +13,7 @@ import {
 } from "recharts";
 import {
   getToolDisplayName,
-  TOOL_BRAND_COLORS,
-  TOOL_BRAND_FALLBACK_COLOR,
+  getToolColor,
 } from "@/lib/constants";
 
 const VISIBLE_MONTHS = 8;
@@ -188,7 +187,7 @@ export function TrendChart({ data }: TrendChartProps) {
                 key={tool}
                 dataKey={tool}
                 stackId="tools"
-                fill={TOOL_BRAND_COLORS[tool] ?? TOOL_BRAND_FALLBACK_COLOR}
+                fill={getToolColor(tool)}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
                 style={{ cursor: "pointer" }}
@@ -208,7 +207,7 @@ export function TrendChart({ data }: TrendChartProps) {
                 className="inline-block h-2.5 w-2.5 rounded-sm"
                 style={{
                   backgroundColor:
-                    TOOL_BRAND_COLORS[tool] ?? TOOL_BRAND_FALLBACK_COLOR,
+                    getToolColor(tool),
                 }}
               />
               <span>{getToolDisplayName(tool)}</span>

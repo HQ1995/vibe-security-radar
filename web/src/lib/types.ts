@@ -41,6 +41,7 @@ export interface CveEntry {
   readonly ecosystem: string;
   readonly published: string;
   readonly ai_tools: readonly string[];
+  readonly languages: readonly string[];
   readonly confidence: number;
   readonly verified_by: string;
   readonly how_introduced: string;
@@ -63,6 +64,8 @@ export interface StatsData {
   readonly coverage_to: string;
   readonly by_tool: Readonly<Record<string, number>>;
   readonly by_severity: Readonly<Record<string, number>>;
+  readonly by_language: Readonly<Record<string, number>>;
+  readonly by_repo: Readonly<Record<string, number>>;
   readonly by_month: readonly {
     readonly month: string;
     readonly count: number;

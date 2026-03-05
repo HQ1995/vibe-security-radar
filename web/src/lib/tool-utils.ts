@@ -1,3 +1,5 @@
+import { buildDistributionData } from "@/lib/distribution-utils";
+
 export interface ToolData {
   readonly tool: string;
   readonly count: number;
@@ -11,14 +13,7 @@ export function buildToolData(
     readonly severity: string;
   }[],
 ): readonly ToolData[] {
-  return Object.entries(byTool)
-    .map(([tool, count]) => {
-      const toolCves = cves.filter((c) => c.ai_tools.includes(tool));
-      const severities: Record<string, number> = {};
-      for (const cve of toolCves) {
-        severities[cve.severity] = (severities[cve.severity] ?? 0) + 1;
-      }
-      return { tool, count, severities } as const;
-    })
-    .sort((a, b) => b.count - a.count);
+  return buildDistributionData(byTool, cves, (c, key) =>
+    c.ai_tools.includes(key),
+  ).map((e) => ({ tool: e.key, count: e.count, severities: e.severities }));
 }
