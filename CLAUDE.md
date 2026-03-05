@@ -43,3 +43,7 @@ Baseline: `cve-analyzer/regression/baseline-2026-03-05.md` (74 TPs). Use `/regre
 - Dataclasses (no pydantic), httpx sync (no async), subprocess.run (no GitPython)
 - JSON file cache in `~/.cache/cve-analyzer/`
 - Tests use JSON fixtures in `tests/fixtures/`, no real API calls
+
+## LLM Cost Reporting
+
+After any operation that calls external LLMs (e.g. `--llm-verify`), report token usage and estimated cost.
