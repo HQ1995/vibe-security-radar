@@ -39,7 +39,7 @@ DEFAULT_GHSA_DB_DIR = os.path.expanduser(
     "~/.cache/cve-analyzer/advisory-database/advisories"
 )
 DEFAULT_REPOS_DIR = os.path.expanduser("~/.cache/cve-analyzer/repos")
-DEFAULT_OUTPUT_DIR = "web/data"
+DEFAULT_OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "web" / "data")
 DEFAULT_MIN_CONFIDENCE = 0.0
 
 
