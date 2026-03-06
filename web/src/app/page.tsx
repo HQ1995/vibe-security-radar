@@ -23,6 +23,9 @@ export default function HomePage() {
           Tracking the security cost of vibe coding
         </p>
         <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
+        <p className="text-sm text-amber-600 dark:text-amber-400">
+          This project is under active development. Data may contain inaccuracies and more vulnerabilities are being analyzed.
+        </p>
       </section>
 
       <StatsCards stats={stats} />
