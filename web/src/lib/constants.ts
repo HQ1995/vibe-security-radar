@@ -35,6 +35,11 @@ export const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
   google_antigravity: "#34A853",
   kilo_code: "#F97316",
   codegeex: "#3B82F6",
+  amp: "#FF5543",
+  v0: "#18181B",
+  same_dev: "#EC4899",
+  leap_new: "#10B981",
+  traycer: "#A855F7",
   unknown_ai: "#71717A",
 };
 
@@ -96,6 +101,11 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   bolt_new: "Bolt.new",
   zencoder: "Zencoder",
   codegpt: "CodeGPT",
+  amp: "Amp",
+  v0: "v0",
+  same_dev: "Same.dev",
+  leap_new: "Leap.new",
+  traycer: "Traycer",
   unknown_ai: "Unknown AI",
 };
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getStats } from "@/lib/data";
 import { DataFreshness } from "@/components/data-freshness";
+import { TOOL_DISPLAY_NAMES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
@@ -8,43 +9,10 @@ export const metadata: Metadata = {
     "Methodology and data sources behind Vibe Security Radar — a public tracker for security vulnerabilities introduced by AI coding tools.",
 };
 
-const AI_TOOLS = [
-  "Claude Code",
-  "Cursor",
-  "Aider",
-  "GitHub Copilot",
-  "Sweep",
-  "Devin",
-  "Windsurf",
-  "Codeium",
-  "Amazon Q",
-  "Tabnine",
-  "Sourcegraph Cody",
-  "OpenAI Codex",
-  "Google Gemini",
-  "Google Jules",
-  "Google Antigravity",
-  "OpenCode",
-  "Kiro",
-  "JetBrains Junie",
-  "Roo Code",
-  "Cline",
-  "OpenHands",
-  "Lovable",
-  "Fine Dev",
-  "Replit Agent",
-  "Qodo",
-  "Continue",
-  "Augment Code",
-  "Trae",
-  "GitLab Duo",
-  "Kimi Code",
-  "Kilo Code",
-  "CodeGeeX",
-  "Bolt.new",
-  "Zencoder",
-  "CodeGPT",
-] as const;
+/** Derive the tool list from the single source of truth, excluding the catch-all. */
+const AI_TOOLS = Object.entries(TOOL_DISPLAY_NAMES)
+  .filter(([key]) => key !== "unknown_ai")
+  .map(([, name]) => name);
 
 const DATA_SOURCES = [
   {
@@ -252,6 +220,21 @@ export default function AboutPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Contact */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold tracking-tight">Contact</h2>
+        <p className="leading-relaxed text-muted-foreground">
+          Questions, suggestions, or found a false positive/negative? Reach out
+          at{" "}
+          <a
+            href="mailto:hanqing@gatech.edu"
+            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
+          >
+            hanqing@gatech.edu
+          </a>
+        </p>
       </section>
     </main>
   );

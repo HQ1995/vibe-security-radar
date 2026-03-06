@@ -40,6 +40,11 @@ const TOOLS_WITH_ICONS = new Set([
   "bolt_new",
   "zencoder",
   "codegpt",
+  "amp",
+  "v0",
+  "same_dev",
+  "leap_new",
+  "traycer",
   "unknown_ai",
 ]);
 
