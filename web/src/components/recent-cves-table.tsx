@@ -71,11 +71,13 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                 <TableCell className="text-center">
                   <VerifiedBadge verifiedBy={cve.verified_by} />
                 </TableCell>
-                <TableCell
-                  className="text-sm text-muted-foreground truncate"
-                  title={cve.description}
-                >
-                  {cve.description}
+                <TableCell className="truncate" title={cve.description}>
+                  <Link
+                    href={`/cves/${cve.id}`}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {cve.description}
+                  </Link>
                 </TableCell>
               </TableRow>
             ))}
