@@ -58,11 +58,15 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {cve.languages.map((lang) => (
-                      <LanguageBadge key={lang} language={lang} />
-                    ))}
-                  </div>
+                  {cve.languages.length === 0 ? (
+                    <span className="text-muted-foreground/40 text-xs">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {cve.languages.map((lang) => (
+                        <LanguageBadge key={lang} language={lang} />
+                      ))}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-center">
                   <VerifiedBadge verifiedBy={cve.verified_by} />
