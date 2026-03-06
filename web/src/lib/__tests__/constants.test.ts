@@ -5,7 +5,10 @@ import {
   getSignalTypeLabel,
   formatConfidence,
   truncate,
+  getLanguageColor,
   SEVERITY_COLORS,
+  LANGUAGE_COLORS,
+  LANGUAGE_FALLBACK_COLOR,
 } from "../constants";
 
 describe("severityBadgeClass", () => {
@@ -73,5 +76,23 @@ describe("truncate", () => {
 
   it("handles empty string", () => {
     expect(truncate("", 10)).toBe("");
+  });
+});
+
+describe("getLanguageColor", () => {
+  it("returns distinct colors for known languages", () => {
+    const langs = ["Python", "JavaScript", "TypeScript", "Go", "Rust", "PHP"];
+    const colors = langs.map(getLanguageColor);
+    // All should be unique
+    expect(new Set(colors).size).toBe(langs.length);
+  });
+
+  it("returns the mapped color for a known language", () => {
+    expect(getLanguageColor("Python")).toBe(LANGUAGE_COLORS["Python"]);
+    expect(getLanguageColor("TypeScript")).toBe(LANGUAGE_COLORS["TypeScript"]);
+  });
+
+  it("returns fallback color for unknown language", () => {
+    expect(getLanguageColor("Brainfuck")).toBe(LANGUAGE_FALLBACK_COLOR);
   });
 });

@@ -14,6 +14,7 @@ import {
   verifiedBadgeColor,
   verifiedByLabel,
   verifiedByTooltip,
+  getLanguageColor,
 } from "@/lib/constants";
 import type { CveEntry } from "@/lib/types";
 
@@ -43,12 +44,13 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
     <section>
       <h2 className="mb-4 text-xl font-semibold">Recent Vulnerabilities</h2>
       <div className="rounded-xl border border-border overflow-x-auto">
-        <Table className="table-fixed w-full min-w-[820px]">
+        <Table className="table-fixed w-full min-w-[940px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[180px]">ID</TableHead>
               <TableHead className="w-[100px]">Severity</TableHead>
               <TableHead className="w-[72px]">Tools</TableHead>
+              <TableHead className="w-[120px]">Language</TableHead>
               <TableHead className="w-[200px] text-center">Verified</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
@@ -73,6 +75,27 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                   <div className="flex items-center gap-1.5">
                     {cve.ai_tools.map((tool) => (
                       <ToolIcon key={tool} tool={tool} size={18} />
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {cve.languages.map((lang) => (
+                      <span
+                        key={lang}
+                        className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{
+                          borderColor: `${getLanguageColor(lang)}40`,
+                          color: getLanguageColor(lang),
+                          backgroundColor: `${getLanguageColor(lang)}15`,
+                        }}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: getLanguageColor(lang) }}
+                        />
+                        {lang}
+                      </span>
                     ))}
                   </div>
                 </TableCell>
