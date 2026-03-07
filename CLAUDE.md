@@ -15,7 +15,7 @@ Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 ## Data Flow
 
 ```
-cd cve-analyzer && uv run cve-analyzer batch --all --llm-verify
+cd cve-analyzer && uv run cve-analyzer batch --all --since 2025-05-01 --llm-verify
 python scripts/generate_web_data.py   # → web/data/cves.json + stats.json
 cd web && npm run build
 ```
@@ -32,7 +32,7 @@ uv run ruff check src/ tests/                # Lint
 
 ## Data Scope
 
-Default batch start date: **May 2025**. CVEs before 2025-05 are outside coverage.
+Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batch commands. CVEs before 2025-05 are outside coverage.
 
 ## Regression
 
