@@ -805,7 +805,7 @@ def build_cve_entry(
 # Statistics
 # ---------------------------------------------------------------------------
 
-def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
+def build_stats(entries: list[dict], *, total_analyzed: int = 0, coverage_since: str = "") -> dict:
     """Aggregate statistics from a list of web CVE entries."""
     by_tool: dict[str, int] = {}
     by_severity: dict[str, int] = {}
@@ -853,7 +853,7 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0) -> dict:
     ]
 
     sorted_months = sorted(month_counts.keys())
-    coverage_from = sorted_months[0] if sorted_months else ""
+    coverage_from = coverage_since if coverage_since else (sorted_months[0] if sorted_months else "")
     coverage_to = sorted_months[-1] if sorted_months else ""
 
     return {
@@ -908,6 +908,12 @@ def main(argv: list[str] | None = None) -> None:
         type=str,
         default=DEFAULT_CACHE_DIR,
         help=f"Directory with cached analysis results (default: {DEFAULT_CACHE_DIR})",
+    )
+    parser.add_argument(
+        "--since",
+        type=str,
+        default="2025-05",
+        help="Coverage start month YYYY-MM for total_analyzed count (default: 2025-05)",
     )
     args = parser.parse_args(argv)
 
@@ -988,15 +994,15 @@ def main(argv: list[str] | None = None) -> None:
     # Use published date when available; for IDs without a date, use year from
     # the CVE ID prefix (e.g. CVE-2025-xxxx → 2025).  Non-CVE IDs (GHSA, JLSEC)
     # that lack a published date are included since they likely fall in range.
-    coverage_from = min((e.get("published", "")[:7] for e in entries if e.get("published")), default="")
-    coverage_year = int(coverage_from[:4]) if coverage_from else 0
-    if coverage_from:
+    coverage_since = args.since  # e.g. "2025-05"
+    coverage_year = int(coverage_since[:4]) if coverage_since else 0
+    if coverage_since:
         total_in_range = 0
         for r in results:
             cve_id = r.get("cve_id", "")
             pub = nvd_dates.get(cve_id, "")
             if pub:
-                if pub[:7] >= coverage_from:
+                if pub[:7] >= coverage_since:
                     total_in_range += 1
             elif cve_id.startswith("CVE-"):
                 # Extract year from CVE-YYYY-nnnnn
@@ -1006,9 +1012,10 @@ def main(argv: list[str] | None = None) -> None:
             else:
                 # GHSA, JLSEC, etc. — no year in ID, include conservatively
                 total_in_range += 1
+        print(f"  {total_in_range} of {len(results)} results within coverage window (>= {coverage_since}).")
     else:
         total_in_range = len(results)
-    stats_output = build_stats(entries, total_analyzed=total_in_range)
+    stats_output = build_stats(entries, total_analyzed=total_in_range, coverage_since=coverage_since)
 
     # Write
     output_dir = Path(args.output_dir)
