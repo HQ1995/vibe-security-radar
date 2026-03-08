@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-07T14:49:40.739889+00:00",
-  "total": 75,
+  "generated_at": "2026-03-08T03:29:43.786272+00:00",
+  "total": 76,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -3397,6 +3397,65 @@
         }
       ],
       "references": []
+    },
+    {
+      "id": "GHSA-2mc2-g238-722j",
+      "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-295",
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:35:21Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.81,
+      "verified_by": "gemini-3.1-pro-preview",
+      "how_introduced": "The application failed to enforce strict host-key checking for SCP connections and did not properly validate the remoteHost configuration, allowing for potential man-in-the-middle attacks or command injection via malicious SSH options.",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduces the `scpFile` function and the logic to execute SCP commands using the `ctx.MediaRemoteHost` variable. This directly implements the vulnerable pattern of executing SCP without input sanitization or strict host-key checking, which led to the command injection and improper cryptographic identity verification.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "OS command injection and improper verification of cryptographic identity",
+            "vuln_description": "The application failed to enforce strict host-key checking for SCP connections and did not properly validate the remoteHost configuration, allowing for potential man-in-the-middle attacks or command injection via malicious SSH options.",
+            "vulnerable_pattern": "executing SCP/SSH commands with user-supplied remoteHost strings without strict host-key verification or input sanitization",
+            "causal_chain": "The blamed commit added the `scpFile` function which spawns a `/usr/bin/scp` process using an unsanitized `remoteHost` parameter. It also lacked the `--` argument separator and used insecure host-key checking, directly creating the conditions for command injection and MITM attacks."
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
+        "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+      ]
     },
     {
       "id": "CVE-2025-13321",
