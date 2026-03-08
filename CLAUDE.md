@@ -44,9 +44,9 @@ Baseline: `cve-analyzer/regression/baseline-2026-03-05.md` (74 TPs). Use `/regre
 - JSON file cache in `~/.cache/cve-analyzer/`
 - Tests use JSON fixtures in `tests/fixtures/`, no real API calls
 
-## Code Review Fixes
+## Code Review
 
-When code review identifies multiple issues to fix, launch a separate sub-agent for each fix. Run them **sequentially** (one at a time, not in parallel) to avoid race conditions from concurrent edits to the same files.
+Run code review and fixes in sub-agents to keep the main context window clean.
 
 ## LLM Cost Reporting
 
