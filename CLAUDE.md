@@ -36,7 +36,7 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 
 ## Regression
 
-Baseline: `cve-analyzer/regression/baseline-2026-03-05.md` (74 TPs). Use `/regression` after pipeline changes to check for lost or new true positives.
+Baseline: `cve-analyzer/regression/baseline-2026-03-08.md` (75 TPs). Use `/regression` after pipeline changes to check for lost or new true positives.
 
 ## Code Conventions
 
