@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-09T23:31:00.949317+00:00",
-  "total": 52,
+  "generated_at": "2026-03-09T23:37:27.677913+00:00",
+  "total": 68,
   "cves": [
     {
       "id": "CVE-2025-14116",
@@ -77,6 +77,162 @@
       ]
     },
     {
+      "id": "CVE-2025-15150",
+      "description": "A vulnerability was found in PX4 PX4-Autopilot up to 1.16.0. Affected by this issue is the function MavlinkLogHandler::state_listing/MavlinkLogHandler::log_entry_from_id of the file src/modules/mavlink/mavlink_log_handler.cpp. The manipulation results in stack-based buffer overflow. The attack is only possible with local access. The patch is identified as 338595edd1d235efd885fd5e9f45e7f9dcf4013d. It is best practice to apply a patch to resolve this issue.",
+      "severity": "HIGH",
+      "cvss": 4.8,
+      "cwes": [
+        "CWE-121",
+        "CWE-119"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-28T19:15:48.570",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "C++"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "",
+      "bug_commits": [
+        {
+          "sha": "338595edd1d235efd885fd5e9f45e7f9dcf4013d",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-12-15T21:37:29+00:00",
+          "message": "Fix stack buffer overflow in mavlink_log_handler sscanf calls",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/modules/mavlink/mavlink_log_handler.cpp",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the vulnerable pattern by changing the sscanf format string to %1023s in state_listing, which exceeds the size of the destination buffer (PX4_MAX_FILEPATH). This created a stack-based buffer overflow when reading log file paths that exceed the buffer capacity.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "",
+            "vuln_description": "",
+            "vulnerable_pattern": "",
+            "causal_chain": "The commit replaced an unbounded %s with %1023s in state_listing, which is larger than the stack-allocated filepath buffer, allowing an attacker to overwrite adjacent stack memory when parsing malicious log entries."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "ca336fb2995b2ea8549b9c9431c13a5bc1ad8ecb",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-12-15T21:49:01+00:00",
+          "message": "Use LOG_FILEPATH_SCANF_WIDTH macro for format specifier",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/modules/mavlink/mavlink_log_handler.cpp",
+          "blame_confidence": 0.8,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the macro LOG_FILEPATH_SCANF_WIDTH and replaced the hardcoded '255' width specifier in sscanf with this macro. By decoupling the width from the hardcoded value without enforcing a compile-time check against the actual buffer size, it created a maintenance hazard where the buffer size could be changed elsewhere without updating the macro, leading to the buffer overflow.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "",
+            "vuln_description": "",
+            "vulnerable_pattern": "",
+            "causal_chain": "The commit introduced a macro-based width specifier for sscanf that was not programmatically linked to the buffer size constant. This allowed the buffer size to be modified in future commits without updating the macro, causing the sscanf width to exceed the actual buffer capacity and resulting in a stack-based buffer overflow."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "f219c9f3b9b45a9d2d5792074d54e762e84b006f",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "338595edd1d235efd885fd5e9f45e7f9dcf4013d",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "8e0cabaeb775c70f6645d65e7241951e910ea97e",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "5037a96376436918f08304ab93d06f72b975f7de",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "5cdc783b0577f2ff0affac50e0dfa0f97fa8da5c",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "ca336fb2995b2ea8549b9c9431c13a5bc1ad8ecb",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "fe7bf8472b2b9ad8168356949c98cbe191d9dca3",
+          "repo_url": "https://github.com/PX4/PX4-Autopilot",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [
+        "https://vuldb.com/?id.338527",
+        "https://vuldb.com/?submit.717323"
+      ]
+    },
+    {
       "id": "CVE-2025-5277",
       "description": "aws-mcp-server MCP server is vulnerable to command injection. An attacker can craft a prompt that once accessed by the MCP client will run arbitrary commands on the host system.",
       "severity": "CRITICAL",
@@ -131,6 +287,152 @@
       ],
       "references": [
         "https://github.com/alexei-led/aws-mcp-server/blob/94d20ae1798a43ac7e3a28e71900d774e5159c8a/src/aws_mcp_server/cli_executor.py#L92"
+      ]
+    },
+    {
+      "id": "CVE-2025-53365",
+      "description": "MCP Python SDK has Unhandled Exception in Streamable HTTP Transport ,Leading to Denial of Service",
+      "severity": "HIGH",
+      "cvss": 8.7,
+      "cwes": [
+        "CWE-248"
+      ],
+      "ecosystem": "",
+      "published": "2025-07-04T22:15:22.117",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application fails to properly handle exceptions during streamable HTTP transport, allowing unhandled errors to crash the process.",
+      "bug_commits": [
+        {
+          "sha": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
+          "author": "David Soria Parra",
+          "date": "2025-03-24T14:14:14+00:00",
+          "message": "Fix #201: Move incoming message stream from BaseSession to ServerSession (#325)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/mcp/shared/session.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit replaced the internal stream-based message handling with direct calls to `self._handle_incoming(message)`. By removing the intermediate stream processing, it bypassed the existing error handling logic and introduced the vulnerability where unhandled exceptions in the transport layer propagate directly, causing the process to crash.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service",
+            "vuln_description": "The application fails to properly handle exceptions during streamable HTTP transport, allowing unhandled errors to crash the process.",
+            "vulnerable_pattern": "lack of try-except blocks around stream processing or network I/O operations",
+            "causal_chain": "The commit refactored the message processing loop to call `_handle_incoming` directly instead of sending messages through a memory stream, removing the implicit safety of the stream abstraction and failing to wrap the new direct calls in necessary try-except blocks."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "dced22344d80d85884df9c26281fdfe0331e9c65",
+          "repo_url": "https://github.com/modelcontextprotocol/python-sdk",
+          "source": "osv"
+        },
+        {
+          "sha": "7b420656de48cfdb90b39eb582e60b6d55c2f891",
+          "repo_url": "https://github.com/modelcontextprotocol/python-sdk",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53365.json",
+        "https://github.com/modelcontextprotocol/python-sdk/security/advisories/GHSA-j975-95f5-7wqh",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-53365"
+      ]
+    },
+    {
+      "id": "CVE-2025-53366",
+      "description": "MCP SDK Vulnerable to FastMCP Server Validation Error, Leading to Denial of Service",
+      "severity": "HIGH",
+      "cvss": 8.7,
+      "cwes": [
+        "CWE-248"
+      ],
+      "ecosystem": "",
+      "published": "2025-07-04T22:15:22.300",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to properly handle or validate timeout configurations, potentially leading to resource exhaustion or unhandled exceptions when processing SSE streams.",
+      "bug_commits": [
+        {
+          "sha": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
+          "author": "David Soria Parra",
+          "date": "2025-03-24T14:14:14+00:00",
+          "message": "Fix #201: Move incoming message stream from BaseSession to ServerSession (#325)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/mcp/shared/session.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit replaced a robust memory object stream with direct calls to `_handle_incoming`, which lacks the error handling and timeout validation logic required for stable SSE stream processing. By removing the stream-based architecture, the commit introduced the vulnerability where unhandled exceptions or invalid timeout configurations during message processing can propagate and cause a denial of service.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service",
+            "vuln_description": "The application failed to properly handle or validate timeout configurations, potentially leading to resource exhaustion or unhandled exceptions when processing SSE streams.",
+            "vulnerable_pattern": "Inconsistent handling of timeout types (timedelta vs float) and lack of robust exception logging in SSE stream processing.",
+            "causal_chain": "The commit removed the `_incoming_message_stream_writer` which acted as a buffer/queue for incoming messages. By switching to direct `_handle_incoming` calls, the session became susceptible to unhandled exceptions and resource exhaustion during message processing, as there was no longer a controlled stream mechanism to manage the flow and lifecycle of these requests."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "20dc0fbabb31a33ee52ae6d452445464cca35508",
+          "repo_url": "https://github.com/modelcontextprotocol/python-sdk",
+          "source": "osv"
+        },
+        {
+          "sha": "29c69e6a47d0104d0afcea6ac35e7ab02fde809a",
+          "repo_url": "https://github.com/modelcontextprotocol/python-sdk",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53366.json",
+        "https://github.com/modelcontextprotocol/python-sdk/security/advisories/GHSA-3qhf-m339-9g5v",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-53366"
       ]
     },
     {
@@ -427,6 +729,184 @@
       ]
     },
     {
+      "id": "CVE-2025-66209",
+      "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in Database Backup",
+      "severity": "CRITICAL",
+      "cvss": 10.0,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-23T22:15:52.047",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to sanitize user-provided names used in proxy configuration files, allowing an authenticated attacker to inject malicious shell commands that are executed by the system during proxy startup.",
+      "bug_commits": [
+        {
+          "sha": "01635e8b80ae368c8fe89ca486bffa6f9932b08d",
+          "author": "Andras Bacsai",
+          "date": "2025-11-26T13:44:53+01:00",
+          "message": "fix: add bash control structure keywords to sudo command processing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "bootstrap/helpers/sudo.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced a flawed allow-list approach using `startsWith` to determine which commands should not be prefixed with `sudo`. Because `startsWith` does not enforce word boundaries, it allowed attackers to bypass the sudo prefixing by crafting commands that start with these keywords (e.g., 'docker' starts with 'do'), leading to command injection when the system executed these unsanitized strings.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application failed to sanitize user-provided names used in proxy configuration files, allowing an authenticated attacker to inject malicious shell commands that are executed by the system during proxy startup.",
+            "vulnerable_pattern": "passing unsanitized user-controlled input (names) into shell commands or configuration files that are subsequently processed by shell execution",
+            "causal_chain": "The blamed commit added keywords like 'do' to the allow-list using `startsWith`. An attacker could provide a command like 'docker run...', which starts with 'do', causing the function to return the command without a 'sudo' prefix, but the underlying logic failed to properly isolate the command, allowing the injection of arbitrary shell commands that were then executed by the system."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d9ec105430869a98d0b3415c76a5d519403269a0",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/66xxx/CVE-2025-66209.json",
+        "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-vm5p-43qh-7pmq",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-66209"
+      ]
+    },
+    {
+      "id": "CVE-2025-66213",
+      "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in File Storage Directory Mount Path",
+      "severity": "CRITICAL",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-23T22:15:52.633",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to sanitize user-provided names used in proxy configuration files, allowing an authenticated attacker to inject malicious shell commands that are executed by the system during proxy startup.",
+      "bug_commits": [
+        {
+          "sha": "56f32d0f87609d48c4f9f8d766c96c183bcd60f9",
+          "author": "Andras Bacsai",
+          "date": "2025-11-18T22:26:11+01:00",
+          "message": "fix: properly handle SERVICE_URL and SERVICE_FQDN for abbreviated service names (#7243)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "bootstrap/helpers/parsers.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit modifies the logic for parsing environment variables and generating FQDNs/URLs, whereas the fix commit addresses a path concatenation issue in a completely different function (serviceParser). The vulnerability involves command injection via unsanitized names, which is not introduced by the logic changes in the blamed commit.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application failed to sanitize user-provided names used in proxy configuration files, allowing an authenticated attacker to inject malicious shell commands that are executed by the system during proxy startup.",
+            "vulnerable_pattern": "passing unsanitized user-controlled input (names) into shell commands or configuration files that are subsequently processed by shell execution",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "01635e8b80ae368c8fe89ca486bffa6f9932b08d",
+          "author": "Andras Bacsai",
+          "date": "2025-11-26T13:44:53+01:00",
+          "message": "fix: add bash control structure keywords to sudo command processing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "bootstrap/helpers/sudo.php",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced a flawed allow-list approach using `startsWith` to determine which commands should not be prefixed with `sudo`. Because `startsWith` does not enforce word boundaries, it allowed attackers to bypass the sudo prefixing by crafting commands that start with these keywords (e.g., 'docker' starts with 'do'), leading to command injection when the system executed these unsanitized strings.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application failed to sanitize user-provided names used in proxy configuration files, allowing an authenticated attacker to inject malicious shell commands that are executed by the system during proxy startup.",
+            "vulnerable_pattern": "passing unsanitized user-controlled input (names) into shell commands or configuration files that are subsequently processed by shell execution",
+            "causal_chain": "The blamed commit added keywords like 'do' to the allow-list using `startsWith`. An attacker could provide a command like 'docker run...', which starts with 'do', causing the function to return the command without a 'sudo' prefix, but the underlying logic failed to properly isolate the command, allowing the injection of arbitrary shell commands that were then executed by the system."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d9ec105430869a98d0b3415c76a5d519403269a0",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/66xxx/CVE-2025-66213.json",
+        "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-cj2c-9jx8-j427",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-66213"
+      ]
+    },
+    {
       "id": "CVE-2026-1979",
       "description": "A flaw has been found in mruby up to 3.4.0. This affects the function mrb_vm_exec of the file src/vm.c of the component JMPNOT-to-JMPIF Optimization. Executing a manipulation can lead to use after free. The attack needs to be launched locally. The exploit has been published and may be used. This patch is called e50f15c1c6e131fa7934355eb02b8173b13df415. It is advisable to implement a patch to correct this issue.",
       "severity": "MEDIUM",
@@ -494,6 +974,80 @@
         "https://vuldb.com/?ctiid.344501",
         "https://vuldb.com/?id.344501",
         "https://vuldb.com/?submit.743377"
+      ]
+    },
+    {
+      "id": "CVE-2026-26964",
+      "description": "Windmill Exposes Workspace Slack OAuth Client Secrets to Non-Admin Workspace Members",
+      "severity": "LOW",
+      "cvss": 2.7,
+      "cwes": [
+        "CWE-200"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-20T00:16:16.330",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application's settings API endpoint returned sensitive Slack OAuth client secrets to all workspace members, regardless of their administrative privileges.",
+      "bug_commits": [
+        {
+          "sha": "c580572252a99f2ae13b9762619c20adc882764b",
+          "author": "Ruben Fiszel",
+          "date": "2026-02-08T13:12:03+01:00",
+          "message": "refactor: extract windmill-api-scripts and windmill-api-users subcrates (#7850)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "backend/windmill-api-workspaces/src/workspaces.rs",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the initial implementation of the workspace settings API, which lacked the necessary authorization check to redact sensitive fields like the Slack OAuth client secret. By creating the file and the `get_settings` logic without filtering based on user roles, it established the vulnerable pattern that was later patched.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Information Exposure",
+            "vuln_description": "The application's settings API endpoint returned sensitive Slack OAuth client secrets to all workspace members, regardless of their administrative privileges.",
+            "vulnerable_pattern": "Returning full configuration objects containing sensitive credentials (slack_oauth_client_secret) in API responses without checking user authorization levels.",
+            "causal_chain": "The commit implemented the `get_settings` function to return the full workspace configuration object directly from the database to the API response, failing to implement a conditional check to redact sensitive credentials for non-admin users."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d9a5cb64b8d3f14f6eb26e1fc6e97faa3ec63112",
+          "repo_url": "https://github.com/windmill-labs/windmill",
+          "source": "osv"
+        },
+        {
+          "sha": "43218c62852490d0efafa8f94385bfe0e8f2ad82",
+          "repo_url": "https://github.com/windmill-labs/windmill",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/26xxx/CVE-2026-26964.json",
+        "https://github.com/windmill-labs/windmill/releases/tag/v1.635.0",
+        "https://github.com/windmill-labs/windmill/security/advisories/GHSA-f27g-j463-q85w",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-26964"
       ]
     },
     {
@@ -651,6 +1205,75 @@
       ]
     },
     {
+      "id": "CVE-2026-27627",
+      "description": "Karakeep's Reddit plugin content bypasses DOMPurify sanitization, enabling stored XSS",
+      "severity": "HIGH",
+      "cvss": 8.2,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-25T04:16:03.757",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to sanitize HTML content provided by the Reddit plugin before rendering it, allowing malicious scripts to bypass security controls.",
+      "bug_commits": [
+        {
+          "sha": "7a10067234b19c2c35fb51670173cd82c97cc807",
+          "author": "Mohamed Bassem",
+          "date": "2026-02-15T12:38:47+00:00",
+          "message": "feat(workers): extract html parsing into a subprocess (#2485)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "apps/workers/scripts/parseHtmlSubprocess.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `parseHtmlSubprocess.ts` file and the specific logic that assigns `meta.readableContentHtml` directly to the `readableContent` object without sanitization. This created a bypass where content from plugins like Reddit would be rendered as raw HTML, leading to the XSS vulnerability fixed in the subsequent commit.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Stored XSS",
+            "vuln_description": "The application failed to sanitize HTML content provided by the Reddit plugin before rendering it, allowing malicious scripts to bypass security controls.",
+            "vulnerable_pattern": "readableContent = { content: meta.readableContentHtml } // direct assignment of unsanitized input",
+            "causal_chain": "The blamed commit introduced the metascraperReddit plugin and the logic to check for meta.readableContentHtml -> It assigned this raw HTML string directly to the readableContent object -> This object was then returned and rendered without passing through DOMPurify, which was only applied to the Readability fallback path."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ba3db953c0d8675e2e3ecc29113a332b570b2cb9",
+          "repo_url": "https://github.com/karakeep-app/karakeep",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/27xxx/CVE-2026-27627.json",
+        "https://github.com/karakeep-app/karakeep/releases/tag/v0.31.0",
+        "https://github.com/karakeep-app/karakeep/security/advisories/GHSA-mg93-f9mw-wpgj",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-27627"
+      ]
+    },
+    {
       "id": "CVE-2026-27695",
       "description": "zae-limiter: DynamoDB hot partition throttling enables per-entity Denial of Service",
       "severity": "MEDIUM",
@@ -697,6 +1320,66 @@
           "tribunal_verdict": {
             "verdict": "CONFIRMED",
             "confidence": "high",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "3902c8c22868832db6d9f54046e76d5be226f607",
+          "author": "Patrick Sodré",
+          "date": "2026-01-09T20:55:53-05:00",
+          "message": "Initial commit: zae-limiter rate limiting library",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/zae_limiter/limiter.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": null,
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "94a129ae55acc3b034662045296e288279cbef2e",
+          "author": "Patrick Sodré",
+          "date": "2026-02-21T19:43:32-05:00",
+          "message": "🔒 fix(repository): migrate bucket items to per-shard partition keys",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/zae_limiter/repository.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit (94a129ae55ac) focuses on refactoring the DynamoDB schema to support sharding by updating the PK/SK structure for bucket lookups. While this change introduced the sharding mechanism that the vulnerability relies on, it did not implement the flawed failure classification logic that conflates WCU and application limits; that logic was either pre-existing or introduced elsewhere.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service (Resource Exhaustion)",
+            "vuln_description": "The limiter incorrectly conflated application-level limit exhaustion with DynamoDB WCU exhaustion, causing it to fail to re-shard or retry correctly, which allowed a single entity to trigger hot partition throttling.",
+            "vulnerable_pattern": "Implicit and fragile failure classification using _is_wcu_exhausted() to distinguish between app-limit exhaustion and WCU exhaustion",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
             "models": [
               "gemini-3.1-pro-preview",
               "gpt-5.4",
@@ -893,6 +1576,144 @@
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-33rq-m5x2-fvgf",
         "https://github.com/openclaw/openclaw/commit/8c7901c984866a776eb59662dc9d8b028de4f0d0",
         "https://github.com/openclaw/openclaw/releases/tag/v2026.2.1"
+      ]
+    },
+    {
+      "id": "CVE-2026-29612",
+      "description": "OpenClaw: denial of service through large base64 media files allocating large buffers before limit checks",
+      "severity": "MEDIUM",
+      "cvss": 6.8,
+      "cwes": [
+        "CWE-400",
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-14T15:45:04+01:00",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application attempted to decode base64-encoded media attachments into memory buffers before validating their size, allowing an attacker to trigger large memory allocations and crash the process.",
+      "bug_commits": [
+        {
+          "sha": "c4e76eb6355fced2b1715d39c55fdf01b5715a4e",
+          "author": "cristip73",
+          "date": "2026-01-10T19:17:32+02:00",
+          "message": "fix: enable image attachments in chat messages for Claude API",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/chat-attachments.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that performs `Buffer.from(b64, 'base64').byteLength` to calculate the size of the attachment. This implementation forces the Node.js runtime to decode the entire base64 string into a buffer in memory before the size limit check is performed, which is the root cause of the resource exhaustion vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service (Resource Exhaustion)",
+            "vuln_description": "The application attempted to decode base64-encoded media attachments into memory buffers before validating their size, allowing an attacker to trigger large memory allocations and crash the process.",
+            "vulnerable_pattern": "Buffer.from(userInput, 'base64') without prior validation of the input string length",
+            "causal_chain": "The commit added the `parseMessageWithAttachments` function, which uses `Buffer.from(b64, 'base64')` to determine the size of user-provided base64 strings. Because this operation allocates memory for the decoded data before validating the size against `maxBytes`, an attacker can provide an arbitrarily large base64 string to trigger a crash."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "31791233d60495725fa012745dde8d6ee69e9595",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-w2cg-vxx6-5xjg",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-29612",
+        "https://github.com/openclaw/openclaw/commit/31791233d60495725fa012745dde8d6ee69e9595",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
+        "https://www.vulncheck.com/advisories/openclaw-denial-of-service-via-large-base-media-file-decoding"
+      ]
+    },
+    {
+      "id": "GHSA-553v-f69r-656j",
+      "description": "OpenClaw unpaired device identity can bypass operator pairing and self-assign operator scopes with shared auth",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:39:10Z",
+      "ai_tools": [
+        "cursor"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The system incorrectly allowed unpaired devices to self-assign operator scopes when using shared token authentication, bypassing the required pairing process.",
+      "bug_commits": [
+        {
+          "sha": "20523b918adff4feae378ac9965e204c56b6e3d8",
+          "author": "SidQin-cyber",
+          "date": "2026-02-24T21:15:57+08:00",
+          "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+          "ai_signals": [
+            {
+              "tool": "cursor",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit explicitly introduced the `skipPairingForOperatorSharedAuth` logic, which allowed operator roles to bypass device pairing when using shared authentication. This logic directly created the vulnerability described in the root cause analysis by decoupling operator scope assignment from the required pairing process.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Authorization",
+            "vuln_description": "The system incorrectly allowed unpaired devices to self-assign operator scopes when using shared token authentication, bypassing the required pairing process.",
+            "vulnerable_pattern": "granting operator scope upgrades based solely on valid shared token authentication without verifying device pairing status",
+            "causal_chain": "The commit added the `skipPairingForOperatorSharedAuth` constant and included it in the `skipPairing` boolean calculation, which effectively disabled the pairing requirement for any client with an 'operator' role and valid shared authentication."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "8d1481cb4a9d31bd617e52dc8c392c35689d9dea",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-553v-f69r-656j",
+        "https://github.com/openclaw/openclaw/commit/8d1481cb4a9d31bd617e52dc8c392c35689d9dea"
       ]
     },
     {
@@ -1832,6 +2653,74 @@
       ]
     },
     {
+      "id": "GHSA-wccx-j62j-r448",
+      "description": "Fickling has `always_check_safety()` bypass: pickle.loads and _pickle.loads remain unhooked",
+      "severity": "CRITICAL",
+      "cvss": 9.5,
+      "cwes": [
+        "CWE-693"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-04T21:30:16Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The library failed to hook all deserialization entry points (specifically pickle.loads and _pickle.loads), allowing attackers to bypass safety checks by using these unhooked functions.",
+      "bug_commits": [
+        {
+          "sha": "8714627126fd89b5306b55fbb7aa7efd01e45302",
+          "author": "Lucas Bourtoule",
+          "date": "2025-11-26T12:06:47+01:00",
+          "message": "Fix PyTorch v1.3+ hook bypass by hooking pickle.Unpickler class",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/hook.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `run_hook()` function which only hooked `pickle.load` while failing to hook `pickle.loads` and `_pickle.loads`. Although the commit included `always_check_safety()` which did hook those functions, the primary `run_hook()` entry point remained incomplete, creating the bypass vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Incomplete security hook / Bypass",
+            "vuln_description": "The library failed to hook all deserialization entry points (specifically pickle.loads and _pickle.loads), allowing attackers to bypass safety checks by using these unhooked functions.",
+            "vulnerable_pattern": "hooking only pickle.load while leaving pickle.loads and _pickle.loads unmonitored",
+            "causal_chain": "The commit implemented `run_hook()` with an incomplete set of monkey-patches, specifically omitting `pickle.loads` and `_pickle.loads`, which allowed users calling the standard `run_hook()` to remain vulnerable to deserialization attacks via those unmonitored functions."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "8c24c6edabceab156cfd41f4d70b650e1cdad1f7",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-wccx-j62j-r448",
+        "https://github.com/trailofbits/fickling/commit/8c24c6edabceab156cfd41f4d70b650e1cdad1f7",
+        "https://github.com/trailofbits/fickling/releases/tag/v0.1.9"
+      ]
+    },
+    {
       "id": "GHSA-wpph-cjgr-7c39",
       "description": "OpenClaw's typed sender-key matching for toolsBySender prevents identity-collision policy bypass",
       "severity": "LOW",
@@ -1970,6 +2859,73 @@
       ]
     },
     {
+      "id": "GHSA-x9cf-3w63-rpq9",
+      "description": "OpenClaw vulnerable to sensitive file disclosure via stageSandboxMedia",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T19:58:32Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to validate file paths when accessing attachments, allowing an attacker to read arbitrary files on the system by providing malicious paths.",
+      "bug_commits": [
+        {
+          "sha": "8d74578ceb0c3b913555dff6265821eb0fc09749",
+          "author": "Tyler Yust",
+          "date": "2026-01-17T03:10:10-08:00",
+          "message": "feat: native image injection for vision-capable models",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/imessage/monitor/monitor-provider.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that processes and exposes attachment paths (mediaPaths) without any validation. This created the vulnerable pattern where arbitrary file paths provided in attachments were accepted and used by the application, which the fix commit subsequently addressed by adding path validation.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal",
+            "vuln_description": "The application failed to validate file paths when accessing attachments, allowing an attacker to read arbitrary files on the system by providing malicious paths.",
+            "vulnerable_pattern": "Accessing file paths for attachments without validating them against a restricted set of allowed root directories.",
+            "causal_chain": "The blamed commit added the logic to extract and map multiple attachment paths into the application state without checking if those paths were restricted to allowed directories, directly enabling the path traversal vulnerability."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "1316e5740382926e45a42097b4bfe0aef7d63e8e",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-x9cf-3w63-rpq9",
+        "https://github.com/openclaw/openclaw/commit/1316e5740382926e45a42097b4bfe0aef7d63e8e"
+      ]
+    },
+    {
       "id": "GHSA-2mc2-g238-722j",
       "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
       "severity": "LOW",
@@ -2035,6 +2991,73 @@
       "references": [
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
         "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+      ]
+    },
+    {
+      "id": "GHSA-cfvj-7rx7-fc7c",
+      "description": "OpenClaw: stageSandboxMedia destination symlink traversal can overwrite files outside sandbox workspace",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:18:28Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.81,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The `stageSandboxMedia` function failed to validate the destination path, allowing an attacker to use symlinks to overwrite files outside of the intended sandbox workspace.",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that dynamically determined the destination directory (`effectiveWorkspaceDir`) and implemented the `scpFile` and `fs.copyFile` operations without any path validation. By allowing the destination path to be constructed via `path.join(destDir, fileName)` without checking if the resulting path remained within the intended sandbox root, it created the vulnerability addressed by the fix.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The `stageSandboxMedia` function failed to validate the destination path, allowing an attacker to use symlinks to overwrite files outside of the intended sandbox workspace.",
+            "vulnerable_pattern": "direct destination copies without root-scoped boundary validation allowing symlink-based path traversal",
+            "causal_chain": "The commit introduced a flexible destination path calculation that allowed arbitrary file writes by failing to sanitize the `fileName` input, which could contain path traversal sequences (e.g., '../') that escaped the `destDir`."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-cfvj-7rx7-fc7c",
+        "https://github.com/openclaw/openclaw/commit/17ede52a4be3034f6ec4b883ac6b81ad0101558a"
       ]
     },
     {
@@ -2116,6 +3139,74 @@
         "https://github.com/langroid/langroid/security/advisories/GHSA-jqq5-wc57-f8hj",
         "https://github.com/langroid/langroid/security/advisories/GHSA-x34r-63hx-w57f",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-25481"
+      ]
+    },
+    {
+      "id": "GHSA-83pf-v6qq-pwmr",
+      "description": "Fickling has a detection bypass via stdlib network-protocol constructors",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-184"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-20T18:24:46Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.76,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The library failed to include standard library network-protocol modules in its blocklist, allowing attackers to instantiate network clients via pickle payloads to perform SSRF or other unauthorized network interactions.",
+      "bug_commits": [
+        {
+          "sha": "19e828d26b248a4a39fcee2643306a6cd78dbb76",
+          "author": "Dan Guido",
+          "date": "2026-01-22T18:14:12-05:00",
+          "message": "Integrate recent PickleScan bypasses into unsafe imports detection (#210)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/fickle.py",
+          "blame_confidence": 0.8,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit established the initial UNSAFE_IMPORTS blocklist. By explicitly defining this list and omitting several critical network-protocol modules (like smtplib, imaplib, etc.) while including others, it created the incomplete security boundary that the fix commit later addressed.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Insecure Deserialization / SSRF",
+            "vuln_description": "The library failed to include standard library network-protocol modules in its blocklist, allowing attackers to instantiate network clients via pickle payloads to perform SSRF or other unauthorized network interactions.",
+            "vulnerable_pattern": "UNSAFE_IMPORTS: frozenset([..., 'requests', 'urllib', 'urllib2'])",
+            "causal_chain": "The blamed commit introduced the UNSAFE_IMPORTS set as a security mechanism but failed to include the full suite of standard library network-protocol modules, leaving the application vulnerable to SSRF via those omitted modules."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-83pf-v6qq-pwmr",
+        "https://github.com/trailofbits/fickling/pull/233",
+        "https://github.com/trailofbits/fickling/commit/6d20564d23acf14b42ec883908aed159be7b9ade"
       ]
     },
     {
@@ -2939,6 +4030,79 @@
       ]
     },
     {
+      "id": "CVE-2025-55150",
+      "description": "Stirling-PDF SSRF vulnerability on /api/v1/convert/html/pdf",
+      "severity": "HIGH",
+      "cvss": 8.6,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2025-08-11T22:15:27.990",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Java"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application allowed users to provide arbitrary URLs for HTML-to-PDF conversion without validating the destination, enabling attackers to probe internal network resources or cloud metadata services.",
+      "bug_commits": [
+        {
+          "sha": "9fbb0325b52bd27f01c62eeca3bd937200619c9c",
+          "author": "Balázs Szücs",
+          "date": "2025-06-08T22:26:01+02:00",
+          "message": "Add EML to PDF conversion functionality (#3650)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "app/common/src/main/java/stirling/software/common/util/EmlToPdf.java",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the EmlToPdf utility class, which established the initial logic for processing HTML content into PDFs without any sanitization or SSRF protection mechanisms. The fix commit later introduced a CustomHtmlSanitizer to address the vulnerability, confirming that the original implementation lacked the necessary security controls.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Server-Side Request Forgery (SSRF)",
+            "vuln_description": "The application allowed users to provide arbitrary URLs for HTML-to-PDF conversion without validating the destination, enabling attackers to probe internal network resources or cloud metadata services.",
+            "vulnerable_pattern": "Processing user-supplied URLs for external resource fetching (HTML-to-PDF conversion) without an SSRF protection layer or domain/network validation.",
+            "causal_chain": "The blamed commit created the EmlToPdf utility, which implemented HTML-to-PDF conversion logic that directly processed user-supplied content without validating URLs or sanitizing HTML, thereby creating the SSRF vulnerability."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7d6b70871bad2a3ff810825f7382c49f55293943",
+          "repo_url": "https://github.com/stirling-tools/stirling-pdf",
+          "source": "osv"
+        },
+        {
+          "sha": "7d6b70871bad2a3ff810825f7382c49f55293943",
+          "repo_url": "https://github.com/Stirling-Tools/Stirling-PDF",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/55xxx/CVE-2025-55150.json",
+        "https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-xw8v-9mfm-g2pm",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-55150"
+      ]
+    },
+    {
       "id": "CVE-2025-55151",
       "description": "Stirling-PDF SSRF vulnerability on /api/v1/convert/file/pdf",
       "severity": "HIGH",
@@ -3287,6 +4451,79 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58747.json",
         "https://github.com/langgenius/dify/security/advisories/GHSA-9jch-j9qf-vqfw",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-58747"
+      ]
+    },
+    {
+      "id": "CVE-2025-64702",
+      "description": "quic-go HTTP/3 QPACK Header Expansion DoS",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-11T21:15:54.707",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The parser failed to enforce size limits on the uncompressed header fields during QPACK decoding, allowing an attacker to send a small compressed payload that expands into a massive header list, consuming excessive memory.",
+      "bug_commits": [
+        {
+          "sha": "b7886d5c901700febc41c739bd93851eac5d315e",
+          "author": "Marten Seemann",
+          "date": "2025-11-19T16:02:37+08:00",
+          "message": "update qpack to v0.6.0 (#5434)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "http3/headers.go",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit refactored the header parsing logic from a static slice-based approach to a streaming `decodeFn` loop. By introducing this loop without any size tracking or limits, it created the vulnerability where an attacker could stream an unbounded number of headers, leading to memory exhaustion.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Resource Exhaustion (DoS)",
+            "vuln_description": "The parser failed to enforce size limits on the uncompressed header fields during QPACK decoding, allowing an attacker to send a small compressed payload that expands into a massive header list, consuming excessive memory.",
+            "vulnerable_pattern": "processing header fields in a loop without tracking or limiting the cumulative uncompressed size of the headers",
+            "causal_chain": "The transition to a streaming decoder loop (decodeFn) removed the implicit size limit previously provided by the length of the input slice, allowing the parser to process an arbitrary number of headers until memory is exhausted."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
+          "repo_url": "https://github.com/lucas-clemente/quic-go",
+          "source": "osv"
+        },
+        {
+          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
+          "repo_url": "https://github.com/quic-go/quic-go",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64702.json",
+        "https://github.com/quic-go/quic-go/security/advisories/GHSA-g754-hx8w-x2g6",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-64702"
       ]
     },
     {
@@ -3717,6 +4954,74 @@
       "how_introduced": "The application uses a hardcoded cryptographic key and exposes sensitive API endpoints (such as backup creation) without requiring user authentication, allowing unauthorized access to critical functionality.",
       "bug_commits": [
         {
+          "sha": "0bcedd2c160fec7a18047182b323cb69e27e2a01",
+          "author": "maziggy",
+          "date": "2025-12-28T15:02:42+01:00",
+          "message": "- Add Tasmota device discovery and switchbar quick access",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.0475
+            }
+          ],
+          "blamed_file": "backend/app/api/routes/smart_plugs.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the API endpoints in `smart_plugs.py` without including any authentication dependencies or authorization checks. By defining these routes without the `RequirePermissionIfAuthEnabled` dependency that was later added in the fix, the commit directly created the vulnerable pattern of unauthenticated access.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Missing Authentication / Hardcoded Key",
+            "vuln_description": "The application uses a hardcoded cryptographic key and exposes sensitive API endpoints (such as backup creation) without requiring user authentication, allowing unauthorized access to critical functionality.",
+            "vulnerable_pattern": "API endpoints defined without authentication dependencies (e.g., missing FastAPI Depends() for user validation) and cryptographic keys hardcoded directly in the source code.",
+            "causal_chain": "The commit added new API routes (e.g., `/by-printer/{printer_id}`) and maintained existing ones without implementing FastAPI dependency injection for user authentication, effectively exposing these endpoints to unauthorized users."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "06d1d24b9c7759dc5f70eed28303db6976fd59a9",
+          "author": "maziggy",
+          "date": "2026-01-18T16:14:51+01:00",
+          "message": "Add Home Assistant smart plug integration",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.08636363636363636
+            }
+          ],
+          "blamed_file": "backend/app/api/routes/smart_plugs.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced new API endpoints (e.g., /ha/test-connection and /ha/entities) without including the necessary authentication dependencies. These endpoints were added to the router without the 'RequirePermissionIfAuthEnabled' dependency that was later added in the fix commit to secure the existing and new routes.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Missing Authentication / Hardcoded Key",
+            "vuln_description": "The application uses a hardcoded cryptographic key and exposes sensitive API endpoints (such as backup creation) without requiring user authentication, allowing unauthorized access to critical functionality.",
+            "vulnerable_pattern": "API endpoints defined without authentication dependencies (e.g., missing FastAPI Depends() for user validation) and cryptographic keys hardcoded directly in the source code.",
+            "causal_chain": "The commit added new functionality to the smart_plugs router but failed to implement the required authentication checks, directly creating the vulnerable pattern of exposed endpoints without authorization."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
           "sha": "50fd0c018bd6a57d0d79edc15f2f5b4e85a7196e",
           "author": "maziggy",
           "date": "2026-01-05T09:54:31+01:00",
@@ -3991,6 +5296,145 @@
       ]
     },
     {
+      "id": "CVE-2025-65958",
+      "description": "Open WebUI vulnerable to Server-Side Request Forgery (SSRF) via Arbitrary URL Processing in /api/v1/retrieval/process/web",
+      "severity": "HIGH",
+      "cvss": 8.5,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-04T20:16:19.973",
+      "ai_tools": [
+        "aider",
+        "claude_code",
+        "google_jules"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.1896,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application fails to validate or restrict user-supplied URLs passed to the retrieval processing endpoint, allowing an attacker to force the server to make arbitrary HTTP requests to internal or external resources.",
+      "bug_commits": [
+        {
+          "sha": "ee10f372a0143aad16c62b58e131eafd9f97a9fb",
+          "author": "Timothy Jaeryang Baek",
+          "date": "2025-11-16T13:52:09-05:00",
+          "message": "refac/enh: web search domain allow/block filter",
+          "ai_signals": [
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.038
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: google-labs-jules[bot] <161369871+google-labs-jules",
+              "confidence": 0.027999999999999997
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.038
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.038
+            }
+          ],
+          "blamed_file": "backend/open_webui/retrieval/web/main.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that performs domain-based filtering on user-supplied URLs. By implementing this filtering mechanism, it established the vulnerable pattern where the application relies on simple string matching (domain.endswith) to validate URLs, which is insufficient to prevent SSRF against internal IP addresses or bypassed hostnames.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Server-Side Request Forgery (SSRF)",
+            "vuln_description": "The application fails to validate or restrict user-supplied URLs passed to the retrieval processing endpoint, allowing an attacker to force the server to make arbitrary HTTP requests to internal or external resources.",
+            "vulnerable_pattern": "requests.get(user_provided_url)",
+            "causal_chain": "The commit introduced a filtering logic that only checks the domain string against an allow/block list, failing to resolve hostnames to IP addresses. This allowed attackers to bypass the filter using IP addresses or alternative hostname representations, leading to the SSRF vulnerability."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "1e974439d9541cee6afe6f651136eacfa07c7f7f",
+          "author": "Timothy Jaeryang Baek",
+          "date": "2024-12-26T20:57:51-08:00",
+          "message": "enh: configurable api key endpoint restrictions",
+          "ai_signals": [
+            {
+              "tool": "aider",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "(aider)",
+              "confidence": 0.095
+            },
+            {
+              "tool": "aider",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "(aider)",
+              "confidence": 0.095
+            },
+            {
+              "tool": "aider",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "(aider)",
+              "confidence": 0.095
+            }
+          ],
+          "blamed_file": "backend/open_webui/config.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit only adds configuration variables for API key endpoint restrictions. It does not contain any code related to URL processing, HTTP requests, or the retrieval endpoint where the SSRF vulnerability exists.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Server-Side Request Forgery (SSRF)",
+            "vuln_description": "The application fails to validate or restrict user-supplied URLs passed to the retrieval processing endpoint, allowing an attacker to force the server to make arbitrary HTTP requests to internal or external resources.",
+            "vulnerable_pattern": "requests.get(user_provided_url)",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "fe6783c16699911c7be17392596d579333fb110c",
+          "repo_url": "https://github.com/open-webui/open-webui",
+          "source": "osv"
+        },
+        {
+          "sha": "02238d3113e966c353fce18f1b65117380896774",
+          "repo_url": "https://github.com/open-webui/open-webui",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/65xxx/CVE-2025-65958.json",
+        "https://github.com/open-webui/open-webui/security/advisories/GHSA-c6xv-rcvw-v685",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-65958"
+      ]
+    },
+    {
       "id": "GHSA-pfrf-9r5f-73f5",
       "description": "ZITADEL Vulnerable to Account Takeover Due to Improper Instance Validation in V2 Login",
       "severity": "HIGH",
@@ -4247,6 +5691,124 @@
           }
         },
         {
+          "sha": "2440d28d9ba03cdecbfea3c6e3635b65e77a3b95",
+          "author": "Max Peintner",
+          "date": "2025-08-18T09:38:37+02:00",
+          "message": "fix(login): use `/logout/done` as success page, accept `post_logout_redirect ` param as post logout uri (#10500)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            }
+          ],
+          "blamed_file": "apps/login/src/app/(login)/logout/page.tsx",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit merely added a fallback parameter ('post_logout_redirect') for the redirect URI and reformatted some imports. The underlying vulnerabilities—trusting unvalidated search parameters for redirection and using 'getServiceUrlFromHeaders()' without strict instance validation—were already present in the code prior to this commit.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Open Redirect / Improper Input Validation",
+            "vuln_description": "The application failed to properly validate the instance or service context during the login flow, allowing attackers to manipulate the redirection or session context by providing malicious input in the request headers or parameters.",
+            "vulnerable_pattern": "getServiceUrlFromHeaders() used to determine the service context without strict validation of the instance origin",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
           "sha": "574dcd2a9ea50a27d4758877885643ffbfa68969",
           "author": "Max Peintner",
           "date": "2025-09-23T18:21:01+02:00",
@@ -4363,6 +5925,242 @@
               "claude-opus-4-6"
             ]
           }
+        },
+        {
+          "sha": "e114c3d6700d217d9f9566922d5febdedfe5c2b9",
+          "author": "Max Peintner",
+          "date": "2025-09-30T17:58:32+02:00",
+          "message": "fix(login): Organization domain scope, Support for External Passkey Registration (#10729)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            }
+          ],
+          "blamed_file": "apps/login/src/app/(login)/passkey/set/page.tsx",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit adds new functionality (fetching user by ID) that uses the existing 'serviceUrl' variable, but it did not introduce the vulnerable 'getServiceUrlFromHeaders' function to this file. The vulnerable pattern was already present in the code prior to this commit.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Open Redirect / Improper Input Validation",
+            "vuln_description": "The application failed to properly validate the instance or service context during the login flow, allowing attackers to manipulate the redirection or session context by providing malicious input in the request headers or parameters.",
+            "vulnerable_pattern": "getServiceUrlFromHeaders() used to determine the service context without strict validation of the instance origin",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gemini-3.1-pro-preview",
+              "gpt-5.4",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "16076cc928ffc630b7f5a1544bc6389952cb7707",
+          "author": "Max Peintner",
+          "date": "2025-09-22T18:09:20+02:00",
+          "message": "chore(login): Extract auth flow utilities and eliminate RSC request interference (#10644)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
+              "confidence": 0.18749999999999997
+            }
+          ],
+          "blamed_file": "apps/login/src/app/login/route.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit is a refactoring and formatting update that changes the signature of `loadSessions` from multi-line to single-line and reorganizes imports. The vulnerable `getServiceUrlFromHeaders` function and `serviceUrl` parameter were already present in the file prior to this commit, meaning it did not introduce the root cause of the vulnerability.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Open Redirect / Improper Input Validation",
+            "vuln_description": "The application failed to properly validate the instance or service context during the login flow, allowing attackers to manipulate the redirection or session context by providing malicious input in the request headers or parameters.",
+            "vulnerable_pattern": "getServiceUrlFromHeaders() used to determine the service context without strict validation of the instance origin",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
         }
       ],
       "fix_commits": [
@@ -4388,9 +6186,12 @@
       "ecosystem": "",
       "published": "2026-02-19T20:25:42.290",
       "ai_tools": [
+        "claude_code",
         "google_jules"
       ],
-      "languages": [],
+      "languages": [
+        "TypeScript"
+      ],
       "confidence": 0.1583,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "The application failed to properly sanitize or validate URLs provided in citations, allowing an attacker to inject malicious scripts via an iframe source.",
@@ -4516,6 +6317,122 @@
           "tribunal_verdict": {
             "verdict": "CONFIRMED",
             "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "51a138aec395a45b4fec47f6ed68f92bf63a7700",
+          "author": "Timothy Jaeryang Baek",
+          "date": "2025-09-29T00:51:06-05:00",
+          "message": "refac: edit user modal",
+          "ai_signals": [
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.056999999999999995
+            }
+          ],
+          "blamed_file": "src/lib/components/chat/Settings/Account/UserProfileImage.svelte",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability analysis describes a Stored XSS in a 'citations model' via an iframe src attribute. The blamed commit and the fix commit both modify 'UserProfileImage.svelte', which handles user profile pictures using canvas and base64 data URLs, and contains no iframe or citation logic.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Stored XSS",
+            "vuln_description": "The application failed to properly sanitize or validate URLs provided in citations, allowing an attacker to inject malicious scripts via an iframe source.",
+            "vulnerable_pattern": "<iframe src={citation.url} />",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "ec45d77ce92dcc9777561f0587e6fb00531cc058",
+          "author": "Timothy Jaeryang Baek",
+          "date": "2025-11-23T18:27:57-05:00",
+          "message": "refac: sources and citations",
+          "ai_signals": [
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "jules[bot]",
+              "confidence": 0.038
+            },
+            {
+              "tool": "google_jules",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: google-labs-jules[bot] <161369871+google-labs-jules",
+              "confidence": 0.027999999999999997
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.038
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-authored-by: Claude <noreply@anthropic.com>",
+              "confidence": 0.038
+            }
+          ],
+          "blamed_file": "src/lib/utils/marked/citation-extension.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the initial implementation of the citation extension, which established the parsing logic for citation brackets. This logic was the foundation that allowed arbitrary strings (including those containing malicious payloads) to be processed and eventually rendered into the DOM, leading to the XSS vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Stored XSS",
+            "vuln_description": "The application failed to properly sanitize or validate URLs provided in citations, allowing an attacker to inject malicious scripts via an iframe source.",
+            "vulnerable_pattern": "<iframe src={citation.url} />",
+            "causal_chain": "The blamed commit created the citation parsing mechanism that lacked input validation for citation identifiers, allowing malicious payloads to be injected into the citation structure, which were then unsafely rendered by the application."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
             "models": [
               "gpt-5.4",
               "gemini-3.1-pro-preview",
@@ -5000,6 +6917,52 @@
           "tribunal_verdict": {
             "verdict": "CONFIRMED",
             "confidence": "medium",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        },
+        {
+          "sha": "33f17514964cd526badafea757eb95cb397e2d49",
+          "author": "Daniel Petti",
+          "date": "2025-05-19T21:24:13-04:00",
+          "message": "Refactor the websocket handling code.",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.029577464788732393
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.029577464788732393
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.029577464788732393
+            }
+          ],
+          "blamed_file": "src/local_deep_research/utilities/log_utils.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit focuses on implementing logging infrastructure, specifically adding a database sink for log messages. The vulnerability (cleartext storage of API keys) is a configuration or credential management issue, which is not addressed or introduced by the logging logic in this file.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Cleartext Storage of Sensitive Information",
+            "vuln_description": "The application stores API keys in plain text, making them accessible to unauthorized users or processes with access to the storage location.",
+            "vulnerable_pattern": "Storing API keys in configuration files or environment variables without encryption or secure vault management.",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
             "models": [
               "gpt-5.4",
               "gemini-3.1-pro-preview",
