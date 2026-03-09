@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-09T23:37:27.677913+00:00",
+  "generated_at": "2026-03-09T23:47:28.778080+00:00",
   "total": 68,
   "cves": [
     {
@@ -275,6 +275,15 @@
             "vuln_description": "The application failed to sufficiently sanitize or restrict user-provided input before passing it to the system shell, allowing an attacker to execute arbitrary commands.",
             "vulnerable_pattern": "executing user-supplied input as part of an 'aws' CLI command without strict validation or allowlisting",
             "causal_chain": "The blamed commit implemented the `validate_aws_command` function using inadequate validation patterns (simple prefix checks and `shlex.split`), which failed to account for shell metacharacters or complex command chaining, thereby enabling command injection when the application later executed these commands via `asyncio.create_subprocess_shell`."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
           }
         }
       ],
@@ -3481,31 +3490,6 @@
           }
         },
         {
-          "sha": "7878f97d211447da4b7c87f6d51ee79dbf2e0fbe",
-          "author": "Casey Hand",
-          "date": "2025-04-29T21:41:54-07:00",
-          "message": "Update src/mcp-server/tools/gitAdd/logic.ts",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the logic that constructs a shell-formatted string (`filesArg`) intended for use with `child_process.exec`. By replacing strict validation (throwing an error on dashes) with a sanitization attempt that still relies on shell-quoting, it solidified the pattern of passing unsanitized user input into a shell command context.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
-            "vulnerable_pattern": "exec(`git add ${userInput}`)",
-            "causal_chain": "The commit replaced a secure validation mechanism (rejecting inputs starting with '-') with a flawed sanitization approach that continued to use shell-quoting, which is inherently vulnerable to command injection when passed to `child_process.exec`."
-          }
-        },
-        {
           "sha": "6b353cf359433493ddccc5a1f7bebd9f064d4912",
           "author": "cyanheads",
           "date": "2025-04-29T19:09:40-07:00",
@@ -3778,31 +3762,6 @@
               "claude-opus-4-6",
               "gemini-3.1-pro-preview"
             ]
-          }
-        },
-        {
-          "sha": "7878f97d211447da4b7c87f6d51ee79dbf2e0fbe",
-          "author": "Casey Hand",
-          "date": "2025-04-29T21:41:54-07:00",
-          "message": "Update src/mcp-server/tools/gitAdd/logic.ts",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the logic that constructs a shell-formatted string (`filesArg`) intended for use with `child_process.exec`. By replacing strict validation (throwing an error on dashes) with a sanitization attempt that still relies on shell-quoting, it solidified the pattern of passing unsanitized user input into a shell command context.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
-            "vulnerable_pattern": "exec(`git add ${userInput}`)",
-            "causal_chain": "The commit replaced a secure validation mechanism (rejecting inputs starting with '-') with a flawed sanitization approach that continued to use shell-quoting, which is inherently vulnerable to command injection when passed to `child_process.exec`."
           }
         },
         {
@@ -4228,31 +4187,6 @@
               "gemini-3.1-pro-preview"
             ]
           }
-        },
-        {
-          "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
-          "author": "Jaeyou PARK",
-          "date": "2025-07-12T15:36:21+09:00",
-          "message": "fix(ios_analyzer): Correctly resolve executable path in .app bundles (#2533)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "mobsf/StaticAnalyzer/views/ios/binary_analysis.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the logic that dynamically constructs the binary path using `dot_app_path.stem` and `bin_dir / bin_name` without sanitizing the input. By replacing the previous directory iteration with a glob search that trusts the extracted file structure, it created the entry point for the path traversal vulnerability.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path Traversal / Arbitrary File Write",
-            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
-            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
-            "causal_chain": "The commit introduced a path construction mechanism that relies on user-controlled file names (via `dot_app_path.stem`) to define the `bin_path`. Because this path is subsequently used in file operations without validation against traversal sequences, it allows an attacker to influence the target file path."
-          }
         }
       ],
       "fix_commits": [
@@ -4326,31 +4260,6 @@
               "claude-opus-4-6",
               "gemini-3.1-pro-preview"
             ]
-          }
-        },
-        {
-          "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
-          "author": "Jaeyou PARK",
-          "date": "2025-07-12T15:36:21+09:00",
-          "message": "fix(ios_analyzer): Correctly resolve executable path in .app bundles (#2533)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "mobsf/StaticAnalyzer/views/ios/binary_analysis.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the logic that dynamically constructs the binary path using `dot_app_path.stem` and `bin_dir / bin_name` without sanitizing the input. By replacing the previous directory iteration with a glob search that trusts the extracted file structure, it created the entry point for the path traversal vulnerability.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path Traversal / Arbitrary File Write",
-            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
-            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
-            "causal_chain": "The commit introduced a path construction mechanism that relies on user-controlled file names (via `dot_app_path.stem`) to define the `bin_path`. Because this path is subsequently used in file operations without validation against traversal sequences, it allows an attacker to influence the target file path."
           }
         }
       ],
