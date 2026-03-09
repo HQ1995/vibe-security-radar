@@ -567,37 +567,31 @@ def _effective_verdict(bic: dict) -> str:
     return ""
 
 
-def _is_all_negative_verdict(result: dict) -> bool:
-    """Return True if every AI-signaled BIC has a negative verdict.
+def _has_no_confirmed_verdict(result: dict) -> bool:
+    """Return True if no AI-signaled BIC has a CONFIRMED verdict.
 
     Uses tribunal_verdict when available (multi-model, more reliable),
     falling back to llm_verdict (single-model).
 
-    CVEs where verification determined that *none* of the AI-authored
-    commits actually introduced the vulnerability are false positives
-    and should be excluded from the website.
+    A CVE is excluded when:
+    - All AI BICs have verdicts and none are CONFIRMED (verified FP)
+    - No AI BICs have any verdict (unverified — require verification)
 
-    Returns False (keep) when:
-    - No BICs have AI signals (shouldn't happen for AI results, but safe)
-    - Any BIC with AI signals lacks a verdict (benefit of the doubt)
-    - Any BIC has a CONFIRMED verdict
+    A CVE is kept only when at least one AI BIC has a CONFIRMED verdict.
     """
     ai_bics = [
         bic for bic in result.get("bug_introducing_commits", [])
         if bic.get("commit", {}).get("ai_signals")
     ]
     if not ai_bics:
-        return False
+        return True
 
     for bic in ai_bics:
         verdict = _effective_verdict(bic)
-        if not verdict:
-            # No verdict → keep (benefit of the doubt)
-            return False
         if verdict == "CONFIRMED":
             return False
 
-    # All AI BICs have verdicts and none are CONFIRMED
+    # No CONFIRMED verdict found
     return True
 
 
@@ -613,6 +607,7 @@ def filter_ai_results(
     """
     filtered = []
     excluded_by_verdict = 0
+    excluded_rejected = 0
     for r in results:
         conf = _recompute_ai_confidence(r)
         if conf <= 0:
@@ -621,12 +616,19 @@ def filter_ai_results(
             continue
         if r.get("error", ""):
             continue
-        if _is_all_negative_verdict(r):
+        # Skip rejected/withdrawn CVEs
+        desc = (r.get("description") or "").lower()
+        if "rejected reason:" in desc or "this cve id has been rejected" in desc:
+            excluded_rejected += 1
+            continue
+        if _has_no_confirmed_verdict(r):
             excluded_by_verdict += 1
             continue
         filtered.append(r)
+    if excluded_rejected:
+        print(f"  Excluded {excluded_rejected} rejected/withdrawn CVEs.")
     if excluded_by_verdict:
-        print(f"  Excluded {excluded_by_verdict} CVEs with all-negative LLM verdicts.")
+        print(f"  Excluded {excluded_by_verdict} CVEs without CONFIRMED verdict.")
     return filtered
 
 
