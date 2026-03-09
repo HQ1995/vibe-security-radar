@@ -1,7 +1,138 @@
 {
-  "generated_at": "2026-03-09T16:45:00.224195+00:00",
+  "generated_at": "2026-03-09T21:30:48.998340+00:00",
   "total": 77,
   "cves": [
+    {
+      "id": "CVE-2025-14116",
+      "description": "A vulnerability was detected in xerrors Yuxi-Know up to 0.4.0. This vulnerability affects the function OtherEmbedding.aencode of the file /src/models/embed.py. Performing manipulation of the argument health_url results in server-side request forgery. The attack can be initiated remotely. The exploit is now public and may be used. The patch is named 0ff771dc1933d5a6b78f804115e78a7d8625c3f3. To fix this issue, it is recommended to deploy a patch. The vendor responded with a vulnerability confirmat",
+      "severity": "MEDIUM",
+      "cvss": 5.1,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-05T23:15:47.207",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Vue"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application allowed users to provide arbitrary URLs for content processing without validation, enabling the server to be coerced into making requests to internal or external resources.",
+      "bug_commits": [
+        {
+          "sha": "40c2922132bb1bc588345b289fa9ec877a72a934",
+          "author": "Wenjie Zhang",
+          "date": "2025-08-05T18:00:45+08:00",
+          "message": "refactor(database): 重构知识库信息页面组件化实现",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "web/src/components/FileUploadModal.vue",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the 'URL' upload mode and the associated 'urlList' input field in the FileUploadModal component, which was the entry point for the SSRF vulnerability. The fix commit subsequently removed this functionality entirely, confirming that the initial implementation of this feature was the source of the insecure pattern.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Server-Side Request Forgery (SSRF)",
+            "vuln_description": "The application allowed users to provide arbitrary URLs for content processing without validation, enabling the server to be coerced into making requests to internal or external resources.",
+            "vulnerable_pattern": "processing user-supplied URLs via process_url_to_markdown without restriction or validation",
+            "causal_chain": "The blamed commit added the 'urlList' input and the logic to process user-supplied URLs, which lacked server-side validation, allowing the application to be coerced into making arbitrary requests."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0ff771dc1933d5a6b78f804115e78a7d8625c3f3",
+          "repo_url": "https://github.com/xerrors/yuxi-know",
+          "source": "osv"
+        },
+        {
+          "sha": "0ff771dc1933d5a6b78f804115e78a7d8625c3f3",
+          "repo_url": "https://github.com/xerrors/Yuxi-Know",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://vuldb.com/?ctiid.334492",
+        "https://vuldb.com/?id.334492",
+        "https://vuldb.com/?submit.697380",
+        "https://www.notion.so/SSRF-vulnerablity-in-Yuxi-Know-2afea92a3c4180bea524f1a253f8d9a0?source=copy_link"
+      ]
+    },
+    {
+      "id": "CVE-2025-5277",
+      "description": "aws-mcp-server MCP server is vulnerable to command injection. An attacker can craft a prompt that once accessed by the MCP client will run arbitrary commands on the host system.",
+      "severity": "CRITICAL",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-05-28T14:15:35.827",
+      "ai_tools": [
+        "aider"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to sufficiently sanitize or restrict user-provided input before passing it to the system shell, allowing an attacker to execute arbitrary commands.",
+      "bug_commits": [
+        {
+          "sha": "23c717b627ea5b0e0e71420c360bf0dfb85f4365",
+          "author": "Alexei Ledenev (aider)",
+          "date": "2025-03-18T13:58:35+02:00",
+          "message": "refactor: Enhance AWS MCP server with rate limiting, auth error detection, and command validation",
+          "ai_signals": [
+            {
+              "tool": "aider",
+              "signal_type": "author_name",
+              "matched_text": "(aider)",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/aws_mcp_server/cli_executor.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `validate_aws_command` function, which contains the logic for sanitizing user-provided AWS CLI commands. The vulnerability exists because this validation logic relies on `shlex.split` and basic string prefix checks, which are insufficient to prevent command injection when the input is passed to a shell-based execution context.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application failed to sufficiently sanitize or restrict user-provided input before passing it to the system shell, allowing an attacker to execute arbitrary commands.",
+            "vulnerable_pattern": "executing user-supplied input as part of an 'aws' CLI command without strict validation or allowlisting",
+            "causal_chain": "The blamed commit implemented the `validate_aws_command` function using inadequate validation patterns (simple prefix checks and `shlex.split`), which failed to account for shell metacharacters or complex command chaining, thereby enabling command injection when the application later executed these commands via `asyncio.create_subprocess_shell`."
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "94d20ae1798a43ac7e3a28e71900d774e5159c8a",
+          "repo_url": "https://github.com/alexei-led/aws-mcp-server",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/alexei-led/aws-mcp-server/blob/94d20ae1798a43ac7e3a28e71900d774e5159c8a/src/aws_mcp_server/cli_executor.py#L92"
+      ]
+    },
     {
       "id": "CVE-2025-53944",
       "description": "AutoGPT Platform Exposes Graph Execution Results via Authorization Gap",
@@ -74,6 +205,156 @@
         "https://github.com/Significant-Gravitas/AutoGPT/releases/tag/autogpt-platform-beta-v0.6.16",
         "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-x77j-qg2x-fgg6",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-53944"
+      ]
+    },
+    {
+      "id": "CVE-2025-58372",
+      "description": "Roo Code: Potential Remote Code Execution via .code-workspace",
+      "severity": "HIGH",
+      "cvss": 8.1,
+      "cwes": [
+        "CWE-732",
+        "CWE-94"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-05T23:15:30.647",
+      "ai_tools": [
+        "github_copilot",
+        "roo_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+      "bug_commits": [
+        {
+          "sha": "785fcac625b5b4934e97902498b4f97a47c2b997",
+          "author": "Matt Rubens",
+          "date": "2025-07-28T15:57:32-04:00",
+          "message": "Add a UI for managing slash commands (#6286)",
+          "ai_signals": [
+            {
+              "tool": "roo_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Roo Code <roomote@roocode",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "webview-ui/src/components/chat/SlashCommandItem.tsx",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `SlashCommandItem` component which allowed users to edit or delete any command, including built-in ones, by interacting with the UI. The fix commit reveals that the lack of a check for 'built-in' commands was the vulnerability, as it allowed potentially malicious workspace-defined commands to override or mimic system behavior.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": "1. The blamed commit created the SlashCommandItem component. 2. It implemented handleEdit and handleDelete functions without checking the command source. 3. This allowed the UI to expose editing/deletion capabilities for all commands, including those that should be restricted (built-in), leading to the RCE vector via workspace configuration."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "ff9b6b3ef600e76c921eb67fb89d8dbdc3ce9073",
+          "author": "Hannes Rudolph",
+          "date": "2025-06-22T21:17:55-06:00",
+          "message": "feat: add Claude Code provider for local CLI integration (#4864)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/api/index.ts",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability involves improper handling of .code-workspace files leading to RCE, whereas both the fix and blamed commits are merely adding new API provider handlers (ClaudeCodeHandler and QwenCodeHandler) to a factory function. The provided fix diff appears to be a routine feature addition rather than a security patch addressing workspace file validation.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "medium",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "4664955127950b0cedc57129a32b0b1190a51d2d",
+          "author": "Hannes Rudolph",
+          "date": "2025-08-21T14:02:05-06:00",
+          "message": "feat: add optional todos parameter to new_task tool with experimental setting (#6329) (#6775)",
+          "ai_signals": [
+            {
+              "tool": "roo_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Roo Code <roomote@roocode",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/core/prompts/__tests__/__snapshots__/add-custom-instructions/architect-mode-prompt.snap",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit only modifies test snapshots for the 'architect-mode' prompt, specifically adding example 'todos' to a documentation example. It does not touch any logic related to .code-workspace file handling or command execution, which are the root causes of the RCE vulnerability.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "840fe2a4c8b6331f2fcb43e4ddaba8950a0b4bf0",
+          "repo_url": "https://github.com/roocodeinc/roo-code",
+          "source": "osv"
+        },
+        {
+          "sha": "296edfc829a7c6efc8b5dbe09aa766a9aed79598",
+          "repo_url": "https://github.com/RooCodeInc/Roo-Code",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58372.json",
+        "https://github.com/RooCodeInc/Roo-Code/releases/tag/v3.26.0",
+        "https://github.com/RooCodeInc/Roo-Code/security/advisories/GHSA-4pqh-4ggm-jfmm",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58372"
       ]
     },
     {
@@ -2049,6 +2330,615 @@
       ]
     },
     {
+      "id": "CVE-2025-53107",
+      "description": "@cyanheads/git-mcp-server vulnerable to command injection in several tools",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-77"
+      ],
+      "ecosystem": "",
+      "published": "2025-07-01T18:15:25.990",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+      "bug_commits": [
+        {
+          "sha": "ddf2f0d317b8ff1dbe5a78d1b9332a0b68e6ecaa",
+          "author": "cyanheads",
+          "date": "2025-04-28T14:41:57-07:00",
+          "message": "feat: Initial commit for rewrite based on mcp-ts-template",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file `src/mcp-server/tools/gitAdd/logic.ts` and implemented the `addGitFiles` function using `child_process.exec` to handle user-provided input. This established the vulnerable pattern of shell command construction that was later identified as the root cause of the command injection vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the use of `exec` with unsanitized user input (the `files` argument) passed directly into a shell command string, which allowed for command injection."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "7878f97d211447da4b7c87f6d51ee79dbf2e0fbe",
+          "author": "Casey Hand",
+          "date": "2025-04-29T21:41:54-07:00",
+          "message": "Update src/mcp-server/tools/gitAdd/logic.ts",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that constructs a shell-formatted string (`filesArg`) intended for use with `child_process.exec`. By replacing strict validation (throwing an error on dashes) with a sanitization attempt that still relies on shell-quoting, it solidified the pattern of passing unsanitized user input into a shell command context.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit replaced a secure validation mechanism (rejecting inputs starting with '-') with a flawed sanitization approach that continued to use shell-quoting, which is inherently vulnerable to command injection when passed to `child_process.exec`."
+          }
+        },
+        {
+          "sha": "6b353cf359433493ddccc5a1f7bebd9f064d4912",
+          "author": "cyanheads",
+          "date": "2025-04-29T19:09:40-07:00",
+          "message": "refactor(git): Replace gitBranchList with unified gitBranch tool",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitBranch/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `gitBranchLogic` file and established the vulnerable pattern of using `child_process.exec` with string interpolation of user-controlled inputs (like `branchName` and `startPoint`). The fix commit directly addresses this by replacing `exec` with `execFile` and moving to an arguments array to prevent shell injection.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "1. The blamed commit creates src/mcp-server/tools/gitBranch/logic.ts. 2. It defines 'execAsync' using 'child_process.exec'. 3. It implements logic that concatenates user-provided strings (e.g., input.branchName) into a shell command string. 4. This allows an attacker to inject shell metacharacters into the command string, leading to arbitrary command execution."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "medium",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "0ce09996a9a3a7189030665d63223bfdd8b4f87e",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:03:38-07:00",
+          "message": "feat: add implementations for git checkout, diff, fetch, log, merge, pull, push, reset tools",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitCheckout/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file and implemented the `checkoutGit` function using `child_process.exec` to construct shell commands via string concatenation. This established the vulnerable pattern of passing unsanitized user input directly into a shell-executing function, which the fix commit later addressed by switching to `execFile` with argument arrays.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the use of `child_process.exec` and string-based command construction for git operations, which inherently allows shell injection when user-provided inputs like `branchOrPath` are concatenated into the command string."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "cdb8232607c5e23a8d2f426481f586f4675f7995",
+          "author": "cyanheads",
+          "date": "2025-04-29T19:10:03-07:00",
+          "message": "feat(git): Add new tools: cherry-pick, clone, init, rebase",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitCherryPick/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduces the file `src/mcp-server/tools/gitCherryPick/logic.ts` and imports `exec` from `child_process`, setting up `execAsync = promisify(exec)`. This establishes the vulnerable pattern of using `exec` to run git commands, which later allowed command injection.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The blamed commit created the gitCherryPick logic file and implemented the command execution using `child_process.exec` instead of the safer `execFile`. This architectural choice directly led to the command injection vulnerability when user inputs were concatenated into the command string."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "273618cc989315b52d6261a0751bcd290ba33a53",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:47:52-07:00",
+          "message": "feat: add initial structure for new git tools (clean, remote, show, stash, tag)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitClean/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file and implemented the vulnerable logic using `child_process.exec` to construct a shell command string. This established the pattern of concatenating user-controlled inputs into a command string, which is the root cause of the command injection vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the `gitCleanLogic` function, which utilized `exec(command)` where `command` was built via string concatenation of user-provided inputs (like `targetPath`), directly enabling shell injection."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "282eed376754db72b30bcfcd4aef7100b5ab0a68",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:48:03-07:00",
+          "message": "refactor(gitMerge): implement logic and registration for git_merge tool",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitMerge/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `gitMergeLogic.ts` file and established the vulnerable pattern of using `child_process.exec` with `promisify`. It specifically implemented the logic that concatenates user-provided inputs like `branch` and `commitMessage` into a shell command string, which is the exact root cause identified in the vulnerability analysis.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The blamed commit created the gitMerge tool implementation -> It imported 'exec' from 'child_process' and promisified it -> It implemented command construction by template-string concatenation of user-controlled variables (input.branch, input.commitMessage) -> It executed this raw string via the shell-evaluating exec function."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0dbd6995ccdf76ab770b58013034365b2d06c4d9",
+          "repo_url": "https://github.com/cyanheads/git-mcp-server",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53107.json",
+        "https://github.com/cyanheads/git-mcp-server/releases/tag/v2.1.5",
+        "https://github.com/cyanheads/git-mcp-server/security/advisories/GHSA-3q26-f695-pp76",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-53107"
+      ]
+    },
+    {
+      "id": "CVE-2025-53355",
+      "description": "mcp-server-kubernetes vulnerable to command injection in several tools",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-77"
+      ],
+      "ecosystem": "",
+      "published": "2025-07-08T20:15:30.020",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+      "bug_commits": [
+        {
+          "sha": "ddf2f0d317b8ff1dbe5a78d1b9332a0b68e6ecaa",
+          "author": "cyanheads",
+          "date": "2025-04-28T14:41:57-07:00",
+          "message": "feat: Initial commit for rewrite based on mcp-ts-template",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file `src/mcp-server/tools/gitAdd/logic.ts` and implemented the `addGitFiles` function using `child_process.exec` to handle user-provided input. This established the vulnerable pattern of shell command construction that was later identified as the root cause of the command injection vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the use of `exec` with unsanitized user input (the `files` argument) passed directly into a shell command string, which allowed for command injection."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "7878f97d211447da4b7c87f6d51ee79dbf2e0fbe",
+          "author": "Casey Hand",
+          "date": "2025-04-29T21:41:54-07:00",
+          "message": "Update src/mcp-server/tools/gitAdd/logic.ts",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitAdd/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that constructs a shell-formatted string (`filesArg`) intended for use with `child_process.exec`. By replacing strict validation (throwing an error on dashes) with a sanitization attempt that still relies on shell-quoting, it solidified the pattern of passing unsanitized user input into a shell command context.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit replaced a secure validation mechanism (rejecting inputs starting with '-') with a flawed sanitization approach that continued to use shell-quoting, which is inherently vulnerable to command injection when passed to `child_process.exec`."
+          }
+        },
+        {
+          "sha": "6b353cf359433493ddccc5a1f7bebd9f064d4912",
+          "author": "cyanheads",
+          "date": "2025-04-29T19:09:40-07:00",
+          "message": "refactor(git): Replace gitBranchList with unified gitBranch tool",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitBranch/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `gitBranchLogic` file and established the vulnerable pattern of using `child_process.exec` with string interpolation of user-controlled inputs (like `branchName` and `startPoint`). The fix commit directly addresses this by replacing `exec` with `execFile` and moving to an arguments array to prevent shell injection.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "1. The blamed commit creates src/mcp-server/tools/gitBranch/logic.ts. 2. It defines 'execAsync' using 'child_process.exec'. 3. It implements logic that concatenates user-provided strings (e.g., input.branchName) into a shell command string. 4. This allows an attacker to inject shell metacharacters into the command string, leading to arbitrary command execution."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "medium",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "0ce09996a9a3a7189030665d63223bfdd8b4f87e",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:03:38-07:00",
+          "message": "feat: add implementations for git checkout, diff, fetch, log, merge, pull, push, reset tools",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitCheckout/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file and implemented the `checkoutGit` function using `child_process.exec` to construct shell commands via string concatenation. This established the vulnerable pattern of passing unsanitized user input directly into a shell-executing function, which the fix commit later addressed by switching to `execFile` with argument arrays.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the use of `child_process.exec` and string-based command construction for git operations, which inherently allows shell injection when user-provided inputs like `branchOrPath` are concatenated into the command string."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "cdb8232607c5e23a8d2f426481f586f4675f7995",
+          "author": "cyanheads",
+          "date": "2025-04-29T19:10:03-07:00",
+          "message": "feat(git): Add new tools: cherry-pick, clone, init, rebase",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitCherryPick/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduces the file `src/mcp-server/tools/gitCherryPick/logic.ts` and imports `exec` from `child_process`, setting up `execAsync = promisify(exec)`. This establishes the vulnerable pattern of using `exec` to run git commands, which later allowed command injection.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The blamed commit created the gitCherryPick logic file and implemented the command execution using `child_process.exec` instead of the safer `execFile`. This architectural choice directly led to the command injection vulnerability when user inputs were concatenated into the command string."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "273618cc989315b52d6261a0751bcd290ba33a53",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:47:52-07:00",
+          "message": "feat: add initial structure for new git tools (clean, remote, show, stash, tag)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitClean/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the file and implemented the vulnerable logic using `child_process.exec` to construct a shell command string. This established the pattern of concatenating user-controlled inputs into a command string, which is the root cause of the command injection vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The commit introduced the `gitCleanLogic` function, which utilized `exec(command)` where `command` was built via string concatenation of user-provided inputs (like `targetPath`), directly enabling shell injection."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "282eed376754db72b30bcfcd4aef7100b5ab0a68",
+          "author": "cyanheads",
+          "date": "2025-04-28T15:48:03-07:00",
+          "message": "refactor(gitMerge): implement logic and registration for git_merge tool",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.05384615384615385
+            }
+          ],
+          "blamed_file": "src/mcp-server/tools/gitMerge/logic.ts",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `gitMergeLogic.ts` file and established the vulnerable pattern of using `child_process.exec` with `promisify`. It specifically implemented the logic that concatenates user-provided inputs like `branch` and `commitMessage` into a shell command string, which is the exact root cause identified in the vulnerability analysis.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "command injection",
+            "vuln_description": "The application used child_process.exec to execute shell commands with unsanitized user-provided input, allowing attackers to inject arbitrary shell commands.",
+            "vulnerable_pattern": "exec(`git add ${userInput}`)",
+            "causal_chain": "The blamed commit created the gitMerge tool implementation -> It imported 'exec' from 'child_process' and promisified it -> It implemented command construction by template-string concatenation of user-controlled variables (input.branch, input.commitMessage) -> It executed this raw string via the shell-evaluating exec function."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "high",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0dbd6995ccdf76ab770b58013034365b2d06c4d9",
+          "repo_url": "https://github.com/cyanheads/git-mcp-server",
+          "source": "osv"
+        },
+        {
+          "sha": "ab165f5a0eea917fef5dbae954506fff6f4bf514",
+          "repo_url": "https://github.com/flux159/mcp-server-kubernetes",
+          "source": "osv"
+        },
+        {
+          "sha": "ab165f5a0eea917fef5dbae954506fff6f4bf514",
+          "repo_url": "https://github.com/Flux159/mcp-server-kubernetes",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53355.json",
+        "https://github.com/Flux159/mcp-server-kubernetes/security/advisories/GHSA-gjv4-ghm7-q58q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-53355"
+      ]
+    },
+    {
       "id": "CVE-2025-55151",
       "description": "Stirling-PDF SSRF vulnerability on /api/v1/convert/file/pdf",
       "severity": "HIGH",
@@ -2119,6 +3009,204 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/55xxx/CVE-2025-55151.json",
         "https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-76hv-h7g2-xfv3",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-55151"
+      ]
+    },
+    {
+      "id": "CVE-2025-58161",
+      "description": "MobSF Path Traversal in GET /download/<filename> using absolute filenames",
+      "severity": "LOW",
+      "cvss": 1.3,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-02T01:15:30.170",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+      "bug_commits": [
+        {
+          "sha": "7e0355c51d78d9911b5f8722f306d182f9975c35",
+          "author": "Ajin Abraham",
+          "date": "2025-06-23T00:57:33-07:00",
+          "message": "June 22nd 2025 updates (#2530)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.0875
+            }
+          ],
+          "blamed_file": "mobsf/DynamicAnalyzer/views/common/frida/views.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `get_script_content` function and the specific vulnerable logic where `is_safe_path` is called with only two arguments. This implementation failed to pass the original user-controlled `script` input to the validator, allowing potential bypasses if the `script_file` construction logic was flawed or if the validator required the raw input to detect traversal sequences effectively.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
+            "causal_chain": "1. The blamed commit creates the `get_script_content` function. 2. It implements a loop that takes user-provided script names from `request.POST.getlist('scripts[]')`. 3. It constructs a path using these names and attempts to validate it using `is_safe_path(str(others), str(script_file))`. 4. This specific call pattern (missing the third argument for the raw user input) is what the fix commit identifies as the vulnerability and corrects."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
+          "author": "Jaeyou PARK",
+          "date": "2025-07-12T15:36:21+09:00",
+          "message": "fix(ios_analyzer): Correctly resolve executable path in .app bundles (#2533)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "mobsf/StaticAnalyzer/views/ios/binary_analysis.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that dynamically constructs the binary path using `dot_app_path.stem` and `bin_dir / bin_name` without sanitizing the input. By replacing the previous directory iteration with a glob search that trusts the extracted file structure, it created the entry point for the path traversal vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
+            "causal_chain": "The commit introduced a path construction mechanism that relies on user-controlled file names (via `dot_app_path.stem`) to define the `bin_path`. Because this path is subsequently used in file operations without validation against traversal sequences, it allows an attacker to influence the target file path."
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7f3bc086c028c1b50889cab8a15f7b59b7abdaf9",
+          "repo_url": "https://github.com/mobsf/mobile-security-framework-mobsf",
+          "source": "osv"
+        },
+        {
+          "sha": "7f3bc086c028c1b50889cab8a15f7b59b7abdaf9",
+          "repo_url": "https://github.com/MobSF/Mobile-Security-Framework-MobSF",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58161.json",
+        "https://github.com/MobSF/Mobile-Security-Framework-MobSF/releases/tag/v4.4.1",
+        "https://github.com/MobSF/Mobile-Security-Framework-MobSF/security/advisories/GHSA-ccc3-fvfx-mw3v",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58161"
+      ]
+    },
+    {
+      "id": "CVE-2025-58162",
+      "description": "MobSF Vulnerable to Arbitrary File Write (AR-Slip) via Absolute Path in .a Extraction",
+      "severity": "MEDIUM",
+      "cvss": 6.5,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-02T01:15:30.353",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.63,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+      "bug_commits": [
+        {
+          "sha": "7e0355c51d78d9911b5f8722f306d182f9975c35",
+          "author": "Ajin Abraham",
+          "date": "2025-06-23T00:57:33-07:00",
+          "message": "June 22nd 2025 updates (#2530)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "squash_decomposed_co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.0875
+            }
+          ],
+          "blamed_file": "mobsf/DynamicAnalyzer/views/common/frida/views.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `get_script_content` function and the specific vulnerable logic where `is_safe_path` is called with only two arguments. This implementation failed to pass the original user-controlled `script` input to the validator, allowing potential bypasses if the `script_file` construction logic was flawed or if the validator required the raw input to detect traversal sequences effectively.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
+            "causal_chain": "1. The blamed commit creates the `get_script_content` function. 2. It implements a loop that takes user-provided script names from `request.POST.getlist('scripts[]')`. 3. It constructs a path using these names and attempts to validate it using `is_safe_path(str(others), str(script_file))`. 4. This specific call pattern (missing the third argument for the raw user input) is what the fix commit identifies as the vulnerability and corrects."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
+          "author": "Jaeyou PARK",
+          "date": "2025-07-12T15:36:21+09:00",
+          "message": "fix(ios_analyzer): Correctly resolve executable path in .app bundles (#2533)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "mobsf/StaticAnalyzer/views/ios/binary_analysis.py",
+          "blame_confidence": 0.9,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the logic that dynamically constructs the binary path using `dot_app_path.stem` and `bin_dir / bin_name` without sanitizing the input. By replacing the previous directory iteration with a glob search that trusts the extracted file structure, it created the entry point for the path traversal vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The application failed to properly validate file paths during extraction or access, allowing attackers to use absolute paths or traversal sequences to write to or read from unauthorized locations on the filesystem.",
+            "vulnerable_pattern": "is_safe_path(base_dir, target_path) without validating the user-provided filename component against traversal sequences or absolute path indicators.",
+            "causal_chain": "The commit introduced a path construction mechanism that relies on user-controlled file names (via `dot_app_path.stem`) to define the `bin_path`. Because this path is subsequently used in file operations without validation against traversal sequences, it allows an attacker to influence the target file path."
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7f3bc086c028c1b50889cab8a15f7b59b7abdaf9",
+          "repo_url": "https://github.com/mobsf/mobile-security-framework-mobsf",
+          "source": "osv"
+        },
+        {
+          "sha": "7f3bc086c028c1b50889cab8a15f7b59b7abdaf9",
+          "repo_url": "https://github.com/MobSF/Mobile-Security-Framework-MobSF",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58162.json",
+        "https://github.com/MobSF/Mobile-Security-Framework-MobSF/releases/tag/v4.4.1",
+        "https://github.com/MobSF/Mobile-Security-Framework-MobSF/security/advisories/GHSA-9gh8-9r95-3fc3",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58162"
       ]
     },
     {
@@ -2402,6 +3490,145 @@
       "references": [
         "https://github.com/babylonlabs-io/babylon/security/advisories/GHSA-4rmq-mc2c-r495",
         "https://github.com/babylonlabs-io/babylon/commit/e65c3a55a398a403103f1b089cf76f0d4befc7a0"
+      ]
+    },
+    {
+      "id": "CVE-2025-58373",
+      "description": "Roo Code: Symlink-bypass of .rooignore can lead to unintended file disclosure",
+      "severity": "MEDIUM",
+      "cvss": 5.5,
+      "cwes": [
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-05T23:15:30.830",
+      "ai_tools": [
+        "roo_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.475,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+      "bug_commits": [
+        {
+          "sha": "785fcac625b5b4934e97902498b4f97a47c2b997",
+          "author": "Matt Rubens",
+          "date": "2025-07-28T15:57:32-04:00",
+          "message": "Add a UI for managing slash commands (#6286)",
+          "ai_signals": [
+            {
+              "tool": "roo_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Roo Code <roomote@roocode",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "webview-ui/src/components/chat/SlashCommandItem.tsx",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `SlashCommandItem` component which allowed users to edit or delete any command, including built-in ones, by interacting with the UI. The fix commit reveals that the lack of a check for 'built-in' commands was the vulnerability, as it allowed potentially malicious workspace-defined commands to override or mimic system behavior.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": "1. The blamed commit created the SlashCommandItem component. 2. It implemented handleEdit and handleDelete functions without checking the command source. 3. This allowed the UI to expose editing/deletion capabilities for all commands, including those that should be restricted (built-in), leading to the RCE vector via workspace configuration."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "gemini-3.1-pro-preview",
+              "claude-opus-4-6"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "840fe2a4c8b6331f2fcb43e4ddaba8950a0b4bf0",
+          "repo_url": "https://github.com/roocodeinc/roo-code",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58373.json",
+        "https://github.com/RooCodeInc/Roo-Code/releases/tag/v3.26.0",
+        "https://github.com/RooCodeInc/Roo-Code/security/advisories/GHSA-p76r-7mc3-qh7c",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58373"
+      ]
+    },
+    {
+      "id": "CVE-2025-58374",
+      "description": "Roo Code: Auto-approve allows npm install execution of malicious postinstall scripts",
+      "severity": "HIGH",
+      "cvss": 7.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-06T03:15:40.097",
+      "ai_tools": [
+        "roo_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.475,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+      "bug_commits": [
+        {
+          "sha": "785fcac625b5b4934e97902498b4f97a47c2b997",
+          "author": "Matt Rubens",
+          "date": "2025-07-28T15:57:32-04:00",
+          "message": "Add a UI for managing slash commands (#6286)",
+          "ai_signals": [
+            {
+              "tool": "roo_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Roo Code <roomote@roocode",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "webview-ui/src/components/chat/SlashCommandItem.tsx",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `SlashCommandItem` component which allowed users to edit or delete any command, including built-in ones, by interacting with the UI. The fix commit reveals that the lack of a check for 'built-in' commands was the vulnerability, as it allowed potentially malicious workspace-defined commands to override or mimic system behavior.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": "1. The blamed commit created the SlashCommandItem component. 2. It implemented handleEdit and handleDelete functions without checking the command source. 3. This allowed the UI to expose editing/deletion capabilities for all commands, including those that should be restricted (built-in), leading to the RCE vector via workspace configuration."
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "840fe2a4c8b6331f2fcb43e4ddaba8950a0b4bf0",
+          "repo_url": "https://github.com/roocodeinc/roo-code",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58374.json",
+        "https://github.com/RooCodeInc/Roo-Code/pull/7390/files",
+        "https://github.com/RooCodeInc/Roo-Code/releases/tag/v3.26.0",
+        "https://github.com/RooCodeInc/Roo-Code/security/advisories/GHSA-c292-qxq4-4p2v",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58374"
       ]
     },
     {
@@ -4266,73 +5493,6 @@
       "references": []
     },
     {
-      "id": "CVE-2025-44001",
-      "description": "Mattermost Confluence Plugin has Missing Authorization vulnerability",
-      "severity": "MEDIUM",
-      "cvss": 4.0,
-      "cwes": [
-        "CWE-862"
-      ],
-      "ecosystem": "",
-      "published": "2025-08-11T19:15:27.467",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "Go"
-      ],
-      "confidence": 0.63,
-      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-      "bug_commits": [
-        {
-          "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
-          "author": "kshitij katiyar",
-          "date": "2025-06-03T13:55:37+05:30",
-          "message": "Check Confluence access for subscription and config checks (#155)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "server/edit_subscription.go",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis concerns a missing authorization check in an endpoint responsible for rendering Atlassian Connect JSON configuration, whereas the blamed commit modifies the 'handleEditChannelSubscription' function in 'server/edit_subscription.go'. The blamed commit refactors how subscription access is validated, which is entirely unrelated to the Atlassian Connect JSON configuration endpoint mentioned in the vulnerability report.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Missing Authorization",
-            "vuln_description": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-            "vulnerable_pattern": "func renderAtlassianConnectJSON(w http.ResponseWriter, r *http.Request, p *Plugin) { ... }",
-            "causal_chain": ""
-          },
-          "tribunal_verdict": {
-            "verdict": "CONFIRMED",
-            "confidence": "medium",
-            "models": [
-              "gpt-5.4",
-              "gemini-3.1-pro-preview",
-              "claude-opus-4-6"
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "c32e0043881fc046ee59e47e00bf4b1e1285081a",
-          "repo_url": "https://github.com/mattermost/mattermost-plugin-confluence",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-44001",
-        "https://mattermost.com/security-updates"
-      ]
-    },
-    {
       "id": "CVE-2025-44004",
       "description": "Mattermost Confluence Plugin is Missing Authentication for Critical Function",
       "severity": "HIGH",
@@ -4396,140 +5556,6 @@
       ],
       "references": [
         "https://nvd.nist.gov/vuln/detail/CVE-2025-44004",
-        "https://mattermost.com/security-updates"
-      ]
-    },
-    {
-      "id": "CVE-2025-53910",
-      "description": "Mattermost Confluence Plugin has Missing Authorization vulnerability",
-      "severity": "MEDIUM",
-      "cvss": 4.0,
-      "cwes": [
-        "CWE-862"
-      ],
-      "ecosystem": "",
-      "published": "2025-08-11T19:15:29.747",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "Go"
-      ],
-      "confidence": 0.63,
-      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-      "bug_commits": [
-        {
-          "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
-          "author": "kshitij katiyar",
-          "date": "2025-06-03T13:55:37+05:30",
-          "message": "Check Confluence access for subscription and config checks (#155)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "server/edit_subscription.go",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis concerns a missing authorization check in an endpoint responsible for rendering Atlassian Connect JSON configuration, whereas the blamed commit modifies the 'handleEditChannelSubscription' function in 'server/edit_subscription.go'. The blamed commit refactors how subscription access is validated, which is entirely unrelated to the Atlassian Connect JSON configuration endpoint mentioned in the vulnerability report.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Missing Authorization",
-            "vuln_description": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-            "vulnerable_pattern": "func renderAtlassianConnectJSON(w http.ResponseWriter, r *http.Request, p *Plugin) { ... }",
-            "causal_chain": ""
-          },
-          "tribunal_verdict": {
-            "verdict": "CONFIRMED",
-            "confidence": "high",
-            "models": [
-              "gemini-3.1-pro-preview",
-              "gpt-5.4",
-              "claude-opus-4-6"
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "c32e0043881fc046ee59e47e00bf4b1e1285081a",
-          "repo_url": "https://github.com/mattermost/mattermost-plugin-confluence",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-53910",
-        "https://mattermost.com/security-updates"
-      ]
-    },
-    {
-      "id": "CVE-2025-54458",
-      "description": "Mattermost Confluence Plugin has Missing Authorization vulnerability",
-      "severity": "MEDIUM",
-      "cvss": 5.0,
-      "cwes": [
-        "CWE-862"
-      ],
-      "ecosystem": "",
-      "published": "2025-08-11T19:15:29.940",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "Go"
-      ],
-      "confidence": 0.63,
-      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-      "bug_commits": [
-        {
-          "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
-          "author": "kshitij katiyar",
-          "date": "2025-06-03T13:55:37+05:30",
-          "message": "Check Confluence access for subscription and config checks (#155)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "server/edit_subscription.go",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis concerns a missing authorization check in an endpoint responsible for rendering Atlassian Connect JSON configuration, whereas the blamed commit modifies the 'handleEditChannelSubscription' function in 'server/edit_subscription.go'. The blamed commit refactors how subscription access is validated, which is entirely unrelated to the Atlassian Connect JSON configuration endpoint mentioned in the vulnerability report.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Missing Authorization",
-            "vuln_description": "The endpoint responsible for rendering the Atlassian Connect JSON configuration lacked proper authorization checks, allowing unauthorized users to access sensitive plugin configuration details.",
-            "vulnerable_pattern": "func renderAtlassianConnectJSON(w http.ResponseWriter, r *http.Request, p *Plugin) { ... }",
-            "causal_chain": ""
-          },
-          "tribunal_verdict": {
-            "verdict": "CONFIRMED",
-            "confidence": "medium",
-            "models": [
-              "gpt-5.4",
-              "gemini-3.1-pro-preview",
-              "claude-opus-4-6"
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "c32e0043881fc046ee59e47e00bf4b1e1285081a",
-          "repo_url": "https://github.com/mattermost/mattermost-plugin-confluence",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-54458",
         "https://mattermost.com/security-updates"
       ]
     },
@@ -5796,6 +6822,115 @@
       ]
     },
     {
+      "id": "CVE-2025-58370",
+      "description": "Roo Code: Potential Remote Code Execution via Bash Parameter Expansion and Indirect Reference",
+      "severity": "HIGH",
+      "cvss": 8.1,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-05T23:15:30.260",
+      "ai_tools": [
+        "github_copilot",
+        "roo_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.475,
+      "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+      "bug_commits": [
+        {
+          "sha": "ff9b6b3ef600e76c921eb67fb89d8dbdc3ce9073",
+          "author": "Hannes Rudolph",
+          "date": "2025-06-22T21:17:55-06:00",
+          "message": "feat: add Claude Code provider for local CLI integration (#4864)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/api/index.ts",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability involves improper handling of .code-workspace files leading to RCE, whereas both the fix and blamed commits are merely adding new API provider handlers (ClaudeCodeHandler and QwenCodeHandler) to a factory function. The provided fix diff appears to be a routine feature addition rather than a security patch addressing workspace file validation.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        },
+        {
+          "sha": "4664955127950b0cedc57129a32b0b1190a51d2d",
+          "author": "Hannes Rudolph",
+          "date": "2025-08-21T14:02:05-06:00",
+          "message": "feat: add optional todos parameter to new_task tool with experimental setting (#6329) (#6775)",
+          "ai_signals": [
+            {
+              "tool": "roo_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Roo Code <roomote@roocode",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/core/prompts/__tests__/__snapshots__/add-custom-instructions/architect-mode-prompt.snap",
+          "blame_confidence": 0.5,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit only modifies test snapshots for the 'architect-mode' prompt, specifically adding example 'todos' to a documentation example. It does not touch any logic related to .code-workspace file handling or command execution, which are the root causes of the RCE vulnerability.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Remote Code Execution",
+            "vuln_description": "The application failed to restrict access to sensitive .code-workspace files, allowing malicious workspace configurations to execute arbitrary commands.",
+            "vulnerable_pattern": "Lack of protection/validation for .code-workspace files allowing arbitrary command execution",
+            "causal_chain": ""
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "840fe2a4c8b6331f2fcb43e4ddaba8950a0b4bf0",
+          "repo_url": "https://github.com/roocodeinc/roo-code",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/58xxx/CVE-2025-58370.json",
+        "https://github.com/RooCodeInc/Roo-Code/security/advisories/GHSA-2rm5-cvcm-7592",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58370"
+      ]
+    },
+    {
       "id": "CVE-2025-60105",
       "description": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting') vulnerability in metaphorcreations Ditty allows Stored XSS. This issue affects Ditty: from n/a through 3.1.58.",
       "severity": "MEDIUM",
@@ -6590,1146 +7725,6 @@
       ]
     },
     {
-      "id": "CVE-2025-64101",
-      "description": "ZITADEL Vulnerable to Account Takeover via Malicious Forwarded Header Injection",
-      "severity": "HIGH",
-      "cvss": 8.1,
-      "cwes": [
-        "CWE-601",
-        "CWE-640"
-      ],
-      "ecosystem": "",
-      "published": "2025-10-29T19:15:38.763",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0f0a55ca18873b85feaca561e6f0b3f081ad4204",
-          "author": "Livio Spring",
-          "date": "2025-04-02T19:34:21+02:00",
-          "message": "chore!: ensure breaking change",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "f7309f82953713922421add61d85994d876e8999",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "921ad56a2163f86b8ff32b9ddaaab64bea3d4fd4",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "396cdd436cd5e1b217b1f0af4e1a3bd03d1dea5f",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "72a5c33e6ac302b978d564bd049f9364f5a989b1",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64101.json",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-mwmh-7px9-4c23",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64101"
-      ]
-    },
-    {
-      "id": "CVE-2025-64102",
-      "description": "Zitadel allows brute-forcing authentication factors",
-      "severity": "HIGH",
-      "cvss": 7.7,
-      "cwes": [
-        "CWE-307"
-      ],
-      "ecosystem": "",
-      "published": "2025-10-29T19:15:38.927",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0f0a55ca18873b85feaca561e6f0b3f081ad4204",
-          "author": "Livio Spring",
-          "date": "2025-04-02T19:34:21+02:00",
-          "message": "chore!: ensure breaking change",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "f7309f82953713922421add61d85994d876e8999",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "921ad56a2163f86b8ff32b9ddaaab64bea3d4fd4",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "396cdd436cd5e1b217b1f0af4e1a3bd03d1dea5f",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "b8db8cdf9cc8ea13f461758aef12457f8b7d972a",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64102.json",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-xrw9-r35x-x878",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64102"
-      ]
-    },
-    {
-      "id": "CVE-2025-64103",
-      "description": "Zitadel Bypass Second Authentication Factor",
-      "severity": "HIGH",
-      "cvss": 8.7,
-      "cwes": [
-        "CWE-287",
-        "CWE-308"
-      ],
-      "ecosystem": "",
-      "published": "2025-10-29T19:15:39.067",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0f0a55ca18873b85feaca561e6f0b3f081ad4204",
-          "author": "Livio Spring",
-          "date": "2025-04-02T19:34:21+02:00",
-          "message": "chore!: ensure breaking change",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "f7309f82953713922421add61d85994d876e8999",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "921ad56a2163f86b8ff32b9ddaaab64bea3d4fd4",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "396cdd436cd5e1b217b1f0af4e1a3bd03d1dea5f",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "b284f8474eed0cba531905101619e7ae7963156b",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64103.json",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-cfjq-28r2-4jv5",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64103"
-      ]
-    },
-    {
-      "id": "CVE-2025-64431",
-      "description": "IDOR Vulnerabilities in ZITADEL's Organization API allows Cross-Tenant Data Tempering",
-      "severity": "HIGH",
-      "cvss": 8.7,
-      "cwes": [
-        "CWE-639"
-      ],
-      "ecosystem": "",
-      "published": "2025-11-07T19:16:26.650",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "bd354ded61d56a3b9bf21c3a80c7f4a9d8329a8a",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "8dcfff97ed52a8b9fc77ecb1f972744f42cff3ed",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64431.json",
-        "https://github.com/zitadel/zitadel/releases/tag/v4.6.3",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-cpf4-pmr4-w6cx",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64431"
-      ]
-    },
-    {
-      "id": "CVE-2025-64717",
-      "description": "ZITADEL vulnerable to Account Takeover with deactivated Instance IdP",
-      "severity": "HIGH",
-      "cvss": 7.4,
-      "cwes": [
-        "CWE-287"
-      ],
-      "ecosystem": "",
-      "published": "2025-11-13T16:15:56.973",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        },
-        {
-          "sha": "0f0a55ca18873b85feaca561e6f0b3f081ad4204",
-          "author": "Livio Spring",
-          "date": "2025-04-02T19:34:21+02:00",
-          "message": "chore!: ensure breaking change",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "a20dbc4ac80b5708669fb525262fad38a3928814",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "4da0c1c1caa42a141d9bc7c7621b8ab4488bb7c2",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "85122bd18b310ea8d6578c07e1cf07698ee28055",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "33c51deb20402dd5720e32cfb0c1d5fdc752f2e0",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64717.json",
-        "https://github.com/zitadel/zitadel/releases/tag/v2.71.19",
-        "https://github.com/zitadel/zitadel/releases/tag/v3.4.4",
-        "https://github.com/zitadel/zitadel/releases/tag/v4.6.6",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-j4g7-v4m4-77px",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64717"
-      ]
-    },
-    {
       "id": "CVE-2025-67494",
       "description": "ZITADEL Vulnerable to Unauthenticated Full-Read SSRF via V2 Login",
       "severity": "CRITICAL",
@@ -7744,7 +7739,7 @@
       ],
       "languages": [],
       "confidence": 0.1875,
-      "verified_by": "",
+      "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "",
       "bug_commits": [
         {
@@ -7846,7 +7841,16 @@
           ],
           "blamed_file": "(from OSV introduced)",
           "blame_confidence": 1.0,
-          "llm_verdict": null
+          "llm_verdict": null,
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ]
+          }
         }
       ],
       "fix_commits": [
@@ -7865,287 +7869,6 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/67xxx/CVE-2025-67494.json",
         "https://github.com/zitadel/zitadel/security/advisories/GHSA-7wfc-4796-gmg5",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-67494"
-      ]
-    },
-    {
-      "id": "CVE-2025-67495",
-      "description": "ZITADEL Vulnerable to Account Takeover via DOM-Based XSS in Zitadel V2 Login",
-      "severity": "HIGH",
-      "cvss": 8.0,
-      "cwes": [
-        "CWE-79"
-      ],
-      "ecosystem": "",
-      "published": "2025-12-09T23:15:59.933",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "38c7ce7e5250f433403abe9a9de9a8f47f5f39e3",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "4c879b47334e01d4fcab921ac1b44eda39acdb96",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/67xxx/CVE-2025-67495.json",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-v959-qxv6-6f8p",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-67495"
-      ]
-    },
-    {
-      "id": "CVE-2025-67717",
-      "description": "Zitadel Discloses the Total Number of Instance Users",
-      "severity": "MEDIUM",
-      "cvss": 5.3,
-      "cwes": [
-        "CWE-497"
-      ],
-      "ecosystem": "",
-      "published": "2025-12-11T01:16:01.027",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [],
-      "confidence": 0.1875,
-      "verified_by": "",
-      "how_introduced": "",
-      "bug_commits": [
-        {
-          "sha": "8f0b7ebf028187e84881694bb931cbe33604e308",
-          "author": "Stefan Benz",
-          "date": "2025-07-04T18:17:31+02:00",
-          "message": "BREAKING CHANGE: release candidate v4",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <198982749+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "squash_decomposed_co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <223556219+Copilot",
-              "confidence": 0.18749999999999997
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "llm_verdict": null
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "e6b5f559f08a4b4a9d3d38aa5f9a31cfebf46d1b",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "0e17d0005a98ccbf92139961ef702ef03208ffd3",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        },
-        {
-          "sha": "826039c6208fe71df57b3a94c982b5ac5b0af12c",
-          "repo_url": "https://github.com/zitadel/zitadel",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/67xxx/CVE-2025-67717.json",
-        "https://github.com/zitadel/zitadel/security/advisories/GHSA-f4cf-9rvr-2rcx",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-67717"
       ]
     }
   ]
