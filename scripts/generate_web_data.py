@@ -552,16 +552,34 @@ def load_ghsa_severities(
 # Filtering
 # ---------------------------------------------------------------------------
 
-def _is_all_negative_verdict(result: dict) -> bool:
-    """Return True if every AI-signaled BIC has an LLM verdict of UNLIKELY or UNRELATED.
+def _effective_verdict(bic: dict) -> str:
+    """Return the best available verdict for a BIC.
 
-    CVEs where the LLM determined that *none* of the AI-authored commits
-    actually introduced the vulnerability are false positives and should
-    be excluded from the website.
+    Prefers tribunal_verdict (multi-model) over llm_verdict (single-model)
+    when available.  Returns "" if no verdict exists.
+    """
+    tv = bic.get("tribunal_verdict")
+    if tv and tv.get("final_verdict"):
+        return tv["final_verdict"].upper()
+    llm_v = bic.get("llm_verdict")
+    if llm_v and llm_v.get("verdict"):
+        return llm_v["verdict"].upper()
+    return ""
+
+
+def _is_all_negative_verdict(result: dict) -> bool:
+    """Return True if every AI-signaled BIC has a negative verdict.
+
+    Uses tribunal_verdict when available (multi-model, more reliable),
+    falling back to llm_verdict (single-model).
+
+    CVEs where verification determined that *none* of the AI-authored
+    commits actually introduced the vulnerability are false positives
+    and should be excluded from the website.
 
     Returns False (keep) when:
     - No BICs have AI signals (shouldn't happen for AI results, but safe)
-    - Any BIC with AI signals lacks an LLM verdict (benefit of the doubt)
+    - Any BIC with AI signals lacks a verdict (benefit of the doubt)
     - Any BIC has a CONFIRMED verdict
     """
     ai_bics = [
@@ -572,11 +590,11 @@ def _is_all_negative_verdict(result: dict) -> bool:
         return False
 
     for bic in ai_bics:
-        llm_v = bic.get("llm_verdict")
-        if not llm_v or not llm_v.get("verdict"):
+        verdict = _effective_verdict(bic)
+        if not verdict:
             # No verdict → keep (benefit of the doubt)
             return False
-        if llm_v["verdict"] == "CONFIRMED":
+        if verdict == "CONFIRMED":
             return False
 
     # All AI BICs have verdicts and none are CONFIRMED
@@ -641,7 +659,8 @@ def _build_bug_commit(bic: dict) -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
     llm_v = bic.get("llm_verdict")
-    return {
+    tv = bic.get("tribunal_verdict")
+    entry: dict = {
         "sha": commit.get("sha", ""),
         "author": commit.get("author_name", ""),
         "date": commit.get("authored_date", ""),
@@ -667,6 +686,15 @@ def _build_bug_commit(bic: dict) -> dict:
             "causal_chain": llm_v.get("causal_chain", ""),
         } if llm_v else None,
     }
+    if tv:
+        entry["tribunal_verdict"] = {
+            "verdict": tv.get("final_verdict", ""),
+            "confidence": tv.get("confidence", ""),
+            "models": [
+                av.get("model", "") for av in tv.get("agent_verdicts", [])
+            ],
+        }
+    return entry
 
 
 def _recompute_ai_confidence(result: dict) -> float:
@@ -710,17 +738,16 @@ def build_cve_entry(
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
 
-    # Deduplicated list of AI tool names — only from BICs whose LLM verdict
-    # is CONFIRMED or missing (benefit of the doubt).  UNRELATED/UNLIKELY
-    # commits should not contribute their tools to the CVE's ai_tools list.
+    # Deduplicated list of AI tool names — only from BICs whose effective
+    # verdict is CONFIRMED or missing (benefit of the doubt).
+    # Tribunal verdict (multi-model) takes precedence over single-model LLM.
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
         commit = bic.get("commit", {})
         signals = commit.get("ai_signals", [])
         if not signals:
             continue
-        llm_v = bic.get("llm_verdict")
-        verdict = llm_v.get("verdict", "") if llm_v else ""
+        verdict = _effective_verdict(bic)
         if verdict in ("UNLIKELY", "UNRELATED"):
             continue
         for sig in signals:
@@ -729,14 +756,14 @@ def build_cve_entry(
                 ai_tools_set.add(tool)
     ai_tools = sorted(ai_tools_set)
 
-    # Only include BICs with AI signals whose verdict is CONFIRMED or missing.
-    # Skip commits without AI signals (plain human commits from git blame)
-    # and those the LLM judged UNLIKELY/UNRELATED.
+    # Only include BICs with AI signals whose effective verdict is CONFIRMED
+    # or missing.  Skip commits without AI signals (plain human commits from
+    # git blame) and those judged UNLIKELY/UNRELATED by tribunal or LLM.
     raw_bics = result.get("bug_introducing_commits", [])
     bug_commits = [
         _build_bug_commit(bic) for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
-        and (bic.get("llm_verdict") or {}).get("verdict", "") not in ("UNLIKELY", "UNRELATED")
+        and _effective_verdict(bic) not in ("UNLIKELY", "UNRELATED")
     ]
 
     # Use NVD published date if available, fall back to year from CVE ID
@@ -771,9 +798,14 @@ def build_cve_entry(
         if ghsa_sev:
             severity = ghsa_sev
 
-    # Compute verified_by from LLM verdicts and manual reviews
+    # Compute verified_by from tribunal + LLM verdicts and manual reviews
     models: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
+        tv = bic.get("tribunal_verdict")
+        if tv:
+            for av in tv.get("agent_verdicts", []):
+                if av.get("model"):
+                    models.add(av["model"])
         llm_v = bic.get("llm_verdict")
         if llm_v and llm_v.get("model"):
             models.add(llm_v["model"])

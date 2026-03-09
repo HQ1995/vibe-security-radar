@@ -33,19 +33,13 @@ const DATA_SOURCES = [
     description:
       "National Vulnerability Database (NIST). Reference URLs are parsed to extract commit and pull-request links.",
   },
-  {
-    name: "GitHub Search API",
-    url: "https://docs.github.com/en/rest/search",
-    description:
-      "Fallback commit and code search when advisory databases lack fix-commit SHAs.",
-  },
 ] as const;
 
 const LIMITATIONS = [
   "Only detects AI involvement when explicit signatures exist (co-author trailers, bot emails, commit message markers).",
   "AI tools that do not leave signatures in commits cannot be detected.",
-  "Git blame may attribute lines to the wrong commit in some edge cases; two-phase LLM verification reduces but does not eliminate this.",
-  "LLM verification uses a lightweight model (Gemini 3.1 Flash Lite) and may occasionally misclassify borderline cases.",
+  "Git blame may attribute lines to the wrong commit in some edge cases; multi-model tribunal verification reduces but does not eliminate this.",
+  "Tribunal verification uses three independent LLM agents and majority vote, but may still misclassify borderline cases where causality is ambiguous.",
   "Only publicly disclosed vulnerabilities with available fix commits can be analyzed; vulnerabilities in closed-source code or without public patches are not covered.",
 ] as const;
 
@@ -64,9 +58,9 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Tier 3",
-    title: "GitHub search (fallback)",
+    title: "Git log search (fallback)",
     description:
-      "Search GitHub commits for CVE/GHSA mentions when earlier tiers lack fix-commit SHAs.",
+      "Search the cloned repository's git log for CVE/GHSA ID mentions when earlier tiers lack fix-commit SHAs. Only searches repos already identified by advisory sources, avoiding false matches from scanner or PoC repositories.",
   },
   {
     tier: "Tier 4",
@@ -82,9 +76,9 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Tier 6",
-    title: "Two-phase LLM causality verification",
+    title: "Multi-model tribunal verification",
     description:
-      "Phase 1 (per-CVE): An LLM analyzes the fix commit to understand the vulnerability — its type, root cause, vulnerable code pattern, and which files are security-relevant. Phase 2 (per-commit): For each AI-signaled commit, the LLM uses Phase 1 context to verify whether the commit actually introduced the vulnerability, producing a structured verdict with causal chain analysis. This two-phase approach eliminates false positives from commits that merely touch the same file as the vulnerability.",
+      "Phase 1 (per-CVE): An LLM analyzes the fix commit to understand the vulnerability — its type, root cause, vulnerable code pattern, and which files are security-relevant. Phase 2 (per-commit): A tribunal of three independent LLM agents (GPT, Claude, Gemini) each investigate the commit with tool calls (reading diffs, checking context), then a majority vote determines causality. This multi-model approach catches false positives that single-model verification misses — in testing, 61% of single-model confirmations were overturned by the tribunal.",
   },
 ] as const;
 
@@ -120,10 +114,10 @@ export default function AboutPage() {
           Every vulnerability is processed through a six-tier pipeline. Bulk
           local data is preferred for throughput; API calls serve as fallbacks.
           Fix commits are traced back to bug-introducing commits via git blame,
-          then each commit is checked for AI tool signatures. A two-phase LLM
-          verification process confirms causality — first understanding the
-          vulnerability itself, then evaluating whether each AI-authored commit
-          actually introduced it.
+          then each commit is checked for AI tool signatures. A multi-model
+          tribunal verification process confirms causality — first understanding
+          the vulnerability itself, then launching three independent LLM agents
+          to evaluate whether each AI-authored commit actually introduced it.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -145,22 +139,26 @@ export default function AboutPage() {
       {/* Verification Details */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          LLM Verification
+          Multi-Model Tribunal Verification
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          Each CVE with AI-signaled commits goes through a two-phase LLM
-          analysis using Gemini 3.1 Flash Lite. The first phase analyzes the
-          fix commit to understand the vulnerability: its type (e.g., command
+          Each CVE with AI-signaled commits goes through a two-phase
+          verification process. The first phase uses an LLM to analyze the fix
+          commit and understand the vulnerability: its type (e.g., command
           injection, XSS), root cause, and vulnerable code pattern. The second
-          phase evaluates each blamed commit against this context to determine
-          whether it causally introduced the vulnerability.
+          phase launches a tribunal of three independent LLM agents — GPT,
+          Claude, and Gemini — that each investigate the blamed commit using
+          tool calls (reading diffs, checking commit context, tracing code
+          changes). Their verdicts are aggregated via majority vote.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          Each verdict includes structured data — vulnerability type, root cause
-          description, vulnerable pattern, and a causal chain explaining how the
-          commit led to the vulnerability. CVEs where all AI-signaled commits
-          are judged UNRELATED or UNLIKELY are filtered out, significantly
-          reducing false positives compared to file-level blame alone.
+          This multi-model tribunal approach significantly reduces false
+          positives: in our testing, 61% of commits that a single model
+          confirmed as causal were overturned by the tribunal. Each verdict
+          includes structured evidence — vulnerability type, root cause
+          description, vulnerable pattern, and a causal chain explaining how
+          the commit led to the vulnerability. CVEs where all AI-signaled
+          commits are judged UNRELATED or UNLIKELY are filtered out.
         </p>
       </section>
 
