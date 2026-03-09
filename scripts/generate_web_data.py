@@ -675,11 +675,16 @@ def _recompute_ai_confidence(result: dict) -> float:
     Uses best signal_confidence * blame_confidence without ratio penalty.
     LLM verification handles quality filtering instead.
 
+    BIC count quality gate: when > 100 BICs, dampen by 100/total to
+    penalise noisy blame results that scan entire repo histories.
+
     Mirrors _compute_ai_confidence() in cve_analyzer/pipeline.py.
     Keep both in sync when the scoring formula changes.
     """
+    bics = result.get("bug_introducing_commits", [])
+    total = len(bics)
     max_score = 0.0
-    for bic in result.get("bug_introducing_commits", []):
+    for bic in bics:
         signals = bic.get("commit", {}).get("ai_signals", [])
         if not signals:
             continue
@@ -687,6 +692,12 @@ def _recompute_ai_confidence(result: dict) -> float:
         score = best_signal * bic.get("blame_confidence", 0)
         if score > max_score:
             max_score = score
+    # BIC count quality gate (mirrored from pipeline.py)
+    if total > 100 and max_score > 0:
+        max_score = max_score * (100 / total)
+    # Confidence floor (mirrored from pipeline.py)
+    if 0 < max_score < 0.05:
+        max_score = 0.0
     return round(max_score, 4)
 
 
