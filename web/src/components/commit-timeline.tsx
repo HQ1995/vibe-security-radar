@@ -130,36 +130,37 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-lg border overflow-hidden divide-y divide-border">
       {commits.map((commit) => (
-        <Card key={commit.sha}>
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {commit.repo_url ? (
-                <a
-                  href={buildCommitUrl(commit.repo_url, commit.sha)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
-                >
-                  {commit.sha.slice(0, 7)}
-                </a>
-              ) : (
-                <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
-                  {commit.sha.slice(0, 7)}
-                </code>
-              )}
-              {commit.repo_url && (
-                <span className="text-xs text-muted-foreground">
-                  {extractRepoName(commit.repo_url)}
-                </span>
-              )}
-              <Badge variant="outline" className="ml-auto text-xs">
-                {commit.source}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+        <div key={commit.sha} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+          {commit.repo_url ? (
+            <a
+              href={buildCommitUrl(commit.repo_url, commit.sha)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline shrink-0"
+            >
+              {commit.sha.slice(0, 7)}
+            </a>
+          ) : (
+            <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm shrink-0">
+              {commit.sha.slice(0, 7)}
+            </code>
+          )}
+          {commit.repo_url && (
+            <a
+              href={commit.repo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-primary underline-offset-4 hover:underline truncate min-w-0"
+            >
+              {extractRepoName(commit.repo_url)}
+            </a>
+          )}
+          <Badge variant="outline" className="ml-auto text-xs shrink-0">
+            {commit.source}
+          </Badge>
+        </div>
       ))}
     </div>
   );

@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getToolDisplayName,
   getSignalTypeLabel,
@@ -30,74 +29,66 @@ export function AiSignalsDisplay({
   const shaFragment = commitSha.slice(0, 7);
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          AI Signals in{" "}
-          {repoUrl ? (
-            <a
-              href={buildCommitUrl(repoUrl, commitSha)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-primary underline-offset-4 hover:underline"
-            >
-              {shaFragment}
-            </a>
-          ) : (
-            <span className="font-mono">{shaFragment}</span>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2">
-          {signals.map((signal, index) => (
-            <SignalPill
-              key={`${commitSha}-${signal.tool}-${signal.signal_type}-${index}`}
-              signal={signal}
-            />
-          ))}
-        </div>
+    <div className="rounded-lg border overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b text-sm">
+        <span className="text-muted-foreground">Commit</span>
+        {repoUrl ? (
+          <a
+            href={buildCommitUrl(repoUrl, commitSha)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-primary underline-offset-4 hover:underline"
+          >
+            {shaFragment}
+          </a>
+        ) : (
+          <span className="font-mono">{shaFragment}</span>
+        )}
         {prUrl && /^https:\/\/github\.com\//.test(prUrl) && (
-          <div className="mt-2">
+          <>
+            <span className="text-muted-foreground/40">|</span>
             <a
               href={prUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-primary underline-offset-4 hover:underline"
+              className="text-primary underline-offset-4 hover:underline truncate max-w-[300px]"
             >
-              <span className="font-semibold">
-                PR #{prUrl.match(/\/pull\/(\d+)/)?.[1] ?? prUrl.split("/").pop()}
-              </span>
-              {prTitle && (
-                <span className="text-muted-foreground truncate max-w-[300px]">
-                  {prTitle}
-                </span>
-              )}
+              PR #{prUrl.match(/\/pull\/(\d+)/)?.[1] ?? prUrl.split("/").pop()}
+              {prTitle && <span className="text-muted-foreground ml-1">{prTitle}</span>}
             </a>
-          </div>
+          </>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function SignalPill({ signal }: { readonly signal: AiSignalEntry }) {
-  return (
-    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5">
-      <Badge className="bg-primary/20 text-primary hover:bg-primary/20">
-        {getToolDisplayName(signal.tool)}
-      </Badge>
-      <span className="text-xs text-muted-foreground">
-        {getSignalTypeLabel(signal.signal_type)}
-      </span>
-      {signal.matched_text && (
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-          {signal.matched_text}
-        </code>
-      )}
-      <Badge variant="outline" className="ml-1 font-mono text-xs">
-        {formatConfidence(signal.confidence)}
-      </Badge>
+      </div>
+      {/* Signal rows */}
+      <table className="w-full text-sm">
+        <tbody className="divide-y divide-border">
+          {signals.map((signal, index) => (
+            <tr key={`${commitSha}-${signal.tool}-${signal.signal_type}-${index}`} className="hover:bg-muted/30">
+              <td className="px-4 py-2 whitespace-nowrap">
+                <Badge className="bg-primary/20 text-primary hover:bg-primary/20 text-xs">
+                  {getToolDisplayName(signal.tool)}
+                </Badge>
+              </td>
+              <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                {getSignalTypeLabel(signal.signal_type)}
+              </td>
+              <td className="px-4 py-2 max-w-[200px]">
+                {signal.matched_text && (
+                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs truncate block">
+                    {signal.matched_text}
+                  </code>
+                )}
+              </td>
+              <td className="px-4 py-2 text-right whitespace-nowrap">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {formatConfidence(signal.confidence)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
