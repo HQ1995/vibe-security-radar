@@ -9,6 +9,8 @@ import {
   verifiedBadgeColor,
   truncate,
   getLanguageColor,
+  getModelDisplayName,
+  deduplicateModels,
   SEVERITY_COLORS,
   LANGUAGE_COLORS,
   LANGUAGE_FALLBACK_COLOR,
@@ -140,6 +142,52 @@ describe("verifiedBadgeColor", () => {
 
   it("returns zinc fallback for unknown models", () => {
     expect(verifiedBadgeColor("unknown-model")).toContain("bg-zinc-500");
+  });
+});
+
+describe("getModelDisplayName", () => {
+  it("returns abbreviated name for known models", () => {
+    expect(getModelDisplayName("claude-opus-4-6")).toBe("Opus 4.6");
+    expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe("Gemini 3.1 Pro");
+    expect(getModelDisplayName("gpt-5.4")).toBe("GPT-5.4");
+  });
+
+  it("returns raw string for unknown models", () => {
+    expect(getModelDisplayName("some-future-model")).toBe("some-future-model");
+  });
+});
+
+describe("deduplicateModels", () => {
+  it("keeps strongest model per provider", () => {
+    const models = [
+      "claude-opus-4-6",
+      "gemini-3.1-pro-preview",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3-flash-preview",
+      "gpt-5.4",
+    ];
+    const result = deduplicateModels(models);
+    expect(result).toContain("claude-opus-4-6");
+    expect(result).toContain("gemini-3.1-pro-preview");
+    expect(result).toContain("gpt-5.4");
+    expect(result).not.toContain("gemini-3.1-flash-lite-preview");
+    expect(result).not.toContain("gemini-3-flash-preview");
+    expect(result).toHaveLength(3);
+  });
+
+  it("preserves unknown models as their own provider", () => {
+    const result = deduplicateModels(["unknown-model", "gpt-5.4"]);
+    expect(result).toContain("unknown-model");
+    expect(result).toContain("gpt-5.4");
+    expect(result).toHaveLength(2);
+  });
+
+  it("handles empty array", () => {
+    expect(deduplicateModels([])).toEqual([]);
+  });
+
+  it("handles single model", () => {
+    expect(deduplicateModels(["gpt-5.4"])).toEqual(["gpt-5.4"]);
   });
 });
 

@@ -1,6 +1,8 @@
 import {
   verifiedBadgeColor,
   verifiedByTooltip,
+  getModelDisplayName,
+  deduplicateModels,
 } from "@/lib/constants";
 
 export function VerifiedBadge({
@@ -12,7 +14,8 @@ export function VerifiedBadge({
     return <span className="text-muted-foreground/40 text-xs">&mdash;</span>;
   }
 
-  const models = verifiedBy.split(",").map((m) => m.trim()).filter(Boolean);
+  const allModels = verifiedBy.split(",").map((m) => m.trim()).filter(Boolean);
+  const models = deduplicateModels(allModels);
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1">
@@ -24,7 +27,7 @@ export function VerifiedBadge({
             className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${color}`}
             title={verifiedByTooltip(model)}
           >
-            {model}
+            {getModelDisplayName(model)}
           </span>
         );
       })}

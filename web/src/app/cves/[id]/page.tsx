@@ -15,6 +15,8 @@ import {
   getToolDisplayName,
   getSignalTypeLabel,
   formatVerifiedBy,
+  formatConfidence,
+  getModelDisplayName,
 } from "@/lib/constants";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
@@ -135,14 +137,14 @@ function DescriptionSection({ description }: { readonly description: string }) {
 
 function VerdictIcon({ verdict }: { readonly verdict: string }) {
   if (verdict === "CONFIRMED") return <span className="text-green-600">&#10003;</span>;
-  if (verdict === "UNLIKELY") return <span className="text-yellow-600">?</span>;
-  return <span className="text-muted-foreground">&#10007;</span>;
+  if (verdict === "UNLIKELY") return <span className="text-amber-600">?</span>;
+  return <span className="text-red-400">&#10007;</span>;
 }
 
 function verdictBorderClass(verdict: string): string {
   if (verdict === "CONFIRMED") return "border-green-500/40 bg-green-500/5";
-  if (verdict === "UNLIKELY") return "border-yellow-500/40 bg-yellow-500/5";
-  return "border-muted bg-muted/30";
+  if (verdict === "UNLIKELY") return "border-amber-500/40 bg-amber-500/5";
+  return "border-red-500/30 bg-red-500/5";
 }
 
 function formatVerificationSource(models: readonly string[]): string {
@@ -248,8 +250,20 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
 
 function verdictBadgeClass(verdict: string): string {
   if (verdict === "CONFIRMED") return "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25";
-  if (verdict === "UNLIKELY") return "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/25";
-  return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/25";
+  if (verdict === "UNLIKELY") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/25";
+  return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+}
+
+function verdictAccentClass(verdict: string): string {
+  if (verdict === "CONFIRMED") return "border border-l-4 border-l-green-500";
+  if (verdict === "UNLIKELY") return "border border-l-4 border-l-amber-500";
+  return "border border-l-4 border-l-red-400";
+}
+
+function verdictBarColor(verdict: string): string {
+  if (verdict === "CONFIRMED") return "bg-green-500";
+  if (verdict === "UNLIKELY") return "bg-amber-500";
+  return "bg-red-400";
 }
 
 function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }) {
@@ -264,46 +278,68 @@ function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }
       {withTribunal.map((commit) => {
         const tv = commit.tribunal_verdict!;
         return (
-          <div key={commit.sha} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${verdictBadgeClass(tv.verdict)}`}>
+          <div key={commit.sha} className="space-y-3">
+            {/* Overall verdict header */}
+            <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${verdictAccentClass(tv.verdict)}`}>
+              <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-bold ${verdictBadgeClass(tv.verdict)}`}>
                 {tv.verdict}
               </span>
-              <span className="text-xs text-muted-foreground">
-                confidence: {tv.confidence}
-              </span>
-              <span className="text-xs text-muted-foreground font-mono">
-                {commit.sha.slice(0, 7)}
-              </span>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">Confidence: {tv.confidence}</span>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {commit.sha.slice(0, 7)}
+                </span>
+              </div>
             </div>
-            <div className="space-y-1.5">
+            {/* Agent verdict cards in horizontal grid */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {(tv.agent_verdicts ?? []).map((av) => (
-                <details key={av.model} className="group rounded-md border border-border">
-                  <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
+                <div
+                  key={av.model}
+                  className={`rounded-lg p-3 text-sm ${verdictAccentClass(av.verdict)}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="font-semibold text-foreground text-xs">
+                      {getModelDisplayName(av.model)}
+                    </span>
                     <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${verdictBadgeClass(av.verdict)}`}>
                       {av.verdict}
                     </span>
-                    <span className="font-medium text-muted-foreground">{av.model}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {Math.round(av.confidence * 100)}%
-                    </span>
-                  </summary>
-                  <div className="border-t border-border px-3 py-2 text-sm space-y-2">
-                    <p className="text-muted-foreground">{av.reasoning}</p>
+                  </div>
+                  {/* Confidence bar */}
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                      <span>Confidence</span>
+                      <span>{formatConfidence(av.confidence)}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted">
+                      <div
+                        className={`h-1.5 rounded-full ${verdictBarColor(av.verdict)}`}
+                        style={{ width: `${Math.round(av.confidence * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* Reasoning (truncated) */}
+                  <details className="group">
+                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <span className="group-open:hidden">Show reasoning...</span>
+                      <span className="hidden group-open:inline">Hide reasoning</span>
+                    </summary>
+                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{av.reasoning}</p>
                     {av.evidence.length > 0 && (
-                      <ul className="list-disc list-inside space-y-0.5 text-xs text-muted-foreground">
-                        {av.evidence.map((e) => (
-                          <li key={e}>{e}</li>
+                      <ul className="mt-1.5 list-disc list-inside space-y-0.5 text-xs text-muted-foreground">
+                        {av.evidence.map((e, i) => (
+                          <li key={`${i}-${e.slice(0, 32)}`}>{e}</li>
                         ))}
                       </ul>
                     )}
-                    {av.tool_calls_made > 0 && (
-                      <p className="text-xs text-muted-foreground/60">
-                        {av.tool_calls_made} tool call{av.tool_calls_made !== 1 ? "s" : ""} made
-                      </p>
-                    )}
-                  </div>
-                </details>
+                  </details>
+                  {av.tool_calls_made > 0 && (
+                    <p className="mt-1.5 text-[10px] text-muted-foreground/50">
+                      {av.tool_calls_made} tool call{av.tool_calls_made !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           </div>

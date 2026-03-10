@@ -177,6 +177,40 @@ export function formatConfidence(confidence: number): string {
   return `${Math.round(confidence * 100)}%`;
 }
 
+/** Model metadata: display name, provider, and strength rank (lower = stronger). */
+const MODEL_METADATA: Readonly<
+  Record<string, { displayName: string; provider: string; rank: number }>
+> = {
+  "claude-opus-4-6": { displayName: "Opus 4.6", provider: "anthropic", rank: 0 },
+  "gemini-3.1-pro-preview": { displayName: "Gemini 3.1 Pro", provider: "google", rank: 0 },
+  "gemini-3.1-flash-lite-preview": { displayName: "Gemini 3.1 Flash Lite", provider: "google", rank: 2 },
+  "gemini-3-flash-preview": { displayName: "Gemini 3 Flash", provider: "google", rank: 1 },
+  "gpt-5.4": { displayName: "GPT-5.4", provider: "openai", rank: 0 },
+};
+
+/** Get short display name for a verification model. */
+export function getModelDisplayName(model: string): string {
+  return MODEL_METADATA[model]?.displayName ?? model;
+}
+
+/** Keep only the strongest (lowest rank) model per provider. */
+export function deduplicateModels(models: string[]): string[] {
+  const bestPerProvider = new Map<string, { model: string; rank: number }>();
+  for (const model of models) {
+    const info = MODEL_METADATA[model];
+    if (!info) {
+      // Unknown model — treat as its own unique provider
+      bestPerProvider.set(model, { model, rank: 0 });
+      continue;
+    }
+    const existing = bestPerProvider.get(info.provider);
+    if (!existing || info.rank < existing.rank) {
+      bestPerProvider.set(info.provider, { model, rank: info.rank });
+    }
+  }
+  return Array.from(bestPerProvider.values()).map((v) => v.model);
+}
+
 export function formatVerifiedBy(verifiedBy: string): string {
   if (!verifiedBy) return "Unverified";
   return verifiedBy;
