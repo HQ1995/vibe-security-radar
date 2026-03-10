@@ -15,10 +15,10 @@ import {
   getSignalTypeLabel,
   formatVerifiedBy,
   formatConfidence,
-  getModelDisplayName,
+  getModelDetailName,
 } from "@/lib/constants";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
-import type { CveEntry, BugCommit, FixCommit } from "@/lib/types";
+import type { CveEntry, BugCommit } from "@/lib/types";
 
 // --- Static generation ---
 
@@ -45,26 +45,31 @@ export async function generateMetadata({
 
 // --- Helpers ---
 
-function collectUniqueSignalTypes(
-  commits: readonly BugCommit[],
-): readonly string[] {
-  const types = new Set<string>();
-  for (const commit of commits) {
-    for (const signal of commit.ai_signals) {
-      types.add(getSignalTypeLabel(signal.signal_type));
+/** Single pass over bug_commits to extract all needed subsets, counts, and signal types. */
+function analyzeBugCommits(commits: readonly BugCommit[]) {
+  const aiCommits: BugCommit[] = [];
+  const tribunalCommits: BugCommit[] = [];
+  const causalityCommits: BugCommit[] = [];
+  const signalTypeSet = new Set<string>();
+  let totalSignals = 0;
+
+  for (const c of commits) {
+    if (c.ai_signals.length > 0) {
+      aiCommits.push(c);
+      totalSignals += c.ai_signals.length;
+      for (const s of c.ai_signals) {
+        signalTypeSet.add(getSignalTypeLabel(s.signal_type));
+      }
+    }
+    if (c.tribunal_verdict?.agent_verdicts?.length) {
+      tribunalCommits.push(c);
+    }
+    if (c.llm_verdict !== null) {
+      causalityCommits.push(c);
     }
   }
-  return Array.from(types);
-}
 
-function commitsWithAiSignals(
-  commits: readonly BugCommit[],
-): readonly BugCommit[] {
-  return commits.filter((c) => c.ai_signals.length > 0);
-}
-
-function countTotalSignals(commits: readonly BugCommit[]): number {
-  return commits.reduce((sum, c) => sum + c.ai_signals.length, 0);
+  return { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes: Array.from(signalTypeSet) };
 }
 
 // --- Verdict helpers ---
@@ -85,6 +90,14 @@ function verdictBarColor(verdict: string): string {
   if (verdict === "CONFIRMED") return "bg-green-500";
   if (verdict === "UNLIKELY") return "bg-amber-500";
   return "bg-red-400";
+}
+
+function SmallVerdictBadge({ verdict }: { readonly verdict: string }) {
+  return (
+    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${verdictBadgeClass(verdict)}`}>
+      {verdict}
+    </span>
+  );
 }
 
 // --- Section components ---
@@ -148,19 +161,24 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
   );
 }
 
-function VerdictSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly repoUrl?: string }) {
+function VerdictSection({
+  cve,
+  repoUrl,
+  tribunalCommits,
+  causalityCommits,
+  signalTypes,
+}: {
+  readonly cve: CveEntry;
+  readonly repoUrl?: string;
+  readonly tribunalCommits: readonly BugCommit[];
+  readonly causalityCommits: readonly BugCommit[];
+  readonly signalTypes: readonly string[];
+}) {
   const hasExplanation = cve.how_introduced.length > 0;
-  const signalTypes = collectUniqueSignalTypes(cve.bug_commits);
 
-  // Find the best tribunal verdict across all commits
-  const tribunalCommits = cve.bug_commits.filter((c) => c.tribunal_verdict?.agent_verdicts?.length);
   const bestTribunal = tribunalCommits.length > 0 ? tribunalCommits[0].tribunal_verdict! : null;
-
-  // Find LLM causality verdicts
-  const causalityCommits = cve.bug_commits.filter((c) => c.llm_verdict !== null);
   const bestCausality = causalityCommits.length > 0 ? causalityCommits[0].llm_verdict! : null;
 
-  // Pick the primary verdict to show
   const primaryVerdict = bestTribunal?.verdict ?? bestCausality?.verdict;
   const primaryConfidence = bestTribunal?.confidence ?? null;
 
@@ -189,9 +207,12 @@ function VerdictSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly rep
         </p>
       ) : null}
 
-      {/* Best causality reasoning (if no tribunal, or as supplementary) */}
+      {/* Best causality reasoning (shown when no tribunal) */}
       {bestCausality && !bestTribunal && (
         <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Analysis by {getModelDetailName(bestCausality.model)}
+          </p>
           {bestCausality.vuln_type && (
             <div className="flex gap-2 text-sm">
               <span className="font-medium text-muted-foreground shrink-0">Vulnerability:</span>
@@ -222,21 +243,19 @@ function VerdictSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly rep
         </div>
       )}
 
-      {/* Tribunal agent verdicts (collapsible) */}
+      {/* Tribunal agent verdicts — visible by default, each agent expandable */}
       {bestTribunal && (
-        <details className="group">
-          <summary className="text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground transition-colors">
-            Tribunal Details ({bestTribunal.agent_verdicts!.length} agents)
-          </summary>
-          <div className="mt-3 rounded-lg border overflow-hidden divide-y divide-border">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Tribunal Verdict ({bestTribunal.agent_verdicts!.length} agents)
+          </p>
+          <div className="rounded-lg border overflow-hidden divide-y divide-border">
             {bestTribunal.agent_verdicts!.map((av) => (
-              <details key={av.model} className="group/agent">
+              <details key={av.model} open className="group/agent">
                 <summary className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${verdictBadgeClass(av.verdict)}`}>
-                    {av.verdict}
-                  </span>
+                  <SmallVerdictBadge verdict={av.verdict} />
                   <span className="text-sm font-medium shrink-0">
-                    {getModelDisplayName(av.model)}
+                    {getModelDetailName(av.model)}
                   </span>
                   <div className="flex items-center gap-2 ml-auto shrink-0">
                     <div className="h-1.5 w-16 rounded-full bg-muted">
@@ -263,7 +282,7 @@ function VerdictSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly rep
               </details>
             ))}
           </div>
-        </details>
+        </div>
       )}
 
       {/* Additional causality commits beyond the first (rare, collapsible) */}
@@ -278,9 +297,8 @@ function VerdictSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly rep
               return (
                 <div key={commit.sha} className="text-sm pl-3 border-l-2 border-muted space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${verdictBadgeClass(v.verdict)}`}>
-                      {v.verdict}
-                    </span>
+                    <SmallVerdictBadge verdict={v.verdict} />
+                    <span className="text-xs text-muted-foreground">{getModelDetailName(v.model)}</span>
                     {repoUrl ? (
                       <a
                         href={buildCommitUrl(repoUrl, commit.sha)}
@@ -347,22 +365,28 @@ export default async function CveDetailPage({
   }
 
   const repoUrl = cve.fix_commits[0]?.repo_url;
-  const aiCommits = commitsWithAiSignals(cve.bug_commits);
-  const totalSignals = countTotalSignals(cve.bug_commits);
+  const { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes } =
+    analyzeBugCommits(cve.bug_commits);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6">
       <PageHeader cve={cve} />
 
-      {/* Description — no card wrapper */}
+      {/* Description */}
       <p className="leading-relaxed text-muted-foreground">{cve.description}</p>
 
       {/* Verdict — the star of the page */}
-      <VerdictSection cve={cve} repoUrl={repoUrl} />
+      <VerdictSection
+        cve={cve}
+        repoUrl={repoUrl}
+        tribunalCommits={tribunalCommits}
+        causalityCommits={causalityCommits}
+        signalTypes={signalTypes}
+      />
 
-      {/* Evidence sections — all collapsible */}
+      {/* AI Signals — open by default */}
       {aiCommits.length > 0 && (
-        <CollapsibleSection title="AI Signals" count={totalSignals} defaultOpen={totalSignals <= 6}>
+        <CollapsibleSection title="AI Signals" count={totalSignals} defaultOpen>
           <div className="space-y-3">
             {aiCommits.map((commit) => (
               <AiSignalsDisplay
@@ -378,6 +402,7 @@ export default async function CveDetailPage({
         </CollapsibleSection>
       )}
 
+      {/* Commits — collapsed by default */}
       <CollapsibleSection title="Bug-Introducing Commits" count={cve.bug_commits.length}>
         <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
       </CollapsibleSection>

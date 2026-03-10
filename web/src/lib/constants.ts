@@ -179,18 +179,23 @@ export function formatConfidence(confidence: number): string {
 
 /** Model metadata: display name, provider, and strength rank (lower = stronger). */
 const MODEL_METADATA: Readonly<
-  Record<string, { displayName: string; provider: string; rank: number }>
+  Record<string, { displayName: string; detailName: string; provider: string; rank: number }>
 > = {
-  "claude-opus-4-6": { displayName: "Claude", provider: "anthropic", rank: 0 },
-  "gemini-3.1-pro-preview": { displayName: "Gemini", provider: "google", rank: 0 },
-  "gemini-3.1-flash-lite-preview": { displayName: "Gemini", provider: "google", rank: 2 },
-  "gemini-3-flash-preview": { displayName: "Gemini", provider: "google", rank: 1 },
-  "gpt-5.4": { displayName: "GPT", provider: "openai", rank: 0 },
+  "claude-opus-4-6": { displayName: "Claude", detailName: "Claude Opus 4.6", provider: "anthropic", rank: 0 },
+  "gemini-3.1-pro-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Pro", provider: "google", rank: 0 },
+  "gemini-3.1-flash-lite-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Flash Lite", provider: "google", rank: 2 },
+  "gemini-3-flash-preview": { displayName: "Gemini", detailName: "Gemini 3 Flash", provider: "google", rank: 1 },
+  "gpt-5.4": { displayName: "GPT", detailName: "GPT-5.4", provider: "openai", rank: 0 },
 };
 
-/** Get short display name for a verification model. */
+/** Get short display name for a verification model (used in table badges). */
 export function getModelDisplayName(model: string): string {
   return MODEL_METADATA[model]?.displayName ?? model;
+}
+
+/** Get full display name for a verification model (used in detail pages). */
+export function getModelDetailName(model: string): string {
+  return MODEL_METADATA[model]?.detailName ?? model;
 }
 
 /** Keep only the strongest (lowest rank) model per provider. */
