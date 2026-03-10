@@ -783,7 +783,7 @@ def _recompute_ai_confidence(result: dict) -> float:
             s.get("signal_type", "").startswith("squash_decomposed")
             for s in best_signals
         ):
-            max_score *= 0.25
+            max_score *= 0.25  # _INDIRECT_ONLY_PENALTY — keep in sync with pipeline.py
 
     # Diffuse blame penalty (mirrored from pipeline.py)
     if total > 50 and max_score > 0:
