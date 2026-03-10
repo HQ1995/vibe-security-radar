@@ -12,12 +12,16 @@ interface AiSignalsDisplayProps {
   readonly signals: readonly AiSignalEntry[];
   readonly commitSha: string;
   readonly repoUrl?: string;
+  readonly prUrl?: string;
+  readonly prTitle?: string;
 }
 
 export function AiSignalsDisplay({
   signals,
   commitSha,
   repoUrl,
+  prUrl,
+  prTitle,
 }: AiSignalsDisplayProps) {
   if (signals.length === 0) {
     return null;
@@ -53,6 +57,25 @@ export function AiSignalsDisplay({
             />
           ))}
         </div>
+        {prUrl && /^https:\/\/github\.com\//.test(prUrl) && (
+          <div className="mt-2">
+            <a
+              href={prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-primary underline-offset-4 hover:underline"
+            >
+              <span className="font-semibold">
+                PR #{prUrl.match(/\/pull\/(\d+)/)?.[1] ?? prUrl.split("/").pop()}
+              </span>
+              {prTitle && (
+                <span className="text-muted-foreground truncate max-w-[300px]">
+                  {prTitle}
+                </span>
+              )}
+            </a>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

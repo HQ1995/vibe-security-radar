@@ -246,6 +246,73 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
   );
 }
 
+function verdictBadgeClass(verdict: string): string {
+  if (verdict === "CONFIRMED") return "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25";
+  if (verdict === "UNLIKELY") return "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/25";
+  return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/25";
+}
+
+function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }) {
+  const withTribunal = commits.filter((c) => c.tribunal_verdict?.agent_verdicts?.length);
+  if (withTribunal.length === 0) return null;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        Tribunal Verdict
+      </h3>
+      {withTribunal.map((commit) => {
+        const tv = commit.tribunal_verdict!;
+        return (
+          <div key={commit.sha} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${verdictBadgeClass(tv.verdict)}`}>
+                {tv.verdict}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                confidence: {tv.confidence}
+              </span>
+              <span className="text-xs text-muted-foreground font-mono">
+                {commit.sha.slice(0, 7)}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {(tv.agent_verdicts ?? []).map((av) => (
+                <details key={av.model} className="group rounded-md border border-border">
+                  <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
+                    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${verdictBadgeClass(av.verdict)}`}>
+                      {av.verdict}
+                    </span>
+                    <span className="font-medium text-muted-foreground">{av.model}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {Math.round(av.confidence * 100)}%
+                    </span>
+                  </summary>
+                  <div className="border-t border-border px-3 py-2 text-sm space-y-2">
+                    <p className="text-muted-foreground">{av.reasoning}</p>
+                    {av.evidence.length > 0 && (
+                      <ul className="list-disc list-inside space-y-0.5 text-xs text-muted-foreground">
+                        {av.evidence.map((e) => (
+                          <li key={e}>{e}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {av.tool_calls_made > 0 && (
+                      <p className="text-xs text-muted-foreground/60">
+                        {av.tool_calls_made} tool call{av.tool_calls_made !== 1 ? "s" : ""} made
+                      </p>
+                    )}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HowIntroducedSection({ cve, repoUrl }: { readonly cve: CveEntry; readonly repoUrl?: string }) {
   const hasExplicitExplanation = cve.how_introduced.length > 0;
   const signalTypes = collectUniqueSignalTypes(cve.bug_commits);
@@ -286,6 +353,7 @@ function HowIntroducedSection({ cve, repoUrl }: { readonly cve: CveEntry; readon
           </div>
         )}
         <LlmCausalitySection commits={cve.bug_commits} repoUrl={repoUrl} />
+        <TribunalSection commits={cve.bug_commits} />
       </CardContent>
     </Card>
   );
@@ -316,6 +384,8 @@ function AiSignalsSection({
             signals={commit.ai_signals}
             commitSha={commit.sha}
             repoUrl={repoUrl}
+            prUrl={commit.pr_url}
+            prTitle={commit.pr_title}
           />
         ))}
       </div>

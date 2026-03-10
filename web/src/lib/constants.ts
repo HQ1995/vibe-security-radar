@@ -112,8 +112,19 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
 export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   co_author_trailer: "Co-author trailer",
   author_email: "Author email",
+  author_name: "Author name",
+  committer_email: "Committer email",
   commit_message: "Commit message",
+  message_keyword: "Commit message keyword",
   branch_name: "Branch name",
+  co_author_trailer_generic: "Co-author trailer (generic)",
+  pr_body_keyword: "PR body keyword",
+  squash_decomposed_co_author_trailer: "Squash PR co-author",
+  squash_decomposed_co_author_trailer_generic: "Squash PR co-author (generic)",
+  squash_decomposed_author_email: "Squash PR author email",
+  squash_decomposed_author_name: "Squash PR author name",
+  squash_decomposed_committer_email: "Squash PR committer email",
+  squash_decomposed_message_keyword: "Squash PR message keyword",
 };
 
 /** Brand colors for programming languages. */
@@ -171,13 +182,6 @@ export function formatVerifiedBy(verifiedBy: string): string {
   return verifiedBy;
 }
 
-/** Short label for the verified-by badge shown in table columns. */
-export function verifiedByLabel(verifiedBy: string): string {
-  if (!verifiedBy) return "";
-  if (verifiedBy === "osv") return "OSV";
-  return verifiedBy;
-}
-
 /** Tooltip text for the verified-by badge. */
 export function verifiedByTooltip(verifiedBy: string): string {
   if (!verifiedBy) return "Not yet verified";
@@ -190,13 +194,17 @@ export function verifiedBadgeColor(verifiedBy: string): string {
   if (verifiedBy === "osv")
     return "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25";
   const v = verifiedBy.toLowerCase();
+  if (v.includes("claude"))
+    return "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/25";
+  if (v.includes("gpt"))
+    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25";
   if (v.includes("flash-lite") || v.includes("flash_lite"))
     return "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/25";
   if (v.includes("flash"))
     return "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/25";
-  if (v.includes("pro"))
+  if (v.includes("gemini") || v.includes("pro"))
     return "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/25";
-  return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25";
+  return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/25";
 }
 
 export function truncate(text: string, maxLength: number): string {

@@ -657,7 +657,37 @@ def _first_line(message: str) -> str:
     return message.split("\n")[0].strip()
 
 
-def _build_bug_commit(bic: dict) -> dict:
+DEFAULT_API_RESPONSES_DIR = os.path.expanduser("~/.cache/cve-analyzer/api-responses")
+
+
+def _lookup_pr_for_commit(
+    repo_url: str,
+    sha: str,
+    api_responses_dir: str = DEFAULT_API_RESPONSES_DIR,
+) -> tuple[str, str]:
+    """Look up PR URL and title for a commit from the gh_commit_prs cache.
+
+    Returns (pr_url, pr_title) or ("", "") if not found.
+    """
+    parts = _parse_github_owner_repo(repo_url)
+    if not parts or not sha or not re.fullmatch(r"[0-9a-fA-F]{4,64}", sha):
+        return ("", "")
+    owner, repo = parts
+    cache_path = os.path.join(
+        api_responses_dir, "gh_commit_prs", owner, repo, "commits", sha, "pulls.json"
+    )
+    try:
+        with open(cache_path, "r", encoding="utf-8") as fh:
+            prs = json.load(fh)
+        if prs and isinstance(prs, list):
+            pr = prs[0]
+            return (pr.get("html_url", ""), pr.get("title", ""))
+    except (json.JSONDecodeError, OSError):
+        pass
+    return ("", "")
+
+
+def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
     llm_v = bic.get("llm_verdict")
@@ -688,12 +718,30 @@ def _build_bug_commit(bic: dict) -> dict:
             "causal_chain": llm_v.get("causal_chain", ""),
         } if llm_v else None,
     }
+    # Look up PR URL from API cache
+    commit_sha = commit.get("sha", "")
+    pr_url, pr_title = _lookup_pr_for_commit(repo_url, commit_sha)
+    if pr_url:
+        entry["pr_url"] = pr_url
+        entry["pr_title"] = pr_title
+
     if tv:
         entry["tribunal_verdict"] = {
             "verdict": tv.get("final_verdict", ""),
             "confidence": tv.get("confidence", ""),
             "models": [
                 av.get("model", "") for av in tv.get("agent_verdicts", [])
+            ],
+            "agent_verdicts": [
+                {
+                    "model": av.get("model", ""),
+                    "verdict": av.get("verdict", ""),
+                    "reasoning": av.get("reasoning", ""),
+                    "confidence": av.get("confidence", 0),
+                    "tool_calls_made": av.get("tool_calls_made", 0),
+                    "evidence": av.get("evidence", []),
+                }
+                for av in tv.get("agent_verdicts", [])
             ],
         }
     return entry
@@ -762,8 +810,14 @@ def build_cve_entry(
     # or missing.  Skip commits without AI signals (plain human commits from
     # git blame) and those judged UNLIKELY/UNRELATED by tribunal or LLM.
     raw_bics = result.get("bug_introducing_commits", [])
+    # Get repo URL from first fix commit for PR lookups
+    fix_repo_url = ""
+    for fc in result.get("fix_commits", []):
+        if fc.get("repo_url"):
+            fix_repo_url = fc["repo_url"]
+            break
     bug_commits = [
-        _build_bug_commit(bic) for bic in raw_bics
+        _build_bug_commit(bic, repo_url=fix_repo_url) for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
         and _effective_verdict(bic) not in ("UNLIKELY", "UNRELATED")
     ]

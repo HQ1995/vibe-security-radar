@@ -1,6 +1,5 @@
 import {
   verifiedBadgeColor,
-  verifiedByLabel,
   verifiedByTooltip,
 } from "@/lib/constants";
 
@@ -9,18 +8,26 @@ export function VerifiedBadge({
 }: {
   readonly verifiedBy: string;
 }) {
-  const label = verifiedByLabel(verifiedBy);
-  if (!label) {
-    return <span className="text-muted-foreground/40 text-xs">—</span>;
+  if (!verifiedBy) {
+    return <span className="text-muted-foreground/40 text-xs">&mdash;</span>;
   }
-  const primaryModel = verifiedBy.split(",")[0].trim();
-  const color = verifiedBadgeColor(primaryModel);
+
+  const models = verifiedBy.split(",").map((m) => m.trim()).filter(Boolean);
+
   return (
-    <span
-      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold max-w-full truncate ${color}`}
-      title={verifiedByTooltip(verifiedBy)}
-    >
-      {label}
-    </span>
+    <div className="flex flex-wrap items-center justify-center gap-1">
+      {models.map((model) => {
+        const color = verifiedBadgeColor(model);
+        return (
+          <span
+            key={model}
+            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${color}`}
+            title={verifiedByTooltip(model)}
+          >
+            {model}
+          </span>
+        );
+      })}
+    </div>
   );
 }

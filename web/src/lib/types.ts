@@ -15,6 +15,22 @@ export interface LlmVerdict {
   readonly causal_chain?: string;
 }
 
+export interface AgentVerdict {
+  readonly model: string;
+  readonly verdict: string;
+  readonly reasoning: string;
+  readonly confidence: number;
+  readonly tool_calls_made: number;
+  readonly evidence: readonly string[];
+}
+
+export interface TribunalVerdict {
+  readonly verdict: string;
+  readonly confidence: string;
+  readonly models: readonly string[];
+  readonly agent_verdicts?: readonly AgentVerdict[];
+}
+
 export interface BugCommit {
   readonly sha: string;
   readonly author: string;
@@ -24,6 +40,9 @@ export interface BugCommit {
   readonly blamed_file: string;
   readonly blame_confidence: number;
   readonly llm_verdict: LlmVerdict | null;
+  readonly tribunal_verdict?: TribunalVerdict;
+  readonly pr_url?: string;
+  readonly pr_title?: string;
 }
 
 export interface FixCommit {

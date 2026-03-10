@@ -4,6 +4,9 @@ import {
   getToolDisplayName,
   getSignalTypeLabel,
   formatConfidence,
+  formatVerifiedBy,
+  verifiedByTooltip,
+  verifiedBadgeColor,
   truncate,
   getLanguageColor,
   SEVERITY_COLORS,
@@ -41,6 +44,12 @@ describe("getSignalTypeLabel", () => {
   it("returns label for known signal types", () => {
     expect(getSignalTypeLabel("co_author_trailer")).toBe("Co-author trailer");
     expect(getSignalTypeLabel("author_email")).toBe("Author email");
+    expect(getSignalTypeLabel("author_name")).toBe("Author name");
+    expect(getSignalTypeLabel("committer_email")).toBe("Committer email");
+    expect(getSignalTypeLabel("message_keyword")).toBe("Commit message keyword");
+    expect(getSignalTypeLabel("pr_body_keyword")).toBe("PR body keyword");
+    expect(getSignalTypeLabel("squash_decomposed_co_author_trailer")).toBe("Squash PR co-author");
+    expect(getSignalTypeLabel("squash_decomposed_author_email")).toBe("Squash PR author email");
   });
 
   it("replaces underscores for unknown types", () => {
@@ -76,6 +85,61 @@ describe("truncate", () => {
 
   it("handles empty string", () => {
     expect(truncate("", 10)).toBe("");
+  });
+});
+
+describe("formatVerifiedBy", () => {
+  it("returns Unverified for empty string", () => {
+    expect(formatVerifiedBy("")).toBe("Unverified");
+  });
+
+  it("returns the value as-is for non-empty string", () => {
+    expect(formatVerifiedBy("claude-opus-4-6")).toBe("claude-opus-4-6");
+  });
+});
+
+describe("verifiedByTooltip", () => {
+  it("returns not verified for empty string", () => {
+    expect(verifiedByTooltip("")).toBe("Not yet verified");
+  });
+
+  it("returns OSV tooltip for osv", () => {
+    expect(verifiedByTooltip("osv")).toBe("Verified via OSV advisory data");
+  });
+
+  it("returns model name for other values", () => {
+    expect(verifiedByTooltip("claude-opus-4-6")).toBe("Verified by claude-opus-4-6");
+  });
+});
+
+describe("verifiedBadgeColor", () => {
+  it("returns blue for osv", () => {
+    expect(verifiedBadgeColor("osv")).toContain("bg-blue-500");
+  });
+
+  it("returns orange for claude models", () => {
+    expect(verifiedBadgeColor("claude-opus-4-6")).toContain("bg-orange-500");
+    expect(verifiedBadgeColor("claude-sonnet-4-6")).toContain("bg-orange-500");
+  });
+
+  it("returns emerald for gpt models", () => {
+    expect(verifiedBadgeColor("gpt-5.4")).toContain("bg-emerald-500");
+  });
+
+  it("returns sky for flash-lite models", () => {
+    expect(verifiedBadgeColor("gemini-2.5-flash-lite")).toContain("bg-sky-500");
+  });
+
+  it("returns violet for flash models", () => {
+    expect(verifiedBadgeColor("gemini-2.0-flash")).toContain("bg-violet-500");
+  });
+
+  it("returns indigo for gemini pro models", () => {
+    expect(verifiedBadgeColor("gemini-3.1-pro-preview")).toContain("bg-indigo-500");
+  });
+
+  it("returns zinc fallback for unknown models", () => {
+    expect(verifiedBadgeColor("unknown-model")).toContain("bg-zinc-500");
   });
 });
 
