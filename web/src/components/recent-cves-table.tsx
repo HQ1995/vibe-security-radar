@@ -23,14 +23,14 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
     <section>
       <h2 className="mb-4 text-xl font-semibold">Recent Vulnerabilities</h2>
       <div className="rounded-xl border border-border overflow-x-auto">
-        <Table className="table-fixed w-full min-w-[940px]">
+        <Table className="table-fixed w-full min-w-[840px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[180px]">ID</TableHead>
-              <TableHead className="w-[100px]">Severity</TableHead>
-              <TableHead className="w-[72px]">Tools</TableHead>
-              <TableHead className="w-[120px]">Language</TableHead>
-              <TableHead className="w-[200px] text-center">Verified</TableHead>
+              <TableHead className="w-[140px]">ID</TableHead>
+              <TableHead className="w-[88px]">Severity</TableHead>
+              <TableHead className="w-[64px]">Tools</TableHead>
+              <TableHead className="w-[100px]">Language</TableHead>
+              <TableHead className="w-[176px] text-center">Verified</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
           </TableHeader>
