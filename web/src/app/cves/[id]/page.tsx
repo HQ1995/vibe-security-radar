@@ -249,9 +249,9 @@ function LlmCausalitySection({ commits, repoUrl }: { readonly commits: readonly 
 }
 
 function verdictBadgeClass(verdict: string): string {
-  if (verdict === "CONFIRMED") return "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25";
-  if (verdict === "UNLIKELY") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/25";
-  return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+  if (verdict === "CONFIRMED") return "bg-green-600/20 text-green-700 dark:text-green-300 border-green-600/30";
+  if (verdict === "UNLIKELY") return "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30";
+  return "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30";
 }
 
 function verdictAccentClass(verdict: string): string {
@@ -266,7 +266,12 @@ function verdictBarColor(verdict: string): string {
   return "bg-red-400";
 }
 
-function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }) {
+function reasoningPreview(reasoning: string, maxLen = 60): string {
+  if (reasoning.length <= maxLen) return reasoning;
+  return `${reasoning.slice(0, maxLen)}...`;
+}
+
+function TribunalSection({ commits, repoUrl }: { readonly commits: readonly BugCommit[]; readonly repoUrl?: string }) {
   const withTribunal = commits.filter((c) => c.tribunal_verdict?.agent_verdicts?.length);
   if (withTribunal.length === 0) return null;
 
@@ -285,7 +290,18 @@ function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }
                 {tv.verdict}
               </span>
               <span className="text-sm font-medium">Confidence: {tv.confidence}</span>
-              <span className="text-muted-foreground font-mono text-xs">{commit.sha.slice(0, 7)}</span>
+              {repoUrl ? (
+                <a
+                  href={buildCommitUrl(repoUrl, commit.sha)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-primary underline-offset-4 hover:underline"
+                >
+                  {commit.sha.slice(0, 7)}
+                </a>
+              ) : (
+                <span className="text-muted-foreground font-mono text-xs">{commit.sha.slice(0, 7)}</span>
+              )}
             </div>
             {/* Agent verdicts — full-width rows */}
             <div className="rounded-lg border overflow-hidden divide-y divide-border">
@@ -295,8 +311,12 @@ function TribunalSection({ commits }: { readonly commits: readonly BugCommit[] }
                     <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${verdictBadgeClass(av.verdict)}`}>
                       {av.verdict}
                     </span>
-                    <span className="text-sm font-medium min-w-0">
+                    <span className="text-sm font-medium shrink-0">
                       {getModelDisplayName(av.model)}
+                    </span>
+                    {/* Reasoning preview — hints the row is expandable */}
+                    <span className="text-xs text-muted-foreground truncate min-w-0 hidden sm:inline group-open:hidden">
+                      {reasoningPreview(av.reasoning)}
                     </span>
                     {/* Inline confidence bar */}
                     <div className="flex items-center gap-2 ml-auto shrink-0">
@@ -376,7 +396,7 @@ function HowIntroducedSection({ cve, repoUrl }: { readonly cve: CveEntry; readon
           </div>
         )}
         <LlmCausalitySection commits={cve.bug_commits} repoUrl={repoUrl} />
-        <TribunalSection commits={cve.bug_commits} />
+        <TribunalSection commits={cve.bug_commits} repoUrl={repoUrl} />
       </CardContent>
     </Card>
   );
