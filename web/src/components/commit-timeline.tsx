@@ -4,9 +4,9 @@ import {
   buildCommitUrl,
   extractRepoName,
   formatDate,
-  formatBlameConfidence,
   firstLine,
 } from "@/lib/commit-utils";
+import { formatConfidence } from "@/lib/constants";
 import { CollapsibleNonAiCommits } from "@/components/collapsible-commits";
 import type { BugCommit, FixCommit } from "@/lib/types";
 
@@ -64,7 +64,7 @@ function BugCommitCard({
                 {commit.blamed_file}
               </span>
               <span title="Blame confidence">
-                Blame: {formatBlameConfidence(commit.blame_confidence)}
+                Blame: {formatConfidence(commit.blame_confidence)}
               </span>
             </div>
           </div>

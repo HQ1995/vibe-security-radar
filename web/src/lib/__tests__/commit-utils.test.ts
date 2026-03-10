@@ -4,7 +4,6 @@ import {
   buildCommitUrl,
   formatDate,
   formatPublished,
-  formatBlameConfidence,
   firstLine,
 } from "../commit-utils";
 
@@ -126,23 +125,6 @@ describe("formatPublished", () => {
   });
 });
 
-describe("formatBlameConfidence", () => {
-  it("formats as percentage", () => {
-    expect(formatBlameConfidence(0.85)).toBe("85%");
-  });
-
-  it("rounds to nearest integer", () => {
-    expect(formatBlameConfidence(0.856)).toBe("86%");
-  });
-
-  it("handles zero", () => {
-    expect(formatBlameConfidence(0)).toBe("0%");
-  });
-
-  it("handles one", () => {
-    expect(formatBlameConfidence(1)).toBe("100%");
-  });
-});
 
 describe("firstLine", () => {
   it("returns full string when no newline", () => {

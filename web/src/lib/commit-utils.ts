@@ -63,9 +63,6 @@ export function formatPublished(published: string): string {
   }
 }
 
-export function formatBlameConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
 
 export function firstLine(message: string): string {
   const newlineIndex = message.indexOf("\n");

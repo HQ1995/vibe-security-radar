@@ -10,11 +10,7 @@ export function VerifiedBadge({
 }: {
   readonly verifiedBy: string;
 }) {
-  if (!verifiedBy) {
-    return <span className="text-muted-foreground/40 text-xs">&mdash;</span>;
-  }
-
-  const allModels = verifiedBy.split(",").map((m) => m.trim()).filter(Boolean);
+  const allModels = verifiedBy ? verifiedBy.split(",").map((m) => m.trim()).filter(Boolean) : [];
   const models = deduplicateModels(allModels);
 
   if (models.length === 0) {
