@@ -750,11 +750,14 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
 def _recompute_ai_confidence(result: dict) -> float:
     """Recompute AI confidence from raw BIC data.
 
-    Uses best signal_confidence * blame_confidence without ratio penalty.
-    LLM verification handles quality filtering instead.
-
-    BIC count quality gate: when > 100 BICs, dampen by 100/total to
-    penalise noisy blame results that scan entire repo histories.
+    Penalties applied (in order):
+    1. Indirect-only penalty (0.25x) when ALL signals on best BIC are
+       ``squash_decomposed_*``.
+    2. Diffuse blame penalty when total BICs > 50:
+       a. Count damping: multiply by (50 / total).
+       b. AI ratio damping: if AI BICs < 50% of total, multiply by
+          max(ai_bic_count / total, 0.1).
+    3. Confidence floor: scores < 0.05 are zeroed.
 
     Mirrors _compute_ai_confidence() in cve_analyzer/pipeline.py.
     Keep both in sync when the scoring formula changes.
@@ -762,6 +765,7 @@ def _recompute_ai_confidence(result: dict) -> float:
     bics = result.get("bug_introducing_commits", [])
     total = len(bics)
     max_score = 0.0
+    best_bic: dict | None = None
     for bic in bics:
         signals = bic.get("commit", {}).get("ai_signals", [])
         if not signals:
@@ -770,9 +774,28 @@ def _recompute_ai_confidence(result: dict) -> float:
         score = best_signal * bic.get("blame_confidence", 0)
         if score > max_score:
             max_score = score
-    # BIC count quality gate (mirrored from pipeline.py)
-    if total > 100 and max_score > 0:
-        max_score = max_score * (100 / total)
+            best_bic = bic
+
+    # Indirect-only penalty (mirrored from pipeline.py)
+    if max_score > 0 and best_bic is not None:
+        best_signals = best_bic.get("commit", {}).get("ai_signals", [])
+        if best_signals and all(
+            s.get("signal_type", "").startswith("squash_decomposed")
+            for s in best_signals
+        ):
+            max_score *= 0.25
+
+    # Diffuse blame penalty (mirrored from pipeline.py)
+    if total > 50 and max_score > 0:
+        max_score *= (50 / total)
+        ai_bic_count = sum(
+            1 for bic in bics
+            if bic.get("commit", {}).get("ai_signals")
+        )
+        ai_ratio = ai_bic_count / total
+        if ai_ratio < 0.5:
+            max_score *= max(ai_ratio, 0.1)
+
     # Confidence floor (mirrored from pipeline.py)
     if 0 < max_score < 0.05:
         max_score = 0.0
