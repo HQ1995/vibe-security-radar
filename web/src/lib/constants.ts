@@ -181,11 +181,11 @@ export function formatConfidence(confidence: number): string {
 const MODEL_METADATA: Readonly<
   Record<string, { displayName: string; provider: string; rank: number }>
 > = {
-  "claude-opus-4-6": { displayName: "Opus 4.6", provider: "anthropic", rank: 0 },
-  "gemini-3.1-pro-preview": { displayName: "Gemini 3.1 Pro", provider: "google", rank: 0 },
-  "gemini-3.1-flash-lite-preview": { displayName: "Gemini 3.1 Flash Lite", provider: "google", rank: 2 },
-  "gemini-3-flash-preview": { displayName: "Gemini 3 Flash", provider: "google", rank: 1 },
-  "gpt-5.4": { displayName: "GPT-5.4", provider: "openai", rank: 0 },
+  "claude-opus-4-6": { displayName: "Claude", provider: "anthropic", rank: 0 },
+  "gemini-3.1-pro-preview": { displayName: "Gemini", provider: "google", rank: 0 },
+  "gemini-3.1-flash-lite-preview": { displayName: "Gemini", provider: "google", rank: 2 },
+  "gemini-3-flash-preview": { displayName: "Gemini", provider: "google", rank: 1 },
+  "gpt-5.4": { displayName: "GPT", provider: "openai", rank: 0 },
 };
 
 /** Get short display name for a verification model. */
