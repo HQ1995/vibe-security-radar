@@ -18,7 +18,22 @@ import {
   getModelDetailName,
 } from "@/lib/constants";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
-import type { CveEntry, BugCommit } from "@/lib/types";
+import type { CveEntry, BugCommit, TribunalVerdict } from "@/lib/types";
+import {
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Bot,
+  GitCommit,
+  Wrench,
+  ExternalLink,
+  Fingerprint,
+  Scale,
+  Code2,
+  MessageSquareWarning,
+  ArrowLeft,
+} from "lucide-react";
 
 // --- Static generation ---
 
@@ -72,7 +87,7 @@ function analyzeBugCommits(commits: readonly BugCommit[]) {
   return { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes: Array.from(signalTypeSet) };
 }
 
-// --- Verdict helpers ---
+// --- Verdict visual helpers ---
 
 function verdictBadgeClass(verdict: string): string {
   if (verdict === "CONFIRMED") return "bg-green-600/20 text-green-700 dark:text-green-300 border-green-600/30";
@@ -80,16 +95,17 @@ function verdictBadgeClass(verdict: string): string {
   return "bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30";
 }
 
-function verdictAccentBorder(verdict: string): string {
-  if (verdict === "CONFIRMED") return "border-l-green-500";
-  if (verdict === "UNLIKELY") return "border-l-amber-500";
-  return "border-l-red-400";
-}
-
 function verdictBarColor(verdict: string): string {
   if (verdict === "CONFIRMED") return "bg-green-500";
   if (verdict === "UNLIKELY") return "bg-amber-500";
   return "bg-red-400";
+}
+
+function VerdictIcon({ verdict, className }: { readonly verdict: string; readonly className?: string }) {
+  const cls = className ?? "h-5 w-5";
+  if (verdict === "CONFIRMED") return <CheckCircle2 className={`${cls} text-green-500`} />;
+  if (verdict === "UNLIKELY") return <AlertTriangle className={`${cls} text-amber-500`} />;
+  return <XCircle className={`${cls} text-red-400`} />;
 }
 
 function SmallVerdictBadge({ verdict }: { readonly verdict: string }) {
@@ -100,6 +116,19 @@ function SmallVerdictBadge({ verdict }: { readonly verdict: string }) {
   );
 }
 
+function severityCardBg(severity: string): string {
+  if (severity === "CRITICAL") return "bg-red-500/10 border-red-500/30";
+  if (severity === "HIGH") return "bg-orange-500/10 border-orange-500/30";
+  if (severity === "MEDIUM") return "bg-yellow-500/10 border-yellow-500/30";
+  return "bg-green-500/10 border-green-500/30";
+}
+
+function verdictCardBg(verdict: string): string {
+  if (verdict === "CONFIRMED") return "bg-green-500/10 border-green-500/30";
+  if (verdict === "UNLIKELY") return "bg-amber-500/10 border-amber-500/30";
+  return "bg-red-500/10 border-red-500/30";
+}
+
 // --- Section components ---
 
 function PageHeader({ cve }: { readonly cve: CveEntry }) {
@@ -107,36 +136,17 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
     <div className="space-y-3">
       <Link
         href="/cves"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        &larr; Back
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to Vulnerabilities
       </Link>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl font-mono">
-          {cve.id}
-        </h1>
-        <Badge className={severityBadgeClass(cve.severity)}>
-          {cve.severity}
-        </Badge>
-        {cve.cvss !== null && cve.cvss > 0 && (
-          <span className="rounded bg-muted px-2 py-0.5 font-mono text-sm font-medium">
-            CVSS {cve.cvss.toFixed(1)}
-          </span>
-        )}
-        {cve.ai_tools.map((tool) => (
-          <Badge
-            key={tool}
-            variant="secondary"
-            className="inline-flex items-center gap-1"
-          >
-            <ToolIcon tool={tool} size={14} />
-            {getToolDisplayName(tool)}
-          </Badge>
-        ))}
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl font-mono">
+        {cve.id}
+      </h1>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
         {cve.published && <span>{formatPublished(cve.published)}</span>}
         {cve.ecosystem && (
           <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{cve.ecosystem}</span>
@@ -155,106 +165,221 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
             </a>
           );
         })}
-        <span>Verified by: {formatVerifiedBy(cve.verified_by)}</span>
+        {cve.languages.length > 0 && (
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{cve.languages.join(", ")}</span>
+        )}
+        <span className="text-xs">Verified by {formatVerifiedBy(cve.verified_by)}</span>
       </div>
     </div>
   );
 }
 
-function VerdictSection({
+function SummaryCards({
   cve,
-  repoUrl,
-  tribunalCommits,
-  causalityCommits,
+  primaryVerdict,
+  primaryConfidence,
+}: {
+  readonly cve: CveEntry;
+  readonly primaryVerdict?: string;
+  readonly primaryConfidence?: string | null;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Severity + CVSS */}
+      <div className={`rounded-xl border p-4 ${severityCardBg(cve.severity)}`}>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+          <ShieldAlert className="h-3.5 w-3.5" />
+          Severity
+        </div>
+        <div className="flex items-baseline gap-2">
+          <Badge className={severityBadgeClass(cve.severity)}>
+            {cve.severity}
+          </Badge>
+          {cve.cvss !== null && cve.cvss > 0 && (
+            <span className="font-mono text-xl font-bold tabular-nums">{cve.cvss.toFixed(1)}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Verdict */}
+      <div className={`rounded-xl border p-4 ${primaryVerdict ? verdictCardBg(primaryVerdict) : "bg-card"}`}>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+          <Scale className="h-3.5 w-3.5" />
+          Verdict
+        </div>
+        {primaryVerdict ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <VerdictIcon verdict={primaryVerdict} className="h-4.5 w-4.5" />
+              <span className="font-semibold text-sm">{primaryVerdict}</span>
+            </div>
+            {primaryConfidence && (
+              <span className="text-xs text-muted-foreground">{primaryConfidence} confidence</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">Pending</span>
+        )}
+      </div>
+
+      {/* AI Tool */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+          <Bot className="h-3.5 w-3.5" />
+          AI Tool
+        </div>
+        <div className="space-y-1.5">
+          {cve.ai_tools.map((tool) => (
+            <div key={tool} className="flex items-center gap-1.5">
+              <ToolIcon tool={tool} size={16} />
+              <span className="font-semibold text-sm">{getToolDisplayName(tool)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Confidence */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+          <Fingerprint className="h-3.5 w-3.5" />
+          Confidence
+        </div>
+        <div className="space-y-1.5">
+          <span className="font-mono text-xl font-bold tabular-nums">
+            {formatConfidence(cve.confidence)}
+          </span>
+          <div className="h-1.5 w-full rounded-full bg-muted">
+            <div
+              className="h-1.5 rounded-full bg-primary transition-all"
+              style={{ width: `${Math.round(cve.confidence * 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HowIntroducedCallout({
+  cve,
   signalTypes,
 }: {
   readonly cve: CveEntry;
-  readonly repoUrl?: string;
-  readonly tribunalCommits: readonly BugCommit[];
-  readonly causalityCommits: readonly BugCommit[];
   readonly signalTypes: readonly string[];
 }) {
   const hasExplanation = cve.how_introduced.length > 0;
-
-  const bestTribunal = tribunalCommits.length > 0 ? tribunalCommits[0].tribunal_verdict! : null;
-  const bestCausality = causalityCommits.length > 0 ? causalityCommits[0].llm_verdict! : null;
-
-  const primaryVerdict = bestTribunal?.verdict ?? bestCausality?.verdict;
-  const primaryConfidence = bestTribunal?.confidence ?? null;
-
-  if (!primaryVerdict && !hasExplanation) return null;
+  if (!hasExplanation && signalTypes.length === 0) return null;
 
   return (
-    <div className={`rounded-lg border border-l-4 p-5 space-y-4 ${primaryVerdict ? verdictAccentBorder(primaryVerdict) : "border-l-muted-foreground"}`}>
-      {/* Verdict headline */}
-      {primaryVerdict && (
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-bold ${verdictBadgeClass(primaryVerdict)}`}>
-            {primaryVerdict}
-          </span>
-          {primaryConfidence && (
-            <span className="text-sm text-muted-foreground">Confidence: {primaryConfidence}</span>
-          )}
-        </div>
-      )}
+    <div className="rounded-xl border border-l-4 border-l-primary bg-primary/5 p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <MessageSquareWarning className="h-4.5 w-4.5 text-primary shrink-0" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
+          How AI Introduced This
+        </h2>
+      </div>
+      <p className="text-sm leading-relaxed">
+        {hasExplanation
+          ? cve.how_introduced
+          : `Detected AI tool involvement via ${signalTypes.join(", ")}.`}
+      </p>
+    </div>
+  );
+}
 
-      {/* Explanation */}
-      {hasExplanation ? (
-        <p className="text-sm leading-relaxed text-muted-foreground">{cve.how_introduced}</p>
-      ) : signalTypes.length > 0 ? (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Detected AI tool involvement via {signalTypes.join(", ")}.
-        </p>
-      ) : null}
+function CausalityDetails({
+  commit,
+  repoUrl,
+}: {
+  readonly commit: BugCommit;
+  readonly repoUrl?: string;
+}) {
+  const v = commit.llm_verdict!;
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border-b">
+        <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Causality Analysis
+        </span>
+        <span className="text-xs text-muted-foreground ml-auto">
+          by {getModelDetailName(v.model)}
+        </span>
+      </div>
+      <div className="grid gap-px bg-border">
+        {v.vuln_type && (
+          <div className="grid grid-cols-[120px_1fr] bg-card">
+            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Vulnerability</span>
+            <span className="px-4 py-2.5 text-sm capitalize">{v.vuln_type}</span>
+          </div>
+        )}
+        {v.vuln_description && (
+          <div className="grid grid-cols-[120px_1fr] bg-card">
+            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Root Cause</span>
+            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.vuln_description}</span>
+          </div>
+        )}
+        {v.vulnerable_pattern && (
+          <div className="grid grid-cols-[120px_1fr] bg-card">
+            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Pattern</span>
+            <div className="px-4 py-2.5">
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{v.vulnerable_pattern}</code>
+            </div>
+          </div>
+        )}
+        {v.causal_chain && (
+          <div className="grid grid-cols-[120px_1fr] bg-card">
+            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Causal Chain</span>
+            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.causal_chain}</span>
+          </div>
+        )}
+        {v.reasoning && !v.vuln_description && (
+          <div className="grid grid-cols-[120px_1fr] bg-card">
+            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Reasoning</span>
+            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.reasoning}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-      {/* Best causality reasoning (shown when no tribunal) */}
-      {bestCausality && !bestTribunal && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Analysis by {getModelDetailName(bestCausality.model)}
-          </p>
-          {bestCausality.vuln_type && (
-            <div className="flex gap-2 text-sm">
-              <span className="font-medium text-muted-foreground shrink-0">Vulnerability:</span>
-              <span className="capitalize">{bestCausality.vuln_type}</span>
-            </div>
-          )}
-          {bestCausality.vuln_description && (
-            <div className="flex gap-2 text-sm">
-              <span className="font-medium text-muted-foreground shrink-0">Root Cause:</span>
-              <span className="text-muted-foreground">{bestCausality.vuln_description}</span>
-            </div>
-          )}
-          {bestCausality.vulnerable_pattern && (
-            <div className="flex gap-2 text-sm">
-              <span className="font-medium text-muted-foreground shrink-0">Pattern:</span>
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{bestCausality.vulnerable_pattern}</code>
-            </div>
-          )}
-          {bestCausality.causal_chain && (
-            <div className="flex gap-2 text-sm">
-              <span className="font-medium text-muted-foreground shrink-0">Causal Chain:</span>
-              <span className="text-muted-foreground">{bestCausality.causal_chain}</span>
-            </div>
-          )}
-          {bestCausality.reasoning && !bestCausality.vuln_description && (
-            <p className="text-sm text-muted-foreground">{bestCausality.reasoning}</p>
-          )}
-        </div>
-      )}
+function TribunalSection({
+  bestTribunal,
+  bestCausality,
+  causalityCommits,
+  repoUrl,
+}: {
+  readonly bestTribunal: TribunalVerdict | null;
+  readonly bestCausality: BugCommit | null;
+  readonly causalityCommits: readonly BugCommit[];
+  readonly repoUrl?: string;
+}) {
+  if (!bestTribunal && !bestCausality) return null;
 
-      {/* Tribunal agent verdicts — visible by default, each agent expandable */}
+  return (
+    <div className="space-y-4">
+      {/* Tribunal Agents */}
       {bestTribunal && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Tribunal Verdict ({bestTribunal.agent_verdicts!.length} agents)
-          </p>
-          <div className="rounded-lg border overflow-hidden divide-y divide-border">
+        <div className="rounded-xl border overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b">
+            <Scale className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Tribunal Analysis</h2>
+            <span className="text-xs text-muted-foreground ml-1">
+              {bestTribunal.agent_verdicts!.length} agents
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <SmallVerdictBadge verdict={bestTribunal.verdict} />
+              <span className="text-xs text-muted-foreground">{bestTribunal.confidence}</span>
+            </div>
+          </div>
+          <div className="divide-y divide-border">
             {bestTribunal.agent_verdicts!.map((av) => (
-              <details key={av.model} open className="group/agent">
-                <summary className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors">
+              <details key={av.model} className="group/agent">
+                <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <span className="text-muted-foreground group-open/agent:rotate-90 transition-transform text-xs">&#9654;</span>
                   <SmallVerdictBadge verdict={av.verdict} />
-                  <span className="text-sm font-medium shrink-0">
+                  <span className="text-sm font-medium">
                     {getModelDetailName(av.model)}
                   </span>
                   <div className="flex items-center gap-2 ml-auto shrink-0">
@@ -269,12 +394,15 @@ function VerdictSection({
                     </span>
                   </div>
                 </summary>
-                <div className="px-4 py-3 bg-muted/30 text-sm space-y-2">
-                  <p className="text-muted-foreground leading-relaxed">{av.reasoning}</p>
+                <div className="px-4 py-3 bg-muted/20 border-t border-border/50">
+                  <p className="text-sm text-muted-foreground leading-relaxed">{av.reasoning}</p>
                   {av.evidence.length > 0 && (
-                    <ul className="list-disc list-inside space-y-0.5 text-xs text-muted-foreground">
+                    <ul className="mt-2 space-y-1">
                       {av.evidence.map((e, i) => (
-                        <li key={`${i}-${e.slice(0, 32)}`}>{e}</li>
+                        <li key={`${i}-${e.slice(0, 32)}`} className="flex gap-2 text-xs text-muted-foreground">
+                          <span className="text-primary/60 shrink-0">&#x2022;</span>
+                          <span>{e}</span>
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -285,37 +413,22 @@ function VerdictSection({
         </div>
       )}
 
-      {/* Additional causality commits beyond the first (rare, collapsible) */}
+      {/* Causality analysis */}
+      {bestCausality && (
+        <CausalityDetails commit={bestCausality} repoUrl={repoUrl} />
+      )}
+
+      {/* Additional causality commits beyond the first */}
       {causalityCommits.length > 1 && (
-        <details>
-          <summary className="text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground transition-colors">
+        <details className="group">
+          <summary className="flex items-center gap-2 text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground transition-colors">
+            <span className="text-muted-foreground group-open:rotate-90 transition-transform text-xs">&#9654;</span>
             {causalityCommits.length - 1} more causality analysis{causalityCommits.length > 2 ? "es" : ""}
           </summary>
-          <div className="mt-2 space-y-2">
-            {causalityCommits.slice(1).map((commit) => {
-              const v = commit.llm_verdict!;
-              return (
-                <div key={commit.sha} className="text-sm pl-3 border-l-2 border-muted space-y-1">
-                  <div className="flex items-center gap-2">
-                    <SmallVerdictBadge verdict={v.verdict} />
-                    <span className="text-xs text-muted-foreground">{getModelDetailName(v.model)}</span>
-                    {repoUrl ? (
-                      <a
-                        href={buildCommitUrl(repoUrl, commit.sha)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-xs text-primary hover:underline"
-                      >
-                        {commit.sha.slice(0, 7)}
-                      </a>
-                    ) : (
-                      <span className="font-mono text-xs">{commit.sha.slice(0, 7)}</span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground">{v.reasoning}</p>
-                </div>
-              );
-            })}
+          <div className="mt-3 space-y-3">
+            {causalityCommits.slice(1).map((commit) => (
+              <CausalityDetails key={commit.sha} commit={commit} repoUrl={repoUrl} />
+            ))}
           </div>
         </details>
       )}
@@ -327,17 +440,20 @@ function CollapsibleSection({
   title,
   count,
   defaultOpen,
+  icon,
   children,
 }: {
   readonly title: string;
   readonly count?: number;
   readonly defaultOpen?: boolean;
+  readonly icon?: React.ReactNode;
   readonly children: React.ReactNode;
 }) {
   return (
     <details open={defaultOpen} className="group">
-      <summary className="flex items-center gap-2 cursor-pointer text-lg font-semibold tracking-tight hover:text-foreground transition-colors">
-        <span className="text-muted-foreground group-open:rotate-90 transition-transform text-sm">&#9654;</span>
+      <summary className="flex items-center gap-2 cursor-pointer text-base font-semibold tracking-tight hover:text-foreground transition-colors">
+        <span className="text-muted-foreground group-open:rotate-90 transition-transform text-xs">&#9654;</span>
+        {icon}
         {title}
         {count !== undefined && (
           <span className="text-sm font-normal text-muted-foreground">({count})</span>
@@ -368,25 +484,45 @@ export default async function CveDetailPage({
   const { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes } =
     analyzeBugCommits(cve.bug_commits);
 
+  const bestTribunal = tribunalCommits.length > 0 ? tribunalCommits[0].tribunal_verdict! : null;
+  const bestCausalityCommit = causalityCommits.length > 0 ? causalityCommits[0] : null;
+  const primaryVerdict = bestTribunal?.verdict ?? bestCausalityCommit?.llm_verdict?.verdict;
+  const primaryConfidence = bestTribunal?.confidence ?? null;
+
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6">
+    <main className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
+      {/* Header */}
       <PageHeader cve={cve} />
 
-      {/* Description */}
-      <p className="leading-relaxed text-muted-foreground">{cve.description}</p>
-
-      {/* Verdict — the star of the page */}
-      <VerdictSection
+      {/* Summary Cards — at-a-glance metrics */}
+      <SummaryCards
         cve={cve}
-        repoUrl={repoUrl}
-        tribunalCommits={tribunalCommits}
+        primaryVerdict={primaryVerdict}
+        primaryConfidence={primaryConfidence}
+      />
+
+      {/* Description */}
+      <p className="text-sm leading-relaxed text-muted-foreground">{cve.description}</p>
+
+      {/* How AI Introduced This — the star of the page */}
+      <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
+
+      {/* Tribunal + Causality Analysis */}
+      <TribunalSection
+        bestTribunal={bestTribunal}
+        bestCausality={bestCausalityCommit}
         causalityCommits={causalityCommits}
-        signalTypes={signalTypes}
+        repoUrl={repoUrl}
       />
 
       {/* AI Signals — open by default */}
       {aiCommits.length > 0 && (
-        <CollapsibleSection title="AI Signals" count={totalSignals} defaultOpen>
+        <CollapsibleSection
+          title="AI Signals"
+          count={totalSignals}
+          icon={<Fingerprint className="h-4 w-4 text-muted-foreground" />}
+          defaultOpen
+        >
           <div className="space-y-3">
             {aiCommits.map((commit) => (
               <AiSignalsDisplay
@@ -403,16 +539,28 @@ export default async function CveDetailPage({
       )}
 
       {/* Commits — collapsed by default */}
-      <CollapsibleSection title="Bug-Introducing Commits" count={cve.bug_commits.length}>
+      <CollapsibleSection
+        title="Bug-Introducing Commits"
+        count={cve.bug_commits.length}
+        icon={<GitCommit className="h-4 w-4 text-muted-foreground" />}
+      >
         <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Fix Commits" count={cve.fix_commits.length}>
+      <CollapsibleSection
+        title="Fix Commits"
+        count={cve.fix_commits.length}
+        icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
+      >
         <FixCommitTimeline commits={cve.fix_commits} />
       </CollapsibleSection>
 
       {cve.references.length > 0 && (
-        <CollapsibleSection title="References" count={cve.references.length}>
+        <CollapsibleSection
+          title="References"
+          count={cve.references.length}
+          icon={<ExternalLink className="h-4 w-4 text-muted-foreground" />}
+        >
           <ul className="space-y-1.5">
             {cve.references.map((ref) => (
               <li key={ref}>
