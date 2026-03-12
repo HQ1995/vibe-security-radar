@@ -56,13 +56,13 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".java": "Java",
     ".kt": "Kotlin",
     ".php": "PHP",
-    ".c": "C",
-    ".h": "C",
-    ".cpp": "C++",
-    ".cc": "C++",
-    ".cxx": "C++",
-    ".hpp": "C++",
-    ".hxx": "C++",
+    ".c": "C/C++",
+    ".h": "C/C++",
+    ".cpp": "C/C++",
+    ".cc": "C/C++",
+    ".cxx": "C/C++",
+    ".hpp": "C/C++",
+    ".hxx": "C/C++",
     ".cs": "C#",
     ".swift": "Swift",
     ".vue": "Vue",
@@ -91,7 +91,6 @@ def _file_extension_to_language(filepath: str) -> str | None:
     if not filepath:
         return None
     ext = os.path.splitext(filepath)[1].lower()
-    # Special-case: .h could be C or C++, but we default to C
     return EXTENSION_TO_LANGUAGE.get(ext)
 
 
@@ -344,6 +343,38 @@ def _parse_severity_label(severity_str: str) -> str:
             return label
 
     return "UNKNOWN"
+
+
+# Keyword-based severity inference for OSS-Fuzz and similar advisories
+_SEVERITY_KEYWORDS: list[tuple[str, list[str]]] = [
+    ("HIGH", [
+        "heap-buffer-overflow", "use-after-free", "stack-buffer-overflow",
+        "out-of-bounds-write", "double-free", "memory-corruption",
+        "buffer-overflow", "arbitrary code execution", "remote code execution",
+    ]),
+    ("MEDIUM", [
+        "integer-overflow", "null-dereference", "out-of-bounds-read",
+        "divide-by-zero", "assertion-failure", "uninitialized-value",
+        "denial of service",
+    ]),
+    ("LOW", [
+        "timeout", "oom", "out-of-memory",
+    ]),
+]
+
+
+def _infer_severity_from_description(description: str, vuln_type: str = "") -> str:
+    """Infer a severity label from description/vuln_type keywords.
+
+    Checks HIGH keywords first, then MEDIUM, then LOW.
+    Returns the highest severity found, or empty string if no match.
+    """
+    combined = f"{description} {vuln_type}".lower()
+    for severity, keywords in _SEVERITY_KEYWORDS:
+        for kw in keywords:
+            if kw in combined:
+                return severity
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -803,6 +834,17 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
             for dc in decomposed
         ]
 
+    # Promote culprit sub-commit as the primary BIC when available
+    culprit_sha = bic.get("culprit_sha", "")
+    if culprit_sha and decomposed:
+        for dc in decomposed:
+            if dc.get("sha") == culprit_sha:
+                entry["squash_merge_sha"] = entry["sha"]
+                entry["sha"] = culprit_sha
+                entry["author"] = dc.get("author_name", entry["author"])
+                entry["message"] = _first_line(dc.get("message", ""))
+                break
+
     return entry
 
 
@@ -952,6 +994,22 @@ def build_cve_entry(
         ghsa_sev = ghsa_severities.get(cve_id, "")
         if ghsa_sev:
             severity = ghsa_sev
+
+    # Infer severity from description keywords (e.g. OSS-Fuzz advisories)
+    if severity == "UNKNOWN":
+        # Extract vuln_type early from first CONFIRMED verdict for inference
+        _vt = ""
+        for bic in result.get("bug_introducing_commits", []):
+            llm_v = bic.get("llm_verdict")
+            if llm_v and llm_v.get("verdict") == "CONFIRMED":
+                _vt = llm_v.get("vuln_type", "")
+                if _vt:
+                    break
+        inferred = _infer_severity_from_description(
+            result.get("description", ""), _vt,
+        )
+        if inferred:
+            severity = inferred
 
     # Compute verified_by from tribunal + LLM verdicts and manual reviews
     models: set[str] = set()

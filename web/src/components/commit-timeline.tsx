@@ -155,6 +155,23 @@ function BugCommitCard({
             </div>
           </div>
         </div>
+        {commit.squash_merge_sha && (
+          <p className="mt-1 text-xs text-muted-foreground/70">
+            From squash merge{" "}
+            {repoUrl ? (
+              <a
+                href={buildCommitUrl(repoUrl, commit.squash_merge_sha)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono underline-offset-4 hover:underline"
+              >
+                {commit.squash_merge_sha.slice(0, 12)}
+              </a>
+            ) : (
+              <code className="font-mono">{commit.squash_merge_sha.slice(0, 12)}</code>
+            )}
+          </p>
+        )}
         {commit.decomposed_commits && commit.decomposed_commits.length > 0 && (
           <DecomposedCommitsSection commits={commit.decomposed_commits} repoUrl={repoUrl} />
         )}
