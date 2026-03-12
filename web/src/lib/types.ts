@@ -31,6 +31,14 @@ export interface TribunalVerdict {
   readonly agent_verdicts?: readonly AgentVerdict[];
 }
 
+export interface DecomposedCommit {
+  readonly sha: string;
+  readonly author_name: string;
+  readonly message: string;
+  readonly ai_signals: readonly AiSignalEntry[];
+  readonly touched_blamed_file?: boolean | null;
+}
+
 export interface BugCommit {
   readonly sha: string;
   readonly author: string;
@@ -43,6 +51,7 @@ export interface BugCommit {
   readonly tribunal_verdict?: TribunalVerdict;
   readonly pr_url?: string;
   readonly pr_title?: string;
+  readonly decomposed_commits?: readonly DecomposedCommit[];
 }
 
 export interface FixCommit {

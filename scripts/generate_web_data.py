@@ -684,6 +684,16 @@ def _lookup_pr_for_commit(
     return ("", "")
 
 
+def _build_signal_entry(sig: dict) -> dict:
+    """Transform a raw AI signal dict into the web format."""
+    return {
+        "tool": sig.get("tool", ""),
+        "signal_type": sig.get("signal_type", ""),
+        "matched_text": sig.get("matched_text", ""),
+        "confidence": sig.get("confidence", 0),
+    }
+
+
 def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
@@ -695,13 +705,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
         "date": commit.get("authored_date", ""),
         "message": _first_line(commit.get("message", "")),
         "ai_signals": [
-            {
-                "tool": sig.get("tool", ""),
-                "signal_type": sig.get("signal_type", ""),
-                "matched_text": sig.get("matched_text", ""),
-                "confidence": sig.get("confidence", 0),
-            }
-            for sig in commit.get("ai_signals", [])
+            _build_signal_entry(sig) for sig in commit.get("ai_signals", [])
         ],
         "blamed_file": bic.get("blamed_file", ""),
         "blame_confidence": bic.get("blame_confidence", 0),
@@ -741,6 +745,23 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
                 for av in tv.get("agent_verdicts", [])
             ],
         }
+
+    # Decomposed sub-commits from squash merge PRs
+    decomposed = bic.get("decomposed_commits", [])
+    if decomposed:
+        entry["decomposed_commits"] = [
+            {
+                "sha": dc.get("sha", ""),
+                "author_name": dc.get("author_name", ""),
+                "message": _first_line(dc.get("message", "")),
+                "ai_signals": [
+                    _build_signal_entry(sig) for sig in dc.get("ai_signals", [])
+                ],
+                "touched_blamed_file": dc.get("touched_blamed_file"),
+            }
+            for dc in decomposed
+        ]
+
     return entry
 
 

@@ -124,7 +124,9 @@ export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   squash_decomposed_author_email: "Squash PR author email",
   squash_decomposed_author_name: "Squash PR author name",
   squash_decomposed_committer_email: "Squash PR committer email",
+  squash_decomposed_commit_message: "Squash PR commit message",
   squash_decomposed_message_keyword: "Squash PR message keyword",
+  squash_decomposed_branch_name: "Squash PR branch name",
 };
 
 /** Brand colors for programming languages. */
