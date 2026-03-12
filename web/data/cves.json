@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-12T14:00:27.520626+00:00",
+  "generated_at": "2026-03-12T14:16:02.679140+00:00",
   "total": 102,
   "cves": [
     {
@@ -2165,11 +2165,9 @@
     {
       "id": "OSV-2026-371",
       "description": "Heap-buffer-overflow in tinyobj::tryParseDouble",
-      "severity": "MEDIUM",
+      "severity": "UNKNOWN",
       "cvss": 0.0,
-      "cwes": [
-        "CWE-122"
-      ],
+      "cwes": [],
       "ecosystem": "",
       "published": "2026-03-10T11:17:16+09:00",
       "ai_tools": [
@@ -2178,7 +2176,7 @@
       ],
       "languages": [],
       "confidence": 0.95,
-      "verified_by": "osv+gemini-3.1-pro-preview",
+      "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4, osv+gemini-3.1-pro-preview",
       "how_introduced": "The blamed commit replaced standard parsing functions with custom parsing logic for performance or stream handling. In doing so, it introduced `tryParseDouble` which iterates over the input buffer without properly checking for the end of the buffer when encountering malformed floating-point numbers, causing a heap buffer overflow.",
       "root_cause": "The `tryParseDouble` function reads past the end of the input buffer when parsing malformed floating-point numbers, leading to a heap buffer overflow.",
       "vuln_type": "Heap-buffer-overflow",
@@ -2212,7 +2210,622 @@
             "vuln_description": "The `tryParseDouble` function reads past the end of the input buffer when parsing malformed floating-point numbers, leading to a heap buffer overflow.",
             "vulnerable_pattern": "Custom floating-point parsing loop without proper bounds checking on the input string buffer.",
             "causal_chain": "The blamed commit replaced standard parsing functions with custom parsing logic for performance or stream handling. In doing so, it introduced `tryParseDouble` which iterates over the input buffer without properly checking for the end of the buffer when encountering malformed floating-point numbers, causing a heap buffer overflow."
-          }
+          },
+          "tribunal_verdict": {
+            "verdict": "CONFIRMED",
+            "confidence": "low",
+            "models": [
+              "gpt-5.4",
+              "claude-opus-4-6",
+              "gemini-3.1-pro-preview"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The suspected commit introduced a new byte-stream parser and, with it, new StreamReader-based numeric parsing paths (`sr_parseReal` and related code) that call the existing `tryParseDouble`. In this commit, `tryParseDouble` is present in the vulnerable form and is actively used by the new parsing logic, making the heap-buffer-overflow reachable in the rewritten parser. The commit message itself shows later follow-up hardening for parsing/bounds issues, which is consistent with this large parser rewrite being the point where the vulnerable code path was introduced into the new implementation.",
+                "confidence": 0.88,
+                "tool_calls_made": 13,
+                "evidence": [
+                  "Commit f27721f3c9cd20af4d4eee789431b92d0e0c4477 rewrites OBJ/MTL parsing to a new StreamReader byte-stream implementation.",
+                  "At this commit, `tiny_obj_loader.h` contains `tryParseDouble(const char *s, const char *s_end, double *result)` in the vulnerable form.",
+                  "The same commit adds new callers `sr_parseReal(...)` that invoke `tryParseDouble(start, start + len, &val)`, making the vulnerable parser part of the new byte-stream parsing path.",
+                  "The old pointer-based `parseReal` also calls `tryParseDouble`, but this commit newly wires the function into the rewritten parser that the commit introduces."
+                ]
+              },
+              {
+                "model": "claude-opus-4-6",
+                "verdict": "UNLIKELY",
+                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
+                "confidence": 0.3,
+                "tool_calls_made": 19,
+                "evidence": []
+              },
+              {
+                "model": "gemini-3.1-pro-preview",
+                "verdict": "UNLIKELY",
+                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
+                "confidence": 0.3,
+                "tool_calls_made": 15,
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "5f9f7f6c41819fed57fff4f88ce542381bb822be",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Initial plan",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5df014602503685c5244f74ef64644d872b62e59",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Add max_iter guards to parsing loops and mmap support for .obj/.mtl loading",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f2c657b41584040c82eba5cfa76eea66dcf58b94",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Rewrite parser from line-based to byte-stream-based with EOF guards",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c57ed2cef9a91868e73fcebcf3cf226c7a4b73d1",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Rewrite parser to byte-stream based with StreamReader for bounds-checked parsing",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "70ba4b38cfe6c0a3a1f23ffa0da61d64de3a2612",
+              "author_name": "Syoyo Fujita",
+              "message": "Merge remote-tracking branch 'origin/release' into copilot/harden-obj-mtl-parsing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "07ba3299e3372443578a24b0f99bbdac42ed47c7",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tiny_obj_loader.h",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5ef0c485a5912eec08bd95eb38e2fc3ea0d40b10",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Integrate changes from release: Windows long paths, texcoord w-component, BOM in callback, test fixes",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "86edfe9a0497f495285e215ff966d8b58f58432d",
+              "author_name": "Syoyo Fujita",
+              "message": "Resolve merge conflicts between copilot/harden-obj-mtl-parsing and release",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5b4f7003ff56fc84d25d7872967b516a5686ed36",
+              "author_name": "Syoyo Fujita",
+              "message": "Add clang-style parse error reporting with early return on failure",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fbd2ed04dc7fefce69570ee58b2ce0050befb22f",
+              "author_name": "Syoyo Fujita",
+              "message": "Polish: hoist warning_context out of loop, fix no-op test",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1fd9603461e620a9cb895c94b2060af9c0abdc3d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Co-authored-by: syoyo <18676+syoyo@users.noreply.github.com>",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "751703373de9bbd4e8336e0fb1f5a23f4041821a",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tiny_obj_loader.h",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "502d5ef8fd317024f3ad34f8cf0c2d19762a95d3",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tests/tester.cc",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ecc124e83e69cfa6eeca1c0752ca74cb44ffcd37",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix sr_parseTagTriple slash-delimited count parsing and add regression assertions",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "02c350cef5c3ccb85c92713ed95e2e48e06e0c56",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix high/medium review findings: complete attrib reset, usemtl delimiter check, remove duplicate windows.h and dead errss",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ea9bf104e3b0b794d1c3a8ecc8734e44de7efd9a",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Address low severity review items: document read_token, unify line_num naming, extract sr_skipTagField helper, refactor mmap to RAII MappedFile",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b62d3ba994295fdaa48add1875c486c611f0afe3",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Harden MappedFile with is_mapped flag to prevent unmapping string literals",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7dde60aa09eac3bdbf9878fc66b938a2ab389112",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Run GPT-5.3-Codex comprehensive review",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "496cd2831c6702caa1d784af57d98eb9f258c64e",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Remove accidental CTest artifact and ignore Testing/Temporary",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d5aac19f653548512f4f1fd611494d07541d01e4",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix stream offset handling and add oversized stream guards/tests",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9b6d594299bac7bb9520dcfe5a7e719c2e6d3656",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Final deep-review fixes for mtllib callback failure path",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "14e6a5ab4d0c2bdc329aec8e3938736041d5ce5d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-2 deep review fixes for mtllib empty tokens and mmap size guard parity",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "07d2c252f349d7219c1ffe3f1b0ad2159b5d0467",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-3 deep review: preserve mtllib backslashes and harden stream size check",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "55a0f27b8bff397c830beca5047a54c4d4991ae8",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-4 review: fix callback usemtl parsing and harden int parsing",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a7365043580a4f9749c6232e198b59839de9884a",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-5 review: harden size parsing and Windows mmap path",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "dd5bbd8d70fe44eb34d2688ea96849195b7fa291",
+              "author_name": "Syoyo Fujita",
+              "message": "Final polish: fix overflow guards, zero-length normalize, and minor inconsistencies",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ]
         }
       ],
       "fix_commits": [
