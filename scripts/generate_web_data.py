@@ -640,23 +640,28 @@ def _effective_verdict(bic: dict) -> str:
 
 
 def _has_no_confirmed_verdict(result: dict) -> bool:
-    """Return True if no AI-signaled BIC has a CONFIRMED verdict.
+    """Return True if no BIC has a CONFIRMED verdict with AI involvement.
 
-    Accepts either tribunal CONFIRMED or LLM CONFIRMED.  The tribunal
-    is preferred when available, but many BICs only have an LLM verdict
-    due to the tribunal trigger filter — excluding them loses real TPs.
+    Checks ALL BICs — not just those with ai_signals still present,
+    since pipeline confidence scoring may clear signals on BICs that
+    tribunal later confirms.  Tribunal verdict takes precedence over
+    LLM verdict when both exist.
     """
-    ai_bics = [
-        bic for bic in result.get("bug_introducing_commits", [])
-        if bic.get("commit", {}).get("ai_signals")
-    ]
-    if not ai_bics:
-        return True
+    for bic in result.get("bug_introducing_commits", []):
+        has_signals = bool(bic.get("commit", {}).get("ai_signals"))
+        has_llm = bic.get("llm_verdict") is not None
+        if not has_signals and not has_llm:
+            continue  # no AI involvement at all
 
-    for bic in ai_bics:
         tv = bic.get("tribunal_verdict")
-        if tv and tv.get("final_verdict", "").upper() == "CONFIRMED":
-            return False
+        if tv:
+            # Tribunal is authoritative — if it says CONFIRMED, accept;
+            # if it says UNLIKELY/UNRELATED, skip even if LLM said CONFIRMED.
+            if tv.get("final_verdict", "").upper() == "CONFIRMED":
+                return False
+            continue
+
+        # No tribunal — fall back to LLM verdict
         llm_v = bic.get("llm_verdict")
         if llm_v and llm_v.get("final_verdict", llm_v.get("verdict", "")).upper() == "CONFIRMED":
             return False
@@ -668,21 +673,16 @@ def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
 ) -> list[dict]:
-    """Keep only results whose recomputed AI confidence is above zero and meets the threshold.
+    """Keep results with a CONFIRMED tribunal/LLM verdict.
 
-    Also excludes results with errors or where LLM verification
-    determined that all AI-signaled bug-introducing commits are
-    UNLIKELY or UNRELATED (false positives from coarse git blame).
+    Tribunal CONFIRMED bypasses confidence filtering — if 3 models
+    agree it's real, a mechanical formula shouldn't override that.
+    For CVEs without tribunal, fall back to confidence threshold.
     """
     filtered = []
     excluded_by_verdict = 0
     excluded_rejected = 0
     for r in results:
-        conf = _recompute_ai_confidence(r)
-        if conf <= 0:
-            continue
-        if conf < min_confidence:
-            continue
         if r.get("error", ""):
             continue
         # Skip rejected/withdrawn CVEs
@@ -1221,7 +1221,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Filter
     filtered = filter_ai_results(results, min_confidence=args.min_confidence)
-    print(f"  {len(filtered)} results with AI signals (confidence >= {args.min_confidence}).")
+    print(f"  {len(filtered)} results with confirmed AI involvement.")
 
     # Identify GHSA IDs still missing published dates and fetch via API
     missing_ghsa_ids = [
@@ -1248,6 +1248,11 @@ def main(argv: list[str] | None = None) -> None:
 
     # Transform
     entries = [build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered]
+    # Drop entries with no AI tools (signals lost from cache — need re-analysis)
+    no_tools = [e for e in entries if not e.get("ai_tools")]
+    if no_tools:
+        print(f"  Excluded {len(no_tools)} CVEs with lost AI signal data (need --no-cache re-analysis).")
+    entries = [e for e in entries if e.get("ai_tools")]
     # Sort: LLM-confirmed first, then by confidence descending
     entries = sorted(
         entries,
