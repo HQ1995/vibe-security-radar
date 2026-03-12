@@ -18,6 +18,7 @@ import {
   getModelDetailName,
   getModelRank,
 } from "@/lib/constants";
+import { LanguageBadge } from "@/components/language-badge";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, TribunalVerdict } from "@/lib/types";
 import {
@@ -167,7 +168,11 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
           );
         })}
         {cve.languages.length > 0 && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{cve.languages.join(", ")}</span>
+          <div className="flex items-center gap-1">
+            {cve.languages.map((lang) => (
+              <LanguageBadge key={lang} language={lang} />
+            ))}
+          </div>
         )}
         <span className="text-xs">Verified by {formatVerifiedBy(cve.verified_by)}</span>
       </div>

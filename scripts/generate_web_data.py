@@ -963,7 +963,11 @@ def build_cve_entry(
                     models.add(av["model"])
         llm_v = bic.get("llm_verdict")
         if llm_v and llm_v.get("model"):
-            models.add(llm_v["model"])
+            # Strip strategy prefixes like "osv+" to get the bare model name
+            model = llm_v["model"]
+            if "+" in model:
+                model = model.split("+", 1)[1]
+            models.add(model)
 
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
