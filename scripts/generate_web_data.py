@@ -834,8 +834,20 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
             for dc in decomposed
         ]
 
-    # Promote culprit sub-commit as the primary BIC when available
+    # Promote culprit sub-commit as the primary BIC when available.
+    # If culprit_sha not set in cache, infer from decomposed commits:
+    # prefer sub-commits that touched the blamed file, else any AI sub-commit.
     culprit_sha = bic.get("culprit_sha", "")
+    if not culprit_sha and decomposed:
+        touched = [dc for dc in decomposed if dc.get("ai_signals") and dc.get("touched_blamed_file") is True]
+        if not touched:
+            touched = [dc for dc in decomposed if dc.get("ai_signals")]
+        if len(touched) == 1:
+            culprit_sha = touched[0].get("sha", "")
+        elif len(touched) > 1:
+            # Multiple AI sub-commits — pick highest signal confidence
+            best = max(touched, key=lambda dc: max((s.get("confidence", 0) for s in dc.get("ai_signals", [])), default=0))
+            culprit_sha = best.get("sha", "")
     if culprit_sha and decomposed:
         for dc in decomposed:
             if dc.get("sha") == culprit_sha:
