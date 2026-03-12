@@ -745,6 +745,23 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     return entry
 
 
+_TRIBUNAL_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED", "UNLIKELY"})
+
+
+def _bic_dict_is_excluded(bic: dict) -> bool:
+    """Return True if this BIC dict should be excluded from AI confidence scoring.
+
+    Dict-based mirror of ``_bic_is_excluded()`` in pipeline.py.
+    """
+    llm_v = bic.get("llm_verdict")
+    if llm_v and llm_v.get("verdict") == "UNRELATED":
+        return True
+    tv = bic.get("tribunal_verdict")
+    if tv and (tv.get("final_verdict") or "").upper() in _TRIBUNAL_EXCLUSION_VERDICTS_DICT:
+        return True
+    return False
+
+
 def _recompute_ai_confidence(result: dict) -> float:
     """Recompute AI confidence from raw BIC data.
 
@@ -764,10 +781,14 @@ def _recompute_ai_confidence(result: dict) -> float:
     total = len(bics)
     max_score = 0.0
     best_bic: dict | None = None
+    ai_bic_count = 0
     for bic in bics:
         signals = bic.get("commit", {}).get("ai_signals", [])
         if not signals:
             continue
+        if _bic_dict_is_excluded(bic):
+            continue
+        ai_bic_count += 1
         best_signal = max(s.get("confidence", 0) for s in signals)
         score = best_signal * bic.get("blame_confidence", 0)
         if score > max_score:
@@ -786,10 +807,6 @@ def _recompute_ai_confidence(result: dict) -> float:
     # Diffuse blame penalty (mirrored from pipeline.py)
     if total > 50 and max_score > 0:
         max_score *= (50 / total)
-        ai_bic_count = sum(
-            1 for bic in bics
-            if bic.get("commit", {}).get("ai_signals")
-        )
         ai_ratio = ai_bic_count / total
         if ai_ratio < 0.5:
             max_score *= max(ai_ratio, 0.1)

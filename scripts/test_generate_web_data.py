@@ -18,6 +18,7 @@ from generate_web_data import (
     _file_extension_to_language,
     _determine_languages,
     _parse_severity_label,
+    _recompute_ai_confidence,
     _repo_url_to_display_name,
 )
 
@@ -615,3 +616,107 @@ class TestBuildStatsRepo:
     def test_by_repo_empty(self):
         stats = build_stats([])
         assert stats["by_repo"] == {}
+
+
+# ---------------------------------------------------------------------------
+# TestRecomputeAiConfidenceUnrelated
+# ---------------------------------------------------------------------------
+
+
+def _make_bic_dict(
+    tool: str,
+    signal_conf: float,
+    blame_conf: float,
+    verdict: str | None = None,
+    sha: str = "abc123",
+) -> dict:
+    """Build a BIC dict with a specific tool and optional LLM verdict."""
+    bic = {
+        "commit": {
+            "sha": sha,
+            "author_name": "dev",
+            "author_email": "dev@example.com",
+            "committer_name": "dev",
+            "committer_email": "dev@example.com",
+            "message": "fix",
+            "authored_date": "2026-01-15T00:00:00Z",
+            "ai_signals": [
+                {
+                    "tool": tool,
+                    "signal_type": "co_author_trailer",
+                    "matched_text": f"Co-Authored-By: {tool}",
+                    "confidence": signal_conf,
+                }
+            ],
+        },
+        "blamed_file": "src/main.py",
+        "blamed_lines": [1],
+        "blame_confidence": blame_conf,
+    }
+    if verdict is not None:
+        bic["llm_verdict"] = {
+            "verdict": verdict,
+            "reasoning": "test",
+            "model": "test-model",
+        }
+    return bic
+
+
+class TestRecomputeAiConfidenceUnrelated:
+    """_recompute_ai_confidence should exclude UNRELATED BICs."""
+
+    def test_unrelated_bic_excluded_from_confidence(self):
+        confirmed_bic = _make_bic_dict(
+            "cursor", signal_conf=0.7, blame_conf=0.8,
+            verdict="CONFIRMED", sha="aaa111",
+        )
+        unrelated_bic = _make_bic_dict(
+            "claude_code", signal_conf=0.95, blame_conf=0.9,
+            verdict="UNRELATED", sha="bbb222",
+        )
+        result = {
+            "bug_introducing_commits": [confirmed_bic, unrelated_bic],
+            "ai_signals": [
+                confirmed_bic["commit"]["ai_signals"][0],
+                unrelated_bic["commit"]["ai_signals"][0],
+            ],
+        }
+        conf = _recompute_ai_confidence(result)
+        # Should use CONFIRMED BIC: 0.7 * 0.8 = 0.56
+        assert abs(conf - 0.56) < 0.01
+
+    def test_all_unrelated_yields_zero(self):
+        unrelated_bic = _make_bic_dict(
+            "claude_code", signal_conf=0.95, blame_conf=0.9,
+            verdict="UNRELATED", sha="aaa111",
+        )
+        result = {
+            "bug_introducing_commits": [unrelated_bic],
+            "ai_signals": unrelated_bic["commit"]["ai_signals"],
+        }
+        conf = _recompute_ai_confidence(result)
+        assert conf == 0.0
+
+    def test_no_verdict_still_included(self):
+        bic = _make_bic_dict(
+            "cursor", signal_conf=0.9, blame_conf=0.9,
+            verdict=None, sha="aaa111",
+        )
+        result = {
+            "bug_introducing_commits": [bic],
+            "ai_signals": bic["commit"]["ai_signals"],
+        }
+        conf = _recompute_ai_confidence(result)
+        assert abs(conf - 0.81) < 0.01
+
+    def test_unlikely_still_included(self):
+        bic = _make_bic_dict(
+            "cursor", signal_conf=0.9, blame_conf=0.9,
+            verdict="UNLIKELY", sha="aaa111",
+        )
+        result = {
+            "bug_introducing_commits": [bic],
+            "ai_signals": bic["commit"]["ai_signals"],
+        }
+        conf = _recompute_ai_confidence(result)
+        assert abs(conf - 0.81) < 0.01
