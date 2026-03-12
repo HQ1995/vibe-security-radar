@@ -44,9 +44,11 @@ Baseline: `cve-analyzer/regression/baseline-2026-03-09.md` (92 TPs). Use `/regre
 - JSON file cache in `~/.cache/cve-analyzer/`
 - Tests use JSON fixtures in `tests/fixtures/`, no real API calls
 
-## Code Review
+## Development Workflow
 
-Run code review and fixes in sub-agents to keep the main context window clean.
+- **TDD**: Use `/tdd` workflow — write tests first, then implement, verify 80%+ coverage.
+- **After major changes**: Run `/simplify` to check for reuse/quality issues, and use code-review agent to catch problems early.
+- Run code review and fixes in sub-agents to keep the main context window clean.
 
 ## LLM Cost Reporting
 
