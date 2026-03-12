@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-12T19:26:01.917487+00:00",
+  "generated_at": "2026-03-12T19:50:12.909185+00:00",
   "total": 131,
   "cves": [
     {
@@ -1981,9 +1981,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit creates the configuration API endpoint to expose environment parameters.\n2. It defines sensitive system paths (SQLite path, base directory) as part of the returned data.\n3. It sets the default 'MCP_HTTP_HOST' to '0.0.0.0', ensuring the service listens on all interfaces and exposes this data to the network.",
-      "root_cause": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
-      "vuln_type": "Information Disclosure",
+      "how_introduced": "The vulnerability was caused by exposing the FastMCP HTTP server broadly, which let remote users reach the health/status functionality and obtain system/storage information. The fix changes mcp_server.py to stop hardcoding a public bind and instead use config values; in config.py the security-relevant default was changed from 0.0.0.0 to 127.0.0.1, restricting access to localhost by default. The suspected commit is the one that first introduced the HTTP MCP server architecture and explicitly defaulted the server to host 0.0.0.0 in main(), thereby creating the vulnerable exposure surface.",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "5709be1ca77b2dd85fab263ad4b4e968cb9d0812",
@@ -10357,7 +10357,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix adds project-level authorization checks to existing API endpoints, especially `/timeentry/create/`, `/project/timeentries/`, and `/project/timeentriesfordaterange/`, showing the core issue was missing access control around attacker-controlled `projectId`. Commit 7a4aa852 introduced the vulnerable `/project/timeentries/` and `/project/timeentriesfordaterange/` behavior without any project access check, allowing an authenticated user to retrieve another project's time entries by supplying its ID. It also added task endpoints that perform unsafely permissive field spreading (`...json.customfields`), but the specific fixed issue in this file is clearly the authorization gap that this commit created or preserved in the newly added/modified routes.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -10458,7 +10458,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (d5e3db0) introduced the `validateSafeUrl` calls in `getUrlAsDoc` and `getChildUrlsAndHtml` as the first SSRF hardening attempt. However, it validated only the initial URL before calling `fetchWithTimeout`, which uses `fetch` with default automatic redirect following. This means a safe-looking URL could redirect to an internal/unsafe URL, bypassing the validation. The CVE specifically describes an \"SSRF bypass\" via redirect chaining — the bypass is only possible because this commit introduced the incomplete SSRF protection. The fix moves validation into `fetchWithTimeout` with `redirect: \"manual\"` to validate each redirect target, directly addressing the incomplete protection pattern introduced by this commit.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -10583,7 +10583,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix replaces direct `fetch(url)` in `extensions/feishu/src/docx.ts` with `getFeishuRuntime().channel.media.fetchRemoteMedia({ url, maxBytes })`, showing the security issue was unrestricted remote fetching of markdown image URLs. The suspected commit is exactly the commit that introduced `docx.ts`, including `extractImageUrls`, `downloadImage(url)`, and `processImages(...)` that iterate over user-controlled markdown image URLs and fetch them server-side. That behavior is the SSRF primitive described by the CVE, so this commit introduced the vulnerable code path.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -10694,7 +10694,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix specifically wraps request validation in BaseSession._receive_loop with a try/except and returns a JSON-RPC INVALID_PARAMS error instead of letting validation exceptions escape and crash the server. In the suspected commit, request handling was changed to process incoming requests directly via _handle_incoming in the receive loop, and the request-validation path remained unguarded while notification validation already had exception handling. Because ServerSession inherits this BaseSession logic, a malformed request could raise during model_validate and terminate processing, producing the DoS described by the advisory.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -10802,7 +10802,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix commit removes `skipPairingForOperatorSharedAuth`, which explicitly let any non-ControlUI/non-webchat `role === \"operator\"` connection using shared auth skip device pairing. That behavior is exactly the vulnerability: an unpaired device identity could connect with shared auth and self-assign operator capabilities without operator pairing. The suspected commit introduced this logic into `message-handler.ts`, making it the source of the vulnerable pairing bypass, while its trusted-proxy changes are unrelated cleanup/feature work.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -10913,7 +10913,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix commit’s actual security changes are in `templates/backend-in-a-box/index.js`: it adds PayPal webhook signature verification and prevents replay by tracking `token_used_at` before serving `/get-patch`. The suspected commit `c139c021...` introduced that backend file and its original vulnerable logic, including an unauthenticated `/paypal/webhook` that trusted arbitrary POST bodies and a `/get-patch` endpoint that allowed unlimited reuse of a valid purchase token. Although the blamed `buy-handler.ts` change itself is not the root cause, this commit as a whole introduced the vulnerable Taysell purchase flow and backend implementation.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -11024,7 +11024,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerability is that always_check_safety()/run_hook() failed to hook pickle.loads and _pickle.loads, leaving a bypass. In the blamed commit, run_hook() was rewritten to hook only pickle.load plus Unpickler classes, while activate_safe_ml_environment() did hook loads; this asymmetry is exactly the vulnerable state later fixed by adding pickle.loads/_pickle.loads to run_hook(). Because this commit introduced the vulnerable run_hook implementation in hook.py, it is the cause of the bypass.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -11135,7 +11135,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The suspected commit introduced a new byte-stream parser and, with it, new StreamReader-based numeric parsing paths (`sr_parseReal` and related code) that call the existing `tryParseDouble`. In this commit, `tryParseDouble` is present in the vulnerable form and is actively used by the new parsing logic, making the heap-buffer-overflow reachable in the rewritten parser. The commit message itself shows later follow-up hardening for parsing/bounds issues, which is consistent with this large parser rewrite being the point where the vulnerable code path was introduced into the new implementation.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -11816,7 +11816,7 @@
       ],
       "confidence": 0.9,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "Commit d05c3d0 introduced the `message_reaction` handler in `src/telegram/bot.ts` that processes Telegram emoji reactions and calls `enqueueSystemEvent()` to inject system events into the bot's session. This handler performs no authorization checks whatsoever — it doesn't verify the sender against allowlists, DM policies, or group policies. The fix commit (e56b0cf) adds the `isTelegramEventSenderAuthorized` function and applies it to the reaction handler, blocking unauthorized senders before any system event is enqueued. The vulnerability (CWE-863: Incorrect Authorization) exists precisely because this commit added the reaction handling feature without any sender authorization.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -11966,7 +11966,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix clearly addresses uncaught exceptions during request validation in BaseSession._receive_loop by wrapping model_validate(...) for JSONRPCRequest in a try/except and returning an INVALID_PARAMS JSON-RPC error instead of letting the exception escape and crash the server. In the suspected commit, request handling was changed from enqueueing to an incoming message stream to calling _handle_incoming directly, but it preserved the unguarded validated_request = self._receive_request_type.model_validate(...) path. That commit therefore introduced the vulnerable code path into the server-side direct-processing flow implemented after moving incoming_messages from BaseSession to ServerSession, making malformed FastMCP requests able to trigger an unhandled exception and DoS the server.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12072,7 +12072,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix removes the newly added POST /executions endpoint, indicating that endpoint was the security problem rather than the existing per-graph stop route. The suspected commit f1cc2afb introduced that exact endpoint and wired it to _stop_graph_run, which returns execution metadata via get_graph_executions. Because get_graph_executions explicitly allows optional user_id filtering and the new endpoint was described in the commit message as allowing stopping by only graph_id or user_id, this commit introduced the authorization gap that exposed execution results.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12259,7 +12259,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerability is about re-executing user commands without dropping elevated privileges first. The fix commit moved command execution into a new src/fix/output.rs module and added explicit detection of SUID/sudo/doas contexts plus a pre_exec() hook that calls setgid/setuid/initgroups and sanitizes sudo/doas environment variables before running the command. The suspected commit is exactly the change that introduced the vulnerable re-execution path: it replaced a simple blocking Command::output() call with a new spawn/threaded execution path in get_command_output, but it still executed the original command directly with inherited privileges and environment, with no privilege dropping logic at all.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12381,7 +12381,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix directly replaces an unrestricted `fetch(url)` in `extensions/feishu/src/docx.ts` with `getFeishuRuntime().channel.media.fetchRemoteMedia({ url, maxBytes })`, which is the security-relevant change. In the suspected commit, this file was newly introduced and already contained `downloadImage(url)` implemented via raw `fetch(url)` on attacker-controlled markdown image URLs, used by `write`/`append` doc actions. Since the vulnerable behavior first appears in this commit and the later fix hardens exactly that code path, this commit introduced the local file disclosure issue.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12605,9 +12605,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit creates the configuration API endpoint to expose environment parameters.\n2. It defines sensitive system paths (SQLite path, base directory) as part of the returned data.\n3. It sets the default 'MCP_HTTP_HOST' to '0.0.0.0', ensuring the service listens on all interfaces and exposes this data to the network.",
-      "root_cause": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
-      "vuln_type": "Information Disclosure",
+      "how_introduced": "The fix for CVE-2026-29787 replaces hardcoded network binding in `mcp_server.py` (`host=\"0.0.0.0\", port=8000`) with configuration-driven `HTTP_HOST`/`HTTP_PORT`, indicating the security issue was exposure of HTTP endpoints, including the health endpoint, on all interfaces by default. The suspected commit is exactly where that hardcoded remote-access binding was introduced, and its commit message explicitly says it set `FastMCP host=0.0.0.0 for remote access`. That change made the service—and thus the health endpoint that disclosed system information—remotely reachable by default, which is the core condition enabling the information disclosure vulnerability.",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "0f1feaa0b40de3f0ce46cdfb6545fccf843b414c",
@@ -12708,7 +12708,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "This commit introduced the new /approve text command and its handler called exec.approval.resolve after checking only isAuthorizedSender, with no gateway-client scope restriction for internal channels. The later fix adds exactly that missing authorization gate by requiring operator.approvals or operator.admin via requireGatewayClientScopeForInternalChannel. Since the vulnerable behavior was created when /approve was first added here, this commit is the bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12817,7 +12817,7 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security fix in bce643a0 is specifically to normalize the resolved WhatsApp account ID before looking up allowFrom data and account config, so pairing-store access is properly scoped to the intended account. Commit 2ed43fd7 introduced the exact precondition for the bug by adding a new fallback that injects an agent-bound accountId into resolveDeliveryTarget for isolated sessions, and that accountId was then later used unnormalized when WhatsApp allowFrom support was added, enabling lookup of the wrong/unscoped store and cross-account DM authorization bypass. In other words, this commit created the vulnerable accountId propagation path that the later WhatsApp pairing logic consumed insecurely.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -12928,7 +12928,7 @@
       ],
       "confidence": 0.81,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (a5afe7bc) introduced the `fetchWithGuard` function in `src/gateway/openresponses-http.ts` as part of Phase 2 of the OpenResponses endpoint, which fetches remote images and files from user-provided URLs. This function had inadequate SSRF protection: it only checked hostnames against regex patterns for private IPs without DNS resolution (allowing DNS rebinding attacks), didn't handle redirects manually (allowing redirect-based SSRF), and didn't pin resolved IPs. The fix commit (81c68f58) replaced this naive approach with `fetchWithSsrFGuard` which uses proper DNS pinning and manual redirect handling. The code was later refactored/moved to `src/media/input-files.ts` (the blamed file), but the vulnerable pattern originated in this BIC.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13043,7 +13043,7 @@
       ],
       "confidence": 0.81,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (a5afe7bc) introduced the remote image/file fetching functionality in the OpenResponses endpoint with a weak SSRF protection that only checks hostname strings against regex patterns (`isPrivateIp`). This is vulnerable to DNS rebinding attacks (hostname resolves to a private IP after the check), incomplete IP range coverage (missing 0.0.0.0, 169.254.x.x, etc.), and redirect-based SSRF. The fix commit replaced this with `fetchWithSsrFGuard` which uses proper DNS resolution pinning via `resolvePinnedHostname` and `createPinnedDispatcher`, and handles redirects with SSRF checks at each hop. The vulnerable code was later refactored from `openresponses-http.ts` into `src/media/input-files.ts`, which is why the blame points there.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13157,7 +13157,7 @@
       ],
       "confidence": 0.81,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security fix in 53d10f86 is the new logic that automatically appends the Tailnet HTTPS origin to gateway.controlUi.allowedOrigins when Tailscale serve/funnel is enabled. Without that, the WebSocket Origin check rejects Control UI connections opened via the Tailscale hostname, which breaks the intended browser-origin path and creates the authorization mismatch described in the advisory. Commit c851bdd introduced the vulnerable state by adding Tailscale serve/funnel setup in configure.ts, forcing bind=loopback for Tailscale, but not adding the corresponding Tailnet origin to the Control UI allowlist.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13266,7 +13266,7 @@
       ],
       "confidence": 0.7125,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior is the server setup in index.js calling express.json() without any rate-limiting middleware, allowing unthrottled JSON parsing and potential resource exhaustion. The fix commit addresses exactly this by adding optional express-rate-limit middleware before express.json(). At the suspected commit, index.js already contains the vulnerable implementation and there is no evidence of prior code in that file; the commit appears to introduce the package contents including this initial server code, so it is the origin of the vulnerable behavior.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13553,7 +13553,7 @@
       ],
       "confidence": 0.7,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix commit explicitly states one of the fixed issues was a use-after-free introduced by PR #13842, which is exactly commit 5d0d64b. In that commit, activeDefragHExpiresOB() calls activeDefragAlloc(kvobj), which frees the old kvobj before the code updates db->keys/db->expires links using keystr derived from the freed object, creating the vulnerable stale-pointer condition. The fix changes this to activeDefragAllocWithoutFree(), updates all references first, and only then frees the old object, showing that the bug originates in the BIC itself.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13670,7 +13670,7 @@
       ],
       "confidence": 0.63,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix changes only the ordering of `availablePermissionRanks`, and the repository uses `availablePermissionRanks.indexOf(...)` to compare authorization levels when creating, updating, and revoking API tokens and user roles. In the bug-introducing commit, this array was first added in descending privilege order (`['owner','admin','editor','visitor','unknown']`), which makes numeric comparisons like `targetPerms >= userPerms` backwards and allows lower-privileged users to satisfy checks intended to block higher-privilege operations. Because the vulnerable rank ordering originated in this commit and was later corrected to ascending order, this commit introduced the vulnerability.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13787,7 +13787,7 @@
       ],
       "confidence": 0.57,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior is the direct use of the user-controlled `_target_url` query parameter in `_redirect_to_target()`, which performed `RedirectResponse(target)` with no validation. The fix commit specifically addressed this by parsing the URL and stripping scheme/host, preserving only the local path/query/fragment. In the suspected commit, `gradio/oauth.py` already contains this exact vulnerable sink and wires it into both `/login/callback` and `/logout`, making it the commit that introduced the open redirect behavior in the OAuth flow.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -13898,7 +13898,7 @@
       ],
       "confidence": 0.525,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security-relevant change in the later fix is only a version bump, which implies the real vulnerability was fixed in the dependency release pycares 4.9.0 rather than by further code changes in aiodns itself. This suspected commit introduced new lifecycle management code in aiodns, specifically an explicit `_cleanup()` that calls `self._channel.close()` and a `__del__` destructor that invokes `_cleanup()` during garbage collection. Because the CVE is a use-after-free in pycares, adding destructor-driven channel closing is exactly the aiodns-side behavior that can trigger the vulnerable pycares path, whereas prior code had no `__del__`, `_cleanup`, or `_channel.close()` call at all.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -14023,7 +14023,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior was introduced when this commit added the slash-command management UI with unconditional Edit/Delete actions in SlashCommandItem. Those actions send openFile/openCommandFile requests for any command, and the later fix specifically prevents editing/deleting commands whose source is \"built-in\"—the new category that exposed the dangerous path. Since the backend openCommandFile/deleteCommand logic remained unchanged in the fix, the security-relevant remediation in this file is the UI restriction added after built-in commands were introduced, making this commit the origin of the vulnerable UI behavior.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -14346,7 +14346,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security-relevant fix in 2c82f4c is the new check that built-in commands (`command.source === \"built-in\"`) must not expose edit/delete UI. The suspected commit 785fcac introduced `SlashCommandItem.tsx` with unconditional edit and delete buttons for every command, and its `handleEdit` sends `openFile` with attacker-controlled `command.filePath` or falls back to `openCommandFile`. That commit also added backend support to expose `filePath` to the webview and to open/delete command files, so it is the commit that introduced the vulnerable capability later restricted by the fix.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -14678,7 +14678,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior was introduced when this commit added slash-command management UI that always exposed edit/delete actions and sent raw `command.filePath` via `openFile` or resolved commands by name via `openCommandFile`. The later fix specifically prevents these actions for `command.source === \"built-in\"`, indicating the security issue was that built-in commands became editable/openable through this UI. At the time of this commit, commands only had `global|project` sources, but this code path created the insecure capability that later affected newly introduced built-in commands with synthetic/symlink-bypassable paths, so this commit is the origin of the vulnerable UI logic.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -14834,7 +14834,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security fix in 2c82f4c blocks edit/delete controls for built-in slash commands by checking `command.source === \"built-in\"`, which shows the vulnerable behavior was exposing management actions for built-in commands. The suspected commit 785fcac introduced exactly that UI in `SlashCommandItem.tsx`, always rendering Edit/Delete buttons and wiring Edit to `openFile`/`openCommandFile` and Delete to `onDelete` with no built-in restriction. It also added backend handlers such as `openCommandFile`, making built-in command files reachable from the management UI; this is the commit that enabled the unsafe path later abused to trigger npm install/postinstall under auto-approve.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -14987,7 +14987,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior was caused by unnecessary component re-renders that repeatedly executed `updated()` hooks performing destructive `innerHTML` writes, enabling XSS/code injection scenarios described in the CVE. Commit 6ba80ed introduced vnode caching specifically to stop those spurious re-renders in `renderRecursively`, and the later fix commit explicitly says it reverted that cache while replacing it with narrower guards in `html.js`, `markdown.js`, and `interactive_image.js` as the safer security-relevant mitigation. Because this commit is the one that first added the vnode-cache-based protection mechanism later removed by the fix, it directly corresponds to the vulnerable-code path under investigation.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -15137,7 +15137,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (e59d3d1) introduced GLOB-based tag matching across multiple methods (search_by_tag, cleanup_by_tags, delete_by_tag, delete_by_tags, search_by_tag_chronological) but passed user-supplied tag values directly into GLOB patterns without escaping GLOB metacharacters (*, ?, [). This allowed attackers to craft tag values containing wildcards that would match unintended memories, enabling broader data access than authorized. The fix commit (749999f) addresses this by adding the `_escape_glob()` function and applying it to all locations where user-supplied tags are interpolated into GLOB patterns, including the exact lines introduced by the BIC.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -15248,7 +15248,7 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "This commit is the one that changed the example from a local wrapper using direct Pickled mutation to the shared `fickling.pytorch.PyTorchModelWrapper`, and then actively used its `inject_payload(..., injection=\"insertion\")` API to produce a malicious model. At this commit, `fickling/pytorch.py` contains the vulnerable payload-injection implementation (`pickled.insert_python_exec(payload)` and a `BaseInjection.__reduce__` returning `eval`), which is the code path that enables arbitrary code execution during model load. The later 'fix' diff only reformats the payload string in the example and does not remove or mitigate the dangerous behavior, so the vulnerable functionality was already introduced here by wiring the example to that module.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -15375,7 +15375,7 @@
       ],
       "confidence": 0.45,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerability is that `UserObject` inherits `FlexObject::jsonSerialize()` which returns all elements including sensitive fields like `hashed_password`, `secret`, and `twofa_secret` without filtering. The fix adds a `jsonSerialize()` override to `UserObject` that removes these sensitive fields. The BIC (fba015c5d95bc94d84bd72a221412fd763fa8bdf) is a merge commit that brought the `UserObject` class into the `feature/v1.8` branch from `develop`. At this commit, the `UserObject` class exists without the `jsonSerialize()` override, meaning it exposes sensitive user data through the parent's unfiltered serialization. Git blame correctly identifies this merge as the commit that introduced the vulnerable code to this branch.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -15474,7 +15474,7 @@
       ],
       "confidence": 0.35,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (7eec4e8) introduced the entire Service Accounts API, including the `ServiceAccountTypes-ti.ts` file that defined `ServiceAccountApiResponse` with a `key` field (the API key). The fix commit (f662eac) removes the `key` from `ServiceAccountApiResponse` and replaces it with `login`, ensuring API keys are only exposed in creation responses (`ServiceAccountCreationResponse`). The BIC also introduced the API endpoints that used these types, including the apikey regeneration endpoint that returned the key in a `ServiceAccountApiResponse` type. Since the BIC created both the type definitions and the endpoints that the fix modifies, it is the commit that introduced the vulnerable code.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -15942,7 +15942,7 @@
       ],
       "confidence": 0.35,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix for CVE-2026-24002 is the newly added validation that every shared/invited email must satisfy `isEmail(email)` before being accepted into `notFoundUserEmailDelta`; prior to that, arbitrary strings could be treated as invite targets. The suspected commit introduced service accounts whose logins deliberately use the nonstandard `.invalid` domain via `getUserByLogin(login, {manager}, 'service')`, which requires accepting strings that would fail normal email validation. That commit left the access-update path in `UsersManager` without any email validation, thereby enabling the vulnerable behavior the later fix closes. In other words, this commit created the feature pressure and code path that made malformed pseudo-emails acceptable until the fix explicitly validated them.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -16409,7 +16409,7 @@
       ],
       "confidence": 0.35,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (e7c1e33) introduced both the `scripts/update-version-constants.js` file and the \"Update version constants\" workflow step in `.github/workflows/update-release-pr.yml` that calls this script with unsanitized GitHub Actions expressions (`${{ steps.version_info.outputs.version }}`, `${{ steps.version_info.outputs.component }}`, `${{ steps.version_info.outputs.plugin_dir }}`). These outputs are derived from `${{ github.event.pull_request.title }}` which is attacker-controlled, creating a command injection vector. The fix commit (caa1249) modifies the script to read component mappings from `release-please-config.json` instead of hardcoded values, adding a layer of validation. Before this BIC, the workflow step calling `update-version-constants.js` with tainted outputs did not exist.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -16761,7 +16761,7 @@
       ],
       "confidence": 0.35,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior was introduced when this commit added both the new `scripts/update-version-constants.js` helper and the workflow step that invokes it with `--component=${{ steps.version_info.outputs.component }}`. In the same workflow, `component` is derived from pull request title or branch name, both attacker-influenced in a release-PR context, and the original script accepted that value without constraining it against repository configuration. The later fix changes `getConstantMapping()` to ignore arbitrary CLI component names unless they match a component declared in `release-please-config.json`, which is the security-relevant mitigation against expression/command-injection abuse. Since the script and its unsafe trust boundary were first introduced in this commit, this is the bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -16873,7 +16873,7 @@
       ],
       "confidence": 0.0763,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security fix for GHSA-gc24-px2r-5qmf in this file is the addition of per-endpoint authorization checks via RequirePermissionIfAuthEnabled(...); before that, the Spoolman routes were callable with only Depends(get_db) and no auth/permission dependency. Commit 5b8d24f2 introduced new Spoolman endpoints such as GET /spools/unlinked and POST /spools/{spool_id}/link, and the full file at that commit shows these new endpoints had no authentication at all. Because the vulnerability specifically includes many API endpoints not requiring authentication, and this commit added such unauthenticated endpoints, it directly contributed to the vulnerable state.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -17259,7 +17259,7 @@
       ],
       "confidence": 0.0669,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security-relevant bug is the unconditional re-appending of a user-controlled path segment to generated SERVICE_FQDN/SERVICE_URL values on every parse() call; the fix adds endsWith() guards specifically to prevent repeated path duplication. Commit 56f32d0f introduced that exact vulnerable logic into serviceParser, including the lines `$fqdn = \"$fqdn$path\"`, `$url = \"$url$path\"`, and `$fqdnValueForEnv = \"$fqdnValueForEnv$path\"` without any deduplication. Because savedService->fqdn is later reused as the base on subsequent parses, this commit created the stateful path-growth behavior that could corrupt dynamic proxy configuration filenames and enable command injection.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -17513,7 +17513,7 @@
       ],
       "confidence": 0.0644,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security fix for CVE-2026-25505 adds permission checks to every Spoolman route in this file, showing that the vulnerable condition was unauthenticated access to these endpoints. In the suspected commit, spoolman.py contains no authentication or permission dependency at all, and this commit adds new endpoints such as /spools/unlinked and /spools/{spool_id}/link while leaving all existing Spoolman endpoints unauthenticated. Because this commit introduced additional unauthenticated API surface in the exact file later fixed by adding RequirePermissionIfAuthEnabled, it directly contributed to the vulnerability.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -17898,7 +17898,7 @@
       ],
       "confidence": 0.0638,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "This commit introduced Feishu DM dynamic-agent creation in `bot.ts` via `maybeCreateDynamicAgent`, automatically creating a new agent and binding for any authenticated DM sender when the route matched the default. That is the kind of authenticated-DM flow described in the advisory: it changes routing/identity semantics and enables per-user agent access without any owner-only gateway-tool authorization checks being added here. The later fix commit shown does not address this issue at all, so the security-relevant change is in this feature commit rather than in the import reordering from the listed fix SHA.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -18109,7 +18109,7 @@
       ],
       "confidence": 0.0594,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix for CVE-2026-31862 replaces shell-based execAsync string interpolation with argumentized spawnAsync calls and adds branch/remote validation. This commit introduced a new /publish endpoint that executes `git push --set-upstream ${remoteName} ${branch}` via execAsync, where `branch` comes directly from the authenticated request body. That is exactly the vulnerable pattern the fix later removes from the same endpoint, so this commit introduced one of the command-injection sinks covered by the CVE.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -18215,7 +18215,7 @@
       ],
       "confidence": 0.0586,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The BIC (5c2cb6c) introduced the Feishu webhook HTTP server in `extensions/feishu/src/monitor.ts` with the line `server.on(\"request\", Lark.adaptDefault(path, eventDispatcher, { autoChallenge: true }))` — an unbounded webhook handler without any body size limits or timeout guards. The fix commit (3cbcba10) wraps this exact handler with `installRequestBodyLimitGuard` to enforce a 1MB body limit and 30-second timeout. Before this BIC, the Feishu webhook mode did not exist (the previous code returned early with \"webhook mode not implemented in monitor\"), so this commit is the origin of the vulnerable webhook endpoint.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -18342,7 +18342,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The actual security fix in 4.9.2 is in src/Modules/Expirator/Controllers/RestAPIController.php, where the POST /post-expiration route's permission_callback was changed from only checking userCanExpirePosts() to also checking userCanEditPost($postId). Before the fix, any user with generic expire-posts capability could call saveFutureActionData on arbitrary post IDs, matching the CVE's unauthorized modification issue. The suspected commit predates the fix and already contains the vulnerable route and saveFutureActionData implementation, so it is the commit that introduced the vulnerable code path.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -19006,7 +19006,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix removes `penultimateViewedChannelName` from the archive menu item because that prop was only used by `DeleteChannelModal` to redirect users away from an archived channel when they lacked `canViewArchivedChannels`. In the vulnerable implementation, this new `archive_channel.tsx` component introduced by fd717cfa passed that prop into the modal, preserving the old redirect-based behavior and preventing regular users from remaining on archived channels. Since the CVE is specifically about regular users being able to access archived content, and the fix changes this exact call path so the redirect no longer occurs, this commit is the one that carried the vulnerable behavior into the new menu system.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -19341,7 +19341,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix for CVE-2025-53107 in this file specifically replaces shell-based `exec` with argument-based `execFile`, removing the command-string construction that allowed injection through user-controlled `files` values. The suspected commit is the one that originally introduced `src/mcp-server/tools/gitAdd/logic.ts`, and it already builds a shell command with interpolated `targetPath` and `filesArg` and executes it via `execAsync(command)`. Although it attempts to quote file names and sanitize the repo path, it still leaves shell metacharacter injection possible because escaping only double quotes is not sufficient when passing attacker-controlled input to a shell command string.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -21057,7 +21057,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix for CVE-2025-53355 in gitAdd is the replacement of shell-based `exec` with argument-safe `execFile`, removing construction of a shell command string from user-controlled `input.files` and `targetPath`. In the suspected commit, `src/mcp-server/tools/gitAdd/logic.ts` is introduced for the first time and immediately implements `const command = `git -C \"${targetPath}\" add -- ${filesArg}`;` followed by `execAsync(command)`, with `filesArg` derived from attacker-controlled file patterns using only ad hoc quoting. Because this commit created the vulnerable shell invocation in the blamed file, it is the bug-introducing commit for this vulnerability in gitAdd.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -23404,7 +23404,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The security-relevant part of the fix is the change from always fetching `getBackgroundPath(bg)` to fetching `bg` directly for custom backgrounds via the new `isCustom` parameter. In the blamed commit, `getThumbnailFromStorage(bg)` was introduced and called for animated custom backgrounds from `getBackgroundFromTemplate(bg, true)`, but it always performed `fetch(getBackgroundPath(bg))`. Since custom background identifiers are URLs, this created a browser fetch path derived from attacker-controlled input and is exactly the code later patched for the DNS rebinding issue. The other changes in the fix are unrelated cleanup, so this commit is the one that introduced the vulnerable thumbnail-fetching logic.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -23526,7 +23526,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior is the domain filter trusting only the URL's netloc string and matching it with simple suffix checks, without resolving the hostname to its IPs. The fix specifically adds hostname resolution and applies the allow/block logic to both the original hostname and resolved IPv4/IPv6 addresses, which is what addresses SSRF to internal/private destinations hidden behind attacker-controlled domains. This commit introduced the simplistic allow/block filtering implementation in backend/open_webui/retrieval/web/main.py, replacing the prior even simpler filter and thereby creating the vulnerable code path that the later fix corrected.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -24371,7 +24371,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerability fix is the later propagation of `senderIsOwner` into the auto-compaction path, so owner-only tools remain disabled when compaction is triggered by untrusted input. The suspected commit introduced that auto-compaction path in `run.ts` by calling `compactEmbeddedPiSessionDirect(...)` on context overflow, but it did not pass `senderIsOwner`. At that commit, `compact.ts` created tools without any authorization flag, and `pi-tools.ts` explicitly treats missing `senderIsOwner` as unauthorized only when the flag is passed through; thus the new fallback compaction route bypassed the intended owner-only tool policy and enabled the prompt-injection/RCE condition.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -24520,7 +24520,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The actual security fix is the added assignment `conf.ConfigPath = configPath` in `InitConfig()`. That value is later used by `internal/bootstrap/patch/v4_1_9/skip_tls.go` to rewrite the loaded configuration and reset `tls_insecure_skip_verify` to `false`. The suspected commit introduced support for `--config` and changed `InitConfig()` to load configuration from a custom path, but it did not store that chosen path in `conf.ConfigPath`; as a result, later remediation logic would not write back to the real config file when a custom config path was used, leaving insecure TLS settings in place. Therefore this commit introduced the conditions for the insecure TLS default configuration vulnerability when `--config` is used.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -24667,7 +24667,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The vulnerable behavior stems from building IDP redirect flows using instance selection derived from request-controlled headers via `getServiceUrlFromHeaders`, while also constructing success/failure URLs from the original/public host. The fix specifically replaces this with `getServiceConfig`, which pins `baseUrl` to `ZITADEL_API_URL` and separates `instanceHost`/`publicHost`, indicating the bug was improper instance validation rather than the new fallback logic itself. This suspected commit introduced the new `redirectUserToIDP` fallback path that uses `serviceUrl` and `organization` to redirect users to an organization-level IDP, thereby adding the vulnerable V2 login takeover/open-redirect-capable flow into `loginname.ts`.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [
@@ -25276,7 +25276,7 @@
       ],
       "confidence": 0.0,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "",
+      "how_introduced": "The fix for GHSA-3q26-f695-pp76 replaces shell-based execution (`exec`) with argument-based execution (`execFile`) in `gitAdd`, which is the security-relevant change that removes command injection via user-controlled `files` input. In the suspected commit, `gitAdd/logic.ts` is introduced for the first time and immediately builds a shell command string `git -C \"${targetPath}\" add -- ${filesArg}` from attacker-controlled input before passing it to `exec`. The ad hoc quoting only escapes double quotes and does not eliminate shell interpretation, so this commit directly introduces the vulnerable pattern later fixed.",
       "root_cause": "",
       "vuln_type": "",
       "bug_commits": [

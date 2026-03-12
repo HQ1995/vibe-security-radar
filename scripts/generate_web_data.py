@@ -1054,7 +1054,7 @@ def build_cve_entry(
         verified_by = ", ".join(sorted(models))
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type
-    # from first CONFIRMED verdict
+    # from first CONFIRMED verdict (llm_verdict or tribunal fallback)
     how_introduced = ""
     root_cause = ""
     vuln_type = ""
@@ -1065,6 +1065,16 @@ def build_cve_entry(
             root_cause = llm_v.get("vuln_description", "")
             vuln_type = llm_v.get("vuln_type", "")
             if how_introduced or root_cause:
+                break
+
+        # Fallback: use tribunal's CONFIRMED agent reasoning
+        tv = bic.get("tribunal_verdict")
+        if tv and tv.get("final_verdict", "").upper() == "CONFIRMED" and not how_introduced:
+            for av in tv.get("agent_verdicts", []):
+                if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
+                    how_introduced = av["reasoning"]
+                    break
+            if how_introduced:
                 break
 
     return {
