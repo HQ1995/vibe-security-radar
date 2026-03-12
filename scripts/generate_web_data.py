@@ -1121,8 +1121,19 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0, coverage_since:
     ]
 
     sorted_months = sorted(month_counts.keys())
-    coverage_from = coverage_since if coverage_since else (sorted_months[0] if sorted_months else "")
-    coverage_to = sorted_months[-1] if sorted_months else ""
+    # Use day-level precision for coverage range
+    if coverage_since:
+        # Expand "2025-05" to "2025-05-01"
+        coverage_from = coverage_since if len(coverage_since) > 7 else f"{coverage_since}-01"
+    else:
+        coverage_from = f"{sorted_months[0]}-01" if sorted_months else ""
+    # Find the latest published date across all entries
+    latest_date = ""
+    for e in entries:
+        pub = e.get("published", "")[:10]  # "YYYY-MM-DD" prefix
+        if pub > latest_date:
+            latest_date = pub
+    coverage_to = latest_date or (f"{sorted_months[-1]}-01" if sorted_months else "")
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
