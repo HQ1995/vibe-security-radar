@@ -911,13 +911,19 @@ def build_cve_entry(
     elif models:
         verified_by = ", ".join(sorted(models))
 
-    # Populate how_introduced from first CONFIRMED verdict's vuln_description
+    # Populate how_introduced (causal chain), root_cause, and vuln_type
+    # from first CONFIRMED verdict
     how_introduced = ""
+    root_cause = ""
+    vuln_type = ""
     for bic in result.get("bug_introducing_commits", []):
         llm_v = bic.get("llm_verdict")
-        if llm_v and llm_v.get("verdict") == "CONFIRMED" and llm_v.get("vuln_description"):
-            how_introduced = llm_v["vuln_description"]
-            break
+        if llm_v and llm_v.get("verdict") == "CONFIRMED":
+            how_introduced = llm_v.get("causal_chain", "")
+            root_cause = llm_v.get("vuln_description", "")
+            vuln_type = llm_v.get("vuln_type", "")
+            if how_introduced or root_cause:
+                break
 
     return {
         "id": cve_id,
@@ -932,6 +938,8 @@ def build_cve_entry(
         "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
         "how_introduced": how_introduced,
+        "root_cause": root_cause,
+        "vuln_type": vuln_type,
         "bug_commits": bug_commits,
         "fix_commits": result.get("fix_commits", []),
         "references": result.get("references", []),

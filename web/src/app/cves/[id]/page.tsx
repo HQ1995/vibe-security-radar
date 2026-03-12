@@ -268,8 +268,9 @@ function HowIntroducedCallout({
   readonly cve: CveEntry;
   readonly signalTypes: readonly string[];
 }) {
-  const hasExplanation = cve.how_introduced.length > 0;
-  if (!hasExplanation && signalTypes.length === 0) return null;
+  const hasSummary = cve.how_introduced.length > 0;
+  const hasRootCause = (cve.root_cause ?? "").length > 0;
+  if (!hasSummary && !hasRootCause && signalTypes.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-l-4 border-l-primary bg-primary/5 p-5">
@@ -278,12 +279,25 @@ function HowIntroducedCallout({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
           How AI Introduced This
         </h2>
+        {cve.vuln_type && (
+          <Badge variant="outline" className="ml-auto text-xs font-normal">
+            {cve.vuln_type}
+          </Badge>
+        )}
       </div>
-      <p className="text-sm leading-relaxed">
-        {hasExplanation
-          ? cve.how_introduced
-          : `Detected AI tool involvement via ${signalTypes.join(", ")}.`}
-      </p>
+      {hasSummary ? (
+        <p className="text-sm leading-relaxed">{cve.how_introduced}</p>
+      ) : (
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Detected AI tool involvement via {signalTypes.join(", ")}.
+        </p>
+      )}
+      {hasRootCause && hasSummary && (
+        <div className="mt-3 pt-3 border-t border-primary/10">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Root Cause</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{cve.root_cause}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -513,6 +527,16 @@ export default async function CveDetailPage({
       {/* How AI Introduced This — the star of the page */}
       <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
 
+      {/* Bug-Introducing Commits — between intro and tribunal */}
+      <CollapsibleSection
+        title="Bug-Introducing Commits"
+        count={cve.bug_commits.length}
+        icon={<GitCommit className="h-4 w-4 text-muted-foreground" />}
+        defaultOpen
+      >
+        <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
+      </CollapsibleSection>
+
       {/* Tribunal + Causality Analysis */}
       <TribunalSection
         bestTribunal={bestTribunal}
@@ -521,13 +545,12 @@ export default async function CveDetailPage({
         repoUrl={repoUrl}
       />
 
-      {/* AI Signals — open by default */}
+      {/* AI Signals */}
       {aiCommits.length > 0 && (
         <CollapsibleSection
           title="AI Signals"
           count={totalSignals}
           icon={<Fingerprint className="h-4 w-4 text-muted-foreground" />}
-          defaultOpen
         >
           <div className="space-y-3">
             {aiCommits.map((commit) => (
@@ -543,15 +566,6 @@ export default async function CveDetailPage({
           </div>
         </CollapsibleSection>
       )}
-
-      {/* Commits — collapsed by default */}
-      <CollapsibleSection
-        title="Bug-Introducing Commits"
-        count={cve.bug_commits.length}
-        icon={<GitCommit className="h-4 w-4 text-muted-foreground" />}
-      >
-        <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
-      </CollapsibleSection>
 
       <CollapsibleSection
         title="Fix Commits"
