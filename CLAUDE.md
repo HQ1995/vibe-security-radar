@@ -39,7 +39,6 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
 - **Tribunal**: 3-model voting prevents FPs at runtime
 - **`/audit`**: Independent deep verification of individual CVEs
-- **Lessons**: `cve-analyzer/regression/lessons.md` — patterns and insights from past pipeline changes
 
 ## Code Conventions
 
