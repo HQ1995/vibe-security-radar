@@ -20,6 +20,7 @@ interface DistributionPieChartProps {
   readonly getColor: (key: string) => string;
   readonly getName?: (key: string) => string;
   readonly iconDir?: string;
+  readonly getIconKey?: (key: string) => string;
   readonly themedIcons?: ReadonlySet<string>;
 }
 
@@ -40,6 +41,7 @@ export function DistributionPieChart({
   getColor,
   getName = (k) => k,
   iconDir,
+  getIconKey = (k) => k,
   themedIcons = new Set(),
 }: DistributionPieChartProps) {
   const [activeIndex, setActiveIndex] = React.useState<number | undefined>(
@@ -174,8 +176,8 @@ export function DistributionPieChart({
 
                   {/* Icon */}
                   {iconDir && (
-                    <ToolIconImg
-                      toolKey={entry.key}
+                    <IconImg
+                      iconKey={getIconKey(entry.key)}
                       iconDir={iconDir}
                       themed={themedIcons.has(entry.key)}
                     />
@@ -203,12 +205,12 @@ export function DistributionPieChart({
 /*  Tool icon helper (HTML img, not SVG label)                         */
 /* ------------------------------------------------------------------ */
 
-function ToolIconImg({
-  toolKey,
+function IconImg({
+  iconKey,
   iconDir,
   themed,
 }: {
-  toolKey: string;
+  iconKey: string;
   iconDir: string;
   themed: boolean;
 }) {
@@ -216,7 +218,7 @@ function ToolIconImg({
     return (
       <>
         <img
-          src={`${iconDir}/${toolKey}.svg`}
+          src={`${iconDir}/${iconKey}.svg`}
           alt=""
           width={18}
           height={18}
@@ -224,7 +226,7 @@ function ToolIconImg({
           loading="eager"
         />
         <img
-          src={`${iconDir}/${toolKey}_dark.svg`}
+          src={`${iconDir}/${iconKey}_dark.svg`}
           alt=""
           width={18}
           height={18}
@@ -237,7 +239,7 @@ function ToolIconImg({
 
   return (
     <img
-      src={`${iconDir}/${toolKey}.svg`}
+      src={`${iconDir}/${iconKey}.svg`}
       alt=""
       width={18}
       height={18}
