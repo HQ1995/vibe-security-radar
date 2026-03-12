@@ -6,7 +6,7 @@ import { TOOL_DISPLAY_NAMES } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
   description:
-    "Methodology and data sources behind Vibe Security Radar — a public tracker for security vulnerabilities introduced by AI coding tools.",
+    "How Vibe Security Radar finds and verifies vulnerabilities introduced by AI coding tools.",
 };
 
 /** Derive the tool list from the single source of truth, excluding the catch-all. */
@@ -25,7 +25,7 @@ const DATA_SOURCES = [
     name: "GitHub Advisory Database (local clone)",
     url: "https://github.com/github/advisory-database",
     description:
-      "Full git clone of GitHub-reviewed and community-unreviewed advisories, enabling offline batch analysis without API rate limits.",
+      "Full git clone of GitHub-reviewed and community-unreviewed advisories. We query this locally instead of hitting the API.",
   },
   {
     name: "NVD",
@@ -36,11 +36,10 @@ const DATA_SOURCES = [
 ] as const;
 
 const LIMITATIONS = [
-  "Only detects AI involvement when explicit signatures exist (co-author trailers, bot emails, commit message markers).",
-  "AI tools that do not leave signatures in commits cannot be detected.",
-  "Git blame may attribute lines to the wrong commit in some edge cases; multi-model tribunal verification reduces but does not eliminate this.",
-  "Tribunal verification uses three independent LLM agents and majority vote, but may still misclassify borderline cases where causality is ambiguous.",
-  "Only publicly disclosed vulnerabilities with available fix commits can be analyzed; vulnerabilities in closed-source code or without public patches are not covered.",
+  "We can only see AI involvement when the tool leaves a signature (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code manually, we won't know.",
+  "Git blame sometimes points to the wrong commit. The tribunal catches most of these, but not all.",
+  "The tribunal uses three LLM agents and majority vote. Borderline cases where causality is ambiguous can still go either way.",
+  "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched vulnerabilities are out of scope.",
 ] as const;
 
 const PIPELINE_STEPS = [
@@ -66,7 +65,7 @@ const PIPELINE_STEPS = [
     tier: "Tier 4",
     title: "Git blame analysis",
     description:
-      "Clone the affected repository, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. An LLM pre-analyzes the vulnerability to identify security-relevant files, so only those files are blamed — reducing noise from unrelated changes in the fix commit.",
+      "Clone the repo, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. An LLM first identifies which files are actually security-relevant, so we only blame those instead of everything the fix touched.",
   },
   {
     tier: "Tier 5",
@@ -78,7 +77,7 @@ const PIPELINE_STEPS = [
     tier: "Tier 6",
     title: "Multi-model tribunal verification",
     description:
-      "Phase 1 (per-CVE): An LLM analyzes the fix commit to understand the vulnerability — its type, root cause, vulnerable code pattern, and which files are security-relevant. Phase 2 (per-commit): A tribunal of three independent LLM agents (GPT, Claude, Gemini) each investigate the commit with tool calls (reading diffs, checking context), then a majority vote determines causality. This multi-model approach catches false positives that single-model verification misses — in testing, 61% of single-model confirmations were overturned by the tribunal.",
+      "An LLM first analyzes the fix commit to understand the vulnerability type and root cause. Then three independent LLM agents (GPT, Claude, Gemini) each investigate the blamed commit separately and vote on causality. Details below.",
   },
 ] as const;
 
@@ -93,12 +92,25 @@ export default function AboutPage() {
           About Vibe Security Radar
         </h1>
         <p className="text-lg leading-relaxed text-muted-foreground">
-          Vibe Security Radar is a public tracker that monitors vulnerabilities
-          (CVEs, GHSAs, RustSec, and other advisories) where AI coding tools
-          introduced the vulnerable code.
-          The goal is to bring transparency to the security implications of
-          AI-assisted development so that developers, maintainers, and security
-          teams can make informed decisions.
+          AI coding tools write a lot of code now. Some of that code has
+          security vulnerabilities. We track the ones that made it into
+          public advisories — CVEs, GHSAs, RustSec, and others — where
+          the vulnerable code was authored by an AI tool.
+        </p>
+        <p className="leading-relaxed text-muted-foreground">
+          This is a research project from{" "}
+          <a
+            href="https://gts3.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
+          >
+            Georgia Tech SSLab
+          </a>{" "}
+          (Software Security Lab, School of Cybersecurity and Privacy).
+          We want to understand how AI-assisted development affects software
+          security in practice — not in benchmarks or synthetic tasks, but in
+          real vulnerabilities that got reported and fixed.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
           <span>{stats.total_cves} AI-linked vulnerabilities tracked</span>
@@ -109,15 +121,14 @@ export default function AboutPage() {
 
       {/* Methodology */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-semibold tracking-tight">Methodology</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Every vulnerability is processed through a six-tier pipeline. Bulk
-          local data is preferred for throughput; API calls serve as fallbacks.
-          Fix commits are traced back to bug-introducing commits via git blame,
-          then each commit is checked for AI tool signatures. A multi-model
-          tribunal verification process confirms causality — first understanding
-          the vulnerability itself, then launching three independent LLM agents
-          to evaluate whether each AI-authored commit actually introduced it.
+          Each vulnerability goes through a six-tier pipeline. We pull advisory
+          data in bulk where possible and fall back to APIs when needed.
+          Fix commits get traced back to bug-introducing commits via git blame,
+          then we check those commits for AI tool signatures. A three-model
+          tribunal (GPT, Claude, Gemini) votes on whether the AI-authored
+          commit actually caused the vulnerability.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -139,40 +150,38 @@ export default function AboutPage() {
       {/* Verification Details */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Multi-Model Tribunal Verification
+          Multi-model tribunal verification
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          Each CVE with AI-signaled commits goes through a two-phase
-          verification process. The first phase uses an LLM to analyze the fix
-          commit and understand the vulnerability: its type (e.g., command
-          injection, XSS), root cause, and vulnerable code pattern. The second
-          phase launches a tribunal of three independent LLM agents — GPT,
-          Claude, and Gemini — that each investigate the blamed commit using
-          tool calls (reading diffs, checking commit context, tracing code
-          changes). Their verdicts are aggregated via majority vote.
+          Finding an AI signature in a bug-introducing commit is not enough.
+          The commit might have touched the file without causing the actual
+          vulnerability. So every candidate goes through a two-phase check.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          This multi-model tribunal approach significantly reduces false
-          positives: in our testing, 61% of commits that a single model
-          confirmed as causal were overturned by the tribunal. Each verdict
-          includes structured evidence — vulnerability type, root cause
-          description, vulnerable pattern, and a causal chain explaining how
-          the commit led to the vulnerability. CVEs where all AI-signaled
-          commits are judged UNRELATED or UNLIKELY are filtered out.
+          First, an LLM reads the fix commit to understand what the
+          vulnerability is: its type (command injection, XSS, etc.), root
+          cause, and the code pattern that was vulnerable. Then three
+          independent LLM agents (GPT, Claude, Gemini) each investigate the
+          blamed commit on their own, reading diffs and tracing code changes.
+          They vote. Majority wins.
+        </p>
+        <p className="leading-relaxed text-muted-foreground">
+          This matters because single-model verification is unreliable. In our
+          testing, 61% of commits that one model confirmed as causal were
+          overturned when the other two weighed in. If all three models say a
+          commit is unrelated, we drop it.
         </p>
       </section>
 
       {/* AI Tools Monitored */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          AI Tools Monitored
+          AI tools monitored
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          We detect signatures from {AI_TOOLS.length} AI coding tools. Detection
-          relies on co-author trailers, bot email addresses, commit message
-          keywords, and other metadata that these tools embed in git commits.
-          Known CI/CD bots (Dependabot, Renovate, GitHub Actions, etc.) are
-          explicitly filtered out to prevent false positives.
+          We detect signatures from {AI_TOOLS.length} AI coding tools via
+          co-author trailers, bot email addresses, and commit message markers.
+          CI/CD bots (Dependabot, Renovate, etc.) are filtered out.
         </p>
         <ul className="flex flex-wrap gap-2">
           {AI_TOOLS.map((tool) => (
@@ -188,7 +197,7 @@ export default function AboutPage() {
 
       {/* Data Sources */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Data Sources</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Data sources</h2>
         <ul className="space-y-3">
           {DATA_SOURCES.map((source) => (
             <li key={source.name} className="flex items-baseline gap-2">
@@ -210,7 +219,7 @@ export default function AboutPage() {
 
       {/* Limitations */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Limitations</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">What we can't detect</h2>
         <ul className="list-inside list-disc space-y-2 text-muted-foreground">
           {LIMITATIONS.map((limitation) => (
             <li key={limitation} className="leading-relaxed">
@@ -224,14 +233,14 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Contact</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Questions, suggestions, or found a false positive/negative? Reach out
-          at{" "}
+          Found a false positive? Think we missed something? Email{" "}
           <a
             href="mailto:hanqing@gatech.edu"
             className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
           >
             hanqing@gatech.edu
           </a>
+          .
         </p>
       </section>
     </main>
