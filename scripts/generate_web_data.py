@@ -95,14 +95,55 @@ def _file_extension_to_language(filepath: str) -> str | None:
     return EXTENSION_TO_LANGUAGE.get(ext)
 
 
-def _determine_languages(bug_commits: list[dict]) -> list[str]:
-    """Extract sorted unique languages from blamed_file extensions in bug commits."""
+def _fix_commit_files(fix_commits: list[dict], repos_dir: str) -> list[str]:
+    """Get changed file paths from fix commits using local repo clones."""
+    files: list[str] = []
+    for fc in fix_commits:
+        repo_url = fc.get("repo_url", "")
+        sha = fc.get("sha", "")
+        if not repo_url or not sha:
+            continue
+        # Derive local repo dir: owner_repo from URL
+        parts = repo_url.rstrip("/").split("/")
+        if len(parts) >= 2:
+            repo_dir = os.path.join(repos_dir, f"{parts[-2]}_{parts[-1]}")
+            if os.path.isdir(repo_dir):
+                try:
+                    out = subprocess.run(
+                        ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", sha],
+                        cwd=repo_dir, capture_output=True, text=True, timeout=10,
+                    )
+                    if out.returncode == 0:
+                        files.extend(line for line in out.stdout.strip().split("\n") if line)
+                except Exception:
+                    pass
+    return files
+
+
+def _determine_languages(
+    bug_commits: list[dict],
+    fix_commits: list[dict] | None = None,
+    repos_dir: str = DEFAULT_REPOS_DIR,
+) -> list[str]:
+    """Extract sorted unique languages from blamed_file extensions in bug commits.
+
+    Falls back to fix commit diff files when blamed_file is a placeholder
+    (e.g. osv_introduced strategy).
+    """
     languages: set[str] = set()
     for bc in bug_commits:
         filepath = bc.get("blamed_file", "")
         lang = _file_extension_to_language(filepath)
         if lang:
             languages.add(lang)
+
+    # Fallback: infer from fix commit changed files
+    if not languages and fix_commits:
+        for filepath in _fix_commit_files(fix_commits, repos_dir):
+            lang = _file_extension_to_language(filepath)
+            if lang:
+                languages.add(lang)
+
     return sorted(languages)
 
 
@@ -954,7 +995,7 @@ def build_cve_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
-        "languages": _determine_languages(bug_commits),
+        "languages": _determine_languages(bug_commits, result.get("fix_commits")),
         "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
         "how_introduced": how_introduced,
