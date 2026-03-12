@@ -16,6 +16,7 @@ import {
   formatVerifiedBy,
   formatConfidence,
   getModelDetailName,
+  getModelRank,
 } from "@/lib/constants";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, TribunalVerdict } from "@/lib/types";
@@ -374,7 +375,7 @@ function TribunalSection({
             </div>
           </div>
           <div className="divide-y divide-border">
-            {bestTribunal.agent_verdicts!.map((av) => (
+            {[...bestTribunal.agent_verdicts!].sort((a, b) => getModelRank(a.model) - getModelRank(b.model)).map((av) => (
               <details key={av.model} className="group/agent">
                 <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
                   <span className="text-muted-foreground group-open/agent:rotate-90 transition-transform text-xs">&#9654;</span>
@@ -484,8 +485,13 @@ export default async function CveDetailPage({
   const { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes } =
     analyzeBugCommits(cve.bug_commits);
 
+  // Sort causality commits by model strength (strongest first) so the best analysis is expanded
+  const sortedCausalityCommits = [...causalityCommits].sort(
+    (a, b) => getModelRank(a.llm_verdict!.model) - getModelRank(b.llm_verdict!.model),
+  );
+
   const bestTribunal = tribunalCommits.length > 0 ? tribunalCommits[0].tribunal_verdict! : null;
-  const bestCausalityCommit = causalityCommits.length > 0 ? causalityCommits[0] : null;
+  const bestCausalityCommit = sortedCausalityCommits.length > 0 ? sortedCausalityCommits[0] : null;
   const primaryVerdict = bestTribunal?.verdict ?? bestCausalityCommit?.llm_verdict?.verdict;
   const primaryConfidence = bestTribunal?.confidence ?? null;
 
@@ -511,7 +517,7 @@ export default async function CveDetailPage({
       <TribunalSection
         bestTribunal={bestTribunal}
         bestCausality={bestCausalityCommit}
-        causalityCommits={causalityCommits}
+        causalityCommits={sortedCausalityCommits}
         repoUrl={repoUrl}
       />
 

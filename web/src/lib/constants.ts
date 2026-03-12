@@ -198,6 +198,11 @@ export function getModelDetailName(model: string): string {
   return MODEL_METADATA[model]?.detailName ?? model;
 }
 
+/** Model strength rank (lower = stronger). Unknown models default to 99. */
+export function getModelRank(model: string): number {
+  return MODEL_METADATA[model]?.rank ?? 99;
+}
+
 /** Keep only the strongest (lowest rank) model per provider. */
 export function deduplicateModels(models: string[]): string[] {
   const bestPerProvider = new Map<string, { model: string; rank: number }>();
