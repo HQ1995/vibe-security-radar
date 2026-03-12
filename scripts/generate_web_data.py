@@ -836,18 +836,18 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
 
     # Promote culprit sub-commit as the primary BIC when available.
     # If culprit_sha not set in cache, infer from decomposed commits:
-    # prefer sub-commits that touched the blamed file, else any AI sub-commit.
+    # prefer sub-commits that touched the blamed file, else keep squash merge.
     culprit_sha = bic.get("culprit_sha", "")
     if not culprit_sha and decomposed:
         touched = [dc for dc in decomposed if dc.get("ai_signals") and dc.get("touched_blamed_file") is True]
-        if not touched:
-            touched = [dc for dc in decomposed if dc.get("ai_signals")]
         if len(touched) == 1:
             culprit_sha = touched[0].get("sha", "")
         elif len(touched) > 1:
-            # Multiple AI sub-commits — pick highest signal confidence
+            # Multiple file-confirmed sub-commits — pick highest signal confidence
             best = max(touched, key=lambda dc: max((s.get("confidence", 0) for s in dc.get("ai_signals", [])), default=0))
             culprit_sha = best.get("sha", "")
+        # When no sub-commit has touched_blamed_file=True, don't guess —
+        # keep the squash merge as the BIC (avoids promoting empty commits).
     if culprit_sha and decomposed:
         for dc in decomposed:
             if dc.get("sha") == culprit_sha:
@@ -867,12 +867,19 @@ def _bic_dict_is_excluded(bic: dict) -> bool:
     """Return True if this BIC dict should be excluded from AI confidence scoring.
 
     Dict-based mirror of ``_bic_is_excluded()`` in pipeline.py.
+    Tribunal verdict is authoritative and checked first.
     """
+    # Tribunal is authoritative — check it first (mirrors pipeline._bic_is_excluded)
+    tv = bic.get("tribunal_verdict")
+    if tv:
+        tv_final = (tv.get("final_verdict") or "").upper()
+        if tv_final in _TRIBUNAL_EXCLUSION_VERDICTS_DICT:
+            return True
+        # Tribunal CONFIRMED or other → not excluded, even if LLM said UNRELATED
+        return False
+    # No tribunal — fall back to LLM verdict
     llm_v = bic.get("llm_verdict")
     if llm_v and llm_v.get("verdict") == "UNRELATED":
-        return True
-    tv = bic.get("tribunal_verdict")
-    if tv and (tv.get("final_verdict") or "").upper() in _TRIBUNAL_EXCLUSION_VERDICTS_DICT:
         return True
     return False
 
