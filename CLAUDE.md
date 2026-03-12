@@ -39,6 +39,7 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
 - **Tribunal**: 3-model voting prevents FPs at runtime
 - **`/audit`**: Independent deep verification of individual CVEs
+- **Audit queue**: `python scripts/audit_queue.py` — smart prioritization for next audit target. Use this instead of the default Phase 0 selection when running `/audit` without a specific CVE ID.
 
 ## Code Conventions
 
