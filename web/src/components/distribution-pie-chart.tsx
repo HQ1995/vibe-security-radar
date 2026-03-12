@@ -1,19 +1,19 @@
 "use client";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import * as React from "react";
+import { Label, Pie, PieChart, Sector } from "recharts";
+import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 
-interface ChartEntry {
-  readonly key: string;
-  readonly name: string;
-  readonly value: number;
-  readonly color: string;
-}
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 interface DistributionPieChartProps {
   readonly title: string;
@@ -24,82 +24,16 @@ interface DistributionPieChartProps {
   readonly themedIcons?: ReadonlySet<string>;
 }
 
-function LegendItem({ entry, total }: { entry: ChartEntry; total: number }) {
-  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span
-        className="h-3 w-3 shrink-0 rounded-full"
-        style={{ backgroundColor: entry.color }}
-      />
-      <span className="truncate text-sm text-card-foreground">
-        {entry.name}
-      </span>
-      <span className="shrink-0 text-sm text-muted-foreground">
-        {entry.value} ({pct}%)
-      </span>
-    </div>
-  );
+interface ChartEntry {
+  key: string;
+  name: string;
+  value: number;
+  fill: string;
 }
 
-function IconLegendItem({
-  entry,
-  total,
-  iconDir,
-  themedIcons,
-}: {
-  entry: ChartEntry;
-  total: number;
-  iconDir: string;
-  themedIcons: ReadonlySet<string>;
-}) {
-  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
-  const hasThemed = themedIcons.has(entry.key);
-
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span
-        className="h-3 w-3 shrink-0 rounded-full"
-        style={{ backgroundColor: entry.color }}
-      />
-      {hasThemed ? (
-        <>
-          <img
-            src={`${iconDir}/${entry.key}.svg`}
-            alt=""
-            width={18}
-            height={18}
-            className="shrink-0 dark:hidden"
-            loading="eager"
-          />
-          <img
-            src={`${iconDir}/${entry.key}_dark.svg`}
-            alt=""
-            width={18}
-            height={18}
-            className="hidden shrink-0 dark:inline-block"
-            loading="eager"
-          />
-        </>
-      ) : (
-        <img
-          src={`${iconDir}/${entry.key}.svg`}
-          alt=""
-          width={18}
-          height={18}
-          className="shrink-0"
-          loading="eager"
-        />
-      )}
-      <span className="truncate text-sm font-medium text-card-foreground">
-        {entry.name}
-      </span>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-        {entry.value} ({pct}%)
-      </span>
-    </div>
-  );
-}
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
 
 export function DistributionPieChart({
   title,
@@ -109,71 +43,204 @@ export function DistributionPieChart({
   iconDir,
   themedIcons = new Set(),
 }: DistributionPieChartProps) {
-  const chartData: ChartEntry[] = Object.entries(data)
-    .map(([key, count]) => ({
-      key,
-      name: getName(key),
-      value: count,
-      color: getColor(key),
-    }))
-    .sort((a, b) => b.value - a.value);
+  const [activeIndex, setActiveIndex] = React.useState<number | undefined>(
+    undefined,
+  );
 
-  const total = chartData.reduce((sum, d) => sum + d.value, 0);
+  const chartData: ChartEntry[] = React.useMemo(
+    () =>
+      Object.entries(data)
+        .map(([key, count]) => ({
+          key,
+          name: getName(key),
+          value: count,
+          fill: getColor(key),
+        }))
+        .sort((a, b) => b.value - a.value),
+    [data, getColor, getName],
+  );
+
+  const total = React.useMemo(
+    () => chartData.reduce((sum, d) => sum + d.value, 0),
+    [chartData],
+  );
+
+  const activeItem = activeIndex !== undefined ? chartData[activeIndex] : null;
+
+  // Build chartConfig for shadcn ChartTooltip
+  const chartConfig: ChartConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    for (const entry of chartData) {
+      cfg[entry.key] = { label: entry.name, color: entry.fill };
+    }
+    return cfg;
+  }, [chartData]);
 
   return (
     <section>
       <h2 className="mb-4 text-xl font-semibold">{title}</h2>
-      <div className="w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
-        <div className="flex flex-col items-center gap-6 lg:flex-row lg:justify-center lg:gap-10">
-          {/* Donut */}
-          <div className="h-64 w-64 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  dataKey="value"
-                  nameKey="name"
-                  isAnimationActive={false}
-                >
-                  {chartData.map((entry) => (
-                    <Cell key={entry.key} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "0.5rem",
-                    color: "var(--color-card-foreground)",
+      <div className="rounded-xl border border-border bg-card p-6 [&_*]:outline-none">
+        <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center">
+          {/* ---- Donut ---- */}
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-square h-[280px] shrink-0"
+          >
+            <PieChart>
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel nameKey="key" />}
+              />
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="key"
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={110}
+                paddingAngle={3}
+                cornerRadius={4}
+                strokeWidth={2}
+                stroke="var(--color-card)"
+                activeIndex={activeIndex}
+                activeShape={({
+                  outerRadius = 0,
+                  ...props
+                }: PieSectorDataItem) => (
+                  <Sector {...props} outerRadius={outerRadius + 8} />
+                )}
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(undefined)}
+              >
+                <Label
+                  content={({ viewBox }) => {
+                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                      return (
+                        <text
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          <tspan
+                            x={viewBox.cx}
+                            y={(viewBox.cy || 0) - 6}
+                            className="fill-foreground text-3xl font-bold"
+                          >
+                            {activeItem
+                              ? activeItem.value
+                              : total.toLocaleString()}
+                          </tspan>
+                          <tspan
+                            x={viewBox.cx}
+                            y={(viewBox.cy || 0) + 18}
+                            className="fill-muted-foreground text-sm"
+                          >
+                            {activeItem ? activeItem.name : "Total CVEs"}
+                          </tspan>
+                        </text>
+                      );
+                    }
                   }}
                 />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+              </Pie>
+            </PieChart>
+          </ChartContainer>
 
-          {/* Legend */}
-          <div className="grid w-full max-w-md grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-            {chartData.map((entry) =>
-              iconDir ? (
-                <IconLegendItem
+          {/* ---- Legend ---- */}
+          <div className="grid w-full max-w-lg grid-cols-2 gap-x-6 gap-y-2.5">
+            {chartData.map((entry, i) => {
+              const pct =
+                total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
+              const isActive = activeIndex === i;
+
+              return (
+                <div
                   key={entry.key}
-                  entry={entry}
-                  total={total}
-                  iconDir={iconDir}
-                  themedIcons={themedIcons}
-                />
-              ) : (
-                <LegendItem key={entry.key} entry={entry} total={total} />
-              ),
-            )}
+                  className={`flex cursor-default items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors ${
+                    isActive ? "bg-accent" : "hover:bg-accent/50"
+                  }`}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onMouseLeave={() => setActiveIndex(undefined)}
+                >
+                  {/* Color dot */}
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: entry.fill }}
+                  />
+
+                  {/* Icon */}
+                  {iconDir && (
+                    <ToolIconImg
+                      toolKey={entry.key}
+                      iconDir={iconDir}
+                      themed={themedIcons.has(entry.key)}
+                    />
+                  )}
+
+                  {/* Name + count */}
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-card-foreground">
+                    {entry.name}
+                  </span>
+                  <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                    {entry.value}
+                    <span className="ml-0.5 text-xs">({pct}%)</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tool icon helper (HTML img, not SVG label)                         */
+/* ------------------------------------------------------------------ */
+
+function ToolIconImg({
+  toolKey,
+  iconDir,
+  themed,
+}: {
+  toolKey: string;
+  iconDir: string;
+  themed: boolean;
+}) {
+  if (themed) {
+    return (
+      <>
+        <img
+          src={`${iconDir}/${toolKey}.svg`}
+          alt=""
+          width={18}
+          height={18}
+          className="shrink-0 dark:hidden"
+          loading="eager"
+        />
+        <img
+          src={`${iconDir}/${toolKey}_dark.svg`}
+          alt=""
+          width={18}
+          height={18}
+          className="hidden shrink-0 dark:inline-block"
+          loading="eager"
+        />
+      </>
+    );
+  }
+
+  return (
+    <img
+      src={`${iconDir}/${toolKey}.svg`}
+      alt=""
+      width={18}
+      height={18}
+      className="shrink-0"
+      loading="eager"
+    />
   );
 }
