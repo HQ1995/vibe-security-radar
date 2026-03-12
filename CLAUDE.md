@@ -34,9 +34,12 @@ uv run ruff check src/ tests/                # Lint
 
 Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batch commands. CVEs before 2025-05 are outside coverage.
 
-## Regression
+## Quality Assurance
 
-Baseline: `cve-analyzer/regression/baseline-2026-03-09.md` (92 TPs). Use `/regression` after pipeline changes to check for lost or new true positives. See `regression/history.md` for changelog and `regression/lessons.md` for patterns and improvement ideas.
+- **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
+- **Tribunal**: 3-model voting prevents FPs at runtime
+- **`/audit`**: Independent deep verification of individual CVEs
+- **Lessons**: `cve-analyzer/regression/lessons.md` — patterns and insights from past pipeline changes
 
 ## Code Conventions
 
