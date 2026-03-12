@@ -568,16 +568,14 @@ def _effective_verdict(bic: dict) -> str:
 
 
 def _has_no_confirmed_verdict(result: dict) -> bool:
-    """Return True if no AI-signaled BIC has a CONFIRMED verdict.
+    """Return True if no AI-signaled BIC has a tribunal CONFIRMED verdict.
 
-    Uses tribunal_verdict when available (multi-model, more reliable),
-    falling back to llm_verdict (single-model).
+    Only multi-model tribunal verdicts are accepted — single-model LLM
+    verdicts are not sufficient for the website. The tribunal overturns
+    ~61% of single-model confirmations, so LLM-only is too noisy.
 
-    A CVE is excluded when:
-    - All AI BICs have verdicts and none are CONFIRMED (verified FP)
-    - No AI BICs have any verdict (unverified — require verification)
-
-    A CVE is kept only when at least one AI BIC has a CONFIRMED verdict.
+    A CVE is kept only when at least one AI BIC has a tribunal
+    final_verdict of CONFIRMED.
     """
     ai_bics = [
         bic for bic in result.get("bug_introducing_commits", [])
@@ -587,11 +585,11 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
         return True
 
     for bic in ai_bics:
-        verdict = _effective_verdict(bic)
-        if verdict == "CONFIRMED":
+        tv = bic.get("tribunal_verdict")
+        if tv and tv.get("final_verdict", "").upper() == "CONFIRMED":
             return False
 
-    # No CONFIRMED verdict found
+    # No tribunal CONFIRMED verdict found
     return True
 
 
