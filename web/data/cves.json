@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-12T19:55:19.212319+00:00",
-  "total": 131,
+  "generated_at": "2026-03-12T21:01:27.854224+00:00",
+  "total": 130,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -12474,118 +12474,6 @@
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-8jpq-5h99-ff5r",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26321"
       ]
-    },
-    {
-      "id": "CVE-2026-29023",
-      "description": "Keygraph Shannon contains a hard-coded API key in its router configuration that, when the router component is enabled and exposed, allows network attackers to authenticate using the publicly known static key. An attacker able to reach the router port can proxy requests through the Shannon instance using the victim’s configured upstream provider API credentials, resulting in unauthorized API usage and potential disclosure of proxied request and response data. This vulnerability's general exploita",
-      "severity": "MEDIUM",
-      "cvss": 6.9,
-      "cwes": [
-        "CWE-798"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-09T18:16:22.727",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.855,
-      "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added `env: { ...process.env, ... }` to the MCP server configuration, which caused the subprocess to inherit all environment variables from the parent process, including sensitive API keys that were subsequently exposed through the router service.",
-      "root_cause": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-      "vuln_type": "Hard-coded Credentials / Service Exposure",
-      "bug_commits": [
-        {
-          "sha": "9be2e71ff29b2af56f1f34a42004aaf31f7a9904",
-          "author": "ajmallesh",
-          "date": "2025-10-23T16:19:25-07:00",
-          "message": "refactor: deduplicate prompt templates with shared content system",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/services/prompt-manager.ts",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability involves a hard-coded API key in a router configuration, whereas the blamed commit focuses on refactoring prompt templates and authentication utilities. The fix commit provided in the prompt addresses a path traversal issue in prompt processing, which is also unrelated to the hard-coded API key vulnerability described.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Hard-coded Credentials / Service Exposure",
-            "vuln_description": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-            "vulnerable_pattern": "ports:\n      - \"3456:3456\"",
-            "causal_chain": ""
-          },
-          "tribunal_verdict": {
-            "verdict": "CONFIRMED",
-            "confidence": "low",
-            "models": [
-              "gpt-5.4",
-              "claude-opus-4-6",
-              "gemini-3.1-pro-preview"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "The vulnerability described in CVE-2026-29023 is a hard-coded API key in router configuration (CWE-798), but the suspected commit only refactored prompt handling and introduced an @include() template system in src/prompts/prompt-manager.js. That commit added a path traversal issue in @include() processing by using path.join(baseDir, match[1]) without confinement checks, which is what the later fix addresses. Since this code is unrelated to router authentication or any API key configuration, it did not introduce the CVE in question.",
-                "confidence": 0.99,
-                "tool_calls_made": 6,
-                "evidence": [
-                  "Commit 9be2e71 message: 'refactor: deduplicate prompt templates with shared content system'",
-                  "Diff for 9be2e71 adds processIncludes() in src/prompts/prompt-manager.js and uses path.join(baseDir, match[1]) with fs.readFile(includePath, 'utf8')",
-                  "Fix commit 023cc953 adds path.resolve/baseDir prefix checks to prevent path traversal in @include(), not anything involving router config or API keys",
-                  "No touched files or code in 9be2e71 relate to router configuration, authentication keys, or hard-coded API credentials"
-                ]
-              },
-              {
-                "model": "claude-opus-4-6",
-                "verdict": "UNLIKELY",
-                "reasoning": "The CVE describes a hard-coded API key vulnerability (CWE-798) in router configuration that allows unauthorized API usage. The fix commit is a multi-issue security hardening commit that addresses several vulnerabilities including: binding Docker ports to 127.0.0.1 (the router exposure issue), restricting subprocess environment variables, and adding path traversal protection to @include() directives. While this BIC (9be2e71) did introduce the processIncludes() function with a path traversal vulnerability in prompt-manager.ts, the CVE specifically describes a hard-coded API key in router configuration - a completely different vulnerability. The router configuration didn't even exist at the time of this commit.",
-                "confidence": 0.55,
-                "tool_calls_made": 6,
-                "evidence": [
-                  "The CVE describes CWE-798 (hard-coded API key) in router configuration, not path traversal",
-                  "The BIC introduced processIncludes() with path.join() lacking traversal protection - this is a path traversal issue, not a hard-coded credential issue",
-                  "The fix commit addresses multiple security issues: Docker port binding (router exposure), env var restriction, path traversal guard, and version pinning",
-                  "search_code_in_repo for 'router-config' at the BIC commit returned no matches - the router configuration didn't exist when this commit was made",
-                  "The blamed file prompt-manager.ts relates to the path traversal fix, not the hard-coded API key vulnerability described in the CVE"
-                ]
-              },
-              {
-                "model": "gemini-3.1-pro-preview",
-                "verdict": "CONFIRMED",
-                "reasoning": "The fix commit addresses a path traversal vulnerability in the `processIncludes` function by adding a check to ensure that the resolved include path starts with the base directory. The suspected bug-introducing commit (9be2e71ff29b2af56f1f34a42004aaf31f7a9904) is the exact commit that introduced the `processIncludes` function and the `@include()` directive system. It implemented the vulnerable logic using `path.join(baseDir, match[1])` without any validation to prevent directory traversal attacks. Therefore, this commit is confirmed to be the one that introduced the vulnerability.",
-                "confidence": 1.0,
-                "tool_calls_made": 3,
-                "evidence": [
-                  "The fix commit (023cc953db742602964b7826105278d15c28a420) patches a path traversal vulnerability in the `processIncludes` function by verifying that the resolved path starts with the base directory.",
-                  "The suspected BIC (9be2e71ff29b2af56f1f34a42004aaf31f7a9904) introduced the `processIncludes` function and the `@include()` directive system.",
-                  "The BIC implemented the vulnerable logic `const includePath = path.join(baseDir, match[1]);` without any path traversal checks."
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "023cc953db742602964b7826105278d15c28a420",
-          "repo_url": "https://github.com/KeygraphHQ/shannon",
-          "source": "github_advisory_pr"
-        },
-        {
-          "sha": "58afb767c6c13826278deee3c6d3845d7de754a9",
-          "repo_url": "https://github.com/KeygraphHQ/shannon",
-          "source": "github_advisory_pr"
-        }
-      ],
-      "references": []
     },
     {
       "id": "CVE-2026-29787",
