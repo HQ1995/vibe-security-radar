@@ -66,7 +66,7 @@ const PIPELINE_STEPS = [
     tier: "Tier 4",
     title: "Git blame analysis",
     description:
-      "Clone the affected repository, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. Only security-relevant files (identified by LLM analysis in Tier 6) are blamed, reducing noise from unrelated changes in the fix commit.",
+      "Clone the affected repository, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. An LLM pre-analyzes the vulnerability to identify security-relevant files, so only those files are blamed — reducing noise from unrelated changes in the fix commit.",
   },
   {
     tier: "Tier 5",
