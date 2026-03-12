@@ -48,6 +48,10 @@ Baseline: `cve-analyzer/regression/baseline-2026-03-09.md` (92 TPs). Use `/regre
 
 Run code review and fixes in sub-agents to keep the main context window clean.
 
+## Commit Messages
+
+Use `/humanizer` to review commit messages before committing. Keep messages natural and concise.
+
 ## LLM Cost Reporting
 
 After any operation that calls external LLMs (e.g. `--llm-verify`), report token usage and estimated cost.
