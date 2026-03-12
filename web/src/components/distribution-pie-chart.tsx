@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Label, Pie, PieChart, Sector } from "recharts";
-import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import { Cell, Label, Pie, PieChart } from "recharts";
 
 import {
   ChartContainer,
@@ -103,16 +102,19 @@ export function DistributionPieChart({
                 cornerRadius={4}
                 strokeWidth={2}
                 stroke="var(--color-card)"
-                activeIndex={activeIndex}
-                activeShape={({
-                  outerRadius = 0,
-                  ...props
-                }: PieSectorDataItem) => (
-                  <Sector {...props} outerRadius={outerRadius + 8} />
-                )}
                 onMouseEnter={(_, index) => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(undefined)}
               >
+                {chartData.map((entry, i) => (
+                  <Cell
+                    key={entry.key}
+                    fill={entry.fill}
+                    opacity={
+                      activeIndex === undefined || activeIndex === i ? 1 : 0.35
+                    }
+                    style={{ transition: "opacity 150ms" }}
+                  />
+                ))}
                 <Label
                   content={({ viewBox }) => {
                     if (viewBox && "cx" in viewBox && "cy" in viewBox) {
