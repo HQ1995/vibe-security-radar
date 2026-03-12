@@ -8,80 +8,96 @@ import {
   Tooltip,
 } from "recharts";
 
+interface ChartEntry {
+  readonly key: string;
+  readonly name: string;
+  readonly value: number;
+  readonly color: string;
+}
+
 interface DistributionPieChartProps {
   readonly title: string;
   readonly data: Readonly<Record<string, number>>;
   readonly getColor: (key: string) => string;
   readonly getName?: (key: string) => string;
+  readonly iconDir?: string;
+  readonly themedIcons?: ReadonlySet<string>;
 }
 
-const RADIAN = Math.PI / 180;
+function LegendItem({ entry, total }: { entry: ChartEntry; total: number }) {
+  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span
+        className="h-3 w-3 shrink-0 rounded-full"
+        style={{ backgroundColor: entry.color }}
+      />
+      <span className="truncate text-sm text-card-foreground">
+        {entry.name}
+      </span>
+      <span className="shrink-0 text-sm text-muted-foreground">
+        {entry.value} ({pct}%)
+      </span>
+    </div>
+  );
+}
 
-/**
- * Custom label renderer that places text outside the pie with a short leader line.
- * Uses collision avoidance to prevent overlapping labels.
- */
-function renderOuterLabel(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  props: Record<string, any>,
-  positions: { y: number; side: "left" | "right" }[],
-) {
-  const cx = props.cx as number;
-  const cy = props.cy as number;
-  const midAngle = props.midAngle as number;
-  const outerRadius = props.outerRadius as number;
-  const name = props.name as string;
-  const percent = props.percent as number;
-  const index = props.index as number;
-  if (percent < 0.02) return null;
-
-  const sin = Math.sin(-RADIAN * midAngle);
-  const cos = Math.cos(-RADIAN * midAngle);
-  const side: "left" | "right" = cos >= 0 ? "right" : "left";
-
-  // Point on the outer edge of the pie
-  const ex = cx + outerRadius * cos;
-  const ey = cy + outerRadius * sin;
-
-  // Leader line endpoint — extend outward
-  const lineLen = 18;
-  const lx = cx + (outerRadius + lineLen) * cos;
-  let ly = cy + (outerRadius + lineLen) * sin;
-
-  // Collision avoidance: push labels apart vertically (min 16px gap)
-  const minGap = 16;
-  for (const prev of positions) {
-    if (prev.side === side && Math.abs(ly - prev.y) < minGap) {
-      ly = prev.y + (ly > prev.y ? minGap : -minGap);
-    }
-  }
-  positions.push({ y: ly, side });
-
-  // Horizontal tail
-  const tailLen = 12;
-  const tx = lx + (side === "right" ? tailLen : -tailLen);
-  const pct = `${((percent) * 100).toFixed(0)}%`;
+function IconLegendItem({
+  entry,
+  total,
+  iconDir,
+  themedIcons,
+}: {
+  entry: ChartEntry;
+  total: number;
+  iconDir: string;
+  themedIcons: ReadonlySet<string>;
+}) {
+  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
+  const hasThemed = themedIcons.has(entry.key);
 
   return (
-    <g key={`label-${index}`}>
-      <path
-        d={`M${ex},${ey} L${lx},${ly} L${tx},${ly}`}
-        stroke="var(--color-muted-foreground)"
-        strokeWidth={1}
-        fill="none"
-        opacity={0.6}
+    <div className="flex items-center gap-2 min-w-0">
+      <span
+        className="h-3 w-3 shrink-0 rounded-full"
+        style={{ backgroundColor: entry.color }}
       />
-      <text
-        x={tx + (side === "right" ? 4 : -4)}
-        y={ly}
-        textAnchor={side === "right" ? "start" : "end"}
-        dominantBaseline="central"
-        fill="var(--color-card-foreground)"
-        fontSize={12}
-      >
-        {name} {pct}
-      </text>
-    </g>
+      {hasThemed ? (
+        <>
+          <img
+            src={`${iconDir}/${entry.key}.svg`}
+            alt=""
+            width={18}
+            height={18}
+            className="shrink-0 dark:hidden"
+            loading="eager"
+          />
+          <img
+            src={`${iconDir}/${entry.key}_dark.svg`}
+            alt=""
+            width={18}
+            height={18}
+            className="hidden shrink-0 dark:inline-block"
+            loading="eager"
+          />
+        </>
+      ) : (
+        <img
+          src={`${iconDir}/${entry.key}.svg`}
+          alt=""
+          width={18}
+          height={18}
+          className="shrink-0"
+          loading="eager"
+        />
+      )}
+      <span className="truncate text-sm font-medium text-card-foreground">
+        {entry.name}
+      </span>
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        {entry.value} ({pct}%)
+      </span>
+    </div>
   );
 }
 
@@ -90,9 +106,12 @@ export function DistributionPieChart({
   data,
   getColor,
   getName = (k) => k,
+  iconDir,
+  themedIcons = new Set(),
 }: DistributionPieChartProps) {
-  const chartData = Object.entries(data)
+  const chartData: ChartEntry[] = Object.entries(data)
     .map(([key, count]) => ({
+      key,
       name: getName(key),
       value: count,
       color: getColor(key),
@@ -101,45 +120,59 @@ export function DistributionPieChart({
 
   const total = chartData.reduce((sum, d) => sum + d.value, 0);
 
-  // Shared mutable array for collision tracking across label renders
-  const positions: { y: number; side: "left" | "right" }[] = [];
-
   return (
     <section>
       <h2 className="mb-4 text-xl font-semibold">{title}</h2>
-      <div className="h-96 w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={55}
-              outerRadius={95}
-              paddingAngle={2}
-              dataKey="value"
-              nameKey="name"
-              label={(props) => {
-                // Reset positions on first label of each render cycle
-                if (props.index === 0) positions.length = 0;
-                return renderOuterLabel(props, positions);
-              }}
-              labelLine={false}
-            >
-              {chartData.map((entry) => (
-                <Cell key={entry.name} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--color-card)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "0.5rem",
-                color: "var(--color-card-foreground)",
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+      <div className="w-full rounded-xl border border-border bg-card p-4 [&_*]:outline-none">
+        <div className="flex flex-col items-center gap-6 lg:flex-row lg:justify-center lg:gap-10">
+          {/* Donut */}
+          <div className="h-64 w-64 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  nameKey="name"
+                  isAnimationActive={false}
+                >
+                  {chartData.map((entry) => (
+                    <Cell key={entry.key} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "0.5rem",
+                    color: "var(--color-card-foreground)",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Legend */}
+          <div className="grid w-full max-w-md grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+            {chartData.map((entry) =>
+              iconDir ? (
+                <IconLegendItem
+                  key={entry.key}
+                  entry={entry}
+                  total={total}
+                  iconDir={iconDir}
+                  themedIcons={themedIcons}
+                />
+              ) : (
+                <LegendItem key={entry.key} entry={entry} total={total} />
+              ),
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );
