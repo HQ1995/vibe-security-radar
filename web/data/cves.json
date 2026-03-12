@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-12T12:51:56.788139+00:00",
+  "generated_at": "2026-03-12T13:19:24.357110+00:00",
   "total": 102,
   "cves": [
     {
@@ -20,7 +20,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The openBrowser function used the shell-executing exec() function with a template literal to open URLs, allowing an attacker to inject arbitrary shell commands via a crafted URL string.",
+      "how_introduced": "The blamed commit introduced the `openBrowser` function using `exec` to execute shell commands with user-supplied URLs, allowing arbitrary command execution via crafted URLs.",
+      "root_cause": "The openBrowser function used the shell-executing exec() function with a template literal to open URLs, allowing an attacker to inject arbitrary shell commands via a crafted URL string.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "e08547bcdb42aaa86190c6e2dfc64159fcd3a146",
@@ -78,7 +80,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The sort function failed to detect modifications to the array's length during comparison callbacks, leading to potential memory corruption when the array was reallocated while being accessed.",
+      "how_introduced": "1. The blamed commit introduced a new version of `sort_cmp` that performs callbacks to user-defined Ruby code. 2. During these callbacks, the array can be modified (e.g., elements popped), changing its length without necessarily triggering a pointer reallocation. 3. The blamed commit only checked if the pointer `p` changed, allowing the sort to continue on an array with a modified length. 4. This leads to out-of-bounds access or use-after-free when the sorting algorithm continues to use the stale length or pointer.",
+      "root_cause": "The sort function failed to detect modifications to the array's length during comparison callbacks, leading to potential memory corruption when the array was reallocated while being accessed.",
+      "vuln_type": "Use-after-free",
       "bug_commits": [
         {
           "sha": "cf8faed585e14ab57cc390173d1b571aee438390",
@@ -140,7 +144,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The server failed to properly sanitize or validate user-provided input before passing it to a shell-based command executor, allowing attackers to execute arbitrary system commands by injecting shell metacharacters.",
+      "how_introduced": "The commit introduced a validation function that used shlex.split to parse commands, but the application continued to use shell-based execution (subprocess_shell) for the validated strings. Because the validation logic did not strictly sanitize or escape the input for shell context, it allowed attackers to bypass the check using shell metacharacters, leading to command injection.",
+      "root_cause": "The server failed to properly sanitize or validate user-provided input before passing it to a shell-based command executor, allowing attackers to execute arbitrary system commands by injecting shell metacharacters.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "23c717b627ea5b0e0e71420c360bf0dfb85f4365",
@@ -197,7 +203,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The SSE transport server did not validate the `Host` and `Origin` headers of incoming requests, allowing attackers to perform DNS rebinding attacks to bypass the same-origin policy.",
+      "how_introduced": "The commit introduced a custom HTTP handler wrapper that bypasses standard security checks by globally allowing all origins ('*') and failing to validate the Host header, which was then used as the entry point for the SSE transport server.",
+      "root_cause": "The SSE transport server did not validate the `Host` and `Origin` headers of incoming requests, allowing attackers to perform DNS rebinding attacks to bypass the same-origin policy.",
+      "vuln_type": "DNS Rebinding",
       "bug_commits": [
         {
           "sha": "cd7caffb4aa568d07edc0d21bbd7dabd38ef7e2c",
@@ -258,7 +266,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The compiler incorrectly optimized a JMP instruction into a JMPIF instruction without verifying the original opcode, leading to an invalid instruction sequence that causes memory corruption during VM execution.",
+      "how_introduced": "1. Blamed commit introduces an optimization that assumes the instruction at `fail_pos - 2` is always `OP_JMPNOT`. 2. The optimization unconditionally overwrites this byte with `OP_JMPIF` if certain PC-relative conditions are met. 3. In cases involving pinned variables, the instruction is actually `OP_JMP`, leading to an invalid instruction sequence and subsequent memory corruption/UAF in the VM.",
+      "root_cause": "The compiler incorrectly optimized a JMP instruction into a JMPIF instruction without verifying the original opcode, leading to an invalid instruction sequence that causes memory corruption during VM execution.",
+      "vuln_type": "Use-after-free",
       "bug_commits": [
         {
           "sha": "2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70",
@@ -317,7 +327,9 @@
       "languages": [],
       "confidence": 0.95,
       "verified_by": "osv+gemini-3.1-pro-preview",
-      "how_introduced": "The application fails to sanitize user-supplied file names or content in the File Manager, allowing attackers to inject malicious scripts (XSS) or manipulate file paths to access unauthorized local files (LFI) within the Electron environment.",
+      "how_introduced": "The blamed commit added or heavily refactored the file manager functionality in `src/backend/ssh/file-manager.ts`. By implementing file operations without adequate validation or sanitization of file names and paths, it allowed malicious input to be stored and later rendered or processed, leading to Stored XSS and Local File Inclusion.",
+      "root_cause": "The application fails to sanitize user-supplied file names or content in the File Manager, allowing attackers to inject malicious scripts (XSS) or manipulate file paths to access unauthorized local files (LFI) within the Electron environment.",
+      "vuln_type": "Stored XSS and Local File Inclusion (LFI)",
       "bug_commits": [
         {
           "sha": "a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a",
@@ -419,7 +431,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application used insecure regular expressions to update the .env file, allowing an attacker to inject arbitrary environment variables or manipulate file structure by providing crafted input keys or values.",
+      "how_introduced": "The blamed commit added a custom function to update the `.env` file using string manipulation and regular expressions instead of a secure parser. By dynamically constructing a regex with the `key` variable without sanitization, it created an injection vulnerability that the fix commit later resolved by using the `dotenv` and `dotenv-stringify` libraries.",
+      "root_cause": "The application used insecure regular expressions to update the .env file, allowing an attacker to inject arbitrary environment variables or manipulate file structure by providing crafted input keys or values.",
+      "vuln_type": "Environment Variable Injection",
       "bug_commits": [
         {
           "sha": "4c9c826c6fc8b64a20e948cb46fefdda42d5244d",
@@ -514,7 +528,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
+      "how_introduced": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition.",
+      "root_cause": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
+      "vuln_type": "Denial of Service (Resource Exhaustion)",
       "bug_commits": [
         {
           "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
@@ -741,7 +757,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The Twitch extension failed to enforce the 'allowFrom' user ID allowlist, allowing unauthorized chat users to trigger agent pipelines even when a specific allowlist was configured.",
+      "how_introduced": "The commit implemented the 'allowFrom' check as an 'if' block that only returns on success; if the user is not in the allowlist, the function falls through to the subsequent role-based checks, allowing unauthorized users to bypass the intended restriction.",
+      "root_cause": "The Twitch extension failed to enforce the 'allowFrom' user ID allowlist, allowing unauthorized chat users to trigger agent pipelines even when a specific allowlist was configured.",
+      "vuln_type": "improper authorization",
       "bug_commits": [
         {
           "sha": "f5c90f0e5c7a12285ceea6c3102666a7b904b16f",
@@ -803,7 +821,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application failed to sanitize user-provided session IDs before using them to construct file system paths, allowing attackers to escape the intended session directory via directory traversal sequences (e.g., ../).",
+      "how_introduced": "The blamed commit modified `resolveSessionTranscriptPath` to dynamically construct a filename using the `sessionId` parameter and then passed it directly to `path.join` without any validation or sanitization, allowing directory traversal sequences in the `sessionId` to escape the intended directory.",
+      "root_cause": "The application failed to sanitize user-provided session IDs before using them to construct file system paths, allowing attackers to escape the intended session directory via directory traversal sequences (e.g., ../).",
+      "vuln_type": "path traversal",
       "bug_commits": [
         {
           "sha": "8da4f259ddcf4206b070ff0f4b7b344535fc7eb7",
@@ -876,7 +896,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The gateway connection logic incorrectly allowed skipping device identity checks if an authentication token was present, even if that token had not yet been validated.",
+      "how_introduced": "The blamed commit added a condition `hasTokenAuth = !!connectParams.auth?.token` and modified the device check to `if (!device && !hasTokenAuth)`. This allowed connections with an unvalidated token to bypass the device identity requirement, leading to the authentication bypass vulnerability.",
+      "root_cause": "The gateway connection logic incorrectly allowed skipping device identity checks if an authentication token was present, even if that token had not yet been validated.",
+      "vuln_type": "Authentication Bypass",
       "bug_commits": [
         {
           "sha": "079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
@@ -937,7 +959,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application failed to sanitize user-provided session IDs before using them to construct file system paths, allowing attackers to escape the intended session directory via directory traversal sequences (e.g., ../).",
+      "how_introduced": "The blamed commit modified `resolveSessionTranscriptPath` to dynamically construct a filename using the `sessionId` parameter and then passed it directly to `path.join` without any validation or sanitization, allowing directory traversal sequences in the `sessionId` to escape the intended directory.",
+      "root_cause": "The application failed to sanitize user-provided session IDs before using them to construct file system paths, allowing attackers to escape the intended session directory via directory traversal sequences (e.g., ../).",
+      "vuln_type": "path traversal",
       "bug_commits": [
         {
           "sha": "8da4f259ddcf4206b070ff0f4b7b344535fc7eb7",
@@ -1010,7 +1034,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
+      "how_introduced": "1. The blamed commit creates the configuration API endpoint to expose environment parameters.\n2. It defines sensitive system paths (SQLite path, base directory) as part of the returned data.\n3. It sets the default 'MCP_HTTP_HOST' to '0.0.0.0', ensuring the service listens on all interfaces and exposes this data to the network.",
+      "root_cause": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
+      "vuln_type": "Information Disclosure",
       "bug_commits": [
         {
           "sha": "14a6c7173f5580143fe097c022484d3c695074b6",
@@ -1100,7 +1126,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The MCP server implementation reused a single server or transport instance across multiple client connections, leading to potential state contamination and data leakage between different sessions.",
+      "how_introduced": "The commit initialized a global 'McpServer' instance and configured an Express route handler that multiplexes multiple sessions through this single instance, failing to isolate server state per session.",
+      "root_cause": "The MCP server implementation reused a single server or transport instance across multiple client connections, leading to potential state contamination and data leakage between different sessions.",
+      "vuln_type": "Race Condition / Data Leak",
       "bug_commits": [
         {
           "sha": "09623e2aa5044f9e9da62c73d820a8250b9d97ed",
@@ -1160,7 +1188,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The shell command blocklist used overly strict regexes that could be bypassed by inserting additional flags (e.g., `python -Bc`), and literal string matching that could be bypassed using shell globbing characters (e.g., `/etc/pass[w]d`).",
+      "how_introduced": "The blamed commit added a blocklist for encoded/indirect execution using rigid regexes that expected exact flag sequences. This allowed attackers to bypass the blocklist by simply inserting extra flags (like `python -Bc`) or using shell globbing, leading to the vulnerability.",
+      "root_cause": "The shell command blocklist used overly strict regexes that could be bypassed by inserting additional flags (e.g., `python -Bc`), and literal string matching that could be bypassed using shell globbing characters (e.g., `/etc/pass[w]d`).",
+      "vuln_type": "Command Injection / Blocklist Bypass",
       "bug_commits": [
         {
           "sha": "d3480ca94087b74f110bb5b80fc8219b32c8b8b5",
@@ -1244,7 +1274,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
+      "how_introduced": "1. The blamed commit creates the configuration API endpoint to expose environment parameters.\n2. It defines sensitive system paths (SQLite path, base directory) as part of the returned data.\n3. It sets the default 'MCP_HTTP_HOST' to '0.0.0.0', ensuring the service listens on all interfaces and exposes this data to the network.",
+      "root_cause": "The health endpoint exposed sensitive system information such as version, uptime, and database paths to unauthenticated or read-only users.",
+      "vuln_type": "Information Disclosure",
       "bug_commits": [
         {
           "sha": "14a6c7173f5580143fe097c022484d3c695074b6",
@@ -1334,7 +1366,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
+      "how_introduced": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition.",
+      "root_cause": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
+      "vuln_type": "Denial of Service (Resource Exhaustion)",
       "bug_commits": [
         {
           "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
@@ -1561,7 +1595,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application constructs a regular expression using unescaped user-controlled metadata (mention names and keys) from Feishu messages. This allows an attacker to inject regex metacharacters, potentially leading to Regular Expression Denial of Service (ReDoS) or incorrect message parsing.",
+      "how_introduced": "The commit introduced the stripBotMention function, which directly passes user-controlled mention.name and mention.key into the RegExp constructor without escaping. This allows an attacker to inject regex metacharacters, causing the vulnerability.",
+      "root_cause": "The application constructs a regular expression using unescaped user-controlled metadata (mention names and keys) from Feishu messages. This allows an attacker to inject regex metacharacters, potentially leading to Regular Expression Denial of Service (ReDoS) or incorrect message parsing.",
+      "vuln_type": "regex injection / ReDoS",
       "bug_commits": [
         {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
@@ -1625,7 +1661,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The web search citation redirect mechanism used a network guard policy that allowed access to private networks, enabling attackers to probe internal infrastructure by providing malicious citation URLs that the server would follow.",
+      "how_introduced": "1. Blamed commit introduces Gemini search provider support. 2. Blamed commit adds 'runGeminiSearch' which processes 'groundingChunks' (citations). 3. Blamed commit adds 'resolveRedirectUrl' using 'withWebToolsNetworkGuard' to follow these citation URLs. 4. This implementation allowed the server to follow redirects to private network addresses, creating the SSRF vulnerability.",
+      "root_cause": "The web search citation redirect mechanism used a network guard policy that allowed access to private networks, enabling attackers to probe internal infrastructure by providing malicious citation URLs that the server would follow.",
+      "vuln_type": "SSRF",
       "bug_commits": [
         {
           "sha": "3a3c2da9168f93397eeb3109d521819e10dc44fd",
@@ -1687,7 +1725,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The shell command blocklist used overly strict regexes that could be bypassed by inserting additional flags (e.g., `python -Bc`), and literal string matching that could be bypassed using shell globbing characters (e.g., `/etc/pass[w]d`).",
+      "how_introduced": "The blamed commit added a blocklist for encoded/indirect execution using rigid regexes that expected exact flag sequences. This allowed attackers to bypass the blocklist by simply inserting extra flags (like `python -Bc`) or using shell globbing, leading to the vulnerability.",
+      "root_cause": "The shell command blocklist used overly strict regexes that could be bypassed by inserting additional flags (e.g., `python -Bc`), and literal string matching that could be bypassed using shell globbing characters (e.g., `/etc/pass[w]d`).",
+      "vuln_type": "Command Injection / Blocklist Bypass",
       "bug_commits": [
         {
           "sha": "d3480ca94087b74f110bb5b80fc8219b32c8b8b5",
@@ -1771,7 +1811,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The provided diff does not contain a fix for an unhandled exception in the MCP Python SDK; it only modifies a CI/CD workflow file, suggesting the CVE description and the provided diff are mismatched or unrelated.",
+      "how_introduced": "The commit removed the `anyio.create_memory_object_stream` mechanism and replaced it with direct calls to `_handle_incoming`. This change bypassed the previous error-handling architecture, causing exceptions during message processing to propagate unhandled and crash the session.",
+      "root_cause": "The provided diff does not contain a fix for an unhandled exception in the MCP Python SDK; it only modifies a CI/CD workflow file, suggesting the CVE description and the provided diff are mismatched or unrelated.",
+      "vuln_type": "Denial of Service",
       "bug_commits": [
         {
           "sha": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
@@ -1833,7 +1875,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application's blocklist for unsafe pickle deserialization could be bypassed by using the cProfile.run() function, allowing arbitrary code execution.",
+      "how_introduced": "The blamed commit added `extract_identifier_from_ast_node` which recursively processes `ast.Call` nodes to extract identifiers. This implementation did not enforce strict validation on the resulting module strings, allowing attackers to craft pickle payloads that resolve to dangerous modules (like cProfile) which were not correctly caught by the existing blocklist logic.",
+      "root_cause": "The application's blocklist for unsafe pickle deserialization could be bypassed by using the cProfile.run() function, allowing arbitrary code execution.",
+      "vuln_type": "Blocklist Bypass",
       "bug_commits": [
         {
           "sha": "5e054ddc4de001e4d3d9ec3d2d3f2bc9ba7c7d1b",
@@ -1919,7 +1963,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application performed a check-then-act operation by querying the database for a token's status and subsequently updating it in a separate transaction, allowing multiple concurrent requests to use the same token before it was marked as used.",
+      "how_introduced": "The commit introduced a pattern where the application first queried the database to validate a token (SELECT) and subsequently performed a separate update (UPDATE) to mark it as used, creating a window for concurrent requests to bypass the validation.",
+      "root_cause": "The application performed a check-then-act operation by querying the database for a token's status and subsequently updating it in a separate transaction, allowing multiple concurrent requests to use the same token before it was marked as used.",
+      "vuln_type": "race condition",
       "bug_commits": [
         {
           "sha": "c139c021f68a09d22c2af88641b61c00f67f2af4",
@@ -2002,7 +2048,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application used user-provided input (imageKey) directly in the construction of a temporary file path, allowing an attacker to escape the intended temporary directory via directory traversal sequences (e.g., ../).",
+      "how_introduced": "The commit introduced the `downloadImageFeishu` function, which implemented a temporary file path using `path.join(os.tmpdir(), ...imageKey)`. Because `imageKey` was not sanitized, an attacker could provide a string containing directory traversal sequences to write files outside the intended temporary directory.",
+      "root_cause": "The application used user-provided input (imageKey) directly in the construction of a temporary file path, allowing an attacker to escape the intended temporary directory via directory traversal sequences (e.g., ../).",
+      "vuln_type": "path traversal",
       "bug_commits": [
         {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
@@ -2072,7 +2120,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The `toolsBySender` policy matching did not enforce explicit identifier types, allowing users to bypass authorization by changing mutable fields (like display names) to collide with allowed identifiers.",
+      "how_introduced": "The commit introduced a loop that pushes all sender identifiers (ID, E164, username, name) into a single 'candidates' array and then checks them against a map of untyped keys, allowing any field to trigger a policy match.",
+      "root_cause": "The `toolsBySender` policy matching did not enforce explicit identifier types, allowing users to bypass authorization by changing mutable fields (like display names) to collide with allowed identifiers.",
+      "vuln_type": "Authorization Bypass",
       "bug_commits": [
         {
           "sha": "3b0c80ce245b293fae817ec800c5e3a9c0ec7ee8",
@@ -2115,9 +2165,11 @@
     {
       "id": "OSV-2026-371",
       "description": "Heap-buffer-overflow in tinyobj::tryParseDouble",
-      "severity": "UNKNOWN",
+      "severity": "MEDIUM",
       "cvss": 0.0,
-      "cwes": [],
+      "cwes": [
+        "CWE-122"
+      ],
       "ecosystem": "",
       "published": "2026-03-10T11:17:16+09:00",
       "ai_tools": [
@@ -2127,7 +2179,9 @@
       "languages": [],
       "confidence": 0.95,
       "verified_by": "osv+gemini-3.1-pro-preview",
-      "how_introduced": "The `tryParseDouble` function reads past the end of the input buffer when parsing malformed floating-point numbers, leading to a heap buffer overflow.",
+      "how_introduced": "The blamed commit replaced standard parsing functions with custom parsing logic for performance or stream handling. In doing so, it introduced `tryParseDouble` which iterates over the input buffer without properly checking for the end of the buffer when encountering malformed floating-point numbers, causing a heap buffer overflow.",
+      "root_cause": "The `tryParseDouble` function reads past the end of the input buffer when parsing malformed floating-point numbers, leading to a heap buffer overflow.",
+      "vuln_type": "Heap-buffer-overflow",
       "bug_commits": [
         {
           "sha": "f27721f3c9cd20af4d4eee789431b92d0e0c4477",
@@ -2168,7 +2222,9 @@
           "source": "osv"
         }
       ],
-      "references": []
+      "references": [
+        "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=490598877"
+      ]
     },
     {
       "id": "CVE-2026-29609",
@@ -2188,7 +2244,9 @@
       ],
       "confidence": 0.9,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application fetches media from user-provided URLs without enforcing limits on the response size or streaming the content, allowing an attacker to cause memory exhaustion by providing a URL that returns an excessively large payload.",
+      "how_introduced": "The blamed commit added the `fetchWithGuard` function to fetch media from URLs. While it included some SSRF protections and a timeout, it did not stream the response body with a hard limit, allowing an attacker to exhaust memory by returning an excessively large payload that bypasses the Content-Length check.",
+      "root_cause": "The application fetches media from user-provided URLs without enforcing limits on the response size or streaming the content, allowing an attacker to cause memory exhaustion by providing a URL that returns an excessively large payload.",
+      "vuln_type": "Denial of Service (Memory Exhaustion)",
       "bug_commits": [
         {
           "sha": "a5afe7bc2b088ec08d868cd7175352c2db6fc329",
@@ -2247,7 +2305,9 @@
       ],
       "confidence": 0.9,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The application failed to enforce strict host-key checking for SCP operations and lacked validation for the 'remoteHost' configuration, allowing for potential man-in-the-middle attacks and command injection via malicious SSH options.",
+      "how_introduced": "The blamed commit added the `scpFile` function to fetch remote media via SCP. By failing to validate the `remoteHost` input, omitting the `--` argument separator, and using insecure host key checking, it introduced the command injection and MITM vulnerabilities.",
+      "root_cause": "The application failed to enforce strict host-key checking for SCP operations and lacked validation for the 'remoteHost' configuration, allowing for potential man-in-the-middle attacks and command injection via malicious SSH options.",
+      "vuln_type": "Improper Neutralization of Special Elements used in an OS Command (Command Injection) and Improper Verification of Cryptographic Signature (CWE-295)",
       "bug_commits": [
         {
           "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
@@ -2305,7 +2365,9 @@
       ],
       "confidence": 0.9,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The stageSandboxMedia function failed to validate that the destination path within the sandbox was not a symlink pointing outside the workspace, allowing attackers to overwrite arbitrary files on the host system.",
+      "how_introduced": "The blamed commit added the `dest` path calculation using `path.join(destDir, fileName)` and the subsequent `fs.copyFile(source, dest)` call, which lacks symlink-aware boundary checks, allowing for arbitrary file overwrites.",
+      "root_cause": "The stageSandboxMedia function failed to validate that the destination path within the sandbox was not a symlink pointing outside the workspace, allowing attackers to overwrite arbitrary files on the host system.",
+      "vuln_type": "Arbitrary File Overwrite (Symlink Traversal)",
       "bug_commits": [
         {
           "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
@@ -2365,7 +2427,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The function ary_fill_exec failed to validate that the start index and length arguments were non-negative, allowing negative values to cause memory corruption during array manipulation.",
+      "how_introduced": "1. The blamed commit added the extended Array#fill functionality to mruby-array-ext. 2. It introduced the ary_fill_exec function to handle the actual array modification. 3. This function used mrb_get_args to retrieve 'start' and 'length' as integers but failed to validate that they were non-negative, leading to out-of-bounds memory access.",
+      "root_cause": "The function ary_fill_exec failed to validate that the start index and length arguments were non-negative, allowing negative values to cause memory corruption during array manipulation.",
+      "vuln_type": "Out-of-bounds write",
       "bug_commits": [
         {
           "sha": "9e8cda73f69493012c8784667b03016c2072ed2b",
@@ -2431,7 +2495,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application allowed users to provide arbitrary URLs for document processing and embedding. The backend would fetch content from these user-supplied URLs without validation, allowing attackers to make requests to internal network resources or external services.",
+      "how_introduced": "The blamed commit added the 'url' upload mode and the 'urlList' input field to the UI, which allowed users to submit arbitrary URLs that were subsequently processed by the backend, leading to the SSRF vulnerability.",
+      "root_cause": "The application allowed users to provide arbitrary URLs for document processing and embedding. The backend would fetch content from these user-supplied URLs without validation, allowing attackers to make requests to internal network resources or external services.",
+      "vuln_type": "Server-Side Request Forgery (SSRF)",
       "bug_commits": [
         {
           "sha": "40c2922132bb1bc588345b289fa9ec877a72a934",
@@ -2498,7 +2564,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "",
+      "how_introduced": "The blamed commit changed the 'filepath' array size in the LogEntry struct, which is used in stack-allocated contexts within mavlink_log_handler.cpp functions like state_listing and log_entry_from_id, leading to a stack-based buffer overflow when handling long log file paths.",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "338595edd1d235efd885fd5e9f45e7f9dcf4013d",
@@ -2635,7 +2703,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "",
+      "how_introduced": "1. The blamed commit introduced the `validate_code` logic that uses `exec()` on a compiled AST object derived from user input. 2. This execution occurred within the server's main process context using globals provided by `_create_langflow_execution_context`. 3. This allowed an attacker to execute arbitrary Python code on the server during the validation phase of a custom component.",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "d0e4e7d1cccd802d1c822fd4a6142906102874d5",
@@ -2789,7 +2859,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The provided diff does not contain a fix for an unhandled exception in the MCP Python SDK; it only modifies a CI/CD workflow file, suggesting the CVE description and the provided diff are mismatched or unrelated.",
+      "how_introduced": "The commit removed the `anyio.create_memory_object_stream` mechanism and replaced it with direct calls to `_handle_incoming`. This change bypassed the previous error-handling architecture, causing exceptions during message processing to propagate unhandled and crash the session.",
+      "root_cause": "The provided diff does not contain a fix for an unhandled exception in the MCP Python SDK; it only modifies a CI/CD workflow file, suggesting the CVE description and the provided diff are mismatched or unrelated.",
+      "vuln_type": "Denial of Service",
       "bug_commits": [
         {
           "sha": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
@@ -2853,7 +2925,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application checked file paths against deny rules without resolving symlinks first, allowing attackers to bypass restrictions by creating symlinks to restricted files.",
+      "how_introduced": "1. The blamed commit introduced the `RuleEngine` class to evaluate security rules. 2. It implemented logic to extract 'file_path' from tool inputs and compare them against deny patterns. 3. It failed to include any path normalization or symlink resolution (like os.path.realpath) during this extraction, allowing users to bypass rules by providing symlinks to restricted files.",
+      "root_cause": "The application checked file paths against deny rules without resolving symlinks first, allowing attackers to bypass restrictions by creating symlinks to restricted files.",
+      "vuln_type": "symlink bypass",
       "bug_commits": [
         {
           "sha": "59372c0921b0170e81f9c63777962d02347411d5",
@@ -2960,7 +3034,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The application allowed arbitrary code execution via a sandbox that lacked sufficient input validation and restriction of dangerous Node.js globals and modules.",
+      "how_introduced": "The blamed commit created a custom sandbox implementation using Node's native `vm` module to replace `vm2`. It exposed a `require` function and allowed execution of arbitrary code via `runInContext` without validating the input for dangerous patterns (like accessing `process` or `child_process`), leading directly to the Remote Code Execution vulnerability.",
+      "root_cause": "The application allowed arbitrary code execution via a sandbox that lacked sufficient input validation and restriction of dangerous Node.js globals and modules.",
+      "vuln_type": "Remote Code Execution",
       "bug_commits": [
         {
           "sha": "67c7b7663219c9e28fce487b1803706b333c2a4f",
@@ -3020,7 +3096,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application fails to properly sanitize user-supplied input before rendering it in the HTML output, allowing an attacker to inject malicious scripts.",
+      "how_introduced": "The blamed commit refactored the echo statement to remove the xl() function's padding arguments, which inadvertently exposed the raw $temp_url variable to the output stream without the necessary text() sanitization wrapper.",
+      "root_cause": "The application fails to properly sanitize user-supplied input before rendering it in the HTML output, allowing an attacker to inject malicious scripts.",
+      "vuln_type": "Stored XSS",
       "bug_commits": [
         {
           "sha": "cce6e7139a25b6508f992ba727dc2fba5872019d",
@@ -3085,7 +3163,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application's blocklist for unsafe pickle deserialization could be bypassed by using the cProfile.run() function, allowing arbitrary code execution.",
+      "how_introduced": "The blamed commit added `extract_identifier_from_ast_node` which recursively processes `ast.Call` nodes to extract identifiers. This implementation did not enforce strict validation on the resulting module strings, allowing attackers to craft pickle payloads that resolve to dangerous modules (like cProfile) which were not correctly caught by the existing blocklist logic.",
+      "root_cause": "The application's blocklist for unsafe pickle deserialization could be bypassed by using the cProfile.run() function, allowing arbitrary code execution.",
+      "vuln_type": "Blocklist Bypass",
       "bug_commits": [
         {
           "sha": "5e054ddc4de001e4d3d9ec3d2d3f2bc9ba7c7d1b",
@@ -3170,7 +3250,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The plugin fails to properly sanitize user-supplied time or date data before passing it to a system command shell, allowing an attacker to execute arbitrary commands.",
+      "how_introduced": "1. The blamed commit defines the 'setDate' variable using string interpolation: `date --iso-8601 -u -s \"${datetime}\"`. 2. It then passes this string to `require('child_process').spawn('sh', ['-c', setDate])`. 3. Because 'datetime' is sourced from user-supplied delta messages and is not sanitized, it allows for shell command injection.",
+      "root_cause": "The plugin fails to properly sanitize user-supplied time or date data before passing it to a system command shell, allowing an attacker to execute arbitrary commands.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "c4672527da2c97322a3f8af96182d9d3b9bf07d5",
@@ -3234,7 +3316,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The application includes the current working directory (CWD) path in LLM prompts without proper sanitization, allowing an attacker to inject malicious instructions or commands via a crafted directory name.",
+      "how_introduced": "1. The blamed commit creates src/agents/workspace-run.ts. 2. It implements resolveRunWorkspaceDir to handle directory path resolution for the agent. 3. It passes the raw, unsanitized directory string to the application state, which is later included in LLM prompts, enabling injection.",
+      "root_cause": "The application includes the current working directory (CWD) path in LLM prompts without proper sanitization, allowing an attacker to inject malicious instructions or commands via a crafted directory name.",
+      "vuln_type": "Prompt Injection / Command Injection",
       "bug_commits": [
         {
           "sha": "421644940517ae1857281bddf8603aeef9cebf1c",
@@ -3299,7 +3383,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The sandbox environment fails to properly isolate the execution context, allowing guest code to access or manipulate the host environment or restricted APIs. This is typically caused by insufficient validation of AST nodes or improper handling of JavaScript prototypes and global objects.",
+      "how_introduced": "The blamed commit added a limited recursive check for array coercion that failed to account for all JavaScript coercion edge cases, allowing malicious code to bypass the identifier filter and access restricted host properties.",
+      "root_cause": "The sandbox environment fails to properly isolate the execution context, allowing guest code to access or manipulate the host environment or restricted APIs. This is typically caused by insufficient validation of AST nodes or improper handling of JavaScript prototypes and global objects.",
+      "vuln_type": "Sandbox Escape",
       "bug_commits": [
         {
           "sha": "9e1a930cd8efa1c4b6fb699f79bba6b4889d1910",
@@ -3364,7 +3450,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The default Go JSON unmarshaler performs case-insensitive matching for struct fields, which can allow attackers to bypass validation or overwrite fields by providing keys with different casing.",
+      "how_introduced": "1. The blamed commit adds the ToolResultContent struct and its MarshalJSON implementation. 2. Inside MarshalJSON, it uses the standard library's json.Unmarshal to process content data into a wire format. 3. Because the standard library is case-insensitive, this specific line introduced the vulnerability that was later fixed by switching to a custom strict-case unmarshaler.",
+      "root_cause": "The default Go JSON unmarshaler performs case-insensitive matching for struct fields, which can allow attackers to bypass validation or overwrite fields by providing keys with different casing.",
+      "vuln_type": "Improper Handling of Case Sensitivity",
       "bug_commits": [
         {
           "sha": "3cf9f9908d3f44cf9fd75d134c378687e6fb7996",
@@ -3428,7 +3516,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
+      "how_introduced": "The blamed commit added `env: { ...process.env, ... }` to the MCP server configuration, which caused the subprocess to inherit all environment variables from the parent process, including sensitive API keys that were subsequently exposed through the router service.",
+      "root_cause": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
+      "vuln_type": "Hard-coded Credentials / Service Exposure",
       "bug_commits": [
         {
           "sha": "f40f52f1181afa22074da4a2f2334e1d6e1903ee",
@@ -3513,7 +3603,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application used an incomplete blocklist for unsafe imports, failing to restrict standard library network protocol modules which could be abused for SSRF.",
+      "how_introduced": "The blamed commit introduced the 'Network and web modules' section to the UNSAFE_IMPORTS blocklist but omitted several standard library network protocols. This omission created the detection bypass vulnerability that allowed attackers to abuse these missing modules for SSRF.",
+      "root_cause": "The application used an incomplete blocklist for unsafe imports, failing to restrict standard library network protocol modules which could be abused for SSRF.",
+      "vuln_type": "Detection Bypass",
       "bug_commits": [
         {
           "sha": "19e828d26b248a4a39fcee2643306a6cd78dbb76",
@@ -3573,7 +3665,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The native prompt image auto-load feature did not enforce the `tools.fs.workspaceOnly` restriction, allowing out-of-workspace files to be read and ingested as vision input.",
+      "how_introduced": "By adding the ability to load images from paths detected in prompts without validating them against the workspace boundary, this commit allowed the system to read and ingest arbitrary files outside the intended directory, leading to the path traversal vulnerability.",
+      "root_cause": "The native prompt image auto-load feature did not enforce the `tools.fs.workspaceOnly` restriction, allowing out-of-workspace files to be read and ingested as vision input.",
+      "vuln_type": "Path Traversal / Information Disclosure",
       "bug_commits": [
         {
           "sha": "8d74578ceb0c3b913555dff6265821eb0fc09749",
@@ -3632,7 +3726,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The Synology Chat integration failed to properly enforce the allowlist policy when the list of allowed user IDs was empty, potentially allowing unauthorized users to bypass access controls.",
+      "how_introduced": "The developer implemented the allowlist check with an explicit condition that returns true for empty lists, effectively disabling the security policy when no users are defined, which was later identified as a security flaw.",
+      "root_cause": "The Synology Chat integration failed to properly enforce the allowlist policy when the list of allowed user IDs was empty, potentially allowing unauthorized users to bypass access controls.",
+      "vuln_type": "Improper Authorization (Fail Open)",
       "bug_commits": [
         {
           "sha": "03586e3d0057b5975090d50dadcc5bc95b51f977",
@@ -3697,7 +3793,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The application allowed authorization based on mutable display names, enabling an attacker to bypass the allowlist by changing their display name to match an allowed user's ID.",
+      "how_introduced": "1. The blamed commit introduced the Feishu extension and its message handling logic. 2. It implemented authorization checks via `resolveFeishuAllowlistMatch` using only `senderName` and `senderId`. 3. Because `senderName` is mutable and can be spoofed to match an entry in the `allowFrom` list, this implementation directly enabled the authorization bypass.",
+      "root_cause": "The application allowed authorization based on mutable display names, enabling an attacker to bypass the allowlist by changing their display name to match an allowed user's ID.",
+      "vuln_type": "Authorization Bypass",
       "bug_commits": [
         {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
@@ -3755,7 +3853,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application maintained an incomplete blocklist of unsafe modules, allowing attackers to bypass safety checks and potentially execute arbitrary code or perform unauthorized actions by importing unblocked dangerous modules.",
+      "how_introduced": "1. The blamed commit defines the UNSAFE_IMPORTS list to prevent dangerous pickle loads. 2. The list omits several dangerous modules such as 'socketserver' and 'threading'. 3. Attackers can use these omitted modules to bypass safety checks. 4. The fix commit specifically adds these missing modules to the same UNSAFE_IMPORTS list.",
+      "root_cause": "The application maintained an incomplete blocklist of unsafe modules, allowing attackers to bypass safety checks and potentially execute arbitrary code or perform unauthorized actions by importing unblocked dangerous modules.",
+      "vuln_type": "Safety Check Bypass",
       "bug_commits": [
         {
           "sha": "93cb67974f3e826a2433339bab92f94b138de645",
@@ -3839,7 +3939,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The server allowed node sessions to authenticate via trusted-proxy headers without verifying their device identity or pairing status, allowing unpaired nodes to connect.",
+      "how_introduced": "The blamed commit added the `trustedProxyAuthOk` variable and integrated it into the `evaluateMissingDeviceIdentity` and `skipPairing` logic. Because this new logic lacked a check for the user's role, it allowed non-operator nodes to bypass pairing requirements when behind a trusted proxy.",
+      "root_cause": "The server allowed node sessions to authenticate via trusted-proxy headers without verifying their device identity or pairing status, allowing unpaired nodes to connect.",
+      "vuln_type": "Authentication Bypass",
       "bug_commits": [
         {
           "sha": "20523b918adff4feae378ac9965e204c56b6e3d8",
@@ -3897,7 +3999,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The Zalo webhook implementation used raw query string parameters as keys for security tracking state without bounding, allowing unauthenticated attackers to exhaust server memory by sending requests with unique, randomized query strings.",
+      "how_introduced": "The blamed commit added the RateLimiter class with `private requests: Map<string, number[]> = new Map();` and no limit on the number of keys it can store. The fix commit replaces this with a bounded rate limiter (`createFixedWindowRateLimiter`) that enforces a `maxTrackedKeys` limit to prevent memory exhaustion.",
+      "root_cause": "The Zalo webhook implementation used raw query string parameters as keys for security tracking state without bounding, allowing unauthenticated attackers to exhaust server memory by sending requests with unique, randomized query strings.",
+      "vuln_type": "unbounded memory growth (DoS)",
       "bug_commits": [
         {
           "sha": "03586e3d0057b5975090d50dadcc5bc95b51f977",
@@ -3959,7 +4063,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application failed to validate the source paths of media attachments before staging them into the sandbox workspace, allowing an attacker to specify arbitrary file paths and disclose sensitive files.",
+      "how_introduced": "The blamed commit added the `validAttachments` filtering logic which blindly accepted any `original_path` provided in the message attachments. This allowed an attacker to supply arbitrary file paths which were then passed along as `MediaPaths`, leading to the sensitive file disclosure when staged.",
+      "root_cause": "The application failed to validate the source paths of media attachments before staging them into the sandbox workspace, allowing an attacker to specify arbitrary file paths and disclose sensitive files.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "8d74578ceb0c3b913555dff6265821eb0fc09749",
@@ -4017,7 +4123,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The ReadRSSFeedBlock component lacked proper resource limits or validation when processing RSS feeds, potentially allowing an attacker to cause a denial of service by providing a malicious or excessively large feed.",
+      "how_introduced": "The blamed commit added functionality to download files from cloud storage and write them to the local disk in `store_media_file`. It did not include any checks on the size of the downloaded content (`cloud_content`), allowing an attacker to provide a path to an excessively large file, which would consume excessive disk space or memory, leading to a Denial of Service.",
+      "root_cause": "The ReadRSSFeedBlock component lacked proper resource limits or validation when processing RSS feeds, potentially allowing an attacker to cause a denial of service by providing a malicious or excessively large feed.",
+      "vuln_type": "Denial of Service (DoS)",
       "bug_commits": [
         {
           "sha": "d33459ddb59c7e4a4cba598cd95d275362bbd0c8",
@@ -4084,7 +4192,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The TableChatAgent in Langroid is vulnerable to a WAF bypass that allows an attacker to execute arbitrary code, likely through insufficient sanitization of inputs passed to a dynamic execution environment.",
+      "how_introduced": "1. The blamed commit introduces the AST-based CommandValidator to sanitize pandas operations. 2. It omits checks for attribute access (visit_Attribute), allowing arbitrary attribute traversal. 3. An attacker can use this omission to access Python internals (e.g., .__class__.__base__) to bypass the WAF and execute arbitrary code.",
+      "root_cause": "The TableChatAgent in Langroid is vulnerable to a WAF bypass that allows an attacker to execute arbitrary code, likely through insufficient sanitization of inputs passed to a dynamic execution environment.",
+      "vuln_type": "Remote Code Execution (RCE)",
       "bug_commits": [
         {
           "sha": "0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6",
@@ -4155,7 +4265,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The application failed to validate user-provided cluster URIs, allowing attackers to supply arbitrary URLs, including internal Azure IMDS endpoints or unauthorized external domains, to be used in server-side requests.",
+      "how_introduced": "1. The blamed commit introduces the KustoClient class and its constructor.\n2. The constructor accepts a 'clusterUri' string parameter.\n3. This URI is used to configure the internal HttpClient without validation against an allowlist or scheme check.\n4. This allows an attacker to provide arbitrary URIs (e.g., Azure IMDS), leading to the SSRF vulnerability.",
+      "root_cause": "The application failed to validate user-provided cluster URIs, allowing attackers to supply arbitrary URLs, including internal Azure IMDS endpoints or unauthorized external domains, to be used in server-side requests.",
+      "vuln_type": "SSRF",
       "bug_commits": [
         {
           "sha": "353fe8ddf4c4e7ae8793546f5e486d961516e25e",
@@ -4210,7 +4322,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The ReadRSSFeedBlock component lacked proper resource limits or validation when processing RSS feeds, potentially allowing an attacker to cause a denial of service by providing a malicious or excessively large feed.",
+      "how_introduced": "The blamed commit added functionality to download files from cloud storage and write them to the local disk in `store_media_file`. It did not include any checks on the size of the downloaded content (`cloud_content`), allowing an attacker to provide a path to an excessively large file, which would consume excessive disk space or memory, leading to a Denial of Service.",
+      "root_cause": "The ReadRSSFeedBlock component lacked proper resource limits or validation when processing RSS feeds, potentially allowing an attacker to cause a denial of service by providing a malicious or excessively large feed.",
+      "vuln_type": "Denial of Service (DoS)",
       "bug_commits": [
         {
           "sha": "d33459ddb59c7e4a4cba598cd95d275362bbd0c8",
@@ -4277,7 +4391,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The system failed to bind execution approvals to a specific node ID, allowing an attacker to intercept an approval intended for one node and replay it to execute unauthorized commands on a different node.",
+      "how_introduced": "The commit established the ExecApprovalRequest data structure without a nodeId field, creating a design flaw where approvals were node-agnostic and could be replayed across any node in the system.",
+      "root_cause": "The system failed to bind execution approvals to a specific node ID, allowing an attacker to intercept an approval intended for one node and replay it to execute unauthorized commands on a different node.",
+      "vuln_type": "Improper Authorization / Replay Attack",
       "bug_commits": [
         {
           "sha": "483fba41b9f9fb57964f31b90a2ddacb185d54d7",
@@ -4336,7 +4452,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "The system.run approval matching relied on a rendered command string that did not preserve exact argv identity (e.g., whitespace), allowing an attacker to swap the executable path by appending spaces and reuse an existing approval for a different binary.",
+      "how_introduced": "The blamed commit defined `ExecApprovalRequest` with only a `command` string field. Because the exact `argv` array was not preserved in the request, the system had to match approvals based on the rendered string, allowing attackers to bypass authorization by appending spaces to swap the executable path.",
+      "root_cause": "The system.run approval matching relied on a rendered command string that did not preserve exact argv identity (e.g., whitespace), allowing an attacker to swap the executable path by appending spaces and reuse an existing approval for a different binary.",
+      "vuln_type": "Authorization Bypass",
       "bug_commits": [
         {
           "sha": "483fba41b9f9fb57964f31b90a2ddacb185d54d7",
@@ -4395,7 +4513,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The application incorrectly inherited channel-level group configurations to secondary accounts in multi-account setups, leading to unauthorized access or privilege escalation.",
+      "how_introduced": "1. The blamed commit implements the `spawnSubagentDirect` function to handle cross-agent task delegation. 2. It fails to check the sandbox status of the requester versus the target agent. 3. This allows a restricted (sandboxed) session to spawn a subagent in a potentially unrestricted (unsandboxed) environment, leading to privilege escalation.",
+      "root_cause": "The application incorrectly inherited channel-level group configurations to secondary accounts in multi-account setups, leading to unauthorized access or privilege escalation.",
+      "vuln_type": "Improper Access Control",
       "bug_commits": [
         {
           "sha": "5a3a448bc48dc9e72530b46195476a48845bb8da",
@@ -4458,7 +4578,9 @@
       ],
       "confidence": 0.76,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application failed to properly normalize or validate encoded paths in plugin HTTP routes, allowing attackers to bypass authentication checks by using path traversal or encoding tricks to access restricted endpoints.",
+      "how_introduced": "The blamed commit added the logic to register HTTP routes for Synology Chat webhooks -> It failed to include the 'auth' property in the registration object -> This left the endpoint exposed to unauthorized access via path manipulation because the middleware did not enforce plugin-level authentication for this route.",
+      "root_cause": "The application failed to properly normalize or validate encoded paths in plugin HTTP routes, allowing attackers to bypass authentication checks by using path traversal or encoding tricks to access restricted endpoints.",
+      "vuln_type": "Authentication Bypass",
       "bug_commits": [
         {
           "sha": "f5cab29ec745d6ec806f6b44434bea5b6ee91e0c",
@@ -4559,7 +4681,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -4617,7 +4741,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -4675,7 +4801,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -4733,7 +4861,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -4791,7 +4921,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "how_introduced": "The commit introduced the use of `child_process.exec` to execute `git` commands where user-supplied `files` input was interpolated directly into the command string, creating a command injection vulnerability.",
+      "root_cause": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "ddf2f0d317b8ff1dbe5a78d1b9332a0b68e6ecaa",
@@ -5311,7 +5443,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "how_introduced": "The commit introduced the use of `child_process.exec` to execute `git` commands where user-supplied `files` input was interpolated directly into the command string, creating a command injection vulnerability.",
+      "root_cause": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "ddf2f0d317b8ff1dbe5a78d1b9332a0b68e6ecaa",
@@ -5832,7 +5966,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -5890,7 +6026,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "User input such as the page title, username, and profile picture URL were interpolated directly into HTML templates without proper escaping or URL validation, allowing execution of arbitrary JavaScript.",
+      "how_introduced": "1. The blamed commit modified the profile template to include user-controlled data in the <img> src attribute. 2. It applied escapeHtml() to user.pfp, which fails to sanitize against 'javascript:' protocol URIs. 3. This established the vulnerable pattern where an attacker could provide a malicious URI as their profile picture to execute arbitrary JavaScript.",
+      "root_cause": "User input such as the page title, username, and profile picture URL were interpolated directly into HTML templates without proper escaping or URL validation, allowing execution of arbitrary JavaScript.",
+      "vuln_type": "Cross-Site Scripting (XSS)",
       "bug_commits": [
         {
           "sha": "941c54de24c7f86461b9aa518c29d72c62f11646",
@@ -5954,7 +6092,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -6012,7 +6152,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -6070,7 +6212,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application reads entire files into memory without checking their size, leading to memory exhaustion or crashes when opening files larger than 20MB.",
+      "how_introduced": "The blamed commit introduced the file-reading implementation (likely using file.read() without constraints) as part of the new PyQt6 application architecture, establishing the vulnerable pattern that remained unvalidated until the fix commit.",
+      "root_cause": "The application reads entire files into memory without checking their size, leading to memory exhaustion or crashes when opening files larger than 20MB.",
+      "vuln_type": "Buffer Overflow / Resource Exhaustion",
       "bug_commits": [
         {
           "sha": "12d0e719ef16c5acb6ffa113bdd4b01953d6f5e9",
@@ -6134,7 +6278,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The HTTP/3 implementation failed to enforce a limit on the total size of decompressed QPACK headers, allowing an attacker to send highly compressed headers that expand into a large amount of memory, leading to resource exhaustion.",
+      "how_introduced": "The commit replaced a slice-based header input with a streaming `decodeFn` loop, which processes headers one by one without tracking the cumulative size, thereby enabling the resource exhaustion vulnerability.",
+      "root_cause": "The HTTP/3 implementation failed to enforce a limit on the total size of decompressed QPACK headers, allowing an attacker to send highly compressed headers that expand into a large amount of memory, leading to resource exhaustion.",
+      "vuln_type": "Denial of Service (Resource Exhaustion)",
       "bug_commits": [
         {
           "sha": "b7886d5c901700febc41c739bd93851eac5d315e",
@@ -6198,7 +6344,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "how_introduced": "The commit removed the block that loaded the user's connection from the store and verified the existence of a ConfluenceAccountID, effectively bypassing the authentication requirement for the subscription editing process.",
+      "root_cause": "The plugin fails to properly authenticate or authorize users before allowing them to perform critical functions like saving or editing subscriptions.",
+      "vuln_type": "Missing Authentication",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -6257,7 +6405,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application logged sensitive credentials (access keys and secret keys) in plaintext, likely through default Debug/Display implementations or unmasked logging of configuration objects.",
+      "how_introduced": "The blamed commit created the file and implemented the credential initialization logic using `unwrap_or_else` with `expect` panics, while failing to implement sensitive data masking (e.g., via `Debug` trait overrides), which allowed the credentials to be logged in plaintext when the application encountered errors or debug events.",
+      "root_cause": "The application logged sensitive credentials (access keys and secret keys) in plaintext, likely through default Debug/Display implementations or unmasked logging of configuration objects.",
+      "vuln_type": "Sensitive Information Leakage",
       "bug_commits": [
         {
           "sha": "eb33e82b56ed11fd12bb39416359d8d60737dc7a",
@@ -6315,7 +6465,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The Agentgateway failed to sanitize and encode parameters when converting MCP requests to OpenAPI calls, potentially allowing path traversal or header injection via unencoded path segments and unrestricted header propagation.",
+      "how_introduced": "The commit introduced the `UpstreamOpenAPICall` struct and the `parse_openapi_schema` function, which directly assigned `path: path.clone()` to the struct without applying percent-encoding or validation, thereby creating the injection vulnerability.",
+      "root_cause": "The Agentgateway failed to sanitize and encode parameters when converting MCP requests to OpenAPI calls, potentially allowing path traversal or header injection via unencoded path segments and unrestricted header propagation.",
+      "vuln_type": "parameter injection",
       "bug_commits": [
         {
           "sha": "dab07afea91ef581efe10e4cf789e83661c6f5f7",
@@ -6374,7 +6526,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "how_introduced": "The commit introduced the use of `child_process.exec` to execute `git` commands where user-supplied `files` input was interpolated directly into the command string, creating a command injection vulnerability.",
+      "root_cause": "The application used child_process.exec to execute Git commands, concatenating unsanitized user input directly into the shell command string. This allowed attackers to execute arbitrary system commands by including shell metacharacters in the input.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "ddf2f0d317b8ff1dbe5a78d1b9332a0b68e6ecaa",
@@ -6889,7 +7043,9 @@
       ],
       "confidence": 0.7,
       "verified_by": "gemini-3.1-pro-preview",
-      "how_introduced": "Incorrect accounting of inactive stake for Finality Providers during BTC unbonding allowed 'phantom stake' to remain, which incorrectly continued to earn rewards.",
+      "how_introduced": "The blamed commit added the condition `if !isFpActiveInPrevSet || !isFpActiveInCurrSet { return nil }` in AfterBtcDelegationUnbonded. This prevented the deduction of ActiveSatoshis when a BTC delegation was unbonded and the FP transitioned to inactive, leaving phantom stake that continued to earn rewards.",
+      "root_cause": "Incorrect accounting of inactive stake for Finality Providers during BTC unbonding allowed 'phantom stake' to remain, which incorrectly continued to earn rewards.",
+      "vuln_type": "Incomplete Cleanup / Logic Error",
       "bug_commits": [
         {
           "sha": "2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36",
@@ -6947,7 +7103,9 @@
       ],
       "confidence": 0.675,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The `_get_netrc_login_info` method fails to validate the `netrc_machine` variable before passing it to a shell command via the `--netrc-cmd` option, allowing an attacker to inject arbitrary shell commands if they can control the machine name.",
+      "how_introduced": "The blamed commit added the `netrc_cmd` execution logic in `_get_netrc_login_info`. By passing the unvalidated `netrc_machine` string into a command executed with `shell=True`, it allowed arbitrary command injection if an attacker could control the `netrc_machine` value.",
+      "root_cause": "The `_get_netrc_login_info` method fails to validate the `netrc_machine` variable before passing it to a shell command via the `--netrc-cmd` option, allowing an attacker to inject arbitrary shell commands if they can control the machine name.",
+      "vuln_type": "command injection",
       "bug_commits": [
         {
           "sha": "db3ad8a67661d7b234a6954d9c6a4a9b1749f5eb",
@@ -7055,7 +7213,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application fails to sanitize sensitive data before writing to local logs and does not properly clear application data when a server is deleted, potentially exposing credentials or session info to local attackers.",
+      "how_introduced": "The commit introduced the MainWindow class and associated logging calls using raw objects, which lacked sanitization for sensitive data, thereby creating the vulnerability that was later addressed by wrapping these objects in braces to prevent direct logging of sensitive state.",
+      "root_cause": "The application fails to sanitize sensitive data before writing to local logs and does not properly clear application data when a server is deleted, potentially exposing credentials or session info to local attackers.",
+      "vuln_type": "Information Exposure Through Log Files",
       "bug_commits": [
         {
           "sha": "a88d64b1aed199e6a9c53599305e1867516820ea",
@@ -7117,7 +7277,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The GitHub Actions workflow directly interpolates untrusted context variables like `${{ github.event.before }}` and `${{ github.event.after }}` into a bash script, allowing for potential command injection.",
+      "how_introduced": "1. The blamed commit added/refactored attachment management functions in the service layer.\n2. These functions were implemented to retrieve or modify data using only the object's UUID (attachmentID).\n3. This created a missing authorization vulnerability where any authenticated user could potentially access or modify attachments belonging to other groups by guessing the UUID.",
+      "root_cause": "The GitHub Actions workflow directly interpolates untrusted context variables like `${{ github.event.before }}` and `${{ github.event.after }}` into a bash script, allowing for potential command injection.",
+      "vuln_type": "Command Injection",
       "bug_commits": [
         {
           "sha": "606a92b5d5c8d3e3e4d24f73021804de2a81c1cb",
@@ -7181,7 +7343,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "how_introduced": "The blamed commit created the EmlToPdf utility and its conversion pipeline without any sanitization logic, directly enabling the processing of unsanitized HTML content that leads to SSRF when handled by the underlying PDF conversion library.",
+      "root_cause": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "vuln_type": "SSRF",
       "bug_commits": [
         {
           "sha": "9fbb0325b52bd27f01c62eeca3bd937200619c9c",
@@ -7245,7 +7409,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "how_introduced": "The blamed commit created the EmlToPdf utility and its conversion pipeline without any sanitization logic, directly enabling the processing of unsanitized HTML content that leads to SSRF when handled by the underlying PDF conversion library.",
+      "root_cause": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "vuln_type": "SSRF",
       "bug_commits": [
         {
           "sha": "9fbb0325b52bd27f01c62eeca3bd937200619c9c",
@@ -7309,7 +7475,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "how_introduced": "The blamed commit created the EmlToPdf utility and its conversion pipeline without any sanitization logic, directly enabling the processing of unsanitized HTML content that leads to SSRF when handled by the underlying PDF conversion library.",
+      "root_cause": "The application allowed user-provided URLs or HTML content to be processed by conversion services without validating the destination, enabling attackers to make requests to internal network resources.",
+      "vuln_type": "SSRF",
       "bug_commits": [
         {
           "sha": "9fbb0325b52bd27f01c62eeca3bd937200619c9c",
@@ -7373,7 +7541,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "how_introduced": "The commit replaced manual directory traversal with a glob-based path resolution that directly uses the result of Path(src).glob('**/*.app') to define bin_dir. This allows an attacker to influence the path construction, leading to the arbitrary file write vulnerability when bin_path is later used for file operations.",
+      "root_cause": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
@@ -7440,7 +7610,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "how_introduced": "The commit replaced manual directory traversal with a glob-based path resolution that directly uses the result of Path(src).glob('**/*.app') to define bin_dir. This allows an attacker to influence the path construction, leading to the arbitrary file write vulnerability when bin_path is later used for file operations.",
+      "root_cause": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
@@ -7507,7 +7679,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The worker mode in FrankenPHP failed to properly isolate or reset session state between consecutive requests, leading to cross-request session data leakage.",
+      "how_introduced": "The blamed commit replaced a local assignment with a module-level state assignment (f.mercureHubRequestOption = &opt) -> This shared state was not properly isolated between requests in worker mode -> The fix commit resolved this by moving to a slice-based 'requestOptions' approach to ensure proper scoped handling.",
+      "root_cause": "The worker mode in FrankenPHP failed to properly isolate or reset session state between consecutive requests, leading to cross-request session data leakage.",
+      "vuln_type": "Session fixation / Improper session management",
       "bug_commits": [
         {
           "sha": "225ca409d36468a8a1452e03b9d5292c40aa0c23",
@@ -7572,7 +7746,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The Terraform provider failed to mark sensitive fields (such as database credentials or access controls) as 'Sensitive' in the resource schema, causing their values to be logged in plaintext within Terraform debug logs (TF_LOG).",
+      "how_introduced": "The blamed commit added the 'Create' function for the resource, which included a 'tflog.Debug' call that logged the entire 'createOpts' object. Because 'createOpts' contains sensitive fields (like 'Token'), this caused sensitive information to be exposed in the Terraform debug logs.",
+      "root_cause": "The Terraform provider failed to mark sensitive fields (such as database credentials or access controls) as 'Sensitive' in the resource schema, causing their values to be logged in plaintext within Terraform debug logs (TF_LOG).",
+      "vuln_type": "Sensitive Information Exposure",
       "bug_commits": [
         {
           "sha": "b42ff5049f740e11012bba90c362ee7436dc52a9",
@@ -7702,7 +7878,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "how_introduced": "The commit replaced manual directory traversal with a glob-based path resolution that directly uses the result of Path(src).glob('**/*.app') to define bin_dir. This allows an attacker to influence the path construction, leading to the arbitrary file write vulnerability when bin_path is later used for file operations.",
+      "root_cause": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
@@ -7761,7 +7939,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3.1-flash-lite-preview",
-      "how_introduced": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "how_introduced": "The commit replaced manual directory traversal with a glob-based path resolution that directly uses the result of Path(src).glob('**/*.app') to define bin_dir. This allows an attacker to influence the path construction, leading to the arbitrary file write vulnerability when bin_path is later used for file operations.",
+      "root_cause": "The application failed to properly validate user-supplied filenames, allowing attackers to use absolute paths or traversal sequences to access files outside the intended directory.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "49537563ccbee34c3c4956d63b087a39c9182b38",
@@ -7821,7 +8001,9 @@
       ],
       "confidence": 0.63,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The worker mode in FrankenPHP failed to properly isolate or reset session state between consecutive requests, leading to cross-request session data leakage.",
+      "how_introduced": "The blamed commit replaced a local assignment with a module-level state assignment (f.mercureHubRequestOption = &opt) -> This shared state was not properly isolated between requests in worker mode -> The fix commit resolved this by moving to a slice-based 'requestOptions' approach to ensure proper scoped handling.",
+      "root_cause": "The worker mode in FrankenPHP failed to properly isolate or reset session state between consecutive requests, leading to cross-request session data leakage.",
+      "vuln_type": "Session fixation / Improper session management",
       "bug_commits": [
         {
           "sha": "225ca409d36468a8a1452e03b9d5292c40aa0c23",
@@ -7881,7 +8063,9 @@
       ],
       "confidence": 0.6175,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application exposed the Slack OAuth client secret in the workspace settings API response to non-admin users.",
+      "how_introduced": "1. The blamed commit creates the `backend/windmill-api-workspaces/src/workspaces.rs` file. 2. It implements the `get_settings` function which retrieves workspace configuration from the database. 3. The implementation returns the full settings object to any authenticated user without filtering sensitive Slack OAuth secrets, creating the information exposure vulnerability.",
+      "root_cause": "The application exposed the Slack OAuth client secret in the workspace settings API response to non-admin users.",
+      "vuln_type": "Information Exposure",
       "bug_commits": [
         {
           "sha": "c580572252a99f2ae13b9762619c20adc882764b",
@@ -7991,7 +8175,9 @@
       ],
       "confidence": 0.56,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "how_introduced": "The commit removed existing validation checks and implemented a direct call to deserialization functions (SpaceSubscriptionFromJSON/PageSubscriptionFromJSON) that lacked the necessary context to verify if the input data matched the intended subscription type, leading to the improper input validation vulnerability.",
+      "root_cause": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "vuln_type": "Improper Input Validation",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -8104,7 +8290,9 @@
       ],
       "confidence": 0.56,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "how_introduced": "The commit removed existing validation checks and implemented a direct call to deserialization functions (SpaceSubscriptionFromJSON/PageSubscriptionFromJSON) that lacked the necessary context to verify if the input data matched the intended subscription type, leading to the improper input validation vulnerability.",
+      "root_cause": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "vuln_type": "Improper Input Validation",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -8242,7 +8430,9 @@
       ],
       "confidence": 0.56,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "how_introduced": "The commit removed existing validation checks and implemented a direct call to deserialization functions (SpaceSubscriptionFromJSON/PageSubscriptionFromJSON) that lacked the necessary context to verify if the input data matched the intended subscription type, leading to the improper input validation vulnerability.",
+      "root_cause": "The application failed to properly validate subscription data during deserialization, allowing malformed or inconsistent subscription types to be processed.",
+      "vuln_type": "Improper Input Validation",
       "bug_commits": [
         {
           "sha": "97dbaf6c2983438401316865881e1f9630ccad2c",
@@ -8375,7 +8565,9 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The is_dangerous_path() function used exact string matching against a blacklist of system directories, allowing attackers to bypass the check by accessing subdirectories of the blacklisted paths.",
+      "how_introduced": "The blamed commit added the `is_dangerous_path` function which only checked if the resolved path exactly matched an entry in the `DANGEROUS_PATHS` set. This exact matching allowed attackers to bypass the blacklist by accessing subdirectories of the dangerous paths, leading to the path traversal vulnerability.",
+      "root_cause": "The is_dangerous_path() function used exact string matching against a blacklist of system directories, allowing attackers to bypass the check by accessing subdirectories of the blacklisted paths.",
+      "vuln_type": "Path Traversal",
       "bug_commits": [
         {
           "sha": "4151c3c3a59f519577b18ed9a885d0d32c1b566f",
@@ -8480,7 +8672,9 @@
       ],
       "confidence": 0.475,
       "verified_by": "claude-opus-4-6, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The application failed to properly mask sensitive values in Terraform plan reports, specifically within AzApi resource bodies, variable groups, and hierarchical JSON structures, leading to the exposure of secrets in generated Markdown/HTML output.",
+      "how_introduced": "The blamed commit added the `secret_value` property to the data extraction logic and the corresponding model, which allowed sensitive values to be captured from the Terraform state and passed into the reporting pipeline, where they were rendered in plain text.",
+      "root_cause": "The application failed to properly mask sensitive values in Terraform plan reports, specifically within AzApi resource bodies, variable groups, and hierarchical JSON structures, leading to the exposure of secrets in generated Markdown/HTML output.",
+      "vuln_type": "Sensitive Value Exposure",
       "bug_commits": [
         {
           "sha": "18998785a7eacfa5798f89d57b331e63f734133d",
@@ -8677,7 +8871,9 @@
       ],
       "confidence": 0.45,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The CI pipeline dynamically constructs shell commands using unvalidated project names derived from git-affected files, allowing an attacker to inject arbitrary commands via crafted branch or file names.",
+      "how_introduced": "The blamed commit created `ghost-test.js` and implemented `startWebhookServer` and `getWebhookSecret` using string interpolation to build shell commands (e.g., `stripe listen ...`). This unsafe command construction was later fixed by replacing it with a safer command builder (`buildStripeCommand`) and avoiding `exec`.",
+      "root_cause": "The CI pipeline dynamically constructs shell commands using unvalidated project names derived from git-affected files, allowing an attacker to inject arbitrary commands via crafted branch or file names.",
+      "vuln_type": "Command Injection",
       "bug_commits": [
         {
           "sha": "4815aa6e7ff7ad8f2aea45ca85c62750160408e4",
@@ -8786,7 +8982,9 @@
       ],
       "confidence": 0.0822,
       "verified_by": "gemini-3-flash-preview",
-      "how_introduced": "The application buffers incoming HTTP request bodies without enforcing a size limit, allowing an attacker to send excessively large payloads that consume all available memory and crash the server.",
+      "how_introduced": "1. The blamed commit introduces the OpenResponses Gateway integration, including the `POST /v1/responses` endpoint. 2. This endpoint uses the gateway's HTTP handling logic to read and parse JSON request bodies. 3. The implementation fails to enforce a maximum length on the incoming request stream, leading to unbounded memory consumption when processing large payloads.",
+      "root_cause": "The application buffers incoming HTTP request bodies without enforcing a size limit, allowing an attacker to send excessively large payloads that consume all available memory and crash the server.",
+      "vuln_type": "Denial of Service (DoS)",
       "bug_commits": [
         {
           "sha": "f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f",
@@ -8849,7 +9047,9 @@
       ],
       "confidence": 0.0613,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview",
-      "how_introduced": "The application incorrectly inherited channel-level group configurations to secondary accounts in multi-account setups, leading to unauthorized access or privilege escalation.",
+      "how_introduced": "1. The blamed commit implements the `spawnSubagentDirect` function to handle cross-agent task delegation. 2. It fails to check the sandbox status of the requester versus the target agent. 3. This allows a restricted (sandboxed) session to spawn a subagent in a potentially unrestricted (unsandboxed) environment, leading to privilege escalation.",
+      "root_cause": "The application incorrectly inherited channel-level group configurations to secondary accounts in multi-account setups, leading to unauthorized access or privilege escalation.",
+      "vuln_type": "Improper Access Control",
       "bug_commits": [
         {
           "sha": "5a3a448bc48dc9e72530b46195476a48845bb8da",
@@ -8945,6 +9145,8 @@
       "confidence": 0.57,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "029034f7853ea018d110efe9b7e2ef7d1407091c",
@@ -9054,6 +9256,8 @@
       "confidence": 0.525,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "78cd6004d6ab3f46d5ed57189ec1aae27d9cd62e",
@@ -9176,6 +9380,8 @@
       "confidence": 0.45,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "fba015c5d95bc94d84bd72a221412fd763fa8bdf",
@@ -9273,6 +9479,8 @@
       "confidence": 0.0594,
       "verified_by": "claude-opus-4-6, gemini-3.1-pro-preview, gpt-5.4",
       "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
       "bug_commits": [
         {
           "sha": "33aea3f7e8499a483d5108328e058c3c7128e108",
