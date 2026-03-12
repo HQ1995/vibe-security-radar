@@ -1,7 +1,7 @@
 import { getToolDisplayName } from "@/lib/constants";
 
 /** Tools that have separate light/dark SVGs (e.g. foo.svg + foo_dark.svg). */
-const THEMED_ICONS = new Set(["github_copilot", "cursor"]);
+const THEMED_ICONS = new Set(["github_copilot", "cursor", "unknown_ai"]);
 
 /** Map of tool keys that have dedicated SVG icon files in /icons/tools/. */
 const TOOLS_WITH_ICONS = new Set([
@@ -45,6 +45,7 @@ const TOOLS_WITH_ICONS = new Set([
   "same_dev",
   "leap_new",
   "traycer",
+  "atlassian_rovo",
   "unknown_ai",
 ]);
 
