@@ -34,8 +34,14 @@ if audit_path.exists():
         audited.add(f.get('cve_id',''))
 
 # Helper: prefer verification_verdict over tribunal_verdict (backward compat)
+# Normalizes key: verification uses "verdict", tribunal uses "final_verdict"
 def _dv(b):
-    return b.get('verification_verdict') or b.get('tribunal_verdict')
+    vv = b.get('verification_verdict')
+    if vv:
+        if 'final_verdict' not in vv and 'verdict' in vv:
+            vv['final_verdict'] = vv['verdict']
+        return vv
+    return b.get('tribunal_verdict')
 
 # Bucket unaudited CVEs by priority
 verified_confirmed = []  # Priority 1: on website, FP hurts credibility

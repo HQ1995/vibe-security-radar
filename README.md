@@ -63,8 +63,11 @@ See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference and 
 │   ├── src/                # App Router pages + components
 │   └── data/               # Generated JSON (cves.json, stats.json)
 ├── scripts/
-│   └── generate_web_data.py  # Transforms cached results → web JSON
-└── slop-detector/          # Related experimental tool
+│   ├── generate_web_data.py  # Transforms cached results → web JSON
+│   ├── audit_queue.py        # Smart audit target prioritization
+│   ├── monitor.sh            # Pipeline monitoring
+│   └── profile.py            # Pipeline performance profiler
+└── slop-detector/            # Related experimental tool
 ```
 
 ## License

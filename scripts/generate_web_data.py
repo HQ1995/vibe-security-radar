@@ -629,10 +629,19 @@ def _get_deep_verdict(bic: dict) -> dict | None:
 
     Prefers verification_verdict (new single-model verifier) over
     tribunal_verdict (old 3-model voting) for backward compatibility.
+
+    Normalizes the key: verification_verdict uses ``"verdict"`` while
+    tribunal_verdict uses ``"final_verdict"``.  We add ``"final_verdict"``
+    to verification dicts so all downstream consumers can use one key.
+
     Returns None if neither exists.
     """
     vv = bic.get("verification_verdict")
     if vv:
+        # Normalize: add "final_verdict" alias so callers don't need to
+        # know which format they're dealing with.
+        if "final_verdict" not in vv and "verdict" in vv:
+            vv["final_verdict"] = vv["verdict"]
         return vv
     return bic.get("tribunal_verdict")
 
@@ -812,24 +821,46 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
         entry["pr_title"] = pr_title
 
     if tv:
-        entry["tribunal_verdict"] = {
-            "verdict": tv.get("final_verdict", ""),
-            "confidence": tv.get("confidence", ""),
-            "models": [
-                av.get("model", "") for av in tv.get("agent_verdicts", [])
-            ],
-            "agent_verdicts": [
-                {
-                    "model": av.get("model", ""),
-                    "verdict": av.get("verdict", ""),
-                    "reasoning": av.get("reasoning", ""),
-                    "confidence": av.get("confidence", 0),
-                    "tool_calls_made": av.get("tool_calls_made", 0),
-                    "evidence": av.get("evidence", []),
-                }
-                for av in tv.get("agent_verdicts", [])
-            ],
-        }
+        # Both tribunal_verdict and verification_verdict are normalized
+        # via _get_deep_verdict() to have "final_verdict". Build a
+        # unified web output that works for both shapes.
+        if tv.get("agent_verdicts"):
+            # Old tribunal format: multi-model with agent_verdicts list
+            entry["tribunal_verdict"] = {
+                "verdict": tv.get("final_verdict", ""),
+                "confidence": tv.get("confidence", ""),
+                "models": [
+                    av.get("model", "") for av in tv.get("agent_verdicts", [])
+                ],
+                "agent_verdicts": [
+                    {
+                        "model": av.get("model", ""),
+                        "verdict": av.get("verdict", ""),
+                        "reasoning": av.get("reasoning", ""),
+                        "confidence": av.get("confidence", 0),
+                        "tool_calls_made": av.get("tool_calls_made", 0),
+                        "evidence": av.get("evidence", []),
+                    }
+                    for av in tv["agent_verdicts"]
+                ],
+            }
+        else:
+            # New verifier format: single-model flat structure
+            entry["tribunal_verdict"] = {
+                "verdict": tv.get("final_verdict", ""),
+                "confidence": tv.get("confidence", ""),
+                "models": [tv["model"]] if tv.get("model") else [],
+                "agent_verdicts": [
+                    {
+                        "model": tv.get("model", ""),
+                        "verdict": tv.get("final_verdict", ""),
+                        "reasoning": tv.get("reasoning", ""),
+                        "confidence": tv.get("confidence", ""),
+                        "tool_calls_made": tv.get("tool_calls_made", 0),
+                        "evidence": tv.get("evidence", []),
+                    }
+                ],
+            }
 
     # Decomposed sub-commits from squash merge PRs
     decomposed = bic.get("decomposed_commits", [])

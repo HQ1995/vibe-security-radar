@@ -37,7 +37,12 @@ def main():
             audited.add(f.get('cve_id', ''))
 
     def _get_deep_verdict(bic):
-        return bic.get('verification_verdict') or bic.get('tribunal_verdict')
+        vv = bic.get('verification_verdict')
+        if vv:
+            if 'final_verdict' not in vv and 'verdict' in vv:
+                vv['final_verdict'] = vv['verdict']
+            return vv
+        return bic.get('tribunal_verdict')
 
     # Bucket unaudited CVEs by priority
     verified_confirmed = []   # Priority 1: on website, FP hurts credibility

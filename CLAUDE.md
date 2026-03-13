@@ -37,7 +37,7 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 ## Quality Assurance
 
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
-- **Tribunal**: 3-model voting prevents FPs at runtime
+- **Deep verifier**: Single-model agentic investigation with tool use (git log, file read, etc.) prevents FPs at runtime. Replaced the old 3-model tribunal voting.
 - **`/audit`**: Independent deep verification of individual CVEs
 - **Audit queue**: `python scripts/audit_queue.py` — smart prioritization for next audit target. Use this instead of the default Phase 0 selection when running `/audit` without a specific CVE ID.
 
@@ -60,3 +60,13 @@ Use `/humanizer` to review commit messages before committing. Keep messages natu
 ## LLM Cost Reporting
 
 After any operation that calls external LLMs (e.g. `--llm-verify`), report token usage and estimated cost.
+
+## Context Management
+
+Actively manage context. Do not wait for the context window to fill up.
+
+When context becomes noisy, repetitive, stale, or drifted, compress early. Use /compact when available, otherwise produce a brief handoff summary that preserves goals, decisions, constraints, open questions, and next actions.
+
+If hallucination or confusion appears, stop and move to a fresh session immediately with a compact handoff.
+
+Externalize work through SDD into small task files with clear inputs, outputs, and acceptance criteria so each task needs only minimal context.
