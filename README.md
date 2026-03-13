@@ -55,19 +55,23 @@ See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference and 
 ## Repository Layout
 
 ```
-├── cve-analyzer/           # Python CLI tool
-│   ├── src/cve_analyzer/   # Source code
-│   ├── tests/              # Pytest suite (JSON fixtures, no real API calls)
+├── cve-analyzer/              # Python CLI tool
+│   ├── src/cve_analyzer/      # Source code
+│   ├── tests/                 # Pytest suite (JSON fixtures, no real API calls)
 │   └── pyproject.toml
-├── web/                    # Next.js dashboard
-│   ├── src/                # App Router pages + components
-│   └── data/               # Generated JSON (cves.json, stats.json)
-├── scripts/
-│   ├── generate_web_data.py  # Transforms cached results → web JSON
-│   ├── audit_queue.py        # Smart audit target prioritization
-│   ├── monitor.sh            # Pipeline monitoring
-│   └── profile.py            # Pipeline performance profiler
-└── slop-detector/            # Related experimental tool
+├── web/                       # Next.js dashboard
+│   ├── src/                   # App Router pages + components
+│   └── data/                  # Generated JSON (cves.json, stats.json)
+└── scripts/
+    ├── generate_web_data.py   # Transforms cached results → web JSON
+    ├── audit_queue.py         # Picks the next audit target by priority
+    ├── audit_select.py        # Stratified sampling for audit batches
+    ├── audit_actionable.py    # Filters to audit targets worth investigating
+    ├── audit_patterns.py      # Cross-audit pattern analysis
+    ├── audit_recurring.py     # Tracks repeat findings across audits
+    ├── monitor.sh             # Pipeline monitoring
+    ├── profile.py             # Pipeline performance profiler
+    └── slop-detector/         # Experimental commit-level AI detection tool
 ```
 
 ## License
