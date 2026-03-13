@@ -61,6 +61,11 @@ def load_results():
     return results
 
 
+def _get_deep_verdict(bic):
+    """Return the best deep-verification verdict dict (new or old format)."""
+    return bic.get("verification_verdict") or bic.get("tribunal_verdict")
+
+
 def score_fp_candidate(data, ai_bics):
     """Score a CVE with AI signals by FP likelihood. Higher = audit first."""
     score = 0
@@ -69,25 +74,25 @@ def score_fp_candidate(data, ai_bics):
     if not ai_bics:
         return None, []
 
-    has_tribunal_confirmed = any(
-        (b.get("tribunal_verdict") or {}).get("final_verdict", "").upper()
+    has_verified_confirmed = any(
+        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper()
         == "CONFIRMED"
         for b in ai_bics
     )
-    has_tribunal_denied = any(
-        (b.get("tribunal_verdict") or {}).get("final_verdict", "").upper()
+    has_verified_denied = any(
+        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper()
         in ("UNLIKELY", "UNRELATED")
         for b in ai_bics
     )
 
-    if not has_tribunal_confirmed and not has_tribunal_denied:
+    if not has_verified_confirmed and not has_verified_denied:
         score += 30
         reasons.append("unverified")
-    elif has_tribunal_denied:
+    elif has_verified_denied:
         score += 50
-        reasons.append("tribunal-overturned")
+        reasons.append("verifier-overturned")
 
-    # Split tribunal votes (non-unanimous)
+    # Split votes (non-unanimous) — only applies to old tribunal format
     for b in ai_bics:
         tv = b.get("tribunal_verdict") or {}
         if tv.get("majority_count") and tv.get("agent_count"):

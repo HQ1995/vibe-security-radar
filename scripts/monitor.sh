@@ -66,7 +66,7 @@ from pathlib import Path
 from collections import Counter
 cache = Path.home() / '.cache/cve-analyzer/results'
 cats = Counter()
-signals = fixes = tribunal = 0
+signals = fixes = verified = 0
 for f in cache.glob('*.json'):
     try:
         d = json.loads(f.read_text())
@@ -76,8 +76,8 @@ for f in cache.glob('*.json'):
     if d.get('ai_signals'): signals += 1
     if d.get('fix_commits'): fixes += 1
     for b in d.get('bug_introducing_commits', []):
-        if b.get('tribunal_verdict'): tribunal += 1
-print(f'  fixes: {fixes} | signals: {signals} | tribunal: {tribunal}')
+        if b.get('verification_verdict') or b.get('tribunal_verdict'): verified += 1
+print(f'  fixes: {fixes} | signals: {signals} | verified: {verified}')
 for cat, n in cats.most_common():
     print(f'  {cat}: {n}')
 " 2>/dev/null

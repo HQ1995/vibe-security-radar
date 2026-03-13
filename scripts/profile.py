@@ -31,7 +31,7 @@ def main() -> None:
         lambda: {"blame": 0.0, "cves": 0, "errors": 0}
     )
     signals = 0
-    tribunal_v = 0
+    verified_v = 0
     buckets: dict[int, int] = defaultdict(int)
 
     for f in files:
@@ -64,12 +64,12 @@ def main() -> None:
                 repo = fc.get("repo_url", "?").replace("https://github.com/", "")
                 repo_blame[repo]["errors"] += 1
 
-        # Signals and tribunal
+        # Signals and deep verification
         if d.get("ai_signals"):
             signals += 1
         for b in d.get("bug_introducing_commits", []):
-            if b.get("tribunal_verdict"):
-                tribunal_v += 1
+            if b.get("verification_verdict") or b.get("tribunal_verdict"):
+                verified_v += 1
 
         # Timeline bucket
         m = int((f.stat().st_mtime - first_t) / 60)
@@ -86,7 +86,7 @@ def main() -> None:
     print("=== Summary ===")
     print(f"  Results:    {total}")
     print(f"  Signals:    {signals}")
-    print(f"  Tribunal:   {tribunal_v}")
+    print(f"  Verified:   {verified_v}")
     print()
 
     print("=== Timeline ===")

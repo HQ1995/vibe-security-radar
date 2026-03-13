@@ -1,14 +1,14 @@
-# Tribunal Verify
+# Deep Verify
 
-Re-verify all confirmed TPs using the multi-model tribunal system.
+Re-verify all confirmed TPs using the single-model deep verifier.
 
-The tribunal launches 3 independent LLM agents (GPT, Claude, Gemini) that investigate each BIC with tool calls, then aggregates their verdicts via majority vote. This catches false positives that single-model verification misses.
+The verifier launches an agentic investigation loop — one strong model with tool access (git log, file read, blame, diff) investigates each BIC before submitting a verdict. This catches false positives that single-pass LLM screening misses.
 
 ## Prerequisites
 
 At least one LLM backend must be configured:
 ```bash
-# Option 1: LiteLLM proxy (preferred — supports all 3 tribunal models)
+# Option 1: LiteLLM proxy (preferred)
 export LITELLM_API_BASE="http://localhost:8000/v1"
 export LITELLM_API_KEY="sk-..."
 
@@ -20,11 +20,11 @@ Verify with:
 ```bash
 env | grep -E 'LITELLM|GEMINI_API_KEY'
 ```
-If neither is set, stop and tell the user — tribunal will silently skip without API keys.
+If neither is set, stop and tell the user — verification will silently skip without API keys.
 
 ## Phase 1: Identify Unverified TPs
 
-Find TPs with confirmed BICs that lack `tribunal_verdict`:
+Find TPs with confirmed BICs that lack deep verification:
 
 ```python
 python3 -c "
@@ -44,8 +44,8 @@ for f in sorted(cache.glob('*.json')):
     if not confirmed:
         continue
     cve_id = data.get('cve_id', f.stem)
-    has_tribunal = any(b.get('tribunal_verdict') for b in confirmed)
-    if has_tribunal:
+    has_verified = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in confirmed)
+    if has_verified:
         verified.append(cve_id)
     else:
         unverified.append(cve_id)
@@ -62,16 +62,18 @@ If all TPs are already verified, report that and stop.
 
 ## Phase 2: Batch Re-Analyze
 
-Run tribunal verification on each unverified TP. Use background tasks for parallelism (5-10 concurrent to avoid API rate limits).
+Run deep verification on each unverified TP. Use background tasks for parallelism (5-10 concurrent to avoid API rate limits).
 
 **Important**: Global flags go BEFORE the subcommand:
 ```bash
-cd cve-analyzer && uv run cve-analyzer --verbose analyze <CVE-ID> --llm-verify --force-tribunal
+cd cve-analyzer && uv run cve-analyzer --verbose analyze <CVE-ID> --llm-verify --force-verify
 ```
 
-Do NOT use `--no-cache` — the pipeline cache saves time by reusing fix commits and blame results, and tribunal results are always saved back (even without `--no-cache`). The tribunal has its own separate API cache (`~/.cache/cve-analyzer/api-responses/tribunal/`), so previously-verified BICs won't re-call LLMs.
+Do NOT use `--no-cache` — the pipeline cache saves time by reusing fix commits and blame results. The verifier has its own API cache (`~/.cache/cve-analyzer/api-responses/verifier/`), so previously-verified BICs won't re-call LLMs.
 
-The `--force-tribunal` flag bypasses `_should_tribunal()` which normally only runs tribunal for ambiguous BICs. Without it, high-confidence TPs are skipped.
+The `--force-verify` flag forces re-verification even on BICs that already have a verdict. Without it, only unverified BICs are processed.
+
+Optionally specify `--verify-model <model>` to override the default model.
 
 ### Execution strategy
 
@@ -91,11 +93,11 @@ If a CVE fails (timeout, API error, no repo access):
 
 After all batches complete:
 
-1. Re-run the Phase 1 scan to confirm tribunal_verdict is now populated
+1. Re-run the Phase 1 scan to confirm verification verdicts are now populated
 2. Report summary:
 
 ```
-## Tribunal Verification Complete
+## Deep Verification Complete
 
 | Metric | Count |
 |--------|-------|
@@ -129,9 +131,9 @@ After all batches complete:
 
 ## Cost Estimation
 
-Each tribunal run invokes 3 LLM agents, each making ~5-15 tool calls. Rough estimates per TP:
-- ~3,000-10,000 input tokens per agent (context + tool results)
-- ~500-2,000 output tokens per agent (reasoning + verdict)
-- Total: ~10,000-36,000 tokens per TP
+Each verification invokes 1 LLM agent making ~10-25 tool calls. Rough estimates per TP:
+- ~5,000-15,000 input tokens (context + tool results)
+- ~1,000-3,000 output tokens (reasoning + verdict)
+- Total: ~6,000-18,000 tokens per TP
 
-For 92 TPs: ~1M-3M tokens total. At typical API pricing, expect $2-10.
+For 92 TPs: ~600K-1.7M tokens total. At typical API pricing, expect $1-5.

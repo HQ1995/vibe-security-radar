@@ -6,7 +6,7 @@ Post-run performance analysis. Use after batch runs to identify bottlenecks and 
 
 Pipeline phases:
 ```
-Setup (OSV/GHSA/NVD load) → Pass 1 (Discovery) → Clone → Pass 2a (Blame) → PR prefetch → Pass 2b (Enrich/LLM/Tribunal)
+Setup (OSV/GHSA/NVD load) → Pass 1 (Discovery) → Clone → Pass 2a (Blame) → PR prefetch → Pass 2b (Enrich/LLM/Verify)
 ```
 
 Config: workers=min(32, cpu_count), git_throttle=32, rate limits: GH REST 1.39/s, GraphQL 0.5/s, NVD 1.5/s.
@@ -86,7 +86,7 @@ phase_times = defaultdict(list)
 error_cats = Counter()
 sources = Counter()
 repo_blame = defaultdict(lambda: {'blame': 0, 'cves': 0, 'errors': 0})
-signals = tribunal_v = 0
+signals = verified_v = 0
 
 for f in files:
     try:
@@ -108,7 +108,7 @@ for f in files:
             repo_blame[fc.get('repo_url','?').replace('https://github.com/','')]['errors'] += 1
     if d.get('ai_signals'): signals += 1
     for b in d.get('bug_introducing_commits', []):
-        if b.get('tribunal_verdict'): tribunal_v += 1
+        if b.get('verification_verdict') or b.get('tribunal_verdict'): verified_v += 1
 
 # --- Results timeline ---
 buckets = defaultdict(int)
@@ -119,7 +119,7 @@ for f in files:
 # --- Print ---
 cpu_total = sum(sum(v) for v in phase_times.values())
 print(f'=== Timeline ===')
-print(f'Results: {total} | Signals: {signals} | Tribunal verdicts: {tribunal_v}')
+print(f'Results: {total} | Signals: {signals} | Verified: {verified_v}')
 print(f'Wall time (first→last): {wall:.0f}s ({wall/60:.1f}min)')
 print(f'CPU time (sum phases):  {cpu_total:.0f}s ({cpu_total/60:.1f}min)')
 print(f'Parallelism factor:     {cpu_total/max(wall,1):.1f}x')

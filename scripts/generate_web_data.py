@@ -624,15 +624,28 @@ def load_ghsa_severities(
 # Filtering
 # ---------------------------------------------------------------------------
 
+def _get_deep_verdict(bic: dict) -> dict | None:
+    """Return the best deep-verification verdict dict for a BIC.
+
+    Prefers verification_verdict (new single-model verifier) over
+    tribunal_verdict (old 3-model voting) for backward compatibility.
+    Returns None if neither exists.
+    """
+    vv = bic.get("verification_verdict")
+    if vv:
+        return vv
+    return bic.get("tribunal_verdict")
+
+
 def _effective_verdict(bic: dict) -> str:
     """Return the best available verdict for a BIC.
 
-    Prefers tribunal_verdict (multi-model) over llm_verdict (single-model)
-    when available.  Returns "" if no verdict exists.
+    Prefers deep verification verdict over llm_verdict (screening).
+    Returns "" if no verdict exists.
     """
-    tv = bic.get("tribunal_verdict")
-    if tv and tv.get("final_verdict"):
-        return tv["final_verdict"].upper()
+    dv = _get_deep_verdict(bic)
+    if dv and dv.get("final_verdict"):
+        return dv["final_verdict"].upper()
     llm_v = bic.get("llm_verdict")
     if llm_v and llm_v.get("verdict"):
         return llm_v["verdict"].upper()
@@ -653,15 +666,15 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
         if not has_signals and not has_llm:
             continue  # no AI involvement at all
 
-        tv = bic.get("tribunal_verdict")
-        if tv:
-            # Tribunal is authoritative — if it says CONFIRMED, accept;
+        dv = _get_deep_verdict(bic)
+        if dv:
+            # Deep verification is authoritative — if it says CONFIRMED, accept;
             # if it says UNLIKELY/UNRELATED, skip even if LLM said CONFIRMED.
-            if tv.get("final_verdict", "").upper() == "CONFIRMED":
+            if dv.get("final_verdict", "").upper() == "CONFIRMED":
                 return False
             continue
 
-        # No tribunal — fall back to LLM verdict
+        # No deep verification — fall back to LLM verdict
         llm_v = bic.get("llm_verdict")
         if llm_v and llm_v.get("final_verdict", llm_v.get("verdict", "")).upper() == "CONFIRMED":
             return False
@@ -770,7 +783,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
     llm_v = bic.get("llm_verdict")
-    tv = bic.get("tribunal_verdict")
+    tv = _get_deep_verdict(bic)
     entry: dict = {
         "sha": commit.get("sha", ""),
         "author": commit.get("author_name", ""),
@@ -860,24 +873,23 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     return entry
 
 
-_TRIBUNAL_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED", "UNLIKELY"})
+_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED", "UNLIKELY"})
 
 
 def _bic_dict_is_excluded(bic: dict) -> bool:
     """Return True if this BIC dict should be excluded from AI confidence scoring.
 
     Dict-based mirror of ``_bic_is_excluded()`` in pipeline.py.
-    Tribunal verdict is authoritative and checked first.
+    Deep verification verdict is authoritative and checked first.
     """
-    # Tribunal is authoritative — check it first (mirrors pipeline._bic_is_excluded)
-    tv = bic.get("tribunal_verdict")
-    if tv:
-        tv_final = (tv.get("final_verdict") or "").upper()
-        if tv_final in _TRIBUNAL_EXCLUSION_VERDICTS_DICT:
+    dv = _get_deep_verdict(bic)
+    if dv:
+        dv_final = (dv.get("final_verdict") or "").upper()
+        if dv_final in _EXCLUSION_VERDICTS_DICT:
             return True
-        # Tribunal CONFIRMED or other → not excluded, even if LLM said UNRELATED
+        # CONFIRMED or other → not excluded, even if LLM said UNRELATED
         return False
-    # No tribunal — fall back to LLM verdict
+    # No deep verification — fall back to LLM verdict
     llm_v = bic.get("llm_verdict")
     if llm_v and llm_v.get("verdict") == "UNRELATED":
         return True
@@ -1030,12 +1042,12 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by from tribunal + LLM verdicts and manual reviews
+    # Compute verified_by from deep verification + LLM verdicts and manual reviews
     models: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
-        tv = bic.get("tribunal_verdict")
-        if tv:
-            for av in tv.get("agent_verdicts", []):
+        dv = _get_deep_verdict(bic)
+        if dv:
+            for av in dv.get("agent_verdicts", []):
                 if av.get("model"):
                     models.add(av["model"])
         llm_v = bic.get("llm_verdict")
@@ -1067,10 +1079,10 @@ def build_cve_entry(
             if how_introduced or root_cause:
                 break
 
-        # Fallback: use tribunal's CONFIRMED agent reasoning
-        tv = bic.get("tribunal_verdict")
-        if tv and tv.get("final_verdict", "").upper() == "CONFIRMED" and not how_introduced:
-            for av in tv.get("agent_verdicts", []):
+        # Fallback: use deep verification's CONFIRMED agent reasoning
+        dv = _get_deep_verdict(bic)
+        if dv and dv.get("final_verdict", "").upper() == "CONFIRMED" and not how_introduced:
+            for av in dv.get("agent_verdicts", []):
                 if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
                     how_introduced = av["reasoning"]
                     break

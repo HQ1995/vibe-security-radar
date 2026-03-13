@@ -2,9 +2,9 @@
 """CVE target selection for independent audit.
 
 Selects an unaudited CVE from cached results, prioritizing:
-  1. Tribunal-confirmed (on website, FP hurts credibility)
-  2. Tribunal-overturned (tribunal said no but LLM said yes -- possible FN)
-  3. Unverified (has AI signals, no tribunal yet)
+  1. Verifier-confirmed (on website, FP hurts credibility)
+  2. Verifier-overturned (verifier said no but LLM said yes -- possible FN)
+  3. Unverified (has AI signals, no deep verification yet)
 
 Usage:
   audit_select.py              # auto-pick next unaudited CVE
@@ -36,10 +36,13 @@ def main():
         for f in json.loads(audit_path.read_text()):
             audited.add(f.get('cve_id', ''))
 
+    def _get_deep_verdict(bic):
+        return bic.get('verification_verdict') or bic.get('tribunal_verdict')
+
     # Bucket unaudited CVEs by priority
-    tribunal_confirmed = []   # Priority 1: on website, FP hurts credibility
-    tribunal_overturned = []  # Priority 2: tribunal said no but LLM said yes -- possible FN
-    unverified = []           # Priority 3: has AI signals, no tribunal yet
+    verified_confirmed = []   # Priority 1: on website, FP hurts credibility
+    verified_overturned = []  # Priority 2: verifier said no but LLM said yes -- possible FN
+    unverified = []           # Priority 3: has AI signals, no deep verification yet
 
     for f in sorted(cache.glob('*.json')):
         try:
@@ -57,29 +60,29 @@ def main():
         if not ai_bics:
             continue
 
-        has_tribunal_confirmed = any(
-            (b.get('tribunal_verdict') or {}).get('final_verdict', '').upper() == 'CONFIRMED'
+        has_verified_confirmed = any(
+            (_get_deep_verdict(b) or {}).get('final_verdict', '').upper() == 'CONFIRMED'
             for b in ai_bics)
-        has_tribunal_denied = any(
-            (b.get('tribunal_verdict') or {}).get('final_verdict', '').upper() in ('UNLIKELY', 'UNRELATED')
+        has_verified_denied = any(
+            (_get_deep_verdict(b) or {}).get('final_verdict', '').upper() in ('UNLIKELY', 'UNRELATED')
             for b in ai_bics)
         has_llm_confirmed = any(
             (b.get('llm_verdict') or {}).get('verdict', '').upper() == 'CONFIRMED'
             for b in ai_bics)
 
-        if has_tribunal_confirmed:
-            tribunal_confirmed.append(cve_id)
-        elif has_tribunal_denied and has_llm_confirmed:
-            tribunal_overturned.append(cve_id)
+        if has_verified_confirmed:
+            verified_confirmed.append(cve_id)
+        elif has_verified_denied and has_llm_confirmed:
+            verified_overturned.append(cve_id)
         elif has_llm_confirmed:
             unverified.append(cve_id)
 
-    random.shuffle(tribunal_confirmed)
-    random.shuffle(tribunal_overturned)
+    random.shuffle(verified_confirmed)
+    random.shuffle(verified_overturned)
     random.shuffle(unverified)
 
-    print(f'Unaudited: {len(tribunal_confirmed)} tribunal-confirmed, {len(tribunal_overturned)} overturned, {len(unverified)} unverified')
-    pick = (tribunal_confirmed or tribunal_overturned or unverified or [None])[0]
+    print(f'Unaudited: {len(verified_confirmed)} verified-confirmed, {len(verified_overturned)} overturned, {len(unverified)} unverified')
+    pick = (verified_confirmed or verified_overturned or unverified or [None])[0]
     if pick:
         print(f'Selected: {pick}')
     else:

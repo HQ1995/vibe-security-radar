@@ -16,7 +16,7 @@ If a CVE ID was provided, use it. Otherwise, use the audit queue script for smar
 python3 scripts/audit_queue.py
 ```
 
-This scores candidates by FP risk signals (tribunal-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
+This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
 
 If the script is unavailable, fall back to this selection logic:
 
@@ -33,10 +33,14 @@ if audit_path.exists():
     for f in json.loads(audit_path.read_text()):
         audited.add(f.get('cve_id',''))
 
+# Helper: prefer verification_verdict over tribunal_verdict (backward compat)
+def _dv(b):
+    return b.get('verification_verdict') or b.get('tribunal_verdict')
+
 # Bucket unaudited CVEs by priority
-tribunal_confirmed = []  # Priority 1: on website, FP hurts credibility
-tribunal_overturned = [] # Priority 2: tribunal said no but LLM said yes — possible FN
-unverified = []          # Priority 3: has AI signals, no tribunal yet
+verified_confirmed = []  # Priority 1: on website, FP hurts credibility
+verified_overturned = [] # Priority 2: verifier said no but LLM said yes — possible FN
+unverified = []          # Priority 3: has AI signals, no deep verification yet
 
 for f in sorted(cache.glob('*.json')):
     try: data = json.loads(f.read_text())
@@ -49,25 +53,25 @@ for f in sorted(cache.glob('*.json')):
                if b.get('commit',{}).get('ai_signals')]
     if not ai_bics: continue
 
-    has_tribunal_confirmed = any(
-        (b.get('tribunal_verdict') or {}).get('final_verdict','').upper() == 'CONFIRMED'
+    has_verified_confirmed = any(
+        (_dv(b) or {}).get('final_verdict','').upper() == 'CONFIRMED'
         for b in ai_bics)
-    has_tribunal_denied = any(
-        (b.get('tribunal_verdict') or {}).get('final_verdict','').upper() in ('UNLIKELY','UNRELATED')
+    has_verified_denied = any(
+        (_dv(b) or {}).get('final_verdict','').upper() in ('UNLIKELY','UNRELATED')
         for b in ai_bics)
     has_llm_confirmed = any(
         (b.get('llm_verdict') or {}).get('verdict','').upper() == 'CONFIRMED'
         for b in ai_bics)
 
-    if has_tribunal_confirmed:
-        tribunal_confirmed.append(cve_id)
-    elif has_tribunal_denied and has_llm_confirmed:
-        tribunal_overturned.append(cve_id)
+    if has_verified_confirmed:
+        verified_confirmed.append(cve_id)
+    elif has_verified_denied and has_llm_confirmed:
+        verified_overturned.append(cve_id)
     elif has_llm_confirmed:
         unverified.append(cve_id)
 
-print(f'Unaudited: {len(tribunal_confirmed)} tribunal-confirmed, {len(tribunal_overturned)} overturned, {len(unverified)} unverified')
-pick = (tribunal_confirmed or tribunal_overturned or unverified or [None])[0]
+print(f'Unaudited: {len(verified_confirmed)} verified-confirmed, {len(verified_overturned)} overturned, {len(unverified)} unverified')
+pick = (verified_confirmed or verified_overturned or unverified or [None])[0]
 if pick: print(f'Selected: {pick}')
 else: print('Nothing to audit.')
 "
@@ -81,7 +85,7 @@ Load the cached result from `~/.cache/cve-analyzer/results/<CVE-ID>.json`. Read 
 
 - `cve_id`, `description`, `severity`, `cwes`
 - `fix_commits` — each has `sha`, `repo_url`, `source`
-- `bug_introducing_commits` — each has `commit` (with `sha`, `author_name`, `ai_signals`), `blamed_file`, `blame_confidence`, `blame_strategy`, `llm_verdict`, `tribunal_verdict`
+- `bug_introducing_commits` — each has `commit` (with `sha`, `author_name`, `ai_signals`), `blamed_file`, `blame_confidence`, `blame_strategy`, `llm_verdict`, `verification_verdict` (or `tribunal_verdict` for old results)
 
 Print a summary of what the pipeline found before starting independent analysis.
 
