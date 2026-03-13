@@ -3,7 +3,6 @@
 
 import json
 import statistics
-import time
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +31,10 @@ def main() -> None:
     )
     signals = 0
     verified_v = 0
+    verdict_counts: Counter[str] = Counter()
+    verdict_confidence: Counter[str] = Counter()
+    verdict_models: Counter[str] = Counter()
+    tool_calls_list: list[int] = []
     buckets: dict[int, int] = defaultdict(int)
 
     for f in files:
@@ -46,9 +49,9 @@ def main() -> None:
                 phase_times[phase].append(dur)
 
         # Error categories
-        cat = d.get("error_category") or (
-            "success" if d.get("fix_commits") else "no_data"
-        )
+        cat = d.get("error_category") or ""
+        if not cat:
+            cat = "success" if d.get("fix_commits") else "no_data"
         error_cats[cat] += 1
 
         # Fix sources and repo hotspots
@@ -68,8 +71,19 @@ def main() -> None:
         if d.get("ai_signals"):
             signals += 1
         for b in d.get("bug_introducing_commits", []):
-            if b.get("verification_verdict") or b.get("tribunal_verdict"):
+            vv = b.get("verification_verdict")
+            tv = b.get("tribunal_verdict")
+            if vv or tv:
                 verified_v += 1
+            if vv:
+                verdict_counts[vv.get("verdict", "?")] += 1
+                verdict_confidence[vv.get("confidence", "?")] += 1
+                verdict_models[vv.get("model", "?")] += 1
+                tc = vv.get("tool_calls_made", 0)
+                if tc:
+                    tool_calls_list.append(tc)
+            elif tv:
+                verdict_counts["tribunal:" + tv.get("verdict", "?")] += 1
 
         # Timeline bucket
         m = int((f.stat().st_mtime - first_t) / 60)
@@ -88,6 +102,30 @@ def main() -> None:
     print(f"  Signals:    {signals}")
     print(f"  Verified:   {verified_v}")
     print()
+
+    if verdict_counts:
+        print("=== Deep Verify ===")
+        for v, n in verdict_counts.most_common():
+            print(f"  {v:25s} {n:>5d}")
+        if verdict_confidence:
+            conf_str = ", ".join(
+                f"{c} {n}" for c, n in verdict_confidence.most_common()
+            )
+            print(f"  confidence:  {conf_str}")
+        if verdict_models:
+            model_str = ", ".join(
+                f"{m} ({n})" for m, n in verdict_models.most_common()
+            )
+            print(f"  models:      {model_str}")
+        if tool_calls_list:
+            tc_sorted = sorted(tool_calls_list)
+            tc_mean = statistics.mean(tc_sorted)
+            tc_p50 = tc_sorted[len(tc_sorted) // 2]
+            tc_p95 = tc_sorted[min(int(len(tc_sorted) * 0.95), len(tc_sorted) - 1)]
+            print(
+                f"  tool calls:  mean {tc_mean:.0f}, p50 {tc_p50}, p95 {tc_p95} ({len(tool_calls_list)} BICs)"
+            )
+        print()
 
     print("=== Timeline ===")
     print(f"  Wall time (first→last result): {wall:.0f}s ({wall / 60:.1f}min)")
@@ -166,6 +204,20 @@ def main() -> None:
         if p95_b > mean_b * 5:
             issues.append(
                 f"Blame p95 ({p95_b:.1f}s) >> mean ({mean_b:.1f}s) — outlier repos dominating"
+            )
+
+    if "Phase D (deep verify)" in phase_times:
+        dv = phase_times["Phase D (deep verify)"]
+        dv_sorted = sorted(dv)
+        dv_mean = statistics.mean(dv_sorted)
+        dv_total = sum(dv_sorted)
+        confirmed = verdict_counts.get("CONFIRMED", 0)
+        total_v = sum(verdict_counts.values())
+        if total_v > 0:
+            fp_rate = (1 - confirmed / total_v) * 100
+            issues.append(
+                f"Deep verify: {total_v} BICs checked, {confirmed} confirmed ({fp_rate:.0f}% filtered), "
+                f"mean {dv_mean:.0f}s/CVE, {dv_total / 60:.0f}min total"
             )
 
     no_fix_pct = error_cats.get("no_fix_commits", 0) * 100 // max(total, 1)
