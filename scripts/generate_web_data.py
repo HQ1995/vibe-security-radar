@@ -151,6 +151,8 @@ def _determine_languages(
 # ---------------------------------------------------------------------------
 
 # Metric value weights from the CVSS v3.1 specification
+_CONF_MAP = {"high": 0.95, "medium": 0.7, "low": 0.4}
+
 _AV = {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.20}
 _AC = {"L": 0.77, "H": 0.44}
 _PR_UNCHANGED = {"N": 0.85, "L": 0.62, "H": 0.27}
@@ -845,7 +847,6 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
             # New verifier format: single-model flat structure.
             # Map string confidence ("high"/"medium"/"low") to numeric
             # for web UI compatibility (formatConfidence expects 0-1).
-            _CONF_MAP = {"high": 0.95, "medium": 0.7, "low": 0.4}
             raw_conf = tv.get("confidence", "")
             numeric_conf = _CONF_MAP.get(str(raw_conf).lower(), raw_conf)
             entry["tribunal_verdict"] = {
