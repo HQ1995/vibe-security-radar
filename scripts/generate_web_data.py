@@ -630,18 +630,14 @@ def _get_deep_verdict(bic: dict) -> dict | None:
     Prefers verification_verdict (new single-model verifier) over
     tribunal_verdict (old 3-model voting) for backward compatibility.
 
-    Normalizes the key: verification_verdict uses ``"verdict"`` while
-    tribunal_verdict uses ``"final_verdict"``.  We add ``"final_verdict"``
-    to verification dicts so all downstream consumers can use one key.
-
-    Returns None if neither exists.
+    Returns a *copy* with ``"final_verdict"`` normalized so all downstream
+    consumers can use one key (verification uses ``"verdict"``, tribunal
+    uses ``"final_verdict"``).  Returns None if neither exists.
     """
     vv = bic.get("verification_verdict")
     if vv:
-        # Normalize: add "final_verdict" alias so callers don't need to
-        # know which format they're dealing with.
         if "final_verdict" not in vv and "verdict" in vv:
-            vv["final_verdict"] = vv["verdict"]
+            return {**vv, "final_verdict": vv["verdict"]}
         return vv
     return bic.get("tribunal_verdict")
 
@@ -666,8 +662,8 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
 
     Checks ALL BICs — not just those with ai_signals still present,
     since pipeline confidence scoring may clear signals on BICs that
-    tribunal later confirms.  Tribunal verdict takes precedence over
-    LLM verdict when both exist.
+    deep verification later confirms.  Deep verdict takes precedence
+    over LLM verdict when both exist.
     """
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
@@ -695,11 +691,12 @@ def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
 ) -> list[dict]:
-    """Keep results with a CONFIRMED tribunal/LLM verdict.
+    """Keep results with a CONFIRMED deep-verification/LLM verdict.
 
-    Tribunal CONFIRMED bypasses confidence filtering — if 3 models
-    agree it's real, a mechanical formula shouldn't override that.
-    For CVEs without tribunal, fall back to confidence threshold.
+    A CONFIRMED deep verdict bypasses confidence filtering — if the
+    verifier confirms it's real, a mechanical formula shouldn't
+    override that.  For CVEs without deep verification, fall back to
+    confidence threshold.
     """
     filtered = []
     excluded_by_verdict = 0
@@ -845,17 +842,22 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
                 ],
             }
         else:
-            # New verifier format: single-model flat structure
+            # New verifier format: single-model flat structure.
+            # Map string confidence ("high"/"medium"/"low") to numeric
+            # for web UI compatibility (formatConfidence expects 0-1).
+            _CONF_MAP = {"high": 0.95, "medium": 0.7, "low": 0.4}
+            raw_conf = tv.get("confidence", "")
+            numeric_conf = _CONF_MAP.get(str(raw_conf).lower(), raw_conf)
             entry["tribunal_verdict"] = {
                 "verdict": tv.get("final_verdict", ""),
-                "confidence": tv.get("confidence", ""),
+                "confidence": numeric_conf,
                 "models": [tv["model"]] if tv.get("model") else [],
                 "agent_verdicts": [
                     {
                         "model": tv.get("model", ""),
                         "verdict": tv.get("final_verdict", ""),
                         "reasoning": tv.get("reasoning", ""),
-                        "confidence": tv.get("confidence", ""),
+                        "confidence": numeric_conf,
                         "tool_calls_made": tv.get("tool_calls_made", 0),
                         "evidence": tv.get("evidence", []),
                     }

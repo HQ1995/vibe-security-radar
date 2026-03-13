@@ -70,7 +70,7 @@ def _get_deep_verdict(bic):
     vv = bic.get("verification_verdict")
     if vv:
         if "final_verdict" not in vv and "verdict" in vv:
-            vv["final_verdict"] = vv["verdict"]
+            return {**vv, "final_verdict": vv["verdict"]}
         return vv
     return bic.get("tribunal_verdict")
 
