@@ -32,65 +32,7 @@ python3 scripts/audit_queue.py
 
 This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
 
-If the script is unavailable, fall back to this selection logic:
-
-```python
-python3 -c "
-import json, os; from pathlib import Path
-
-cache = Path.home() / '.cache/cve-analyzer/results'
-audit_path = Path.home() / '.cache/cve-analyzer/audit/findings.json'
-
-# Load already-audited CVEs
-audited = set()
-if audit_path.exists():
-    for f in json.loads(audit_path.read_text()):
-        audited.add(f.get('cve_id',''))
-
-# Helper: get deep verdict (verification_verdict or tribunal_verdict fallback)
-# verification uses 'verdict' key, tribunal uses 'final_verdict' key
-def _get_deep_verdict(b):
-    vv = b.get('verification_verdict')
-    if vv:
-        return (vv.get('verdict') or '').upper()
-    tv = b.get('tribunal_verdict')
-    if tv:
-        return (tv.get('final_verdict') or '').upper()
-    return ''
-
-# Bucket unaudited CVEs by priority
-verified_confirmed = []  # Priority 1: on website, FP hurts credibility
-verified_overturned = [] # Priority 2: verifier said no but screening said yes — possible FN
-no_deep_verify = []      # Priority 3: has AI signals, no deep verification yet
-
-for f in sorted(cache.glob('*.json')):
-    try: data = json.loads(f.read_text())
-    except: continue
-    cve_id = data.get('cve_id', f.stem)
-    if cve_id in audited: continue
-    if data.get('error'): continue
-
-    ai_bics = [b for b in data.get('bug_introducing_commits', [])
-               if b.get('commit',{}).get('ai_signals')]
-    if not ai_bics: continue
-
-    has_deep_confirmed = any(_get_deep_verdict(b) == 'CONFIRMED' for b in ai_bics)
-    has_deep_denied = any(_get_deep_verdict(b) in ('UNLIKELY','UNRELATED') for b in ai_bics)
-    has_any_deep = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in ai_bics)
-
-    if has_deep_confirmed:
-        verified_confirmed.append(cve_id)
-    elif has_deep_denied:
-        verified_overturned.append(cve_id)
-    elif not has_any_deep:
-        no_deep_verify.append(cve_id)
-
-print(f'Unaudited: {len(verified_confirmed)} deep-confirmed, {len(verified_overturned)} deep-denied, {len(no_deep_verify)} no-deep-verify')
-pick = (verified_confirmed or verified_overturned or no_deep_verify or [None])[0]
-if pick: print(f'Selected: {pick}')
-else: print('Nothing to audit.')
-"
-```
+If the script is unavailable, manually pick the first unaudited CVE with AI signals from `~/.cache/cve-analyzer/results/`, prioritizing deep-confirmed over deep-denied over no-deep-verify. Cross-check against `~/.cache/cve-analyzer/audit/findings.json` to skip already-audited CVEs.
 
 If nothing to audit, report that and stop.
 
@@ -287,9 +229,37 @@ Save the structured finding to `~/.cache/cve-analyzer/audit/findings.json` (crea
   },
   "disagreement_phase": null,
   "root_cause": null,
-  "improvement_suggestions": []
+  "improvement_suggestions": [],
+  "fix_applied": null
 }
 ```
+
+## Phase 7b: Offer Immediate Fix (if actionable)
+
+If `improvement_suggestions` contains changes that could improve the pipeline (algorithm bugs, missing patterns, incorrect logic), ask the user:
+
+> **Actionable improvement found:** <one-line summary>
+> Want me to fix this now? (The fix will be recorded in this finding so it won't clutter the Phase 8 pattern report.)
+
+If the user says yes:
+
+1. Implement the fix in the pipeline code
+2. Commit with a message referencing the CVE (e.g., `fix: <description>, found via /audit CVE-XXXX-XXXXX`)
+3. Update the finding's `fix_applied` field:
+
+```json
+{
+  "fix_applied": {
+    "commit": "<sha>",
+    "description": "Brief description of what was changed",
+    "files": ["path/to/changed/file.py"]
+  }
+}
+```
+
+If the user says no or the suggestions are minor observations (not code bugs), skip this phase.
+
+Phase 8's pattern analysis should **exclude findings where `fix_applied` is set** from improvement tallies, since those are already resolved.
 
 ## Phase 8: Pattern Analysis (every 10 findings)
 
@@ -305,17 +275,23 @@ print(f'Total findings: {len(findings)}')
 agree = sum(1 for f in findings if f.get('agreement'))
 print(f'Agreement rate: {agree}/{len(findings)} ({100*agree/len(findings):.0f}%)')
 
-# Disagreements by phase
+# Exclude already-fixed findings from improvement tallies
+unfixed = [f for f in findings if not f.get('fix_applied')]
+fixed = len(findings) - len(unfixed)
+if fixed:
+    print(f'Already fixed: {fixed} (excluded from improvement counts below)')
+
+# Disagreements by phase (unfixed only)
 from collections import Counter
-phases = Counter(f.get('disagreement_phase') for f in findings if not f.get('agreement'))
+phases = Counter(f.get('disagreement_phase') for f in unfixed if not f.get('agreement'))
 print(f'Disagreements by phase: {dict(phases)}')
 
 # Signal type issues
-signals = Counter(f['stages'].get('signal_verification') for f in findings)
+signals = Counter(f['stages'].get('signal_verification') for f in unfixed)
 print(f'Signal verification: {dict(signals)}')
 
 # Blame accuracy
-blames = Counter(f['stages'].get('blame_agreement') for f in findings)
+blames = Counter(f['stages'].get('blame_agreement') for f in unfixed)
 print(f'Blame agreement: {dict(blames)}')
 "
 ```
