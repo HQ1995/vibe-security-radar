@@ -54,6 +54,10 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 - **After major changes**: Run `/simplify` to check for reuse/quality issues, and use code-review agent to catch problems early.
 - Run code review and fixes in sub-agents to keep the main context window clean.
 
+## Bug Fixes
+
+Don't patch symptoms. Before writing a fix, trace the bug to its root cause — figure out why it happened, not just where it surfaced. Consider whether the design or data flow made this bug likely, and fix at that level. A one-line band-aid that doesn't address the underlying problem just moves the bug somewhere else.
+
 ## Commit Messages
 
 Use `/humanizer` to review commit messages before committing. Keep messages natural and concise.
