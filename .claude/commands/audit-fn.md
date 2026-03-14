@@ -2,7 +2,7 @@
 
 Investigate CVEs where the pipeline found **no AI signals** to check if AI involvement was missed. This catches blind spots in pattern matching, squash-merge signal loss, and unknown AI tools.
 
-**Arguments**: `$ARGUMENTS` (a CVE ID — required, use `audit_queue.py --fn` to pick one)
+**Arguments**: `$ARGUMENTS` (a CVE ID — required)
 
 ## Why This Matters
 

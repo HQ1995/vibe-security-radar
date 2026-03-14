@@ -6,19 +6,25 @@ Independently verify a CVE analysis result by reading actual code, diffs, and ad
 
 ## Why This Matters
 
-The pipeline is mechanical: it runs `git blame`, matches AI signal patterns, and votes. But it can't reason about whether the blamed code actually contains the vulnerable pattern, or whether a squash-decomposed AI signal really means the AI commit introduced the bug. This audit fills that gap and accumulates findings to drive pipeline improvements.
+The pipeline is mechanical: it runs `git blame`, matches AI signal patterns, and runs a single-model deep verifier. But it can't reason about whether the blamed code actually contains the vulnerable pattern, or whether a squash-decomposed AI signal really means the AI commit introduced the bug. This audit fills that gap and accumulates findings to drive pipeline improvements.
+
+## Critical: Bug Introduction vs Fix Authorship
+
+**This audit investigates whether AI-authored code INTRODUCED the vulnerability, NOT whether AI authored the fix.** A common audit error is seeing an AI-authored fix commit (e.g., copilot-swe-agent[bot] submitting a security patch) and concluding "AI involved = CONFIRMED". That is wrong — the question is always: did AI write the code that CAUSED the bug?
+
+## Pipeline Architecture
+
+The pipeline has a 3-tier verdict system:
+
+1. **`verification_verdict`** (deep verifier) — authoritative, single-model investigator with tool access
+2. **`tribunal_verdict`** (legacy) — old 3-model voting, kept for backward compatibility
+3. **`llm_verdict`** (screening) — **advisory only**, never gates deep verify, never excludes from scoring
+
+Only `UNRELATED` verdicts from verification/tribunal exclude a BIC. `UNLIKELY` means "not sure" — it lowers confidence but does NOT exclude. Screening verdicts never exclude.
 
 ## Phase 0: Select Target
 
-If a CVE ID was provided, use it. Otherwise, use the audit queue script for smart prioritization:
-
-```bash
-python3 scripts/audit_queue.py
-```
-
-This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
-
-If the script is unavailable, fall back to this selection logic:
+If a CVE ID was provided, use it. Otherwise, use this selection logic to pick the highest-priority unaudited CVE:
 
 ```python
 python3 -c "
@@ -33,20 +39,21 @@ if audit_path.exists():
     for f in json.loads(audit_path.read_text()):
         audited.add(f.get('cve_id',''))
 
-# Helper: prefer verification_verdict over tribunal_verdict (backward compat)
-# Normalizes key: verification uses "verdict", tribunal uses "final_verdict"
-def _dv(b):
+# Helper: get deep verdict (verification_verdict or tribunal_verdict fallback)
+# verification uses 'verdict' key, tribunal uses 'final_verdict' key
+def _get_deep_verdict(b):
     vv = b.get('verification_verdict')
     if vv:
-        if 'final_verdict' not in vv and 'verdict' in vv:
-            vv['final_verdict'] = vv['verdict']
-        return vv
-    return b.get('tribunal_verdict')
+        return (vv.get('verdict') or '').upper()
+    tv = b.get('tribunal_verdict')
+    if tv:
+        return (tv.get('final_verdict') or '').upper()
+    return ''
 
 # Bucket unaudited CVEs by priority
 verified_confirmed = []  # Priority 1: on website, FP hurts credibility
-verified_overturned = [] # Priority 2: verifier said no but LLM said yes — possible FN
-unverified = []          # Priority 3: has AI signals, no deep verification yet
+verified_overturned = [] # Priority 2: verifier said no but screening said yes — possible FN
+no_deep_verify = []      # Priority 3: has AI signals, no deep verification yet
 
 for f in sorted(cache.glob('*.json')):
     try: data = json.loads(f.read_text())
@@ -59,25 +66,19 @@ for f in sorted(cache.glob('*.json')):
                if b.get('commit',{}).get('ai_signals')]
     if not ai_bics: continue
 
-    has_verified_confirmed = any(
-        (_dv(b) or {}).get('final_verdict','').upper() == 'CONFIRMED'
-        for b in ai_bics)
-    has_verified_denied = any(
-        (_dv(b) or {}).get('final_verdict','').upper() in ('UNLIKELY','UNRELATED')
-        for b in ai_bics)
-    has_llm_confirmed = any(
-        (b.get('llm_verdict') or {}).get('verdict','').upper() == 'CONFIRMED'
-        for b in ai_bics)
+    has_deep_confirmed = any(_get_deep_verdict(b) == 'CONFIRMED' for b in ai_bics)
+    has_deep_denied = any(_get_deep_verdict(b) in ('UNLIKELY','UNRELATED') for b in ai_bics)
+    has_any_deep = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in ai_bics)
 
-    if has_verified_confirmed:
+    if has_deep_confirmed:
         verified_confirmed.append(cve_id)
-    elif has_verified_denied and has_llm_confirmed:
+    elif has_deep_denied:
         verified_overturned.append(cve_id)
-    elif has_llm_confirmed:
-        unverified.append(cve_id)
+    elif not has_any_deep:
+        no_deep_verify.append(cve_id)
 
-print(f'Unaudited: {len(verified_confirmed)} verified-confirmed, {len(verified_overturned)} overturned, {len(unverified)} unverified')
-pick = (verified_confirmed or verified_overturned or unverified or [None])[0]
+print(f'Unaudited: {len(verified_confirmed)} deep-confirmed, {len(verified_overturned)} deep-denied, {len(no_deep_verify)} no-deep-verify')
+pick = (verified_confirmed or verified_overturned or no_deep_verify or [None])[0]
 if pick: print(f'Selected: {pick}')
 else: print('Nothing to audit.')
 "
@@ -91,7 +92,12 @@ Load the cached result from `~/.cache/cve-analyzer/results/<CVE-ID>.json`. Read 
 
 - `cve_id`, `description`, `severity`, `cwes`
 - `fix_commits` — each has `sha`, `repo_url`, `source`
-- `bug_introducing_commits` — each has `commit` (with `sha`, `author_name`, `ai_signals`), `blamed_file`, `blame_confidence`, `blame_strategy`, `llm_verdict`, `verification_verdict` (or `tribunal_verdict` for old results)
+- `bug_introducing_commits` — each has `commit` (with `sha`, `author_name`, `ai_signals`), `blamed_file`, `blame_confidence`, `blame_strategy`, plus verdict fields:
+  - `llm_verdict` — screening (advisory only, never authoritative)
+  - `verification_verdict` — deep verifier (authoritative, dict with `verdict`/`confidence`/`model`)
+  - `tribunal_verdict` — legacy 3-model voting (backward compat, dict with `final_verdict`)
+
+To determine the pipeline's effective verdict for a BIC, check `verification_verdict.verdict` first, fall back to `tribunal_verdict.final_verdict`. Ignore `llm_verdict` for exclusion decisions (it's advisory).
 
 Print a summary of what the pipeline found before starting independent analysis.
 
@@ -228,8 +234,15 @@ Now compare your findings with the pipeline's at every layer:
 | Fix commit validity | CORRECT/PARTIAL/WRONG | (assumed correct) | |
 | Blame (BIC identification) | your BICs | pipeline's BICs | SAME/DIFFERENT |
 | AI signals | REAL/INHERITED/FALSE | detected signals | |
-| Causality verdict | your verdict | LLM verdict | AGREE/DISAGREE |
-| | | Tribunal verdict | AGREE/DISAGREE |
+| Causality verdict | your verdict | Screening (advisory) | AGREE/DISAGREE |
+| | | Deep verify verdict | AGREE/DISAGREE |
+
+**Determining the pipeline's effective verdict**: Use `verification_verdict.verdict` if present, else `tribunal_verdict.final_verdict`. Screening (`llm_verdict`) is advisory only — note it but don't treat it as the pipeline's verdict.
+
+**Common audit pitfalls to avoid**:
+- Don't confuse AI fix authorship with AI bug introduction (see top of this skill)
+- Don't confuse bundled fix commits — verify the BIC relates to the *specific* CVE vulnerability, not just any bug the fix commit touches
+- Don't trust squash-merge AI signals blindly — check if the specific sub-commit that introduced the vulnerable code has AI signals
 
 For each disagreement, diagnose:
 - **Which pipeline phase** went wrong?
@@ -240,6 +253,14 @@ For each disagreement, diagnose:
 
 Save the structured finding to `~/.cache/cve-analyzer/audit/findings.json` (create the file/directory if needed, append to existing array):
 
+**How to determine `pipeline_verdict`**: Check AI BICs in priority order:
+1. If any BIC has `verification_verdict.verdict` == CONFIRMED → pipeline_verdict = "CONFIRMED"
+2. Else if any BIC has `tribunal_verdict.final_verdict` == CONFIRMED → pipeline_verdict = "CONFIRMED"
+3. If all deep verdicts are UNRELATED → pipeline_verdict = "UNRELATED"
+4. If any deep verdict is UNLIKELY (and none CONFIRMED) → pipeline_verdict = "UNLIKELY"
+5. If no deep verdicts exist → pipeline_verdict = "NO_DEEP_VERIFY"
+6. Screening (`llm_verdict`) is advisory — never use it as `pipeline_verdict`
+
 ```json
 {
   "cve_id": "CVE-XXXX-XXXXX",
@@ -247,7 +268,7 @@ Save the structured finding to `~/.cache/cve-analyzer/audit/findings.json` (crea
   "independent_verdict": "CONFIRMED|UNLIKELY|UNRELATED",
   "confidence": "HIGH|MEDIUM|LOW",
   "fix_commit_valid": true,
-  "pipeline_verdict": "CONFIRMED|UNLIKELY|UNRELATED",
+  "pipeline_verdict": "CONFIRMED|UNLIKELY|UNRELATED|NO_DEEP_VERIFY",
   "agreement": true,
   "stages": {
     "fix_validation": "CORRECT|PARTIAL|WRONG",
@@ -306,7 +327,7 @@ Present results to the user as a structured report:
 ### Summary
 - **CVE**: <id> — <brief description>
 - **Vulnerability**: <type> in <file>
-- **Pipeline verdict**: <verdict> (confidence: <X>)
+- **Pipeline verdict**: <deep verify verdict> (screening: <screening verdict, advisory>)
 - **Independent verdict**: <verdict> (confidence: <X>)
 - **Agreement**: YES/NO
 
@@ -320,7 +341,7 @@ Present results to the user as a structured report:
 <are the signals real, inherited, or false>
 
 ### Causality Chain
-<detailed reasoning about whether the AI code caused the vulnerability>
+<detailed reasoning about whether the AI code INTRODUCED the vulnerability — not whether AI authored the fix>
 
 ### Pipeline Diagnosis
 <if disagreement: what went wrong, which phase, root cause>
