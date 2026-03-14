@@ -42,6 +42,10 @@ DEFAULT_REPOS_DIR = os.path.expanduser("~/.cache/cve-analyzer/repos")
 DEFAULT_OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "web" / "data")
 DEFAULT_MIN_CONFIDENCE = 0.0
 
+# Workflow signal types — AI participated in merge/review but didn't write code.
+# Keep in sync with WORKFLOW_SIGNAL_TYPES in cve_analyzer/models.py.
+_WORKFLOW_SIGNAL_TYPES: frozenset[str] = frozenset({"merge_workflow", "ai_review_bot"})
+
 # File extension → language mapping for language analytics
 EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".py": "Python",
@@ -952,8 +956,13 @@ def _recompute_ai_confidence(result: dict) -> float:
             continue
         if _bic_dict_is_excluded(bic):
             continue
+        # Only consider authorship signals — workflow signals don't prove
+        # AI wrote the code (mirrored from pipeline.py).
+        authorship = [s for s in signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        if not authorship:
+            continue
         ai_bic_count += 1
-        best_signal = max(s.get("confidence", 0) for s in signals)
+        best_signal = max(s.get("confidence", 0) for s in authorship)
         score = best_signal * bic.get("blame_confidence", 0)
         if score > max_score:
             max_score = score
@@ -962,9 +971,10 @@ def _recompute_ai_confidence(result: dict) -> float:
     # Indirect-only penalty (mirrored from pipeline.py)
     if max_score > 0 and best_bic is not None:
         best_signals = best_bic.get("commit", {}).get("ai_signals", [])
-        if best_signals and all(
+        best_authorship = [s for s in best_signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        if best_authorship and all(
             s.get("signal_type", "").startswith("squash_decomposed")
-            for s in best_signals
+            for s in best_authorship
         ):
             max_score *= 0.25  # _INDIRECT_ONLY_PENALTY — keep in sync with pipeline.py
 
