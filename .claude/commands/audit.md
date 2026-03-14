@@ -24,7 +24,15 @@ Only `UNRELATED` verdicts from verification/tribunal exclude a BIC. `UNLIKELY` m
 
 ## Phase 0: Select Target
 
-If a CVE ID was provided, use it. Otherwise, use this selection logic to pick the highest-priority unaudited CVE:
+If a CVE ID was provided, use it. Otherwise, use `audit_queue.py` for smart prioritization:
+
+```bash
+python3 scripts/audit_queue.py
+```
+
+This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
+
+If the script is unavailable, fall back to this selection logic:
 
 ```python
 python3 -c "
@@ -265,6 +273,7 @@ Save the structured finding to `~/.cache/cve-analyzer/audit/findings.json` (crea
 {
   "cve_id": "CVE-XXXX-XXXXX",
   "timestamp": "ISO-8601",
+  "audit_type": "fp_detection",
   "independent_verdict": "CONFIRMED|UNLIKELY|UNRELATED",
   "confidence": "HIGH|MEDIUM|LOW",
   "fix_commit_valid": true,
@@ -361,7 +370,7 @@ When audit findings led to pipeline code changes that have since been implemente
 1. Re-run the analyzer on the triggering CVE with `--no-cache`:
 ```bash
 cd ~/agents/ai-slop/cve-analyzer
-uv run cve-analyzer --no-cache analyze <CVE-ID>
+uv run cve-analyzer --no-cache analyze <CVE-ID> --llm-verify --force-verify
 ```
 
 2. Load the new result and compare against the original audit finding:

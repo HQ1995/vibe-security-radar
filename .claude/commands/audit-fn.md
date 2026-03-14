@@ -2,7 +2,11 @@
 
 Investigate CVEs where the pipeline found **no AI signals** to check if AI involvement was missed. This catches blind spots in pattern matching, squash-merge signal loss, and unknown AI tools.
 
-**Arguments**: `$ARGUMENTS` (a CVE ID — required)
+**Arguments**: `$ARGUMENTS` (a CVE ID, or empty to auto-pick from FN queue)
+
+## Critical: Bug Introduction vs Fix Authorship
+
+**This audit investigates whether AI wrote the code that INTRODUCED the vulnerability.** Even when you discover hidden AI signals on a commit, verify that the AI-authored code is the *bug-introducing* code, not the *fix* code. Finding an AI co-author on a security patch does NOT mean AI introduced the bug.
 
 ## Why This Matters
 
@@ -13,6 +17,16 @@ The pipeline detects AI signals via co-author trailers, author emails, and commi
 - Variant co-author formats the regex doesn't catch
 
 Only by independently investigating "clean" CVEs can we measure and reduce the false negative rate.
+
+## Phase 0: Select Target
+
+If a CVE ID was provided, use it. Otherwise, use the FN audit queue:
+
+```bash
+python3 scripts/audit_queue.py --fn
+```
+
+This scores CVEs without AI signals by false-negative likelihood (author overlap with known AI users, squash-heavy repos, etc.) and recommends the highest-priority target.
 
 ## Phase 1: Load Cached Result
 

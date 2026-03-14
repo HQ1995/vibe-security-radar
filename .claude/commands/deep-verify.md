@@ -24,7 +24,7 @@ If neither is set, stop and tell the user — verification will silently skip wi
 
 ## Phase 1: Identify Unverified TPs
 
-Find TPs with confirmed BICs that lack deep verification:
+Find BICs with AI signals that lack deep verification. Any BIC with AI signals should be deep-verified, regardless of screening verdict (screening is advisory only):
 
 ```python
 python3 -c "
@@ -39,12 +39,13 @@ for f in sorted(cache.glob('*.json')):
         data = json.loads(f.read_text())
     except (json.JSONDecodeError, ValueError):
         continue
-    confirmed = [b for b in data.get('bug_introducing_commits', [])
-                 if (b.get('llm_verdict') or {}).get('verdict','').upper() == 'CONFIRMED']
-    if not confirmed:
+    # Select BICs with AI signals (the actual gating criterion for deep verify)
+    ai_bics = [b for b in data.get('bug_introducing_commits', [])
+               if b.get('commit', {}).get('ai_signals')]
+    if not ai_bics:
         continue
     cve_id = data.get('cve_id', f.stem)
-    has_verified = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in confirmed)
+    has_verified = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in ai_bics)
     if has_verified:
         verified.append(cve_id)
     else:
@@ -136,4 +137,4 @@ Each verification invokes 1 LLM agent making ~10-25 tool calls. Rough estimates 
 - ~1,000-3,000 output tokens (reasoning + verdict)
 - Total: ~6,000-18,000 tokens per TP
 
-For 92 TPs: ~600K-1.7M tokens total. At typical API pricing, expect $1-5.
+Scale linearly with your TP count. At typical API pricing, expect ~$0.05-0.10 per TP.
