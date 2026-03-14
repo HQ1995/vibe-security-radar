@@ -660,12 +660,13 @@ def _effective_verdict(bic: dict) -> str:
 
 
 def _has_no_confirmed_verdict(result: dict) -> bool:
-    """Return True if no BIC has a CONFIRMED verdict with AI involvement.
+    """Return True if no BIC has a non-UNRELATED verdict with AI involvement.
 
-    Checks ALL BICs — not just those with ai_signals still present,
-    since pipeline confidence scoring may clear signals on BICs that
-    deep verification later confirms.  Deep verdict takes precedence
-    over LLM verdict when both exist.
+    Only UNRELATED verdicts (from deep verify) are treated as definitive
+    rejection.  CONFIRMED and UNLIKELY BICs both pass — UNLIKELY means
+    "not sure", which is not grounds for exclusion.
+
+    BICs with no verdict at all also pass (benefit of the doubt).
     """
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
@@ -675,16 +676,14 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
 
         dv = _get_deep_verdict(bic)
         if dv:
-            # Deep verification is authoritative — if it says CONFIRMED, accept;
-            # if it says UNLIKELY/UNRELATED, skip even if LLM said CONFIRMED.
-            if dv.get("final_verdict", "").upper() == "CONFIRMED":
-                return False
-            continue
-
-        # No deep verification — fall back to LLM verdict
-        llm_v = bic.get("llm_verdict")
-        if llm_v and llm_v.get("final_verdict", llm_v.get("verdict", "")).upper() == "CONFIRMED":
+            dv_verdict = (dv.get("final_verdict") or "").upper()
+            # Deep verify is authoritative: UNRELATED → skip, anything else → accept
+            if dv_verdict == "UNRELATED":
+                continue
             return False
+
+        # No deep verification — accept (benefit of the doubt)
+        return False
 
     return True
 
@@ -907,7 +906,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     return entry
 
 
-_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED", "UNLIKELY"})
+_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED"})
 
 
 def _bic_dict_is_excluded(bic: dict) -> bool:
@@ -923,10 +922,7 @@ def _bic_dict_is_excluded(bic: dict) -> bool:
             return True
         # CONFIRMED or other → not excluded, even if LLM said UNRELATED
         return False
-    # No deep verification — fall back to LLM verdict
-    llm_v = bic.get("llm_verdict")
-    if llm_v and llm_v.get("verdict") == "UNRELATED":
-        return True
+    # Screening verdict is advisory only — never exclude based on it.
     return False
 
 
@@ -1004,7 +1000,7 @@ def build_cve_entry(
         if not signals:
             continue
         verdict = _effective_verdict(bic)
-        if verdict in ("UNLIKELY", "UNRELATED"):
+        if verdict == "UNRELATED":
             continue
         for sig in signals:
             tool = sig.get("tool", "")
@@ -1025,7 +1021,7 @@ def build_cve_entry(
     bug_commits = [
         _build_bug_commit(bic, repo_url=fix_repo_url) for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
-        and _effective_verdict(bic) not in ("UNLIKELY", "UNRELATED")
+        and _effective_verdict(bic) != "UNRELATED"
     ]
 
     # Use NVD published date if available, fall back to year from CVE ID
