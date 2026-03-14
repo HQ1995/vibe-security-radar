@@ -88,18 +88,23 @@ def score_fp_candidate(data, ai_bics):
         == "CONFIRMED"
         for b in ai_bics
     )
-    has_verified_denied = any(
+    has_verified_unlikely = any(
         (_get_deep_verdict(b) or {}).get("final_verdict", "").upper()
-        in ("UNLIKELY", "UNRELATED")
+        == "UNLIKELY"
         for b in ai_bics
     )
 
-    if not has_verified_confirmed and not has_verified_denied:
+    if has_verified_confirmed:
+        # Already confirmed — low priority for FP audit
+        score -= 20
+        reasons.append("verified-confirmed")
+    elif has_verified_unlikely:
+        # Deep verify said UNLIKELY but we kept the signal — worth checking
+        score += 40
+        reasons.append("verified-unlikely")
+    else:
         score += 30
         reasons.append("unverified")
-    elif has_verified_denied:
-        score += 50
-        reasons.append("verifier-overturned")
 
     # Split votes (non-unanimous) — only applies to old tribunal format
     for b in ai_bics:
