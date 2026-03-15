@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-15T02:36:51.854448+00:00",
+  "generated_at": "2026-03-15T02:51:49.073549+00:00",
   "total": 56,
   "cves": [
     {
@@ -20,9 +20,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit introduced the `openBrowser` function using `exec` to execute shell commands with user-supplied URLs, allowing arbitrary command execution via crafted URLs.",
-      "root_cause": "The openBrowser function used the shell-executing exec() function with a template literal to open URLs, allowing an attacker to inject arbitrary shell commands via a crafted URL string.",
-      "vuln_type": "command injection",
+      "how_introduced": "The fix specifically removes `child_process.exec()` from `auth.js`'s `openBrowser()` and replaces it with `spawn()` plus argument arrays to avoid shell interpretation. Blame on the pre-fix file shows the security-relevant lines — including `const { exec } = require('child_process')`, `function openBrowser(url)`, and `exec(`${command} \"${url}\"`, ...)` — were introduced by commit `e08547bcdb42aaa86190c6e2dfc64159fcd3a146`. `auth.js` did not exist in the parent commit (`9f7c1b36d698845ea8bd968ad7446550995a2a3d`), and later commits only made incidental changes around logging/token storage, not the unsafe exec pattern, so the suspected commit authored the vulnerable code path.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -152,9 +152,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit introduced a new version of `sort_cmp` that performs callbacks to user-defined Ruby code. 2. During these callbacks, the array can be modified (e.g., elements popped), changing its length without necessarily triggering a pointer reallocation. 3. The blamed commit only checked if the pointer `p` changed, allowing the sort to continue on an array with a modified length. 4. This leads to out-of-bounds access or use-after-free when the sorting algorithm continues to use the stale length or pointer.",
-      "root_cause": "The sort function failed to detect modifications to the array's length during comparison callbacks, leading to potential memory corruption when the array was reallocated while being accessed.",
-      "vuln_type": "Use-after-free",
+      "how_introduced": "The fix addresses a missing array-length consistency check in `sort_cmp`: before the fix, the code only verified that `RARRAY_PTR(ary)` was unchanged, which misses in-place realloc/shrink cases where the pointer stays the same but the length changes. Blame on the pre-fix file (`00e7474ccefb...`) attributes the key vulnerable lines—including the pointer-only check in `sort_cmp` and the updated caller sites in `heapify`/`insertion_sort`—to `cf8faed585e14ab57cc390173d1b571aee438390`. Although an earlier version already had imperfect modification checks, this commit rewrote `sort_cmp` to pass values instead of indices and removed the prior length/index-based validation, thereby authoring the exact vulnerable code that the fix patches.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -240,9 +240,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit introduced the `RuleEngine` class to evaluate security rules. 2. It implemented logic to extract 'file_path' from tool inputs and compare them against deny patterns. 3. It failed to include any path normalization or symlink resolution (like os.path.realpath) during this extraction, allowing users to bypass rules by providing symlinks to restricted files.",
-      "root_cause": "The application checked file paths against deny rules without resolving symlinks first, allowing attackers to bypass restrictions by creating symlinks to restricted files.",
-      "vuln_type": "symlink bypass",
+      "how_introduced": "The fix addresses a specific flaw in `plugins/hookify/core/rule_engine.py`: `_extract_field()` compared deny-rule `file_path` conditions against the raw user-supplied path instead of a canonicalized real path, allowing symlink targets to evade matching. In the pre-fix state, the vulnerable returns (`return value` for direct `tool_input['file_path']`, plus raw `tool_input.get('file_path', '')` in file-tool branches) all blame to 59372c09, and that same commit created `rule_engine.py` as a brand-new file. `git log` for this file shows only the creation commit and the security fix, so this was not a refactor or blame drift case; 59372c09 authored the vulnerable code that the fix later patched.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -325,9 +325,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. Blamed commit introduces an optimization that assumes the instruction at `fail_pos - 2` is always `OP_JMPNOT`. 2. The optimization unconditionally overwrites this byte with `OP_JMPIF` if certain PC-relative conditions are met. 3. In cases involving pinned variables, the instruction is actually `OP_JMP`, leading to an invalid instruction sequence and subsequent memory corruption/UAF in the VM.",
-      "root_cause": "The compiler incorrectly optimized a JMP instruction into a JMPIF instruction without verifying the original opcode, leading to an invalid instruction sequence that causes memory corruption during VM execution.",
-      "vuln_type": "Use-after-free",
+      "how_introduced": "The fix commit adds a missing opcode check (`s->iseq[fail_pos - 2] == OP_JMPNOT`) before rewriting bytecode, because the optimization incorrectly assumed every `fail_pos` came from a 4-byte `JMPNOT`; for undefined pinned variables, `NODE_PAT_PIN` can supply a 3-byte `OP_JMP` instead, causing bytecode corruption. Blame on the pre-fix file attributes the vulnerable optimization block, including the unsafe `s->iseq[fail_pos - 2] = OP_JMPIF`, directly to 2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70. The parent commit 3af15e0012e6a4955f46f5f40f6d5b9f8d6e76aa does not contain this optimization at all, while the conflicting `NODE_PAT_PIN` `OP_JMP` path already existed earlier in 1de6340f1bc81564274890660f66444e48d660b0, so 2b72d8 introduced the faulty assumption and the exact code the fix patches.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -413,9 +413,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "1. Blamed commit introduces HarborAdapter and the logic to query external registry APIs. 2. The implementation uses a request handler that does not check for or block HTTP redirects. 3. This allows an attacker-controlled registry to return a 3xx redirect to an internal/loopback IP, leading to SSRF.",
-      "root_cause": "The application processes user-supplied URLs and follows redirects without validating if the resolved IP addresses point to internal or restricted networks, allowing attackers to access internal systems.",
-      "vuln_type": "Server-Side Request Forgery (SSRF)",
+      "how_introduced": "The fix adds an explicit 3xx check in `HarborAdapter.list_repositories()` because the adapter’s request/response logic did not safely reject redirects. Blame on the pre-fix file (`9afe28a5`, the state before `5ad2b732`) shows the core vulnerable block—the `self.session.get(...)` call and the surrounding status handling/`raise_for_status()` logic—was originally written in `3869d001`; only `allow_redirects=False` was added later by the intermediate security fix. The suspected BIC also created `util/orgmirror/harbor_adapter.py` as a new file, so this was not a move/refactor of older code but the introduction of the Harbor adapter and its redirect-following behavior.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -881,9 +881,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added a custom function to update the `.env` file using string manipulation and regular expressions instead of a secure parser. By dynamically constructing a regex with the `key` variable without sanitization, it created an injection vulnerability that the fix commit later resolved by using the `dotenv` and `dotenv-stringify` libraries.",
-      "root_cause": "The application used insecure regular expressions to update the .env file, allowing an attacker to inject arbitrary environment variables or manipulate file structure by providing crafted input keys or values.",
-      "vuln_type": "Environment Variable Injection",
+      "how_introduced": "The fix hardens `src/auth/oauth.ts` by replacing the hand-rolled `.env` editing logic in `updateEnvFile()` with `dotenv.parse()` + `dotenv-stringify()`, eliminating direct string interpolation of token values into `.env` content. In the last vulnerable revision (`8c1989e3`), git blame shows that the helper body, the `writeFileSync(envPath, envContent, 'utf-8')`, and the new call sites that persist tokens to `.env` were introduced by `4c9c826c`; later commits only made minor follow-up changes such as adding `existsSync`, changing the type syntax, and quoting values to fix `#` truncation. The parent commit `a00b6c59` had no `updateEnvFile()` at all and did not automatically persist tokens to `.env`, so `4c9c826c` is the commit that introduced the vulnerable behavior.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1020,9 +1020,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition.",
-      "root_cause": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-      "vuln_type": "Denial of Service (Resource Exhaustion)",
+      "how_introduced": "The fix targets two security-relevant code paths in `src/zae_limiter_aggregator/processor.py`: `try_proactive_shard()` and `propagate_shard_count()`. Blame on the last vulnerable state before the fixes (using commit `23513a0`, which only made minor boto3 type-value cleanup) attributes the core proactive-sharding logic and the shard-propagation loop/condition to `6bcd2606`. The BIC's parent `199c04fd` has no `try_proactive_shard()`/`propagate_shard_count()` at all, so these vulnerable paths were newly introduced by `6bcd2606`; later fixes rewrote them to use token headroom and to create full shard items rather than only `SET shard_count` on targets.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1399,9 +1399,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added `env: { ...process.env, ... }` to the MCP server configuration, which caused the subprocess to inherit all environment variables from the parent process, including sensitive API keys that were subsequently exposed through the router service.",
-      "root_cause": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-      "vuln_type": "Hard-coded Credentials / Service Exposure",
+      "how_introduced": "The fix in 023cc953 patches a path-traversal bug in processIncludes(): it replaces path.join(baseDir, match[1]) with path.resolve(...) and adds a guard rejecting include paths that escape baseDir before fs.readFile. The suspected BIC 9be2e71 is the commit that introduced both the new processIncludes() function and its unsafe path.join+readFile logic, and it also wired that function into loadPrompt() for @include processing. Although blame on the later TypeScript file is partially attributed to the migration commit 3ac07a47, history shows that migration and later file moves preserved the same logic without changing behavior; before 9be2e71 there was no processIncludes function and no @include support at all.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1581,9 +1581,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "By creating the `WebhookChannel` and defining its payload structure to inherently trust the `sender` and `chat_id` fields provided by unauthenticated external callers, this commit established the root vulnerability of identity spoofing.",
-      "root_cause": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-      "vuln_type": "insufficient authentication / identity spoofing",
+      "how_introduced": "The vulnerable trust model was introduced when 2c9deef added `src/channels/webhook.rs` as a brand-new file. In the pre-fix state, `WebhookPayload` required caller-supplied `sender`/`chat_id`, `handle_connection()` checked the allowlist against `payload.sender`, and then constructed `InboundMessage` from those same untrusted fields; git blame on the pre-fix lines attributes those exact statements to 2c9deef. The file did not exist before that commit, and searches at the earlier commit 44227c found no webhook channel implementation, so this was not a refactor or blame drift case.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1669,9 +1669,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "By creating the `WebhookChannel` and defining its payload structure to inherently trust the `sender` and `chat_id` fields provided by unauthenticated external callers, this commit established the root vulnerability of identity spoofing.",
-      "root_cause": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-      "vuln_type": "insufficient authentication / identity spoofing",
+      "how_introduced": "The fix patches the core identity/authorization flow in `src/channels/webhook.rs`: before the fix, the channel deserialized caller-controlled `sender`/`chat_id`, checked the allowlist against `payload.sender`, and built the inbound message from those same untrusted fields. Blame on the pre-fix file state (`3ae2add445cdcc5e0d77a2f7bf1cb4abf043dd71`) attributes both the `WebhookPayload` identity fields and the vulnerable allowlist/publish lines to `2c9deefbf744089c3041885717b92c6f2fc0bf8c`. `git_log` shows the file history starts at `2c9deef`, and `get_file_at_commit` on parent `44227c138070e1712a57e8daa20c9a6df634fcb9` shows `src/channels/webhook.rs` did not exist before, so this was not a move/refactor. Intermediate commits before the fix only changed constant-time auth comparison, logging preview, and panic isolation, not the untrusted-identity logic.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1757,9 +1757,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "By creating the `WebhookChannel` and defining its payload structure to inherently trust the `sender` and `chat_id` fields provided by unauthenticated external callers, this commit established the root vulnerability of identity spoofing.",
-      "root_cause": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-      "vuln_type": "insufficient authentication / identity spoofing",
+      "how_introduced": "The fix hardens webhook identity handling by stopping the default trust of caller-supplied `sender`/`chat_id`, adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and checking the allowlist against resolved server-side identity instead of raw JSON fields. Blame on the pre-fix file state (`ec274330`) shows the vulnerable lines—`WebhookPayload { sender: String, chat_id: String }`, the allowlist check on `payload.sender`, and publication/logging using `payload.sender`/`payload.chat_id`—all originate from `2c9deefb`. The file did not exist in the parent commit (`44227c...`), and later commits touching `webhook.rs` only changed constant-time auth comparison, panic isolation, and string preview, not this identity path.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1884,9 +1884,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition.",
-      "root_cause": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-      "vuln_type": "Denial of Service (Resource Exhaustion)",
+      "how_introduced": "The vulnerable code fixed by GHSA-76rv was introduced in 6bcd2606: that commit added the entire proactive sharding path in `process_stream_records()`, the original `try_proactive_shard()` implementation that used batch `wcu_tc_delta/capacity`, and the original `propagate_shard_count()` implementation that only updated `shard_count` instead of creating usable shard items. Blame on the pre-fix state (`23513a0`) attributes the security-relevant lines to 6bcd2606, and the file state at its parent (`199c04fd`) shows these functions/calls did not exist before. The later fix commits (`b4f41a7`, `5aa0a52`) explicitly correct those exact behaviors, so this is not mere blame drift or a refactor touch-up.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2291,9 +2291,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit introduces extensions/feishu/src/bot.ts with the initial handleFeishuMessage logic. 2. This logic only performs sender-level authorization checks if a group-specific 'allowFrom' configuration exists. 3. The absence of a global sender allowlist check in this initial implementation allows unauthorized users to bypass restrictions when group-level policies are missing.",
-      "root_cause": "The application failed to properly validate the sender's identity or authorization context when processing specific commands and triggers, allowing unauthorized users to execute restricted actions.",
-      "vuln_type": "Authorization Bypass",
+      "how_introduced": "The fix patches the group sender authorization logic in `handleFeishuMessage`: before the fix it only enforced a sender allowlist when `groupConfig?.allowFrom` was set, and the fix adds a global fallback via `feishuCfg?.groupSenderAllowFrom`. Blame on the pre-fix file attributes the vulnerable lines (`const senderAllowFrom = groupConfig?.allowFrom ?? []; if (senderAllowFrom.length > 0) ... allowFrom: senderAllowFrom`) to `2267d58afcc70fe19408b8f0dce108c340f3426d`, with only a later incidental `senderIds` parameter coming from another commit. This was not a mere move: `extensions/feishu/src/bot.ts` did not exist before `2267d58a`, and the old implementation in `src/feishu/message.ts` at the parent commit already had a global sender-based group allowlist fallback (`groupAllowFrom.length > 0 ? groupAllowFrom : allowFrom`) checked against `senderId`, so the rewrite in `2267d58a` authored the regressed, vulnerable logic.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2456,9 +2456,9 @@
       ],
       "confidence": 0.9,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added the `fetchWithGuard` function to fetch media from URLs. While it included some SSRF protections and a timeout, it did not stream the response body with a hard limit, allowing an attacker to exhaust memory by returning an excessively large payload that bypasses the Content-Length check.",
-      "root_cause": "The application fetches media from user-provided URLs without enforcing limits on the response size or streaming the content, allowing an attacker to cause memory exhaustion by providing a URL that returns an excessively large payload.",
-      "vuln_type": "Denial of Service (Memory Exhaustion)",
+      "how_introduced": "Direct blame on the pre-fix `src/media/input-files.ts` points to later commits (`f06ad450` for the extracted file/base64 logic and `81c68f5` for the current `response.arrayBuffer()` lines), but history shows that is blame drift from refactors/hardening. `a5afe7bc` is the first commit that introduced OpenResponses `input_image`/`input_file` handling at all, and in `src/gateway/openresponses-http.ts` it added the same vulnerable pattern the fix later repairs: fetch remote media with an optional `content-length` check followed by an unbounded `response.arrayBuffer()`, plus unbounded base64 decoding for file inputs. The parent commit `f4b03599` was Phase 1 and explicitly rejected `input_image`/`input_file`, so this vulnerable media-ingest path did not exist before `a5afe7bc`.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2589,9 +2589,9 @@
       ],
       "confidence": 0.9,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added the `scpFile` function to fetch remote media via SCP. By failing to validate the `remoteHost` input, omitting the `--` argument separator, and using insecure host key checking, it introduced the command injection and MITM vulnerabilities.",
-      "root_cause": "The application failed to enforce strict host-key checking for SCP operations and lacked validation for the 'remoteHost' configuration, allowing for potential man-in-the-middle attacks and command injection via malicious SSH options.",
-      "vuln_type": "Improper Neutralization of Special Elements used in an OS Command (Command Injection) and Improper Verification of Cryptographic Signature (CWE-295)",
+      "how_introduced": "The suspected commit directly introduced the vulnerable remote-attachment SCP path. Blame on the pre-fix file attributes the security-relevant lines in `stage-sandbox-media.ts`—the new `scpFile()` helper, `StrictHostKeyChecking=accept-new`, and the unvalidated `${remoteHost}:${remotePath}` target, as well as the `ctx.MediaRemoteHost` call site—to `7a9ff182608`. History confirms these lines did not exist before that commit: the prior version of `stage-sandbox-media.ts` only performed local `fs.copyFile()` into the sandbox and had no `MediaRemoteHost`/SCP logic at all, so this was a new implementation rather than a refactor or blame drift.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2674,9 +2674,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The commit introduced a 'NodeSandbox' utility that executes arbitrary code in a vm context without validating the input or restricting access to dangerous objects like 'process', 'require', or 'Function', which are reachable from the injected user code.",
-      "root_cause": "The application allowed arbitrary code execution via a sandbox that lacked sufficient input validation and restriction of dangerous Node.js globals and modules.",
-      "vuln_type": "Remote Code Execution",
+      "how_introduced": "The fix patches `imports/utils/vm_sandbox.js` by adding `validateSandboxCode()` and calling it at the start of `NodeSandbox.run()` before executing attacker-controlled code with `runInContext()`. In the pre-fix state, blame for the security-relevant `run()`/`runInContext()` lines and the surrounding native-vm sandbox implementation points directly to 67c7b766. History also shows this file was introduced by 67c7b766, and before that the affected call sites used `NodeVM` from `vm2` instead, so 67c7b766 was a reimplementation that authored the specific vulnerable code later fixed.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2874,9 +2874,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added a condition `hasTokenAuth = !!connectParams.auth?.token` and modified the device check to `if (!device && !hasTokenAuth)`. This allowed connections with an unvalidated token to bypass the device identity requirement, leading to the authentication bypass vulnerability.",
-      "root_cause": "The gateway connection logic incorrectly allowed skipping device identity checks if an authentication token was present, even if that token had not yet been validated.",
-      "vuln_type": "Authentication Bypass",
+      "how_introduced": "The fix addresses a presence-vs-validation bug: it moves authorizeGatewayConnect ahead of the device-bypass decision and replaces raw `hasTokenAuth`/`hasSharedAuth` checks with validated auth results (`sharedAuthOk`). Although blame on the pre-fix lines points to later commits f76e3c14192704d8d5e0af30a360d222283cd91f and e6bdffe568175e2b718e7611f73e191a9e1f771a, those commits only refactored/extended the same bypass logic and preserved the vulnerable `... : hasTokenAuth` fallback. The suspected commit 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 is where the no-device bypass was first introduced: it changed `if (!device)` to `if (!device && !hasTokenAuth)` and added the `&& device` guard to token verification, explicitly allowing device-less connections based solely on token presence. In the prior file state (409a16060b9c41b08d5b73e0f5ae1da346d156b4), a missing device always caused immediate rejection, so this vulnerability did not exist before 079af0d0.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -4371,9 +4371,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "By creating the `WebhookChannel` and defining its payload structure to inherently trust the `sender` and `chat_id` fields provided by unauthenticated external callers, this commit established the root vulnerability of identity spoofing.",
-      "root_cause": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-      "vuln_type": "insufficient authentication / identity spoofing",
+      "how_introduced": "The fix in `src/tools/docx_read.rs` is security-relevant and narrowly adds `revalidate_path(...)` inside `resolve_path()` to close a TOCTOU gap before filesystem access. Blame on the pre-fix file shows the vulnerable `validate_path_in_workspace(...)` + `exists()` sequence was authored by `fc119368`, and that commit's diff created `src/tools/docx_read.rs` from scratch with that logic. The file did not exist in the parent commit, and the only intervening commit (`a56c15d`) changed XML parsing rather than the path-validation code, so this is not blame drift or a pure refactor.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5362,9 +5362,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The commit introduced the stripBotMention function, which directly passes user-controlled mention.name and mention.key into the RegExp constructor without escaping. This allows an attacker to inject regex metacharacters, causing the vulnerability.",
-      "root_cause": "The application constructs a regular expression using unescaped user-controlled metadata (mention names and keys) from Feishu messages. This allows an attacker to inject regex metacharacters, potentially leading to Regular Expression Denial of Service (ReDoS) or incorrect message parsing.",
-      "vuln_type": "regex injection / ReDoS",
+      "how_introduced": "The fix in 7e67ab75 adds `escapeRegExp()` and applies it exactly where `stripBotMention()` was previously constructing `new RegExp()` from untrusted `mention.name` and `mention.key`, which is the vulnerable regex-injection/ReDoS pattern. In the pre-fix file state, git blame attributes those two vulnerable lines directly to 2267d58afcc70fe19408b8f0dce108c340f3426d. History also shows `extensions/feishu/src/bot.ts` was created in 2267d58 (from `/dev/null`), so this was not a move-only refactor; the prior Feishu implementation in `src/feishu/message.ts` used plain `text.replace(mention.key, \"\")` instead of `new RegExp(...)`, meaning the specific vulnerable pattern was newly introduced by 2267d58.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5454,9 +5454,9 @@
       ],
       "confidence": 0.855,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit introduced the Feishu extension and its message handling logic. 2. It implemented authorization checks via `resolveFeishuAllowlistMatch` using only `senderName` and `senderId`. 3. Because `senderName` is mutable and can be spoofed to match an entry in the `allowFrom` list, this implementation directly enabled the authorization bypass.",
-      "root_cause": "The application allowed authorization based on mutable display names, enabling an attacker to bypass the allowlist by changing their display name to match an allowed user's ID.",
-      "vuln_type": "Authorization Bypass",
+      "how_introduced": "The fix removes Feishu’s ability to authorize `allowFrom` entries by mutable `senderName` and replaces it with ID-only matching plus additional immutable `senderIds` candidates. The suspected BIC created `extensions/feishu/src/policy.ts` with inline logic that explicitly returned an allowlist match on `senderName`, and it created the `bot.ts` call site that passed `ctx.senderName` into group sender allowlist checks. Pre-BIC Feishu code in `src/feishu/access.ts`/`src/feishu/message.ts` was ID-only (`Feishu IDs are open_id or union_id, no usernames`), so this was not a pre-existing bug merely moved around. A later refactor (`fef86e475b49`) only replaced the inline vulnerable logic with `resolveAllowlistMatchSimple(params)` and did not change behavior, so the underlying vulnerability still traces back to 2267d58.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5537,9 +5537,9 @@
       "languages": [],
       "confidence": 0.76,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The commit added the 'prek-version' input and used '${{ inputs.prek-version }}' directly in the 'run' script block. In GitHub Actions, this allows an attacker to break out of the shell command by providing a malicious payload in the 'prek-version' parameter, leading to arbitrary command execution.",
-      "root_cause": "The action directly interpolated user-provided input into shell commands without sanitization, allowing an attacker to inject arbitrary shell commands via the input parameters.",
-      "vuln_type": "command injection",
+      "how_introduced": "The fix specifically removes direct GitHub-expression interpolation from shell `run:` blocks, and one of those security-relevant lines in the pre-fix file (`if [ \"${{ inputs.prek-version }}\" = \"latest\" ]; then`) blames to a7c5a005. The parent of a7c5 had no `prek-version` input or related install logic, while a7c5 introduced that feature with unsafe `${{ inputs.prek-version }}` expansion inside bash, which is exactly the pattern the fix replaces with an environment variable. Although the action already had a separate `extra_args` injection sink before this commit, a7c5 still introduced a new vulnerable code path that the fix patches, so it qualifies as a bug-introducing commit for this vulnerability.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5909,9 +5909,9 @@
       "languages": [],
       "confidence": 0.7,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit adds the 'custom_hotkeys' field to the User model and creates an API to update it. 2. It introduces a script tag in label_studio/templates/base.html that renders this user-controlled field using the '|safe' filter. 3. This allows an attacker to inject '</script><script>alert(1)</script>' into their custom_hotkeys profile field, leading to Stored XSS.",
-      "root_cause": "The application fails to properly escape the 'custom_hotkeys' user profile field when rendering it inside a script tag in the base template, allowing an attacker to inject malicious JavaScript via the JSON payload.",
-      "vuln_type": "Stored XSS",
+      "how_introduced": "The fix patches exactly one security-relevant line in `label_studio/templates/base.html`: it changes `user.custom_hotkeys|json_dumps_ensure_ascii|safe` to add `escape_lt_gt`, which is a classic fix for script-tag breakout / stored XSS when embedding user-controlled JSON into inline JavaScript. Blame on the pre-fix file state attributes that vulnerable line (`var __customHotkeys = ...|safe`) to commit `f0fb90a58`, and the prior file state (`ab7cbf08`) contains no `custom_hotkeys` rendering at all, so this sink did not exist before the suspected BIC. The same commit also introduced the `custom_hotkeys` field in the user model and serializers, making the new attacker-controlled field reachable through the application, so the commit is causally responsible for the vulnerable code path.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6291,9 +6291,9 @@
       ],
       "confidence": 0.54,
       "verified_by": "gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added the `netrc_cmd` execution logic in `_get_netrc_login_info`. By passing the unvalidated `netrc_machine` string into a command executed with `shell=True`, it allowed arbitrary command injection if an attacker could control the `netrc_machine` value.",
-      "root_cause": "The `_get_netrc_login_info` method fails to validate the `netrc_machine` variable before passing it to a shell command via the `--netrc-cmd` option, allowing an attacker to inject arbitrary shell commands if they can control the machine name.",
-      "vuln_type": "command injection",
+      "how_introduced": "The fix’s security-relevant change is the new validation of `netrc_machine` in `_get_netrc_login_info` before it is substituted into `netrc_cmd` and executed with `shell=True`; the `initialize()` change is a secondary guard to avoid reaching that sink unnecessarily. Blame on the pre-fix file shows `db3ad8a67661d7b234a6954d9c6a4a9b1749f5eb` introduced the `--netrc-cmd` path and the shell execution lines (`if cmd: ... Popen.run(cmd, text=True, shell=True, stdout=subprocess.PIPE)`), while a same-day follow-up commit only changed `.format(netrc_machine)` to `.replace('{}', netrc_machine)` without removing the injection risk. The parent of `db3ad8a` had no `netrc_cmd` support and `_get_netrc_login_info` only parsed `.netrc`, so the vulnerable command-execution path did not exist before this commit.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6428,9 +6428,9 @@
       ],
       "confidence": 0.2565,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit adds ReactMarkdown to render messages in DebugDialog.tsx. 2. It configures the markdown renderer without a sanitization plugin. 3. This allows raw HTML or malicious script tags within markdown content to be executed in the user's browser, leading to XSS.",
-      "root_cause": "The vulnerability stems from a dependency-based issue where a third-party package used by LangBot contained a security flaw that permitted arbitrary script injection.",
-      "vuln_type": "Cross-Site Scripting (XSS)",
+      "how_introduced": "The fix for CVE-2026-28509 adds `rehypeSanitize` immediately after `rehypeRaw` in `DebugDialog.tsx`, so the vulnerable pattern is rendering user-controlled markdown with raw HTML enabled but no sanitization. In the pre-fix file state, `git blame` attributes the `ReactMarkdown` + `rehypeRaw` lines in `renderMessageContent` directly to `b634aa48dc27a8df7e7e853914071451db00a04c`. The file at that commit’s parent (`b5d192425e5c717d69317c3b927b780163647510`) had no markdown rendering in `DebugDialog` at all—only plain `whitespace-pre-wrap` rendering—so this was a real introduction of new vulnerable logic, not a refactor or blame drift.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6613,9 +6613,9 @@
       ],
       "confidence": 0.2565,
       "verified_by": "gemini-3-flash-preview, gpt-5.4",
-      "how_introduced": "1. The blamed commit adds ReactMarkdown to render messages in DebugDialog.tsx. 2. It configures the markdown renderer without a sanitization plugin. 3. This allows raw HTML or malicious script tags within markdown content to be executed in the user's browser, leading to XSS.",
-      "root_cause": "The vulnerability stems from a dependency-based issue where a third-party package used by LangBot contained a security flaw that permitted arbitrary script injection.",
-      "vuln_type": "Cross-Site Scripting (XSS)",
+      "how_introduced": "The fix in DebugDialog.tsx adds `rehypeSanitize` immediately after `rehypeRaw` in the `ReactMarkdown` pipeline, which shows the vulnerable pattern was unsafe raw-HTML rendering of untrusted chat message text. Blame on the pre-fix file (`b5b5d499...`) attributes the relevant `ReactMarkdown`/`rehypeRaw` lines directly to `b634aa48`, including the exact `rehypeRaw` entry the fix mitigates. The file state before the suspected BIC (`b5d19242...`) did not use `ReactMarkdown` or `rehypeRaw` at all; it rendered message content as plain components inside a `whitespace-pre-wrap` div. So this was not a move/refactor of pre-existing vulnerable logic in this file—the suspected commit introduced the markdown + raw HTML rendering path that the fix later sanitized.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -9409,9 +9409,9 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
-      "how_introduced": "The blamed commit added a blocklist for encoded/indirect execution using rigid regexes that expected exact flag sequences. This allowed attackers to bypass the blocklist by simply inserting extra flags (like `python -Bc`) or using shell globbing, leading to the vulnerability.",
-      "root_cause": "The shell command blocklist used overly strict regexes that could be bypassed by inserting additional flags (e.g., `python -Bc`), and literal string matching that could be bypassed using shell globbing characters (e.g., `/etc/pass[w]d`).",
-      "vuln_type": "Command Injection / Blocklist Bypass",
+      "how_introduced": "The fix patches `src/tools/android/actions.rs::device_shell()`, replacing the original naive substring blocklist (`\"rm -rf\"`, `\"rm -r\"`) with flag-aware parsing to catch permutations like `rm -fr` and `rm -r -f`. Blame on the vulnerable pre-fix lines points directly to 8f1c1db4, and `git log` shows this file was created in that commit and only later modified by the security fix. Although 8f1c1db4 added an initial safeguard, it also introduced the entire `device_shell` feature and the specific flawed blocklist logic that the fix corrects, so it authored the vulnerable code path.",
+      "root_cause": "",
+      "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {

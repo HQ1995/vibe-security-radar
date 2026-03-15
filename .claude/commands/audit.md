@@ -1,248 +1,109 @@
 # Independent CVE Audit
 
-Independently verify a CVE analysis result by reading actual code, diffs, and advisories — without reusing any pipeline code. This catches errors that mechanical git-blame + pattern-matching miss, because it reasons about code semantics.
+Independently determine whether AI-authored code introduced a security vulnerability. Then compare your conclusion with the pipeline's to find pipeline blind spots.
 
 **Arguments**: `$ARGUMENTS` (a CVE ID, or empty to auto-pick one)
 
-## Why This Matters
+## Critical Rules
 
-The pipeline is mechanical: it runs `git blame`, matches AI signal patterns, and runs a single-model deep verifier. But it can't reason about whether the blamed code actually contains the vulnerable pattern, or whether a squash-decomposed AI signal really means the AI commit introduced the bug. This audit fills that gap and accumulates findings to drive pipeline improvements.
+1. **DO NOT read the pipeline's cached result until you have finished your own investigation.** Reading it first will anchor your thinking and make you replicate the pipeline's blind spots. The whole point of this audit is independence.
 
-## Critical: Bug Introduction vs Fix Authorship
+2. **AI fixing a bug ≠ AI causing a bug.** AI co-author on a fix commit means AI helped remediate, not introduce.
 
-**This audit investigates whether AI-authored code INTRODUCED the vulnerability, NOT whether AI authored the fix.** A common audit error is seeing an AI-authored fix commit (e.g., copilot-swe-agent[bot] submitting a security patch) and concluding "AI involved = CONFIRMED". That is wrong — the question is always: did AI write the code that CAUSED the bug?
-
-## Pipeline Architecture
-
-The pipeline has a 3-tier verdict system:
-
-1. **`verification_verdict`** (deep verifier) — authoritative, single-model investigator with tool access
-2. **`tribunal_verdict`** (legacy) — old 3-model voting, kept for backward compatibility
-3. **`llm_verdict`** (screening) — **advisory only**, never gates deep verify, never excludes from scoring
-
-Only `UNRELATED` verdicts from verification/tribunal exclude a BIC. `UNLIKELY` means "not sure" — it lowers confidence but does NOT exclude. Screening verdicts never exclude.
+3. **Time-box to 30 minutes.** If you can't determine the origin after 30 min of tracing, save a partial finding with `confidence: "LOW"` and move on.
 
 ## Phase 0: Select Target & Claim
 
-If a CVE ID was provided, use it. Otherwise, use `audit_queue.py` for smart prioritization:
-
+If a CVE ID was provided, use it. Otherwise:
 ```bash
 cd ~/agents/ai-slop/scripts && python3 audit_queue.py
 ```
 
-This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. The queue automatically excludes CVEs that are already claimed by other audit sessions.
-
-If the script is unavailable, manually pick the first unaudited CVE with AI signals from `~/.cache/cve-analyzer/results/`, prioritizing deep-confirmed over deep-denied over no-deep-verify. Cross-check against `~/.cache/cve-analyzer/audit/findings.json` and `~/.cache/cve-analyzer/audit/claims/` to skip already-audited or in-progress CVEs.
-
-If nothing to audit, report that and stop.
-
-### Claim the target (required for parallel safety)
-
-Before starting analysis, claim the CVE to prevent other sessions from auditing it simultaneously:
-
+Claim before starting:
 ```bash
 cd ~/agents/ai-slop/scripts && python3 audit_lock.py claim <CVE-ID> --worker "$(hostname)-$$"
 ```
 
-If the claim fails (another session already claimed it), go back to `audit_queue.py` and pick the next candidate. Do NOT proceed without a successful claim.
+If claim fails, pick the next candidate. On ANY early exit (error, timeout, missing data), release the claim before stopping.
 
-## Phase 1: Load Cached Result
+## Phase 1: Independent Investigation (do this FIRST)
 
-Load the cached result from `~/.cache/cve-analyzer/results/<CVE-ID>.json`. If the file does not exist, report that the CVE has no cached analysis, release the claim (`python3 audit_lock.py release <CVE-ID>`), and stop.
-
-Read it and extract:
-
-- `cve_id`, `description`, `severity`, `cwes`
-- `fix_commits` — each has `sha`, `repo_url`, `source`
-- `bug_introducing_commits` — each has `commit` (with `sha`, `author_name`, `ai_signals`), `blamed_file`, `blame_confidence`, `blame_strategy`, plus verdict fields:
-  - `llm_verdict` — screening (advisory only, never authoritative)
-  - `verification_verdict` — deep verifier (authoritative, dict with `verdict`/`confidence`/`model`)
-  - `tribunal_verdict` — legacy 3-model voting (backward compat, dict with `final_verdict`)
-
-To determine the pipeline's effective verdict for a BIC, check `verification_verdict.verdict` first, fall back to `tribunal_verdict.final_verdict`. Ignore `llm_verdict` for exclusion decisions (it's advisory).
-
-Print a summary of what the pipeline found before starting independent analysis.
-
-## Phase 2: Understand the Vulnerability
-
-This is where you build your independent understanding. Do NOT skip or rush this — everything downstream depends on getting this right.
-
-### 2a. Read the fix diff
-
-Find the local repo clone in `~/.cache/cve-analyzer/repos/`. The directory name is `{owner}_{repo}` (derived from `fix_commits[0].repo_url`).
-
+Get fix commit SHAs and repo URL — read ONLY these fields, not the full result:
 ```bash
-cd ~/.cache/cve-analyzer/repos/<owner>_<repo>
-git show <fix_sha> --stat   # overview of what changed
-git show <fix_sha>          # full diff
+jq '{fix_commits: [.fix_commits[] | {sha, repo_url}]}' ~/.cache/cve-analyzer/results/<CVE-ID>.json
 ```
 
-Read the diff carefully. Understand:
-- What files were changed?
-- What was the vulnerable code (lines removed/modified)?
-- What is the secure replacement (lines added)?
-- What is the vulnerability type? (injection, auth bypass, path traversal, etc.)
+If this fails (file missing, null fix commits), release claim and stop.
 
-### 2b. Research the CVE
+### 1a. Understand the vulnerability
 
-Search the web for the CVE ID to find:
-- NVD/GHSA advisory details
-- Security blog posts or write-ups
-- The original bug report or disclosure
-
-This gives you independent context that the pipeline doesn't have.
-
-### 2c. Extract vulnerability pattern
-
-Write down explicitly:
-- **Vulnerable pattern**: the specific code construct that was insecure (e.g., "user input passed directly to `exec()` without sanitization")
-- **Secure pattern**: what the fix replaced it with (e.g., "input validated against allowlist before execution")
-
-This is your ground truth for all subsequent causality analysis.
-
-## Phase 3: Independent Blame
-
-Now find which commits introduced the vulnerable code, independently of the pipeline.
-
-### 3a. Blame the fix diff
-
-For each file in the fix diff, blame the lines that were removed or modified:
-
+Read the fix diff in `~/.cache/cve-analyzer/repos/<owner>_<repo>/`:
 ```bash
-# For a specific line range in the parent of the fix commit
-git blame <fix_sha>^ -- <file> -L <start>,<end>
+git show <fix_sha> --stat    # overview
+git show <fix_sha>            # full diff
 ```
 
-Or for the full file context:
+If multiple fix commits exist, check each — find the one with the actual security fix (not changelogs/tests). Identify:
+- The **vulnerable code pattern** (the specific insecure construct)
+- The **secure replacement** (what the fix changed it to)
+- The **vulnerability type** (injection, auth bypass, path traversal, etc.)
+
+### 1b. Trace the vulnerable code to its origin
+
+You are a security researcher. Trace the vulnerable code to the commit that FIRST introduced the insecure pattern. Use whatever git forensics you need:
+
+- Search the repo history for when the vulnerable pattern first appeared
+- Trace code through file moves, renames, and extractions
+- Check if blamed commits are the true origin or just moved/reformatted existing code
+- Look at the full file history, not just the current file
+
+**Think like a detective, not a script runner.** The pipeline already ran `git blame` on the fix-commit files — if you do the same thing mechanically, you'll get the same (possibly wrong) answer.
+
+### 1c. Check AI involvement on origin commit(s)
+
+For each origin commit found:
 ```bash
-git blame <fix_sha>^ -- <file>
+git show --format=fuller <origin_sha> | head -30
 ```
 
-Focus on the lines that contain the vulnerable pattern identified in Phase 2.
+Check for: `Co-Authored-By` trailers (Claude, Copilot, etc.), bot author emails (`noreply@anthropic.com`, `Copilot@users.noreply.github.com`), AI markers in commit message (`Generated with [Claude Code]`, `[AI-assisted]`).
 
-### 3b. For add-only fixes
+If the origin is a squash merge, decompose it and check which sub-commit actually wrote the vulnerable code.
 
-If the fix only adds code (e.g., adds a validation check that was missing), use function history:
+### 1d. Verify causality
 
+Confirm the origin commit actually CREATED the vulnerability (not just modified existing vulnerable code):
 ```bash
-git log --follow -p -- <file>
+# Did the vulnerable pattern exist BEFORE this commit?
+git show <origin_sha>^:<file> 2>/dev/null | grep '<vulnerable_pattern>'
 ```
 
-Look for who wrote the function that lacked the security check.
+If the pattern existed before → the commit is not the true origin. Keep tracing back.
 
-### 3c. Compare with pipeline
+## Phase 2: Compare with Pipeline (do this AFTER Phase 1)
 
-For each BIC the pipeline found:
-- Did your independent blame find the same commit? → `SAME`
-- Did you find a different commit? → `DIFFERENT` (explain why)
-- Did you find BICs the pipeline missed? → `EXTRA`
-- Can you confirm the pipeline's BIC via blame? → If not, `MISSING`
-
-## Phase 4: AI Signal Forensics
-
-For each BIC (both pipeline's and your own), verify AI tool attribution:
-
+Now read the full cached result:
 ```bash
-git show --format=fuller <bic_sha> | head -20   # full commit metadata
-git log --format="%H %an <%ae> %s" <bic_sha> -1  # author info
+cat ~/.cache/cve-analyzer/results/<CVE-ID>.json | python3 -m json.tool
 ```
 
-Check:
-1. **Co-author trailers**: Is there a `Co-Authored-By: <AI tool>` line? Is it in the original commit or was it inherited from a squash/merge?
-2. **Author email**: Is it an AI tool's noreply address (e.g., `noreply@anthropic.com`, `copilot@users.noreply.github.com`)?
-3. **Commit message patterns**: Does it have AI-generated characteristics?
+Compare:
+- **Did the pipeline find the same origin commit you found?** If not, why?
+- **Did the pipeline detect AI involvement that you didn't, or vice versa?**
+- **Is the pipeline's confidence score appropriate for what you found?**
 
-### Squash commit deep-dive (critical)
+**Pipeline verdict**: check `verification_verdict.verdict` first, fall back to `tribunal_verdict.final_verdict`. Screening (`llm_verdict`) is advisory only.
 
-If the BIC is a squash merge (committer is "GitHub" noreply, or pipeline has `squash_decomposed_*` signals):
+Classify any discrepancy:
+- **SHALLOW_BLAME**: Pipeline blamed a move/copy commit, true origin is earlier/in a different file
+- **WRONG_FIX**: Pipeline used wrong fix commit from OSV/GHSA
+- **SIGNAL_ON_FIX**: Pipeline detected AI on fix commit, confused with bug introduction
+- **COSMETIC_BLAME**: Pipeline blamed AI commit that only touched docs/tests/formatting
+- **SCORING_BUG**: Pipeline found the right data but computed wrong confidence
+- **STALE_CACHE**: Pipeline result is outdated
+- **CORRECT**: Pipeline and audit agree
 
-This is where the pipeline's biggest blind spot is. The pipeline knows "some commit in this PR was AI-assisted" but can't tell if that specific commit introduced the vulnerability. You can:
-
-1. Find the PR number from the commit message or API cache
-2. List individual commits in the PR
-3. Read each individual commit's diff
-4. Identify which specific commit introduced the vulnerable code from Phase 2
-5. Check if THAT specific commit (not just "any commit in the PR") has AI signals
-
-Classify each signal: `REAL_SIGNAL` / `INHERITED` / `FALSE_SIGNAL`
-
-## Phase 5: Causality Analysis
-
-This is the core judgment. For each BIC with AI signals, answer:
-
-**Did the AI-authored code actually introduce the vulnerability?**
-
-Use this decision framework:
-
-| | BIC diff contains vulnerable pattern | BIC diff does NOT contain vulnerable pattern |
-|---|---|---|
-| **Without this BIC, vulnerability wouldn't exist** | **CONFIRMED** — AI code directly caused the vuln | **UNLIKELY** — vulnerability exists but through different code path |
-| **Vulnerability existed before this BIC** | **UNRELATED** — BIC modified vulnerable code but didn't create it | **UNRELATED** — BIC is tangential |
-
-Also consider:
-- **Commit size**: A 2000-line commit that touched 50 files has lower causal confidence than a 20-line commit to one security-critical function
-- **Code path**: Is the BIC on the actual vulnerable code path, or just in the same file?
-- **Temporal**: Was the vulnerable pattern already present before this commit? Check `git blame` on the parent
-- **Refactoring**: Did this commit just move code around without changing semantics?
-
-Write your independent verdict: `CONFIRMED` / `UNLIKELY` / `UNRELATED` with confidence `HIGH` / `MEDIUM` / `LOW`.
-
-## Phase 6: Pipeline Comparison & Diagnosis
-
-Now compare your findings with the pipeline's at every layer:
-
-| Layer | Your Finding | Pipeline's Finding | Agreement? |
-|-------|-------------|-------------------|------------|
-| Fix commit validity | CORRECT/PARTIAL/WRONG | (assumed correct) | |
-| Blame (BIC identification) | your BICs | pipeline's BICs | SAME/DIFFERENT |
-| AI signals | REAL/INHERITED/FALSE | detected signals | |
-| Causality verdict | your verdict | Screening (advisory) | AGREE/DISAGREE |
-| | | Deep verify verdict | AGREE/DISAGREE |
-
-**Determining the pipeline's effective verdict**: Use `verification_verdict.verdict` if present, else `tribunal_verdict.final_verdict`. Screening (`llm_verdict`) is advisory only — note it but don't treat it as the pipeline's verdict.
-
-**Common audit pitfalls to avoid**:
-- Don't confuse AI fix authorship with AI bug introduction (see top of this skill)
-- Don't confuse bundled fix commits — verify the BIC relates to the *specific* CVE vulnerability, not just any bug the fix commit touches
-- Don't trust squash-merge AI signals blindly — check if the specific sub-commit that introduced the vulnerable code has AI signals
-
-For each disagreement, diagnose:
-- **Which pipeline phase** went wrong?
-- **Is it an algorithm problem** (the pipeline logic is flawed) or a **data problem** (bad input data)?
-- **What specific code change** would fix it? (file path + description)
-
-## Phase 6b: Improvement Triage
-
-Before saving, take a step back and think carefully about each potential improvement you identified. This is NOT a quick label — it's the most valuable output of the audit for driving pipeline evolution.
-
-For each candidate improvement, reason through these questions explicitly:
-
-1. **Is this the first time, or a pattern?** Check prior findings:
-   ```bash
-   python3 -c "
-   import json; from pathlib import Path
-   findings = json.loads((Path.home() / '.cache/cve-analyzer/audit/findings.json').read_text())
-   for f in findings:
-       for s in f.get('improvement_suggestions', []):
-           text = s.get('suggestion', s) if isinstance(s, dict) else s
-           print(f'{f[\"cve_id\"]}: {text[:100]}')
-   " 2>/dev/null | grep -i '<keyword from your suggestion>'
-   ```
-   If you find ≥3 prior occurrences of the same issue, it's a pattern — promote to FIX.
-
-2. **What's the blast radius?** How many CVEs in the pipeline results would this affect? A bug in `context_blame` affects hundreds of CVEs; a quirk in one repo's tag format affects one.
-
-3. **What would the fix look like?** Sketch the change in your head — is it a 5-line config addition or a fundamental architecture change? Simple fixes with high impact → FIX. Complex fixes for edge cases → OBSERVE or WONTFIX.
-
-4. **Is this upstream or ours?** Data quality issues from OSV/NVD/GHSA are upstream — we can't fix them (WONTFIX unless we add validation). Algorithm bugs in our pipeline code are ours (FIX or OBSERVE).
-
-5. **Does the deep verifier already catch this?** If the verifier correctly compensates for a blame-phase weakness, the effective impact is zero — the final verdict is right even though an intermediate step is wrong. That's WONTFIX (the verifier is doing its job).
-
-Write your triage reasoning in the report's Improvement Suggestions section, then assign FIX/OBSERVE/WONTFIX with the rationale.
-
-## Phase 7: Save Finding
-
-Save the finding atomically using the lock-safe helper (prevents concurrent write corruption):
+## Phase 3: Save Finding & Release
 
 ```bash
 cd ~/agents/ai-slop/scripts && python3 -c "
@@ -251,227 +112,71 @@ import json, sys
 save_finding(json.load(sys.stdin))
 print('Saved.')
 " <<'FINDING'
-<FINDING_JSON>
+{
+  "cve_id": "<CVE-ID>",
+  "timestamp": "<ISO-8601>",
+  "independent_verdict": "CONFIRMED|UNLIKELY|UNRELATED|NO_AI|FIX_ONLY",
+  "confidence": "HIGH|MEDIUM|LOW",
+  "vulnerability_type": "<CWE or description>",
+  "fix_commit_valid": true,
+  "pipeline_verdict": "<from verification_verdict or tribunal_verdict>",
+  "agreement": <true|false>,
+  "stages": {
+    "fix_validation": "CORRECT|PARTIAL|WRONG",
+    "blame_agreement": "SAME|DIFFERENT|EXTRA|MISSING|SHALLOW",
+    "signal_verification": "REAL_SIGNAL|INHERITED|FALSE_SIGNAL|FIX_ONLY",
+    "causality": "CONFIRMED|UNLIKELY|UNRELATED"
+  },
+  "disagreement_phase": "<blame|signal|causality|null>",
+  "root_cause": "<explanation if disagreement, null otherwise>",
+  "improvement_suggestions": [
+    {"suggestion": "...", "priority": "FIX|OBSERVE|WONTFIX", "rationale": "..."}
+  ],
+  "fix_applied": null
+}
 FINDING
 ```
 
-Alternatively, manually append to `~/.cache/cve-analyzer/audit/findings.json` if the helper is unavailable. **Warning:** manual append is NOT safe for concurrent sessions — only use when `audit_lock.py` is unavailable and you are the only auditor.
+`fix_applied` is set when a pipeline code fix is implemented based on this finding. Format: `{"commit": "<sha>", "description": "...", "files": ["..."]}`. Leave null if no fix was made.
 
-**How to determine `pipeline_verdict`**: Check AI BICs in priority order:
-1. If any BIC has `verification_verdict.verdict` == CONFIRMED → pipeline_verdict = "CONFIRMED"
-2. Else if any BIC has `tribunal_verdict.final_verdict` == CONFIRMED → pipeline_verdict = "CONFIRMED"
-3. If all deep verdicts are UNRELATED → pipeline_verdict = "UNRELATED"
-4. If any deep verdict is UNLIKELY (and none CONFIRMED) → pipeline_verdict = "UNLIKELY"
-5. If no deep verdicts exist → pipeline_verdict = "NO_DEEP_VERIFY"
-6. Screening (`llm_verdict`) is advisory — never use it as `pipeline_verdict`
-
-```json
-{
-  "cve_id": "CVE-XXXX-XXXXX",
-  "timestamp": "ISO-8601",
-  "audit_type": "fp_detection",
-  "independent_verdict": "CONFIRMED|UNLIKELY|UNRELATED",
-  "confidence": "HIGH|MEDIUM|LOW",
-  "fix_commit_valid": true,
-  "pipeline_verdict": "CONFIRMED|UNLIKELY|UNRELATED|NO_DEEP_VERIFY",
-  "agreement": true,
-  "stages": {
-    "fix_validation": "CORRECT|PARTIAL|WRONG",
-    "blame_agreement": "SAME|DIFFERENT|EXTRA|MISSING",
-    "signal_verification": "REAL_SIGNAL|INHERITED|FALSE_SIGNAL",
-    "causality": "CONFIRMED|UNLIKELY|UNRELATED"
-  },
-  "disagreement_phase": null,
-  "root_cause": null,
-  "improvement_suggestions": [],
-  "fix_applied": null
-}
-```
-
-Each entry in `improvement_suggestions` should be a structured object (not a plain string):
-
-```json
-{
-  "suggestion": "Lower blame_confidence for add-only fixes when blamed commit only expanded the same data structure",
-  "priority": "FIX|OBSERVE|WONTFIX",
-  "rationale": "Seen in 1 audit only; fix requires reworking context_blame to detect add-only diffs — significant complexity for a narrow case."
-}
-```
-
-Priority levels:
-- **FIX** — real pipeline bug or systematic error; worth a code change. Criteria: affects multiple CVEs, causes wrong verdicts, or introduces false positives/negatives at scale.
-- **OBSERVE** — plausible improvement but uncertain value; log it and revisit when a pattern emerges. Criteria: seen only once, marginal impact, or the fix adds complexity disproportionate to the benefit. **Promote to FIX when the same suggestion appears in ≥3 independent audits.**
-- **WONTFIX** — design limitation or edge case not worth addressing. Criteria: inherent to the approach, extremely rare, or the fix would break other things.
-
-Old findings with plain-string suggestions are fine — they just won't have priority metadata. New findings should use this structured format.
-
-## Phase 7b: Offer Immediate Fix (if actionable)
-
-If `improvement_suggestions` contains FIX-priority items that could improve the pipeline (algorithm bugs, missing patterns, incorrect logic), ask the user:
-
-> **Actionable improvement found:** <one-line summary>
-> Want me to fix this now? (The fix will be recorded in this finding so it won't clutter the Phase 8 pattern report.)
-
-If the user says yes:
-
-1. Implement the fix in the pipeline code
-2. Commit with a message referencing the CVE (e.g., `fix: <description>, found via /audit CVE-XXXX-XXXXX`)
-3. Update the finding's `fix_applied` field:
-
-```json
-{
-  "fix_applied": {
-    "commit": "<sha>",
-    "description": "Brief description of what was changed",
-    "files": ["path/to/changed/file.py"]
-  }
-}
-```
-
-If the user says no or the suggestions are minor observations (not code bugs), skip this phase.
-
-Phase 8's pattern analysis should **exclude findings where `fix_applied` is set** from improvement tallies, since those are already resolved.
-
-### Release the claim
-
-After saving the finding (and any Phase 7b fix), release the claim so the CVE shows as completed (not just claimed):
-
+Release claim (always, even on error):
 ```bash
 cd ~/agents/ai-slop/scripts && python3 audit_lock.py release <CVE-ID>
 ```
 
-If the audit was aborted early for any reason (missing result file, error, etc.), still release the claim before stopping. Claims auto-expire after 2 hours as a fallback, but explicit release is preferred.
-
-## Phase 8: Pattern Analysis (every 10 findings)
-
-After saving, check if there are ≥10 findings. If so, analyze patterns:
-
-```python
-python3 -c "
-import json; from pathlib import Path
-findings = json.loads((Path.home() / '.cache/cve-analyzer/audit/findings.json').read_text())
-print(f'Total findings: {len(findings)}')
-
-# Agreement rate
-agree = sum(1 for f in findings if f.get('agreement'))
-print(f'Agreement rate: {agree}/{len(findings)} ({100*agree/len(findings):.0f}%)')
-
-# Exclude already-fixed findings from improvement tallies
-unfixed = [f for f in findings if not f.get('fix_applied')]
-fixed = len(findings) - len(unfixed)
-if fixed:
-    print(f'Already fixed: {fixed} (excluded from improvement counts below)')
-
-# Disagreements by phase (unfixed only)
-from collections import Counter
-phases = Counter(f.get('disagreement_phase') for f in unfixed if not f.get('agreement'))
-print(f'Disagreements by phase: {dict(phases)}')
-
-# Signal type issues
-signals = Counter(f['stages'].get('signal_verification') for f in unfixed)
-print(f'Signal verification: {dict(signals)}')
-
-# Blame accuracy
-blames = Counter(f['stages'].get('blame_agreement') for f in unfixed)
-print(f'Blame agreement: {dict(blames)}')
-"
-```
-
-Then write a brief **Pipeline Accuracy Report** summarizing:
-1. Overall agreement rate
-2. Most problematic pipeline phase
-3. Top **FIX**-priority suggestions (group recurring OBSERVE items that now have enough evidence to promote to FIX)
-4. Patterns: which blame strategies / signal types / vuln types have the most issues
-
-## Output Format
-
-Present results to the user as a structured report:
-
-```markdown
-## Audit: <CVE-ID>
-
-### Summary
-- **CVE**: <id> — <brief description>
-- **Vulnerability**: <type> in <file>
-- **Pipeline verdict**: <deep verify verdict> (screening: <screening verdict, advisory>)
-- **Independent verdict**: <verdict> (confidence: <X>)
-- **Agreement**: YES/NO
-
-### Fix Commit Analysis
-<what the fix does, is it valid>
-
-### Blame Analysis
-<your independent blame vs pipeline's, any discrepancies>
-
-### AI Signal Verification
-<are the signals real, inherited, or false>
-
-### Causality Chain
-<detailed reasoning about whether the AI code INTRODUCED the vulnerability — not whether AI authored the fix>
-
-### Pipeline Diagnosis
-<if disagreement: what went wrong, which phase, root cause>
-
-### Improvement Suggestions
-
-For each suggestion, show the triage reasoning (not just the label):
-
-| Suggestion | Priority | Triage Reasoning |
-|------------|----------|-----------------|
-| <what to change> | FIX/OBSERVE/WONTFIX | **Pattern?** first/Nth occurrence. **Blast radius?** X CVEs affected. **Fix complexity?** simple/moderate/hard. **Upstream?** yes/no. **Verifier compensates?** yes/no. |
-```
-
-## Phase 9: Regression Verification (after improvements)
-
-When audit findings led to pipeline code changes that have since been implemented, re-run the pipeline on the triggering CVE(s) to verify the fixes work.
-
-**When to trigger**: After Phase 7 save, check if the current CVE's `improvement_suggestions` from a previous audit led to code changes (check git log for related commits). If so, run this phase.
-
-**Steps**:
-
-1. Re-run the analyzer on the triggering CVE with `--no-cache`:
+Verify release:
 ```bash
-cd ~/agents/ai-slop/cve-analyzer
-uv run cve-analyzer --no-cache analyze <CVE-ID> --llm-verify --force-verify
+cd ~/agents/ai-slop/scripts && python3 audit_lock.py check <CVE-ID>
 ```
 
-2. Load the new result and compare against the original audit finding:
+## Phase 4: Pattern Analysis
+
+Run after every 10th saved finding:
+
 ```python
 python3 -c "
-import json; from pathlib import Path
-new = json.loads((Path.home() / '.cache/cve-analyzer/results/<CVE-ID>.json').read_text())
+import json; from pathlib import Path; from collections import Counter
 findings = json.loads((Path.home() / '.cache/cve-analyzer/audit/findings.json').read_text())
-old = next((f for f in findings if f['cve_id'] == '<CVE-ID>'), None)
-if old:
-    new_bics = len(new.get('bug_introducing_commits', []))
-    print(f'BIC count: {old.get(\"notes\",\"\").split(\"BIC\")[0]} → {new_bics}')
-    new_signals = [s for b in new.get('bug_introducing_commits',[]) for s in b.get('commit',{}).get('ai_signals',[])]
-    print(f'AI signals: {len(new_signals)}')
-    if old['stages'].get('blame_agreement') == 'MISSING':
-        print('Check: was the missed BIC found this time?')
-    if old['stages'].get('signal_verification') == 'FALSE_SIGNAL':
-        print('Check: are false signals eliminated?')
+total = len(findings)
+if total % 10 != 0:
+    print(f'Total: {total} (next analysis at {total + (10 - total % 10)})')
+else:
+    print(f'Total: {total}')
+    agree = sum(1 for f in findings if f.get('agreement'))
+    print(f'Agreement: {agree}/{total} ({100*agree/total:.0f}%)')
+    unfixed = [f for f in findings if not f.get('fix_applied')]
+    phases = Counter(f.get('disagreement_phase') for f in unfixed if not f.get('agreement'))
+    print(f'Disagreements by phase: {dict(phases)}')
+    blames = Counter(f['stages'].get('blame_agreement') for f in unfixed)
+    print(f'Blame accuracy: {dict(blames)}')
+    # Check for OBSERVE items that should promote to FIX (>=3 occurrences)
+    suggestions = Counter()
+    for f in unfixed:
+        for s in f.get('improvement_suggestions', []):
+            if isinstance(s, dict) and s.get('priority') == 'OBSERVE':
+                suggestions[s.get('suggestion', '')[:80]] += 1
+    promotable = {k: v for k, v in suggestions.items() if v >= 3}
+    if promotable:
+        print(f'Promote OBSERVE->FIX (>=3 occurrences): {promotable}')
 "
 ```
-
-3. Compare key metrics:
-   - **BIC count**: should decrease (less noise) or stay same (if issue was signal, not blame)
-   - **True BIC**: if was `MISSING`, should now be found
-   - **False signals**: if was `FALSE_SIGNAL`, should be gone
-   - **Verdict alignment**: should now agree with independent verdict
-
-4. Update the finding in `findings.json` with regression results:
-```json
-{
-  "regression_verified": true,
-  "regression_timestamp": "ISO-8601",
-  "regression_result": "IMPROVED|NO_CHANGE|REGRESSED",
-  "regression_details": "BIC count 20→7, true BIC now found"
-}
-```
-
-5. If regression fails (no improvement or got worse), flag for investigation and note in improvement_suggestions.
-
-## Integration with /loop
-
-This skill works with `/loop 30m /audit` to continuously audit CVEs. Each run picks the next unaudited CVE, runs the full analysis, saves the finding, and periodically produces pattern analysis reports.

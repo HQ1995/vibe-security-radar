@@ -720,3 +720,133 @@ class TestRecomputeAiConfidenceUnrelated:
         }
         conf = _recompute_ai_confidence(result)
         assert abs(conf - 0.81) < 0.01
+
+
+# ---------------------------------------------------------------------------
+# TestHowIntroducedPriority
+# ---------------------------------------------------------------------------
+
+def _make_bic_with_verdicts(
+    sha="def456abc",
+    ai_signals=True,
+    screening_verdict=None,
+    screening_reasoning="",
+    screening_causal_chain="",
+    deep_verdict=None,
+    deep_confidence="high",
+    deep_reasoning="",
+):
+    """Build a BIC dict with optional screening and deep-verify verdicts."""
+    bic = {
+        "commit": {
+            "sha": sha,
+            "author_name": "dev",
+            "author_email": "dev@example.com",
+            "committer_name": "dev",
+            "committer_email": "dev@example.com",
+            "message": "feat: some change",
+            "authored_date": "2026-01-15T00:00:00Z",
+            "ai_signals": [
+                {"tool": "claude_code", "signal_type": "co_author_trailer",
+                 "matched_text": "Co-authored-by: Claude", "confidence": 0.95}
+            ] if ai_signals else [],
+        },
+        "fix_commit_sha": "abc123",
+        "blamed_file": "src/main.py",
+        "blamed_lines": [10],
+        "blame_confidence": 1.0,
+    }
+    if screening_verdict:
+        bic["llm_verdict"] = {
+            "verdict": screening_verdict,
+            "reasoning": screening_reasoning,
+            "causal_chain": screening_causal_chain,
+            "vuln_type": "Test Vuln",
+            "vuln_description": "Test description",
+            "model": "test-model",
+        }
+    if deep_verdict:
+        bic["verification_verdict"] = {
+            "verdict": deep_verdict,
+            "confidence": deep_confidence,
+            "reasoning": deep_reasoning,
+            "model": "gpt-5.4",
+        }
+    return bic
+
+
+class TestHowIntroducedPriority:
+    """how_introduced should prefer deep-verify CONFIRMED over screening CONFIRMED."""
+
+    def test_deep_verify_confirmed_over_screening_confirmed(self):
+        """When screening says CONFIRMED but deep verify says UNLIKELY on BIC 1,
+        and deep verify says CONFIRMED on BIC 2, use BIC 2's reasoning."""
+        bic1 = _make_bic_with_verdicts(
+            sha="bic1",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Screening says BIC1 caused it",
+            deep_verdict="UNLIKELY",
+            deep_reasoning="Deep verify says BIC1 did NOT cause it",
+        )
+        bic2 = _make_bic_with_verdicts(
+            sha="bic2",
+            screening_verdict="UNRELATED",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="Deep verify says BIC2 introduced the path traversal",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic1, bic2],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert "BIC2 introduced" in entry["how_introduced"]
+        assert "BIC1 caused it" not in entry["how_introduced"]
+
+    def test_screening_ignored_when_deep_says_unlikely(self):
+        """A BIC with screening CONFIRMED but deep verify UNLIKELY should NOT
+        provide how_introduced."""
+        bic = _make_bic_with_verdicts(
+            sha="overruled",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Screening thinks this caused it",
+            deep_verdict="UNLIKELY",
+            deep_reasoning="Deep verify disagrees",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert "Screening thinks" not in entry["how_introduced"]
+
+    def test_screening_ok_when_no_deep_verify(self):
+        """If no deep verify exists, screening CONFIRMED is acceptable."""
+        bic = _make_bic_with_verdicts(
+            sha="no_deep",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Screening explanation is fine",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["how_introduced"] == "Screening explanation is fine"
+
+    def test_deep_confirmed_reasoning_used(self):
+        """Deep verify CONFIRMED reasoning should be used as how_introduced."""
+        bic = _make_bic_with_verdicts(
+            sha="confirmed",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="The commit introduced processIncludes without path validation",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert "processIncludes" in entry["how_introduced"]

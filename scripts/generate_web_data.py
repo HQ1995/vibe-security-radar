@@ -1147,35 +1147,50 @@ def build_cve_entry(
     elif models:
         verified_by = ", ".join(sorted(models))
 
-    # Populate how_introduced (causal chain), root_cause, and vuln_type
-    # from first CONFIRMED verdict (llm_verdict or deep verifier fallback)
+    # Populate how_introduced (causal chain), root_cause, and vuln_type.
+    # Priority: deep-verify CONFIRMED > screening CONFIRMED (no deep verify).
+    # If deep verify says UNLIKELY/UNRELATED, screening CONFIRMED is ignored
+    # for that BIC — the deep verifier overrules screening.
     how_introduced = ""
     root_cause = ""
     vuln_type = ""
-    for bic in result.get("bug_introducing_commits", []):
-        llm_v = bic.get("llm_verdict")
-        if llm_v and llm_v.get("verdict") == "CONFIRMED":
-            how_introduced = llm_v.get("causal_chain", "")
-            root_cause = llm_v.get("vuln_description", "")
-            vuln_type = llm_v.get("vuln_type", "")
-            if how_introduced or root_cause:
-                break
+    screening_fallback = ""
+    screening_root_cause = ""
+    screening_vuln_type = ""
 
-        # Fallback: use deep verification's CONFIRMED reasoning
+    for bic in result.get("bug_introducing_commits", []):
         dv = _get_deep_verdict(bic)
-        if dv and not how_introduced:
+        dv_verdict = ""
+        if dv:
             dv_verdict = (dv.get("final_verdict") or dv.get("verdict") or "").upper()
-            if dv_verdict == "CONFIRMED":
-                # New verifier format: reasoning at top level
-                if dv.get("reasoning"):
-                    how_introduced = dv["reasoning"]
-                # Old format: reasoning inside agent_verdicts
-                for av in dv.get("agent_verdicts", []):
-                    if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
-                        how_introduced = av["reasoning"]
-                        break
+
+        # Best source: deep verify CONFIRMED
+        if dv_verdict == "CONFIRMED":
+            if dv.get("reasoning"):
+                how_introduced = dv["reasoning"]
+            # Old format: reasoning inside agent_verdicts
+            for av in dv.get("agent_verdicts", []):
+                if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
+                    how_introduced = av["reasoning"]
+                    break
             if how_introduced:
                 break
+
+        # Screening CONFIRMED — only use if deep verify did NOT overrule it
+        llm_v = bic.get("llm_verdict")
+        if llm_v and llm_v.get("verdict") == "CONFIRMED" and not dv_verdict:
+            # No deep verify exists for this BIC — screening is acceptable
+            candidate = llm_v.get("causal_chain", "")
+            if candidate and not screening_fallback:
+                screening_fallback = candidate
+                screening_root_cause = llm_v.get("vuln_description", "")
+                screening_vuln_type = llm_v.get("vuln_type", "")
+
+    # Use screening only as fallback when no deep-verify CONFIRMED was found
+    if not how_introduced and screening_fallback:
+        how_introduced = screening_fallback
+        root_cause = screening_root_cause
+        vuln_type = screening_vuln_type
 
     # Best verdict across all BICs (for list table display).
     # UNRELATED BICs are already filtered out of bug_commits above,
