@@ -1500,13 +1500,18 @@ def main(argv: list[str] | None = None) -> None:
                 in_range = True
             if in_range:
                 total_in_range += 1
-                if r.get("fix_commits"):
+                fcs = r.get("fix_commits") or []
+                if any(fc.get("sha") for fc in fcs):
                     with_fix_commits += 1
         print(f"  {total_in_range} of {len(results)} results within coverage window (>= {coverage_since}).")
-        print(f"  {with_fix_commits} with fix commits ({100*with_fix_commits/total_in_range:.1f}%), {total_in_range - with_fix_commits} without.")
+        if total_in_range > 0:
+            print(f"  {with_fix_commits} with fix commits ({100*with_fix_commits/total_in_range:.1f}%), {total_in_range - with_fix_commits} without.")
     else:
         total_in_range = len(results)
-        with_fix_commits = sum(1 for r in results if r.get("fix_commits"))
+        with_fix_commits = sum(
+            1 for r in results
+            if any(fc.get("sha") for fc in (r.get("fix_commits") or []))
+        )
     stats_output = build_stats(
         entries, total_analyzed=total_in_range,
         with_fix_commits=with_fix_commits,
