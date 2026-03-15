@@ -57,17 +57,24 @@ else
     PHASE="done"
 fi
 
-# --- Error category breakdown (full cache) ---
+# --- Full summary (IDLE) or one-liner (RUNNING) ---
 if [ "$STATUS" = "IDLE" ] && [ "$TOTAL" -gt 0 ]; then
     echo "[$NOW] $STATUS | $TOTAL cached | phase: $PHASE | load $LOAD | mem ${MEM_PCT}% | git $GIT_PROCS"
     python3 -c "
 import json
 from pathlib import Path
 from collections import Counter
-cache = Path.home() / '.cache/cve-analyzer/results'
+
+home = Path.home()
+cache = home / '.cache/cve-analyzer/results'
+infer_dir = home / '.cache/cve-analyzer/fix-inference'
+web_stats = home / 'agents/ai-slop/web/data/stats.json'
+
+# --- Pipeline results ---
 cats = Counter()
 verdicts = Counter()
-signals = fixes = verified = 0
+signals = fixes = verified = bic_total = 0
+ai_tools = Counter()
 for f in cache.glob('*.json'):
     try:
         d = json.loads(f.read_text())
@@ -76,7 +83,9 @@ for f in cache.glob('*.json'):
     cats[cat] += 1
     if d.get('ai_signals'): signals += 1
     if d.get('fix_commits'): fixes += 1
-    for b in d.get('bug_introducing_commits', []):
+    bics = d.get('bug_introducing_commits', [])
+    bic_total += len(bics)
+    for b in bics:
         vv = b.get('deep_verification') or b.get('verification_verdict')
         tv = b.get('tribunal_verdict')
         if vv:
@@ -85,12 +94,51 @@ for f in cache.glob('*.json'):
         elif tv:
             verified += 1
             verdicts['tribunal:' + tv.get('verdict', '?')] += 1
-print(f'  fixes: {fixes} | signals: {signals} | verified: {verified}')
+        for s in b.get('commit', {}).get('ai_signals', []):
+            ai_tools[s.get('tool', '?')] += 1
+
+print(f'  fixes: {fixes} | signals: {signals} | BICs: {bic_total} | verified: {verified}')
 if verdicts:
     parts = [f'{v} {n}' for v, n in verdicts.most_common()]
-    print(f'  verdicts: {", ".join(parts)}')
+    print(f'  verdicts: {', '.join(parts)}')
+if ai_tools:
+    parts = [f'{t} {n}' for t, n in ai_tools.most_common(5)]
+    print(f'  ai_tools: {', '.join(parts)}')
 for cat, n in cats.most_common():
     print(f'  {cat}: {n}')
+
+# --- AI fix inference ---
+if infer_dir.exists():
+    infer_stats = Counter()
+    infer_bics = 0
+    for f in infer_dir.glob('*.json'):
+        try:
+            d = json.loads(f.read_text())
+            infer_stats[d.get('status', '?')] += 1
+            if d.get('status') == 'FOUND':
+                sha = d.get('result', {}).get('sha', '')
+                rp = cache / f'{d[\"cve_id\"]}.json'
+                if rp.exists():
+                    rd = json.loads(rp.read_text())
+                    infer_bics += len(rd.get('bug_introducing_commits', []))
+        except: continue
+    total_infer = sum(infer_stats.values())
+    if total_infer:
+        parts = [f'{k}={v}' for k, v in sorted(infer_stats.items())]
+        print(f'  inference: {total_infer} runs — {', '.join(parts)} — {infer_bics} BICs from FOUND')
+
+# --- Website stats ---
+if web_stats.exists():
+    try:
+        ws = json.loads(web_stats.read_text())
+        tp = ws.get('total_cves', 0)
+        analyzed = ws.get('total_analyzed', 0)
+        wfc = ws.get('with_fix_commits', 0)
+        by_tool = ws.get('by_tool', {})
+        tool_str = ', '.join(f'{t}={n}' for t, n in sorted(by_tool.items(), key=lambda x: -x[1])[:5])
+        print(f'  website: {tp} true positives | {analyzed} analyzed | {wfc} with fix commits')
+        print(f'  website tools: {tool_str}')
+    except: pass
 " 2>/dev/null
 else
     echo "[$NOW] $STATUS | $TOTAL cached | +$RECENT/5min | phase: $PHASE | load $LOAD | mem ${MEM_PCT}% | git $GIT_PROCS"

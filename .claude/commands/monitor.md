@@ -59,11 +59,21 @@ When RUNNING:
 When IDLE (full summary):
 ```
 [HH:MM] IDLE | N cached | phase: done | load X | mem X% | git X
-  fixes: N | signals: N | verified: N
+  fixes: N | signals: N | BICs: N | verified: N
   verdicts: UNLIKELY N, UNRELATED N, CONFIRMED N
+  ai_tools: claude_code N, github_copilot N, ...
   no_fix_commits: N
   success: N
+  inference: N runs — FOUND=N, NOT_FOUND=N, NO_TAGS=N — N BICs from FOUND
+  website: N true positives | N analyzed | N with fix commits
+  website tools: claude_code=N, github_copilot=N, ...
 ```
+
+Key metrics:
+- **true positives** — CVEs displayed on the website with confirmed AI involvement
+- **signals** — CVEs where AI authorship signals were detected in BICs
+- **inference** — AI-inferred fix commit discovery stats (FOUND = LLM identified the real fix commit)
+- **BICs from FOUND** — new bug-introducing commits discovered via AI inference
 
 Status values:
 - **RUNNING** — pipeline active, results flowing
