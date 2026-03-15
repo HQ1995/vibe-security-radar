@@ -188,7 +188,13 @@ Finding schema:
   },
   "disagreement_phase": "signal_detection",
   "root_cause": "description of why pipeline missed",
-  "improvement_suggestions": []
+  "improvement_suggestions": [
+    {
+      "suggestion": "Add aether-ai-agent to AI signal patterns",
+      "priority": "FIX|OBSERVE|WONTFIX",
+      "rationale": "Concrete example rationale — is it recurring? What's the blast radius?"
+    }
+  ]
 }
 ```
 

@@ -259,9 +259,26 @@ Alternatively, manually append to `~/.cache/cve-analyzer/audit/findings.json` if
 }
 ```
 
+Each entry in `improvement_suggestions` should be a structured object (not a plain string):
+
+```json
+{
+  "suggestion": "Lower blame_confidence for add-only fixes when blamed commit only expanded the same data structure",
+  "priority": "FIX|OBSERVE|WONTFIX",
+  "rationale": "Seen in 1 audit only; fix requires reworking context_blame to detect add-only diffs — significant complexity for a narrow case."
+}
+```
+
+Priority levels:
+- **FIX** — real pipeline bug or systematic error; worth a code change. Criteria: affects multiple CVEs, causes wrong verdicts, or introduces false positives/negatives at scale.
+- **OBSERVE** — plausible improvement but uncertain value; log it and revisit when a pattern emerges. Criteria: seen only once, marginal impact, or the fix adds complexity disproportionate to the benefit. **Promote to FIX when the same suggestion appears in ≥3 independent audits.**
+- **WONTFIX** — design limitation or edge case not worth addressing. Criteria: inherent to the approach, extremely rare, or the fix would break other things.
+
+Old findings with plain-string suggestions are fine — they just won't have priority metadata. New findings should use this structured format.
+
 ## Phase 7b: Offer Immediate Fix (if actionable)
 
-If `improvement_suggestions` contains changes that could improve the pipeline (algorithm bugs, missing patterns, incorrect logic), ask the user:
+If `improvement_suggestions` contains FIX-priority items that could improve the pipeline (algorithm bugs, missing patterns, incorrect logic), ask the user:
 
 > **Actionable improvement found:** <one-line summary>
 > Want me to fix this now? (The fix will be recorded in this finding so it won't clutter the Phase 8 pattern report.)
@@ -334,7 +351,7 @@ print(f'Blame agreement: {dict(blames)}')
 Then write a brief **Pipeline Accuracy Report** summarizing:
 1. Overall agreement rate
 2. Most problematic pipeline phase
-3. Top improvement recommendations with specific file:line references
+3. Top **FIX**-priority suggestions (group recurring OBSERVE items that now have enough evidence to promote to FIX)
 4. Patterns: which blame strategies / signal types / vuln types have the most issues
 
 ## Output Format
@@ -367,7 +384,9 @@ Present results to the user as a structured report:
 <if disagreement: what went wrong, which phase, root cause>
 
 ### Improvement Suggestions
-<specific, actionable suggestions with affected file paths>
+| Suggestion | Priority | Rationale |
+|------------|----------|-----------|
+| <what to change> | FIX/OBSERVE/WONTFIX | <why this priority — recurring? blast radius? fix complexity?> |
 ```
 
 ## Phase 9: Regression Verification (after improvements)
