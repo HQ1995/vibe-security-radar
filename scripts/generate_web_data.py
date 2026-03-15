@@ -930,6 +930,28 @@ def _bic_dict_is_excluded(bic: dict) -> bool:
     return False
 
 
+_UNLIKELY_PENALTIES_DICT: dict[str, float] = {
+    "high": 0.25,
+    "medium": 0.5,
+    "low": 1.0,
+}
+
+
+def _get_unlikely_penalty_dict(bic: dict) -> float:
+    """Return penalty multiplier for UNLIKELY verification_verdict.
+
+    Dict-based mirror of _get_unlikely_penalty() in pipeline.py.
+    Only checks verification_verdict (has confidence field).
+    """
+    vv = bic.get("verification_verdict")
+    if not vv:
+        return 1.0
+    if (vv.get("verdict") or "").upper() != "UNLIKELY":
+        return 1.0
+    confidence = (vv.get("confidence") or "low").lower()
+    return _UNLIKELY_PENALTIES_DICT.get(confidence, 1.0)
+
+
 def _recompute_ai_confidence(result: dict) -> float:
     """Recompute AI confidence from raw BIC data.
 
@@ -964,6 +986,7 @@ def _recompute_ai_confidence(result: dict) -> float:
         ai_bic_count += 1
         best_signal = max(s.get("confidence", 0) for s in authorship)
         score = best_signal * bic.get("blame_confidence", 0)
+        score *= _get_unlikely_penalty_dict(bic)
         if score > max_score:
             max_score = score
             best_bic = bic
