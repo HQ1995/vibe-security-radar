@@ -1056,7 +1056,7 @@ def build_cve_entry(
     bug_commits_raw = [
         _build_bug_commit(bic, repo_url=fix_repo_url) for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
-        and _effective_verdict(bic) != "UNRELATED"
+        and _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY")
     ]
     # Merge BICs with the same SHA (same commit blamed for multiple files).
     # Keep the first entry and append extra blamed_file values.
@@ -1193,8 +1193,8 @@ def build_cve_entry(
         vuln_type = screening_vuln_type
 
     # Best verdict across all BICs (for list table display).
-    # UNRELATED BICs are already filtered out of bug_commits above,
-    # so only CONFIRMED and UNLIKELY can appear here.
+    # UNRELATED and UNLIKELY BICs are filtered out of bug_commits above,
+    # so only CONFIRMED BICs appear.
     best_verdict = ""
     for bic in result.get("bug_introducing_commits", []):
         v = _effective_verdict(bic)

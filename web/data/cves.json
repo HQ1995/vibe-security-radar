@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-15T02:51:49.073549+00:00",
+  "generated_at": "2026-03-15T02:59:23.976745+00:00",
   "total": 56,
   "cves": [
     {
@@ -69,53 +69,6 @@
                   "`blame_lines` on that pre-fix state attributes line 347 (`exec(...)`) and the surrounding `openBrowser` function definition lines 343-356 to `e08547bcdb42aaa86190c6e2dfc64159fcd3a146`; line 10 (`const { exec } = require('child_process');`) is also blamed to `e08547bc`.",
                   "`git_log` for `auth.js` shows the file history starts at `e08547bc...`, and `get_file_at_commit` for parent commit `9f7c1b36d698845ea8bd968ad7446550995a2a3d` fails because `auth.js` did not exist there, confirming the vulnerable function was created in the suspected commit.",
                   "Subsequent commits touching `auth.js` (e.g. `613ce9c4e952edc98b57e7d9be53df70bf07e65d`) only changed logging calls in `openBrowser` (`console.log` → `console.error`) and did not introduce the unsafe shell execution."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "613ce9c4e952edc98b57e7d9be53df70bf07e65d",
-          "author": "brentmid",
-          "date": "2025-06-17T10:03:53-04:00",
-          "message": "Fix JSON-RPC logging conflicts and update documentation",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "auth.js",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit only performs refactoring of console logging statements (changing console.log to console.error) within the existing openBrowser function. The vulnerable pattern using exec() was already present in the code prior to this commit, meaning this commit did not introduce the vulnerability.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The openBrowser function used the shell-executing exec() function with a template literal to open URLs, allowing an attacker to inject arbitrary shell commands via a crafted URL string.",
-            "vulnerable_pattern": "exec(`${command} \"${url}\"`, (error) => { ... })",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The vulnerable pattern fixed in 1e66c78 is the use of `child_process.exec()` with a shell-interpolated URL in `openBrowser()`. Blame on the pre-fix file (`b8444aa`) shows the security-relevant lines—`const { exec } = require('child_process')` and `exec(`${command} \"${url}\"`, ...)`—were introduced by commit `e08547bc`, not by the suspected commit `613ce9c4`. Commit `613ce9c4` only changed surrounding logging from stdout/warn to stderr/error inside the already-existing function, so it is a trivial blame-overlap change rather than the bug-introducing change.",
-                "confidence": 0.95,
-                "tool_calls_made": 17,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `auth.js` at pre-fix commit `b8444aa20c32eefdb3bf38ab02f81904a80c4533` attributes `function openBrowser(url)`, the platform command selection, and the vulnerable sink `exec(`${command} \"${url}\"`, ...)` (lines 343-347) to `e08547bcdb42aaa86190c6e2dfc64159fcd3a146`; only non-security log lines 350-351 and 353 are attributed to `613ce9c4`.",
-                  "`get_file_at_commit` for the suspected BIC's parent `4dd2d8c90a1202762e20bf3237f91d064711f06a` already contains the same vulnerable code: `exec(`${command} \"${url}\"`, ...)` in `openBrowser()`, proving the command-injection pattern existed before `613ce9c4`.",
-                  "`get_commit_diff` for `613ce9c4e952edc98b57e7d9be53df70bf07e65d` shows only logging changes in `openBrowser()` (`console.log`/`console.warn` -> `console.error`) and no change to the `exec()` call or URL interpolation. By contrast, `get_commit_diff` for `e08547bcdb42aaa86190c6e2dfc64159fcd3a146` shows `auth.js` was added with `const { exec } = require('child_process');` and the original vulnerable `openBrowser()` implementation."
                 ]
               }
             ]
@@ -580,264 +533,6 @@
             }
           ],
           "squash_merge_sha": "3869d001aec3e90271bd71ab7ed1490383254dca"
-        },
-        {
-          "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
-          "author": "Shaon H",
-          "date": "2026-01-19T16:01:15-08:00",
-          "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "endpoints/api/org_mirror.py, data/model/org_mirror.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `OrgMirrorConfig` API endpoint and the logic for processing `external_registry_url` without any input validation or SSRF protection. The fix commit subsequently added the necessary `validate_external_registry_url` checks to this specific file, confirming the initial oversight occurred during the creation of this module.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Server-Side Request Forgery (SSRF)",
-            "vuln_description": "The application processes user-supplied URLs and follows redirects without validating if the resolved IP addresses point to internal or restricted networks, allowing attackers to access internal systems.",
-            "vulnerable_pattern": "Fetching user-supplied URLs and following redirects without validating the final resolved IP against a blocklist of private/internal networks.",
-            "causal_chain": "The blamed commit introduced the OrgMirrorConfig API endpoint which accepts a user-controlled 'external_registry_url' and stores it in the database; because no validation logic was implemented at the time of creation, subsequent backend processing of this URL followed redirects to internal network resources, enabling the SSRF vulnerability."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected BIC created the org-mirror CRUD file and stored `external_registry_url`, but at that point the security-sensitive endpoints were still stubbed with `_not_implemented()` and there was no org-mirror adapter/worker code making outbound HTTP requests. The actual SSRF sink that follows redirects was introduced later in commit `3869d001aec3e90271bd71ab7ed1490383254dca`, which added `get_registry_adapter`, `RegistryAdapter`, and the Harbor/Quay `session.get(...)` calls that the fix later changed to `allow_redirects=False` and wrapped with SSRF validation. So while `92b6f472` authored some lines that were later hardened for defense-in-depth, it did not introduce the exploitable request-processing behavior described by the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 67,
-                "steps_completed": [],
-                "evidence": [
-                  "At `92b6f4729a5e29159f8864f923e5ea22081f9bb8`, `endpoints/api/org_mirror.py` had `OrgMirrorVerify`, `OrgMirrorRepositories`, and sync endpoints calling `_not_implemented()`; no outbound registry access existed there yet.",
-                  "Searching the repo at `92b6f472...` found no `get_registry_adapter` usage and no `util/orgmirror` adapter code, confirming the BIC only added CRUD/storage logic.",
-                  "Commit `3869d001aec3e90271bd71ab7ed1490383254dca` explicitly introduced the verify endpoint, repository discovery, worker processing, and new `util/orgmirror/*` adapters; its commit message says it added registry adapters and connectivity testing.",
-                  "Blame on pre-fix adapter code shows the vulnerable HTTP calls in `util/orgmirror/harbor_adapter.py` and `util/orgmirror/quay_adapter.py` trace to `3869d001...`, not `92b6f472...`.",
-                  "The fix commit modified those adapter `session.get(...)` calls to add `allow_redirects=False`, indicating the redirect-following SSRF behavior was in the later adapter code rather than in the original CRUD commit."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "7f07e970be3c2cc80a6ac387e111a300a3b11122",
-              "author_name": "Shaon H",
-              "message": "mirror: Add FEATURE_ORG_MIRROR feature flag (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "bb7c06aec08ad6135b8d4b475b96a44e19b62ef9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add POST endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "95d498f252c3d784e81a32e5781104daf578d8a7",
-              "author_name": "Shaon H",
-              "message": "mirror: Add DELETE endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "24d6083f5a43f0e5961eb1ed3bafe4c9cf468c63",
-              "author_name": "Shaon H",
-              "message": "mirror: Add PUT endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "90e64bfe4aee3f7828a70b033e57ac1a0021c9ea",
-              "author_name": "Shaon H",
-              "message": "fix test failure",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "92b6f4729a5e29159f8864f923e5ea22081f9bb8"
-        },
-        {
-          "sha": "7f07e970be3c2cc80a6ac387e111a300a3b11122",
-          "author": "Shaon H",
-          "date": "2026-01-19T16:01:15-08:00",
-          "message": "mirror: Add FEATURE_ORG_MIRROR feature flag (PROJQUAY-1266)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "config.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit merely introduces the feature flag (FEATURE_ORG_MIRROR) for the organization mirror feature in various configuration files. The actual SSRF vulnerability exists in the HTTP request handling logic, and this commit was only blamed because the fix added a new configuration option immediately after the feature flag in the config file.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "SSRF",
-            "vuln_description": "The application performed internal HTTP requests based on user-supplied URLs without properly validating the destination, allowing an attacker to reach internal services.",
-            "vulnerable_pattern": "Unvalidated URL handling in HTTP requests leading to SSRF during organization mirroring, likely due to following redirects to internal IP addresses or restricted domains.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected BIC created the org-mirror CRUD file and stored `external_registry_url`, but at that point the security-sensitive endpoints were still stubbed with `_not_implemented()` and there was no org-mirror adapter/worker code making outbound HTTP requests. The actual SSRF sink that follows redirects was introduced later in commit `3869d001aec3e90271bd71ab7ed1490383254dca`, which added `get_registry_adapter`, `RegistryAdapter`, and the Harbor/Quay `session.get(...)` calls that the fix later changed to `allow_redirects=False` and wrapped with SSRF validation. So while `92b6f472` authored some lines that were later hardened for defense-in-depth, it did not introduce the exploitable request-processing behavior described by the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 67,
-                "steps_completed": [],
-                "evidence": [
-                  "At `92b6f4729a5e29159f8864f923e5ea22081f9bb8`, `endpoints/api/org_mirror.py` had `OrgMirrorVerify`, `OrgMirrorRepositories`, and sync endpoints calling `_not_implemented()`; no outbound registry access existed there yet.",
-                  "Searching the repo at `92b6f472...` found no `get_registry_adapter` usage and no `util/orgmirror` adapter code, confirming the BIC only added CRUD/storage logic.",
-                  "Commit `3869d001aec3e90271bd71ab7ed1490383254dca` explicitly introduced the verify endpoint, repository discovery, worker processing, and new `util/orgmirror/*` adapters; its commit message says it added registry adapters and connectivity testing.",
-                  "Blame on pre-fix adapter code shows the vulnerable HTTP calls in `util/orgmirror/harbor_adapter.py` and `util/orgmirror/quay_adapter.py` trace to `3869d001...`, not `92b6f472...`.",
-                  "The fix commit modified those adapter `session.get(...)` calls to add `allow_redirects=False`, indicating the redirect-following SSRF behavior was in the later adapter code rather than in the original CRUD commit."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "7f07e970be3c2cc80a6ac387e111a300a3b11122",
-              "author_name": "Shaon H",
-              "message": "mirror: Add FEATURE_ORG_MIRROR feature flag (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "bb7c06aec08ad6135b8d4b475b96a44e19b62ef9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add POST endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "95d498f252c3d784e81a32e5781104daf578d8a7",
-              "author_name": "Shaon H",
-              "message": "mirror: Add DELETE endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "24d6083f5a43f0e5961eb1ed3bafe4c9cf468c63",
-              "author_name": "Shaon H",
-              "message": "mirror: Add PUT endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "90e64bfe4aee3f7828a70b033e57ac1a0021c9ea",
-              "author_name": "Shaon H",
-              "message": "fix test failure",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "92b6f4729a5e29159f8864f923e5ea22081f9bb8"
         }
       ],
       "fix_commits": [
@@ -939,54 +634,6 @@
               }
             ]
           }
-        },
-        {
-          "sha": "8c1989e36ad2950fcf4c8f9f95027ebf487e0f61",
-          "author": "George Peden",
-          "date": "2026-02-16T17:08:39-08:00",
-          "message": "Fix: quote token values in .env to prevent # truncation",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/auth/oauth.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the specific line of code containing the vulnerable regex pattern and the insecure string concatenation logic. By dynamically constructing a RegExp using user-provided keys without sanitization, it created the environment variable injection vulnerability.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Environment Variable Injection",
-            "vuln_description": "The application used insecure regular expressions to update the .env file, allowing an attacker to inject arbitrary environment variables or manipulate file structure by providing crafted input keys or values.",
-            "vulnerable_pattern": "new RegExp(`^(#\\\\s*)?${key}=.*$`, 'gm')",
-            "causal_chain": "The commit introduced the `new RegExp` constructor using an unsanitized `key` variable, which allows an attacker to break out of the intended line match and inject arbitrary content into the .env file."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix removes the entire manual `.env` update routine and replaces it with `dotenv.parse` + `dotenv-stringify`, so the security-relevant vulnerable pattern is the hand-built regex/string serialization in `updateEnvFile()`. In the pre-fix file, blame shows that the regex loop and the replace/append logic came from commit `4c9c826c`, while `8c1989e3` only changed one line from `key=value` to `key=\"value\"` to address `#` truncation. Checking the parent state at `1c22d404` confirms the same unsafe manual serialization already existed before `8c1989e3`, so this commit did not introduce the environment-variable injection issue; it merely added an insufficient quoting mitigation.",
-                "confidence": 0.95,
-                "tool_calls_made": 20,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `src/auth/oauth.ts` at the pre-fix state (`8c1989e3`) attributes lines 22-25 and 28-34 of `updateEnvFile()` to `4c9c826c`; only line 26 (`const newLine = `${key}=\"${value}\"`;`) is from `8c1989e3`.",
-                  "`get_file_at_commit` for the suspected BIC's parent `1c22d4041eb8cae1f719ac8230e42038279623a2` shows the same manual `.env` writing logic already existed, with `const newLine = `${key}=${value}`;`.",
-                  "`get_commit_diff` for `8c1989e3` shows a one-line change: `key=value` -> `key=\"value\"`, matching the commit message about preventing `#` truncation rather than introducing the serializer itself.",
-                  "`get_commit_diff`/`get_commit_info` for `4c9c826c6fc8b64a20e948cb46fefdda42d5244d` show that commit originally added `updateEnvFile()` and the token-persistence behavior that writes token values back into `.env`."
-                ]
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -1025,200 +672,6 @@
       "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
-        {
-          "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T20:47:45-05:00",
-          "message": "✨ feat(limiter): add shard selection, retry on exhaustion, and shard doubling",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `_is_wcu_exhausted` logic and the associated shard-doubling mechanism, which implemented the flawed strategy of using a single DynamoDB partition key for rate-limit buckets. This logic failed to account for the fact that high-traffic entities would still hit the same partition key before the shard count could be effectively increased, leading to the described hot partition DoS.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Blame on the pre-fix mainline state (`a586b810`, the state before the later hardening commits were merged) shows the `_is_wcu_exhausted` / shard-retry logic in `src/zae_limiter/limiter.py` was authored by `9f66c42f`. But `9f66c42f` added shard selection, retry, and shard-count doubling on top of a parent state that had no limiter-side sharding at all, so speculative writes still concentrated on shard 0 and the hot-partition DoS condition already existed before this commit. The later fix (`481ce44` / `e67d0112`) hardens that mitigation by adding explicit `SpeculativeFailureReason` classification and restricting retries, which is better characterized as strengthening an existing security control than introducing the vulnerability.",
-                "confidence": 0.7,
-                "tool_calls_made": 75,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `a586b810:src/zae_limiter/limiter.py:738-750` attributes the shard-doubling and shard-retry block directly to `9f66c42f`.",
-                  "`blame_lines` on `a586b810:src/zae_limiter/limiter.py:1021-1055` attributes `_is_wcu_exhausted` and `_retry_on_other_shard` implementation to `9f66c42f` (only docstring edits came later).",
-                  "`get_file_at_commit` for `9f66c42f^` (`e17e3a51`) shows `_try_speculative_acquire` had no shard-doubling or retry path at all; it simply called `_check_speculative_failure` and returned, meaning no limiter-side sharding mitigation existed yet.",
-                  "`get_file_at_commit` for `6e64d5b2:src/zae_limiter/repository.py:2170-2255` shows pre-`9f66` speculative writes still called `_speculative_consume_single(..., shard_id=0)` with no random shard selection, so hot writes were still pinned to shard 0 before `9f66`.",
-                  "The fix series itself (`481ce44` / `e67d0112`) replaced `_is_wcu_exhausted(result.old_buckets)` with explicit `failure_reason` handling and narrowed retries to `APP_LIMIT_EXHAUSTED`, indicating hardening of the mitigation that `9f66c42f` introduced rather than creation of the underlying hot-partition problem."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "a586b8107f3e50be1cc8178643d37c7abfe5c617",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T23:47:46-05:00",
-          "message": "📝 docs: update docstrings and docs site for pre-shard buckets",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/schema.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit (a586b8107f3e) primarily adds documentation and comments regarding the WCU exhaustion logic and shard retries, referencing an existing GHSA-76rv. The actual logic for WCU exhaustion was already present in the code, and this commit does not appear to introduce the architectural flaw of non-sharded partition keys.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The security-relevant fix changes speculative failure handling in `RateLimiter`: shard doubling now triggers only for `WCU_EXHAUSTED`/`BOTH_EXHAUSTED`, and cross-shard retry only for `APP_LIMIT_EXHAUSTED`, avoiding the hot-partition throttling behavior described in the CVE. In commit `a586b810`, `limiter.py` only received docstring edits; the executable vulnerable lines (`if self._is_wcu_exhausted(result.old_buckets):` and the unconditional `if result.shard_count > 1:` retry path) were already present in its parent `9f66c42` and blame at `a586b810` attributes those lines to `9f66c42`, not to `a586b810`. The other fix hunk in `get_resource_capacity` also predates `a586b810` entirely, with blame pointing back to an older January commit, so `a586b810` did not write the vulnerable logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 38,
-                "steps_completed": [],
-                "evidence": [
-                  "`a586b810` diff for `src/zae_limiter/limiter.py` only expands docstrings for `_is_wcu_exhausted`, `_retry_on_other_shard`, and `_build_lease_from_speculative`; no control-flow or data-flow logic changed.",
-                  "`get_file_at_commit` for `9f66c42` and `a586b810` shows the vulnerable logic around failed speculative consume is identical in both commits.",
-                  "`blame_lines` at `a586b810` for lines 739-750 attributes the shard-doubling and unconditional shard-retry logic to `9f66c42`, while only docstring lines in `_is_wcu_exhausted` / `_retry_on_other_shard` blame to `a586b810`.",
-                  "The second fix hunk (`get_resource_capacity` shard deduplication) is blamed to older commit `3902c8c`/fixed by `4d999352`, not to `a586b810`."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "0e6b99c185c2d5de000bc08fe354ffcd06ddab39",
-          "author": "Patrick Sodré",
-          "date": "2026-02-07T15:01:12-05:00",
-          "message": "⚡ perf(limiter): add speculative UpdateItem to skip read round trip (#315)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `speculative_consume` method and the underlying DynamoDB item structure that maps entities directly to partition keys without sharding. The fix commit addresses the resulting 'hot partition' issue by introducing logic to detect WCU exhaustion and modifying how GSI keys are constructed to support sharding.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "The blamed commit implemented the `speculative_consume` logic and the DynamoDB item schema -> This schema used a direct mapping of entity/resource to partition keys (PK/SK) -> High-traffic entities caused excessive write throughput on single DynamoDB partitions -> This led to WCU exhaustion and Denial of Service for other entities on the same partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The hot-partition DoS fixed in 481ce44/e67d011 depends on later pre-sharding logic: `repository.py` gained WCU/shard metadata in 6e64d5b2, and `limiter.py` gained shard-doubling/retry decisions based on speculative failures in 9f66c42f. Although blame on the `SpeculativeResult(success=False, old_buckets=...)` return in `repository.py` partially points to 0e6b99c1, that commit only introduced the original speculative fast path; at that time `_try_speculative_acquire()` used failures only for refill checks or slow-path fallback, with no WCU exhaustion / shard-doubling behavior. The fix’s `failure_reason` classification is therefore correcting a later misuse of speculative results, not a vulnerability already introduced by 0e6b99c1.",
-                "confidence": 0.95,
-                "tool_calls_made": 60,
-                "steps_completed": [],
-                "evidence": [
-                  "At 0e6b99c1, `limiter.py::_try_speculative_acquire()` only handled speculative failure via bucket-missing/config-changed/refill checks and then slow-path fallback; there was no shard retry/doubling or WCU-based decision logic.",
-                  "Blame on pre-fix `limiter.py` lines 738-749 attributes the vulnerable shard-doubling/retry logic to commit 9f66c42f (`if self._is_wcu_exhausted(result.old_buckets): ...` and `if result.shard_count > 1: ...`).",
-                  "Blame on pre-fix `repository.py` lines 2340-2348 attributes WCU token consumption/condition logic to 6e64d5b2, and lines 2405/2409-2413 attribute shard metadata in failed speculative results to 9f66c42f.",
-                  "The only pre-fix `repository.py` lines blamed to 0e6b99c1 are the generic `old_buckets` failure return; before 0e6b99’s parent (6e3ef0b5), `speculative_consume()` did not exist at all, showing 0e6b99 created scaffolding later extended unsafely rather than the hot-partition exploit path itself."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "94a129ae55acc3b034662045296e288279cbef2e",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T19:43:32-05:00",
-          "message": "🔒 fix(repository): migrate bucket items to per-shard partition keys",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the use of `schema.pk_bucket` and `schema.sk_state` to define the primary key structure for rate-limit buckets. This change moved the system toward a DynamoDB schema where specific entity/resource combinations are mapped to single partition keys (PKs), which the vulnerability analysis identifies as the root cause of the hot partition and WCU exhaustion issue.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "1. The blamed commit implements a new DynamoDB schema using schema.pk_bucket(namespace, entity, resource, shard_id) as the Partition Key (PK). 2. By default, shard_id is set to 0, effectively mapping high-traffic entities to a single DynamoDB partition key. 3. This direct mapping without mandatory sharding/randomization leads to write throughput bottlenecks (hot partitions) on single DynamoDB partitions, enabling the described Denial of Service."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The security-relevant part of the fix bundled in 481ce44 is the `SpeculativeFailureReason` change (subcommit `e67d011`), which corrects how speculative failures are classified so the limiter only retries other shards for app-limit exhaustion and doubles shards for WCU exhaustion. Blame on the pre-fix code attributes those limiter/repository sharding-decision lines to `9f66c42f` (and some older generic `SpeculativeResult` return lines to `0e6b99c1`), not to `94a129ae`. By contrast, `94a129ae` is the earlier migration to per-shard bucket keys and auto-injected `wcu` bookkeeping explicitly intended to mitigate hot-partitioning; its only overlapping line in the fix (`GSI4SK`) was later changed by `95d05b39` as a pure refactor to a helper that returns the same string.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
-                "evidence": [
-                  "`94a129ae` commit message: 'migrate bucket items to per-shard partition keys ... enables write sharding for hot partition mitigation'; its diff replaces `PK=pk_entity(...), SK=sk_bucket(resource)` with `pk_bucket(..., shard_id), sk_state()` and adds GSI3/shard metadata plus auto-injected `wcu` limit.",
-                  "Pre-BIC parent `1e5ef180` still stored buckets under `PK: schema.pk_entity(...), SK: schema.sk_bucket(resource)` in both `build_composite_create` and `_speculative_consume_single`, showing the hot-partition-prone single-entity-key design existed before `94a129ae`.",
-                  "Pre-fix blame on `src/zae_limiter/limiter.py` lines 738-750 and 1007+ attributes the shard-doubling / retry logic and `_is_wcu_exhausted()` to `9f66c42f`, the later commit that added 'shard selection, retry on exhaustion, and shard doubling'.",
-                  "Pre-fix blame on `src/zae_limiter/repository.py` lines 2409-2413 / 2416+ attributes the `shard_id`/`shard_count` failure-return fields and `bump_shard_count()` to `9f66c42f`, while the older `success=False, old_buckets=...` return skeleton predates `94a129ae` (`0e6b99c1`).",
-                  "`95d05b39` changes the `GSI4SK` line from an inline f-string to `schema.gsi4_sk_bucket(...)`; the helper returns the exact same `BUCKET#{entity_id}#{resource}#{shard_id}` format, so that part of the fix is refactor-only, not a vulnerability fix attributable to `94a129ae`."
-                ]
-              }
-            ]
-          }
-        },
         {
           "sha": "6bcd260679f3838743cad07da62628487267e914",
           "author": "Patrick Sodré",
@@ -1267,103 +720,6 @@
               }
             ]
           }
-        },
-        {
-          "sha": "8fba24d17cb8f7679f93a0476ce235d7e0433784",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T18:47:46-05:00",
-          "message": "✨ feat(schema): add WCU infrastructure limit constants",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/schema.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the hardcoded WCU limit constants and the logic treating 1000 WCU as a fixed per-partition ceiling without implementing sharding. This established the architectural pattern where high-traffic entities would hit this single-partition bottleneck, directly leading to the hot partition DoS vulnerability.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "1. Blamed commit defines WCU_LIMIT_CAPACITY at 1000 (the DynamoDB physical partition limit). 2. It establishes the schema logic that maps rate-limit buckets to these fixed-capacity partitions. 3. Lack of sharding in this initial implementation causes high-volume entities to exhaust the 1000 WCU limit, throttling all other entities on the same partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix for CVE-2026-27695 is in the sharding logic, not in the schema constants: it changes aggregator `try_proactive_shard()` to use remaining WCU tokens instead of `consumption_ratio`, rewrites `propagate_shard_count()` to create full shard items, and adds failure-reason classification so the limiter only retries/doubles for the right cause. Blame shows those vulnerable paths were introduced later by `6bcd2606` (aggregator proactive sharding and propagation) and `9f66c42f`/`6e64d5b2` (limiter/repository shard retry and WCU handling), while `8fba24d1` only added `WCU_LIMIT_*` constants in `schema.py`. In `schema.py` itself, the fix does not change the constant values from `8fba24d1`; it only adds a warning threshold and a `gsi4_sk_bucket()` helper, so the BIC is at most an inert prerequisite/security-control addition, not the commit that wrote the flawed logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 52,
-                "steps_completed": [],
-                "evidence": [
-                  "`8fba24d17cb8f...` diff touches only `src/zae_limiter/schema.py` and tests, adding `WCU_LIMIT_NAME/CAPACITY/REFILL_*` constants; no runtime sharding logic is implemented there.",
-                  "Blame on pre-fix processor code attributes `WCU_PROACTIVE_THRESHOLD`, `wcu_tc_delta`, `consumption_ratio`, and the original `propagate_shard_count()` implementation to `6bcd260679f3...`, not to `8fba24d1`.",
-                  "Blame on pre-fix limiter code attributes `_is_wcu_exhausted()` and unconditional multi-shard retry/doubling logic to `9f66c42f06f3...`, not to `8fba24d1`.",
-                  "Blame on `schema.py` at the pre-fix state shows only the inert constant definitions come from `8fba24d1`; the new helper `gsi4_sk_bucket()` is from `95d05b396338...` and the warning threshold is from `e64d84bf5a76...`.",
-                  "`schema.py` at `8fba24d1`'s parent (`2d8cdd8c7c38...`) has no WCU constants, confirming `8fba24d1` introduced only the constants themselves; first behavioral uses appear later in commits like `94a129ae55ac...`, `6e64d5b2df6a...`, `9f66c42f06f3...`, and `6bcd260679f3...`."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "2d8cdd8c7c3825506e9e55def53ec0f3d18aa524",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T18:44:57-05:00",
-          "message": "✨ feat(schema): add bucket PK builders and GSI3 entity keys",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/schema.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit actually introduces sharding logic (shard_id parameters and BUCKET_PREFIX with shard suffixes) into the schema definitions, which is the opposite of the described vulnerable pattern. The fix commit adds a new GSI4 index and a warning threshold, suggesting the blamed commit was an earlier attempt at sharding or a partial implementation that didn't fully resolve the hot partition issue.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Commit 2d8cdd8c added schema helper functions (`pk_bucket`, `sk_state`, `gsi3_pk_entity`, `gsi3_sk_bucket`) as part of the GHSA-76rv pre-shard-buckets mitigation, but those helpers were not yet used anywhere in `src/**/*.py` at that commit. The actual runtime use of those helpers—and the GSI3-based bucket-discovery logic blamed in the pre-fix tree—was introduced later by commit 94a129ae (`migrate bucket items to per-shard partition keys`), while the hot-partition pattern itself already existed before 2d8cdd in repository code that stored all buckets under `PK={ns}/ENTITY#{id}`. So 2d8cdd is related to the fix area, but it did not introduce the vulnerable behavior that the security fix addresses.",
-                "confidence": 0.95,
-                "tool_calls_made": 72,
-                "steps_completed": [],
-                "evidence": [
-                  "`get_file_at_commit` on pre-2d8cdd repository state (`1e5ef180`) shows bucket items already used `PK = schema.pk_entity(self._namespace_id, entity_id)` and `get_buckets()` queried all buckets by that entity PK, i.e. the hot-per-entity pattern existed before 2d8cdd.",
-                  "`search_code_in_repo` at commit 2d8cdd found no uses of `schema.pk_bucket`, `schema.sk_state`, or `schema.gsi3_sk_bucket` outside their new definitions, so 2d8cdd added groundwork helpers but not active runtime logic.",
-                  "`blame_lines` on pre-fix `src/zae_limiter/schema.py` shows the return lines of `gsi3_pk_entity`/`gsi3_sk_bucket` came from 2d8cdd, but `blame_lines` on pre-fix `src/zae_limiter/repository.py` attributes the actual GSI3 bucket-discovery query (`GSI3PK = :gsi3pk`) and bucket-item writes using those helpers to later commit 94a129ae.",
-                  "Commit 94a129ae is explicitly titled `fix(repository): migrate bucket items to per-shard partition keys` and says it enables write sharding for hot partition mitigation (GHSA-76rv), confirming this code path was part of the mitigation work, not the original introduction."
-                ]
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -1379,188 +735,6 @@
         "https://github.com/zeroae/zae-limiter/security/advisories/GHSA-76rv-2r9v-c5m6",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-27695"
       ]
-    },
-    {
-      "id": "CVE-2026-29023",
-      "description": "Keygraph Shannon contains a hard-coded API key in its router configuration that, when the router component is enabled and exposed, allows network attackers to authenticate using the publicly known static key. An attacker able to reach the router port can proxy requests through the Shannon instance using the victim’s configured upstream provider API credentials, resulting in unauthorized API usage and potential disclosure of proxied request and response data. This vulnerability's general exploita",
-      "severity": "MEDIUM",
-      "cvss": 6.9,
-      "cwes": [
-        "CWE-798"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-09T18:16:22.727",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "JavaScript",
-        "TypeScript"
-      ],
-      "confidence": 0.95,
-      "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The fix in 023cc953 patches a path-traversal bug in processIncludes(): it replaces path.join(baseDir, match[1]) with path.resolve(...) and adds a guard rejecting include paths that escape baseDir before fs.readFile. The suspected BIC 9be2e71 is the commit that introduced both the new processIncludes() function and its unsafe path.join+readFile logic, and it also wired that function into loadPrompt() for @include processing. Although blame on the later TypeScript file is partially attributed to the migration commit 3ac07a47, history shows that migration and later file moves preserved the same logic without changing behavior; before 9be2e71 there was no processIncludes function and no @include support at all.",
-      "root_cause": "",
-      "vuln_type": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "f40f52f1181afa22074da4a2f2334e1d6e1903ee",
-          "author": "ajmallesh",
-          "date": "2025-10-23T17:56:19-07:00",
-          "message": "fix: enable Playwright MCP browser automation in Docker containers",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/ai/claude-executor.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the logic that passes the entire parent process environment (`...process.env`) to the MCP subprocess. This pattern is the root cause of the vulnerability, as it inadvertently exposes sensitive API keys and credentials to the subprocess, which can then be accessed by an attacker via the router service.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Hard-coded Credentials / Service Exposure",
-            "vuln_description": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-            "vulnerable_pattern": "ports:\n      - \"3456:3456\"",
-            "causal_chain": "The blamed commit added `env: { ...process.env, ... }` to the MCP server configuration, which caused the subprocess to inherit all environment variables from the parent process, including sensitive API keys that were subsequently exposed through the router service."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix’s security-relevant change in `src/ai/claude-executor.ts` is the removal of broad `process.env` inheritance for the Playwright MCP subprocess (plus pinning `@playwright/mcp` instead of `@latest`). Blame on the pre-fix file attributes those vulnerable lines to `51e621d0`, not `f40f52f`; and `51e621d0` is a later refactor that extracted the same logic into `buildMcpServers`. More importantly, the same insecure pattern already existed in `f40f52f^` (`f13c7421`): `args: ['@playwright/mcp@latest', ...]` and `env: { ...process.env, PLAYWRIGHT_HEADLESS: 'true' }`, with blame on those lines pointing to `eae0b8d6`. The suspected commit `f40f52f` only added Docker-specific Chromium args and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD`, so it did not introduce the code the fix actually patches.",
-                "confidence": 0.95,
-                "tool_calls_made": 27,
-                "steps_completed": [],
-                "evidence": [
-                  "Pre-fix blame on `src/ai/claude-executor.ts` lines 84-107 at `6a76df2f...` shows `@playwright/mcp@latest`, `...process.env`, and `env: envVars` attributed to `51e621d0`, not `f40f52f`.",
-                  "`src/ai/claude-executor.js` at `f40f52f^` (`f13c7421...`) already contains `args: ['@playwright/mcp@latest', '--isolated', '--user-data-dir', userDataDir]` and `env: { ...process.env, PLAYWRIGHT_HEADLESS: 'true' }`.",
-                  "Blame on `f13c7421` for lines 160-166 attributes the vulnerable `env: { ...process.env, PLAYWRIGHT_HEADLESS: 'true' }` block to earlier commit `eae0b8d6` (`feat: migrate to use MCP tools instead of helper scripts`), proving the pattern predates `f40f52f`."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "9be2e71ff29b2af56f1f34a42004aaf31f7a9904",
-          "author": "ajmallesh",
-          "date": "2025-10-23T16:19:25-07:00",
-          "message": "refactor: deduplicate prompt templates with shared content system",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/services/prompt-manager.ts, src/prompts/prompt-manager.ts, src/prompts/prompt-manager.js",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability involves a hard-coded API key in a router configuration, whereas the blamed commit focuses on refactoring prompt templates and authentication utilities. The fix commit provided in the prompt addresses a path traversal issue in prompt processing, which is also unrelated to the hard-coded API key vulnerability described.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Hard-coded Credentials / Service Exposure",
-            "vuln_description": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-            "vulnerable_pattern": "ports:\n      - \"3456:3456\"",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "The fix in 023cc953 patches a path-traversal bug in processIncludes(): it replaces path.join(baseDir, match[1]) with path.resolve(...) and adds a guard rejecting include paths that escape baseDir before fs.readFile. The suspected BIC 9be2e71 is the commit that introduced both the new processIncludes() function and its unsafe path.join+readFile logic, and it also wired that function into loadPrompt() for @include processing. Although blame on the later TypeScript file is partially attributed to the migration commit 3ac07a47, history shows that migration and later file moves preserved the same logic without changing behavior; before 9be2e71 there was no processIncludes function and no @include support at all.",
-                "confidence": 0.95,
-                "tool_calls_made": 25,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix diff 023cc953 in src/services/prompt-manager.ts adds path.resolve(baseDir, match[1]) and a startsWith(resolvedBase + path.sep) containment check before fs.readFile, showing the vulnerable pattern was missing path validation in processIncludes().",
-                  "BIC 9be2e71 diff in src/prompts/prompt-manager.js explicitly adds processIncludes() with `const includePath = path.join(baseDir, match[1]); const sharedContent = await fs.readFile(includePath, 'utf8');` and adds the call `template = await processIncludes(template, promptsDir);`.",
-                  "State before the BIC (27334a4, src/prompts/prompt-manager.js) shows no processIncludes() function; repository search at that commit found no `processIncludes` and no `@include` usage, so the vulnerable feature did not exist before 9be2e71.",
-                  "Blame on the pre-migration JS file (7c2edeb, lines 93-101) attributes the security-relevant lines, including `const includePath = path.join(baseDir, match[1]);`, directly to 9be2e71; later commits 3ac07a47 (TypeScript migration) and b208949 (move to src/services/) only carried the same logic forward."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "3ac07a471896a6946a596a6df2d8db523914b8bd",
-          "author": "ezl-keygraph",
-          "date": "2026-01-08T00:18:25+05:30",
-          "message": "feat: typescript migration (#40)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/services/prompt-manager.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The CVE description and vulnerability analysis focus on hard-coded API keys and unauthorized service exposure in a router component. However, the fix commit addresses a path traversal vulnerability in a template include system, and the blamed commit introduced the original prompt manager logic. Neither commit is related to hard-coded router credentials.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Hard-coded Credentials / Service Exposure",
-            "vuln_description": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
-            "vulnerable_pattern": "ports:\n      - \"3456:3456\"",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix patches a path-traversal bug in `processIncludes()` by replacing `path.join(baseDir, match[1])` with `path.resolve(...)` and adding a base-directory containment check. Although blame on the pre-fix TypeScript file points the `includePath` line at 3ac07a, that commit was a JS→TS migration whose own message says it made 'No runtime behavior changes'; the same unsafe `path.join(baseDir, match[1])` logic already existed in `src/prompts/prompt-manager.js` before 3ac07a. The actual introduction of `processIncludes()` and the unsafe include path construction occurred in commit 9be2e71f, so 3ac07a is best explained as blame drift from a refactor/type migration rather than the true bug introducer.",
-                "confidence": 0.95,
-                "tool_calls_made": 25,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix commit 023cc953 changes `src/services/prompt-manager.ts` in `processIncludes()` from `const includePath = path.join(baseDir, match[1]!)` to `path.resolve(...)` plus a traversal guard checking the resolved path stays under `baseDir`.",
-                  "Blame on the vulnerable pre-fix file (`a960ad1`, lines 102-108 of `src/services/prompt-manager.ts`) attributes the `includePath` line to 3ac07a, but surrounding lines trace back to the earlier JS file, showing the TS migration touched the line.",
-                  "At BIC parent 7c2edeb4, `src/prompts/prompt-manager.js` already contains the same vulnerable code: `const includePath = path.join(baseDir, match[1]);`, and blame there attributes that line (line 99) to 9be2e71f, not 3ac07a.",
-                  "Commit 9be2e71f (`refactor: deduplicate prompt templates with shared content system`) added the entire `processIncludes()` function and wired it into `loadPrompt()`, introducing the unsafe include handling before the suspected BIC."
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "023cc953db742602964b7826105278d15c28a420",
-          "repo_url": "https://github.com/KeygraphHQ/shannon",
-          "source": "github_advisory_pr"
-        },
-        {
-          "sha": "58afb767c6c13826278deee3c6d3845d7de754a9",
-          "repo_url": "https://github.com/KeygraphHQ/shannon",
-          "source": "github_advisory_pr"
-        }
-      ],
-      "references": []
     },
     {
       "id": "CVE-2026-32231",
@@ -1809,49 +983,6 @@
               }
             ]
           }
-        },
-        {
-          "sha": "f2779178fbd3e3d2d7a83ea9ef856f12aeedf85f",
-          "author": "qhkmdev90",
-          "date": "2026-02-14T01:52:34+08:00",
-          "message": "feat: add 'zeptoclaw config check' with field validation and security warnings",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/config/validate.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit introduced a configuration validation utility file (src/config/validate.rs) that focuses on schema checking and typo suggestions. The vulnerability described in CVE-2026-32231 concerns the runtime handling of webhook payloads (likely in a different file responsible for request processing), which this validator does not implement or govern.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 51,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -1889,235 +1020,6 @@
       "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
-        {
-          "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T20:47:45-05:00",
-          "message": "✨ feat(limiter): add shard selection, retry on exhaustion, and shard doubling",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `_is_wcu_exhausted` logic and the associated shard-doubling mechanism, which implemented the flawed strategy of using a single DynamoDB partition key for rate-limit buckets. This logic failed to account for the fact that high-traffic entities would still hit the same partition key before the shard count could be effectively increased, leading to the described hot partition DoS.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 67,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "a586b8107f3e50be1cc8178643d37c7abfe5c617",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T23:47:46-05:00",
-          "message": "📝 docs: update docstrings and docs site for pre-shard buckets",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/schema.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit (a586b8107f3e) primarily adds documentation and comments regarding the WCU exhaustion logic and shard retries, referencing an existing GHSA-76rv. The actual logic for WCU exhaustion was already present in the code, and this commit does not appear to introduce the architectural flaw of non-sharded partition keys.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected BIC did not write the vulnerable logic; its `limiter.py` diff only expands docstrings for `_is_wcu_exhausted`, `_retry_on_other_shard`, and `_build_lease_from_speculative`. In the pre-fix file state (`a586`), blame on the security-relevant shard-handling lines shows they were introduced by `9f66c42f` (`if self._is_wcu_exhausted(...)`, unconditional `if result.shard_count > 1`, and the `_is_wcu_exhausted` implementation), while the capacity-aggregation loop fixed in the second hunk traces back to `3902c8c`. So `a586b810` is blame drift on comments/docs around the vulnerable code, not the commit that introduced the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 43,
-                "steps_completed": [],
-                "evidence": [
-                  "`get_commit_diff(a586..., src/zae_limiter/limiter.py)` shows only docstring/comment changes; no executable logic changed.",
-                  "`blame_lines` on `a586` for `src/zae_limiter/limiter.py:738-750` attributes the vulnerable shard-doubling and unconditional shard-retry logic to `9f66c42f`, not `a586`.",
-                  "`blame_lines` on `a586` for `src/zae_limiter/limiter.py:1021-1026` attributes the `_is_wcu_exhausted` implementation to `9f66c42f`; only its docstring lines are blamed to `a586`.",
-                  "`get_file_at_commit(9f66..., limiter.py)` already contains the exact pre-fix vulnerable logic, proving it existed before `a586`.",
-                  "`blame_lines` on `a586` for `src/zae_limiter/limiter.py:1879-1885` attributes the old per-bucket capacity loop (later deduplicated in the fix) to `3902c8c`, well before `a586`."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "3902c8c22868832db6d9f54046e76d5be226f607",
-          "author": "Patrick Sodré",
-          "date": "2026-01-09T20:55:53-05:00",
-          "message": "Initial commit: zae-limiter rate limiting library",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/schema.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": null,
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The security-relevant part of GHSA-76rv is the speculative sharding logic: the vulnerable code inferred WCU exhaustion from `old_buckets` and retried other shards for any multi-shard failure, which the fix replaced with an explicit `failure_reason` and app-limit-only retry. Blame on those vulnerable lines points to commit `9f66c42f06f3b87107ce327bede6416a582f0e60` (`feat(limiter): add shard selection, retry on exhaustion, and shard doubling`), not to `3902c8c2`. While some `get_resource_capacity()` lines modified by the fix trace back to the initial commit, that code predates sharding entirely and only became inadequate after later shard support was added, so `3902c8c2` did not introduce the CVE-causing behavior.",
-                "confidence": 0.95,
-                "tool_calls_made": 70,
-                "steps_completed": [],
-                "evidence": [
-                  "`git blame` on the vulnerable pre-fix shard logic in `src/zae_limiter/limiter.py` (lines 738-747 / 1004-1035 in commit `9f66c42f...`) attributes `_is_wcu_exhausted`, unconditional multi-shard retry, and related helper code to `9f66c42f06f3b87107ce327bede6416a582f0e60`, not `3902c8c2`.",
-                  "Commit `9f66c42f...` is explicitly `feat(limiter): add shard selection, retry on exhaustion, and shard doubling`, which matches the vulnerable behavior later fixed by `e67d0112...` and the final squash fix `481ce44d...`.",
-                  "Searches of the initial commit `3902c8c22868832db6d9f54046e76d5be226f607` show no shard/WCU/speculative code (`shard`, `WCU_LIMIT_NAME`, `speculative_consume`, `bump_shard_count` all absent), so the hot-partition logic behind GHSA-76rv did not exist then.",
-                  "The only fix-touched lines blamed to `3902c8c2` are the old `get_resource_capacity()` per-bucket aggregation loop; that was a pre-sharding capacity-reporting implementation and became problematic only after later sharding support, making it non-causal for the CVE’s hot-partition DoS behavior."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "0e6b99c185c2d5de000bc08fe354ffcd06ddab39",
-          "author": "Patrick Sodré",
-          "date": "2026-02-07T15:01:12-05:00",
-          "message": "⚡ perf(limiter): add speculative UpdateItem to skip read round trip (#315)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `speculative_consume` method and the underlying DynamoDB item structure that maps entities directly to partition keys without sharding. The fix commit addresses the resulting 'hot partition' issue by introducing logic to detect WCU exhaustion and modifying how GSI keys are constructed to support sharding.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "The blamed commit implemented the `speculative_consume` logic and the DynamoDB item schema -> This schema used a direct mapping of entity/resource to partition keys (PK/SK) -> High-traffic entities caused excessive write throughput on single DynamoDB partitions -> This led to WCU exhaustion and Denial of Service for other entities on the same partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The 2026-02-07 commit 0e6b99c introduced a generic speculative `UpdateItem` fast path, but it had no sharding, `wcu` infrastructure limit, `shard_id`, or `shard_count` logic. The hot-partition/DoS behavior addressed by GHSA-76rv was introduced later by the sharding series on 2026-02-21/22: `94a129ae` moved buckets to per-shard keys, `6e64d5b2` added `wcu` consumption and shard metadata to speculative writes, and `9f66c42f` added shard retry/doubling logic that the fix later corrected with explicit failure classification. Although blame on part of `repository.py` lands on 0e6b99c, those lines were only a generic failure return path; the security-relevant behavior fixed in 481ce44 depends on later commits.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on pre-fix `limiter.py` shows the shard-doubling / shard-retry logic (`if self._is_wcu_exhausted(...)` and `if result.shard_count > 1`) was introduced by `9f66c42f`, not by `0e6b99c`.",
-                  "`get_commit_info`/`get_commit_diff` for `6e64d5b2` show `wcu` consumption and `shard_id`/`shard_count` were added there; these concepts do not exist in `0e6b99c`.",
-                  "`get_file_at_commit` for `0e6b99c` shows `speculative_consume()` only returned `old_buckets`/bucket-missing, with no failure classification or sharding semantics.",
-                  "`blame_lines` on pre-fix `repository.py` shows the GSI4 pre-shard bucket-key lines came from `94a129ae`, while the GHSA failure-classification lines were added in `e67d0112`; only the generic `ConditionalCheckFailedException` handling traces to `0e6b99c`.",
-                  "`blame_lines` on `build_composite_create` before `0e6b99c` shows the original single-item `PK=ENTITY... / SK=#BUCKET...` design was already present in `663b687a`, so the underlying hot-partition exposure predates the suspected BIC."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "94a129ae55acc3b034662045296e288279cbef2e",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T19:43:32-05:00",
-          "message": "🔒 fix(repository): migrate bucket items to per-shard partition keys",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the use of `schema.pk_bucket` and `schema.sk_state` to define the primary key structure for rate-limit buckets. This change moved the system toward a DynamoDB schema where specific entity/resource combinations are mapped to single partition keys (PKs), which the vulnerability analysis identifies as the root cause of the hot partition and WCU exhaustion issue.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "1. The blamed commit implements a new DynamoDB schema using schema.pk_bucket(namespace, entity, resource, shard_id) as the Partition Key (PK). 2. By default, shard_id is set to 0, effectively mapping high-traffic entities to a single DynamoDB partition key. 3. This direct mapping without mandatory sharding/randomization leads to write throughput bottlenecks (hot partitions) on single DynamoDB partitions, enabling the described Denial of Service."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The security-relevant fix is not the GSI4SK helper cleanup in repository.py; it is the change from generic speculative-failure handling to explicit failure classification, so the limiter only doubles shards on WCU exhaustion and only retries other shards on app-limit exhaustion. Blame on the pre-fix vulnerable logic points to 9f66c42f (which added `_is_wcu_exhausted`, shard retry, and shard doubling) and to older generic `SpeculativeResult` code from 0e6b99c1/9f66c42f—not to 94a129ae. Commit 94a129ae instead migrated bucket storage to per-shard keys and added WCU/shard metadata as a mitigation scaffold; the parent commit already had the underlying hot-partition design with unsharded `PK=pk_entity(...), SK=sk_bucket(...)` items, so 94a was an incomplete mitigation rather than the introducer of the specific bug fixed here.",
-                "confidence": 0.95,
-                "tool_calls_made": 47,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `src/zae_limiter/limiter.py` shows the vulnerable pre-fix shard decision logic (`if self._is_wcu_exhausted(result.old_buckets)` and unconditional multi-shard retry) was introduced by `9f66c42f06f3b87107ce327bede6416a582f0e60`, not by `94a129ae55acc3b034662045296e288279cbef2e`.",
-                  "`blame_lines` on the repository speculative-failure path shows the returned `shard_count`/`shard_id` fields came from `9f66c42f`, while the generic `SpeculativeResult(success=False, old_buckets=...)` behavior predates 94a (`0e6b99c1`); 94a is not the author of the failure-classification gap that the fix addresses.",
-                  "The only line in the umbrella fix diff that traces to 94a is `GSI4SK`, but commit `95d05b396338c83ffe62ffeaf9135f2c6addf725` replaced it with `schema.gsi4_sk_bucket(...)`, and `schema.gsi4_sk_bucket()` returns the exact same string (`BUCKET#{entity_id}#{resource}#{shard_id}`), so this was incidental refactoring, not a security fix.",
-                  "`get_file_at_commit` for `94a129ae^` (`1e5ef18048c9d738afba82980258da429af738f1`) shows bucket items were previously stored as `PK = schema.pk_entity(...), SK = schema.sk_bucket(resource)` with no `wcu` or `shard_count`; `94a129ae` changed this to `pk_bucket(..., shard_id)` and added WCU/shard metadata explicitly 'to enable write sharding for hot partition mitigation', indicating it was a mitigation step, not the specific vulnerability introduction."
-                ]
-              }
-            ]
-          }
-        },
         {
           "sha": "6bcd260679f3838743cad07da62628487267e914",
           "author": "Patrick Sodré",
@@ -2165,98 +1067,6 @@
               }
             ]
           }
-        },
-        {
-          "sha": "8fba24d17cb8f7679f93a0476ce235d7e0433784",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T18:47:46-05:00",
-          "message": "✨ feat(schema): add WCU infrastructure limit constants",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/schema.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the hardcoded WCU limit constants and the logic treating 1000 WCU as a fixed per-partition ceiling without implementing sharding. This established the architectural pattern where high-traffic entities would hit this single-partition bottleneck, directly leading to the hot partition DoS vulnerability.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": "1. Blamed commit defines WCU_LIMIT_CAPACITY at 1000 (the DynamoDB physical partition limit). 2. It establishes the schema logic that maps rate-limit buckets to these fixed-capacity partitions. 3. Lack of sharding in this initial implementation causes high-volume entities to exhaust the 1000 WCU limit, throttling all other entities on the same partition."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix for GHSA-76rv is primarily in the limiter/repository/aggregator logic: it classifies speculative failures, changes shard retry/doubling behavior, and fixes shard propagation; the schema.py changes in the fix are only a helper builder refactor and a warning threshold. In the last vulnerable pre-fix code, blame attributes the shard-doubling/retry logic to 9f66c42f and the WCU speculative-write logic to 6e64d5b2/9f66c42f, not to 8fba24d1. Commit 8fba24d1 only added WCU constants in schema.py, and at that revision those constants had no runtime callers outside schema.py, so it did not write the vulnerable behavior itself.",
-                "confidence": 0.95,
-                "tool_calls_made": 81,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix commit 481ce44d summary and per-file diffs show the security-relevant changes are in limiter.py/repository.py (SpeculativeFailureReason, retry/doubling logic) plus aggregator fixes; schema.py changes are only gsi4_sk_bucket refactor and WCU_SHARD_WARN_THRESHOLD warning constant.",
-                  "blame at pre-fix limiter.py (commit a586b810...) shows the vulnerable shard-handling lines were introduced by 9f66c42f: lines 738-750 include _is_wcu_exhausted(), bump_shard_count(), and retry-on-other-shard logic all blamed to 9f66c42f.",
-                  "blame at pre-fix repository.py (commit a586b810...) shows WCU speculative-consume logic was introduced by 6e64d5b2 (lines 2328-2339 add WCU token accounting) and failure/shard-count handling by 9f66c42f (line 2404 return SpeculativeResult(... shard_id=...)).",
-                  "Commit 8fba24d1 changed only src/zae_limiter/schema.py and tests/unit/test_schema.py; searching for WCU_LIMIT_NAME at 8fba24d1 finds it only in schema.py, proving the commit added inert constants but no executable hot-partition/sharding logic.",
-                  "The parent state before 8fba24d1 (2d8cdd8c...) lacks the WCU constants entirely, confirming 8fba24d1 merely introduced constants; the actual runtime use of those constants first appears later in 6e64d5b2 repository code."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "2d8cdd8c7c3825506e9e55def53ec0f3d18aa524",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T18:44:57-05:00",
-          "message": "✨ feat(schema): add bucket PK builders and GSI3 entity keys",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/schema.py",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit actually introduces sharding logic (shard_id parameters and BUCKET_PREFIX with shard suffixes) into the schema definitions, which is the opposite of the described vulnerable pattern. The fix commit adds a new GSI4 index and a warning threshold, suggesting the blamed commit was an earlier attempt at sharding or a partial implementation that didn't fully resolve the hot partition issue.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion)",
-            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
-            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 65,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -2296,58 +1106,6 @@
       "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
-        {
-          "sha": "030c5ea3c3fada16f7a6be1487ec8e75e966f59c",
-          "author": "Josh Long",
-          "date": "2026-01-26T22:07:43+00:00",
-          "message": "feat(telegram): add sticker support with vision caching",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/telegram/bot-message-context.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": null,
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 55,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "030c5ea3c3fada16f7a6be1487ec8e75e966f59c",
-              "author_name": "Josh Long",
-              "message": "feat(telegram): add sticker support with vision caching",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            }
-          ],
-          "squash_merge_sha": "506bed5aed40820565b7db66a963b8163968208f"
-        },
         {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
           "author": "Yifeng Wang",
@@ -2504,54 +1262,6 @@
                   "`f06ad4502b4` is explicitly `refactor: share responses input handling`: it created `src/media/input-files.ts` and removed the same media-fetch/extraction code from `src/gateway/openresponses-http.ts`, carrying over `Buffer.from(await response.arrayBuffer())` and base64 decode logic.",
                   "`a5afe7bc2b0` originally added OpenResponses Phase 2 support in `src/gateway/openresponses-http.ts`, including `fetchWithGuard()` with only an optional `content-length` gate before `const buffer = await response.arrayBuffer();`, and `extractFileContent()` decoding `Buffer.from(source.data, \"base64\")` before enforcing size.",
                   "The parent commit `f4b03599f0f` (Phase 1) still had `hasUnsupportedContent()` rejecting `input_image` and `input_file`, so the vulnerable media fetch/decode code path did not exist before `a5afe7bc`."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "bbc67f375472da427cdb831b6301f077bad97a30",
-          "author": "Peter Steinberger",
-          "date": "2026-01-20T07:35:29+00:00",
-          "message": "fix: expand /v1/responses inputs (#1229) (thanks @RyanLisse)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/media/input-files.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit (bbc67f375472) focuses on refactoring the gateway HTTP infrastructure and adding new features like PDF parsing and canvas support. The vulnerable code identified in the fix (fetchWithGuard in src/media/input-files.ts) is not present in the blamed commit's diff, which modifies files in the src/gateway/ directory instead.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Memory Exhaustion)",
-            "vuln_description": "The application fetches media from user-provided URLs without enforcing limits on the response size or streaming the content, allowing an attacker to cause memory exhaustion by providing a URL that returns an excessively large payload.",
-            "vulnerable_pattern": "fetch(url).then(res => res.blob())",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix primarily addresses the URL-fetch path in `fetchWithGuard` by replacing `await response.arrayBuffer()` with a bounded streaming reader; in the pre-fix file, those patched lines blame to `81c68f582d4a9a20d9cca9f367d2da9edc5a65ae`, not `bbc67f375472da427cdb831b6301f077bad97a30`. Tracing history shows the unbounded fetch pattern already existed before `bbc67` in `src/gateway/openresponses-http.ts` at `a5afe7bc2b088ec08d868cd7175352c2db6fc329`, so `bbc67` did not originate the URL-backed DoS pattern. `bbc67` is related to responses-input work and added some adjacent logic, but it did not introduce the specific vulnerable code fixed here.",
-                "confidence": 0.95,
-                "tool_calls_made": 42,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `src/media/input-files.ts` at pre-fix commit `99f28031e54c34a4dbbd82cbc321aba8aa7e2140` attributes `const buffer = Buffer.from(await response.arrayBuffer())` / size-check lines in `fetchWithGuard` to `81c68f582d4a9a20d9cca9f367d2da9edc5a65ae`, not `bbc67f375472da427cdb831b6301f077bad97a30`.",
-                  "`get_commit_diff` for suspected BIC `bbc67f375472da427cdb831b6301f077bad97a30` shows no changes to `src/media/input-files.ts`; that file was only added later in `f06ad4502b4acdbb2d1eab4a2ea34d2bec5df5a4`.",
-                  "`get_file_at_commit` for parent/history commit `a5afe7bc2b088ec08d868cd7175352c2db6fc329` shows the vulnerable predecessor already used `const buffer = await response.arrayBuffer(); if (buffer.byteLength > maxBytes) ...` inside `src/gateway/openresponses-http.ts` before `bbc67`.",
-                  "`get_commit_diff` for `81c68f582d4a9a20d9cca9f367d2da9edc5a65ae` rewrote `src/media/input-files.ts`'s `fetchWithGuard` and retained the unbounded `response.arrayBuffer()` pattern that the fix later replaced."
                 ]
               }
             ]
@@ -2971,181 +1681,6 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "2b56bc8acecb9480a8538d759f25f926f669cd17",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:52:19+08:00",
-          "message": "feat(security): add path validation module with traversal protection",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/mod.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability described involves identity spoofing via unverified webhook payloads (sender/chat_id), but both the fix commit and the blamed commit deal exclusively with path validation and filesystem security in 'src/security/mod.rs'. The fix commit specifically adds functions to prevent hardlink/symlink attacks, which matches the 'Dangling Symlink' part of the description but is entirely unrelated to the 'identity spoofing' analysis provided.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix commit’s security-relevant changes are not the `src/security/mod.rs` export line blamed to 2b56bc8; they are in `src/security/path.rs` and tool call sites: replacing `current.exists()` with `symlink_metadata()` for dangling-symlink detection, plus adding `revalidate_path()` and `check_hardlink_write()` before I/O. Blame on the pre-fix `path.rs` shows the vulnerable `check_symlink_escape`/`current.exists()` logic was introduced by 7a2db595, not by 2b56bc8, and blame on pre-fix filesystem/pdf/docx/transcribe code shows the missing pre-I/O revalidation/hardlink protections came from later tool commits (e.g. 120e5dd2, 51bc07a, fc119368, 5dad36b). Commit 2b56bc8 created the initial traversal-protection module and export, but that was a new security control that was later strengthened; it did not write the specific vulnerable code this fix patches.",
-                "confidence": 0.95,
-                "tool_calls_made": 52,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix f50c17e hardens `src/security/path.rs` by replacing `if current.exists()` with `symlink_metadata(&current)` and adds new `revalidate_path()` / `check_hardlink_write()` helpers; `src/security/mod.rs` only exports those new helpers.",
-                  "Blame on pre-fix `src/security/path.rs` attributes `check_symlink_escape` and the vulnerable `if current.exists()` block (lines 161-166 in the pre-fix file) to commit 7a2db595188c30e7ce662ae8ab0ab9f234d2b6c2, not to 2b56bc8acecb9480a8538d759f25f926f669cd17.",
-                  "Blame on pre-fix tool code shows the missing revalidation/hardlink defenses were introduced in later commits: filesystem path-validation call in 120e5dd2, PDF resolver in 51bc07a, DOCX resolver in fc119368, and transcribe workspace validation in 5dad36b.",
-                  "Commit 2b56bc8’s diff shows it only created `src/security/mod.rs` and an initial traversal-only `src/security/path.rs` (no `check_symlink_escape`, no `revalidate_path`, no `check_hardlink_write`); `src/lib.rs` at prior commit 2fc245dc had no `security` module at all, confirming 2b56 was an initial mitigation layer rather than the specific bug-introducing change."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "3646db1451986b4389c688c6470213482cc92342",
-          "author": "qhkmdev90",
-          "date": "2026-02-16T09:19:12+08:00",
-          "message": "feat: security hardening — audit logging, WhatsApp auth, plugin SHA256, Apple Container gating",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/path.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis describes an authentication issue in a webhook channel where identity fields are trusted without verification. However, both the fix commit and the blamed commit are modifying path security checks (symlink escapes, workspace bounds) and adding audit logging, which is completely unrelated to the described webhook authentication vulnerability.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix addresses three issues: the dangling-symlink bypass in `check_symlink_escape` (`exists()` following symlinks), plus newly added TOCTOU revalidation and hardlink checks. Blame on the pre-fix file shows the vulnerable `if current.exists() { ... current.canonicalize() ... }` logic was introduced by `7a2db595`, while `46aa1c8a` only added `log_audit_event(...)` calls around existing checks. The file at `46aa1c8a`'s parent (`ebd4d9e8`) already contains the same vulnerable `current.exists()` pattern, and `46aa1c8a` did not touch `src/tools/filesystem.rs` or the other I/O callsites later patched for TOCTOU/hardlink protection.",
-                "confidence": 0.95,
-                "tool_calls_made": 30,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `src/security/path.rs` at the pre-fix state attributes lines 161-166 (`if current.exists()`, `current.canonicalize()`, `!canonical.starts_with(...)`) to commit `7a2db595188c30e7ce662ae8ab0ab9f234d2b6c2`, not `46aa1c8a`.",
-                  "`get_file_at_commit` for `ebd4d9e83ee69ab3c12156de3abf982a3c2af540` (the BIC's parent) already shows the same vulnerable block: `if current.exists() { if let Ok(canonical) = current.canonicalize() { ... } }`.",
-                  "`get_commit_diff` for `46aa1c8aec2915cddf32c912fb364c85557f29da` in `src/security/path.rs` shows only audit-logging additions and an import; it does not change the vulnerable symlink-check logic.",
-                  "`get_commit_diff` for the fix in `src/tools/filesystem.rs`, `src/tools/pdf_read.rs`, `src/tools/docx_read.rs`, and `src/tools/transcribe.rs` adds new `revalidate_path` / `check_hardlink_write` callsites, while `46aa1c8a` made no changes to `src/tools/filesystem.rs` at all."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "3646db1451986b4389c688c6470213482cc92342",
-              "author_name": "qhkmdev90",
-              "message": "feat: security hardening — audit logging, WhatsApp auth, plugin SHA256, Apple Container gating",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "85744d51f69a20d80f4f91c421809b881e8ba880",
-              "author_name": "qhkmdev90",
-              "message": "fix: add DIRECT_MESSAGES intent to Discord gateway",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "46aa1c8aec2915cddf32c912fb364c85557f29da"
-        },
-        {
-          "sha": "ebd4d9e83ee69ab3c12156de3abf982a3c2af540",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T13:04:04+08:00",
-          "message": "feat: add containerized gateway, Slack channel, and rename error types",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/path.rs, src/tools/filesystem.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit simply renames the error type from PicoError to ZeptoError. It does not introduce the vulnerable path validation logic (the use of current.exists() instead of symlink_metadata) that was addressed in the fix.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The security-relevant logic fixed in CVE-2026-32232 was already present before ebd4d9e83ee69ab3c12156de3abf982a3c2af540. In the pre-fix file, the vulnerable dangling-symlink check in `check_symlink_escape` (`if current.exists() { ... canonicalize() ... }`) blames to 7a2db595188c30e7ce662ae8ab0ab9f234d2b6c2, not to ebd4d9e8. The suspected commit only performed a mechanical `PicoError`→`ZeptoError` rename in `src/security/path.rs`, while the fix later replaced the `exists()` logic and added entirely new `revalidate_path()` / `check_hardlink_write()` defenses. That makes ebd4d a blame-drift/trivial-touch commit rather than the introducer of the vulnerable behavior.",
-                "confidence": 0.95,
-                "tool_calls_made": 21,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` at pre-fix commit 46aa1c8a shows `if current.exists()` and the surrounding `check_symlink_escape` logic were introduced by 7a2db595, while only the `return Err(ZeptoError::...)` line is attributed to ebd4d9e8 due to the error-type rename.",
-                  "`get_file_at_commit` for 7a2db595 (the parent state before ebd4d9e8) already contains the same vulnerable pattern: `if current.exists() { if let Ok(canonical) = current.canonicalize() { ... } }` in `check_symlink_escape`.",
-                  "`get_commit_diff` for ebd4d9e83ee69ab3c12156de3abf982a3c2af540 shows no logic change in `src/security/path.rs` beyond `PicoError`→`ZeptoError` renaming.",
-                  "`get_commit_diff` for 7a2db595 shows that commit added `check_symlink_escape` itself and wired it into `validate_path_in_workspace`, which is the code later hardened by the fix."
-                ]
-              }
-            ]
-          }
-        },
-        {
           "sha": "dd78cba8c720aab51e428048e607e31e838b478c",
           "author": "qhkmdev90",
           "date": "2026-03-01T14:36:16+08:00",
@@ -3266,102 +1801,6 @@
             }
           ],
           "squash_merge_sha": "fc11936846e0785a8b2e92d55c56edcd69e4d6e3"
-        },
-        {
-          "sha": "120e5dd2a40c27865514329f1cb27e4b6279668c",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:58:14+08:00",
-          "message": "feat(tools): add path traversal protection to filesystem tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the workspace path validation logic that performs a single upfront validation without subsequent checks. This design left the filesystem operations vulnerable to TOCTOU (Time-of-Check to Time-of-Use) and symlink/hardlink attacks, which the fix commit addresses by adding revalidation immediately before I/O operations.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": "The blamed commit updated `resolve_path` to use `validate_path_in_workspace` and return a safe path string, but failed to protect against race conditions where the filesystem structure changes between validation and use. By not re-validating paths right before read/write operations, it introduced the TOCTOU and symlink bypass vulnerabilities."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected BIC did not introduce the core vulnerable patterns fixed in CVE-2026-32232. Commit 120e5dd2 added `validate_path_in_workspace()` to filesystem tools—a security improvement—and changed callers to propagate errors, but the fix’s TOCTOU and hardlink mitigations address I/O patterns that already existed in the original filesystem tool implementation from 89d3202f. The dangling-symlink flaw itself lives in `src/security/path.rs` (`current.exists()` in `check_symlink_escape`), which was introduced by earlier security commits (not 120e5dd2), and the pre-fix `resolve_path` body at blame time was largely rewritten by later commit cea329e1.",
-                "confidence": 0.95,
-                "tool_calls_made": 57,
-                "steps_completed": [],
-                "evidence": [
-                  "Pre-BIC file state at 89d3202f already had `resolve_path(path, ctx)` followed by direct `tokio::fs::read_to_string`, `read_dir`, and `write` calls in read/write/list/edit tools, so the no-revalidation and no-hardlink-check pattern predated 120e5dd2.",
-                  "The diff for 120e5dd2 shows it only integrated `validate_path_in_workspace()` into `resolve_path` and changed callsites from `resolve_path(path, ctx)` to `resolve_path(path, ctx)?`, i.e. it added a security control rather than creating the I/O pattern.",
-                  "Blame on the pre-fix file (5dad36b9) shows the actual I/O lines are mostly from 89d3202f/ebd4d9e8/5dad36b9, while only the `resolve_path(...)?` lines trace to 120e5dd2; the `resolve_path` body enforcing mandatory workspace traces to later commit cea329e1, not the BIC.",
-                  "The symlink-validation bug fixed in `src/security/path.rs` comes from earlier security commits: `check_symlink_escape()` with `if current.exists()` was introduced by 7a2db595, and the underlying path-validation module was added by 2b56bc8, not by 120e5dd2."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "89d3202f1ab94adf05dfa4c6a5d7c994d9a76106",
-          "author": "qhkmdev90",
-          "date": "2026-02-12T19:32:26+08:00",
-          "message": "feat(rust): implement filesystem and shell tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis describes an authentication/identity spoofing flaw in a webhook component, while the provided code diffs relate exclusively to filesystem access control and TOCTOU vulnerabilities in the filesystem tools. The blamed commit introduced the initial implementation of the filesystem tools, which is unrelated to the webhook identity verification logic mentioned in the vulnerability analysis.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected commit 89d3202f created `src/tools/filesystem.rs`, but it did not implement the path-boundary-checking scheme that CVE-2026-32232 is about. Blame on the pre-fix file shows the key security-relevant lines that the fix hardens — `resolve_path(path, ctx)?` and the `validate_path_in_workspace(...)`-based `resolve_path` logic — were introduced later by 120e5dd2 (`feat(tools): add path traversal protection`) and then tightened again by cea329e1 (workspace required). Although 89d3202f authored some surrounding raw I/O calls, the specific vulnerable pattern fixed here is the later-added boundary validation being bypassable via TOCTOU/hardlink/symlink behavior, so 89d3202f is not the best attribution for this CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 46,
-                "steps_completed": [],
-                "evidence": [
-                  "`git_log src/tools/filesystem.rs` starts at 89d3202f, confirming it created the file, but later commits substantially changed the security logic in that file.",
-                  "At fix-parent 5dad36b9, blame for `resolve_path(path, ctx)?` in `ReadFileTool`/`WriteFileTool`/`ListDirTool`/`EditFileTool` points to 120e5dd2, not 89d3202f (e.g. lines 90, 168, 249, 362).",
-                  "At fix-parent 5dad36b9, blame for the validated `resolve_path` body shows `validate_path_in_workspace(path, workspace)?` and required-workspace logic came from 120e5dd2/cea329e1, not 89d3202f.",
-                  "Commit 120e5dd2 is explicitly titled `feat(tools): add path traversal protection to filesystem tools`, and its diff shows it introduced `use crate::security::validate_path_in_workspace;` and converted `resolve_path` from raw join/absolute-path handling into validated path checking."
-                ]
-              }
-            ]
-          }
         },
         {
           "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
@@ -3914,54 +2353,6 @@
           "squash_merge_sha": "5dad36b962af6258bb059b30bd1b4b5bac3e7442"
         },
         {
-          "sha": "b276347f1a14f2c3c502d58dd3b51b5076c59fbc",
-          "author": "qhkmdev90",
-          "date": "2026-02-15T20:59:05+08:00",
-          "message": "feat: add deny_by_default sender allowlist mode (#22)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/channels/telegram.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit introduced logic for 'deny_by_default' and allowlist filtering based on legitimate user IDs extracted from the Telegram SDK's 'Message' object. The vulnerability involves trusting user-supplied identity fields in a custom webhook payload, whereas the blamed commit focuses on handling Telegram Bot API message structures correctly.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The Telegram portion of the fix hardens inbound auth by stopping unconditional matching of mutable Telegram usernames in `allow_from`; the security-relevant change is the new `telegram_allowlist_allows(..., allow_usernames)` gate. In the pre-fix file, git blame shows the actual username-matching lines (`|| (!username.is_empty() && allowlist.iter().any(...))`) were introduced by commit `d6f0c8d2501bed3e0cea4c7a0428b82e36cbc84b`, not by `b276347f1a14f2c3c502d58dd3b51b5076c59fbc`. The suspected BIC only added `deny_by_default` handling around an existing numeric-ID allowlist check, which is a security control later strengthened by the fix rather than the source of the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 30,
-                "steps_completed": [],
-                "evidence": [
-                  "At fix-parent `37e2262dfd1d252c8b7c760a9eca7fee02c34410`, blame on `src/channels/telegram.rs:435-442` attributes the username allowlist matching logic to `d6f0c8d2501bed3e0cea4c7a0428b82e36cbc84b`; only the surrounding `deny_by_default` scaffolding at lines 431-434/443-444 blames to `b276347f...`.",
-                  "`b276347f` diff for `src/channels/telegram.rs` adds only `deny_by_default` propagation and `let allowed = if allowlist.is_empty() { !deny_by_default } else { allowlist.contains(&user_id) };` — no username handling.",
-                  "File state before/at the BIC confirms this: before BIC (`825bae0f...` / earlier `c5c03e8d...`) Telegram used numeric-ID-only allowlist checks, and at BIC it still remained numeric-only.",
-                  "Commit `d6f0c8d2501bed3e0cea4c7a0428b82e36cbc84b` explicitly says 'Bonus: allow_from now also accepts usernames' and its diff adds the exact username-comparison code later restricted by the fix."
-                ]
-              }
-            ]
-          }
-        },
-        {
           "sha": "061066f761ebe337c0b480a24560e5f1b9126280",
           "author": "qhkmdev90",
           "date": "2026-02-17T11:33:25+08:00",
@@ -4284,49 +2675,6 @@
             }
           ],
           "squash_merge_sha": "51bc07a02484ddfd2ec9c7f382dc43f829a9df86"
-        },
-        {
-          "sha": "44227c138070e1712a57e8daa20c9a6df634fcb9",
-          "author": "qhkmdev90",
-          "date": "2026-02-14T10:00:15+08:00",
-          "message": "refactor: split main.rs (2,212 lines) into src/cli/ module (10 lines)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/cli/agent.rs, src/cli/mod.rs",
-          "blame_confidence": 0.5,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit introduces the CLI agent functionality, such as interactive and streaming modes. Neither the fix commit nor the blamed commit contains code related to path handling, symlinks, hardlinks, or TOCTOU checks, which are the core of the described vulnerability.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "Path Traversal / TOCTOU",
-            "vuln_description": "The application lacks sufficient path validation to prevent symlink and hardlink attacks, potentially allowing access to files outside intended boundaries or exploiting time-of-check to time-of-use (TOCTOU) race conditions.",
-            "vulnerable_pattern": "No source code files were included in the provided commit; only Cargo.toml and Cargo.lock were modified, suggesting the actual fix is missing from this commit metadata.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 35,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -4376,182 +2724,6 @@
       "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
-        {
-          "sha": "2b56bc8acecb9480a8538d759f25f926f669cd17",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:52:19+08:00",
-          "message": "feat(security): add path validation module with traversal protection",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/mod.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability described involves identity spoofing via unverified webhook payloads (sender/chat_id), but both the fix commit and the blamed commit deal exclusively with path validation and filesystem security in 'src/security/mod.rs'. The fix commit specifically adds functions to prevent hardlink/symlink attacks, which matches the 'Dangling Symlink' part of the description but is entirely unrelated to the 'identity spoofing' analysis provided.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix’s security-relevant changes are not in `src/security/mod.rs` itself, but in `src/security/path.rs` and the I/O call sites: it replaces `current.exists()` with `symlink_metadata()` in `check_symlink_escape`, and adds `revalidate_path()` / `check_hardlink_write()` before filesystem access. Blame on the pre-fix `path.rs` shows the flawed symlink-check logic was introduced by `7a2db595188c30e7ce662ae8ab0ab9f234d2b6c2`, while the validate-once-then-I/O pattern in `src/tools/filesystem.rs` traces to later commits (`120e5dd2a40c27865514329f1cb27e4b6279668c` plus preexisting file-operation code from `89d3202f1ab94adf05dfa4c6a5d7c994d9a76106`). Commit `2b56bc8acecb9480a8538d759f25f926f669cd17` only created the initial path-validation module/export and, at that revision, `validate_path_in_workspace` had no external callers outside the new module/tests, so it is best seen as an earlier security control that later fixes hardened rather than the introducer of this CVE’s patched flaws.",
-                "confidence": 0.95,
-                "tool_calls_made": 35,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix commit `f50c17e11ae3e2d40c96730abac41974ef2ee2a8` changes `src/security/path.rs` to replace `current.exists()` with `std::fs::symlink_metadata(&current)` and adds new `revalidate_path()` / `check_hardlink_write()` functions; `src/security/mod.rs` only exports those functions.",
-                  "`blame_lines` on pre-fix `src/security/path.rs` (latest pre-fix revision `46aa1c8aec2915cddf32c912fb364c85557f29da`) shows the vulnerable `if current.exists()` / `current.canonicalize()` logic in `check_symlink_escape` was introduced by `7a2db595188c30e7ce662ae8ab0ab9f234d2b6c2`, not by `2b56bc8acecb9480a8538d759f25f926f669cd17`.",
-                  "`search_code_in_repo` at `2b56bc8acecb9480a8538d759f25f926f669cd17` finds `validate_path_in_workspace` only in `src/security/mod.rs`, `src/security/path.rs`, and that file’s tests—no filesystem-tool callers yet.",
-                  "`get_commit_diff` for `120e5dd2a40c27865514329f1cb27e4b6279668c` shows filesystem tools were wired to call `validate_path_in_workspace` later; preexisting unrestricted file operations were already in `89d3202f1ab94adf05dfa4c6a5d7c994d9a76106`, so the TOCTOU/hardlink-sensitive I/O paths were not introduced by `2b56bc8a`.",
-                  "`blame_lines` on pre-fix `src/security/mod.rs` shows `2b56bc8a` owns only the module/export lines (e.g. `pub use path::{validate_path_in_workspace, SafePath};`), which explains the blame hit but is incidental to the actual vulnerability fix."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "3646db1451986b4389c688c6470213482cc92342",
-          "author": "qhkmdev90",
-          "date": "2026-02-16T09:19:12+08:00",
-          "message": "feat: security hardening — audit logging, WhatsApp auth, plugin SHA256, Apple Container gating",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/path.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis describes an authentication issue in a webhook channel where identity fields are trusted without verification. However, both the fix commit and the blamed commit are modifying path security checks (symlink escapes, workspace bounds) and adding audit logging, which is completely unrelated to the described webhook authentication vulnerability.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The vulnerable logic fixed by f50c17e was already present before 46aa1c8a. In pre-fix blame, the critical `check_symlink_escape` lines using `current.exists()` and `current.canonicalize()` trace to 7a2db595, while 46aa1c8a only added `log_audit_event(...)` calls around existing error paths. The file content at 46aa1c8a's predecessor ebd4d9e8 already contained the same `if current.exists() { if let Ok(canonical) = current.canonicalize() { ... } }` pattern, so 46aa did not introduce the dangling-symlink bypass; it merely added audit logging. The TOCTOU and hardlink parts of the fix were introduced by adding new functions and wiring new call sites in other files, none of which were touched by 46aa1c8a.",
-                "confidence": 0.95,
-                "tool_calls_made": 22,
-                "steps_completed": [],
-                "evidence": [
-                  "Blame on src/security/path.rs at 46aa1c8a lines 161-166 shows the vulnerable `if current.exists()` / `current.canonicalize()` logic was introduced by 7a2db595, not 46aa1c8a.",
-                  "Commit diff for 46aa1c8a in src/security/path.rs only adds `use crate::audit...` and `log_audit_event(...)` blocks; it does not change the symlink-validation control flow.",
-                  "File src/security/path.rs at ebd4d9e8 (the prior version before 46aa1c8a) already contains the same vulnerable `current.exists()`-based symlink check.",
-                  "Fix commit f50c17e adds new protections for dangling symlinks (`symlink_metadata`), TOCTOU (`revalidate_path` plus new call sites), and hardlinks (`check_hardlink_write` plus new call sites); 46aa1c8a did not add those vulnerable code paths or their call sites."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "3646db1451986b4389c688c6470213482cc92342",
-              "author_name": "qhkmdev90",
-              "message": "feat: security hardening — audit logging, WhatsApp auth, plugin SHA256, Apple Container gating",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "85744d51f69a20d80f4f91c421809b881e8ba880",
-              "author_name": "qhkmdev90",
-              "message": "fix: add DIRECT_MESSAGES intent to Discord gateway",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "46aa1c8aec2915cddf32c912fb364c85557f29da"
-        },
-        {
-          "sha": "ebd4d9e83ee69ab3c12156de3abf982a3c2af540",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T13:04:04+08:00",
-          "message": "feat: add containerized gateway, Slack channel, and rename error types",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/security/path.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit simply renames the error type from PicoError to ZeptoError. It does not introduce the vulnerable path validation logic (the use of current.exists() instead of symlink_metadata) that was addressed in the fix.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The vulnerable logic fixed in `src/security/path.rs` predates `ebd4d9e83ee69ab3c12156de3abf982a3c2af540`. Blame on the pre-fix file (`46aa1c8a`) shows the security-relevant lines in `check_symlink_escape`—including `if current.exists()` and the surrounding symlink-resolution logic—were introduced by `7a2db595`, while `ebd4d9e8` only touched adjacent `return Err(...)` lines due to the mechanical `PicoError`→`ZeptoError` rename. The parent of `ebd4d9e8` already contains the same vulnerable `current.exists()` pattern, and the commit did not add the later-fixed `revalidate_path`/`check_hardlink_write` protections either.",
-                "confidence": 0.95,
-                "tool_calls_made": 20,
-                "steps_completed": [],
-                "evidence": [
-                  "`blame_lines` on `src/security/path.rs` at pre-fix commit `46aa1c8a` attributes lines 161-166 (`if current.exists()`, `current.canonicalize()`, boundary check) to `7a2db595`, not `ebd4d9e8`.",
-                  "`get_commit_diff` for `ebd4d9e8` shows only a `PicoError`→`ZeptoError` rename in `src/security/path.rs`; no path-validation logic changed.",
-                  "`get_file_at_commit` for `7a2db595` (the parent of `ebd4d9e8`) already contains the same vulnerable `check_symlink_escape` implementation using `current.exists()`.",
-                  "`get_commit_diff` for `7a2db595` shows that commit added `check_symlink_escape` and the `validate_path_in_workspace(...)?` call, i.e. the security-relevant code path later hardened by the fix."
-                ]
-              }
-            ]
-          }
-        },
         {
           "sha": "dd78cba8c720aab51e428048e607e31e838b478c",
           "author": "qhkmdev90",
@@ -4673,103 +2845,6 @@
             }
           ],
           "squash_merge_sha": "fc11936846e0785a8b2e92d55c56edcd69e4d6e3"
-        },
-        {
-          "sha": "120e5dd2a40c27865514329f1cb27e4b6279668c",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:58:14+08:00",
-          "message": "feat(tools): add path traversal protection to filesystem tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the workspace path validation logic that performs a single upfront validation without subsequent checks. This design left the filesystem operations vulnerable to TOCTOU (Time-of-Check to Time-of-Use) and symlink/hardlink attacks, which the fix commit addresses by adding revalidation immediately before I/O operations.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": "The blamed commit updated `resolve_path` to use `validate_path_in_workspace` and return a safe path string, but failed to protect against race conditions where the filesystem structure changes between validation and use. By not re-validating paths right before read/write operations, it introduced the TOCTOU and symlink bypass vulnerabilities."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected commit 120e5dd2 added `validate_path_in_workspace` to `resolve_path` and changed callers to propagate `Result`, i.e. it introduced path-traversal protection rather than the underlying unsafe file I/O pattern. The pre-BIC file at 89d3202f already had the same read/write/list/edit flows performing filesystem operations immediately after path resolution with no revalidation or hardlink checks, and blame on the pre-fix file shows most of those I/O lines still trace to 89d3202f. Additionally, the symlink-specific buggy `current.exists()` logic fixed in `src/security/path.rs` traces to later commit 7a2db595, not to 120e5dd2. So this looks like an insufficient mitigation later strengthened by the fix, not the true bug-introducing commit for the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 56,
-                "steps_completed": [],
-                "evidence": [
-                  "`git log src/tools/filesystem.rs` shows the file was created in 89d3202f (`feat(rust): implement filesystem and shell tools`), before 120e5dd2.",
-                  "At 89d3202f, `src/tools/filesystem.rs` already had `resolve_path(...)` followed directly by `tokio::fs::read_to_string`, `create_dir_all` + `tokio::fs::write`, `read_dir`, and edit read/write flows, with no `revalidate_path` or hardlink protection.",
-                  "The 120e5dd2 diff only adds `use crate::security::validate_path_in_workspace;`, rewrites `resolve_path` to validate within the workspace, and changes call sites from `resolve_path(path, ctx)` to `resolve_path(path, ctx)?`—a security improvement, not new unsafe I/O logic.",
-                  "Blame on the pre-fix file (5dad36b9) attributes key unsafe operations to earlier commits: e.g. write/create-dir/edit I/O lines mostly trace to 89d3202f, while 120e5dd2 mainly owns the `let full_path = resolve_path(path, ctx)?;` lines.",
-                  "For the symlink aspect, blame on `src/security/path.rs` at the pre-fix state attributes the vulnerable `if current.exists()` / `canonicalize()` symlink check to 7a2db595, a later commit than 120e5dd2."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "89d3202f1ab94adf05dfa4c6a5d7c994d9a76106",
-          "author": "qhkmdev90",
-          "date": "2026-02-12T19:32:26+08:00",
-          "message": "feat(rust): implement filesystem and shell tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability analysis describes an authentication/identity spoofing flaw in a webhook component, while the provided code diffs relate exclusively to filesystem access control and TOCTOU vulnerabilities in the filesystem tools. The blamed commit introduced the initial implementation of the filesystem tools, which is unrelated to the webhook identity verification logic mentioned in the vulnerability analysis.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "insufficient authentication / identity spoofing",
-            "vuln_description": "The webhook channel trusted identity fields like sender and chat_id directly from the request payload without cryptographic verification, allowing external callers to impersonate any identity by providing matching values in the JSON body.",
-            "vulnerable_pattern": "pub struct WebhookPayload { pub sender: String, pub chat_id: String, ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "89d3202f did create `src/tools/filesystem.rs`, but in that commit there was no workspace-boundary validation layer at all: `resolve_path()` simply passed absolute paths through or joined relative paths, and repository search at 89d shows no `validate_path_in_workspace`/symlink-check code. The specific CVE fixed in `f50c17e` is a bypass of later-added boundary checks: commit `120e5dd2` introduced `validate_path_in_workspace` into `filesystem.rs`, and blame on the pre-fix `let full_path = resolve_path(path, ctx)?;` lines points to `120e5dd2`, not 89d. The dangling-symlink logic in `src/security/path.rs` was introduced later as well (`7a2db595`/`2b56bc8a`). So while 89d authored the original file operations, it did not author the specific boundary-check implementation that this fix hardens.",
-                "confidence": 0.95,
-                "tool_calls_made": 46,
-                "steps_completed": [],
-                "evidence": [
-                  "`git_log src/tools/filesystem.rs` shows the file was first added in `89d3202f`; `get_file_at_commit` for parent `157d1b1d` reports the file did not exist before that commit.",
-                  "At `89d3202f`, `src/tools/filesystem.rs` had `resolve_path()` that returned absolute paths as-is or joined relative paths to the workspace; `search_code_in_repo` at that commit found no `validate_path_in_workspace` or `check_symlink_escape` references.",
-                  "Commit `120e5dd2` (`feat(tools): add path traversal protection to filesystem tools`) changed `resolve_path` to call `validate_path_in_workspace` and updated read/write/list/edit to use `resolve_path(path, ctx)?`, creating the later 'validate then I/O' pattern.",
-                  "`blame_lines` on pre-fix `src/tools/filesystem.rs` attribute the security-relevant `let full_path = resolve_path(path, ctx)?;` lines to `120e5dd2`; `blame_lines` on pre-fix `src/security/path.rs` attribute `check_symlink_escape` to `7a2db595`, not `89d3202f`."
-                ]
-              }
-            ]
-          }
         },
         {
           "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
@@ -5671,213 +3746,6 @@
             }
           ],
           "squash_merge_sha": "a7c5a0054bcdf34c9ec0f1c20d1356ce54f069b3"
-        },
-        {
-          "sha": "5e22512c05ec97921c3be50ac5dea7e0f1b68e5e",
-          "author": "copilot-swe-agent[bot]",
-          "date": "2025-09-24T10:52:22+08:00",
-          "message": "Rename extra_args to extra-args for consistent kebab-case naming",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_email",
-              "matched_text": "Copilot@users.noreply.github.com",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "action.yaml",
-          "blame_confidence": 0.8,
-          "llm_verdict": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the specific vulnerable pattern by migrating the input variable from `extra_args` to `extra-args` while maintaining the unsafe direct interpolation into the shell command. By explicitly replacing the usage of `extra_args` with `extra-args` in the shell execution line, this commit cemented the code structure that allows arbitrary command injection.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The action directly interpolated user-provided input into shell commands without sanitization, allowing an attacker to inject arbitrary shell commands via the input parameters.",
-            "vulnerable_pattern": "prek run --show-diff-on-failure --color=always ${{ inputs.extra_args || inputs.extra-args }}",
-            "causal_chain": "The commit updated the action to use the `extra-args` input key and directly interpolated this value into the shell command 'prek run --show-diff-on-failure --color=always ${{ inputs.extra-args }}'. Since this value is not sanitized or quoted appropriately before being passed to the shell, it allows attackers to inject arbitrary shell commands via the input parameter."
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix addressed unsafe interpolation of untrusted action inputs into shell `run:` steps: both `${{ inputs.prek-version }}` in the download-resolution/install flow and `${{ inputs.extra_args || inputs.extra-args }}` in the `prek run` command. Although blame on the pre-fix file attributes the final `prek run ... ${{ inputs.extra_args || inputs.extra-args }}` line to 346373c1, the same unsanitized pattern already existed in the parent commit as `prek run ... ${{ inputs.extra_args }}` and is blamed there to the initial commit 7ed8ff8. Commit 346373c1 only renamed the input and added backward-compatible alias logic; it did not newly introduce the command-injection behavior, and the other fixed vulnerable lines were introduced by earlier commits a7c5a005 and 71de6a23.",
-                "confidence": 0.95,
-                "tool_calls_made": 26,
-                "steps_completed": [],
-                "evidence": [
-                  "At fix-parent commit 93b4659, `action.yaml` line 55 is `- run: prek run --show-diff-on-failure --color=always ${{ inputs.extra_args || inputs.extra-args }}` and blame attributes that line to suspected BIC 346373c1.",
-                  "In BIC parent 71e2466, the same command already existed as `- run: prek run --show-diff-on-failure --color=always ${{ inputs.extra_args }}`; blame on that line points to initial commit 7ed8ff8, showing the vulnerable shell interpolation predates 346373c1.",
-                  "The diff for 346373c1 shows only an input rename/alias (`extra_args` -> `extra-args`) and replacement of `${{ inputs.extra_args }}` with `${{ inputs.extra_args || inputs.extra-args }}`; no sanitization or logic change that created a new injection class.",
-                  "Other security-relevant lines fixed in 6b7c6ef—`${{ inputs.prek-version }}` in the bash script and the unquoted `${{ steps.resolve.outputs.base_url }}` curl invocation—are blamed to earlier commits a7c5a005 and 71de6a23, not to 346373c1."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "ff1468d481ee44c0e0ecb0682622b874543f9169",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Initial plan",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "5e22512c05ec97921c3be50ac5dea7e0f1b68e5e",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Rename extra_args to extra-args for consistent kebab-case naming",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "3b186c9ba5f95ef310a8c1dea3b697248381da7c",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Add backward compatibility for extra_args input",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "ac3fb8a782cddc52e916d0aa39ad3e44d0b9b9a9",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Fix input precedence logic to properly handle extra_args fallback",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "1c2ebd3b43ba6800973ddb15fe51c20c8cf007bf",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Simplify input logic with || operator and remove deprecation note",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "1ef9efac522478d14303a5eea2fa324cefe07f66",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Remove deprecated extra_args from inputs table",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "346373c1f15feea5e94233aceeb06b10171a6585"
         }
       ],
       "fix_commits": [
@@ -7335,6 +5203,92 @@
         "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
         "https://www.vulncheck.com/advisories/openclaw-ssrf-via-feishu-extension-media-fetching"
       ]
+    },
+    {
+      "id": "CVE-2026-29023",
+      "description": "Keygraph Shannon contains a hard-coded API key in its router configuration that, when the router component is enabled and exposed, allows network attackers to authenticate using the publicly known static key. An attacker able to reach the router port can proxy requests through the Shannon instance using the victim’s configured upstream provider API credentials, resulting in unauthorized API usage and potential disclosure of proxied request and response data. This vulnerability's general exploita",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-798"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-09T18:16:22.727",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "The fix in 023cc953 patches a path-traversal bug in processIncludes(): it replaces path.join(baseDir, match[1]) with path.resolve(...) and adds a guard rejecting include paths that escape baseDir before fs.readFile. The suspected BIC 9be2e71 is the commit that introduced both the new processIncludes() function and its unsafe path.join+readFile logic, and it also wired that function into loadPrompt() for @include processing. Although blame on the later TypeScript file is partially attributed to the migration commit 3ac07a47, history shows that migration and later file moves preserved the same logic without changing behavior; before 9be2e71 there was no processIncludes function and no @include support at all.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "9be2e71ff29b2af56f1f34a42004aaf31f7a9904",
+          "author": "ajmallesh",
+          "date": "2025-10-23T16:19:25-07:00",
+          "message": "refactor: deduplicate prompt templates with shared content system",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/services/prompt-manager.ts, src/prompts/prompt-manager.ts, src/prompts/prompt-manager.js",
+          "blame_confidence": 1.0,
+          "llm_verdict": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability involves a hard-coded API key in a router configuration, whereas the blamed commit focuses on refactoring prompt templates and authentication utilities. The fix commit provided in the prompt addresses a path traversal issue in prompt processing, which is also unrelated to the hard-coded API key vulnerability described.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Hard-coded Credentials / Service Exposure",
+            "vuln_description": "The application exposes a router service on all network interfaces with a hard-coded API key, allowing remote attackers to authenticate and proxy requests.",
+            "vulnerable_pattern": "ports:\n      - \"3456:3456\"",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix in 023cc953 patches a path-traversal bug in processIncludes(): it replaces path.join(baseDir, match[1]) with path.resolve(...) and adds a guard rejecting include paths that escape baseDir before fs.readFile. The suspected BIC 9be2e71 is the commit that introduced both the new processIncludes() function and its unsafe path.join+readFile logic, and it also wired that function into loadPrompt() for @include processing. Although blame on the later TypeScript file is partially attributed to the migration commit 3ac07a47, history shows that migration and later file moves preserved the same logic without changing behavior; before 9be2e71 there was no processIncludes function and no @include support at all.",
+                "confidence": 0.95,
+                "tool_calls_made": 25,
+                "steps_completed": [],
+                "evidence": [
+                  "Fix diff 023cc953 in src/services/prompt-manager.ts adds path.resolve(baseDir, match[1]) and a startsWith(resolvedBase + path.sep) containment check before fs.readFile, showing the vulnerable pattern was missing path validation in processIncludes().",
+                  "BIC 9be2e71 diff in src/prompts/prompt-manager.js explicitly adds processIncludes() with `const includePath = path.join(baseDir, match[1]); const sharedContent = await fs.readFile(includePath, 'utf8');` and adds the call `template = await processIncludes(template, promptsDir);`.",
+                  "State before the BIC (27334a4, src/prompts/prompt-manager.js) shows no processIncludes() function; repository search at that commit found no `processIncludes` and no `@include` usage, so the vulnerable feature did not exist before 9be2e71.",
+                  "Blame on the pre-migration JS file (7c2edeb, lines 93-101) attributes the security-relevant lines, including `const includePath = path.join(baseDir, match[1]);`, directly to 9be2e71; later commits 3ac07a47 (TypeScript migration) and b208949 (move to src/services/) only carried the same logic forward."
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "023cc953db742602964b7826105278d15c28a420",
+          "repo_url": "https://github.com/KeygraphHQ/shannon",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "58afb767c6c13826278deee3c6d3845d7de754a9",
+          "repo_url": "https://github.com/KeygraphHQ/shannon",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": []
     },
     {
       "id": "CVE-2026-32304",
@@ -10528,54 +8482,6 @@
               }
             ]
           }
-        },
-        {
-          "sha": "eb7656d68c3ceb8f84dc37b042ab1ff093884d6c",
-          "author": "Bohdan Podvirnyi",
-          "date": "2026-01-15T18:13:49+02:00",
-          "message": "fix: lint errors",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/telegram/bot-handlers.ts",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit merely reformats the code handling Telegram message reactions (e.g., collapsing multi-line filter statements into single lines). It does not introduce the logic that processes reactions without authorization checks.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "Authorization Bypass",
-            "vuln_description": "The application failed to verify authorization policies (dmPolicy/allowFrom) when processing Telegram message_reaction events, allowing unauthorized users to trigger system events.",
-            "vulnerable_pattern": "Processing incoming message_reaction events without validating the sender's permissions against configured DM or group allowlists.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix adds a new authorization gate (`isTelegramEventSenderAuthorized`) to the `message_reaction` handler before it enqueues a system event; the vulnerable pattern was that reaction events were turned into system events with no DM/group allowlist check. Blame on the pre-fix `src/telegram/bot-handlers.ts` reaction-handler lines points to commit `cd4f7524e36...`, not `eb7656d68c3...`, because that later commit reimplemented/moved the reaction handler into `bot-handlers.ts`. The suspected commit `eb7656d68c3...` only made lint/formatting changes in the earlier `src/telegram/bot.ts` version of the handler and did not add or modify any authorization logic. The same missing-auth behavior was already present in the prior file history (`0e1dcf9cb4f...` and originally `d05c3d0659f...`) before `eb7656d68c3...` landed.",
-                "confidence": 0.95,
-                "tool_calls_made": 31,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix commit `e56b0cf1...` inserts `isTelegramEventSenderAuthorized(...)` and returns early in `bot.on(\"message_reaction\")`; before the fix, the handler proceeded from reaction-mode checks directly to `enqueueSystemEvent(...)` with no sender authorization check.",
-                  "`blame_lines` on pre-fix `src/telegram/bot-handlers.ts` lines 514-596 attributes the vulnerable `message_reaction` handler body to `cd4f7524e36aa7f2bcfca0fcbe236505e4ecf54b`, not to `eb7656d68c3ceb8f84dc37b042ab1ff093884d6c`.",
-                  "`get_commit_diff` for `eb7656d68c3...` shows no changes to `src/telegram/bot-handlers.ts` at all, and its `src/telegram/bot.ts` diff is lint-only formatting on existing reaction-handler lines (wrapping/import cleanup), not security logic.",
-                  "`git_log`/`get_file_at_commit` show the same unguarded reaction-handling flow already existed before `eb7656d68c3...` in `src/telegram/bot.ts` at `0e1dcf9cb4f...`, while `d05c3d0659f...` originally introduced the reaction handler."
-                ]
-              }
-            ]
-          }
         }
       ],
       "fix_commits": [
@@ -11510,49 +9416,6 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "f8e3bb54a3cb48da842351cc75490c8a20134807",
-          "author": "Andras Bacsai",
-          "date": "2025-11-18T10:53:22+01:00",
-          "message": "fix: inject environment variables into custom Docker Compose build commands",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "resources/views/livewire/project/application/general.blade.php",
-          "blame_confidence": 0.9,
-          "llm_verdict": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit only modifies the 'helper' text (UI documentation) for the 'dockerComposeCustomBuildCommand' input field. While it mentions how environment variables are injected, it does not introduce the underlying logic that processes these commands or the input fields themselves, which are the actual vectors for the command injection.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The application failed to properly sanitize user-provided parameters in docker-compose configurations, allowing attackers to inject arbitrary shell commands into the execution context of the deployment process.",
-            "vulnerable_pattern": "passing unsanitized user input directly into shell execution functions (e.g., exec, shell_exec, or process wrappers) used for docker-compose commands",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.4,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Fallback verdict: Agent exhausted max turns without submitting a verdict.",
-                "confidence": 0.4,
-                "tool_calls_made": 49,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
           "sha": "56f32d0f87609d48c4f9f8d766c96c183bcd60f9",
           "author": "Andras Bacsai",
           "date": "2025-11-18T22:26:11+01:00",
@@ -11600,54 +9463,6 @@
                   "Blame at the pre-fix state (64cbda01406a7a45585a8725aa42d1f25af81945) attributes the key vulnerable lines to 56f32d0f: line 539 `$originalServiceName = str($serviceName)->replace('_', '-')`, lines 604-606 strict comparison setup, line 615 `data_get($domains->get($serviceName), 'domain')`, and line 621 `$domains->put((string) $serviceName, ...)`.",
                   "The only fixed line not directly blamed to 56f32d0f is line 541, but 64cbda’s diff shows it merely changed BIC’s existing normalization from `if (str($serviceName)->contains('-')) { $serviceName = str($serviceName)->replace('-', '_')->replace('.', '_'); }` to an unconditional assignment; the Stringable-producing pattern itself already existed in 56f32d0f.",
                   "The file state before 56f32d0f (033433f553bc964ec9ce3e8d834ad7dd7b95dddd) shows older, separate FQDN/URL branches with similar Stringable misuse (`$fqdnFor = str(...);`, `$urlFor = str(...);`), proving the bug pattern pre-existed — but 56f32d0f replaced those branches with a new combined implementation, so this is reimplementation rather than a pure move/refactor."
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "sha": "ae6eef3cdb263845bedfb23b6228114b71e2d049",
-          "author": "Andras Bacsai",
-          "date": "2025-11-20T17:31:07+01:00",
-          "message": "feat(tests): add comprehensive tests for ContainerStatusAggregator and serverStatus accessor",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "app/Jobs/PushServerUpdateJob.php, app/Services/ContainerStatusAggregator.php, app/Traits/CalculatesExcludedStatus.php, resources/views/components/status/stopped.blade.php",
-          "blame_confidence": 0.5,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerable pattern involves command injection via docker-compose parameters, but the blamed commit only performs a refactoring of how container status strings are formatted and aggregated. The fix commit modifies the same line to fix a logic error in status string concatenation, which is unrelated to sanitizing user-provided shell inputs.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "command injection",
-            "vuln_description": "The application failed to properly sanitize user-provided parameters in docker-compose configurations, allowing attackers to inject arbitrary shell commands into the execution context of the deployment process.",
-            "vulnerable_pattern": "passing unsanitized user input directly into shell execution functions (e.g., exec, shell_exec, or process wrappers) used for docker-compose commands",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The provided fix commit ac9eca3c051e15a52e1ab5f655d3011a21c9b112 is a status-reporting fix: it stops appending health information to containers whose state is already `exited`, and related files change aggregated outputs from `exited:unhealthy`/`exited:excluded` to plain `exited`. While blame on the pre-fix line points to ae6eef3cdb263845bedfb23b6228114b71e2d049, that commit only reformatted the existing status string from `\"$containerStatus ($containerHealth)\"` to `\"$containerStatus:$containerHealth\"` as part of a broader refactor. The underlying behavior fixed by ac9eca—always appending health status even for exited containers—was already present in ae6eef's parent (14bba8ba86a2a50ce7d986066ba2befe23f1d7ef) and in older history, so ae6eef did not introduce it.",
-                "confidence": 0.95,
-                "tool_calls_made": 39,
-                "steps_completed": [],
-                "evidence": [
-                  "ac9eca commit message is `fix: don't show health status for exited containers`; its diffs in PushServerUpdateJob, ContainerStatusAggregator, and CalculatesExcludedStatus all change exited-container status formatting rather than any command-execution logic.",
-                  "Blame on the pre-fix file attributes `app/Jobs/PushServerUpdateJob.php` line 151 (`$containerStatus = \"$containerStatus:$containerHealth\";`) to ae6eef3cdb263845bedfb23b6228114b71e2d049.",
-                  "In ae6eef's parent 14bba8ba86a2a50ce7d986066ba2befe23f1d7ef, the same code path already unconditionally appended health status: `$containerStatus = \"$containerStatus ($containerHealth)\";`.",
-                  "Older history shows the unconditional append predates ae6eef as well (e.g. d557a22b919464a063f7250bd3d2854668492449 contains the same `\"$containerStatus ($containerHealth)\"` logic, with blame tracing to earlier 2024 work), so ae6eef is at most a formatting/refactor touch, not the introducer."
                 ]
               }
             ]
@@ -14640,79 +12455,6 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "488060d3d7de3a74778c11d521ced0dc480c6cc9",
-          "author": "Lena Garber",
-          "date": "2025-11-14T12:26:27-05:00",
-          "message": "Apply suggestions from code review",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "linode/databasemysql/framework_datasource_schema.go, linode/databasemysql/schema_resource.go, linode/databaseaccesscontrols/resource.go, linode/databasemysqlv2/framework_datasource_schema.go, linode/databasemysqlv2/framework_resource_schema.go",
-          "blame_confidence": 1.0,
-          "llm_verdict": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit only performs minor documentation and comment fixes in test and helper files. It does not touch the vulnerable resource schema file (framework_datasource_schema.go) or modify any attributes related to sensitive credentials that required the 'Sensitive' flag.",
-            "model": "gemini-3-flash-preview",
-            "vuln_type": "Sensitive Information Exposure",
-            "vuln_description": "The Terraform provider failed to mark sensitive fields (such as database credentials or access controls) as 'Sensitive' in the resource schema, causing their values to be logged in plaintext within Terraform debug logs (TF_LOG).",
-            "vulnerable_pattern": "schema.StringAttribute{ ... Sensitive: false ... }",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The suspected commit 04d79a30 did not introduce the security-relevant code that was later removed by the fix. Its diff in `linode/databasemysql/framework_datasource_schema.go` only changes an import and the `updates` attribute's `ElementType`, while the sensitive datasource attributes implicated by the debug-log exposure (`ca_cert`, `root_password`, and `root_username`) were already present before this commit. Blame on the pre-fix file shows those sensitive lines come from the original file creation in commit `b3a7267a984aac69658578b7ed281d829db96796`, so 04d79a30 is at most a refactor touching the same file, not the introducer of the vulnerable code.",
-                "confidence": 0.95,
-                "tool_calls_made": 16,
-                "steps_completed": [],
-                "evidence": [
-                  "Fix commit `0f0c420979ad641a31d7d24b0f23bbb3771d7a95` deletes the entire deprecated datasource schema file, including sensitive attributes `ca_cert`, `root_password`, and `root_username` marked `Sensitive: true`.",
-                  "Diff for suspected BIC `04d79a30a0663f56c0a0d03fe9f7544ad35fe5a4` changes only `helper` -> `databaseshared` import and `ElementType: helper.UpdateObjectType` -> `ElementType: databaseshared.UpdateObjectType`; it does not add/remove/modify any sensitive fields.",
-                  "`get_file_at_commit` for earlier commit `1cbf0686de65f827feecf35d227f18d206e4693c` shows the same sensitive attributes already existed before 04d79a30.",
-                  "`blame_lines` on the pre-fix file at commit `04d79a30a0663f56c0a0d03fe9f7544ad35fe5a4` attributes lines for `ca_cert`, `root_password`, and `root_username` to `b3a7267a984aac69658578b7ed281d829db96796`; only the non-security-relevant `updates` `ElementType` line is attributed to 04d79a30.",
-                  "Commit `b3a7267a984aac69658578b7ed281d829db96796` originally added `linode/databasemysql/framework_datasource_schema.go` with the sensitive attributes in place."
-                ]
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "fb585e19dfe6c7d47d4c886d8d6ffeb702d8d071",
-              "author_name": "Lena Garber",
-              "message": "Resolve database pending_updates duplicates bug; refactor database schema & model sharing",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "488060d3d7de3a74778c11d521ced0dc480c6cc9",
-              "author_name": "Lena Garber",
-              "message": "Apply suggestions from code review",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-                  "confidence": 0.7
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "04d79a30a0663f56c0a0d03fe9f7544ad35fe5a4"
-        },
-        {
           "sha": "f343d2e95bd46600a6dad025a486d6f3d2e4865b",
           "author": "Erik Zilber",
           "date": "2025-11-14T10:34:18-05:00",
@@ -16465,7 +14207,7 @@
         {
           "sha": "f89360e71738d76d41fc9bbc060e3198a71ca538",
           "author": "Claude",
-          "date": "2026-01-10T18:47:38+00:00",
+          "date": "2026-01-10T18:55:17+00:00",
           "message": "fix: try setting time without sudo first, fallback to sudo if needed",
           "ai_signals": [
             {
@@ -16487,7 +14229,7 @@
             "causal_chain": ""
           },
           "verification": {
-            "verdict": "UNLIKELY",
+            "verdict": "CONFIRMED",
             "confidence": 0.95,
             "models": [
               "gpt-5.4"
@@ -16495,16 +14237,16 @@
             "agent_verdicts": [
               {
                 "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The fix commit addresses command injection by adding regex validation of `datetime` before it is interpolated into a shell command in `plugin.start` (`index.js`). Blame on the pre-fix file shows the current `setDate` interpolation line came from commit `7008d7fa`, while the `spawn('sh', ['-c', ...])` line was last touched by `c4672527`; however, the same unsafe pattern already existed in `c4672527`'s parent `5f3bd23f`, which had `const setDate = \\`date --iso-8601 -u -s \"${datetime}\"\\`` and `spawn('sh', ['-c', command])`. In other words, `c4672527` reworked the sudo/no-sudo flow but did not introduce the missing validation or the shell-interpolated datetime sink, which were present years earlier.",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix addresses missing validation before shell-interpolating the incoming datetime, and the pre-fix vulnerable command-construction lines in index.js (the new dateStr transformation and `const setDate = `date -u -s \"${dateStr}\"``) are blamed directly to 7008d7fa. The same unsafe pattern did exist before 7008d7fa, but that commit did more than move code: it rewrote the command-building logic for BusyBox compatibility and authored the specific vulnerable lines that the fix patches. Under the stated rubric, that is a reimplementation containing the vulnerability, so this commit is a valid bug-introducing commit for the fixed code path.",
                 "confidence": 0.95,
-                "tool_calls_made": 25,
+                "tool_calls_made": 13,
                 "steps_completed": [],
                 "evidence": [
-                  "Fix `75b11eae` only adds input validation before shell interpolation in `index.js`, showing the vulnerability is the lack of validation for `datetime` before building a shell command.",
-                  "Blame at pre-fix commit `7008d7fa` shows `const setDate = \\`date -u -s \"${dateStr}\"\\`` is from `7008d7fa`, while `spawn('sh', ['-c', setDate])` is from `c4672527`; the patched sink line is not uniquely attributable to `c4672527`.",
-                  "`index.js` at `c4672527`'s parent `5f3bd23f` already contains the vulnerable pattern: `const setDate = \\`date --iso-8601 -u -s \"${datetime}\"\\`` followed by `spawn('sh', ['-c', command])`.",
-                  "Earlier history (`a49703f2`, 2018) already directly built `sudo date --iso-8601 -u -s \"` + datetime + `\"` and executed it via `sh -c`, confirming the injection surface long predates `c4672527`."
+                  "`blame_lines` on pre-fix index.js shows lines 65-68 (comments, `const dateStr = datetime.replace(...)`, and `const setDate = `date -u -s \"${dateStr}\"``) were introduced by 7008d7fa.",
+                  "`get_commit_diff` for 7008d7fa shows it replaced `const setDate = `date --iso-8601 -u -s \"${datetime}\"`` with new BusyBox-compatible logic deriving `dateStr` from untrusted `datetime` and still shell-interpolating it.",
+                  "`get_file_at_commit` for the parent commit c4672527 confirms the vulnerable pattern already existed before 7008d7fa (`const setDate = `date --iso-8601 -u -s \"${datetime}\"`` plus `spawn('sh', ['-c', setDate])`), so 7008d7fa was not merely blamed by drift—it rewrote that vulnerable code path.",
+                  "The fix commit 75b11eae adds input validation immediately before the 7008d7fa-authored command-building block, showing those are the security-relevant lines being remediated."
                 ]
               }
             ]
@@ -16565,7 +14307,7 @@
               "touched_blamed_file": null
             }
           ],
-          "squash_merge_sha": "c4672527da2c97322a3f8af96182d9d3b9bf07d5"
+          "squash_merge_sha": "7008d7fa0ba625b2a423746dcfb5299f93fe234c"
         }
       ],
       "fix_commits": [
