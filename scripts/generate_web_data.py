@@ -1072,6 +1072,23 @@ def build_cve_entry(
             seen_shas[sha] = bc
             bug_commits.append(bc)
 
+    # Deduplicate BICs with different SHAs but identical verification reasoning
+    # (happens when multiple commits are blamed for the same fix file and the
+    # deep verifier produces the same analysis for each).
+    seen_reasonings: set[str] = set()
+    deduped: list[dict] = []
+    for bc in bug_commits:
+        reasoning = ""
+        for av in bc.get("verification", {}).get("agent_verdicts", []):
+            reasoning = av.get("reasoning", "")
+            break
+        if reasoning and reasoning in seen_reasonings:
+            continue
+        if reasoning:
+            seen_reasonings.add(reasoning)
+        deduped.append(bc)
+    bug_commits = deduped
+
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
     published = ""
