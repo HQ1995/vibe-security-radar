@@ -37,8 +37,8 @@ const DATA_SOURCES = [
 
 const LIMITATIONS = [
   "We can only see AI involvement when the tool leaves a signature (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code manually, we won't know.",
-  "Git blame sometimes points to the wrong commit. The tribunal catches most of these, but not all.",
-  "The tribunal uses three LLM agents and majority vote. Borderline cases where causality is ambiguous can still go either way.",
+  "Git blame sometimes points to the wrong commit. The deep verifier catches most of these, but not all.",
+  "The deep verifier is a single LLM with tool access. Borderline cases where causality is ambiguous can still go either way.",
   "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched vulnerabilities are out of scope.",
 ] as const;
 
@@ -75,9 +75,9 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Tier 6",
-    title: "Multi-model tribunal verification",
+    title: "Deep verification",
     description:
-      "An LLM first analyzes the fix commit to understand the vulnerability type and root cause. Then three independent LLM agents (GPT, Claude, Gemini) each investigate the blamed commit separately and vote on causality. Details below.",
+      "An LLM first analyzes the fix commit to understand the vulnerability type and root cause. Then a deep verifier — a single LLM with tool access (git log, file read, blame, diff) — runs an agentic investigation loop on the blamed commit to determine causality. Details below.",
   },
 ] as const;
 
@@ -107,7 +107,8 @@ export default function AboutPage() {
           >
             Georgia Tech SSLab
           </a>{" "}
-          (Software Security Lab, School of Cybersecurity and Privacy).
+          (Systems Software &amp; Security Lab, School of Cybersecurity and
+          Privacy).
           We want to understand how AI-assisted development affects software
           security in practice — not in benchmarks or synthetic tasks, but in
           real vulnerabilities that got reported and fixed.
@@ -126,9 +127,10 @@ export default function AboutPage() {
           Each vulnerability goes through a six-tier pipeline. We pull advisory
           data in bulk where possible and fall back to APIs when needed.
           Fix commits get traced back to bug-introducing commits via git blame,
-          then we check those commits for AI tool signatures. A three-model
-          tribunal (GPT, Claude, Gemini) votes on whether the AI-authored
-          commit actually caused the vulnerability.
+          then we check those commits for AI tool signatures. A deep verifier
+          — a single LLM with tool access — investigates each candidate to
+          determine whether the AI-authored commit actually caused the
+          vulnerability.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -150,7 +152,7 @@ export default function AboutPage() {
       {/* Verification Details */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Multi-model tribunal verification
+          Deep verification
         </h2>
         <p className="leading-relaxed text-muted-foreground">
           Finding an AI signature in a bug-introducing commit is not enough.
@@ -160,16 +162,18 @@ export default function AboutPage() {
         <p className="leading-relaxed text-muted-foreground">
           First, an LLM reads the fix commit to understand what the
           vulnerability is: its type (command injection, XSS, etc.), root
-          cause, and the code pattern that was vulnerable. Then three
-          independent LLM agents (GPT, Claude, Gemini) each investigate the
-          blamed commit on their own, reading diffs and tracing code changes.
-          They vote. Majority wins.
+          cause, and the code pattern that was vulnerable. Then a deep
+          verifier — a single LLM with tool access to git log, file read,
+          blame, and diff — runs an agentic investigation loop. It
+          autonomously explores the repository, traces code changes, and
+          builds a causal chain before submitting a verdict.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          This matters because single-model verification is unreliable. In our
-          testing, 61% of commits that one model confirmed as causal were
-          overturned when the other two weighed in. If all three models say a
-          commit is unrelated, we drop it.
+          This replaced an earlier three-model tribunal (GPT, Claude, Gemini
+          majority vote). The deep verifier is more accurate because it can
+          actually read the code and trace the history, rather than relying
+          on context-limited single-pass analysis. If the verifier determines
+          the commit is unrelated, we drop it.
         </p>
       </section>
 
