@@ -30,80 +30,97 @@ function isCulprit(dc: DecomposedCommit): boolean {
   return dc.ai_signals.length > 0 && dc.touched_blamed_file === true;
 }
 
+function SubCommitRow({
+  dc,
+  repoUrl,
+}: {
+  readonly dc: DecomposedCommit;
+  readonly repoUrl?: string;
+}) {
+  const culprit = isCulprit(dc);
+  return (
+    <div
+      className={`rounded-md border px-3 py-2 text-sm ${
+        culprit
+          ? "border-primary/50 bg-primary/5"
+          : "border-border bg-card"
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {repoUrl ? (
+          <a
+            href={buildCommitUrl(repoUrl, dc.sha)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-xs text-primary underline-offset-4 hover:underline shrink-0"
+          >
+            {dc.sha.slice(0, 7)}
+          </a>
+        ) : (
+          <code className="font-mono text-xs shrink-0">{dc.sha.slice(0, 7)}</code>
+        )}
+        <span className="text-xs text-muted-foreground shrink-0">{dc.author_name}</span>
+        {culprit && (
+          <Badge className="bg-red-600/20 text-red-700 dark:text-red-300 hover:bg-red-600/20 text-[10px] px-1.5 py-0 shrink-0">
+            Culprit
+          </Badge>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground truncate">
+        {truncate(firstLine(dc.message), 120)}
+      </p>
+      {dc.ai_signals.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {dc.ai_signals.map((sig, i) => (
+            <span
+              key={`${dc.sha}-${sig.tool}-${i}`}
+              className="inline-flex items-center gap-1 rounded bg-purple-600/10 px-1.5 py-0.5 text-[10px] text-purple-700 dark:text-purple-300"
+            >
+              {getToolDisplayName(sig.tool)}
+              <span className="text-purple-500/60">&middot;</span>
+              {getSignalTypeLabel(sig.signal_type)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DecomposedCommitsSection({
   commits,
   repoUrl,
+  culpritSha,
 }: {
   readonly commits: readonly DecomposedCommit[];
   readonly repoUrl?: string;
+  readonly culpritSha?: string;
 }) {
+  // Separate culprit from other sub-commits
+  const culprits = commits.filter((dc) => dc.sha === culpritSha);
+  const others = commits.filter((dc) => dc.sha !== culpritSha);
+
   return (
-    <details className="group/sub mt-3">
-      <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-        <span className="group-open/sub:rotate-90 transition-transform">&#9654;</span>
-        Sub-commits
-        <span className="text-muted-foreground/60">({commits.length})</span>
-      </summary>
-      <div className="mt-2 space-y-1.5 border-l-2 border-muted pl-3">
-        {commits.map((dc) => {
-          const culprit = isCulprit(dc);
-          return (
-            <div
-              key={dc.sha}
-              className={`rounded-md border px-3 py-2 text-sm ${
-                culprit
-                  ? "border-primary/50 bg-primary/5"
-                  : "border-border bg-card"
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {repoUrl ? (
-                  <a
-                    href={buildCommitUrl(repoUrl, dc.sha)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-xs text-primary underline-offset-4 hover:underline shrink-0"
-                  >
-                    {dc.sha.slice(0, 7)}
-                  </a>
-                ) : (
-                  <code className="font-mono text-xs shrink-0">{dc.sha.slice(0, 7)}</code>
-                )}
-                <span className="text-xs text-muted-foreground shrink-0">{dc.author_name}</span>
-                {culprit && (
-                  <Badge className="bg-red-600/20 text-red-700 dark:text-red-300 hover:bg-red-600/20 text-[10px] px-1.5 py-0 shrink-0">
-                    Culprit
-                  </Badge>
-                )}
-                {dc.touched_blamed_file === true && !culprit && (
-                  <span className="text-[10px] text-muted-foreground/70 shrink-0">touched blamed file</span>
-                )}
-                {dc.touched_blamed_file === false && (
-                  <span className="text-[10px] text-muted-foreground/50 shrink-0">other file</span>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground truncate">
-                {truncate(firstLine(dc.message), 120)}
-              </p>
-              {dc.ai_signals.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {dc.ai_signals.map((sig, i) => (
-                    <span
-                      key={`${dc.sha}-${sig.tool}-${i}`}
-                      className="inline-flex items-center gap-1 rounded bg-purple-600/10 px-1.5 py-0.5 text-[10px] text-purple-700 dark:text-purple-300"
-                    >
-                      {getToolDisplayName(sig.tool)}
-                      <span className="text-purple-500/60">&middot;</span>
-                      {getSignalTypeLabel(sig.signal_type)}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </details>
+    <div className="mt-3 space-y-2">
+      {/* Culprit sub-commit shown directly */}
+      {culprits.map((dc) => (
+        <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
+      ))}
+      {/* Other sub-commits collapsed */}
+      {others.length > 0 && (
+        <details className="group/sub">
+          <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <span className="group-open/sub:rotate-90 transition-transform">&#9654;</span>
+            {others.length} other sub-commit{others.length > 1 ? "s" : ""} in this PR
+          </summary>
+          <div className="mt-2 space-y-1.5 border-l-2 border-muted pl-3">
+            {others.map((dc) => (
+              <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -173,7 +190,11 @@ function BugCommitCard({
           </p>
         )}
         {commit.decomposed_commits && commit.decomposed_commits.length > 0 && (
-          <DecomposedCommitsSection commits={commit.decomposed_commits} repoUrl={repoUrl} />
+          <DecomposedCommitsSection
+            commits={commit.decomposed_commits}
+            repoUrl={repoUrl}
+            culpritSha={commit.squash_merge_sha ? commit.sha : undefined}
+          />
         )}
       </CardContent>
     </Card>
