@@ -93,6 +93,7 @@ export interface StatsData {
   readonly generated_at: string;
   readonly total_cves: number;
   readonly total_analyzed: number;
+  readonly with_fix_commits: number;
   readonly coverage_from: string;
   readonly coverage_to: string;
   readonly by_tool: Readonly<Record<string, number>>;

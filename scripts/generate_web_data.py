@@ -1275,7 +1275,7 @@ def build_cve_entry(
 # Statistics
 # ---------------------------------------------------------------------------
 
-def build_stats(entries: list[dict], *, total_analyzed: int = 0, coverage_since: str = "") -> dict:
+def build_stats(entries: list[dict], *, total_analyzed: int = 0, with_fix_commits: int = 0, coverage_since: str = "") -> dict:
     """Aggregate statistics from a list of web CVE entries."""
     by_tool: dict[str, int] = {}
     by_severity: dict[str, int] = {}
@@ -1341,6 +1341,7 @@ def build_stats(entries: list[dict], *, total_analyzed: int = 0, coverage_since:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total_cves": len(entries),
         "total_analyzed": total_analyzed,
+        "with_fix_commits": with_fix_commits,
         "coverage_from": coverage_from,
         "coverage_to": coverage_to,
         "by_tool": by_tool,
@@ -1484,24 +1485,33 @@ def main(argv: list[str] | None = None) -> None:
     coverage_year = int(coverage_since[:4]) if coverage_since else 0
     if coverage_since:
         total_in_range = 0
+        with_fix_commits = 0
         for r in results:
             cve_id = r.get("cve_id", "")
             pub = nvd_dates.get(cve_id, "")
+            in_range = False
             if pub:
-                if pub[:7] >= coverage_since:
-                    total_in_range += 1
+                in_range = pub[:7] >= coverage_since
             elif cve_id.startswith("CVE-"):
-                # Extract year from CVE-YYYY-nnnnn
                 parts = cve_id.split("-")
-                if len(parts) >= 2 and parts[1].isdigit() and int(parts[1]) >= coverage_year:
-                    total_in_range += 1
+                in_range = len(parts) >= 2 and parts[1].isdigit() and int(parts[1]) >= coverage_year
             else:
                 # GHSA, JLSEC, etc. — no year in ID, include conservatively
+                in_range = True
+            if in_range:
                 total_in_range += 1
+                if r.get("fix_commits"):
+                    with_fix_commits += 1
         print(f"  {total_in_range} of {len(results)} results within coverage window (>= {coverage_since}).")
+        print(f"  {with_fix_commits} with fix commits ({100*with_fix_commits/total_in_range:.1f}%), {total_in_range - with_fix_commits} without.")
     else:
         total_in_range = len(results)
-    stats_output = build_stats(entries, total_analyzed=total_in_range, coverage_since=coverage_since)
+        with_fix_commits = sum(1 for r in results if r.get("fix_commits"))
+    stats_output = build_stats(
+        entries, total_analyzed=total_in_range,
+        with_fix_commits=with_fix_commits,
+        coverage_since=coverage_since,
+    )
 
     # Write
     output_dir = Path(args.output_dir)
