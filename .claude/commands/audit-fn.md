@@ -18,19 +18,31 @@ The pipeline detects AI signals via co-author trailers, author emails, and commi
 
 Only by independently investigating "clean" CVEs can we measure and reduce the false negative rate.
 
-## Phase 0: Select Target
+## Phase 0: Select Target & Claim
 
 If a CVE ID was provided, use it. Otherwise, use the FN audit queue:
 
 ```bash
-python3 scripts/audit_queue.py --fn
+cd ~/agents/ai-slop/scripts && python3 audit_queue.py --fn
 ```
 
-This scores CVEs without AI signals by false-negative likelihood (author overlap with known AI users, squash-heavy repos, etc.) and recommends the highest-priority target.
+This scores CVEs without AI signals by false-negative likelihood (author overlap with known AI users, squash-heavy repos, etc.) and recommends the highest-priority target. The queue automatically excludes CVEs claimed by other audit sessions.
+
+### Claim the target (required for parallel safety)
+
+Before starting analysis, claim the CVE to prevent other sessions from auditing it simultaneously:
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 audit_lock.py claim <CVE-ID> --worker "$(hostname)-$$"
+```
+
+If the claim fails (another session already claimed it), re-run `audit_queue.py --fn` and pick the next candidate. Do NOT proceed without a successful claim.
 
 ## Phase 1: Load Cached Result
 
-Load `~/.cache/cve-analyzer/results/<CVE-ID>.json`. Extract and print:
+Load `~/.cache/cve-analyzer/results/<CVE-ID>.json`. If the file does not exist, report that the CVE has no cached analysis, release the claim (`python3 audit_lock.py release <CVE-ID>`), and stop.
+
+Extract and print:
 
 - `cve_id`, `description`, `severity`
 - `fix_commits` — sha, repo_url, source
@@ -139,7 +151,22 @@ Provide specific details: what pattern/regex would catch this, which file needs 
 
 ## Phase 7: Save Finding
 
-Save to `~/.cache/cve-analyzer/audit/findings.json` (append to existing array):
+Save the finding atomically using the lock-safe helper (prevents concurrent write corruption):
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 -c "
+from audit_lock import save_finding
+import json, sys
+save_finding(json.load(sys.stdin))
+print('Saved.')
+" <<'FINDING'
+<FINDING_JSON>
+FINDING
+```
+
+Alternatively, manually append to `~/.cache/cve-analyzer/audit/findings.json` if the helper is unavailable. **Warning:** manual append is NOT safe for concurrent sessions.
+
+Finding schema:
 
 ```json
 {
@@ -164,6 +191,16 @@ Save to `~/.cache/cve-analyzer/audit/findings.json` (append to existing array):
   "improvement_suggestions": []
 }
 ```
+
+### Release the claim
+
+After saving, release the claim:
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 audit_lock.py release <CVE-ID>
+```
+
+If the audit was aborted early, still release the claim before stopping. Claims auto-expire after 2 hours as a fallback.
 
 ## Phase 8: Pattern Analysis (every 10 FN findings)
 

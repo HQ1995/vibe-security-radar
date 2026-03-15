@@ -22,23 +22,35 @@ The pipeline has a 3-tier verdict system:
 
 Only `UNRELATED` verdicts from verification/tribunal exclude a BIC. `UNLIKELY` means "not sure" — it lowers confidence but does NOT exclude. Screening verdicts never exclude.
 
-## Phase 0: Select Target
+## Phase 0: Select Target & Claim
 
 If a CVE ID was provided, use it. Otherwise, use `audit_queue.py` for smart prioritization:
 
 ```bash
-python3 scripts/audit_queue.py
+cd ~/agents/ai-slop/scripts && python3 audit_queue.py
 ```
 
-This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. Use the CVE ID from its "Next:" recommendation.
+This scores candidates by FP risk signals (verifier-overturned, squash-signal, noisy-blame, etc.) and recommends the highest-priority target. The queue automatically excludes CVEs that are already claimed by other audit sessions.
 
-If the script is unavailable, manually pick the first unaudited CVE with AI signals from `~/.cache/cve-analyzer/results/`, prioritizing deep-confirmed over deep-denied over no-deep-verify. Cross-check against `~/.cache/cve-analyzer/audit/findings.json` to skip already-audited CVEs.
+If the script is unavailable, manually pick the first unaudited CVE with AI signals from `~/.cache/cve-analyzer/results/`, prioritizing deep-confirmed over deep-denied over no-deep-verify. Cross-check against `~/.cache/cve-analyzer/audit/findings.json` and `~/.cache/cve-analyzer/audit/claims/` to skip already-audited or in-progress CVEs.
 
 If nothing to audit, report that and stop.
 
+### Claim the target (required for parallel safety)
+
+Before starting analysis, claim the CVE to prevent other sessions from auditing it simultaneously:
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 audit_lock.py claim <CVE-ID> --worker "$(hostname)-$$"
+```
+
+If the claim fails (another session already claimed it), go back to `audit_queue.py` and pick the next candidate. Do NOT proceed without a successful claim.
+
 ## Phase 1: Load Cached Result
 
-Load the cached result from `~/.cache/cve-analyzer/results/<CVE-ID>.json`. Read it and extract:
+Load the cached result from `~/.cache/cve-analyzer/results/<CVE-ID>.json`. If the file does not exist, report that the CVE has no cached analysis, release the claim (`python3 audit_lock.py release <CVE-ID>`), and stop.
+
+Read it and extract:
 
 - `cve_id`, `description`, `severity`, `cwes`
 - `fix_commits` — each has `sha`, `repo_url`, `source`
@@ -201,7 +213,20 @@ For each disagreement, diagnose:
 
 ## Phase 7: Save Finding
 
-Save the structured finding to `~/.cache/cve-analyzer/audit/findings.json` (create the file/directory if needed, append to existing array):
+Save the finding atomically using the lock-safe helper (prevents concurrent write corruption):
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 -c "
+from audit_lock import save_finding
+import json, sys
+save_finding(json.load(sys.stdin))
+print('Saved.')
+" <<'FINDING'
+<FINDING_JSON>
+FINDING
+```
+
+Alternatively, manually append to `~/.cache/cve-analyzer/audit/findings.json` if the helper is unavailable. **Warning:** manual append is NOT safe for concurrent sessions — only use when `audit_lock.py` is unavailable and you are the only auditor.
 
 **How to determine `pipeline_verdict`**: Check AI BICs in priority order:
 1. If any BIC has `verification_verdict.verdict` == CONFIRMED → pipeline_verdict = "CONFIRMED"
@@ -260,6 +285,16 @@ If the user says yes:
 If the user says no or the suggestions are minor observations (not code bugs), skip this phase.
 
 Phase 8's pattern analysis should **exclude findings where `fix_applied` is set** from improvement tallies, since those are already resolved.
+
+### Release the claim
+
+After saving the finding (and any Phase 7b fix), release the claim so the CVE shows as completed (not just claimed):
+
+```bash
+cd ~/agents/ai-slop/scripts && python3 audit_lock.py release <CVE-ID>
+```
+
+If the audit was aborted early for any reason (missing result file, error, etc.), still release the claim before stopping. Claims auto-expire after 2 hours as a fallback, but explicit release is preferred.
 
 ## Phase 8: Pattern Analysis (every 10 findings)
 

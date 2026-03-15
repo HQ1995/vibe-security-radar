@@ -17,6 +17,8 @@ import json
 import sys
 from pathlib import Path
 
+from audit_lock import load_claimed_cves
+
 CACHE_DIR = Path.home() / ".cache/cve-analyzer/results"
 AUDIT_PATH = Path.home() / ".cache/cve-analyzer/audit/findings.json"
 
@@ -37,14 +39,18 @@ def _get_ai_bics(data):
 
 
 def load_audited():
-    """Load audited CVE IDs and the full findings list."""
-    if not AUDIT_PATH.exists():
-        return set(), []
-    try:
-        findings = json.loads(AUDIT_PATH.read_text())
-        return {f.get("cve_id", "") for f in findings}, findings
-    except Exception:
-        return set(), []
+    """Load audited CVE IDs (completed + actively claimed) and findings list."""
+    findings = []
+    audited = set()
+    if AUDIT_PATH.exists():
+        try:
+            findings = json.loads(AUDIT_PATH.read_text())
+            audited = {f.get("cve_id", "") for f in findings}
+        except Exception:
+            pass
+    # Also exclude CVEs currently being audited by other sessions
+    audited |= load_claimed_cves()
+    return audited, findings
 
 
 def load_results():
