@@ -823,12 +823,10 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
         entry["pr_title"] = pr_title
 
     if tv:
-        # Both tribunal_verdict and verification_verdict are normalized
-        # via _get_deep_verdict() to have "final_verdict". Build a
-        # unified web output that works for both shapes.
+        # Both formats are normalized via _get_deep_verdict(). Build unified web output.
         if tv.get("agent_verdicts"):
-            # Old tribunal format: multi-model with agent_verdicts list
-            entry["tribunal_verdict"] = {
+            # Old format: multi-model with agent_verdicts list
+            entry["verification"] = {
                 "verdict": tv.get("final_verdict", ""),
                 "confidence": tv.get("confidence", ""),
                 "models": [
@@ -841,6 +839,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
                         "reasoning": av.get("reasoning", ""),
                         "confidence": av.get("confidence", 0),
                         "tool_calls_made": av.get("tool_calls_made", 0),
+                        "steps_completed": av.get("steps_completed", 0),
                         "evidence": av.get("evidence", []),
                     }
                     for av in tv["agent_verdicts"]
@@ -852,7 +851,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
             # for web UI compatibility (formatConfidence expects 0-1).
             raw_conf = tv.get("confidence", "")
             numeric_conf = _CONF_MAP.get(str(raw_conf).lower(), raw_conf)
-            entry["tribunal_verdict"] = {
+            entry["verification"] = {
                 "verdict": tv.get("final_verdict", ""),
                 "confidence": numeric_conf,
                 "models": [tv["model"]] if tv.get("model") else [],
@@ -863,6 +862,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
                         "reasoning": tv.get("reasoning", ""),
                         "confidence": numeric_conf,
                         "tool_calls_made": tv.get("tool_calls_made", 0),
+                        "steps_completed": tv.get("steps_completed", 0),
                         "evidence": tv.get("evidence", []),
                     }
                 ],
@@ -1025,7 +1025,7 @@ def build_cve_entry(
 
     # Deduplicated list of AI tool names — only from BICs whose effective
     # verdict is CONFIRMED or missing (benefit of the doubt).
-    # Tribunal verdict (multi-model) takes precedence over single-model LLM.
+    # Deep verification verdict takes precedence over single-model LLM.
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
         commit = bic.get("commit", {})
@@ -1043,7 +1043,7 @@ def build_cve_entry(
 
     # Only include BICs with AI signals whose effective verdict is CONFIRMED
     # or missing.  Skip commits without AI signals (plain human commits from
-    # git blame) and those judged UNLIKELY/UNRELATED by tribunal or LLM.
+    # git blame) and those judged UNLIKELY/UNRELATED by deep verifier or LLM.
     raw_bics = result.get("bug_introducing_commits", [])
     # Get repo URL from first fix commit for PR lookups
     fix_repo_url = ""
@@ -1129,7 +1129,7 @@ def build_cve_entry(
         verified_by = ", ".join(sorted(models))
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type
-    # from first CONFIRMED verdict (llm_verdict or tribunal fallback)
+    # from first CONFIRMED verdict (llm_verdict or deep verifier fallback)
     how_introduced = ""
     root_cause = ""
     vuln_type = ""
@@ -1152,6 +1152,18 @@ def build_cve_entry(
             if how_introduced:
                 break
 
+    # Best verdict across all BICs (for list table display).
+    # UNRELATED BICs are already filtered out of bug_commits above,
+    # so only CONFIRMED and UNLIKELY can appear here.
+    best_verdict = ""
+    for bic in result.get("bug_introducing_commits", []):
+        v = _effective_verdict(bic)
+        if v == "CONFIRMED":
+            best_verdict = "CONFIRMED"
+            break
+        if v == "UNLIKELY" and best_verdict != "CONFIRMED":
+            best_verdict = "UNLIKELY"
+
     return {
         "id": cve_id,
         "description": result.get("description", ""),
@@ -1167,6 +1179,7 @@ def build_cve_entry(
         "how_introduced": how_introduced,
         "root_cause": root_cause,
         "vuln_type": vuln_type,
+        "verdict": best_verdict,
         "bug_commits": bug_commits,
         "fix_commits": result.get("fix_commits", []),
         "references": result.get("references", []),
