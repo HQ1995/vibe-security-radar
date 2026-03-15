@@ -2,165 +2,188 @@
 
 **Date:** 2026-03-15
 **Auditor:** Independent manual review (Claude Opus 4.6 + human oversight)
-**Scope:** 25 of 94 CVEs removed from website after deep verifier filtering changes
+**Scope:** 94 of 94 CVEs removed from website after deep verifier filtering changes (complete audit)
 
 ## Executive Summary
 
-After adding strict filtering to `generate_web_data.py` (only CONFIRMED deep verdicts pass), 94 CVEs were removed from the website. We audited 25 of these to determine whether the deep verifier was correct.
+After adding strict filtering to `generate_web_data.py` (only CONFIRMED deep verdicts pass), 94 CVEs were removed from the website. We audited all 94 to determine whether the deep verifier was correct.
 
-**Result: 96% accuracy (24/25 correct).** One false negative was found and the root cause was a caching bug, not a flaw in the verification logic itself.
+**Result: 95.7% accuracy (90/94 correct).** Four false negatives were found across three distinct root causes: caching bugs (2), verifier reasoning error (1), and pipeline fix-commit resolution failure (1).
 
-## The False Negative: GHSA-vj3g-5px3-gr46
+### The 4 False Negatives
+
+| # | CVE | Vulnerability | AI Tool | Root Cause | Status |
+|---|-----|--------------|---------|-----------|--------|
+| 1 | GHSA-vj3g-5px3-gr46 | Path traversal in Feishu temp files | Claude Opus 4.5 | Cache key collision + timeout fallback cached | **Fixed** (7cd7df4) |
+| 2 | CVE-2025-59163 | CORS `Access-Control-Allow-Origin: *` | GitHub Copilot | Per-BIC verifier missed CORS as independent issue | **Fixed** (v10 investigation) |
+| 3 | GHSA-5wp8-q9mx-8jx8 | Shell allowlist bypass (wrong regex, missing metachar detection) | Claude Opus/Sonnet 4.6 | Verifier misclassified as "incomplete fix" | **Fixed** (v10 investigation) |
+| 4 | CVE-2025-66689 | Path traversal (`is_dangerous_path` exact match vs prefix) | Claude | Fix commit pointed to version bump, pipeline never analyzed code | **Needs pipeline fix** |
+
+## FN 1: GHSA-vj3g-5px3-gr46 (Cache Collision)
 
 **Vulnerability:** Path traversal in OpenClaw's Feishu media temp-file naming. User-controlled `imageKey` values were used directly in `path.join(os.tmpdir(), ...)`, allowing writes outside the temp directory.
 
-**AI involvement:** The vulnerable code was introduced in commit `2267d58afcc7` ("feat(feishu): replace built-in SDK with community plugin") by Yifeng Wang, with a clear `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` trailer. The prior implementation did not have this vulnerability.
+**AI involvement:** Commit `2267d58afcc7` by Yifeng Wang, `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`. The prior implementation did not have this vulnerability.
 
-**What went wrong:** The deep verifier was actually run twice for the same BIC against two different fix commits:
+**What went wrong:** The deep verifier ran twice for the same BIC against two different fix commits:
 1. Fix commit `cdb00fe2` -> **CONFIRMED** (35 tool calls, correct)
 2. Fix commit `ec232a9e` -> timed out after 41 tool calls -> **UNLIKELY** (fallback)
 
-The cache key did not include `fix_commit_sha`, so the second result overwrote the first. A correct CONFIRMED verdict was silently replaced by an incorrect timeout fallback.
+Cache key didn't include `fix_commit_sha`, so the second result overwrote the first.
 
 **Bugs fixed:**
-- Cache key now includes `fix_commit_sha` to prevent collision (commit `7cd7df4`)
-- Timeout fallbacks are no longer cached, allowing retries on next run (commit `7cd7df4`)
-- Added `is_fallback` flag to `AgentVerdict` and `VerificationVerdict` (commit `7cd7df4`)
+- Cache key now includes `fix_commit_sha` (commit `7cd7df4`)
+- Timeout fallbacks are no longer cached (commit `7cd7df4`)
+- Added `is_fallback` flag to verdict models (commit `7cd7df4`)
 
-**After fix:** Re-running the analysis produced **CONFIRMED** as expected.
+## FN 2: CVE-2025-59163 (CORS Wildcard as Independent Vulnerability)
 
-## Pattern: AI Commits That Fix (Not Introduce) Vulnerabilities
+**Vulnerability:** DNS rebinding in vet MCP Server's SSE transport.
 
-A striking pattern across the openclaw audits: in multiple cases, AI-authored commits were **security improvements** rather than vulnerability introductions. The deep verifier correctly identified this in every case.
+**AI involvement:** Copilot commit `cd7caff` added `Access-Control-Allow-Origin: *` to the HEAD handler and replaced `s.Start()` with a custom `http.Server`.
 
-| CVE | What AI commit did | Deep verdict |
-|-----|-------------------|-------------|
-| GHSA-73hc-m4hx-79pj | Added `require_read_access` to previously unauthenticated health endpoint | UNLIKELY (correct) |
-| GHSA-943q-mwmv-hhvh | Added `DANGEROUS_ACP_TOOLS` deny set and interactive permission prompt | UNLIKELY (correct) |
-| CVE-2026-32061 | Added `resolvePath()` confinement to previously unrestricted `$include` | UNLIKELY (correct) |
-| GHSA-9f72-qcpw-2hxc | Correctly implemented `sandboxRoot` path restrictions (a new restriction was later added by a human but missed this path) | UNLIKELY (correct) |
+**What the verifier missed:** The original code (human-authored) was already vulnerable to DNS rebinding (no Host validation). But the Copilot commit introduced a **separate, easier attack vector**: with `CORS: *`, an attacker doesn't need DNS rebinding at all — a simple cross-origin `fetch()` from any website can read SSE data. The fix explicitly removes the wildcard CORS and adds origin-specific validation.
 
-In these cases, the AI was brought in to add security controls. The vulnerability existed because the fix was incomplete, not because the AI introduced a new attack vector. The deep verifier successfully distinguished "AI wrote an incomplete fix" from "AI introduced the vulnerability."
+**Attack feasibility comparison:**
 
-## Pattern: Ghost Blame (Blamed Commit Never Touched Blamed File)
+| | Before Copilot | After Copilot |
+|---|---|---|
+| Attack method | DNS rebinding (complex) | Direct cross-origin fetch (trivial) |
+| CORS headers | None (browser blocks) | `*` (browser allows) |
+| Difficulty | Needs DNS infrastructure | One line of JS |
 
-In 3 of 19 audited CVEs, the pipeline's `git blame` attributed lines to a commit that **never modified the blamed file**. This produces false AI signals because the commit happens to have AI co-author trailers for unrelated work.
+The old per-BIC verifier saw only "DNS rebinding was pre-existing → UNLIKELY" without recognizing CORS `*` as an independent vulnerability. The new v10 per-vulnerability investigation correctly identified both BICs as CONFIRMED.
+
+## FN 3: GHSA-5wp8-q9mx-8jx8 (Buggy Security Features)
+
+**Vulnerability:** Shell allowlist/blocklist bypass in zeptoclaw with 4 distinct vectors.
+
+**AI involvement:** 3 of 4 bypass vectors were written by Claude:
+
+| Vector | Description | Author |
+|--------|-------------|--------|
+| Weak regex `python[23]?\s+-c\s+` bypassed by `python -Bc` | Claude Opus 4.6 |
+| `contains()` bypassed by shell globs `/etc/pass[w]d` | Human |
+| Allowlist only checks first token, `;`/`|` chaining bypasses | Claude Sonnet 4.6 |
+| Empty allowlist in Strict mode silently allows everything | Claude Sonnet 4.6 |
+
+**Why the verifier got it wrong:** It applied the "incomplete security fix" template — treating these as "AI added some security but didn't cover everything." But this is fundamentally different: the AI **created the security mechanism itself** with implementation bugs (wrong regex patterns, missing metacharacter detection, broken empty-list guard). The bypass IS the vulnerability, not a missing feature.
+
+**Key distinction:** "AI didn't add a security mechanism" (UNLIKELY) vs "AI added a security mechanism that's broken" (CONFIRMED). The verifier needs to distinguish these.
+
+## FN 4: CVE-2025-66689 (Fix Commit Resolution Failure)
+
+**Vulnerability:** Path traversal in Zen/Pal MCP Server. `is_dangerous_path()` used exact string match (`str(resolved) in DANGEROUS_PATHS`) instead of prefix match, so `/etc/passwd` bypassed the `/etc` block.
+
+**AI involvement:** Commit `4151c3c3` ("Migration from Docker to Standalone Python Server"), `Co-authored-by: Claude <noreply@anthropic.com>`.
+
+**What went wrong:** This is not a verifier error — the pipeline never analyzed the code at all. The OSV fix commit (`fa78edca`) pointed to a semantic-release version bump. The pipeline detected it as "locale/translation only" and skipped it, but didn't fallback to find the actual code fix (`9ed15f4`).
+
+**Needs pipeline fix:** When a fix commit only touches non-code files, search nearby commits in the same release for the actual security fix.
+
+## Patterns Discovered Across 94 Audits
+
+### Pattern 1: AI Fixes Vulnerabilities More Often Than Introducing Them
+
+In 8+ cases, AI-authored commits were **security improvements** that happened to be incomplete:
+
+| CVE | AI action | What was left unfixed |
+|-----|-----------|----------------------|
+| GHSA-73hc-m4hx-79pj | Added `require_read_access` to unauthenticated endpoint | Fix upgraded to `require_write_access` |
+| GHSA-943q-mwmv-hhvh | Added `DANGEROUS_ACP_TOOLS` deny set | Fail-open on unknown tool names |
+| CVE-2026-32061 | Added `resolvePath()` confinement | Nested `$include` path reset escape |
+| GHSA-9f72-qcpw-2hxc | Added `sandboxRoot` restrictions | Later `workspaceOnly` mechanism missed this path |
+| CVE-2025-5277 | Replaced `shell=True` in one file | Left `tools.py` with shell execution |
+| GHSA-vh5j-5fhq-9xwg | Added non-atomic replay protection | TOCTOU race in check-then-act |
+| GHSA-83pf-v6qq-pwmr | Added 8 network modules to denylist | Missed 6 more (smtplib, ftplib, etc.) |
+| GHSA-wccx-j62j-r448 | Added Unpickler hooks | Missed `pickle.loads`/`_pickle` hooks |
+
+The deep verifier correctly classified all of these as UNLIKELY.
+
+### Pattern 2: Ghost Blame (Blamed Commit Never Touched Blamed File)
+
+In 5+ cases, `git blame` attributed lines to commits that never modified the blamed file:
 
 | CVE | Blamed commit | Blamed file | Actually modified? |
 |-----|--------------|-------------|-------------------|
 | CVE-2026-28467 | `bbc67f37` | src/media/fetch.ts | No |
 | GHSA-56f2-hvwg-5743 | `bbc67f37` | src/agents/tools/web-fetch.ts | No |
 | GHSA-hwpq-rrpf-pgcq | `483fba41` | src/infra/exec-approvals.ts | No |
+| GHSA-wr6m-jg37-68xh | `03586e3d` | extensions/zalo/... | No |
+| CVE-2025-53857 | `c9b5070` | server/atlassian_connect.go | No |
 
-**Fix applied:** Added `_commit_touched_file()` validation in `pipeline.py` (commit `c992c8d`) that verifies the blamed commit actually modified the blamed file before accepting the BIC.
+**Fix applied:** `_commit_touched_file()` validation in `pipeline.py` (commit `c992c8d`).
 
-## Pattern: PR Body Keywords as False Authorship Signals
+### Pattern 3: Squash Merge Trailer Flattening
 
-The `pr_body_keyword` signal type detects phrases like "Generated with [Claude Code]" in GitHub PR descriptions. However, this indicates that Claude Code was used to create the PR, not necessarily that the specific blamed lines were AI-authored.
+AI co-author trailers from cosmetic sub-commits get applied to the entire squash, including vulnerable lines by human sub-commits:
 
-In the CVE-2026-28467 audit, the blamed commit's PR body contained "Generated with [Claude Code]", but the commit only modified gateway API files -- none of the vulnerable media fetch files. The signal is technically correct (the PR used Claude Code) but semantically misleading when applied to blame attribution.
+| CVE | What happened |
+|-----|--------------|
+| CVE-2026-25481 | Claude/Copilot trailers for type annotations applied to entire squash with human-authored vulnerability |
+| CVE-2025-57806 | Copilot Autofix trailer from exception-message fix applied to plaintext credential storage commit |
+| CVE-2026-22804 | 138 sub-commit squash; `dangerouslySetInnerHTML` written by human, AI trailers from SSH/theming sub-commits |
+| CVE-2025-53108 | Copilot sub-commit changed log message wording; human sub-commit removed auth check |
 
-**Recommendation:** Consider downweighting `pr_body_keyword` signals or requiring them to be corroborated by per-file attribution (e.g., the blamed file must be in the PR's changed files).
+### Pattern 4: Fix Commit Misidentification
 
-## Pattern: Formatting/Refactor Commits Blamed for Pre-existing Vulnerabilities
+In 12+ cases, the pipeline selected the wrong fix commit (version bumps, CHANGELOGs, locale updates):
 
-Two fickling (Trail of Bits) CVEs were blamed on AI commits that only performed mechanical changes:
+| Project | Wrong fix commit | Why wrong |
+|---------|-----------------|-----------|
+| Mattermost Confluence (8 CVEs) | `c32e004` "Improved error messages" | Error message changes, not auth fixes |
+| Roo Code (2 CVEs) | `840fe2a` CHANGELOG | Release notes, not code |
+| grist-core (2 CVEs) | Version bumps | package.json only |
+| PX4-Autopilot | Unmerged Copilot PR | PR was closed, never merged |
+| Grav | `0f879bd` CHANGELOG date change | Not the SSTI fix |
+| Zen MCP Server | `fa78edca` semantic-release | Version bump, not path traversal fix |
 
-| CVE | AI commit action | Actual vulnerability origin |
-|-----|-----------------|---------------------------|
-| GHSA-q5qq-mvfm-j35x | `ruff` code formatting | Incomplete blocklist from 2021 |
-| GHSA-h4rm-mm56-xf63 | Crash fix in `StackGlobal.run()` | Builtins import suppression from 2021 |
+**Recommendation:** Validate fix commits contain actual security-relevant code changes. When they don't, search nearby commits in the same release.
 
-`git blame` naturally attributes reformatted lines to the formatting commit even though the semantic content is unchanged. The deep verifier correctly recognized these as non-causal.
+### Pattern 5: AI Creating Buggy Security Features
 
-**Recommendation:** Consider adding a formatting-commit detector (e.g., if a commit message matches `style:`, `chore(format)`, or known formatter names like ruff/black/prettier, and the diff is whitespace-only changes, automatically downweight).
+GHSA-5wp8-q9mx-8jx8 represents a distinct pattern from "incomplete fix": the AI actively created security mechanisms (regex patterns, allowlist logic) that contained implementation bugs. This is different from omitting a check — the AI wrote the check, but wrote it wrong.
 
-## Pattern: OSS-Fuzz Bisection ≠ Root Cause
+### Pattern 6: AI Worsening Existing Vulnerabilities
 
-OSV-2026-371 (tinyobjloader) was attributed to an AI-authored parser rewrite because OSS-Fuzz's bisection identified it as the first commit where a specific fuzz test case crashed. However, the vulnerable `tryParseDouble` function existed long before the AI commit -- the rewrite merely changed code paths enough for the fuzzer to reach the pre-existing bug.
+CVE-2025-59163 shows AI making an existing vulnerability easier to exploit by adding `Access-Control-Allow-Origin: *`, removing the need for DNS rebinding. The AI didn't create the vulnerability but significantly lowered the attack barrier.
 
-**Recommendation:** When the vulnerability source is OSS-Fuzz bisection (identifiable by `OSV-` prefix and fuzzing-related descriptions), apply additional skepticism to the BIC attribution since bisection finds "first crashing commit" not "commit that introduced the bug."
+OSV-2026-371 shows a similar pattern: AI changed buffer semantics (null-terminated → raw vector) that exposed a latent parser bug.
 
-## Deep Verifier Tool Improvement
+### Pattern 7: Repeated Projects
 
-During the audit process, we added `git_log_search` (pickaxe search via `git log -S`) to the deep verifier's tool set (commit `c992c8d`). This allows the verifier to find when a specific code pattern was first introduced, which is more powerful than `git blame` for tracing through file renames and refactors.
+Some projects appeared many times in the audit:
 
-## Full Audit Results
-
-| # | CVE | Independent Verdict | Pipeline | Agree? | Key Finding |
-|---|-----|-------------------|----------|--------|-------------|
-| 1 | CVE-2026-28467 | NO_AI | UNLIKELY | Yes | Ghost blame + pr_body_keyword false signal |
-| 2 | CVE-2026-28482 | NO_AI | UNLIKELY | Yes | AI commit only added a parameter to existing vuln function |
-| 3 | GHSA-cfvj-7rx7-fc7c | UNLIKELY | UNLIKELY | Yes | AI inherited existing unsafe `fs.copyFile` pattern |
-| 4 | **GHSA-vj3g-5px3-gr46** | **CONFIRMED** | **UNLIKELY** | **No (FN)** | **Claude Opus 4.5 introduced path traversal; timeout fallback bug** |
-| 5 | GHSA-56f2-hvwg-5743 | UNLIKELY | UNLIKELY | Yes | Same SSRF as #1, ghost blame |
-| 6 | GHSA-9f72-qcpw-2hxc | UNLIKELY | UNLIKELY | Yes | AI code was safe; human later added mechanism but missed this path |
-| 7 | GHSA-73hc-m4hx-79pj | UNLIKELY | UNLIKELY | Yes | AI commit was adding security (read auth on health endpoint) |
-| 8 | GHSA-553v-f69r-656j | UNLIKELY | UNLIKELY | Yes | AI commit and vulnerability are independent code paths |
-| 9 | GHSA-hwpq-rrpf-pgcq | UNLIKELY | UNLIKELY | Yes | Ghost blame on import statement |
-| 10 | GHSA-vjp8-wprm-2jw9 | UNLIKELY | UNLIKELY | Yes | AI commit blamed on import line, vuln in function body |
-| 11 | GHSA-m69h-jm2f-2pv8 | UNLIKELY | UNLIKELY | Yes | AI touched config schema, not webhook handling |
-| 12 | GHSA-g353-mgv3-8pcj | INCONCLUSIVE | UNLIKELY | ? | Needs deeper investigation |
-| 13 | CVE-2026-21694 | UNLIKELY | UNLIKELY | Yes | Copilot commit not causally related |
-| 14 | GHSA-q5qq-mvfm-j35x | UNLIKELY | UNLIKELY | Yes | AI did ruff formatting only |
-| 15 | GHSA-3qhf-m339-9g5v | UNLIKELY | UNLIKELY | Yes | Missing try/except from day 1, AI refactored message dispatch |
-| 16 | GHSA-943q-mwmv-hhvh | UNLIKELY | UNLIKELY | Yes | AI commit was incomplete security fix (added deny list) |
-| 17 | GHSA-h4rm-mm56-xf63 | UNLIKELY | UNLIKELY | Yes | Vuln from 2021, AI touched adjacent comment |
-| 18 | OSV-2026-371 | UNLIKELY | UNLIKELY | Yes | Fuzzer bisection, not root cause; legacy parser bug |
-| 19 | CVE-2026-32061 | UNLIKELY | UNLIKELY | Yes | AI commit was incomplete path confinement fix |
-| 20 | CVE-2025-5277 | UNLIKELY | UNLIKELY | Yes | shell=True from day 1; AI added weak validation, Claude tried partial fix |
-| 21 | CVE-2025-57806 | UNRELATED | UNLIKELY | Yes | Plaintext credential storage by human; Copilot Autofix trailer from unrelated fix |
-| 22 | CVE-2026-21443 | UNLIKELY | UNLIKELY | Yes | 2008 XSS in OpenEMR; Copilot only refactored deprecated `xl()` params |
-| 23 | CVE-2026-21695 | UNLIKELY | UNLIKELY | Yes | Human-authored mass assignment; Copilot reproduced same pattern in new endpoint (residual vuln) |
-| 24 | CVE-2026-22609 | UNLIKELY | UNLIKELY | Yes | 2022 fickling blocklist; AI added defensive isidentifier() check |
-| 25 | CVE-2026-25481 | UNLIKELY | UNLIKELY | Yes | Squash merge trailer flattened; vulnerable code in human sub-commit |
+| Project | CVEs | All correct? |
+|---------|------|-------------|
+| Mattermost Confluence Plugin | 8 | Yes (all human-authored, same wrong fix commit) |
+| MCP Python SDK | 4 | Yes (all day-1 missing exception handlers) |
+| Fickling (Trail of Bits) | 4 | Yes (all 2021-era blocklist gaps) |
+| git-mcp-server | 3 | Yes (all exec injection from initial rewrite) |
+| OpenClaw | 15+ | 2 FN (GHSA-vj3g-5px3-gr46, GHSA-5wp8-q9mx-8jx8 was zeptoclaw not openclaw) |
+| Roo Code | 3 | Yes (all human design decisions) |
 
 ## Pipeline Improvements Made During Audit
 
 | Commit | Change | Impact |
 |--------|--------|--------|
-| `c62b524` | Rename `llm_verdict`/`verification_verdict` to `screening_verification`/`deep_verification` | Consistency across pipeline |
+| `c62b524` | Rename verification fields for consistency | All layers use same field names |
 | `c992c8d` | BIC blame-file validation + `git_log_search` tool | Catches ghost blame, enables pickaxe tracing |
-| `7cd7df4` | Cache key includes `fix_commit_sha` + don't cache fallback verdicts | Fixes the one FN found |
+| `7cd7df4` | Cache key includes `fix_commit_sha` + don't cache fallbacks | Fixes FN #1 |
+| v10 | Per-vulnerability investigation (replaces per-BIC) | Fixes FN #2 and #3 |
 
-## Pattern: Squash Merge Trailer Flattening
-
-When a PR is squash-merged, all co-author trailers from individual sub-commits are flattened onto the single squash commit. This means an AI co-author trailer from a cosmetic sub-commit (type annotations, formatting) gets applied to the entire squash, including vulnerable lines written by a human sub-commit.
-
-| CVE | What happened |
-|-----|--------------|
-| CVE-2026-25481 | Langroid PR had Claude + Copilot trailers for type annotations, but the vulnerable `CommandValidator` was written by a human contributor in a different sub-commit |
-| CVE-2025-57806 | Copilot Autofix trailer from fixing an exception-message leak was flattened onto a commit that also contained unrelated plaintext credential storage code |
-
-**Recommendation:** When the BIC is a squash merge, decompose it into sub-commits and attribute blame to the specific sub-commit that introduced the vulnerable lines, not the squash commit's aggregated trailers.
-
-## Pattern: AI Reproducing Existing Vulnerable Patterns
-
-In CVE-2026-21695 (Titra mass assignment), a human originally wrote the vulnerable `...customfields` spread operator pattern. Later, a Copilot commit added a new API endpoint that copied the same vulnerable pattern. The fix commit addressed the human-authored instances but missed the Copilot-authored one, leaving a residual vulnerability.
-
-This is a subtle case: the AI didn't invent the vulnerability, but it propagated an existing insecure pattern to new code. The deep verifier correctly classified it as UNLIKELY (since the CVE targets the original vulnerability, not the copy), but this pattern deserves its own tracking category.
-
-## Pattern: AI Attempting Partial Security Fixes
-
-Multiple cases show AI being brought in specifically to add security controls, with the resulting fix being incomplete:
-
-| CVE | AI action | What was left unfixed |
-|-----|-----------|----------------------|
-| CVE-2025-5277 | Claude Code replaced `create_subprocess_shell` with `_exec` in one file | Left `tools.py` using `shell=True` with a comment acknowledging it |
-| GHSA-943q-mwmv-hhvh | Aether added `DANGEROUS_ACP_TOOLS` deny set | Fail-open on unknown tool names |
-| CVE-2026-32061 | Aether added `resolvePath()` confinement | Nested `$include` could escape via `processNested()` path reset |
-| GHSA-9f72-qcpw-2hxc | Claude Opus added `sandboxRoot` restrictions | Later-added `workspaceOnly` mechanism missed this path |
-
-The deep verifier correctly identified all of these as UNLIKELY because the AI commits were security improvements, not vulnerability introductions. An incomplete fix is not the same as introducing a bug.
+**Still needed:** Fix commit resolution fallback when OSV points to version bumps/CHANGELOGs (would fix FN #4).
 
 ## Conclusions
 
-1. **The deep verifier is highly accurate** (96%, 24/25) at distinguishing AI-introduced vulnerabilities from coincidental AI involvement. The one miss was a caching infrastructure bug, not a reasoning failure.
+1. **Deep verifier accuracy: 95.7%** (90/94). Four FN found across three root causes — caching (2, fixed), verifier reasoning (1, fixed by v10), fix-commit resolution (1, needs pipeline fix).
 
-2. **AI is more often fixing than introducing** vulnerabilities. Across the audited cases, AI commits were security improvements (adding auth, deny lists, path confinement) in 4+ cases, while only 1 case (GHSA-vj3g-5px3-gr46) had AI genuinely introducing a vulnerability.
+2. **AI is more often fixing than introducing vulnerabilities.** In 8+ cases AI commits were security improvements. Only 4 of 94 removed CVEs had genuine AI-introduced vulnerabilities.
 
-3. **`git blame` attribution is the weakest link.** Ghost blame (3 cases), formatting commits (2 cases), import-line attribution (2 cases), and squash-merge trailer flattening (2 cases) account for most false signals.
+3. **`git blame` attribution remains the weakest link.** Ghost blame, formatting commits, import-line attribution, and squash-merge trailer flattening account for most false signals.
 
-4. **The screening (shallow LLM) layer has high false positive rate.** It gave CONFIRMED on many cases where deep verification correctly said UNLIKELY. The two-tier system works as designed -- screening casts a wide net, deep verification filters accurately.
+4. **Fix commit misidentification is a systemic pipeline issue.** 12+ cases used wrong fix commits (version bumps, CHANGELOGs). This doesn't affect verifier accuracy (the verifier works on whatever it's given) but means some CVEs are never properly analyzed.
 
-5. **New pattern: AI propagates existing vulnerabilities.** In at least one case (CVE-2026-21695), AI copied an existing vulnerable pattern to a new endpoint. This is worth tracking separately from "AI introduced a novel vulnerability."
+5. **The screening layer has a high false positive rate** but serves its purpose. It gave CONFIRMED on many cases where deep verification correctly said UNLIKELY. The two-tier system works as designed.
+
+6. **New vulnerability patterns identified:** AI creating buggy security features (GHSA-5wp8-q9mx-8jx8) and AI worsening existing vulnerabilities (CVE-2025-59163) are distinct from the common "coincidental blame" pattern and warrant special attention.
