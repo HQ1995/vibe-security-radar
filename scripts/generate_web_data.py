@@ -664,13 +664,13 @@ def _effective_verdict(bic: dict) -> str:
 
 
 def _has_no_confirmed_verdict(result: dict) -> bool:
-    """Return True if no BIC has a non-UNRELATED verdict with AI involvement.
+    """Return True if no BIC has a CONFIRMED verdict with AI involvement.
 
-    Only UNRELATED verdicts (from deep verify) are treated as definitive
-    rejection.  CONFIRMED and UNLIKELY BICs both pass — UNLIKELY means
-    "not sure", which is not grounds for exclusion.
+    Deep verification is authoritative: only CONFIRMED passes.
+    UNLIKELY and UNRELATED both cause exclusion — UNLIKELY means the
+    verifier thinks the AI probably didn't cause the vulnerability.
 
-    BICs with no verdict at all also pass (benefit of the doubt).
+    BICs with no deep verdict still pass (benefit of the doubt).
     """
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
@@ -681,10 +681,10 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
         dv = _get_deep_verdict(bic)
         if dv:
             dv_verdict = (dv.get("final_verdict") or "").upper()
-            # Deep verify is authoritative: UNRELATED → skip, anything else → accept
-            if dv_verdict == "UNRELATED":
-                continue
-            return False
+            # Only CONFIRMED passes; UNLIKELY and UNRELATED are excluded
+            if dv_verdict == "CONFIRMED":
+                return False
+            continue
 
         # No deep verification — accept (benefit of the doubt)
         return False
