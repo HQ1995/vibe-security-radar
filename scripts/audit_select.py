@@ -37,7 +37,7 @@ def main():
             audited.add(f.get('cve_id', ''))
 
     def _get_deep_verdict(bic):
-        vv = bic.get('verification_verdict')
+        vv = bic.get('deep_verification') or bic.get('verification_verdict')
         if vv:
             if 'final_verdict' not in vv and 'verdict' in vv:
                 return {**vv, 'final_verdict': vv['verdict']}
@@ -72,7 +72,7 @@ def main():
             (_get_deep_verdict(b) or {}).get('final_verdict', '').upper() in ('UNLIKELY', 'UNRELATED')
             for b in ai_bics)
         has_llm_confirmed = any(
-            (b.get('llm_verdict') or {}).get('verdict', '').upper() == 'CONFIRMED'
+            (b.get('screening_verification') or b.get('llm_verdict') or {}).get('verdict', '').upper() == 'CONFIRMED'
             for b in ai_bics)
 
         if has_verified_confirmed:

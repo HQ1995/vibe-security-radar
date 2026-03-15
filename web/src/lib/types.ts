@@ -48,7 +48,7 @@ export interface BugCommit {
   readonly ai_signals: readonly AiSignalEntry[];
   readonly blamed_file: string;
   readonly blame_confidence: number;
-  readonly llm_verdict: LlmVerdict | null;
+  readonly screening_verification: LlmVerdict | null;
   readonly verification?: Verification;
   readonly pr_url?: string;
   readonly pr_title?: string;

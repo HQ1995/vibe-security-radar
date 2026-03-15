@@ -81,7 +81,7 @@ function analyzeBugCommits(commits: readonly BugCommit[]) {
     if (c.verification?.agent_verdicts?.length) {
       deepVerifiedCommits.push(c);
     }
-    if (c.llm_verdict !== null) {
+    if (c.screening_verification != null) {
       causalityCommits.push(c);
     }
   }
@@ -310,7 +310,7 @@ function CausalityDetails({
   readonly commit: BugCommit;
   readonly repoUrl?: string;
 }) {
-  const v = commit.llm_verdict!;
+  const v = commit.screening_verification!;
   return (
     <div className="rounded-lg border overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border-b">
@@ -500,12 +500,12 @@ export default async function CveDetailPage({
 
   // Sort causality commits by model strength (strongest first) so the best analysis is expanded
   const sortedCausalityCommits = [...causalityCommits].sort(
-    (a, b) => getModelRank(a.llm_verdict!.model) - getModelRank(b.llm_verdict!.model),
+    (a, b) => getModelRank(a.screening_verification!.model) - getModelRank(b.screening_verification!.model),
   );
 
   const bestVerification = deepVerifiedCommits.length > 0 ? deepVerifiedCommits[0].verification! : null;
   const bestCausalityCommit = sortedCausalityCommits.length > 0 ? sortedCausalityCommits[0] : null;
-  const primaryVerdict = bestVerification?.verdict ?? bestCausalityCommit?.llm_verdict?.verdict;
+  const primaryVerdict = bestVerification?.verdict ?? bestCausalityCommit?.screening_verification?.verdict;
   const primaryConfidence = bestVerification?.confidence ?? null;
 
   return (

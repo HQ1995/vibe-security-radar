@@ -77,7 +77,7 @@ for f in cache.glob('*.json'):
     if d.get('ai_signals'): signals += 1
     if d.get('fix_commits'): fixes += 1
     for b in d.get('bug_introducing_commits', []):
-        vv = b.get('verification_verdict')
+        vv = b.get('deep_verification') or b.get('verification_verdict')
         tv = b.get('tribunal_verdict')
         if vv:
             verified += 1

@@ -70,10 +70,10 @@ def load_results():
 def _get_deep_verdict(bic):
     """Return the best deep-verification verdict dict (new or old format).
 
-    Normalizes verification_verdict to include ``final_verdict`` key
+    Normalizes deep_verification to include ``final_verdict`` key
     (it stores ``verdict`` natively) so callers can use one key.
     """
-    vv = bic.get("verification_verdict")
+    vv = bic.get("deep_verification") or bic.get("verification_verdict")
     if vv:
         if "final_verdict" not in vv and "verdict" in vv:
             return {**vv, "final_verdict": vv["verdict"]}

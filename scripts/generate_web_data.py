@@ -630,17 +630,22 @@ def load_ghsa_severities(
 # Filtering
 # ---------------------------------------------------------------------------
 
+def _get_screening_verdict(bic: dict) -> dict | None:
+    """Return the screening verification dict for a BIC, with old-name fallback."""
+    return bic.get("screening_verification") or bic.get("llm_verdict")
+
+
 def _get_deep_verdict(bic: dict) -> dict | None:
     """Return the best deep-verification verdict dict for a BIC.
 
-    Prefers verification_verdict (new single-model verifier) over
+    Prefers deep_verification (new single-model verifier) over
     tribunal_verdict (old 3-model voting) for backward compatibility.
 
     Returns a *copy* with ``"final_verdict"`` normalized so all downstream
     consumers can use one key (verification uses ``"verdict"``, tribunal
     uses ``"final_verdict"``).  Returns None if neither exists.
     """
-    vv = bic.get("verification_verdict")
+    vv = bic.get("deep_verification") or bic.get("verification_verdict")
     if vv:
         if "final_verdict" not in vv and "verdict" in vv:
             return {**vv, "final_verdict": vv["verdict"]}
@@ -651,13 +656,13 @@ def _get_deep_verdict(bic: dict) -> dict | None:
 def _effective_verdict(bic: dict) -> str:
     """Return the best available verdict for a BIC.
 
-    Prefers deep verification verdict over llm_verdict (screening).
+    Prefers deep verification verdict over screening_verification (screening).
     Returns "" if no verdict exists.
     """
     dv = _get_deep_verdict(bic)
     if dv and dv.get("final_verdict"):
         return dv["final_verdict"].upper()
-    llm_v = bic.get("llm_verdict")
+    llm_v = _get_screening_verdict(bic)
     if llm_v and llm_v.get("verdict"):
         return llm_v["verdict"].upper()
     return ""
@@ -674,7 +679,7 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
     """
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
-        has_llm = bic.get("llm_verdict") is not None
+        has_llm = _get_screening_verdict(bic) is not None
         if not has_signals and not has_llm:
             continue  # no AI involvement at all
 
@@ -793,7 +798,7 @@ def _build_signal_entry(sig: dict) -> dict:
 def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
-    llm_v = bic.get("llm_verdict")
+    llm_v = _get_screening_verdict(bic)
     tv = _get_deep_verdict(bic)
     entry: dict = {
         "sha": commit.get("sha", ""),
@@ -805,7 +810,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
         ],
         "blamed_file": bic.get("blamed_file", ""),
         "blame_confidence": bic.get("blame_confidence", 0),
-        "llm_verdict": {
+        "screening_verification": {
             "verdict": llm_v.get("verdict", ""),
             "reasoning": llm_v.get("reasoning", ""),
             "model": llm_v.get("model", ""),
@@ -938,12 +943,12 @@ _UNLIKELY_PENALTIES_DICT: dict[str, float] = {
 
 
 def _get_unlikely_penalty_dict(bic: dict) -> float:
-    """Return penalty multiplier for UNLIKELY verification_verdict.
+    """Return penalty multiplier for UNLIKELY deep_verification.
 
     Dict-based mirror of _get_unlikely_penalty() in pipeline.py.
-    Only checks verification_verdict (has confidence field).
+    Only checks deep_verification (has confidence field).
     """
-    vv = bic.get("verification_verdict")
+    vv = bic.get("deep_verification") or bic.get("verification_verdict")
     if not vv:
         return 1.0
     if (vv.get("verdict") or "").upper() != "UNLIKELY":
@@ -1126,7 +1131,7 @@ def build_cve_entry(
         # Extract vuln_type early from first CONFIRMED verdict for inference
         _vt = ""
         for bic in result.get("bug_introducing_commits", []):
-            llm_v = bic.get("llm_verdict")
+            llm_v = _get_screening_verdict(bic)
             if llm_v and llm_v.get("verdict") == "CONFIRMED":
                 _vt = llm_v.get("vuln_type", "")
                 if _vt:
@@ -1149,7 +1154,7 @@ def build_cve_entry(
             for av in dv.get("agent_verdicts", []):
                 if av.get("model"):
                     models.add(av["model"])
-        llm_v = bic.get("llm_verdict")
+        llm_v = _get_screening_verdict(bic)
         if llm_v and llm_v.get("model"):
             # Strip strategy prefixes like "osv+" to get the bare model name
             model = llm_v["model"]
@@ -1194,7 +1199,7 @@ def build_cve_entry(
                 break
 
         # Screening CONFIRMED — only use if deep verify did NOT overrule it
-        llm_v = bic.get("llm_verdict")
+        llm_v = _get_screening_verdict(bic)
         if llm_v and llm_v.get("verdict") == "CONFIRMED" and not dv_verdict:
             # No deep verify exists for this BIC — screening is acceptable
             candidate = llm_v.get("causal_chain", "")
@@ -1433,7 +1438,7 @@ def main(argv: list[str] | None = None) -> None:
         key=lambda e: (
             # 1. Has any CONFIRMED verdict
             any(
-                (bc.get("llm_verdict") or {}).get("verdict") == "CONFIRMED"
+                (bc.get("screening_verification") or bc.get("llm_verdict") or {}).get("verdict") == "CONFIRMED"
                 for bc in e.get("bug_commits", [])
             ),
             # 2. Then by confidence

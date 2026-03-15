@@ -654,7 +654,7 @@ def _make_bic_dict(
         "blame_confidence": blame_conf,
     }
     if verdict is not None:
-        bic["llm_verdict"] = {
+        bic["screening_verification"] = {
             "verdict": verdict,
             "reasoning": "test",
             "model": "test-model",
@@ -757,7 +757,7 @@ def _make_bic_with_verdicts(
         "blame_confidence": 1.0,
     }
     if screening_verdict:
-        bic["llm_verdict"] = {
+        bic["screening_verification"] = {
             "verdict": screening_verdict,
             "reasoning": screening_reasoning,
             "causal_chain": screening_causal_chain,
@@ -766,7 +766,7 @@ def _make_bic_with_verdicts(
             "model": "test-model",
         }
     if deep_verdict:
-        bic["verification_verdict"] = {
+        bic["deep_verification"] = {
             "verdict": deep_verdict,
             "confidence": deep_confidence,
             "reasoning": deep_reasoning,

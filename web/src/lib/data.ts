@@ -3,7 +3,7 @@ import cvesJson from "../../data/cves.json";
 import statsJson from "../../data/stats.json";
 
 export function getCves(): CvesData {
-  return cvesJson as CvesData;
+  return cvesJson as unknown as CvesData;
 }
 
 export function getStats(): StatsData {
