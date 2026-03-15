@@ -275,7 +275,7 @@ function HowIntroducedCallout({
 }) {
   const hasSummary = cve.how_introduced.length > 0;
   const hasRootCause = (cve.root_cause ?? "").length > 0;
-  if (!hasSummary && !hasRootCause && signalTypes.length === 0) return null;
+  if (!hasSummary && !hasRootCause) return null;
 
   return (
     <div className="rounded-xl border border-l-4 border-l-primary bg-primary/5 p-5">
@@ -290,15 +290,11 @@ function HowIntroducedCallout({
           </Badge>
         )}
       </div>
-      {hasSummary ? (
+      {hasSummary && (
         <p className="text-sm leading-relaxed">{cve.how_introduced}</p>
-      ) : (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Detected AI tool involvement via {signalTypes.join(", ")}.
-        </p>
       )}
-      {hasRootCause && hasSummary && (
-        <div className="mt-3 pt-3 border-t border-primary/10">
+      {hasRootCause && (
+        <div className={hasSummary ? "mt-3 pt-3 border-t border-primary/10" : ""}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Root Cause</p>
           <p className="text-sm leading-relaxed text-muted-foreground">{cve.root_cause}</p>
         </div>

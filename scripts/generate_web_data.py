@@ -1148,13 +1148,19 @@ def build_cve_entry(
             if how_introduced or root_cause:
                 break
 
-        # Fallback: use deep verification's CONFIRMED agent reasoning
+        # Fallback: use deep verification's CONFIRMED reasoning
         dv = _get_deep_verdict(bic)
-        if dv and dv.get("final_verdict", "").upper() == "CONFIRMED" and not how_introduced:
-            for av in dv.get("agent_verdicts", []):
-                if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
-                    how_introduced = av["reasoning"]
-                    break
+        if dv and not how_introduced:
+            dv_verdict = (dv.get("final_verdict") or dv.get("verdict") or "").upper()
+            if dv_verdict == "CONFIRMED":
+                # New verifier format: reasoning at top level
+                if dv.get("reasoning"):
+                    how_introduced = dv["reasoning"]
+                # Old format: reasoning inside agent_verdicts
+                for av in dv.get("agent_verdicts", []):
+                    if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
+                        how_introduced = av["reasoning"]
+                        break
             if how_introduced:
                 break
 
