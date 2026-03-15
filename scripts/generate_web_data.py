@@ -1053,11 +1053,24 @@ def build_cve_entry(
         if fc.get("repo_url"):
             fix_repo_url = fc["repo_url"]
             break
-    bug_commits = [
+    bug_commits_raw = [
         _build_bug_commit(bic, repo_url=fix_repo_url) for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
         and _effective_verdict(bic) != "UNRELATED"
     ]
+    # Merge BICs with the same SHA (same commit blamed for multiple files).
+    # Keep the first entry and append extra blamed_file values.
+    seen_shas: dict[str, dict] = {}
+    bug_commits: list[dict] = []
+    for bc in bug_commits_raw:
+        sha = bc["sha"]
+        if sha in seen_shas:
+            existing = seen_shas[sha]
+            if bc["blamed_file"] and bc["blamed_file"] != existing["blamed_file"]:
+                existing["blamed_file"] += f", {bc['blamed_file']}"
+        else:
+            seen_shas[sha] = bc
+            bug_commits.append(bc)
 
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
