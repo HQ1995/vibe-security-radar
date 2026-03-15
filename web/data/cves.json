@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-15T03:09:59.814596+00:00",
-  "total": 56,
+  "generated_at": "2026-03-15T07:03:16.751350+00:00",
+  "total": 70,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -40,7 +40,7 @@
           ],
           "blamed_file": "auth.js",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit is the initial creation of the `auth.js` file, which introduced the `openBrowser` function. This function used `exec` with a template literal to open URLs, directly leading to the command injection vulnerability.",
             "model": "gemini-3.1-pro-preview",
@@ -125,7 +125,7 @@
           ],
           "blamed_file": "src/array.c",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit refactored the `sort_cmp` function to use values instead of indices but failed to properly validate the array's state after the comparison callback. Specifically, it removed the check `size < a || size < b` and replaced it with only a pointer check `RARRAY_PTR(ary) != p`, neglecting to check if the array length (`RARRAY_LEN`) had changed, which is the exact check added in the fix.",
             "model": "gemini-3-flash-preview",
@@ -213,7 +213,7 @@
           ],
           "blamed_file": "plugins/hookify/core/rule_engine.py, plugins/hookify/hooks/pretooluse.py",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `RuleEngine` class and the logic for evaluating deny rules against tool inputs. Specifically, it implemented the `_rule_matches` and field extraction logic that directly used raw `file_path` strings from `tool_input` without any symlink resolution, creating the vulnerability described in CVE-2025-59829.",
             "model": "gemini-3-flash-preview",
@@ -298,7 +298,7 @@
           ],
           "blamed_file": "mrbgems/mruby-compiler/core/codegen.c",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the 'Optimize: single JMPNOT can be inverted to JMPIF' logic which directly modifies the instruction stream at `s->iseq[fail_pos - 2]`. It failed to verify that the instruction at that offset was actually an `OP_JMPNOT`, leading to incorrect opcode replacement when other instructions (like `OP_JMP` from pinned variables) occupied that position.",
             "model": "gemini-3-flash-preview",
@@ -386,7 +386,7 @@
           ],
           "blamed_file": "util/orgmirror/harbor_adapter.py, util/orgmirror/quay_adapter.py, endpoints/api/org_mirror.py, util/orgmirror/__init__.py, data/model/org_mirror.py",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `util/orgmirror/harbor_adapter.py` file and the logic for interacting with external registries. The original implementation failed to explicitly handle HTTP redirect status codes (3xx), allowing the underlying HTTP client to follow redirects to potentially restricted internal IP addresses, which is the root cause of the SSRF vulnerability.",
             "model": "gemini-3-flash-preview",
@@ -602,7 +602,7 @@
           ],
           "blamed_file": "src/auth/oauth.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduces the `updateEnvFile` function, which contains the exact insecure regular expression (`new RegExp('^(#\\\\s*)?${key}=.*$', 'gm')`) identified as the root cause of the vulnerability. This regex allows attackers to inject arbitrary environment variables.",
             "model": "gemini-3.1-pro-preview",
@@ -687,7 +687,7 @@
           ],
           "blamed_file": "src/zae_limiter_aggregator/processor.py",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `try_proactive_shard` logic and the `WCU_PROACTIVE_THRESHOLD` mechanism which were intended to prevent hot partitions. However, the implementation used an incorrect metric (`wcu_tc_delta` / consumption ratio) that failed to effectively trigger sharding before DynamoDB partition exhaustion occurred, directly leading to the DoS vulnerability described.",
             "model": "gemini-3-flash-preview",
@@ -775,7 +775,7 @@
           ],
           "blamed_file": "src/channels/webhook.rs",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the entire webhook channel implementation, including the vulnerable behavior of accepting 'sender' and 'chat_id' directly from the incoming JSON payload without any verification. The fix commit mitigates this by adding HMAC validation and server-side configuration options to enforce identity.",
             "model": "gemini-3.1-pro-preview",
@@ -863,7 +863,7 @@
           ],
           "blamed_file": "src/channels/webhook.rs",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the entire webhook channel implementation, including the vulnerable behavior of accepting 'sender' and 'chat_id' directly from the incoming JSON payload without any verification. The fix commit mitigates this by adding HMAC validation and server-side configuration options to enforce identity.",
             "model": "gemini-3.1-pro-preview",
@@ -951,7 +951,7 @@
           ],
           "blamed_file": "src/channels/webhook.rs",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the entire webhook channel implementation, including the vulnerable behavior of accepting 'sender' and 'chat_id' directly from the incoming JSON payload without any verification. The fix commit mitigates this by adding HMAC validation and server-side configuration options to enforce identity.",
             "model": "gemini-3.1-pro-preview",
@@ -1021,6 +1021,31 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
+          "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
+          "author": "Patrick Sodré",
+          "date": "2026-02-21T20:47:45-05:00",
+          "message": "✨ feat(limiter): add shard selection, retry on exhaustion, and shard doubling",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/repository.py",
+          "blame_confidence": 1.0,
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `_is_wcu_exhausted` logic and the associated shard-doubling mechanism, which implemented the flawed strategy of using a single DynamoDB partition key for rate-limit buckets. This logic failed to account for the fact that high-traffic entities would still hit the same partition key before the shard count could be effectively increased, leading to the described hot partition DoS.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Denial of Service (Resource Exhaustion)",
+            "vuln_description": "The rate limiter used a single DynamoDB partition key for high-traffic entities, leading to 'hot partitions' and WCU exhaustion. This allowed a single high-volume entity to throttle the entire database partition, causing a Denial of Service for other entities sharing that partition.",
+            "vulnerable_pattern": "DynamoDB partition keys mapped directly to rate-limit buckets without sharding, leading to write throughput bottlenecks on single partition keys.",
+            "causal_chain": "The commit introduced a mechanism that relied on detecting WCU exhaustion to trigger shard doubling; however, because the initial state was not sharded, the system remained vulnerable to hot partitions during the period before the shard count was successfully increased, allowing a single entity to exhaust the WCU of the underlying DynamoDB partition."
+          }
+        },
+        {
           "sha": "6bcd260679f3838743cad07da62628487267e914",
           "author": "Patrick Sodré",
           "date": "2026-02-21T21:31:35-05:00",
@@ -1035,7 +1060,7 @@
           ],
           "blamed_file": "src/zae_limiter_aggregator/processor.py",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `try_proactive_shard` logic and the `WCU_PROACTIVE_THRESHOLD` mechanism which were intended to prevent hot partitions. However, the implementation used an incorrect metric (`wcu_tc_delta` / consumption ratio) that failed to effectively trigger sharding before DynamoDB partition exhaustion occurred, directly leading to the DoS vulnerability described.",
             "model": "gemini-3-flash-preview",
@@ -1107,6 +1132,40 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
+          "sha": "030c5ea3c3fada16f7a6be1487ec8e75e966f59c",
+          "author": "Josh Long",
+          "date": "2026-01-26T22:07:43+00:00",
+          "message": "feat(telegram): add sticker support with vision caching",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/telegram/bot-message-context.ts",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "030c5ea3c3fada16f7a6be1487ec8e75e966f59c",
+              "author_name": "Josh Long",
+              "message": "feat(telegram): add sticker support with vision caching",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "506bed5aed40820565b7db66a963b8163968208f"
+        },
+        {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
           "author": "Yifeng Wang",
           "date": "2026-02-05T18:26:05+08:00",
@@ -1121,7 +1180,7 @@
           ],
           "blamed_file": "extensions/feishu/src/bot.ts, extensions/feishu/src/config-schema.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the entire Feishu bot implementation, including the initial logic for sender authorization. The fix commit demonstrates that the original implementation only checked for group-specific 'allowFrom' configurations and lacked a global fallback, creating a bypass where unauthorized senders could interact with the bot if a specific group allowlist wasn't explicitly defined.",
             "model": "gemini-3-flash-preview",
@@ -1197,6 +1256,351 @@
       ]
     },
     {
+      "id": "GHSA-g353-mgv3-8pcj",
+      "description": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+      "severity": "HIGH",
+      "cvss": 8.6,
+      "cwes": [
+        "CWE-347"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:55:34Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "This commit rewrote `resolveFeishuCredentials` in `extensions/feishu/src/accounts.ts` and authored the exact return-object lines later changed by the fix. It still left `encryptKey` as an optional plain string while resolving `verificationToken`, so webhook accounts could continue to operate without an encrypt key. The same flaw existed earlier, but this commit reimplemented the vulnerable resolver and therefore counts as a BIC under the stated reimplementation rule.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "b7589b32a8e68a0cd40da34bfcd2e6efdad35c7c",
+          "author": "LiaoyuanNing",
+          "date": "2026-03-04T09:22:50+08:00",
+          "message": "fix(feishu): support SecretRef-style env credentials in account resolver (#30903)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "merge_workflow",
+              "matched_text": "Merged via squash.\n\nPrepared head SHA:",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/accounts.ts",
+          "blame_confidence": 1.0,
+          "screening_verification": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit refactored how configuration values are normalized, changing `encryptKey: cfg?.encryptKey?.trim() || undefined` to `encryptKey: normalizeString(cfg?.encryptKey)`. It did not introduce the lack of cryptographic signature validation, as the `encryptKey` was already not being properly resolved or enforced prior to this commit.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Improper Verification of Cryptographic Signature",
+            "vuln_description": "The application incorrectly allowed Feishu webhooks to be authenticated using only a verification token, bypassing mandatory encryption key validation which is required to prevent forged events.",
+            "vulnerable_pattern": "Verification of Feishu webhook events based solely on a `verificationToken` without enforcing the presence and validation of an `encryptKey`.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.7,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit rewrote `resolveFeishuCredentials` in `extensions/feishu/src/accounts.ts` and authored the exact return-object lines later changed by the fix. It still left `encryptKey` as an optional plain string while resolving `verificationToken`, so webhook accounts could continue to operate without an encrypt key. The same flaw existed earlier, but this commit reimplemented the vulnerable resolver and therefore counts as a BIC under the stated reimplementation rule.",
+                "confidence": 0.7,
+                "tool_calls_made": 91,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "7c3cf002966fe001d0f4fda0900a062e380c8d33",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): support env SecretRef credentials in account resolver",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "85764d4e3c69b3d318881995807e9536941b65d8",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): guard onboarding SecretRef credential checks",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7233ef2039c5d34d7dc4ca7cdf67e5a1a99e7601",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): keep onboarding status strict for empty account appId",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c94ea40617ebf486425e687b4fe14da1c1bd4c19",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): align onboarding status with SecretRef credential resolution",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ea79897f78fb3fb2c08832e3082ae123e25d214a",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): preserve unresolved SecretRef diagnostics in account resolution",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "05ab9bae8c8844c891537f9817fed8163a70e47d",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): finalize SecretRef onboarding/account semantics",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4bc9e7c8c3b59c704a90fbed1a1e17d652f084f4",
+              "author_name": "LiaoyuanNing",
+              "message": "fix(feishu): avoid false-positive status for missing env appId refs (openclaw#30903) thanks @LiaoyuanNing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cebb8c785324d2dfcd1333c9d3764fbf27152fd9",
+              "author_name": "joshavant",
+              "message": "tests(feishu): fix SecretRef typing (openclaw#30903) thanks @LiaoyuanNing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "61b78840eb07683eb69a79fccd6b3419c0409e5c",
+              "author_name": "joshavant",
+              "message": "deps(googlechat): require patched openclaw (openclaw#30903) thanks @LiaoyuanNing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d3d0a18f173e999070dae4ff01423dadd2804a9c",
+              "author_name": "joshavant",
+              "message": "revert(googlechat): keep openclaw peer range (openclaw#30903) thanks @LiaoyuanNing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ]
+        },
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/channel.ts, extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 1.0,
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the specific JSON schema for the Feishu plugin where `encryptKey` was defined as a simple `{ type: \"string\" }` rather than the `secretInputJsonSchema` used for other sensitive credentials. This inconsistent schema definition facilitated the bypass of mandatory encryption key validation, as it did not enforce the same security constraints or handling as the verification token.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Improper Verification of Cryptographic Signature",
+            "vuln_description": "The application incorrectly allowed Feishu webhooks to be authenticated using only a verification token, bypassing mandatory encryption key validation which is required to prevent forged events.",
+            "vulnerable_pattern": "Verification of Feishu webhook events based solely on a `verificationToken` without enforcing the presence and validation of an `encryptKey`.",
+            "causal_chain": "1. The blamed commit introduced a new configuration schema for Feishu accounts. 2. In this schema, `encryptKey` was defined as a standard string while `appSecret` and `verificationToken` were defined using `secretInputJsonSchema`. 3. This discrepancy led to the application logic accepting configurations where the encryption key was missing or improperly handled, allowing for unencrypted/forged webhook events."
+          }
+        },
+        {
+          "sha": "5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T19:18:25+08:00",
+          "message": "feat(feishu): sync with clawdbot-feishu #137 (multi-account support)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 0.6,
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Multi-account support duplicated the same insecure model into account-specific Feishu config: `encryptKey` remained optional in both the Zod schema and the channel JSON schema, and `createEventDispatcher(account)` continued to pass optional `encryptKey`/`verificationToken`. The fix later changes those account-level lines as well. This commit therefore extended the vulnerability from top-level config to named accounts and reimplemented the dispatcher path used by webhook mode.",
+                "confidence": 0.95,
+                "tool_calls_made": 91,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96",
+          "author": "Yifeng Wang",
+          "date": "2026-02-10T08:19:44+08:00",
+          "message": "feat(feishu): sync community contributions from clawdbot-feishu (#12662)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/monitor.ts",
+          "blame_confidence": 0.6,
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This is the first commit that actually enabled Feishu webhook mode in the monitor by adding `monitorWebhook` and wiring `Lark.adaptDefault(...)`, replacing the previous `webhook mode not implemented` behavior. Because the dispatcher still accepted optional credentials, this commit made forged-event acceptance reachable in practice. It is the exploit-enabling commit in the chain.",
+                "confidence": 0.95,
+                "tool_calls_made": 91,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+        "https://github.com/openclaw/openclaw/pull/44087",
+        "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+      ]
+    },
+    {
+      "id": "GHSA-vj3g-5px3-gr46",
+      "description": "OpenClaw vulnerable to path traversal in Feishu media temp-file naming allows writes outside os.tmpdir()",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T18:42:28Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "Although blame on the pre-fix file points the patched tmpPath lines to 65aac6494a7, that commit was a refactor that extracted readFeishuResponseBuffer and moved the same unsafe filename construction into a helper call site without changing the security-relevant logic. The vulnerable pattern itself was introduced earlier in 2267d58afcc, which created extensions/feishu/src/media.ts and added temp paths containing attacker-controlled imageKey/fileKey (`feishu_img_${Date.now()}_${imageKey}` and `feishu_${Date.now()}_${fileKey}`). The older pre-plugin Feishu implementation in src/feishu/download.ts streamed media directly and did not build temp filenames from those keys, so 2267 was a new implementation that introduced this traversal risk rather than merely moving pre-existing vulnerable code.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/media.ts",
+          "blame_confidence": 1.0,
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the vulnerable code pattern where the `imageKey` and `fileKey` (which are user-controlled strings) were used directly to construct file paths. By concatenating these keys directly into the temporary file path, the code allowed for path traversal if those keys contained directory traversal characters (e.g., ../), which the fix later addressed by using `crypto.randomUUID()` instead.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal",
+            "vuln_description": "The application fails to sanitize file paths when saving Feishu media temp files, allowing attackers to write files outside the intended temporary directory.",
+            "vulnerable_pattern": "Unsanitized file paths derived from user input or external metadata used directly in file system write operations.",
+            "causal_chain": "The blamed commit introduced `downloadImageFeishu` and `downloadMessageResourceFeishu` functions, which used user-supplied `imageKey` and `fileKey` variables directly in path construction for `os.tmpdir()` operations, creating the path traversal vulnerability."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Although blame on the pre-fix file points the patched tmpPath lines to 65aac6494a7, that commit was a refactor that extracted readFeishuResponseBuffer and moved the same unsafe filename construction into a helper call site without changing the security-relevant logic. The vulnerable pattern itself was introduced earlier in 2267d58afcc, which created extensions/feishu/src/media.ts and added temp paths containing attacker-controlled imageKey/fileKey (`feishu_img_${Date.now()}_${imageKey}` and `feishu_${Date.now()}_${fileKey}`). The older pre-plugin Feishu implementation in src/feishu/download.ts streamed media directly and did not build temp filenames from those keys, so 2267 was a new implementation that introduced this traversal risk rather than merely moving pre-existing vulnerable code.",
+                "confidence": 0.95,
+                "tool_calls_made": 35,
+                "steps_completed": [],
+                "evidence": [
+                  "Fix c821099 changes only the temp filename components in downloadImageFeishu/downloadMessageResourceFeishu from imageKey/fileKey to crypto.randomUUID().",
+                  "Blame at pre-fix commit b8b43175... attributes current tmpPath lines to 65aac6494a7, and 65aac6494a7's diff shows a pure refactor: it extracted readFeishuResponseBuffer and preserved the same tmpPath strings.",
+                  "The exact vulnerable strings are present in the file as introduced by 2267d58afcc: get_file_at_commit(2267..., extensions/feishu/src/media.ts) shows `const tmpPath = path.join(os.tmpdir(), `feishu_img_${Date.now()}_${imageKey}`);` and `const tmpPath = path.join(os.tmpdir(), `feishu_${Date.now()}_${fileKey}`);`.",
+                  "git_log_search for both exact tmpPath strings returns only the introducing commit 2267d58afcc and the fixing commit c821099, confirming 2267 is where the unsafe pattern first appeared in this file.",
+                  "The prior Feishu code in src/feishu/download.ts at commits 4fc4c525/0223416 streamed data via getReadableStream and saveMediaBuffer, with no os.tmpdir()/writeFile temp-path construction using fileKey/imageKey."
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "c821099157a9767d4df208c6b12f214946507871",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "cdb00fe2428000e7a08f9b7848784a0049176705",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ec232a9e2dff60f0e3d7e827a7c868db5254473f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-vj3g-5px3-gr46",
+        "https://github.com/openclaw/openclaw/commit/c821099157a9767d4df208c6b12f214946507871",
+        "https://github.com/openclaw/openclaw/commit/cdb00fe2428000e7a08f9b7848784a0049176705",
+        "https://github.com/openclaw/openclaw/commit/ec232a9e2dff60f0e3d7e827a7c868db5254473f"
+      ]
+    },
+    {
       "id": "CVE-2026-29609",
       "description": "OpenClaw affected by denial of service via unbounded URL-backed media fetch",
       "severity": "HIGH",
@@ -1234,7 +1638,7 @@
           ],
           "blamed_file": "src/media/input-files.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduces the `fetchWithGuard` function, which implements the URL fetching logic. This initial implementation lacked proper streaming limits on the response body, leading to the memory exhaustion vulnerability fixed in the later commit.",
             "model": "gemini-3.1-pro-preview",
@@ -1319,7 +1723,7 @@
           ],
           "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/config/zod-schema.providers-core.ts, src/imessage/monitor/monitor-provider.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduces the `scpFile` function which executes the SCP command. This function lacked the `--` argument separator and used `StrictHostKeyChecking=accept-new`, which are the exact issues addressed in the fix commit.",
             "model": "gemini-3.1-pro-preview",
@@ -1404,7 +1808,7 @@
           ],
           "blamed_file": "imports/utils/vm_sandbox.js",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the vm_sandbox.js file, which established the sandbox infrastructure using 'vm.runInContext'. It failed to implement necessary input sanitization or restriction of sensitive Node.js globals/modules, thereby establishing the vulnerable pattern addressed in the fix.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -1604,7 +2008,7 @@
           ],
           "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit explicitly introduces the logic to skip device identity checks if a token is present (`!device && !hasTokenAuth`). This directly causes the vulnerability where device identity is bypassed before the token is actually validated.",
             "model": "gemini-3.1-pro-preview",
@@ -1695,7 +2099,7 @@
           ],
           "blamed_file": "src/tools/docx_read.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The vulnerability analysis describes an authentication/spoofing issue related to webhook payloads, whereas the blamed commit and the fix commit focus exclusively on local file system operations (DOCX extraction) and path validation (TOCTOU). The blamed commit introduces the initial file validation logic, which is functionally distinct from the identity verification issue cited in the CVE description.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -1817,7 +2221,7 @@
           ],
           "blamed_file": "src/tools/pdf_read.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the PdfReadTool implementation, which lacked the re-validation logic required to prevent the TOCTOU vulnerability identified in the fix. By introducing the tool without a check immediately prior to the I/O operation, it established the vulnerable pattern that was later addressed by the fix.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -2092,7 +2496,7 @@
           ],
           "blamed_file": "src/tools/transcribe.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `TranscribeTool` (src/tools/transcribe.rs), which performed file I/O based on a resolved path without sufficient protection against TOCTOU (Time-of-Check to Time-of-Use) attacks. The fix commit directly addresses this by adding `revalidate_path` inside the tool's implementation created by the blamed commit.",
             "model": "gemini-3-flash-preview",
@@ -2367,7 +2771,7 @@
           ],
           "blamed_file": "src/channels/whatsapp_cloud.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduces the WhatsApp Cloud API channel, including the webhook endpoint and payload parsing structs. It completely lacks any cryptographic signature verification of the incoming payloads, directly establishing the root cause of the vulnerability.",
             "model": "gemini-3.1-pro-preview",
@@ -2464,7 +2868,7 @@
           ],
           "blamed_file": "src/tools/docx_read.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The vulnerability analysis describes an authentication/spoofing issue related to webhook payloads, whereas the blamed commit and the fix commit focus exclusively on local file system operations (DOCX extraction) and path validation (TOCTOU). The blamed commit introduces the initial file validation logic, which is functionally distinct from the identity verification issue cited in the CVE description.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -2586,7 +2990,7 @@
           ],
           "blamed_file": "src/tools/pdf_read.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the PdfReadTool implementation, which lacked the re-validation logic required to prevent the TOCTOU vulnerability identified in the fix. By introducing the tool without a check immediately prior to the I/O operation, it established the vulnerable pattern that was later addressed by the fix.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -2862,7 +3266,7 @@
           ],
           "blamed_file": "src/tools/transcribe.rs",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the `TranscribeTool` (src/tools/transcribe.rs), which performed file I/O based on a resolved path without sufficient protection against TOCTOU (Time-of-Check to Time-of-Use) attacks. The fix commit directly addresses this by adding `revalidate_path` inside the tool's implementation created by the blamed commit.",
             "model": "gemini-3-flash-preview",
@@ -3145,6 +3549,68 @@
       ]
     },
     {
+      "id": "GHSA-9f72-qcpw-2hxc",
+      "description": "OpenClaw: Native prompt image auto-load did not honor tools.fs.workspaceOnly in sandboxed runs",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-200",
+        "CWE-284"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T19:08:08Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gemini-3.1-pro-preview",
+      "how_introduced": "By adding the ability to load images from paths detected in prompts without validating them against the workspace boundary, this commit allowed the system to read and ingest arbitrary files outside the intended directory, leading to the path traversal vulnerability.",
+      "root_cause": "The native prompt image auto-load feature did not enforce the `tools.fs.workspaceOnly` restriction, allowing out-of-workspace files to be read and ingested as vision input.",
+      "vuln_type": "Path Traversal / Information Disclosure",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "8d74578ceb0c3b913555dff6265821eb0fc09749",
+          "author": "Tyler Yust",
+          "date": "2026-01-17T03:10:10-08:00",
+          "message": "feat: native image injection for vision-capable models",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/pi-embedded-runner/run/images.ts",
+          "blame_confidence": 0.9,
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the image auto-loading functionality by creating the `loadImageFromRef` and `detectAndLoadPromptImages` functions. However, it failed to implement a check to enforce the `workspaceOnly` restriction when resolving and loading image paths.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "Path Traversal / Information Disclosure",
+            "vuln_description": "The native prompt image auto-load feature did not enforce the `tools.fs.workspaceOnly` restriction, allowing out-of-workspace files to be read and ingested as vision input.",
+            "vulnerable_pattern": "Loading image files from arbitrary paths without validating them against the allowed workspace directory boundary.",
+            "causal_chain": "By adding the ability to load images from paths detected in prompts without validating them against the workspace boundary, this commit allowed the system to read and ingest arbitrary files outside the intended directory, leading to the path traversal vulnerability."
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "370d115549c0dadace0902775eea0d5094aedfdc",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-9f72-qcpw-2hxc",
+        "https://github.com/openclaw/openclaw/commit/370d115549c0dadace0902775eea0d5094aedfdc"
+      ]
+    },
+    {
       "id": "GHSA-c6hr-w26q-c636",
       "description": "OpenClaw has ReDoS and regex injection via unescaped Feishu mention metadata in RegExp construction",
       "severity": "LOW",
@@ -3182,7 +3648,7 @@
           ],
           "blamed_file": "extensions/feishu/src/bot.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit is the initial creation of the bot.ts file, which introduced the entire Feishu bot implementation. This includes the stripBotMention function that constructs regular expressions using unescaped mention metadata, leading to the ReDoS/regex injection vulnerability.",
             "model": "gemini-3.1-pro-preview",
@@ -3274,7 +3740,7 @@
           ],
           "blamed_file": "extensions/feishu/src/bot.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the initial implementation of the Feishu bot, including the `handleFeishuMessage` function and the call to `resolveFeishuAllowlistMatch`. It established the pattern of performing authorization checks using `senderName` (a mutable display name) and `senderId` (OpenID) without including the immutable `user_id`, which is the root cause of the display-name collision vulnerability.",
             "model": "gemini-3-flash-preview",
@@ -3357,7 +3823,7 @@
           ],
           "blamed_file": "action.yaml",
           "blame_confidence": 0.8,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the 'prek-version' input and interpolated it directly into a bash script within the composite action without sanitization. This created a command injection vulnerability that was addressed in the fix commit by passing the input through an environment variable.",
             "model": "gemini-3.1-pro-preview",
@@ -3522,7 +3988,7 @@
           ],
           "blamed_file": "label_studio/templates/base.html",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the custom hotkeys feature, including the logic to store 'custom_hotkeys' in the User model and render it in the base template. The diff for 'label_studio/templates/base.html' (though truncated in the snippet) corresponds to the addition of the vulnerable script block using '|safe' without proper character escaping.",
             "model": "gemini-3-flash-preview",
@@ -3904,7 +4370,7 @@
           ],
           "blamed_file": "yt_dlp/extractor/common.py",
           "blame_confidence": 0.6,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduces the `--netrc-cmd` feature, which formats the `netrc_machine` variable directly into a shell command and executes it using `Popen.run` with `shell=True`. This directly creates the command injection vulnerability that the fix addresses by adding character validation.",
             "model": "gemini-3.1-pro-preview",
@@ -4041,7 +4507,7 @@
           ],
           "blamed_file": "web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx",
           "blame_confidence": 0.27,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the use of `react-markdown` along with the `rehype-highlight` plugin in the `DebugDialog.tsx` component to render user-controlled content. Crucially, it omitted a sanitization layer like `rehype-sanitize`, which allowed arbitrary HTML/scripts to be executed when rendering markdown, especially since the fix implies `rehype-raw` was also present (enabling raw HTML parsing).",
             "model": "gemini-3-flash-preview",
@@ -4226,7 +4692,7 @@
           ],
           "blamed_file": "web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx",
           "blame_confidence": 0.27,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "CONFIRMED",
             "reasoning": "The blamed commit introduced the use of `react-markdown` along with the `rehype-highlight` plugin in the `DebugDialog.tsx` component to render user-controlled content. Crucially, it omitted a sanitization layer like `rehype-sanitize`, which allowed arbitrary HTML/scripts to be executed when rendering markdown, especially since the fix implies `rehype-raw` was also present (enabling raw HTML parsing).",
             "model": "gemini-3-flash-preview",
@@ -4374,6 +4840,186 @@
       ]
     },
     {
+      "id": "CVE-2025-59163",
+      "description": "vet MCP Server SSE Transport DNS Rebinding Vulnerability",
+      "severity": "LOW",
+      "cvss": 2.1,
+      "cwes": [
+        "CWE-350"
+      ],
+      "ecosystem": "",
+      "published": "2025-09-29T22:15:36.610",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4",
+      "how_introduced": "This commit added `sseHandlerWithHeadSupport` in `mcp/server/sse.go`, including the vulnerable `Access-Control-Allow-Origin: *` behavior for `HEAD /sse`, and changed the SSE startup path to serve the wrapped handler via `http.Server`. The fix commit directly edits this code: it removes the wildcard CORS response for HEAD, reflects only validated origins, and wraps the handler with new `originGuard` and `hostGuard` middleware. So this commit definitely introduced part of the vulnerable surface, even though it was not the first commit to expose SSE without host/origin checks.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "88f8c2d59333c1f7317bd8d6b075cd965864da5a",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-07-05T13:41:37+00:00",
+          "message": "Add HTTP HEAD request support to SSE MCP server",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "mcp/server/sse.go",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit added `sseHandlerWithHeadSupport` in `mcp/server/sse.go`, including the vulnerable `Access-Control-Allow-Origin: *` behavior for `HEAD /sse`, and changed the SSE startup path to serve the wrapped handler via `http.Server`. The fix commit directly edits this code: it removes the wildcard CORS response for HEAD, reflects only validated origins, and wraps the handler with new `originGuard` and `hostGuard` middleware. So this commit definitely introduced part of the vulnerable surface, even though it was not the first commit to expose SSE without host/origin checks.",
+                "confidence": 0.95,
+                "tool_calls_made": 42,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "09f260fe6eed21c0e8f4cd2ebd38db2114e82599",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Initial plan",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "88f8c2d59333c1f7317bd8d6b075cd965864da5a",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Add HTTP HEAD request support to SSE MCP server",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "57e682c3462444b2509622d9337516e37f70af59",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Add HTTP HEAD request support to SSE MCP server",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e26cf6a857c13ae2e0493a3bfe5211e96a5c3fe9",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix linter issues: remove trailing whitespace and handle w.Write error",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "cd7caffb4aa568d07edc0d21bbd7dabd38ef7e2c"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0ae3560ba11846375812377299fe078d45cc3d48",
+          "repo_url": "https://github.com/safedep/vet",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/59xxx/CVE-2025-59163.json",
+        "https://github.com/safedep/vet/releases/tag/v1.12.5",
+        "https://github.com/safedep/vet/security/advisories/GHSA-6q9c-m9fr-865m",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-59163"
+      ]
+    },
+    {
       "id": "CVE-2026-28448",
       "description": "OpenClaw Twitch allowFrom is not enforced in optional plugin, unauthorized chat users can trigger agent pipeline",
       "severity": "HIGH",
@@ -4411,7 +5057,7 @@
           ],
           "blamed_file": "extensions/twitch/src/access-control.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -4879,7 +5525,7 @@
           ],
           "blamed_file": "extensions/feishu/src/docx.ts, extensions/feishu/src/media.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit introduced the initial implementation of the Feishu document processing logic, which is necessary for the extension to function. The vulnerability described (CSRF on loopback endpoints) relates to how the application handles external requests, whereas the blamed commit simply sets up the internal document conversion and image handling infrastructure.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -4967,7 +5613,7 @@
           ],
           "blamed_file": "src/services/prompt-manager.ts, src/prompts/prompt-manager.ts, src/prompts/prompt-manager.js",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The vulnerability involves a hard-coded API key in a router configuration, whereas the blamed commit focuses on refactoring prompt templates and authentication utilities. The fix commit provided in the prompt addresses a path traversal issue in prompt processing, which is also unrelated to the hard-coded API key vulnerability described.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -5053,7 +5699,7 @@
           ],
           "blamed_file": "src/php/funchand/create_function.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit (8fe98955814e) is part of a large-scale project migration to TypeScript, specifically focusing on enabling 'noImplicitAny' and adding explicit types to function signatures across 361 files. While the vulnerable file 'create_function.ts' likely existed during this PR, the commit's purpose was type refactoring, not the introduction of the 'new Function()' logic which characterizes the RCE vulnerability.",
             "model": "gemini-3-flash-preview",
@@ -5920,7 +6566,7 @@
           ],
           "blamed_file": "lib/handlers/buy-handler.ts, lib/taysell-utils.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit introduces the CLI client-side logic for polling a server for a purchase token, whereas the vulnerability described is a server-side failure to validate PayPal webhook signatures. The fix commit also does not address webhook validation, but rather improves error messaging in the CLI when a download fails after payment.",
             "model": "gemini-3-flash-preview",
@@ -6004,7 +6650,7 @@
           ],
           "blamed_file": "src/agents/tools/web-search.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -6166,7 +6812,7 @@
           ],
           "blamed_file": "extensions/synology-chat/src/security.ts, extensions/synology-chat/src/webhook-handler.ts, extensions/synology-chat/src/channel.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -6280,7 +6926,7 @@
           ],
           "blamed_file": "src/tools/android/actions.rs",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit primarily focuses on updating the Android clipboard handling logic (`set_clipboard` and `get_clipboard`). It does not appear to introduce or modify the vulnerable `device_shell` blocklist logic or command execution filtering that is addressed in the fix commit.",
             "model": "gemini-3.1-pro-preview",
@@ -6389,7 +7035,7 @@
           ],
           "blamed_file": "src/config/group-policy.ts, src/config/types.tools.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit modifies files within the `extensions/voice-call/` directory related to provider configuration and testing. The vulnerability is located in `src/config/group-policy.ts`, which is part of the core infrastructure and is entirely separate from the voice-call extension.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -7247,7 +7893,7 @@
           ],
           "blamed_file": "src/auto-reply/reply/commands-approve.ts, src/infra/exec-approval-forwarder.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -7310,6 +7956,39 @@
       ]
     },
     {
+      "id": "OSV-2026-371",
+      "description": "Heap-buffer-overflow in tinyobj::tryParseDouble",
+      "severity": "HIGH",
+      "cvss": 0.0,
+      "cwes": [],
+      "ecosystem": "",
+      "published": "2026-03-10T11:17:16+09:00",
+      "ai_tools": [
+        "claude_code",
+        "github_copilot"
+      ],
+      "languages": [
+        "C/C++"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-pro-preview",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "966edceaf8cdca7996c4e9a1c5ced2938de63366",
+          "repo_url": "https://github.com/tinyobjloader/tinyobjloader",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=490598877"
+      ]
+    },
+    {
       "id": "GHSA-qj22-xqjr-v83v",
       "description": "OpenClaw's Telegram message_reaction authorization bypass allows unauthorized system-event injection",
       "severity": "HIGH",
@@ -7347,7 +8026,7 @@
           ],
           "blamed_file": "src/telegram/bot-handlers.ts",
           "blame_confidence": 1.0,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit is a massive configuration and boilerplate update that introduces type definitions, Zod schemas, and test files. It does not contain the logic for handling Telegram bot events or the specific 'message_reaction' handler where the authorization bypass occurred.",
             "model": "gemini-3-flash-preview",
@@ -7439,7 +8118,7 @@
           ],
           "blamed_file": "mrbgems/mruby-array-ext/src/array.c",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit modifies 'src/etc.c' to add comments and documentation for internal mruby API functions like mrb_data_object_alloc and mrb_obj_id. The vulnerability and its fix are located in an entirely different file, 'mrbgems/mruby-array-ext/src/array.c', involving array manipulation logic which the blamed commit does not touch.",
             "model": "gemini-3-flash-preview",
@@ -8272,7 +8951,7 @@
           ],
           "blamed_file": "web/src/components/FileUploadModal.vue",
           "blame_confidence": 0.9,
-          "llm_verdict": null
+          "screening_verification": null
         }
       ],
       "fix_commits": [
@@ -8287,6 +8966,389 @@
         "https://vuldb.com/?id.334492",
         "https://vuldb.com/?submit.697380",
         "https://www.notion.so/SSRF-vulnerablity-in-Yuxi-Know-2afea92a3c4180bea524f1a253f8d9a0?source=copy_link"
+      ]
+    },
+    {
+      "id": "CVE-2025-34291",
+      "description": "Langflow versions up to and including 1.6.9 contain a chained vulnerability that enables account takeover and remote code execution. An overly permissive CORS configuration (allow_origins='*' with allow_credentials=True) combined with a refresh token cookie configured as SameSite=None allows a malicious webpage to perform cross-origin requests that include credentials and successfully call the refresh endpoint. An attacker-controlled origin can therefore obtain fresh access_token / refresh_token",
+      "severity": "HIGH",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-346"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-05T23:15:47.433",
+      "ai_tools": [
+        "claude_code",
+        "github_copilot"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-3.1-pro-preview, gpt-5.4",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [
+        {
+          "sha": "6d318572ad281db639b8b93634c13c04e96991c5",
+          "author": "Rodrigo",
+          "date": "2025-07-21T13:33:30-03:00",
+          "message": "feat: Add dual output support to Agent component with structured JSON parsing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/lfx/src/lfx/components/models_and_agents/agent.py, src/lfx/src/lfx/components/agents/agent.py",
+          "blame_confidence": 0.9,
+          "screening_verification": null,
+          "pr_url": "https://github.com/langflow-ai/langflow/pull/8836",
+          "pr_title": "feat: Add dual output support to Agent component with structured JSON parsing",
+          "decomposed_commits": [
+            {
+              "sha": "6d318572ad281db639b8b93634c13c04e96991c5",
+              "author_name": "Rodrigo",
+              "message": "feat: Add dual output support to Agent component with structured JSON parsing",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "aee9d51274757b744f2f45763eb4d371c441da0a",
+              "author_name": "autofix-ci[bot]",
+              "message": "[autofix.ci] apply automated fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d69a2b710c9fb7e4b18e98135553340e53931cd6",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'main' into feature/agent-structured-output",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4897caccf33dd808c42224f4bc909ea88a6b4c0a",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'main' into feature/agent-structured-output",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5e70085f467ec78980af019bd9a280bb40f397b0",
+              "author_name": "Edwin Jose",
+              "message": "update to templates with  model list update",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "68a1f3471e65b2a302a5a33558b7cb55f135a9e3",
+              "author_name": "autofix-ci[bot]",
+              "message": "[autofix.ci] apply automated fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e3ebba9b64a2665e9f03091dad5d30be5ae6cdb2",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'main' into feature/agent-structured-output",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5b52f228df5ec40969db2b3d52318e4cda0318bb",
+              "author_name": "Edwin Jose",
+              "message": "Update test_agent_component.py",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "baaba524aa80957ce25adcfe32afebb532f74649",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'feature/agent-structured-output' of https://github.com/langflow-ai/langflow into feature/agent-structured-output",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a48c0029d8707843d876fb8756e8cb49cd7db255",
+              "author_name": "Edwin Jose",
+              "message": "update to the test and update to templates",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "6f2bf30b815f687610550c114ef1a06c8fd951d7",
+              "author_name": "autofix-ci[bot]",
+              "message": "[autofix.ci] apply automated fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0cb37e67d5c64d182ebaa4f3a4af54a359974c97",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'main' into feature/agent-structured-output",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "3bb22b29cce5b1256619b272aec43dfa6cf6226f"
+        },
+        {
+          "sha": "ca6a365ec73a9ddb4759cd7880d4d9a2800b721c",
+          "author": "Copilot",
+          "date": "2025-06-26T18:14:35+03:00",
+          "message": "Update flow_runner tests to match new LangflowRunnerExperimental API (#1)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "src/backend/base/langflow/services/flow/flow_runner.py",
+          "blame_confidence": 0.9,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "2c7cec75ed73855704107531a6b9baaf8905a55d",
+              "author_name": "Bar Nuri",
+              "message": "fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b41b7f035be0d23e1aa437d2f4400420371461e5",
+              "author_name": "Gabriel Luiz Freitas Almeida",
+              "message": "fix: Update SQLAlchemy import to SQLModel in flow_runner.py",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "eb4d345dbc6a08b743ab0071f278a3c57d9bb0a9",
+              "author_name": "autofix-ci[bot]",
+              "message": "[autofix.ci] apply automated fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "85ba2bd90da8863a36be238421735fcf08fad93c",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "55ed3b9f1662a1d773eb92790c05e785e4babedb",
+              "author_name": "Edwin Jose",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ca6a365ec73a9ddb4759cd7880d4d9a2800b721c",
+              "author_name": "Copilot",
+              "message": "Update flow_runner tests to match new LangflowRunnerExperimental API (#1)",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ade6c136bf53bdaf6848e3d01c138c562f19898f",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0bec9537226e80886bed546f0300f57c98f5494d",
+              "author_name": "autofix-ci[bot]",
+              "message": "[autofix.ci] apply automated fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "904f372307d27a18338aa097ecc536f7362a57e7",
+              "author_name": "Bar Nuri",
+              "message": "patch-1 - fix lint",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fa8be4025b87bc6b095e14785d5eb30518990b6e",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "604e9ab1949855e8ba4e308c026976f158dafdf6",
+              "author_name": "Bar Nuri",
+              "message": "patch-1 - tweaks_values",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8226bcea693f93d4d61b82c1806bd31f152c3af6",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'patch-1' of https://github.com/barnuri/langflow into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "6c81ade5cb92470b7b9beb59ddd7efe36348ad44",
+              "author_name": "Bar Nuri",
+              "message": "patch-1 - tweaks_values",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a613cc067437a6d11ac3a7cc02b9066dce59daa8",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d63af83498c401d03724cd202ec3dca045094a78",
+              "author_name": "Bar Nuri",
+              "message": "lint",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f1dd64b4809fe3efb2097f34269a20186528eefa",
+              "author_name": "Bar Nuri",
+              "message": "Merge branch 'main' into patch-1",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "fe7b7dfd27ed6e62ac0db8de12e67f00764a6903"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4962dbefb0caba09f1c19c25177f24d029fd13f7",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "835b480406ee8a136da0e3e7212a00d7f09cf864",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "87bf73560e11909ec4712081ab3f4b9674d80630",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "912836bea84cd76bf02c46faaa5b71dafca5d038",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "3019e1f644670ec53ce7af9bc4d74d490ae1c433",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "0328ae8f5dfd6f0244bd71ae18da1005ea85265d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "f5cf8ffc13a43037249b3ebbb30eda6e027b9842",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "b5745903033208d4eae98fcbc3276a3563ba86e3",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "95aa64133ddfdc7b32731baa4a6150f854d7f582",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "d614f01c1da46a041c8ec477fb68f2e41c669b2d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "52a36a1b4d6c0f309430e412687bade8a0160b61",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "4b42d7c01d4faf8f6385de419654d1b3e99b9675",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "8744c5a61ff4d0b67cf17d216676e790ed20c129",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "84bca94150d794c996d577a94b379d50579127b4",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "3a6412f7fa71c73e3b2c886824b5b3254fc01512",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "50ff06fd29316c3ada00ed3f2c7b2dc4e9c57eef",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "156a018abd7d79ad00739a4967d9be463435e80c",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "74941b5ff98150c35c21c33b5c4f9e2443ac586d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "4517ffef223e0bd3afc4520437666aa5f993431e",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "bc7413323e44a7249757b1cf5d843c50aea38fd6",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [
+        "https://www.vulncheck.com/advisories/langflow-cors-misconfiguration-to-token-hijack-and-rce"
       ]
     },
     {
@@ -8333,7 +9395,7 @@
           ],
           "blamed_file": "bootstrap/helpers/parsers.php",
           "blame_confidence": 0.5,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit significantly restructured the environment variable parsing logic in applicationParser, but it does not appear to be the source of the command injection vulnerability described in the fix. The fix commit primarily addresses object-to-string type conversion and data structure handling, rather than mitigating shell execution parameters, suggesting the vulnerability lies elsewhere in the execution flow.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -8422,7 +9484,7 @@
           ],
           "blamed_file": "extensions/feishu/src/docx.ts, extensions/feishu/src/media.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit introduced the initial implementation of the Feishu document processing logic, which is necessary for the extension to function. The vulnerability described (CSRF on loopback endpoints) relates to how the application handles external requests, whereas the blamed commit simply sets up the internal document conversion and image handling infrastructure.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -8513,7 +9575,7 @@
           ],
           "blamed_file": "src/agents/workspace-run.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -8649,7 +9711,7 @@
           ],
           "blamed_file": "backend/app/api/routes/printers.py",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit primarily performs code refactoring, such as reordering imports and adjusting whitespace, in the printers.py file. It does not introduce the specific vulnerable endpoints (reset_ams_slot or debug_simulate_print_complete) that were identified as missing authentication in the fix commit.",
             "model": "gemini-3-flash-preview",
@@ -8708,6 +9770,216 @@
       ]
     },
     {
+      "id": "GHSA-mhc9-48gj-9gp3",
+      "description": "Fickling has safety check bypass via REDUCE+BUILD opcode sequence",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-184"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-25T15:24:18Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [
+        {
+          "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+          "author": "Dan Guido",
+          "date": "2026-01-22T18:14:12-05:00",
+          "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/fickle.py",
+          "blame_confidence": 0.9,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+              "author_name": "Dan Guido",
+              "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "421182286c4034279298b7b1608fde8d0f95ec31",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove CVE/GHSA references from unsafe imports comments",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7dba01a213623c22f6460bc914ba41f5d8556f3b",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove non-ML modules from UnsafeImportsML.UNSAFE_MODULES",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8dd78e7753ea2048d5ee312f9ae3404f91c08ce3",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Update bypass tests with real PickleScan advisory payloads",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8740de0c4eca73799bb23e86a5d287165bd5a09a",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Fix STACK_GLOBAL validation to allow dotted attribute names",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "f7598584dc2527b273eb3f4e2b9296e6a1c01430",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove duplicate entries from UnsafeImportsML.UNSAFE_IMPORTS",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8bf4ae3fa663bf18152ff099e17f2e93fff00bf1",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Merge branch 'master' into integrate-picklescan-bypasses",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "19e828d26b248a4a39fcee2643306a6cd78dbb76"
+        },
+        {
+          "sha": "5e0129ff47945aa325b056f7d04a7dc2cb240535",
+          "author": "Dan Guido",
+          "date": "2026-01-20T13:45:46-05:00",
+          "message": "Fix ty type checker errors",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/fickle.py",
+          "blame_confidence": 0.6,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "5e0129ff47945aa325b056f7d04a7dc2cb240535",
+              "author_name": "Dan Guido",
+              "message": "Fix ty type checker errors",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "d6721e879fc3f4705372f4507dd13c5eac903176",
+              "author_name": "Dan Guido",
+              "message": "Migrate from mypy to ty and update pre-commit hooks",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7829ea197804293272a521bc1172040e9a5bdc48",
+              "author_name": "Dan Guido",
+              "message": "Remove CI aggregator jobs",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "9d5f7414c5a650b5b1aaa42ffa2769b569133d1d"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0c4558d950daf70e134090573450ddcedaf10400",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-mhc9-48gj-9gp3",
+        "https://github.com/trailofbits/fickling/commit/0c4558d950daf70e134090573450ddcedaf10400",
+        "https://github.com/advisories/GHSA-83pf-v6qq-pwmr"
+      ]
+    },
+    {
       "id": "GHSA-vvgp-4c28-m3jm",
       "description": "OpenClaw has a Trusted-proxy Control UI pairing bypass which allows unpaired node sessions",
       "severity": "MEDIUM",
@@ -8745,7 +10017,7 @@
           ],
           "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -8845,7 +10117,7 @@
           ],
           "blamed_file": "autogpt_platform/backend/backend/util/file.py",
           "blame_confidence": 0.8,
-          "llm_verdict": null,
+          "screening_verification": null,
           "pr_url": "https://github.com/Significant-Gravitas/AutoGPT/pull/10340",
           "pr_title": "feat(backend): Integrate GCS file storage with automatic expiration for Agent File Input",
           "verification": {
@@ -9164,7 +10436,7 @@
           ],
           "blamed_file": "src/agents/tools/nodes-tool.ts",
           "blame_confidence": 0.8,
-          "llm_verdict": null,
+          "screening_verification": null,
           "decomposed_commits": [
             {
               "sha": "3baae55f8ce3be31fc4151ba594cce2de5a92bbe",
@@ -9204,7 +10476,7 @@
           ],
           "blamed_file": "src/infra/exec-approvals.ts",
           "blame_confidence": 0.8,
-          "llm_verdict": null,
+          "screening_verification": null,
           "decomposed_commits": [
             {
               "sha": "01d568c9f54585d2df3002e1090067c9dd621e43",
@@ -9282,7 +10554,7 @@
           ],
           "blamed_file": "extensions/feishu/src/bot.ts",
           "blame_confidence": 0.8,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit is the initial creation of the Feishu extension file, while the fix commit addresses a missing 'GroupSystemPrompt' field in a message payload. Neither commit contains logic related to URL guards, DNS pinning, or proxy configuration, which are the core components of the described SSRF/TOCTOU vulnerability.",
             "model": "gemini-3-flash-preview",
@@ -9387,7 +10659,7 @@
           ],
           "blamed_file": "extensions/synology-chat/src/channel.ts",
           "blame_confidence": 0.8,
-          "llm_verdict": null,
+          "screening_verification": null,
           "decomposed_commits": [
             {
               "sha": "824202eadef258cf571d6e8183e4b96c3ef8167f",
@@ -9421,7 +10693,7 @@
           ],
           "blamed_file": "extensions/synology-chat/src/channel.ts",
           "blame_confidence": 0.8,
-          "llm_verdict": null,
+          "screening_verification": null,
           "decomposed_commits": [
             {
               "sha": "cc048a295e7e70684ca24654257e0ecf38e49153",
@@ -9523,7 +10795,7 @@
           ],
           "blamed_file": "src/defrag.c, src/ebuckets.c",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "pr_url": "https://github.com/redis/redis/pull/13842",
           "pr_title": "Add support to defrag ebuckets incrementally",
           "verification": {
@@ -9913,6 +11185,167 @@
       ]
     },
     {
+      "id": "CVE-2025-49221",
+      "description": "Mattermost Confluence Plugin has Missing Authorization vulnerability",
+      "severity": "LOW",
+      "cvss": 3.7,
+      "cwes": [
+        "CWE-862"
+      ],
+      "ecosystem": "",
+      "published": "2025-08-11T19:15:28.100",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.7,
+      "verified_by": "gpt-5.4",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "7e97a80306c58c26f9465faf6ee49990f14d24a4",
+          "author": "kshitij katiyar",
+          "date": "2025-05-10T23:28:08+05:30",
+          "message": "Update server/confluence_server.go",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "server/atlassian_connect.go, server/get_subscription.go, server/get_subscriptions.go, server/save_subscription.go, server/user.go",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "a9e8a4012247839afee0ee695b812060c1efe23d",
+              "author_name": "kshitij katiyar",
+              "message": "respond to test connection",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c8204768e3904e19fe5f16e4162779754e1ca383",
+              "author_name": "kshitij katiyar",
+              "message": "Merge branch 'master' of github.com:mattermost-community/mattermost-plugin-confluence",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ea439a5bd0f535ae71c795b076017ed65924397a",
+              "author_name": "kshitij katiyar",
+              "message": "Merge branch 'master' of github.com:mattermost-community/mattermost-plugin-confluence",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "280ac7d3fa7179d9944fdbe0f6133566622f45dd",
+              "author_name": "kshitij katiyar",
+              "message": "Merge remote-tracking branch 'mm/master'",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ea9ef869e7494adef58579be09e54c14d2cef46c",
+              "author_name": "kshitij katiyar",
+              "message": "Replacing html dependency",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "24b2ff5c1492119e03692ffbee451a261606b296",
+              "author_name": "kshitij katiyar",
+              "message": "security fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3c265abf978863f2118ed8cceec9537bf16e3bf0",
+              "author_name": "kshitij katiyar",
+              "message": "lint fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b4861123433a65aae5e86b9898c12406b7ea88e1",
+              "author_name": "kshitij katiyar",
+              "message": "Merge branch 'master' into security_fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7e97a80306c58c26f9465faf6ee49990f14d24a4",
+              "author_name": "kshitij katiyar",
+              "message": "Update server/confluence_server.go",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "202fe461921439875f85c6f0584e3496b98379f9",
+              "author_name": "kshitij katiyar",
+              "message": "review fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2a638addf52fabb85db532b7d3928234060ee062",
+              "author_name": "kshitij katiyar",
+              "message": "fixed lint",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d47a5f5bf0ab4187fba23ea62e371e156c61b813",
+              "author_name": "kshitij katiyar",
+              "message": "review fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fd868e7aa9332b7e95060f51c974c4d33747d718",
+              "author_name": "Doug Lauder",
+              "message": "Merge branch 'master' into security_fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c04c334925cd39498c484ece7b629377e9aa9e62",
+              "author_name": "Doug Lauder",
+              "message": "Update command.go",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "c9b507069ae6ad95c9c185b9718d57104fe0578a"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "c32e0043881fc046ee59e47e00bf4b1e1285081a",
+          "repo_url": "https://github.com/mattermost/mattermost-plugin-confluence",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-49221",
+        "https://mattermost.com/security-updates"
+      ]
+    },
+    {
       "id": "CVE-2025-49844",
       "description": "Redis Lua Use-After-Free may lead to remote code execution",
       "severity": "CRITICAL",
@@ -9950,7 +11383,7 @@
           ],
           "blamed_file": "src/defrag.c, src/ebuckets.c",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "pr_url": "https://github.com/redis/redis/pull/13842",
           "pr_title": "Add support to defrag ebuckets incrementally",
           "verification": {
@@ -10339,6 +11772,247 @@
       ]
     },
     {
+      "id": "CVE-2026-30944",
+      "description": "StudioCMS has Privilege Escalation via Insecure API Token Generation",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-639",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-06T19:40:31-08:00",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.7,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "3739bf4efca93497314511d9ba310816698f2cb2",
+          "author": "Adam Matthiesen",
+          "date": "2025-08-29T16:42:10-07:00",
+          "message": "Potential fix for code scanning alert no. 65: Incomplete string escaping or encoding",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "packages/@withstudiocms/auth-kit/src/types.ts",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "940ed4fe8f7d75b97cd9a26a293536fb8088f932",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add username and password safety checks",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7ea3e58abce68f14b5611f7dcb1c0626e37a572e",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add auth-kit package and enhance error handling with usePasswordError function",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "28338113e5137adf3a2037633109f321e3680aca",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: refactor encryption and password utilities; remove old utils and implement new structure",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b58003ff7c6cea93991e8f8013f7b66bad5f408b",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: refactor encryption and password modules to use Effect.gen; add comprehensive tests for encryption functionality",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2ed9422748fb9229a9cad15861216e14a8280a4a",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: refactor password and username lists to use Set for improved lookup efficiency",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b52734eaf40431de622fe7ab01e8fcbc1770cf4b",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add comprehensive tests for password module functionality",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0f26a836dad036c7cc88b40623a00cd1ff9f890d",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add initial tests for Auth Kit configuration utilities",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9bf4126cd82205f4da41f5c734f85f81e16373f3",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: implement session management utilities and integrate session handling in AuthKit",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "83e1687250e9430d77414dd8e17b40644eadf74e",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: enhance error handling and session management; add new error classes and improve session-related types",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "26813e1624fc00a0ea848f735ce6bd20cd2bf7d1",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add module identifiers to session management functions for improved traceability",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b1a5acb90336add092af59174608bdbc98a76e9f",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add span tracking to Scrypt, Encryption, Password, and Session utilities for improved observability",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "32b614a969a8632a31ab7e5dbf3d9c03c97d7898",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: enhance user management and session handling; add User module and related utilities",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0a14611c57dd178224058ccfc99ac69379656dc8",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: improve password and session management utilities; enhance verification processes and refactor permission parsing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "6d1fdc9ceeacca340ce98a0ecb6c909d71c9d666",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add comprehensive tests for user module; implement user creation, session handling, and permission checks",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "18ad85af797d3d0b09e8d8b54dfdad459c5d4efe",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add comprehensive tests for user utilities; validate username length, characters, safety, and session management",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0d812a492accf896e6def3a0d1df9bc117481418",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: refactor permission ranks to use derived types for improved consistency and clarity",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "821b1227eef72c5e56a2b03c43dbc795bfdc596e",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: enhance AuthKit with comprehensive documentation and user management utilities; add error handling and validation functions",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ff4860d6c3d4700875386e13b956ee8b7888edb2",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: refactor module imports in AuthKit for improved organization and clarity",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0f5dc1db574f207e151db4fdf0bc8f3ea417796d",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: enhance AuthKit configuration and validation; improve session management and error handling",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "40252067a401e206fa37076efbd4c2bcd79a32e3",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: enhance AuthKit configuration and session management; add validation for encryption key and session properties; integrate libravatar for user avatars with comprehensive tests",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "85d4962df7a401e467c08c94f68abf8e8628ba82",
+              "author_name": "Adam Matthiesen",
+              "message": "Remove deprecated usernames blocklist and replace with auto-generated script",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3739bf4efca93497314511d9ba310816698f2cb2",
+              "author_name": "Adam Matthiesen",
+              "message": "Potential fix for code scanning alert no. 65: Incomplete string escaping or encoding",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "610df795f6131d85c27d89fe7cdebaec2f65ade3",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: extend extras function to include ignoreUnresolved property for package configuration",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "07f77cc3d646e86c72e9779b7753c73f29370080",
+              "author_name": "Adam Matthiesen",
+              "message": "feat: add passwords.ts to the auto-generated list of files",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "341b59e3c775f619e9630c9044772ef0f16d1970"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "9eec9c3b45523b635cfe16d55aa55afabacbebe3",
+          "repo_url": "https://github.com/withstudiocms/studiocms",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "f4a209fc090c90195e2419fff47b48a46eab7441",
+          "repo_url": "https://github.com/withstudiocms/studiocms",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/withstudiocms/studiocms/security/advisories/GHSA-667w-mmh7-mrr4",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-30944",
+        "https://github.com/withstudiocms/studiocms/commit/9eec9c3b45523b635cfe16d55aa55afabacbebe3",
+        "https://github.com/withstudiocms/studiocms/commit/f4a209fc090c90195e2419fff47b48a46eab7441",
+        "https://github.com/withstudiocms/studiocms/releases/tag/studiocms%400.4.0",
+        "https://github.com/withstudiocms/studiocms/releases/tag/studiocms@0.4.0"
+      ]
+    },
+    {
       "id": "GHSA-4rmq-mc2c-r495",
       "description": "Babylon Incorrect FP inactive accounting in costaking creates “phantom stake” that earns rewards after BTC unbond",
       "severity": "LOW",
@@ -10376,7 +12050,7 @@
           ],
           "blamed_file": "x/costaking/keeper/hooks_finality.go",
           "blame_confidence": 1.0,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.95,
@@ -10812,7 +12486,7 @@
           ],
           "blamed_file": "src/app/tabs/tabManager.ts, src/app/views/urlView.ts, src/app/views/webContentsManager.ts, src/app/windows/baseWindow.ts, src/app/windows/popoutManager.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit modifies a React component for numerical settings validation in the UI renderer. The vulnerability and its fix are located in the main process tab manager and relate to logging sensitive information and server data lifecycle management, which are entirely separate from numerical UI inputs.",
             "model": "gemini-3-flash-preview",
@@ -11366,7 +13040,7 @@
           ],
           "blamed_file": "linode/producerimagesharegroupmember/framework_resource.go, linode/framework_provider.go",
           "blame_confidence": 0.9,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The blamed commit is a massive PR that adds new data sources and resources, whereas the fix commit addresses a specific logging issue in an existing file. There is no evidence in the provided blamed diff that this specific commit introduced the problematic logging pattern in linode/producerimagesharegroupmember/framework_resource.go.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -11512,7 +13186,7 @@
           ],
           "blamed_file": "packages/@withstudiocms/auth-kit/src/types.ts",
           "blame_confidence": 0.9,
-          "llm_verdict": null,
+          "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
             "confidence": 0.7,
@@ -11779,7 +13453,7 @@
           ],
           "blamed_file": "crawl4ai/extraction_strategy.py",
           "blame_confidence": 0.6,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNRELATED",
             "reasoning": "The vulnerable code pattern (executing user-provided code in an insecure environment) is found in the main library extraction logic, whereas the blamed commit introduces a webhook feature for the Docker deployment side. The changes in the blamed commit focus on HTTP endpoints for job status notifications and webhook configuration, which are functionally distinct from the /crawl endpoint's extraction strategy code being fixed in the patch.",
             "model": "gemini-3.1-flash-lite-preview",
@@ -12655,6 +14329,379 @@
       ]
     },
     {
+      "id": "CVE-2025-3230",
+      "description": "Mattermost versions 10.7.x <= 10.7.0, 10.6.x <= 10.6.2, 10.5.x <= 10.5.3, 9.11.x <= 9.11.12 fails to properly invalidate personal access tokens upon user deactivation, allowing deactivated users to maintain full system access by exploiting access token validation flaws via continued usage of previously issued tokens.",
+      "severity": "MEDIUM",
+      "cvss": 5.4,
+      "cwes": [
+        "CWE-303"
+      ],
+      "ecosystem": "",
+      "published": "2025-05-30T15:15:41.043",
+      "ai_tools": [
+        "unknown_ai"
+      ],
+      "languages": [
+        "Go",
+        "TypeScript"
+      ],
+      "confidence": 0.5,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+          "author": "Agniva De Sarker",
+          "date": "2025-03-05T22:50:09+02:00",
+          "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+          "ai_signals": [
+            {
+              "tool": "unknown_ai",
+              "signal_type": "message_keyword",
+              "matched_text": "AI assisted",
+              "confidence": 0.5
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+              "author_name": "Agniva De Sarker",
+              "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "message_keyword",
+                  "matched_text": "AI assisted",
+                  "confidence": 0.5
+                }
+              ],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "5eebc77b68c0c2b63103316e3c92342c13fd93f9"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "686c1746a0454421742e7fd22f7aecaccd7a0d0a",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "389a3acd5d77daea50ec00ed348e0fae143fc0a7",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "a8a7c04d36b32f38bea3b8982988fc02ea734ae2",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "7106c46dabbd4e324ed594973ae662fa65069545",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "65343f84a7830fa8078fe3df879fca924e4fac01",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://mattermost.com/security-updates"
+      ]
+    },
+    {
+      "id": "CVE-2025-4573",
+      "description": "Mattermost versions 10.7.x <= 10.7.1, 10.6.x <= 10.6.3, 10.5.x <= 10.5.4, 9.11.x <= 9.11.13 fail to properly validate LDAP group ID attributes, allowing an authenticated administrator with PermissionSysconsoleWriteUserManagementGroups permission to execute LDAP search filter injection via the PUT /api/v4/ldap/groups/{remote_id}/link API when objectGUID is configured as the Group ID Attribute.",
+      "severity": "MEDIUM",
+      "cvss": 4.1,
+      "cwes": [
+        "CWE-90"
+      ],
+      "ecosystem": "",
+      "published": "2025-06-11T11:15:23.313",
+      "ai_tools": [
+        "unknown_ai"
+      ],
+      "languages": [
+        "Go",
+        "Shell"
+      ],
+      "confidence": 0.5,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+          "author": "Agniva De Sarker",
+          "date": "2025-03-05T22:50:09+02:00",
+          "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+          "ai_signals": [
+            {
+              "tool": "unknown_ai",
+              "signal_type": "message_keyword",
+              "matched_text": "AI assisted",
+              "confidence": 0.5
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+              "author_name": "Agniva De Sarker",
+              "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "message_keyword",
+                  "matched_text": "AI assisted",
+                  "confidence": 0.5
+                }
+              ],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "5eebc77b68c0c2b63103316e3c92342c13fd93f9"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "97e6d3231a80107e0c9098f22617900d78c3a1c8",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "3109688e8c8da24b289092a4b2d13e7eaff0db9a",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "4aec93645e29797b8261c7a6e18dc36e477ebae4",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "a3eae493caceb9aa76a5097daeb03229938d1885",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "1f9c688a30847eeb7bfb1574dc7bbb9f011afbf7",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "64a65c6107877382040297b3ef215c689caaed74",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "77892234944bc7476b20794e516538bcac717de9",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "b33926709b956a59558cc7fef80c0e75a769ce81",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "b47e89c4f98cb6ad9f1dceb79325aa94e80f963a",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://mattermost.com/security-updates"
+      ]
+    },
+    {
+      "id": "CVE-2025-47871",
+      "description": "Mattermost versions 10.5.x <= 10.5.5, 9.11.x <= 9.11.15, 10.8.x <= 10.8.0, 10.7.x <= 10.7.2, 10.6.x <= 10.6.5 fail to properly validate channel membership when retrieving playbook run metadata, allowing authenticated users who are playbook members but not channel members to access sensitive information about linked private channels including channel name, display name, and participant count through the run metadata API endpoint.",
+      "severity": "MEDIUM",
+      "cvss": 4.3,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2025-06-30T17:15:32.777",
+      "ai_tools": [
+        "unknown_ai"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.5,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+          "author": "Agniva De Sarker",
+          "date": "2025-03-05T22:50:09+02:00",
+          "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+          "ai_signals": [
+            {
+              "tool": "unknown_ai",
+              "signal_type": "message_keyword",
+              "matched_text": "AI assisted",
+              "confidence": 0.5
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+              "author_name": "Agniva De Sarker",
+              "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "message_keyword",
+                  "matched_text": "AI assisted",
+                  "confidence": 0.5
+                }
+              ],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "5eebc77b68c0c2b63103316e3c92342c13fd93f9"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "96fdd2b677f28d1375df8dfa88bbc519f32bb3b6",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "2c4a9f9d49d9a6aa94b073e8871ff67e95f8984e",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "303cb88e93f0426657feb473b323d9e22dc0e43c",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "5521da96cf8e84ff3f249ff0e3599d131c05e850",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://mattermost.com/security-updates"
+      ]
+    },
+    {
+      "id": "CVE-2025-4981",
+      "description": "Mattermost versions 10.5.x <= 10.5.5, 9.11.x <= 9.11.15, 10.8.x <= 10.8.0, 10.7.x <= 10.7.2, 10.6.x <= 10.6.5 fail to sanitize filenames in the archive extractor which allows authenticated users to write files to arbitrary locations on the filesystem via uploading archives with path traversal sequences in filenames, potentially leading to remote code execution. The vulnerability impacts instances where file uploads and document search by content is enabled (FileSettings.EnableFileAttachments = t",
+      "severity": "CRITICAL",
+      "cvss": 9.9,
+      "cwes": [
+        "CWE-427"
+      ],
+      "ecosystem": "",
+      "published": "2025-06-20T11:15:20.993",
+      "ai_tools": [
+        "unknown_ai"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.5,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+          "author": "Agniva De Sarker",
+          "date": "2025-03-05T22:50:09+02:00",
+          "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+          "ai_signals": [
+            {
+              "tool": "unknown_ai",
+              "signal_type": "message_keyword",
+              "matched_text": "AI assisted",
+              "confidence": 0.5
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "76b05aa4c7063c0970090adbef9ec865b29a95f6",
+              "author_name": "Agniva De Sarker",
+              "message": "[AI assisted] MM-63304: Wrap around dqPtr while unmarshalling (#30371)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "message_keyword",
+                  "matched_text": "AI assisted",
+                  "confidence": 0.5
+                }
+              ],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "5eebc77b68c0c2b63103316e3c92342c13fd93f9"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "96fdd2b677f28d1375df8dfa88bbc519f32bb3b6",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "2c4a9f9d49d9a6aa94b073e8871ff67e95f8984e",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "303cb88e93f0426657feb473b323d9e22dc0e43c",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "5521da96cf8e84ff3f249ff0e3599d131c05e850",
+          "repo_url": "https://github.com/mattermost/mattermost-server",
+          "source": "osv"
+        },
+        {
+          "sha": "65aec10162f612d98edf91cc66bf7e781868448b",
+          "repo_url": "https://github.com/mattermost/mattermost",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://mattermost.com/security-updates"
+      ]
+    },
+    {
       "id": "CVE-2025-46817",
       "description": "Lua library commands may lead to integer overflow and potential RCE",
       "severity": "HIGH",
@@ -12692,7 +14739,7 @@
           ],
           "blamed_file": "src/defrag.c, src/ebuckets.c",
           "blame_confidence": 0.37,
-          "llm_verdict": null,
+          "screening_verification": null,
           "pr_url": "https://github.com/redis/redis/pull/13842",
           "pr_title": "Add support to defrag ebuckets incrementally",
           "verification": {
@@ -13116,7 +15163,7 @@
           ],
           "blamed_file": "index.js",
           "blame_confidence": 0.27,
-          "llm_verdict": {
+          "screening_verification": {
             "verdict": "UNLIKELY",
             "reasoning": "The blamed commit modifies the execution logic to try running the command without sudo first and use sudo as a fallback. However, the vulnerable string interpolation (const setDate = `date --iso-8601 -u -s \"${datetime}\"`) was already present in the code before this commit, so it did not introduce the command injection.",
             "model": "gemini-3.1-pro-preview",
@@ -13228,6 +15275,376 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/23xxx/CVE-2026-23515.json",
         "https://github.com/SignalK/signalk-server/security/advisories/GHSA-p8gp-2w28-mhwg",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-23515"
+      ]
+    },
+    {
+      "id": "GHSA-943q-mwmv-hhvh",
+      "description": "OpenClaw: Gateway /tools/invoke tool escalation + ACP permission auto-approval",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T23:32:22Z",
+      "ai_tools": [
+        "aether",
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "gpt-5.4",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [
+        {
+          "sha": "47de0ce1dba2c7d03281ebfd7fef348b76d74a7c",
+          "author": "Nick Taylor",
+          "date": "2026-02-14T06:32:17-05:00",
+          "message": "feat(security): add audit findings for trusted-proxy mode",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "squash_decomposed_co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.027142857142857142
+            }
+          ],
+          "blamed_file": "src/security/audit.ts",
+          "blame_confidence": 0.8,
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "f3ec9134898914a13a82f745504d7141bb8456a0",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): add trusted-proxy auth mode types and schema",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "711fb49a989f287bb27e1b3e7fb1e0cf36ce5907",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): update runtime config guard for trusted-proxy",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "47de0ce1dba2c7d03281ebfd7fef348b76d74a7c",
+              "author_name": "Nick Taylor",
+              "message": "feat(security): add audit findings for trusted-proxy mode",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b4f6e26ae99b6a2316bd85ab906f8e691c225303",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add trusted-proxy auth tests",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "097a2f5bd18ab08c0d751e03bf02926066fc5653",
+              "author_name": "Nick Taylor",
+              "message": "test(security): add trusted-proxy audit tests",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "164c2053eecce315c5d516ccddac704e2834ffc2",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): add trusted-proxy auth documentation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e1ce11c4b7d89d98595582a9c7c474aed655fcb0",
+              "author_name": "Nick Taylor",
+              "message": "feat(cli): add trusted-proxy auth mode to gateway configuration",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1fc97ebe23ffdaa449d5166df8b0d543f20cea73",
+              "author_name": "Nick Taylor",
+              "message": "test(cli): add tests for trusted-proxy auth configuration",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d23d26e0b5a5cb097754a58957c8043407d35133",
+              "author_name": "Nick Taylor",
+              "message": "feat(ui): hide token/password fields when gateway is in trusted-proxy mode",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "25ed7828f497ed4f9d943ec192f9092674951ab0",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): make trusted-proxy callout more concise and mobile-friendly",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "702cf6545b38836b5707b64e75216987a84c7687",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway): allow lan binding with trusted-proxy auth mode",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "befb4d59a8e5754e8abbf03f4e9189af4ad59d42",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add tests for trusted-proxy lan binding validation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "267ff35e570f9178ae28d58c57cae44db4ed150f",
+              "author_name": "Nick Taylor",
+              "message": "fix(browser): prevent auto-token generation from overwriting trusted-proxy auth",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a9f706906001347b7bf5873e1facf09ff9e3b0ec",
+              "author_name": "Nick Taylor",
+              "message": "test(browser): add tests for trusted-proxy auto-token prevention",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "57ae179bbc2f6ce407cc758384a41528528c2fdf",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway-cli): allow lan binding with trusted-proxy in CLI startup",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c7871813a7a0cc65af999bc48549adebfbc6ac89",
+              "author_name": "Nick Taylor",
+              "message": "docs(test): document that runtime config tests cover both validation layers",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0ccce67e9f2a71959c71d452c170231c08a59a72",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway): add CIDR subnet matching for trusted proxies",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f09023cc6314cd8c0277507afa962c383b531b4e",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add explicit backward compatibility tests for trusted proxy matching",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b45330f4c269435884d6db3416104156bf9f44f9",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): simplify trusted-proxy mode display",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "86e56a29e8a325fe2d4343ab15c71e5ae77b0623",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): simplify trusted-proxy text to just 'Trusted Proxy'",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f691ffcd216cacd55ca8668407f8823a2a1c0595",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): change to 'Trusted Proxy mode' for clarity",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4aaae739b3903540a2983a4c16f27b093857d638",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): update trusted-proxy-auth docs to use OpenClaw name",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cd77ee076f9b9d1ac066cc486ec24b753a03ffbc",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): remove misleading Tailscale safety comparison",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c37081e612e3384efe5dc512c709e96a671ead96",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): implement trusted-proxy auth logic",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "63c1268b2b29c55660030ed37e6dfa00faddb451",
+              "author_name": "Nick Taylor",
+              "message": "fix(docker): fix trustedProxies JSON generation and permissions in entrypoint",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "83014d9d09a51e3e2f70662ab4cb73ec891e1762",
+              "author_name": "Nick Taylor",
+              "message": "chore: removed unused code",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7a5404a4b63ffe8b88304deadccd6de45b75689b",
+              "author_name": "Nick Taylor",
+              "message": "chore: formatting",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c9bdce95f639a35a3830829e56127951ea906755",
+              "author_name": "Nick Taylor",
+              "message": "chore: fixed lint errors",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8d16861eecee9d7a25f8807d352b33f6dfbd3148",
+              "author_name": "Nick Taylor",
+              "message": "chore: removed unnecessary comments",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8a0a1a3e6671094a67a695ae7cff4a71196ec48e",
+              "author_name": "Nick Taylor",
+              "message": "chore(protocol): regenerate Swift models for authMode",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "eae1f28d0c3e03994a57b3a7b918ce1ee09be162",
+              "author_name": "Nick Taylor",
+              "message": "test: updated audit tests",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "51c4a0a9e9e62f763410e09447374afa80da964e",
+              "author_name": "Nick Taylor",
+              "message": "refactor: gateway token only shown in overview if auth mode is not trusted-proxy",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9228ef0856ced31e50c84c7112d46b28dd49b5f4",
+              "author_name": "Nick Taylor",
+              "message": "fix: enhance connectGateway to handle stale clients on reconnect",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a7ba8cc553426050f93bfe7829abdcc70756d895",
+              "author_name": "Nick Taylor",
+              "message": "fix: use unsigned right shift for subnet mask calculation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "279d4b304f83186fda44dfe63a729406a835dafa",
+              "author_name": "Peter Steinberger",
+              "message": "fix: harden trusted-proxy auth follow-ups",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "1fb52b4d7bceae8f42d47c2a2027f01e802dffbb"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "153a7644e",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "539689a2f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "bb1c3dfe1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-943q-mwmv-hhvh",
+        "https://github.com/openclaw/openclaw/pull/15390",
+        "https://github.com/openclaw/openclaw/commit/153a7644e",
+        "https://github.com/openclaw/openclaw/commit/539689a2f",
+        "https://github.com/openclaw/openclaw/commit/bb1c3dfe1",
+        "https://github.com/openclaw/openclaw/commit/ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
       ]
     }
   ]

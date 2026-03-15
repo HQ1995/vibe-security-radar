@@ -635,6 +635,24 @@ def _get_screening_verdict(bic: dict) -> dict | None:
     return bic.get("screening_verification") or bic.get("llm_verdict")
 
 
+def _is_fallback_verdict(vv: dict) -> bool:
+    """Return True if the verdict is a timeout/error fallback, not a real analysis.
+
+    Fallback verdicts are generated when the deep verifier exhausts its tool-call
+    budget or encounters an error.  They should not be trusted as genuine verdicts.
+    Detected via:
+    - ``is_fallback`` flag (new format, set by agent_loop.py)
+    - Reasoning containing "Fallback verdict" with empty evidence (legacy format)
+    """
+    if vv.get("is_fallback"):
+        return True
+    reasoning = vv.get("reasoning", "")
+    evidence = vv.get("evidence", None)
+    if "Fallback verdict" in reasoning and (not evidence or len(evidence) == 0):
+        return True
+    return False
+
+
 def _get_deep_verdict(bic: dict) -> dict | None:
     """Return the best deep-verification verdict dict for a BIC.
 
@@ -644,9 +662,14 @@ def _get_deep_verdict(bic: dict) -> dict | None:
     Returns a *copy* with ``"final_verdict"`` normalized so all downstream
     consumers can use one key (verification uses ``"verdict"``, tribunal
     uses ``"final_verdict"``).  Returns None if neither exists.
+
+    Timeout/error fallback verdicts are ignored (returns None) so that
+    downstream logic treats the BIC as unverified (benefit of the doubt).
     """
     vv = bic.get("deep_verification") or bic.get("verification_verdict")
     if vv:
+        if _is_fallback_verdict(vv):
+            return None
         if "final_verdict" not in vv and "verdict" in vv:
             return {**vv, "final_verdict": vv["verdict"]}
         return vv
