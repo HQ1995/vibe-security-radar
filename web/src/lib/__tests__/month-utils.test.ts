@@ -24,6 +24,7 @@ function makeCve(overrides: Partial<CveEntry> = {}): CveEntry {
     bug_commits: [],
     fix_commits: [],
     references: [],
+    verdict: "",
     ...overrides,
   };
 }
