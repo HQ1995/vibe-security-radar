@@ -1023,9 +1023,9 @@ def build_cve_entry(
     """Transform a cached analysis result dict into a web-friendly CVE entry."""
     severity_str = result.get("severity", "")
 
-    # Deduplicated list of AI tool names — only from BICs whose effective
-    # verdict is CONFIRMED or missing (benefit of the doubt).
-    # Deep verification verdict takes precedence over single-model LLM.
+    # Deduplicated list of AI tool names — only authorship signals from BICs
+    # whose effective verdict is CONFIRMED or missing (benefit of the doubt).
+    # Workflow signals (merge_workflow, ai_review_bot) are excluded.
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
         commit = bic.get("commit", {})
@@ -1036,6 +1036,8 @@ def build_cve_entry(
         if verdict == "UNRELATED":
             continue
         for sig in signals:
+            if sig.get("signal_type", "") in _WORKFLOW_SIGNAL_TYPES:
+                continue
             tool = sig.get("tool", "")
             if tool:
                 ai_tools_set.add(tool)
@@ -1110,6 +1112,10 @@ def build_cve_entry(
     for bic in result.get("bug_introducing_commits", []):
         dv = _get_deep_verdict(bic)
         if dv:
+            # New verifier format: model at top level
+            if dv.get("model"):
+                models.add(dv["model"])
+            # Old tribunal format: model inside agent_verdicts
             for av in dv.get("agent_verdicts", []):
                 if av.get("model"):
                     models.add(av["model"])
