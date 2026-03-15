@@ -2,13 +2,13 @@
 
 **Date:** 2026-03-15
 **Auditor:** Independent manual review (Claude Opus 4.6 + human oversight)
-**Scope:** 19 of 94 CVEs removed from website after deep verifier filtering changes
+**Scope:** 25 of 94 CVEs removed from website after deep verifier filtering changes
 
 ## Executive Summary
 
-After adding strict filtering to `generate_web_data.py` (only CONFIRMED deep verdicts pass), 94 CVEs were removed from the website. We audited 19 of these to determine whether the deep verifier was correct.
+After adding strict filtering to `generate_web_data.py` (only CONFIRMED deep verdicts pass), 94 CVEs were removed from the website. We audited 25 of these to determine whether the deep verifier was correct.
 
-**Result: 94.7% accuracy (18/19 correct).** One false negative was found and the root cause was a caching bug, not a flaw in the verification logic itself.
+**Result: 96% accuracy (24/25 correct).** One false negative was found and the root cause was a caching bug, not a flaw in the verification logic itself.
 
 ## The False Negative: GHSA-vj3g-5px3-gr46
 
@@ -108,6 +108,12 @@ During the audit process, we added `git_log_search` (pickaxe search via `git log
 | 17 | GHSA-h4rm-mm56-xf63 | UNLIKELY | UNLIKELY | Yes | Vuln from 2021, AI touched adjacent comment |
 | 18 | OSV-2026-371 | UNLIKELY | UNLIKELY | Yes | Fuzzer bisection, not root cause; legacy parser bug |
 | 19 | CVE-2026-32061 | UNLIKELY | UNLIKELY | Yes | AI commit was incomplete path confinement fix |
+| 20 | CVE-2025-5277 | UNLIKELY | UNLIKELY | Yes | shell=True from day 1; AI added weak validation, Claude tried partial fix |
+| 21 | CVE-2025-57806 | UNRELATED | UNLIKELY | Yes | Plaintext credential storage by human; Copilot Autofix trailer from unrelated fix |
+| 22 | CVE-2026-21443 | UNLIKELY | UNLIKELY | Yes | 2008 XSS in OpenEMR; Copilot only refactored deprecated `xl()` params |
+| 23 | CVE-2026-21695 | UNLIKELY | UNLIKELY | Yes | Human-authored mass assignment; Copilot reproduced same pattern in new endpoint (residual vuln) |
+| 24 | CVE-2026-22609 | UNLIKELY | UNLIKELY | Yes | 2022 fickling blocklist; AI added defensive isidentifier() check |
+| 25 | CVE-2026-25481 | UNLIKELY | UNLIKELY | Yes | Squash merge trailer flattened; vulnerable code in human sub-commit |
 
 ## Pipeline Improvements Made During Audit
 
@@ -117,12 +123,44 @@ During the audit process, we added `git_log_search` (pickaxe search via `git log
 | `c992c8d` | BIC blame-file validation + `git_log_search` tool | Catches ghost blame, enables pickaxe tracing |
 | `7cd7df4` | Cache key includes `fix_commit_sha` + don't cache fallback verdicts | Fixes the one FN found |
 
+## Pattern: Squash Merge Trailer Flattening
+
+When a PR is squash-merged, all co-author trailers from individual sub-commits are flattened onto the single squash commit. This means an AI co-author trailer from a cosmetic sub-commit (type annotations, formatting) gets applied to the entire squash, including vulnerable lines written by a human sub-commit.
+
+| CVE | What happened |
+|-----|--------------|
+| CVE-2026-25481 | Langroid PR had Claude + Copilot trailers for type annotations, but the vulnerable `CommandValidator` was written by a human contributor in a different sub-commit |
+| CVE-2025-57806 | Copilot Autofix trailer from fixing an exception-message leak was flattened onto a commit that also contained unrelated plaintext credential storage code |
+
+**Recommendation:** When the BIC is a squash merge, decompose it into sub-commits and attribute blame to the specific sub-commit that introduced the vulnerable lines, not the squash commit's aggregated trailers.
+
+## Pattern: AI Reproducing Existing Vulnerable Patterns
+
+In CVE-2026-21695 (Titra mass assignment), a human originally wrote the vulnerable `...customfields` spread operator pattern. Later, a Copilot commit added a new API endpoint that copied the same vulnerable pattern. The fix commit addressed the human-authored instances but missed the Copilot-authored one, leaving a residual vulnerability.
+
+This is a subtle case: the AI didn't invent the vulnerability, but it propagated an existing insecure pattern to new code. The deep verifier correctly classified it as UNLIKELY (since the CVE targets the original vulnerability, not the copy), but this pattern deserves its own tracking category.
+
+## Pattern: AI Attempting Partial Security Fixes
+
+Multiple cases show AI being brought in specifically to add security controls, with the resulting fix being incomplete:
+
+| CVE | AI action | What was left unfixed |
+|-----|-----------|----------------------|
+| CVE-2025-5277 | Claude Code replaced `create_subprocess_shell` with `_exec` in one file | Left `tools.py` using `shell=True` with a comment acknowledging it |
+| GHSA-943q-mwmv-hhvh | Aether added `DANGEROUS_ACP_TOOLS` deny set | Fail-open on unknown tool names |
+| CVE-2026-32061 | Aether added `resolvePath()` confinement | Nested `$include` could escape via `processNested()` path reset |
+| GHSA-9f72-qcpw-2hxc | Claude Opus added `sandboxRoot` restrictions | Later-added `workspaceOnly` mechanism missed this path |
+
+The deep verifier correctly identified all of these as UNLIKELY because the AI commits were security improvements, not vulnerability introductions. An incomplete fix is not the same as introducing a bug.
+
 ## Conclusions
 
-1. **The deep verifier is highly accurate** (94.7%) at distinguishing AI-introduced vulnerabilities from coincidental AI involvement. The one miss was a caching infrastructure bug, not a reasoning failure.
+1. **The deep verifier is highly accurate** (96%, 24/25) at distinguishing AI-introduced vulnerabilities from coincidental AI involvement. The one miss was a caching infrastructure bug, not a reasoning failure.
 
-2. **AI is more often fixing than introducing** vulnerabilities in the openclaw codebase. Multiple AI commits were security improvements that happened to be incomplete.
+2. **AI is more often fixing than introducing** vulnerabilities. Across the audited cases, AI commits were security improvements (adding auth, deny lists, path confinement) in 4+ cases, while only 1 case (GHSA-vj3g-5px3-gr46) had AI genuinely introducing a vulnerability.
 
-3. **`git blame` attribution is the weakest link.** Ghost blame, formatting commits, and import-line attribution account for most false signals. The blame-file validation added during this audit will help.
+3. **`git blame` attribution is the weakest link.** Ghost blame (3 cases), formatting commits (2 cases), import-line attribution (2 cases), and squash-merge trailer flattening (2 cases) account for most false signals.
 
 4. **The screening (shallow LLM) layer has high false positive rate.** It gave CONFIRMED on many cases where deep verification correctly said UNLIKELY. The two-tier system works as designed -- screening casts a wide net, deep verification filters accurately.
+
+5. **New pattern: AI propagates existing vulnerabilities.** In at least one case (CVE-2026-21695), AI copied an existing vulnerable pattern to a new endpoint. This is worth tracking separately from "AI introduced a novel vulnerability."
