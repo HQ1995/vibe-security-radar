@@ -149,6 +149,18 @@ If AI involvement was found, diagnose **why the pipeline missed it**:
 
 Provide specific details: what pattern/regex would catch this, which file needs the change.
 
+## Phase 6b: Improvement Triage
+
+Before saving, think carefully about each potential improvement. For each candidate, reason through:
+
+1. **Is this the first time, or a pattern?** Check prior findings for similar suggestions.
+2. **What's the blast radius?** How many CVEs would this affect?
+3. **What would the fix look like?** Simple config addition or architecture change?
+4. **Is this upstream or ours?** OSV/NVD data quality vs pipeline code bug.
+5. **Does the deep verifier already catch this?** If yes, effective impact is zero.
+
+Assign priority: **FIX** (real bug, ≥3 occurrences or high blast radius), **OBSERVE** (first occurrence, uncertain value), **WONTFIX** (design limitation, too rare).
+
 ## Phase 7: Save Finding
 
 Save the finding atomically using the lock-safe helper (prevents concurrent write corruption):
@@ -191,10 +203,11 @@ Finding schema:
   "improvement_suggestions": [
     {
       "suggestion": "Add aether-ai-agent to AI signal patterns",
-      "priority": "FIX|OBSERVE|WONTFIX",
-      "rationale": "Concrete example rationale — is it recurring? What's the blast radius?"
+      "priority": "FIX",
+      "rationale": "Missed in 2 prior audits; simple pattern addition to ai_signatures.py; affects any repo using Aether AI."
     }
-  ]
+  ],
+  "fix_applied": null
 }
 ```
 

@@ -211,6 +211,35 @@ For each disagreement, diagnose:
 - **Is it an algorithm problem** (the pipeline logic is flawed) or a **data problem** (bad input data)?
 - **What specific code change** would fix it? (file path + description)
 
+## Phase 6b: Improvement Triage
+
+Before saving, take a step back and think carefully about each potential improvement you identified. This is NOT a quick label — it's the most valuable output of the audit for driving pipeline evolution.
+
+For each candidate improvement, reason through these questions explicitly:
+
+1. **Is this the first time, or a pattern?** Check prior findings:
+   ```bash
+   python3 -c "
+   import json; from pathlib import Path
+   findings = json.loads((Path.home() / '.cache/cve-analyzer/audit/findings.json').read_text())
+   for f in findings:
+       for s in f.get('improvement_suggestions', []):
+           text = s.get('suggestion', s) if isinstance(s, dict) else s
+           print(f'{f[\"cve_id\"]}: {text[:100]}')
+   " 2>/dev/null | grep -i '<keyword from your suggestion>'
+   ```
+   If you find ≥3 prior occurrences of the same issue, it's a pattern — promote to FIX.
+
+2. **What's the blast radius?** How many CVEs in the pipeline results would this affect? A bug in `context_blame` affects hundreds of CVEs; a quirk in one repo's tag format affects one.
+
+3. **What would the fix look like?** Sketch the change in your head — is it a 5-line config addition or a fundamental architecture change? Simple fixes with high impact → FIX. Complex fixes for edge cases → OBSERVE or WONTFIX.
+
+4. **Is this upstream or ours?** Data quality issues from OSV/NVD/GHSA are upstream — we can't fix them (WONTFIX unless we add validation). Algorithm bugs in our pipeline code are ours (FIX or OBSERVE).
+
+5. **Does the deep verifier already catch this?** If the verifier correctly compensates for a blame-phase weakness, the effective impact is zero — the final verdict is right even though an intermediate step is wrong. That's WONTFIX (the verifier is doing its job).
+
+Write your triage reasoning in the report's Improvement Suggestions section, then assign FIX/OBSERVE/WONTFIX with the rationale.
+
 ## Phase 7: Save Finding
 
 Save the finding atomically using the lock-safe helper (prevents concurrent write corruption):
@@ -384,9 +413,12 @@ Present results to the user as a structured report:
 <if disagreement: what went wrong, which phase, root cause>
 
 ### Improvement Suggestions
-| Suggestion | Priority | Rationale |
-|------------|----------|-----------|
-| <what to change> | FIX/OBSERVE/WONTFIX | <why this priority — recurring? blast radius? fix complexity?> |
+
+For each suggestion, show the triage reasoning (not just the label):
+
+| Suggestion | Priority | Triage Reasoning |
+|------------|----------|-----------------|
+| <what to change> | FIX/OBSERVE/WONTFIX | **Pattern?** first/Nth occurrence. **Blast radius?** X CVEs affected. **Fix complexity?** simple/moderate/hard. **Upstream?** yes/no. **Verifier compensates?** yes/no. |
 ```
 
 ## Phase 9: Regression Verification (after improvements)
@@ -415,7 +447,7 @@ if old:
     print(f'BIC count: {old.get(\"notes\",\"\").split(\"BIC\")[0]} → {new_bics}')
     new_signals = [s for b in new.get('bug_introducing_commits',[]) for s in b.get('commit',{}).get('ai_signals',[])]
     print(f'AI signals: {len(new_signals)}')
-    if old['stages'].get('blame_agreement') == 'MISSED_BIC':
+    if old['stages'].get('blame_agreement') == 'MISSING':
         print('Check: was the missed BIC found this time?')
     if old['stages'].get('signal_verification') == 'FALSE_SIGNAL':
         print('Check: are false signals eliminated?')
@@ -424,7 +456,7 @@ if old:
 
 3. Compare key metrics:
    - **BIC count**: should decrease (less noise) or stay same (if issue was signal, not blame)
-   - **True BIC**: if was `MISSED_BIC`, should now be found
+   - **True BIC**: if was `MISSING`, should now be found
    - **False signals**: if was `FALSE_SIGNAL`, should be gone
    - **Verdict alignment**: should now agree with independent verdict
 
