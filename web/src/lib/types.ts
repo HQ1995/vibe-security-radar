@@ -15,20 +15,21 @@ export interface LlmVerdict {
   readonly causal_chain?: string;
 }
 
-export interface AgentVerdict {
+export interface VerifierResult {
   readonly model: string;
   readonly verdict: string;
   readonly reasoning: string;
   readonly confidence: number;
   readonly tool_calls_made: number;
+  readonly steps_completed: number;
   readonly evidence: readonly string[];
 }
 
-export interface TribunalVerdict {
+export interface Verification {
   readonly verdict: string;
   readonly confidence: string;
   readonly models: readonly string[];
-  readonly agent_verdicts?: readonly AgentVerdict[];
+  readonly agent_verdicts?: readonly VerifierResult[];
 }
 
 export interface DecomposedCommit {
@@ -48,7 +49,7 @@ export interface BugCommit {
   readonly blamed_file: string;
   readonly blame_confidence: number;
   readonly llm_verdict: LlmVerdict | null;
-  readonly tribunal_verdict?: TribunalVerdict;
+  readonly verification?: Verification;
   readonly pr_url?: string;
   readonly pr_title?: string;
   readonly decomposed_commits?: readonly DecomposedCommit[];
@@ -76,6 +77,7 @@ export interface CveEntry {
   readonly how_introduced: string;
   readonly root_cause?: string;
   readonly vuln_type?: string;
+  readonly verdict: string;
   readonly bug_commits: readonly BugCommit[];
   readonly fix_commits: readonly FixCommit[];
   readonly references: readonly string[];

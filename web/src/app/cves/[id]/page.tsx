@@ -20,7 +20,7 @@ import {
 } from "@/lib/constants";
 import { LanguageBadge } from "@/components/language-badge";
 import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
-import type { CveEntry, BugCommit, TribunalVerdict } from "@/lib/types";
+import type { CveEntry, BugCommit, Verification } from "@/lib/types";
 import {
   ShieldAlert,
   CheckCircle2,
@@ -65,7 +65,7 @@ export async function generateMetadata({
 /** Single pass over bug_commits to extract all needed subsets, counts, and signal types. */
 function analyzeBugCommits(commits: readonly BugCommit[]) {
   const aiCommits: BugCommit[] = [];
-  const tribunalCommits: BugCommit[] = [];
+  const deepVerifiedCommits: BugCommit[] = [];
   const causalityCommits: BugCommit[] = [];
   const signalTypeSet = new Set<string>();
   let totalSignals = 0;
@@ -78,15 +78,15 @@ function analyzeBugCommits(commits: readonly BugCommit[]) {
         signalTypeSet.add(getSignalTypeLabel(s.signal_type));
       }
     }
-    if (c.tribunal_verdict?.agent_verdicts?.length) {
-      tribunalCommits.push(c);
+    if (c.verification?.agent_verdicts?.length) {
+      deepVerifiedCommits.push(c);
     }
     if (c.llm_verdict !== null) {
       causalityCommits.push(c);
     }
   }
 
-  return { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes: Array.from(signalTypeSet) };
+  return { aiCommits, deepVerifiedCommits, causalityCommits, totalSignals, signalTypes: Array.from(signalTypeSet) };
 }
 
 // --- Verdict visual helpers ---
@@ -364,71 +364,69 @@ function CausalityDetails({
   );
 }
 
-function TribunalSection({
-  bestTribunal,
+function DeepVerificationSection({
+  bestVerification,
   bestCausality,
   causalityCommits,
   repoUrl,
 }: {
-  readonly bestTribunal: TribunalVerdict | null;
+  readonly bestVerification: Verification | null;
   readonly bestCausality: BugCommit | null;
   readonly causalityCommits: readonly BugCommit[];
   readonly repoUrl?: string;
 }) {
-  if (!bestTribunal && !bestCausality) return null;
+  if (!bestVerification && !bestCausality) return null;
+
+  const agent = bestVerification?.agent_verdicts?.[0];
 
   return (
     <div className="space-y-4">
-      {/* Tribunal Agents */}
-      {bestTribunal && (
+      {/* Deep Verification */}
+      {bestVerification && agent && (
         <div className="rounded-xl border overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b">
             <Scale className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Tribunal Analysis</h2>
+            <h2 className="text-sm font-semibold">Deep Verification</h2>
             <span className="text-xs text-muted-foreground ml-1">
-              {bestTribunal.agent_verdicts!.length} agents
+              by {getModelDetailName(agent.model)}
             </span>
             <div className="ml-auto flex items-center gap-2">
-              <SmallVerdictBadge verdict={bestTribunal.verdict} />
-              <span className="text-xs text-muted-foreground">{bestTribunal.confidence}</span>
+              <SmallVerdictBadge verdict={bestVerification.verdict} />
+              <span className="text-xs text-muted-foreground">{bestVerification.confidence}</span>
             </div>
           </div>
-          <div className="divide-y divide-border">
-            {[...bestTribunal.agent_verdicts!].sort((a, b) => getModelRank(a.model) - getModelRank(b.model)).map((av) => (
-              <details key={av.model} className="group/agent">
-                <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
-                  <span className="text-muted-foreground group-open/agent:rotate-90 transition-transform text-xs">&#9654;</span>
-                  <SmallVerdictBadge verdict={av.verdict} />
-                  <span className="text-sm font-medium">
-                    {getModelDetailName(av.model)}
-                  </span>
-                  <div className="flex items-center gap-2 ml-auto shrink-0">
-                    <div className="h-1.5 w-16 rounded-full bg-muted">
-                      <div
-                        className={`h-1.5 rounded-full ${verdictBarColor(av.verdict)}`}
-                        style={{ width: `${Math.round(av.confidence * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">
-                      {formatConfidence(av.confidence)}
-                    </span>
-                  </div>
-                </summary>
-                <div className="px-4 py-3 bg-muted/20 border-t border-border/50">
-                  <p className="text-sm text-muted-foreground leading-relaxed">{av.reasoning}</p>
-                  {av.evidence.length > 0 && (
-                    <ul className="mt-2 space-y-1">
-                      {av.evidence.map((e, i) => (
-                        <li key={`${i}-${e.slice(0, 32)}`} className="flex gap-2 text-xs text-muted-foreground">
-                          <span className="text-primary/60 shrink-0">&#x2022;</span>
-                          <span>{e}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+          <div className="px-4 py-4 space-y-3">
+            {/* Investigation stats */}
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="font-medium tabular-nums">{agent.tool_calls_made}</span> tool calls
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-20 rounded-full bg-muted">
+                  <div
+                    className={`h-1.5 rounded-full ${verdictBarColor(agent.verdict)}`}
+                    style={{ width: `${Math.round(agent.confidence * 100)}%` }}
+                  />
                 </div>
-              </details>
-            ))}
+                <span className="tabular-nums">{formatConfidence(agent.confidence)}</span>
+              </div>
+            </div>
+            {/* Reasoning */}
+            <p className="text-sm leading-relaxed text-muted-foreground">{agent.reasoning}</p>
+            {/* Evidence */}
+            {agent.evidence.length > 0 && (
+              <div className="rounded-lg bg-muted/30 px-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Evidence</p>
+                <ul className="space-y-1.5">
+                  {agent.evidence.map((e, i) => (
+                    <li key={`${i}-${e.slice(0, 32)}`} className="flex gap-2 text-sm text-muted-foreground">
+                      <span className="text-primary/60 shrink-0 mt-1">&#x2022;</span>
+                      <span className="leading-relaxed">{e}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -501,7 +499,7 @@ export default async function CveDetailPage({
   }
 
   const repoUrl = cve.fix_commits[0]?.repo_url;
-  const { aiCommits, tribunalCommits, causalityCommits, totalSignals, signalTypes } =
+  const { aiCommits, deepVerifiedCommits, causalityCommits, totalSignals, signalTypes } =
     analyzeBugCommits(cve.bug_commits);
 
   // Sort causality commits by model strength (strongest first) so the best analysis is expanded
@@ -509,10 +507,10 @@ export default async function CveDetailPage({
     (a, b) => getModelRank(a.llm_verdict!.model) - getModelRank(b.llm_verdict!.model),
   );
 
-  const bestTribunal = tribunalCommits.length > 0 ? tribunalCommits[0].tribunal_verdict! : null;
+  const bestVerification = deepVerifiedCommits.length > 0 ? deepVerifiedCommits[0].verification! : null;
   const bestCausalityCommit = sortedCausalityCommits.length > 0 ? sortedCausalityCommits[0] : null;
-  const primaryVerdict = bestTribunal?.verdict ?? bestCausalityCommit?.llm_verdict?.verdict;
-  const primaryConfidence = bestTribunal?.confidence ?? null;
+  const primaryVerdict = bestVerification?.verdict ?? bestCausalityCommit?.llm_verdict?.verdict;
+  const primaryConfidence = bestVerification?.confidence ?? null;
 
   return (
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
@@ -532,7 +530,7 @@ export default async function CveDetailPage({
       {/* How AI Introduced This — the star of the page */}
       <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
 
-      {/* Bug-Introducing Commits — between intro and tribunal */}
+      {/* Bug-Introducing Commits */}
       <CollapsibleSection
         title="Bug-Introducing Commits"
         count={cve.bug_commits.length}
@@ -542,9 +540,9 @@ export default async function CveDetailPage({
         <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
       </CollapsibleSection>
 
-      {/* Tribunal + Causality Analysis */}
-      <TribunalSection
-        bestTribunal={bestTribunal}
+      {/* Deep Verification + Causality Analysis */}
+      <DeepVerificationSection
+        bestVerification={bestVerification}
         bestCausality={bestCausalityCommit}
         causalityCommits={sortedCausalityCommits}
         repoUrl={repoUrl}
