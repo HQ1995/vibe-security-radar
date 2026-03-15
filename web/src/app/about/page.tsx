@@ -37,8 +37,8 @@ const DATA_SOURCES = [
 
 const LIMITATIONS = [
   "We can only see AI involvement when the tool leaves a signature (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code manually, we won't know.",
-  "Git blame sometimes points to the wrong commit. The deep verifier catches most of these, but not all.",
-  "The deep verifier is a single LLM with tool access. Borderline cases where causality is ambiguous can still go either way.",
+  "Git blame sometimes points to the wrong commit. The investigator catches most of these and can discover commits that blame missed, but it is not infallible.",
+  "The investigator is a single LLM with tool access. Borderline cases where causality is ambiguous can still go either way.",
   "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched vulnerabilities are out of scope.",
 ] as const;
 
@@ -75,9 +75,9 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Tier 6",
-    title: "Deep verification",
+    title: "Deep investigation",
     description:
-      "An LLM first analyzes the fix commit to understand the vulnerability type and root cause. Then a deep verifier — a single LLM with tool access (git log, file read, blame, diff) — runs an agentic investigation loop on the blamed commit to determine causality. Details below.",
+      "An LLM investigator receives the full vulnerability context (all fix commits, all blame candidates) and runs an agentic investigation with tool access (git log, file read, blame, diff, pickaxe search). It can trace chains of related commits and discover bug-introducing commits that blame missed. One investigation per vulnerability, not per commit. Details below.",
   },
 ] as const;
 
@@ -94,7 +94,7 @@ export default function AboutPage() {
         <p className="text-lg leading-relaxed text-muted-foreground">
           AI coding tools write a lot of code now. Some of that code has
           security vulnerabilities. We track the ones that made it into
-          public advisories — CVEs, GHSAs, RustSec, and others — where
+          public advisories (CVEs, GHSAs, RustSec, and others) where
           the vulnerable code was authored by an AI tool.
         </p>
         <p className="leading-relaxed text-muted-foreground">
@@ -110,7 +110,7 @@ export default function AboutPage() {
           (Systems Software &amp; Security Lab, School of Cybersecurity and
           Privacy).
           We want to understand how AI-assisted development affects software
-          security in practice — not in benchmarks or synthetic tasks, but in
+          security in practice. Not in benchmarks or synthetic tasks, but in
           real vulnerabilities that got reported and fixed.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
@@ -127,10 +127,10 @@ export default function AboutPage() {
           Each vulnerability goes through a six-tier pipeline. We pull advisory
           data in bulk where possible and fall back to APIs when needed.
           Fix commits get traced back to bug-introducing commits via git blame,
-          then we check those commits for AI tool signatures. A deep verifier
-          — a single LLM with tool access — investigates each candidate to
-          determine whether the AI-authored commit actually caused the
-          vulnerability.
+          then we check those commits for AI tool signatures. Finally, an LLM
+          investigator looks at the whole vulnerability at once, not each
+          blamed commit in isolation, so it can trace chains of commits and
+          catch things that line-level blame misses.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -149,31 +149,37 @@ export default function AboutPage() {
         </ol>
       </section>
 
-      {/* Verification Details */}
+      {/* Investigation Details */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Deep verification
+          Deep investigation
         </h2>
         <p className="leading-relaxed text-muted-foreground">
           Finding an AI signature in a bug-introducing commit is not enough.
           The commit might have touched the file without causing the actual
-          vulnerability. So every candidate goes through a two-phase check.
+          vulnerability. And git blame can miss the real introducer entirely:
+          it tracks line authorship, not causal responsibility. A commit
+          that made a security credential optional might not show up in
+          blame at all, even though it is the root cause.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          First, an LLM reads the fix commit to understand what the
-          vulnerability is: its type (command injection, XSS, etc.), root
-          cause, and the code pattern that was vulnerable. Then a deep
-          verifier — a single LLM with tool access to git log, file read,
-          blame, and diff — runs an agentic investigation loop. It
-          autonomously explores the repository, traces code changes, and
-          builds a causal chain before submitting a verdict.
+          So we run one investigation per vulnerability, not per commit. An
+          LLM receives the full context (vulnerability description, all fix
+          commits, every blame candidate) and investigates the vulnerability
+          as a whole. It has tool access to git log, file read, blame, diff,
+          and pickaxe search. It uses them to trace code changes across the
+          repository, follow chains of related commits, and when blame missed
+          something, discover it on its own.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          This replaced an earlier three-model tribunal (GPT, Claude, Gemini
-          majority vote). The deep verifier is more accurate because it can
-          actually read the code and trace the history, rather than relying
-          on context-limited single-pass analysis. If the verifier determines
-          the commit is unrelated, we drop it.
+          This replaced an earlier per-commit approach where each blame
+          candidate was verified in isolation. The difference matters for
+          multi-commit vulnerabilities. For example: one commit designs a
+          credential as optional, a later commit enables the feature without
+          requiring it. Both contribute to the vulnerability, but checking
+          each in isolation, the first one looks harmless ("not yet
+          exploitable"). Seeing them together makes the chain obvious. If the
+          investigator determines a commit is unrelated, we drop it.
         </p>
       </section>
 
