@@ -254,6 +254,33 @@ export function verifiedBadgeColor(verifiedBy: string): string {
   return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/25";
 }
 
+const FIX_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  osv: "OSV",
+  nvd: "NVD",
+  github_advisory: "GitHub Advisory",
+  advisory_version: "Advisory Version",
+  gemnasium: "Gemnasium",
+  gemnasium_version: "Gemnasium Version",
+  ghsa_ref_version: "GHSA Ref",
+  ai_tag_search: "AI Tag Search",
+  ai_inferred: "AI Inferred",
+  github_advisory_pr: "GitHub Advisory PR",
+  nvd_pr_merge: "NVD PR Merge",
+  nvd_compare: "NVD Compare",
+};
+
+export function getFixSourceLabel(source: string): string {
+  return FIX_SOURCE_LABELS[source] ?? source.replaceAll("_", " ");
+}
+
+export function fixSourceBadgeClass(source: string): string {
+  if (source === "ai_inferred" || source === "ai_tag_search")
+    return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
+  if (["osv", "nvd", "github_advisory"].includes(source))
+    return "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30";
+  return "";
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;

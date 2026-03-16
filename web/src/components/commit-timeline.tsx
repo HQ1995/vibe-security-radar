@@ -10,6 +10,8 @@ import {
   formatConfidence,
   getToolDisplayName,
   getSignalTypeLabel,
+  getFixSourceLabel,
+  fixSourceBadgeClass,
   truncate,
 } from "@/lib/constants";
 import { CollapsibleNonAiCommits } from "@/components/collapsible-commits";
@@ -169,6 +171,15 @@ function BugCommitCard({
               <span title="Blame confidence">
                 Blame: {formatConfidence(commit.blame_confidence)}
               </span>
+              {(commit.fix_commit_source === "ai_inferred" || commit.fix_commit_source === "ai_tag_search") && (
+                <Badge
+                  variant="outline"
+                  className={fixSourceBadgeClass(commit.fix_commit_source)}
+                  title="Fix commit was discovered by AI inference, not from an advisory database"
+                >
+                  {getFixSourceLabel(commit.fix_commit_source)}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -284,8 +295,11 @@ export function FixCommitTimeline({ commits }: FixCommitTimelineProps) {
               {extractRepoName(commit.repo_url)}
             </a>
           )}
-          <Badge variant="outline" className="ml-auto text-xs shrink-0">
-            {commit.source}
+          <Badge
+            variant="outline"
+            className={`ml-auto text-xs shrink-0 ${fixSourceBadgeClass(commit.source)}`}
+          >
+            {getFixSourceLabel(commit.source)}
           </Badge>
         </div>
       ))}

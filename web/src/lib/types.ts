@@ -54,6 +54,7 @@ export interface BugCommit {
   readonly pr_title?: string;
   readonly decomposed_commits?: readonly DecomposedCommit[];
   readonly squash_merge_sha?: string;
+  readonly fix_commit_source?: string;
 }
 
 export interface FixCommit {

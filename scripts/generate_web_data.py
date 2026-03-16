@@ -818,7 +818,7 @@ def _build_signal_entry(sig: dict) -> dict:
     }
 
 
-def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
+def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = "") -> dict:
     """Transform a bug_introducing_commit entry into the web format."""
     commit = bic.get("commit", {})
     llm_v = _get_screening_verdict(bic)
@@ -833,16 +833,18 @@ def _build_bug_commit(bic: dict, repo_url: str = "") -> dict:
         ],
         "blamed_file": bic.get("blamed_file", ""),
         "blame_confidence": bic.get("blame_confidence", 0),
-        "screening_verification": {
-            "verdict": llm_v.get("verdict", ""),
-            "reasoning": llm_v.get("reasoning", ""),
-            "model": llm_v.get("model", ""),
-            "vuln_type": llm_v.get("vuln_type", ""),
-            "vuln_description": llm_v.get("vuln_description", ""),
-            "vulnerable_pattern": llm_v.get("vulnerable_pattern", ""),
-            "causal_chain": llm_v.get("causal_chain", ""),
-        } if llm_v else None,
     }
+    if fix_commit_source:
+        entry["fix_commit_source"] = fix_commit_source
+    entry["screening_verification"] = {
+        "verdict": llm_v.get("verdict", ""),
+        "reasoning": llm_v.get("reasoning", ""),
+        "model": llm_v.get("model", ""),
+        "vuln_type": llm_v.get("vuln_type", ""),
+        "vuln_description": llm_v.get("vuln_description", ""),
+        "vulnerable_pattern": llm_v.get("vulnerable_pattern", ""),
+        "causal_chain": llm_v.get("causal_chain", ""),
+    } if llm_v else None
     # Look up PR URL from API cache
     commit_sha = commit.get("sha", "")
     pr_url, pr_title = _lookup_pr_for_commit(repo_url, commit_sha)
@@ -1081,8 +1083,19 @@ def build_cve_entry(
         if fc.get("repo_url"):
             fix_repo_url = fc["repo_url"]
             break
+    # Map fix commit SHA → source for downstream display
+    fix_source_by_sha: dict[str, str] = {}
+    for fc in result.get("fix_commits", []):
+        sha = fc.get("sha", "")
+        if sha:
+            fix_source_by_sha[sha] = fc.get("source", "")
     bug_commits_raw = [
-        _build_bug_commit(bic, repo_url=fix_repo_url) for bic in raw_bics
+        _build_bug_commit(
+            bic,
+            repo_url=fix_repo_url,
+            fix_commit_source=fix_source_by_sha.get(bic.get("fix_commit_sha", ""), ""),
+        )
+        for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
         and _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY")
     ]
