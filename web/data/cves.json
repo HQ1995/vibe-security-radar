@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-16T21:17:57.286816+00:00",
-  "total": 63,
+  "generated_at": "2026-03-16T23:38:15.765023+00:00",
+  "total": 74,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -20,7 +20,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "This commit created auth.js and introduced the entire vulnerable flow: openBrowser(url), the exec(`${command} \"${url}\"`) shell invocation, and redirectToAuthorization() building authUrl from requestToken. The fix commit rewrites exactly that function, and blame on the pre-fix file assigns the exec line, the function body, and the authUrl construction/openBrowser call back to e08547bc. Pickaxe searches for function openBrowser(url), the exec import, and openBrowser(authUrl) all trace their first appearance to this commit.",
+      "how_introduced": "This commit created auth.js and introduced openBrowser() with both the child_process exec import and the vulnerable shell invocation: exec(`${command} \"${url}\"`, ...). The fix commit removes that exact pattern and replaces it with spawn() plus argument arrays. git log search for the string \"exec\" in auth.js shows only this commit adding it and the fix commit removing it, so this is the original introduction of the command-injection flaw.",
       "root_cause": "",
       "vuln_type": "",
       "verdict": "CONFIRMED",
@@ -60,9 +60,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit created auth.js and introduced the entire vulnerable flow: openBrowser(url), the exec(`${command} \"${url}\"`) shell invocation, and redirectToAuthorization() building authUrl from requestToken. The fix commit rewrites exactly that function, and blame on the pre-fix file assigns the exec line, the function body, and the authUrl construction/openBrowser call back to e08547bc. Pickaxe searches for function openBrowser(url), the exec import, and openBrowser(authUrl) all trace their first appearance to this commit.",
+                "reasoning": "This commit created auth.js and introduced openBrowser() with both the child_process exec import and the vulnerable shell invocation: exec(`${command} \"${url}\"`, ...). The fix commit removes that exact pattern and replaces it with spawn() plus argument arrays. git log search for the string \"exec\" in auth.js shows only this commit adding it and the fix commit removing it, so this is the original introduction of the command-injection flaw.",
                 "confidence": 0.95,
-                "tool_calls_made": 36,
+                "tool_calls_made": 29,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -789,7 +789,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "This commit introduced the entire `updateEnvFile()` helper in `src/auth/oauth.ts` and added the call sites that persist refreshed/user/app tokens into `.env`. The helper serialized values with raw string interpolation (`const newLine = `${key}=${value}``) and regex-based replacement, with no escaping for quotes/newlines or safe dotenv serialization, which is exactly the behavior the fix replaces with `dotenv.parse()` + `dotenv-stringify()`. Pickaxe/history checks show this is the first commit that added `.env` writeback logic at all, so it is the original bug-introducing commit for the environment-variable injection flaw.",
+      "how_introduced": "This commit introduced the entire vulnerable `.env` persistence mechanism in `src/auth/oauth.ts`: it added `updateEnvFile()`, manual regex-based line replacement, and direct string interpolation of token values into `.env`. The fix commit replaces that exact design with `dotenv.parse()` + `dotenv-stringify()`, showing that the unsafe serialization logic added here was the root cause. The previous revision (`a00b6c592895a6ed9da8b8ba72e5bf43db0a9060`) had no `updateEnvFile()` helper or automatic writing of token values back to `.env` at all.",
       "root_cause": "",
       "vuln_type": "",
       "verdict": "CONFIRMED",
@@ -835,9 +835,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire `updateEnvFile()` helper in `src/auth/oauth.ts` and added the call sites that persist refreshed/user/app tokens into `.env`. The helper serialized values with raw string interpolation (`const newLine = `${key}=${value}``) and regex-based replacement, with no escaping for quotes/newlines or safe dotenv serialization, which is exactly the behavior the fix replaces with `dotenv.parse()` + `dotenv-stringify()`. Pickaxe/history checks show this is the first commit that added `.env` writeback logic at all, so it is the original bug-introducing commit for the environment-variable injection flaw.",
+                "reasoning": "This commit introduced the entire vulnerable `.env` persistence mechanism in `src/auth/oauth.ts`: it added `updateEnvFile()`, manual regex-based line replacement, and direct string interpolation of token values into `.env`. The fix commit replaces that exact design with `dotenv.parse()` + `dotenv-stringify()`, showing that the unsafe serialization logic added here was the root cause. The previous revision (`a00b6c592895a6ed9da8b8ba72e5bf43db0a9060`) had no `updateEnvFile()` helper or automatic writing of token values back to `.env` at all.",
                 "confidence": 0.95,
-                "tool_calls_made": 44,
+                "tool_calls_made": 20,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -2053,6 +2053,141 @@
       ]
     },
     {
+      "id": "GHSA-943q-mwmv-hhvh",
+      "description": "OpenClaw: Gateway /tools/invoke tool escalation + ACP permission auto-approval",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T23:32:22Z",
+      "ai_tools": [
+        "aether"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "Although this commit was a security fix for the original ACP bug, it reimplemented requestPermission with `promptRequired = !toolName || DANGEROUS_ACP_TOOLS.has(toolName)`, which still auto-approved any known tool not on the danger list. bb1c3dfe later changed that logic to only auto-approve safe kinds (`read`/`search`), proving 749e28 authored the residual vulnerable behavior later fixed. So 749e28 is a real BIC for the narrower ACP auto-approval issue addressed by bb1c3dfe.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+          "author": "aether-ai-agent",
+          "date": "2026-02-13T22:28:43+11:00",
+          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "author_name",
+              "matched_text": "aether-ai-agent",
+              "confidence": 0.95
+            },
+            {
+              "tool": "aether",
+              "signal_type": "author_email",
+              "matched_text": "@tryaether.ai",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/acp/client.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the dangerous logic where the tool identifier was loosely parsed using `params.toolCall?.name` and failed to properly map or normalize tool names, relying on implicit/trust-based approval patterns. It explicitly prioritized 'allow_once' permissions without verifying if the tool was in the 'dangerous' list or correctly identifying the tool's true identity, which the fix later addressed by implementing robust normalization and validation functions.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Access Control / Command Injection",
+            "vuln_description": "The application allowed unauthorized tool invocation due to improper validation of safe kinds and automatic approval of ACP permissions, allowing potential command injection or privilege escalation.",
+            "vulnerable_pattern": "Permissive or insufficient validation of tool 'kind' identifiers during the ACP permission approval process.",
+            "causal_chain": "The blamed commit implemented a naive tool name extraction and a permissive logic flow that automatically selected 'allow_once' permissions without robust verification, directly enabling the 'auto-approval' vulnerability described."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Although this commit was a security fix for the original ACP bug, it reimplemented requestPermission with `promptRequired = !toolName || DANGEROUS_ACP_TOOLS.has(toolName)`, which still auto-approved any known tool not on the danger list. bb1c3dfe later changed that logic to only auto-approve safe kinds (`read`/`search`), proving 749e28 authored the residual vulnerable behavior later fixed. So 749e28 is a real BIC for the narrower ACP auto-approval issue addressed by bb1c3dfe.",
+                "confidence": 0.95,
+                "tool_calls_made": 61,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+              "author_name": "aether-ai-agent",
+              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+              "ai_signals": [
+                {
+                  "tool": "aether",
+                  "signal_type": "author_name",
+                  "matched_text": "aether-ai-agent",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "aether",
+                  "signal_type": "author_email",
+                  "matched_text": "@tryaether.ai",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
+              "author_name": "Peter Steinberger",
+              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "749e28dec796f77697398acbfc7a64d4439d7cad"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "153a7644e",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "539689a2f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "bb1c3dfe1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-943q-mwmv-hhvh",
+        "https://github.com/openclaw/openclaw/pull/15390",
+        "https://github.com/openclaw/openclaw/commit/153a7644e",
+        "https://github.com/openclaw/openclaw/commit/539689a2f",
+        "https://github.com/openclaw/openclaw/commit/bb1c3dfe1",
+        "https://github.com/openclaw/openclaw/commit/ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
+      ]
+    },
+    {
       "id": "GHSA-fmfg-9g7c-3vq7",
       "description": "ha-mcp OAuth 2.1 DCR mode enables network reconnaissance via an error oracle",
       "severity": "MEDIUM",
@@ -2360,6 +2495,124 @@
       ]
     },
     {
+      "id": "GHSA-gw85-xp4q-5gp9",
+      "description": "OpenClaw's Synology Chat dmPolicy=allowlist failed open on empty allowedUserIds, allowing unauthorized agent dispatch",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-284",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T23:03:49Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "The blamed `channel.ts` lines themselves are policy metadata/warnings, not the direct fail-open check. However this commit introduced the entire Synology Chat channel and wired `createWebhookHandler()` into `startAccount`, making the vulnerable allowlist logic reachable from the registered webhook route. I found no separate later enabler commit, so this SHA is still the introducing commit for the vulnerability even though the `channel.ts` blame is indirect.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "cc048a295e7e70684ca24654257e0ecf38e49153",
+          "author": "druide67",
+          "date": "2026-02-22T00:09:58+01:00",
+          "message": "feat(channels): add Synology Chat native channel",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/synology-chat/src/security.ts, extensions/synology-chat/src/webhook-handler.ts, extensions/synology-chat/src/channel.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `checkUserAllowed` function with the exact logic `if (allowedUserIds.length === 0) return true;`, which is the root cause of the vulnerability. The code was created in this commit, establishing this function as the source of the flawed authorization policy.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Authorization (Access Control Bypass)",
+            "vuln_description": "The application's 'allowlist' policy for Synology Chat incorrectly permitted all requests when the allowedUserIds list was empty, instead of denying them by default.",
+            "vulnerable_pattern": "if (allowedUserIds.length === 0) { return true; } // Logic that defaults to 'allow' when an allowlist is empty",
+            "causal_chain": "The blamed commit implemented the `checkUserAllowed` function with an explicit check that returns `true` when the allowlist is empty. This logic, which serves as a fail-open default, created the authorization bypass vulnerability that allowed unauthorized agent dispatch."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The blamed `channel.ts` lines themselves are policy metadata/warnings, not the direct fail-open check. However this commit introduced the entire Synology Chat channel and wired `createWebhookHandler()` into `startAccount`, making the vulnerable allowlist logic reachable from the registered webhook route. I found no separate later enabler commit, so this SHA is still the introducing commit for the vulnerability even though the `channel.ts` blame is indirect.",
+                "confidence": 0.95,
+                "tool_calls_made": 62,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "cc048a295e7e70684ca24654257e0ecf38e49153",
+              "author_name": "druide67",
+              "message": "feat(channels): add Synology Chat native channel",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "75c56100d4efbb307ceb476f78f48017f5db9466",
+              "author_name": "druide67",
+              "message": "feat(synology-chat): add pairing, warnings, messaging, agent hints",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "03586e3d0057b5975090d50dadcc5bc95b51f977"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "7655c0cb3a47d0647cbbf5284e177f90b4b82ddb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-gw85-xp4q-5gp9",
+        "https://github.com/openclaw/openclaw/commit/0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+        "https://github.com/openclaw/openclaw/commit/7655c0cb3a47d0647cbbf5284e177f90b4b82ddb"
+      ]
+    },
+    {
       "id": "GHSA-vh5j-5fhq-9xwg",
       "description": "Taylor has race condition in /get-patch that allows purchase token replay",
       "severity": "LOW",
@@ -2437,6 +2690,951 @@
       "references": [
         "https://github.com/tailot/taylored/security/advisories/GHSA-vh5j-5fhq-9xwg",
         "https://github.com/tailot/taylored/commit/fdf67a6fba0deae30912905a79fb5a9e83751a79"
+      ]
+    },
+    {
+      "id": "GHSA-vj3g-5px3-gr46",
+      "description": "OpenClaw vulnerable to path traversal in Feishu media temp-file naming allows writes outside os.tmpdir()",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T18:42:28Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This refactor rewrote the download logic into `readFeishuResponseBuffer` and reintroduced the vulnerable temp-path construction in the new implementation: the lines later fixed by `c821099` are blamed to this commit (`feishu_img_${Date.now()}_${imageKey}` and `feishu_${Date.now()}_${fileKey}`). Although the same flaw already existed from `2267d58`, this commit is still a valid BIC under the stated rules because it reimplemented the vulnerable code during the refactor. `git log -S` for `writeFile(tmpPath)` and the direct diff both show this commit reauthoring the vulnerable write-file path flow.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/media.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the vulnerable code pattern where the `imageKey` and `fileKey` (which are user-controlled strings) were used directly to construct file paths. By concatenating these keys directly into the temporary file path, the code allowed for path traversal if those keys contained directory traversal characters (e.g., ../), which the fix later addressed by using `crypto.randomUUID()` instead.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal",
+            "vuln_description": "The application fails to sanitize file paths when saving Feishu media temp files, allowing attackers to write files outside the intended temporary directory.",
+            "vulnerable_pattern": "Unsanitized file paths derived from user input or external metadata used directly in file system write operations.",
+            "causal_chain": "The blamed commit introduced `downloadImageFeishu` and `downloadMessageResourceFeishu` functions, which used user-supplied `imageKey` and `fileKey` variables directly in path construction for `os.tmpdir()` operations, creating the path traversal vulnerability."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created `extensions/feishu/src/media.ts` and introduced both vulnerable temp-file constructions: `path.join(os.tmpdir(), `feishu_img_${Date.now()}_${imageKey}`)` and `path.join(os.tmpdir(), `feishu_${Date.now()}_${fileKey}`)` in the SDK `writeFile` branches. Those keys are attacker-controlled in the Feishu inbound flow: `extensions/feishu/src/bot.ts` parses `image_key`/`file_key` directly from message JSON and passes them through unsanitized. The pre-plugin implementation in `src/feishu/download.ts` used stream/buffer handling and did not build temp paths from external keys, so this is the first real introduction of the CVE condition.",
+                "confidence": 0.95,
+                "tool_calls_made": 57,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "c821099157a9767d4df208c6b12f214946507871",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "cdb00fe2428000e7a08f9b7848784a0049176705",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ec232a9e2dff60f0e3d7e827a7c868db5254473f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-vj3g-5px3-gr46",
+        "https://github.com/openclaw/openclaw/commit/c821099157a9767d4df208c6b12f214946507871",
+        "https://github.com/openclaw/openclaw/commit/cdb00fe2428000e7a08f9b7848784a0049176705",
+        "https://github.com/openclaw/openclaw/commit/ec232a9e2dff60f0e3d7e827a7c868db5254473f"
+      ]
+    },
+    {
+      "id": "GHSA-wpph-cjgr-7c39",
+      "description": "OpenClaw's typed sender-key matching for toolsBySender prevents identity-collision policy bypass",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T23:12:21Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This same commit also introduced `GroupToolPolicyBySenderConfig` in `src/config/types.tools.ts`, exposing the new per-sender configuration surface that the vulnerable matcher consumed. Pre-3b0c80 versions of `types.tools.ts` had no `toolsBySender` type at all, and the same commit's docs/tests described untyped keys as generic sender IDs/usernames/emails/phone numbers, matching the flawed semantics later hardened in 5547a22. So the file-level blame here also points back to the same true BIC: 3b0c80.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "c6014c7b0f4755590ee79879a88cede1106cd73c",
+          "author": "Adam Holt",
+          "date": "2026-01-27T18:12:33+13:00",
+          "message": "Add per-sender group tool policies",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/config/group-policy.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `resolveToolsBySender` function, which utilized a single, non-typed `normalizeSenderKey` function to process all types of sender identifiers (ID, username, e164, name) into a unified key space. This flawed logic allowed different sender types to collide in the `normalized` Map, enabling a user with one type of identity to potentially match a policy intended for a completely different identity type (e.g., a username colliding with a numeric sender ID).",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Incorrect Authorization / Improper Access Control",
+            "vuln_description": "The application failed to properly distinguish between different sender identities in 'toolsBySender' configurations, leading to potential identity-collision where a user could inadvertently or maliciously assume permissions assigned to a different user with a matching key.",
+            "vulnerable_pattern": "Insufficiently specific sender-key matching logic in group policy validation that allowed cross-identity access",
+            "causal_chain": "The commit implemented `resolveToolsBySender` using a simplified normalization strategy that failed to distinguish between identifier types, effectively creating an ambiguous key space where cross-identity collisions were possible."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This same commit also introduced `GroupToolPolicyBySenderConfig` in `src/config/types.tools.ts`, exposing the new per-sender configuration surface that the vulnerable matcher consumed. Pre-3b0c80 versions of `types.tools.ts` had no `toolsBySender` type at all, and the same commit's docs/tests described untyped keys as generic sender IDs/usernames/emails/phone numbers, matching the flawed semantics later hardened in 5547a22. So the file-level blame here also points back to the same true BIC: 3b0c80.",
+                "confidence": 0.95,
+                "tool_calls_made": 74,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "8b4696c087aed2256c74d106b58367406fb96a53",
+              "author_name": "zerone0x",
+              "message": "fix(voice-call): validate provider credentials from env vars",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c6014c7b0f4755590ee79879a88cede1106cd73c",
+              "author_name": "Adam Holt",
+              "message": "Add per-sender group tool policies",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "dd6bc5382da3747611e3308592b1fecfe1e8f4c3",
+              "author_name": "Alg0rix",
+              "message": "fix(msteams): correct typing indicator sendActivity call",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7307cfb5cb13f28ecc5675ff80c3cc7fd5250f28",
+              "author_name": "Marchel Fahrezi",
+              "message": "Merge branch 'clawdbot:main' into main",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c4a80f4edb5cc1122f9787798fe3d059481f7940",
+              "author_name": "Peter Steinberger",
+              "message": "fix: require gateway auth by default",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "58949a1f9584bc3323c93ae85ebea6c1a069914b",
+              "author_name": "Peter Steinberger",
+              "message": "docs: harden VPS install defaults",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1da6c05e624a7196baa2eeb378d15d43fd53c8bb",
+              "author_name": "Shakker",
+              "message": "Merge branch 'main' into fix/voice-call-env-var-validation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a1f9825d63131e5f0317615795cca2b63d0d06ce",
+              "author_name": "Jamieson O'Reilly",
+              "message": "security: add mDNS discovery config to reduce information disclosure (#1882)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "112f4e3d015a22418cb0675a01f12e900d91a1c9",
+              "author_name": "Mert Çiçekçi",
+              "message": "fix(security): prevent prompt injection via external hooks (gmail, we… (#1827)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "592930f10f90a99926b9ba50ab74734c4e11e257",
+              "author_name": "rhuanssauro",
+              "message": "security: apply Agents Council recommendations",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a187cd47f7177333fc2f28ceb7f42a0869d79d84",
+              "author_name": "rhuanssauro",
+              "message": "fix: downgrade @typescript/native-preview to published version",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4e9756a3e14f42d50371ed7aec49be76eb7bb085",
+              "author_name": "Peter Steinberger",
+              "message": "fix: sync memory-core peer dep with lockfile",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d37df28319da750ecfeb5416c0297b8a25e58ed2",
+              "author_name": "Shakker Nerd",
+              "message": "feat: Resolve voice call configuration by merging environment variables into settings.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c08572cd182f600d54338d9f2d6e8c3721e1711d",
+              "author_name": "Shakker Nerd",
+              "message": "Merge branch 'main' into pr-1724",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6918fbc0bdce20b0f1ccfcf4a98b08b2856a5034",
+              "author_name": "Shakker Nerd",
+              "message": "test: incorporate `resolveVoiceCallConfig` into config validation tests.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e162676e51a90662cfc6dc035e0939c5e8198ca8",
+              "author_name": "Shakker Nerd",
+              "message": "fix: allow environment variables in voice call config validation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f3e3c4573bdec6c063245e0867200cf6ef500654",
+              "author_name": "Shadow",
+              "message": "Docs: add LINE channel guide",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "961b4adc1cae08a8ff1c1ad7aa649ea21755bc33",
+              "author_name": "Yuri Chukhlib",
+              "message": "feat(gateway): deprecate query param hook token auth for security (#2200)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "300cda5d7dee86de62a64fef25ed4d123a94e217",
+              "author_name": "Yuri Chukhlib",
+              "message": "fix: wrap telegram reasoning italics per line (#2181)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ded366d9aba1c2c9871a81945b029c727645f4da",
+              "author_name": "Peter Steinberger",
+              "message": "docs: expand security guidance for prompt injection and browser control",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "403c397ff5ce7a58d4a481319430420fcd155d14",
+              "author_name": "Shadow",
+              "message": "Docs: add cli/security labels",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8b68cdd9bc5d6122010d87e5c878f90971b331c7",
+              "author_name": "Alex Alaniz",
+              "message": "fix: harden doctor gateway exposure warnings (#2016) (thanks @Alex-Alaniz) (#2016)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b623557a2ec7e271bda003eb3ac33fbb2e218505",
+              "author_name": "Peter Steinberger",
+              "message": "fix: harden url fetch dns pinning",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "97200984f8187d4161be7dc6704f460622ef3de4",
+              "author_name": "Peter Steinberger",
+              "message": "fix: secure twilio webhook verification",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3e07bd8b48f0491634b89790d4dcd4217af6f5eb",
+              "author_name": "Kentaro Kuribayashi",
+              "message": "feat(discord): add configurable privileged Gateway Intents (GuildPresences, GuildMembers) (#2266)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "07e34e3423c67bdd79350c43a29910919f65f9b1",
+              "author_name": "Shadow",
+              "message": "Discord: add presence cache tests (#2266) (thanks @kentaro)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b9643ad60ec5ee96ed87ab7802f8c065763ed2b9",
+              "author_name": "Dan Guido",
+              "message": "docs(fly): add private/hardened deployment guide",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5b6a211583c4c6c282a652139a5174c511008a2e",
+              "author_name": "Peter Steinberger",
+              "message": "docs: tighten fly private deployment steps",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c01cc61f9ae267cd3cc20287fcf7c7ae0e7ee74f",
+              "author_name": "Peter Steinberger",
+              "message": "docs: note fly private deployment fixups (#2289) (thanks @dguido)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ce60c6db1b2ec22796e13f62eb8fa59839749ffc",
+              "author_name": "Joshua Mitchell",
+              "message": "feat(telegram): implement sendPayload for channelData support",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0e3340d1fc90d5b99853d9dda6f6807843fbc6c3",
+              "author_name": "Joshua Mitchell",
+              "message": "feat(plugins): sync plugin commands to Telegram menu and export gateway types",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b8e6f0b135a95118d545c17ff72bd8b1a97743a1",
+              "author_name": "Joshua Mitchell",
+              "message": "fix(telegram): register bot.command handlers for plugin commands",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "db2395744b4562975e3c9568b13b426c2aab4058",
+              "author_name": "Joshua Mitchell",
+              "message": "fix(telegram): extract and send buttons from channelData",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "94ead83ba47f501d48fe8e0ccc5662e283db3cef",
+              "author_name": "Ayaan Zaidi",
+              "message": "fix: telegram sendPayload and plugin auth (#1917) (thanks @JoshuaLelon)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b06fc50e25395a8349e4d359d48c4a29c6a200df",
+              "author_name": "Peter Steinberger",
+              "message": "docs: clarify onboarding security warning",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "287ab840603321d9f39ff578e656bb765081e29b",
+              "author_name": "Peter Steinberger",
+              "message": "fix(slack): handle file redirects",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bfe9bb8a23fd23935db59cdfc128652897bafc3d",
+              "author_name": "Peter Steinberger",
+              "message": "docs(changelog): note slack redirect fix",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e0b8661eee3d8a86bd612be58547023bc5f1c2aa",
+              "author_name": "Shadow",
+              "message": "Docs: credit LINE channel guide contributor",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2a4ccb624a4f8070854036a01c5b3c1595240480",
+              "author_name": "Shadow",
+              "message": "Docs: update clawtributors",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a48694078171f0e5865a58a23771de731aa1459d",
+              "author_name": "Peter Steinberger",
+              "message": "fix: honor tools.exec.safeBins config",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e6bdffe568175e2b718e7611f73e191a9e1f771a",
+              "author_name": "Peter Steinberger",
+              "message": "feat: add control ui device auth bypass",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b9098f340112e14f9fc52e55c283ae2ec0d4d093",
+              "author_name": "Peter Steinberger",
+              "message": "fix: remove unsupported gateway auth off option",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2ad3508a33a6c49d6abcdd07c9ede0f17c5d560a",
+              "author_name": "Vignesh Natarajan",
+              "message": "feat(config): add tools.alsoAllow additive allowlist",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d62b7c0d1ef776f87d2d62f45c48eb91cbff7738",
+              "author_name": "Vignesh Natarajan",
+              "message": "fix: treat tools.alsoAllow as implicit allow-all when no allowlist",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3497be29630db2166afd00e9733cc38e10cb4717",
+              "author_name": "Vignesh Natarajan",
+              "message": "docs: recommend tools.alsoAllow for optional plugin tools",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "42d039998d73c47dec264377668ef1be00595bc2",
+              "author_name": "Pocket Clawd",
+              "message": "feat(config): forbid allow+alsoAllow in same scope; auto-merge",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ab73aceb27de266d842fa94f9b5c6ace29e66915",
+              "author_name": "Peter Steinberger",
+              "message": "fix: use Windows ACLs for security audit",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3314b3996e3af2494e27c6f4401647bf15958ece",
+              "author_name": "Peter Steinberger",
+              "message": "fix: harden gateway auth defaults",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f625303d13ffce8ad25dd2fe54a43df4b93cb16b",
+              "author_name": "Pocket Clawd",
+              "message": "test(config): enforce allow+alsoAllow mutual exclusion",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "39d219da591858def0a5072f61cb8e8da34b8f18",
+              "author_name": "alexstyl",
+              "message": "Add FUNDING.yml",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "526303d9a2cf108308954639aa33a285fb8000f6",
+              "author_name": "Peter Steinberger",
+              "message": "refactor(auth)!: remove external CLI OAuth reuse",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "aa2a1a17e3b672fff073e994d22c9387dc8a2e73",
+              "author_name": "Peter Steinberger",
+              "message": "test(auth): update auth profile coverage",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "000d5508aa64d7fdda25e8b902772ab879e5a237",
+              "author_name": "Peter Steinberger",
+              "message": "docs(auth): remove external CLI OAuth reuse",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fba7afaa123544e86a3e91646d26a663452ccfb4",
+              "author_name": "Peter Steinberger",
+              "message": "chore(scripts): update claude auth status hints",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "34b3494246e6c92178ba4a70631e0cfcc50081f2",
+              "author_name": "Shakker",
+              "message": "Merge branch 'main' into feat/tools-alsoAllow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "10d5ea5de6acacfe0169072cd9689203b1218c1e",
+              "author_name": "Frank Harris",
+              "message": "docs: Add Oracle Cloud (OCI) platform guide (#2333)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2cbc991bfe7cdc8a722fc98d419826c982b06231",
+              "author_name": "Lucas Czekaj",
+              "message": "feat(agents): add MEMORY.md to bootstrap files (#2318)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-authored-by: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1a947a21d6e6aa7d10da1c0783947971f8514c87",
+              "author_name": "Shadow",
+              "message": "fix: support memory.md in bootstrap files (#2318) (thanks @czekaj)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c5ffc11df52f03d5b64ae5e6a381412fac35ee7b",
+              "author_name": "Peter Steinberger",
+              "message": "chore(repo): remove stray .DS_Store",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f5c90f0e5c7a12285ceea6c3102666a7b904b16f",
+              "author_name": "jaydenfyi",
+              "message": "feat: Twitch Plugin (#1612)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "97248a2885da7760db9149f3584da59bfd80b34c",
+              "author_name": "Peter Steinberger",
+              "message": "feat: surface security audit + docs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "320b45c051a7bc20a02573ce0624533eda62fac6",
+              "author_name": "Peter Steinberger",
+              "message": "docs: note sandbox opt-in in gateway security",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1371e95e571cec35a7bc9e1bda3e7354cbcab4a5",
+              "author_name": "Peter Steinberger",
+              "message": "docs: clarify onboarding + credentials",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a5b99349c9dcd7d26c8bbcee19014f2fdb0054c3",
+              "author_name": "Peter Steinberger",
+              "message": "style: format workspace bootstrap signature",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8e051a418fcc1529611684f33c92020ed3f12b6b",
+              "author_name": "Peter Steinberger",
+              "message": "test: stub windows ACL for include perms audit",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9e6b45faab44200382bc34c4f14bea5ca24a289f",
+              "author_name": "Paul Pamment",
+              "message": "fix(discord): honor threadId for thread-reply",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec75e0b3dce1e3f4dabfca55d193d5d156be59af",
+              "author_name": "Shadow",
+              "message": "CI: use app token for auto-response",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bdea26570402262b44af63031840fcc859637afe",
+              "author_name": "Shadow",
+              "message": "CI: run auto-response on pull_request_target",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bc8c31eeed2b230bcde431626144a327e91aee82",
+              "author_name": "Shakker",
+              "message": "Merge branch 'main' into feat/tools-alsoAllow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ff382f6b68e4e4aa427b2772888951e8486ad36b",
+              "author_name": "Shakker",
+              "message": "Merge pull request #1742 from clawdbot/feat/tools-alsoAllow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fbc5ac1fde27dbc4088eb7adb5d65388ae643a92",
+              "author_name": "Vignesh",
+              "message": "docs(install): add migration guide for moving to a new machine (#2381)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d34ae86114c7a2726df10b4497616b32049ebcc9",
+              "author_name": "Shadow",
+              "message": "chore: expand labeler coverage",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fb141460334f90ce9f8d159575cf342cd5567744",
+              "author_name": "Peter Steinberger",
+              "message": "fix: harden ssh target handling",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "20f6a5546fad7a1a1f934320c152308c01f6cb50",
+              "author_name": "Suksham",
+              "message": "feat(telegram): add silent message option (#2382)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "message_keyword",
+                  "matched_text": "AI-assisted",
+                  "confidence": 0.5
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "820ab8765a09df5240548fb8693b140b9ebcb79e",
+              "author_name": "Peter Steinberger",
+              "message": "docs: clarify exec defaults",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "86fa9340ae428096171694257dcced1618c7cdd2",
+              "author_name": "Dave Lauer",
+              "message": "fix: reset chat state on webchat reconnect after gateway restart",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6d269710518c68b6264bc0c9d4bf4da691e5aba5",
+              "author_name": "Tyler Yust",
+              "message": "fix(bluebubbles): add inbound message debouncing to coalesce URL link previews",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "420e5299d259199fa7887d159abe39f159e47a51",
+              "author_name": "Tyler Yust",
+              "message": "fix(bluebubbles): increase inbound message debounce time for URL previews",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "147842fadc318d7ce9c81ef726b432d0b5547860",
+              "author_name": "Tyler Yust",
+              "message": "refactor(bluebubbles): remove URL balloon message handling and improve error logging",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9c0c5866dbf3b1e43f05bb0852196685008ca608",
+              "author_name": "Tyler Yust",
+              "message": "fix: coalesce BlueBubbles link previews (#1981) (thanks @tyler6204)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0f8f0fb9d75170d0d9d5bc95e481a599faec50a0",
+              "author_name": "Peter Steinberger",
+              "message": "docs: clarify command authorization for exec directives",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3888f1edc6ca943f587a3cd45f6875906a898156",
+              "author_name": "Tyler Yust",
+              "message": "docs: update SKILL.md and generate_image.py to support multi-image editing and improve input handling",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fe1f2d971ab399366b205a9889f8ef485ff21dec",
+              "author_name": "Tyler Yust",
+              "message": "fix: add multi-image input support to nano-banana-pro skill (#1958) (thanks @tyler6204)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b3a60af71c0343843662187f53130d34431c9d65",
+              "author_name": "Peter Steinberger",
+              "message": "fix: gate ngrok free-tier bypass to loopback",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2807f5afbce27173bd1b935f99ce73a8d48c1798",
+              "author_name": "Dave Lauer",
+              "message": "feat: add heartbeat visibility filtering for webchat",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6cbdd767afc2fe5179b555995e3ff0153f49eba4",
+              "author_name": "Peter Steinberger",
+              "message": "fix: pin tar override for npm installs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0aa48a26d1545aca659251b84d7401229612a3fc",
+              "author_name": "adeboyedn",
+              "message": "docs: add Northflank deployment guide for Clawdbot",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2a709385f8c74b5c503c58983df8bc5fee253cea",
+              "author_name": "adeboyedn",
+              "message": "cleanup",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "99ce47e86af55b524883f674feee1b05e43dcc0a",
+              "author_name": "adeboyedn",
+              "message": "minor update",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "107f07ad69335c8a877cc0770396dc8c48f1563b",
+              "author_name": "Clawdbot Maintainers",
+              "message": "docs: add Northflank page to nav + polish copy",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cd7be58b8ecb03c3249be6f8faefef9083de70e1",
+              "author_name": "vignesh07",
+              "message": "docs: add Northflank deploy guide to changelog (#2167) (thanks @AdeboyeDN)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "82746973d4fe37ddc727eefdcc408a82697b8eaf",
+              "author_name": "Dave Lauer",
+              "message": "fix(heartbeat): remove unhandled rejection crash in wake handler",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "91d5ea6e331c89b00ff449c3d6fd11dd3b37042a",
+              "author_name": "Shadow",
+              "message": "Fix: allow cron heartbeat payloads through filters (#2219) (thanks @dwfinkelstein)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5aa02cf3f75d358e5e9eb666dd8b355c4aa0437b",
+              "author_name": "Robby (AI-assisted)",
+              "message": "fix(gateway): sanitize error responses to prevent information disclosure",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "af9606de3675298167d4b73488c2d07ffa24c487",
+              "author_name": "Robby (AI-assisted)",
+              "message": "fix(history): add LRU eviction for groupHistories to prevent memory leak",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5c35b62a5c41a8de58a90183fc74185b4a307e2a",
+              "author_name": "Shadow",
+              "message": "fix: refresh history key order for LRU eviction",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "343882d45c6b13c12d2661698005deadb9e191de",
+              "author_name": "vignesh07",
+              "message": "feat(telegram): add edit message action (#2394) (thanks @marcelomar21)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a8ad242f885de2225455ae00f8564c83c7c4b162",
+              "author_name": "Dominic",
+              "message": "fix(security): properly test Windows ACL audit for config includes (#2403)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e43f4c0628228bd5ae3a9fe8774881f7c7753f65",
+              "author_name": "techboss",
+              "message": "fix(telegram): handle network errors gracefully",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b861a0bd73e6c8dbf7c62a2cb99b400f40e2e4ea",
+              "author_name": "Gustavo Madeira Santana",
+              "message": "Telegram: harden network retries and config",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "3b0c80ce245b293fae817ec800c5e3a9c0ec7ee8"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "5547a2275cb69413af3b62c795b93214fe913b57",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-wpph-cjgr-7c39",
+        "https://github.com/openclaw/openclaw/commit/5547a2275cb69413af3b62c795b93214fe913b57"
       ]
     },
     {
@@ -3096,6 +4294,167 @@
       ],
       "references": [
         "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=490598877"
+      ]
+    },
+    {
+      "id": "GHSA-2mc2-g238-722j",
+      "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-295",
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:35:21Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.9,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit introduced the entire iMessage remote-attachment feature: it added `channels.imessage.remoteHost` as an unrestricted `z.string().optional()`, auto-detected `remoteHost` in `monitor-provider.ts`, propagated it into message context, and added `scpFile()` in `stage-sandbox-media.ts`. At the fix parent, the vulnerable lines are still blamed to this commit, including `StrictHostKeyChecking=accept-new` and the unguarded `${remoteHost}:${remotePath}` SCP argument. The fix directly reverses those design choices by validating/normalizing `remoteHost`, adding `--`, and requiring strict host-key checking.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/imessage/monitor/monitor-provider.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `scpFile` helper function and the `spawn` logic for the `/usr/bin/scp` command. This implementation utilized the dangerous `StrictHostKeyChecking=accept-new` flag and failed to validate the `remoteHost` input, directly establishing the vulnerable pattern that the fix commit subsequently addressed.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Command Injection / Improper Certificate Validation",
+            "vuln_description": "The application failed to properly validate remote hosts and enforce strict host-key checking when establishing SCP/SSH connections for iMessage attachments, allowing for potential command injection or man-in-the-middle attacks.",
+            "vulnerable_pattern": "Unvalidated remote host strings passed to SCP/SSH commands and lack of strict host-key verification during attachment retrieval.",
+            "causal_chain": "The blamed commit added the `scpFile` function which used insecure SSH options (StrictHostKeyChecking=accept-new) and passed unvalidated user input directly into the `spawn` arguments for the `scp` command, enabling potential command injection and MITM attacks."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the entire iMessage remote-attachment feature: it added `channels.imessage.remoteHost` as an unrestricted `z.string().optional()`, auto-detected `remoteHost` in `monitor-provider.ts`, propagated it into message context, and added `scpFile()` in `stage-sandbox-media.ts`. At the fix parent, the vulnerable lines are still blamed to this commit, including `StrictHostKeyChecking=accept-new` and the unguarded `${remoteHost}:${remotePath}` SCP argument. The fix directly reverses those design choices by validating/normalizing `remoteHost`, adding `--`, and requiring strict host-key checking.",
+                "confidence": 0.95,
+                "tool_calls_made": 79,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
+        "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+      ]
+    },
+    {
+      "id": "GHSA-cfvj-7rx7-fc7c",
+      "description": "OpenClaw: stageSandboxMedia destination symlink traversal can overwrite files outside sandbox workspace",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:18:28Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.9,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This candidate is correctly blamed for the vulnerable write path at the fix parent: lines 143-151 still come from 7a9ff182, including `await scpFile(ctx.MediaRemoteHost, source, dest)` and the re-added `await fs.copyFile(source, dest)` else branch. Its diff introduced remote attachment staging and directly wrote into `dest` without any destination symlink/alias protection. The fix replaces those exact writes with `stageRemoteFileIntoRoot` / `stageLocalFileIntoRoot`, so this commit introduced an additional exploitable form of the bug and reimplemented the existing unsafe local write.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced logic that constructs file paths using `path.join(destDir, fileName)` and immediately writes to them using `fs.copyFile` without validating that the final path remains within the intended sandbox directory. This pattern is the direct source of the path traversal vulnerability, as `fileName` is not sanitized against directory traversal attacks, and the fix explicitly replaces this unsafe `fs.copyFile` usage with a new `writeFileWithinRoot` helper.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal (Symlink attack)",
+            "vuln_description": "The application fails to validate the destination path when staging media into a sandbox, allowing an attacker to use symlinks to overwrite files outside the intended sandbox directory.",
+            "vulnerable_pattern": "Unvalidated path manipulation when writing files to a destination, susceptible to symlink traversal",
+            "causal_chain": "The commit implemented the file staging logic using `path.join(destDir, fileName)` followed by `fs.copyFile(source, dest)` without any path validation, allowing an attacker to provide a malicious filename containing '..' sequences to write files outside of the sandbox workspace."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This candidate is correctly blamed for the vulnerable write path at the fix parent: lines 143-151 still come from 7a9ff182, including `await scpFile(ctx.MediaRemoteHost, source, dest)` and the re-added `await fs.copyFile(source, dest)` else branch. Its diff introduced remote attachment staging and directly wrote into `dest` without any destination symlink/alias protection. The fix replaces those exact writes with `stageRemoteFileIntoRoot` / `stageLocalFileIntoRoot`, so this commit introduced an additional exploitable form of the bug and reimplemented the existing unsafe local write.",
+                "confidence": 0.95,
+                "tool_calls_made": 40,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-cfvj-7rx7-fc7c",
+        "https://github.com/openclaw/openclaw/commit/17ede52a4be3034f6ec4b883ac6b81ad0101558a"
       ]
     },
     {
@@ -4649,6 +6008,191 @@
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-c6hr-w26q-c636",
         "https://github.com/openclaw/openclaw/commit/74268489137510b6f6349919d1e197b17290d92c",
         "https://github.com/openclaw/openclaw/commit/7e67ab75cc2f0e93569d12fecd1411c2961fcc8c"
+      ]
+    },
+    {
+      "id": "GHSA-j4xf-96qf-rx69",
+      "description": "OpenClaw has a Feishu allowFrom authorization bypass via display-name collision",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-639",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:41:38Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This refactor replaced Feishu’s inline matcher with the shared `resolveAllowlistMatchSimple` helper and preserved the insecure `senderName` fallback exactly, then changed Feishu policy to return that helper’s result. Although the flaw already existed earlier, this commit reimplemented the vulnerable logic in new code that the fix later removed. Under the reimplementation rule, it is also a genuine bug-introducing commit.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/bot.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit is the initial implementation (creation) of `extensions/feishu/src/bot.ts` which established the authorization logic. By relying solely on `senderName` for allowlist checks during the initial setup, it created the foundational vulnerability that the fix commit later patched by adding proper `senderId` verification.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Authorization Bypass",
+            "vuln_description": "The application performed authorization checks based on user display names rather than unique identifiers, allowing attackers to bypass allowlist restrictions by creating users with colliding display names.",
+            "vulnerable_pattern": "Comparing user identity against an allowlist using non-unique fields like 'display-name' instead of unique identifiers (e.g., user IDs).",
+            "causal_chain": "The blamed commit introduced `handleFeishuMessage` and the authorization flow using only `senderName` in `resolveFeishuAllowlistMatch` calls, failing to account for user ID-based identity verification which allowed name-spoofing bypasses."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the new Feishu extension and, in the initial version of extensions/feishu/src/policy.ts, explicitly authorized senders when allowFrom contained senderName (`allowFrom.includes(senderName)`). In the same implementation it resolved mutable display names into `ctx.senderName` and passed that into the group sender allowlist check, even though Feishu allowlists are documented as ID-based. That is the original display-name collision bypass fixed later.",
+                "confidence": 0.95,
+                "tool_calls_made": 52,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4ed87a667263ed2d422b9d5d5a5d326e099f92c7",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-j4xf-96qf-rx69",
+        "https://github.com/openclaw/openclaw/commit/4ed87a667263ed2d422b9d5d5a5d326e099f92c7"
+      ]
+    },
+    {
+      "id": "GHSA-vvgp-4c28-m3jm",
+      "description": "OpenClaw has a Trusted-proxy Control UI pairing bypass which allows unpaired node sessions",
+      "severity": "MEDIUM",
+      "cvss": 5.5,
+      "cwes": [
+        "CWE-807"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:52:16Z",
+      "ai_tools": [
+        "cursor"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit introduced the exact trusted-proxy bypass that the fix later narrows. Its diff adds `trustedProxyAuthOk` in `message-handler.ts`, passes it into `evaluateMissingDeviceIdentity`, and changes `shouldSkipControlUiPairing` / `evaluateMissingDeviceIdentity` in `connect-policy.ts` so any trusted-proxy Control UI connection can skip device identity and pairing with no `role === \"operator\"` check. The fix commit `ec45c317...` only adds that missing role gate, and pre-fix blame attributes the vulnerable `trustedProxyAuthOk` lines to this commit.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+          "author": "SidQin-cyber",
+          "date": "2026-02-24T21:15:57+08:00",
+          "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+          "ai_signals": [
+            {
+              "tool": "cursor",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the 'trustedProxyAuthOk' logic which relied on insufficient criteria (it lacked the role check). By introducing this logic without verifying the 'operator' role, it created a condition where non-operator connections could bypass authentication checks, directly enabling the vulnerability later addressed by the fix.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Authentication Bypass / Improper Authorization",
+            "vuln_description": "The system failed to properly validate pairing status for WebSocket connections, allowing unpaired node sessions to interact with the Trusted-proxy Control UI due to insufficient authorization checks.",
+            "vulnerable_pattern": "Processing control-ui messages without verifying if the underlying node session is correctly paired/authorized.",
+            "causal_chain": "The commit implemented the 'trustedProxyAuthOk' logic in both message handling blocks without validating the user's role. Because this logic was missing the 'role === \"operator\"' check, the system incorrectly validated unauthorized or improper roles as 'trusted-proxy', leading to the authentication bypass."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the exact trusted-proxy bypass that the fix later narrows. Its diff adds `trustedProxyAuthOk` in `message-handler.ts`, passes it into `evaluateMissingDeviceIdentity`, and changes `shouldSkipControlUiPairing` / `evaluateMissingDeviceIdentity` in `connect-policy.ts` so any trusted-proxy Control UI connection can skip device identity and pairing with no `role === \"operator\"` check. The fix commit `ec45c317...` only adds that missing role gate, and pre-fix blame attributes the vulnerable `trustedProxyAuthOk` lines to this commit.",
+                "confidence": 0.95,
+                "tool_calls_made": 76,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+              "author_name": "SidQin-cyber",
+              "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+              "ai_signals": [
+                {
+                  "tool": "cursor",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "e66483fe5c6f07199cb63741e1ee13ddb0fdbe96",
+              "author_name": "Peter Steinberger",
+              "message": "fix: add changelog for trusted-proxy pairing bypass (#25428) (thanks @SidQin-cyber)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "20523b918adff4feae378ac9965e204c56b6e3d8"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ec45c317f5d0631a3d333b236da58c4749ede2a3",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-vvgp-4c28-m3jm",
+        "https://github.com/openclaw/openclaw/commit/ec45c317f5d0631a3d333b236da58c4749ede2a3"
       ]
     },
     {
@@ -6735,6 +8279,130 @@
       ]
     },
     {
+      "id": "GHSA-7jx5-9fjg-hp4m",
+      "description": "OpenClaw ACP client has permission auto-approval bypass via untrusted tool metadata",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-639",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-27T22:08:36Z",
+      "ai_tools": [
+        "aether"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.57,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "Blame on the pre-fix file attributes `normalizeToolName`, `parseToolNameFromTitle`, `resolveToolNameForPermission`, and the core `resolvePermissionRequest` auto-approval path to this commit. Its diff widened authorization decisions to server-controlled `_meta`, `rawInput`, and `title` fields, then auto-approved any tool name not forced into the prompt path. The later fixes directly harden and partially replace this exact logic, including tightening `normalizeToolName` in 63dcd28 and replacing the auto-approval policy in 12cc754.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+          "author": "aether-ai-agent",
+          "date": "2026-02-13T14:28:50+01:00",
+          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "squash_decomposed_author_name",
+              "matched_text": "aether-ai-agent",
+              "confidence": 0.475
+            },
+            {
+              "tool": "aether",
+              "signal_type": "squash_decomposed_author_email",
+              "matched_text": "@tryaether.ai",
+              "confidence": 0.475
+            }
+          ],
+          "blamed_file": "src/acp/client.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the functions `resolveToolNameForPermission` and `parseToolNameFromTitle`, which are responsible for extracting tool names from metadata and raw input without sufficient length or pattern validation. This commit established the logic that reads and trusts these untrusted metadata fields, creating the exact vulnerable pattern of implicit trust that the fix later addresses by adding strict checks.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Authorization Bypass",
+            "vuln_description": "The OpenClaw ACP client failed to properly validate tool metadata during permission auto-approval, allowing malicious actors to bypass authorization checks by manipulating untrusted metadata fields.",
+            "vulnerable_pattern": "Implicitly trusting tool metadata fields to authorize actions without server-side verification or strict schema enforcement.",
+            "causal_chain": "The blamed commit implemented `resolveToolNameForPermission`, which retrieves tool names from metadata (`_meta`) and raw input (`rawInput`) using `readFirstStringValue`. Because this implementation lacked length constraints and strict regex validation, it allowed malicious tool names to pass through and be processed by the auto-approval logic."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Blame on the pre-fix file attributes `normalizeToolName`, `parseToolNameFromTitle`, `resolveToolNameForPermission`, and the core `resolvePermissionRequest` auto-approval path to this commit. Its diff widened authorization decisions to server-controlled `_meta`, `rawInput`, and `title` fields, then auto-approved any tool name not forced into the prompt path. The later fixes directly harden and partially replace this exact logic, including tightening `normalizeToolName` in 63dcd28 and replacing the auto-approval policy in 12cc754.",
+                "confidence": 0.95,
+                "tool_calls_made": 50,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+              "author_name": "aether-ai-agent",
+              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+              "ai_signals": [
+                {
+                  "tool": "aether",
+                  "signal_type": "author_name",
+                  "matched_text": "aether-ai-agent",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "aether",
+                  "signal_type": "author_email",
+                  "matched_text": "@tryaether.ai",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
+              "author_name": "Peter Steinberger",
+              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "12cc754332f9a7c92e158ce7644aa22df79c0904",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7jx5-9fjg-hp4m",
+        "https://github.com/openclaw/openclaw/commit/12cc754332f9a7c92e158ce7644aa22df79c0904",
+        "https://github.com/openclaw/openclaw/commit/63dcd28ae0be2de1c75af09cc81841cebeec068f",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.23"
+      ]
+    },
+    {
       "id": "GHSA-g3gw-q23r-pgqm",
       "description": "yt-dlp: Arbitrary Command Injection when using the `--netrc-cmd` option",
       "severity": "HIGH",
@@ -7486,53 +9154,53 @@
       ]
     },
     {
-      "id": "CVE-2025-11445",
-      "description": "A vulnerability was detected in Kilo Code up to 4.86.0. Affected is the function ClineProvider of the file src/core/webview/ClineProvider.ts of the component Prompt Handler. Performing manipulation results in injection. The attack can be initiated remotely. The exploit is now public and may be used. Applying a patch is the recommended action to fix this issue.",
-      "severity": "MEDIUM",
-      "cvss": 5.3,
+      "id": "GHSA-9f72-qcpw-2hxc",
+      "description": "OpenClaw: Native prompt image auto-load did not honor tools.fs.workspaceOnly in sandboxed runs",
+      "severity": "HIGH",
+      "cvss": 8.0,
       "cwes": [
-        "CWE-74",
-        "CWE-707"
+        "CWE-200",
+        "CWE-284"
       ],
       "ecosystem": "",
-      "published": "2025-10-08T09:15:33.013",
+      "published": "2026-03-03T19:08:08Z",
       "ai_tools": [
-        "unknown_ai"
+        "claude_code"
       ],
       "languages": [
         "TypeScript"
       ],
-      "confidence": 0.0,
+      "confidence": 0.2137,
       "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "The fix commit 4da5627 changes exactly the vulnerable behavior in `src/core/webview/ClineProvider.ts`: `alwaysAllowWriteOutsideWorkspace` defaults from `?? true` to `?? false` in both the webview state and persisted-state return paths. Blame on the vulnerable pre-fix file (`a886f456...`) attributes both of those lines to 7457e679cf. Comparing the file before this merge (`e1ca1b93...` / earlier `1810efe4...`) shows the same defaults were previously `?? false`; 7457 flipped them to `?? true` as part of a Kilo-specific change, introducing automatic approval for writes outside the workspace.",
+      "how_introduced": "This commit rewrote native prompt image loading to trust sandbox.fsBridge.resolvePath/readFile and removed the direct assertSandboxPath(root=sandboxRoot) validation from run/images.ts. That authored the exact vulnerable design the fix later hardens: sandbox validation was delegated entirely to the bridge, with no separate workspaceOnly/root check in loadImageFromRef or detectAndLoadPromptImages. Even though the initial bridge was still workspace-root-confined, this commit introduced the flawed code path that later became exploitable when bridge semantics expanded.",
       "root_cause": "",
       "vuln_type": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "a414c7d028ccd4ec0cdd604de9d91fdec9bd4267",
-          "author": "Chris Estreich",
-          "date": "2025-03-31T15:12:37+02:00",
-          "message": "Wrangle our settings-related types and add support for settings import / export (#1997)",
+          "sha": "795ec6aa2f311fcda6660876dbadb4ef356bc0ac",
+          "author": "Peter Steinberger",
+          "date": "2026-02-13T17:29:10+02:00",
+          "message": "fix: resolve main-rebase fallout for sandbox fs bridge",
           "ai_signals": [
             {
-              "tool": "unknown_ai",
-              "signal_type": "squash_decomposed_ai_review_bot",
-              "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
-              "confidence": 0.004
+              "tool": "aether",
+              "signal_type": "merge_workflow",
+              "matched_text": "Merged via /review-pr -> /prepare-pr -> /merge-pr",
+              "confidence": 0.8
             }
           ],
-          "blamed_file": "src/core/webview/ClineProvider.ts",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory_pr",
+          "blamed_file": "src/agents/pi-embedded-runner/run/images.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
           "screening_verification": {
             "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit performed a large refactoring of ClineProvider.ts, where it introduced the vulnerable configuration setting 'alwaysAllowWriteOutsideWorkspace: true' as the default state. This change enabled the dangerous behavior that the subsequent fix specifically corrected by flipping the flag to 'false'.",
+            "reasoning": "The blamed commit significantly refactored `loadImageFromRef` by removing the explicit sandbox path validation logic that was previously in place. By replacing the robust sandbox validation (`assertSandboxPath`) with a simplified path resolution that didn't enforce `workspaceOnly` checks, this commit introduced the regression where file access controls could be bypassed.",
             "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path Traversal / Arbitrary File Write",
-            "vuln_description": "The application failed to properly validate file paths during write operations, allowing remote attackers to write files outside of the intended workspace directory.",
-            "vulnerable_pattern": "Permitting file write operations based on unsanitized user-supplied paths without checking against the workspace root directory.",
-            "causal_chain": "During the massive refactoring in commit a414c7d028cc, the configuration for 'alwaysAllowWriteOutsideWorkspace' was introduced or set to 'true', effectively disabling the path restriction mechanism and enabling the path traversal vulnerability."
+            "vuln_type": "Improper Access Control / Information Exposure",
+            "vuln_description": "The native prompt image auto-loading mechanism failed to validate if the image path resided within the allowed workspace directory during sandboxed runs, potentially allowing unauthorized file access.",
+            "vulnerable_pattern": "Missing check against `tools.fs.workspaceOnly` configuration when resolving and loading images in the native prompt runner.",
+            "causal_chain": "The blamed commit removed the existing `assertSandboxPath` check for file paths and replaced it with a `SandboxFsBridge` mechanism that failed to integrate the `workspaceOnly` security constraint, thereby allowing unauthorized access to files outside the workspace."
           },
           "verification": {
             "verdict": "CONFIRMED",
@@ -7544,9 +9212,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "The fix commit 4da5627 changes exactly the vulnerable behavior in `src/core/webview/ClineProvider.ts`: `alwaysAllowWriteOutsideWorkspace` defaults from `?? true` to `?? false` in both the webview state and persisted-state return paths. Blame on the vulnerable pre-fix file (`a886f456...`) attributes both of those lines to 7457e679cf. Comparing the file before this merge (`e1ca1b93...` / earlier `1810efe4...`) shows the same defaults were previously `?? false`; 7457 flipped them to `?? true` as part of a Kilo-specific change, introducing automatic approval for writes outside the workspace.",
+                "reasoning": "This commit rewrote native prompt image loading to trust sandbox.fsBridge.resolvePath/readFile and removed the direct assertSandboxPath(root=sandboxRoot) validation from run/images.ts. That authored the exact vulnerable design the fix later hardens: sandbox validation was delegated entirely to the bridge, with no separate workspaceOnly/root check in loadImageFromRef or detectAndLoadPromptImages. Even though the initial bridge was still workspace-root-confined, this commit introduced the flawed code path that later became exploitable when bridge semantics expanded.",
                 "confidence": 0.95,
-                "tool_calls_made": 69,
+                "tool_calls_made": 91,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -7554,776 +9222,40 @@
           },
           "decomposed_commits": [
             {
-              "sha": "7bf143e30202cfd7af9942465f79bb8f59caee37",
-              "author_name": "R00-B0T",
-              "message": "Changeset version bump (#1881)",
+              "sha": "ba0912d5a9fadd89c56874ed78202ac941548396",
+              "author_name": "David Bors",
+              "message": "fix: execute sandboxed file ops inside containers",
               "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "89013ddd20915a05aec7c9ffa2ca27e0c8130f2d",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1914)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e8d6a552b34757222e5fc505cf1b135438e7313e",
-              "author_name": "feifei",
-              "message": "i18n: Update numeric formatting suffixes to improve consistency (#1939)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cc2420ea1a1b9c74fac452b116f0b76937bedad8",
-              "author_name": "teddyOOXX",
-              "message": "fix qwq model in openai provider (#1940)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2985172c619b09242abf816684bd7e60a25e6082",
-              "author_name": "Taiki Maekawa",
-              "message": "feat: add bedrock application inference profile (#1938)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "83ba22a44ce3f28fae139b84dbd5e334b4cf3ccf",
-              "author_name": "aheizi",
-              "message": "optimize context files (fix) (#1933)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "30f9d8f0324a9ff316cab5aa7863dac980696950",
-              "author_name": "Matt Rubens",
-              "message": "Better openrouter error handling (#1945)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "15338ed76aa9165739ba963f9c20bd0ef1cd5cea",
-              "author_name": "Matt Rubens",
-              "message": "Bring back open files and git results in mention suggestions (#1946)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "187979af2b16e1f8720b84a7bf8526db73a6300c",
-              "author_name": "KJ7LNW",
-              "message": "feat: add test declarations support in typescript tree-sitter queries (#1899)",
-              "ai_signals": [
-                {
-                  "tool": "roo_code",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
-                  "confidence": 0.7
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8ad4fff0d2b8a511f1092dd15f4c3aac1218949d",
-              "author_name": "Steven T. Cramer",
-              "message": "Removed hardcoded filenames to GlobalFileNames constants. (#1904)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "953a9c777afab02a50a53d1034df4c2aeedcbde5",
-              "author_name": "KJ7LNW",
-              "message": "refactor: align tree-sitter output with other tools (#1859)",
-              "ai_signals": [
-                {
-                  "tool": "roo_code",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
-                  "confidence": 0.7
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fdcc679f9f4ddd6e2f5d31a70696888a603b2079",
-              "author_name": "Wojciech Kordalski",
-              "message": "Add `taskCreated` event to API and subscribe to Cline events earlier (#1942)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2953baef9760b1f98015bb9688c3388ef0430725",
-              "author_name": "ying",
-              "message": "[clinerules] search clinerule in parent folders which make it easier to share within a github repo (#1832)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c74c235d330405750ccbdba19f49cd087d2da8f1",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1936)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "92dd8e36da2e44d74e3df494b0f9e222957cad29",
-              "author_name": "cannuri",
-              "message": "Fix browser tool visibility in system prompt preview (#1840)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "92850023c9f811aab81a0e419f09d685d8b2abeb",
-              "author_name": "Chris Estreich",
-              "message": "Run 'npm audit fix' on everything (#1817)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1c9daf5a48a8299b4d922de51455b27015e9087d",
-              "author_name": "Jiayuan Chen",
-              "message": "Support customize storage path (#1941)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "809e8cd6bc63e1be4f90137c6663d2cdbcd888af",
-              "author_name": "Rian Santos",
-              "message": "#906 - Add watchPaths option to McpHub for file change detection (#1755)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d91467fbd6fe9fe09e3f214789f40b718a3eea1d",
-              "author_name": "Mikhail Beliakov",
-              "message": "fix: Readme docs links (#1951)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "418694befa671cdae52d41182b3fb515671c31db",
-              "author_name": "Chad Gauthier",
-              "message": "Update UX for text area (#1953)",
-              "ai_signals": [
-                {
-                  "tool": "unknown_ai",
-                  "signal_type": "ai_review_bot",
-                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
-                  "confidence": 0.4
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fe4e73279c30d6261e4681ffca37589e4ccef915",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1949)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "6d8e7bbfbd6191dde75f998275ef2ca8bfc3fd14",
-              "author_name": "Jiayuan Chen",
-              "message": "Internationalization support for custom storage path functionality (#1957)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fbc31c3d992b7af2094b3f16ce2ce97b34e371c5",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1958)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "4fa4943d5f6635ea73c4dc2389985b92cef5f6d4",
-              "author_name": "Matt Rubens",
-              "message": "Revert \"[clinerules] search clinerule in parent folders which make it easier to share within a github repo\" (#1959)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "237ee329ee5c0297b859eb55f06e54ccd46225fd",
-              "author_name": "黄远成",
-              "message": "Support mcp image resource (#1962)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "94421391121a12932a1e1de8a3763f15e46c27bc",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1960)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1810efe496bab7c6d72a4468bb89d8c77479eb6a",
-              "author_name": "Matt Rubens",
-              "message": "Additional checkbox for auto-approving reads and writes outside of the workspace (#1965)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "22d01ce67a8ef99ba13d03405b5acefb392bca11",
-              "author_name": "Matt Rubens",
-              "message": "Add specific strings for read/edit outside of the workspace (#1970)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0bc4f30c23c288b81b76264bd9530a741d69cf12",
-              "author_name": "axb",
-              "message": "add new task command (#1648)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "45299a9aea98933d864573c2cbfcb370869aeba4",
-              "author_name": "Peter Dave Hello",
-              "message": "Fix the supportsPromptCache value for OpenAI models (#1923)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "ec423a715cc4d4ce11ec5eb09491eb5dff41067a",
-              "author_name": "Diarmid Mackenzie",
-              "message": "Fetch instructions (#1869)",
-              "ai_signals": [
-                {
-                  "tool": "unknown_ai",
-                  "signal_type": "ai_review_bot",
-                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
-                  "confidence": 0.4
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8613daf515fbd5302666b82a8258f98c45ae62d9",
-              "author_name": "Samuel",
-              "message": "Added Gemini 2.5 Pro model to Google Gemini Provider (#1974)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "6258493f0d5b89f31f245230795a7bad29dcd3b8",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1967)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b8549f1f26a4fa553c78995d49faad36d4840b6e",
-              "author_name": "Matt Rubens",
-              "message": "Auto-approval logic for fetch_instructions (#1976)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "f773bc3024f1e086c955d723134d8d180f983b64",
-              "author_name": "Diarmid Mackenzie",
-              "message": "Remove \"Enable Custom Mode Creation Through Prompts\" toggle (#1980)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3cd549b81149d7ff9121f5277bb372d1341f07e7",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1978)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2c77043801c103db51ed7577ae0c9d2fb6e6d7a7",
-              "author_name": "Matt Rubens",
-              "message": "v3.10.4 (#1983)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1d1c33549cfb5e6fc8440627fe8916bc0d4c12dc",
-              "author_name": "R00-B0T",
-              "message": "Changeset version bump (#1947)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "f071a43b266022e2989e9140c739a4f57a89ebdb",
-              "author_name": "Eugène P.",
-              "message": "Updated value of max tokens for gemini-2.5-pro-03-25 to correct one (#1985)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7d2b6b7d3d1f67ef37df3ae0e4ad4648c80d3973",
-              "author_name": "Matt Rubens",
-              "message": "v3.10.5 (#1986)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1f36694e2d9322f9f2c8d0f0729d973782ae9591",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1984)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "599d451bd1cc44c07c0bde694d08f2fa0d5e289a",
-              "author_name": "Chris Estreich",
-              "message": "Fix task completion events (#1981)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "be8527c9957fe1b18b0e053e8ec1b70ed65ab129",
-              "author_name": "R00-B0T",
-              "message": "Changeset version bump (#1987)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0fd0800ba9ccb911e3754faccf3977793e970038",
-              "author_name": "Matt Rubens",
-              "message": "Show openrouter key balance on the settings page (#1990)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1fb34b81fa442c401dc998a4939f8d6b9c66d529",
-              "author_name": "Matt Rubens",
-              "message": "Show requesty key balance on the settings screen (#1995)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "55bbe88e392a392dbd789aa854847a98955ad6e5",
-              "author_name": "jwc11",
-              "message": "feat: add pinning and sorting for API configurations dropdown (#2001)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a414c7d028ccd4ec0cdd604de9d91fdec9bd4267",
-              "author_name": "Chris Estreich",
-              "message": "Wrangle our settings-related types and add support for settings import / export (#1997)",
-              "ai_signals": [
-                {
-                  "tool": "unknown_ai",
-                  "signal_type": "ai_review_bot",
-                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
-                  "confidence": 0.4
-                }
-              ],
               "touched_blamed_file": true
             },
             {
-              "sha": "4d744bb94a93c8b227766738d7b6d574b06e6361",
-              "author_name": "Matt Rubens",
-              "message": "New icon (#2020)",
+              "sha": "22c289100d55e9d7453adb8e9e7db3a502cf5551",
+              "author_name": "Peter Steinberger",
+              "message": "fix: make sandbox fs bridge POSIX-sh compatible",
               "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c62e8f2ee23d3f07393e2ef32d4b882a0e077761",
-              "author_name": "Sam Hoang Van",
-              "message": "feat @-mention window path style & file with space (#1924)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c7ac0c5db547edc500740af55a87601ef3dec411",
-              "author_name": "aheizi",
-              "message": "Support project level mcp (#1841)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b6107c62b1d3eeb6f2f71a79285b50e11e340b6c",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#1991)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3c75b81f0d7c4c509518069de5a3d305cf9cfd2b",
-              "author_name": "KJ7LNW",
-              "message": "Fix: Restore file truncation backward compatibility and fix regressions (#2022)",
-              "ai_signals": [
-                {
-                  "tool": "roo_code",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
-                  "confidence": 0.7
-                }
-              ],
               "touched_blamed_file": false
             },
             {
-              "sha": "b3efe3e4fb75651667a6a7a7de48d397fb868dde",
-              "author_name": "Chris Estreich",
-              "message": "Add execa, zod-to-ts, and tsx as dev dependencies (#2025)",
+              "sha": "795ec6aa2f311fcda6660876dbadb4ef356bc0ac",
+              "author_name": "Peter Steinberger",
+              "message": "fix: resolve main-rebase fallout for sandbox fs bridge",
               "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e464c41970dbed4ffc7a9866d752b6db56ce688c",
-              "author_name": "Chris Estreich",
-              "message": "Add tsup as a dev dependency (#2029)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0fd399de7880594ed358c7d0fcdb5a357872f691",
-              "author_name": "Chris Estreich",
-              "message": "Automatically generate `roo-code.d.ts` (including type generation via zod-to-ts) (#2024)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7eb469f636ebe26116dbdb012770ef39ebb4bc28",
-              "author_name": "Chris Estreich",
-              "message": "Re-enable ClineProvider tests (#2047)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3d0fc3ccc5aa5829b9e189d5b844727cc337bf27",
-              "author_name": "Chris Estreich",
-              "message": "Add config getters to RooCodeAPI (#2048)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d4c7493674dd46dbb820547bb86f1a39543cac88",
-              "author_name": "Chris Estreich",
-              "message": "Remove redundant zod schemas (#2051)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "317e5446fb1b6fdcd1abd37104671766ba8c3dd7",
-              "author_name": "KJ7LNW",
-              "message": "Fix list_code_definition_names to support files (#2046)",
-              "ai_signals": [
-                {
-                  "tool": "roo_code",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
-                  "confidence": 0.7
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "62a7bc7959220dedd6c04e60d2b884822f4f76c6",
-              "author_name": "Diarmid Mackenzie",
-              "message": "Refactor fetch instructions to new file (#2056)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b46f6adb78ded5d20529bb42000dc23beb79f4f8",
-              "author_name": "Matt Rubens",
-              "message": "Extract code for read_file from Cline (#2059)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e7e5511b6525e2946d4420c657b6d04c177ba19f",
-              "author_name": "Sam Hoang Van",
-              "message": "feat: prioritize \"Add to Context\" and add line number tracking (#2063)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "dbe0ede9a7148abd8b37a36aca3c356678a71ddb",
-              "author_name": "Chris Estreich",
-              "message": "Handle null [x]ModelInfo types, recover from settings schema parse errors (#2064)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "105bc3c0d5a00583627356fe7b02f70d050e08af",
-              "author_name": "Chris Estreich",
-              "message": "Require exactly node v20.18.1 (#2065)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "5fbf56321624dbe5613707fdd63cbfaeea882489",
-              "author_name": "Greg Taylor",
-              "message": "Add an activation command for other extensions (#2073)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "683ff2fd8a07f023bc676d00a062ff1ca843b6f8",
-              "author_name": "Hannes Rudolph",
-              "message": "Update bug_report.yml (#1994)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d7278d367e960e3f4f7b6506c1d9e69a12e5228f",
-              "author_name": "aheizi",
-              "message": "Fix mention file name is not fully displayed (#2026)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cbe7075f4f3f8e52bbc84518d0fae0f5db959af2",
-              "author_name": "Afshawn Lotfi",
-              "message": "In-Editor Browser Improvements (#1601)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "bedb7de72bf0e769f5a612bff7b84963f3151bcf",
-              "author_name": "Matt Rubens",
-              "message": "Add missing awaits on refactored tools (#2078)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e15fa227c5080838b1801946e2f7c273d9f5459f",
-              "author_name": "Nico Bihan",
-              "message": "Added Gemini 2.5 Pro model to GCP Vertex AI Provider (#2079)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9bb50eaba37475b679634c51c973b6098f78be3e",
-              "author_name": "Matt Rubens",
-              "message": "Display info about partial reads in chat row (#2080)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "ec01dd27ef5d3323ff76a96ce26a026c57f15be5",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#2023)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "40a0766161cde8ec961053800a4925709dd9ce06",
-              "author_name": "Matt Rubens",
-              "message": "Handle multiple API pages worth of contributors (#2088)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "db66e8df4964cf027523eb01136d608370a2da74",
-              "author_name": "github-actions[bot]",
-              "message": "Update contributors list (#2089)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e95afc250bf0fe4494366785b0ffd9847a050864",
-              "author_name": "Bhavesh Ramburn",
-              "message": "Refactor/cline.ts/list files (#2067)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "72894c22a0488b93dd11f150908cfc910c5b5dc8",
-              "author_name": "Matt Rubens",
-              "message": "Remove switch from tools (#2091)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1242ba808e766fee746ae1aa6cac19b768cdd2a9",
-              "author_name": "Matt Rubens",
-              "message": "Fix a type in the listFiles tool (#2092)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "26c3fe6535b2c265b89a9ce435736a6db743a059",
-              "author_name": "Matt Rubens",
-              "message": "Move write_to_file to a tool file (#2093)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "02f63fc522dc6e1edb13ab1923c76d87226f976b",
-              "author_name": "Matt Rubens",
-              "message": "Move apply_diff to a tool file (#2094)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d5328770e789068bc0cc75dca3884a7fa16a9527",
-              "author_name": "Matt Rubens",
-              "message": "Move insert_content to a tool file (#2095)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "bdb668b68bf7ade54c1a658250973a839af4cacf",
-              "author_name": "Matt Rubens",
-              "message": "Move search_and_replace to a tool file (#2096)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "da2af71106f8feb2e39824e82fd9cbca7356abba",
-              "author_name": "Matt Rubens",
-              "message": "Move list_code_definition_names to a tool file (#2097)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9be36ddcf3d42248a9c657ec575456f52c7af8ae",
-              "author_name": "Matt Rubens",
-              "message": "Move search_files to a tool file (#2098)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "38365085d711b5e89246db9ef0b397debfffab5a",
-              "author_name": "Matt Rubens",
-              "message": "Move browser_action to a tool file (#2099)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "937b1f3c9003a15de0e0b2e9187f039c6c3d2d5d",
-              "author_name": "Matt Rubens",
-              "message": "Move execute_command to a tool file (#2100)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9b0790fce73b14e56b1d4b7a50d898d8b9298a76",
-              "author_name": "Matt Rubens",
-              "message": "Move use_mcp_tool and access_mcp_resource to tool files (#2101)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "253d0fecb2424a74e21f829797aae63a5a0fdb2f",
-              "author_name": "Matt Rubens",
-              "message": "Move new_task, switch_mode, attempt_completion, and ask_followup_question to tool files (#2102)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "87b06476bbc054bbae57f907c5146b8ad514067f",
-              "author_name": "Matt Rubens",
-              "message": "Do a little code cleanup now that tools are refactored out (#2103)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2303f67afb37d5f71437d7776210581f28a92aec",
-              "author_name": "Chris Estreich",
-              "message": "Clean up the way we compute the current diff strategy (#2049)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cf487fbfae55a128bfdb938f274b370ae29e00d5",
-              "author_name": "feifei",
-              "message": "i18n Add translations for task pinning and unpinning (#2109)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "712ca71ee037daf20e0f6d834c356e2311f5f36f",
-              "author_name": "Matt Rubens",
-              "message": "Remove the ask promise error (#2107)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "37ecf9648b3fb859c46699fb44a93bb0747ce979",
-              "author_name": "Matt Rubens",
-              "message": "Link to the settings page from the auto approve toolbar (#2111)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "592494fb2924ef8aaff4411ff19192e3473758a0",
-              "author_name": "Matt Rubens",
-              "message": "Link to provider docs from the API options (#2112)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a7d31aa9ba819b4a608c9507634088034e4aff0d",
-              "author_name": "Matt Rubens",
-              "message": "Revert \"Remove the ask promise error\" (#2117)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2c5f95616242cb8a52e354477650b904edbee733",
-              "author_name": "Matt Rubens",
-              "message": "Parse the retry out of the gemini 429 response (#2118)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b74e1e89da35b87b6275acc8a62cf247185b385c",
-              "author_name": "Matt Rubens",
-              "message": "Fix Gemini command escaping (#2120)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d3df9547977592f47a8824f5df7d702589e2c720",
-              "author_name": "feifei",
-              "message": "Fix switching profiles to ensure only the selected profile is switche… (#2119)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "60e122f2ca5fb57d114e569e903019a635fb3bfc",
-              "author_name": "Matt Rubens",
-              "message": "Tweaks to support prompt line number format (#2121)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b788aa1ec4f2f683b4f6d5a14befaadc33ad4d36",
-              "author_name": "Matt Rubens",
-              "message": "Remove the ask promise error (#2123)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "520326648b0ae8557ca98e6fe2e7bf21210a53db",
-              "author_name": "Matt Rubens",
-              "message": "Revert \"Remove the ask promise error\" (#2126)",
-              "ai_signals": [],
-              "touched_blamed_file": null
+              "touched_blamed_file": true
             }
           ],
-          "squash_merge_sha": "7457e679cf73f722f6db7a204ec7be903a4f4fd3"
+          "squash_merge_sha": "29d783958287b7e3216c1e8c9630f28261105c48"
         }
       ],
       "fix_commits": [
         {
-          "sha": "4da5627eb31208020669303f418c28e726c6f99e",
-          "repo_url": "https://github.com/Kilo-Org/kilocode",
-          "source": "github_advisory_pr"
-        },
-        {
-          "sha": "2fdddf89edba41ec3a527134e485a3388c464333",
-          "repo_url": "https://github.com/Kilo-Org/kilocode",
-          "source": "github_advisory_pr"
+          "sha": "370d115549c0dadace0902775eea0d5094aedfdc",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
         }
       ],
       "references": [
-        "https://github.com/Kilo-Org/kilocode/pull/2244/commits/2fdddf89edba41ec3a527134e485a3388c464333",
-        "https://vuldb.com/?ctiid.327382",
-        "https://vuldb.com/?id.327382",
-        "https://vuldb.com/?submit.667004",
-        "https://mcpsec.dev/advisories/2025-10-02-kilo-code-ai-agent-supply-chain-attack/"
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-9f72-qcpw-2hxc",
+        "https://github.com/openclaw/openclaw/commit/370d115549c0dadace0902775eea0d5094aedfdc"
       ]
     },
     {
@@ -8346,7 +9278,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "This commit is the first one that introduced the vulnerable SVG rendering path in the file manager: `git log -S` traces `dangerouslySetInnerHTML={{ __html: content }}` back to `a7fa4039`, and the pattern is absent in the prior release (`5cd9de9`). Blame on the pre-fix file viewer points the vulnerable lines to `a7fa4039`, where attacker-controlled SVG content is inserted directly into the DOM. The fix replaces that behavior with a base64 `data:image/svg+xml` URL rendered through `<img>`, confirming `a7fa4039` authored the stored XSS.",
+      "how_introduced": "This commit added the original FileViewer implementation at `src/ui/Desktop/Apps/File Manager/components/FileViewer.tsx`, including the SVG preview branch that renders remote file contents with `dangerouslySetInnerHTML={{ __html: content }}`. `git blame` on the vulnerable pre-fix lines in the later renamed file traces line 723 (`dangerouslySetInnerHTML`) back to this commit, and `git log -S dangerouslySetInnerHTML` shows the pattern first appears here and is only removed by the fix. That is the stored-XSS sink fixed in `ad86c204` by switching SVG rendering to a base64 data URL inside `<img>`/`PhotoView`.",
       "root_cause": "",
       "vuln_type": "",
       "verdict": "CONFIRMED",
@@ -8374,7 +9306,7 @@
           "blame_confidence": 1.0,
           "screening_verification": {
             "verdict": "UNRELATED",
-            "reasoning": "The blamed commit solely modifies UI logic for a Credential Editor component (handling how SSH keys are uploaded or pasted), whereas the vulnerability (XSS and LFI in File Manager) is located in the backend file management logic. The changes in the blamed commit do not involve file path processing, filesystem operations, or rendering of user-provided filenames, making it unrelated to the reported vulnerability.",
+            "reasoning": "The blamed commit modifies UI logic for a Credential Editor component, specifically handling how SSH keys are uploaded or pasted. The vulnerability identified is a Stored XSS and LFI issue within the 'File Manager' component of the backend, which is unrelated to the credential management UI logic modified in this commit.",
             "model": "osv+gemini-3.1-flash-lite-preview",
             "vuln_type": "Stored XSS and LFI",
             "vuln_description": "The File Manager lacked sufficient input sanitization and validation on file operations and metadata, allowing an attacker to inject malicious scripts (Stored XSS) and manipulate file paths to access unauthorized local files (LFI).",
@@ -8391,9 +9323,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit is the first one that introduced the vulnerable SVG rendering path in the file manager: `git log -S` traces `dangerouslySetInnerHTML={{ __html: content }}` back to `a7fa4039`, and the pattern is absent in the prior release (`5cd9de9`). Blame on the pre-fix file viewer points the vulnerable lines to `a7fa4039`, where attacker-controlled SVG content is inserted directly into the DOM. The fix replaces that behavior with a base64 `data:image/svg+xml` URL rendered through `<img>`, confirming `a7fa4039` authored the stored XSS.",
+                "reasoning": "This commit added the original FileViewer implementation at `src/ui/Desktop/Apps/File Manager/components/FileViewer.tsx`, including the SVG preview branch that renders remote file contents with `dangerouslySetInnerHTML={{ __html: content }}`. `git blame` on the vulnerable pre-fix lines in the later renamed file traces line 723 (`dangerouslySetInnerHTML`) back to this commit, and `git log -S dangerouslySetInnerHTML` shows the pattern first appears here and is only removed by the fix. That is the stored-XSS sink fixed in `ad86c204` by switching SVG rendering to a base64 data URL inside `<img>`/`PhotoView`.",
                 "confidence": 0.95,
-                "tool_calls_made": 68,
+                "tool_calls_made": 98,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -9285,10 +10217,10 @@
           "squash_merge_sha": "a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a"
         },
         {
-          "sha": "8ec22b217710758a06bc4cc4c36e926f3ea02411",
+          "sha": "e2591d616bf465dff35ff8126eb7f907ed34d7a0",
           "author": "Luke Gustafson",
           "date": "2025-11-05T10:36:16-06:00",
-          "message": "v1.8.0 (#429)",
+          "message": "Dev 1.8.0 (#399)",
           "ai_signals": [
             {
               "tool": "claude_code",
@@ -9308,7 +10240,7 @@
           "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
-            "confidence": 0.7,
+            "confidence": 0.95,
             "models": [
               "gpt-5.4"
             ],
@@ -9316,14 +10248,730 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit did not originally create the SVG XSS, but it introduced the Electron-side design changes that made that XSS lead to local file impact: it changed `electron/main.cjs` from `webSecurity: !isDev` to `webSecurity: false` and added `allowRunningInsecureContent: true` and `webviewTag: true`. Those are exploit-enabling security regressions for the Electron variant of the CVE, and the investigation guidance treats such enablers as relevant BICs. Its file-manager `FileViewer` addition is mostly a path move/copy, but the Electron configuration changes are substantive and security-relevant.",
-                "confidence": 0.7,
-                "tool_calls_made": 68,
+                "reasoning": "This commit changed Electron from `webSecurity: true` to `webSecurity: false` and added `allowRunningInsecureContent: true` in `electron/main.cjs`. The XSS already existed, but this commit introduced the Electron-specific privilege escalation path described in the CVE by disabling renderer security checks, making the stored XSS materially more dangerous in Electron (the LFI impact). Under the investigation rules, this is a causal enabler BIC even though it did not create the original browser-side XSS sink.",
+                "confidence": 0.95,
+                "tool_calls_made": 98,
                 "steps_completed": [],
                 "evidence": []
               }
             ]
-          }
+          },
+          "decomposed_commits": [
+            {
+              "sha": "e2591d616bf465dff35ff8126eb7f907ed34d7a0",
+              "author_name": "Luke Gustafson",
+              "message": "Dev 1.8.0 (#399)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "google_gemini",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: gemini-code-assist[bot] <176961590+gemini",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "57cfea2ca8ca60694c2e9f09a9568ba45960686a",
+              "author_name": "LukeGus",
+              "message": "fix: Improve TOTP reliability, move components around, turn homepage update log into a sheet",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "caa270c77dd60894fe73d163b9dbbb5d27c1f06f",
+              "author_name": "LukeGus",
+              "message": "fix: Work more on TOTP, renamed homepage to dashboard and began improvements",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "29202c31fe6c22f7b0d523efba23c50bbf5970d6",
+              "author_name": "LukeGus",
+              "message": "fix: test commit",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0db24f4012bdad5ce172cc46f27ad7d166a7a5c2",
+              "author_name": "LukeGus",
+              "message": "fix: Fix server stats login",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "87c8cdd4450de1195a25dd4c8a7dcaf636add0ef",
+              "author_name": "LukeGus",
+              "message": "feat: Complete layout of Termix dashboard",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3901bc9899262e0c763e1509969c6f7319a92952",
+              "author_name": "LukeGus",
+              "message": "feat: Update font for reacent activity",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a44e2be8a4461eda8d870b1d91f9d779d985c9cf",
+              "author_name": "LukeGus",
+              "message": "feat: Connect dashboard to backend and update tab system to be similar to a browser (neither are fully finished)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "eda60ae3b6eafb7cbbd3ff1d7eb5959e4db9a383",
+              "author_name": "LukeGus",
+              "message": "feat: Improve dashboard API, improve tab system, various other fixes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7d76731ee9183f100cd4a8e6b76d2e3541377f35",
+              "author_name": "LukeGus",
+              "message": "fix: Resize dashboard boxes and reduce server stats size to add scrolling",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "91f9a24f36e60a82ee9d6b850097ac5fe895c89b",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "55d4d658b7de2a225bf57e9168477450fb839338",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e34ff2153dfddc87afb41988b98cc7fff9ab06cc",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f6556fdb089201633926e70647ff1a6ae2c2003a",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d34d195e510dae66fc88b12cb7d4d0745d1fcc2b",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9d11cbd238e8bbbbdfc199230c5d82bef24f7691",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0250de4b71c0f99c451c9f43e0302d52f9eefd41",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e6445b2dc4ac9a8c7d357fb6da42a3ac495a5359",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c7177a0fd1bf906f7604ece57f9df147f5f77341",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8238c4be814b3b547d4b8674cc7b5b8134d8909f",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c8b2568368d02e5c07cc59be145b66f63e90ad58",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bedaefbdeeba32949137902787780e6bf055000e",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d4d992f5c0a07301ac873693ad3e57aa2d0e491f",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "34f11172298affe5b004f2b83b516d917684c119",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bdf00cd5574aacd225c205d13063e7b1aca7ce89",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4296dc24c3642fe4c4600fe4cc12be7bad19863c",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b7be795797af098309a66a1261171d345c904c60",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "063f12b043b34a29ca5c11a082a0793b742a1a9d",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "989fea60e4ee3f3abaca182b25072a8095ec8c31",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "792f402df4af19dcbf325c9b10a7f4a934dfcdb6",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ec4b0aec867f8e416cd540cb96829ea90f304925",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d6c0ebb80ea9a52e030111af3b32b086fe4c2694",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b0156cba4a46a072d4ec6dac2c2bd62cfa626e5d",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "abfb2d11d0311fb556bff0c3991a7c24b2009f51",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "414754372ffc1e0d7d7884bcc736db59f9065c0a",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d8ac440a1235078cf7b84963b24d0e7a51965c03",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "00f023e8fae332a3fcc8647e68132959037235f1",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "16ece95f6f37d6fded7a2c10483eacb9adff3f23",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c862557f31b0c494387aef543d9d26e3e9258d5a",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a35debb81c4666f73b530db57b06ec83df54b151",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "6e62bd56347cbe62efc5744eb6a7976d9dab6804",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "956171ce089b51f5fdce5cd6627eb1177205153f",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c38cfc28504b65e111ae9179133a46b7b499a6ba",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f25ef9db12eaac6f640a46672faa037ad410fcd4",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bfd285268ada1b3cbde06436f81cd3e740f54be6",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5c0fed63a7d0785e7126b993b6997080f48d215e",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "21d8cf9b2cfa3ac38d9312f36ce90c28ada5f849",
+              "author_name": "LukeGus",
+              "message": "fix: Improve macOS support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5cc3e47c1a7303f8eb93c131718fbeeba0f4b511",
+              "author_name": "suraimu-team",
+              "message": "fix(auth): Fix admin user authentication for /users/db-health endpoint by adding cookie JWT support (#422)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e8120386d0e8980661b1945bb2d052b767194c3c",
+              "author_name": "Luke Gustafson",
+              "message": "Update Docker login credentials and image names",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ba6a0bb5472833309906ae14a3b6badaa2c67756",
+              "author_name": "Luke Gustafson",
+              "message": "Update docker-image.yml",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d49c68896ceaa05450f38aa00b037f00f735ffdb",
+              "author_name": "Luke Gustafson",
+              "message": "Refactor Docker image workflow for registry options",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "19aaeff3ffae84bd615614ddc303981bc990a1a8",
+              "author_name": "Luke Gustafson",
+              "message": "Update Docker login conditions and tag handling",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "26ba8945da78b2d070bff7d246e1ecb874816bfa",
+              "author_name": "Luke Gustafson",
+              "message": "Enhance Docker image workflow with better tagging",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8845521ef7d7127e48afb0726625efdc63b47200",
+              "author_name": "Luke Gustafson",
+              "message": "Update Docker workflow for tag handling and cleanup",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4f91984032251050a264c550fa2ce9d4daed4dad",
+              "author_name": "Luke Gustafson",
+              "message": "Update docker-image.yml",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1a37888a4e8394d9749b222f6f651053f3d5d3e3",
+              "author_name": "Luke Gustafson",
+              "message": "Update Docker workflow inputs and tag logic",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9bbff4aa4a9f86f0cd4a0a99eb4f4b28a3171993",
+              "author_name": "Luke Gustafson",
+              "message": "Update Docker image workflow for multi-platform builds",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f6f42cf937872c091164f64759ddc1a29c17bb4c",
+              "author_name": "Luke Gustafson",
+              "message": "Refactor Docker image tags for clarity",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e969672350f912402ffee72f060e0eea58baab0e",
+              "author_name": "Luke Gustafson",
+              "message": "Fix typo in exposed ports in Dockerfile",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f2102e6fe20c76b9ca392fd2ecd1d8e2850cbb25",
+              "author_name": "Luke Gustafson",
+              "message": "Update docker-image.yml",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "19ab2011d96bd9d547a0f2c1409f0a51bb8389cf",
+              "author_name": "Luke Gustafson",
+              "message": "Refactor Docker image workflow for registry handling",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "232d6fe6ea074aea6b0517319346bdff9c6ec617",
+              "author_name": "Nikola Novoselec",
+              "message": "Handle OIDC users during database import (#424)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "217af1e28621556ba78b844abff117a8d4379278",
+              "author_name": "LukeGus",
+              "message": "fix: Fixed various issues with the dashboard, tab bar, and database issues",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "40232af503a0481271beee2d79cc8abe31d9ec72",
+              "author_name": "LukeGus",
+              "message": "Merge remote-tracking branch 'origin/dev-1.8.0' into dev-1.8.0",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "471e2ff3fa083632ba75ba9f8b38b902fb6b6fc1",
+              "author_name": "LukeGus",
+              "message": "feat: Added none password option and fixed some navbar issues (still present)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0e8beaaa64da23cdac685e71a12a0b14b2bb15e7",
+              "author_name": "LukeGus",
+              "message": "fix: Fix tab reload/state loss whenever moving them to the rigbht",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f9411bec0086520d1253aa8b3af2f2cc101e40be",
+              "author_name": "LukeGus",
+              "message": "feat: Make tabs auto expand and contract and scroll",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ee3101c5c666ae84fc1708543aa4e06e710c01fa",
+              "author_name": "LukeGus",
+              "message": "fix: Remove vertical scrolling in the tab bar and dashboard and reduce scrollbar height in tab bar",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "785cf44a087eecc9fd934fe74754efa9a9689a30",
+              "author_name": "LukeGus",
+              "message": "feat: Add many terminal customizations",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8813e60ead136e37c48fe060408679c0fd503b02",
+              "author_name": "LukeGus",
+              "message": "feat: Add many terminal customizations",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4b0d09afe6174c9a85da4d7450be07281ec00c95",
+              "author_name": "LukeGus",
+              "message": "fix: incorrect macOS logo, termix hangs on macOS, and macOS reporting incorrect version",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e25534098962c6a38b1313dcdbf470d6936ebd2f",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS verison build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d8433a749b9c356b3183760cada695c604ff7660",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fe83e7866302ee02831b6d107cd7c5d02de2b5c1",
+              "author_name": "LukeGus",
+              "message": "fix: replaced macOS icon",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "918b67d737b46719b20412b4b56bbf257d7edad5",
+              "author_name": "LukeGus",
+              "message": "feat: Added more output types for electron and streamlined the workflow",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ef614c48799f2c93b7160fbfaea6aeb643284cb6",
+              "author_name": "LukeGus",
+              "message": "fix: Rollup package issue",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b22e1e219def535bdc4eb1fa0e2bb6a7a4608be4",
+              "author_name": "LukeGus",
+              "message": "fix: Rollup package issue for macOS",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "894d3d925d1fad8dec4e5c5e10a98ccb380f3532",
+              "author_name": "LukeGus",
+              "message": "feat: fix macOS/Linux build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4922f176a39003e4a55b69d70f7c4a680b7c4b60",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ccdcb1fe8b9e439e5fadce487d43cf7498a7fafd",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error and double folder issues",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "90c59982e43a96c95b100d9a15bfed92169b3b70",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c9ef98fb36f4729873aa6123b59f3b8da9fc1073",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2225100c680befbc31d3ae79f853fe8984c8d2ef",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a08cd7caaddeb14ce85fb721906f12e619f8015b",
+              "author_name": "LukeGus",
+              "message": "fix: fix macOS build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d587c4f2a06bd5074d680e8124b23a22f9e8a659",
+              "author_name": "LukeGus",
+              "message": "fix: files uploading as folders instead of raw executable",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "836b91e8c086ec8bdcf916752253b25b03f4d8c3",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d0bcaaaf84ac3497d855995156cc2118499ca13d",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e131baf1c35199f649afaa72fc2db2da8dc6cec3",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a27cff58c67610eb66f7cdbfe9b01dcbcb37e1a3",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8001685d99dfcc28f3d35b5c5aae2c1897a8a7ee",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "96d2a78bd124ecb7d389655c839465aac4ffcccd",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d408c91a9ac0bf2728c9e645eb79deef5b9b1118",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "34c6eefafd19819e8092939126ce901087d833b5",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1e95b3fa2667d03547db6967b37af65d55074ef0",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "10b552cad8ecf3891ec1ae022882f329e97878e1",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ca88749dc2e6b0a4ff38a7bddd631286a39c0955",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d3cd1b5e8e7a4d1f292f55a84acd5c0820152e53",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4fd2b7eff06216d5fd162b3ce6c4e060e66a05a1",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5dda3b91d8fa9de42b0617f357a0799f45db69d4",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing and update workflow options",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "584120317bc5e667ababef064d06ceb00d589e27",
+              "author_name": "LukeGus",
+              "message": "fix: macOS build failing",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "8ec22b217710758a06bc4cc4c36e926f3ea02411"
         }
       ],
       "fix_commits": [
@@ -10662,6 +12310,198 @@
         "https://github.com/AsfhtgkDavid/theshit/security/advisories/GHSA-2j3p-gqw5-g59j",
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/21xxx/CVE-2026-21882.json",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-21882"
+      ]
+    },
+    {
+      "id": "GHSA-p7gr-f84w-hqg5",
+      "description": "OpenClaw's sandboxed sessions_spawn now enforces sandbox inheritance for cross-agent spawns",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-269",
+        "CWE-284"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T21:53:45Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit created `src/agents/subagent-spawn.ts` and reimplemented the cross-agent spawn logic in `spawnSubagentDirect()` without any sandbox-inheritance check. The fix commit directly inserts the missing `resolveSandboxRuntimeStatus()` guard into that new helper, and blame on the fix parent attributes the relevant pre-check/cross-agent block to this commit. It also added the `/subagents spawn` command, so it introduced a fresh vulnerable implementation and an additional entry point.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+          "author": "Joshua Mitchell",
+          "date": "2026-02-16T10:07:22-06:00",
+          "message": "feat(commands): add /subagents spawn command",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/subagent-spawn.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "advisory_version",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The fix commit addresses a sandboxing/authorization bypass where subagents could escape restricted environments. The blamed commit simply introduced the initial implementation of the `spawnSubagentDirect` function. The vulnerability description (unauthorized access to owner-only tools) is completely distinct from the 'SSRF' analysis provided in the prompt, and the blamed commit simply establishes basic functionality.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "SSRF (Server-Side Request Forgery)",
+            "vuln_description": "The application allowed web search citation redirects to private network addresses, enabling attackers to probe internal services.",
+            "vulnerable_pattern": "Permissive URL redirection logic in web search tool allowing requests to private network CIDR ranges",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created `src/agents/subagent-spawn.ts` and reimplemented the cross-agent spawn logic in `spawnSubagentDirect()` without any sandbox-inheritance check. The fix commit directly inserts the missing `resolveSandboxRuntimeStatus()` guard into that new helper, and blame on the fix parent attributes the relevant pre-check/cross-agent block to this commit. It also added the `/subagents spawn` command, so it introduced a fresh vulnerable implementation and an additional entry point.",
+                "confidence": 0.95,
+                "tool_calls_made": 61,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+              "author_name": "Joshua Mitchell",
+              "message": "feat(commands): add /subagents spawn command",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5a3a448bc48dc9e72530b46195476a48845bb8da"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "085c23ce5a26ecfc6d2bf9d439ecb41f53173f81",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3a93a7bb1e47070a010cc190d005daa2ada8f0e5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4ba0a4d4fb852e010c53d2e011b961f7337633e4",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fa9148400e53caa81f13e65dee02ab200c3eebbb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6210d2e238e16629c79840192da1a592ac44fa15",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2dcd2f909449d55324e2305836df2058d4c0599d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "aaa7de45fa3c64524740c6d24aee68e18ef56355",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "757e09fe43502bbcea3faac2fc0e49e067f5a22f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "002539c01e04411453994ab369f4444824472f23",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "134296276a66510570df580df49e167556990077",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "11d34700c0fe828c91e393ea5a9e877d96619e98",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "53d6e07a601b83fe2ed03ebcf667ca68f315cb4f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6f63fc288af9960d08bd45d093d90e1f643ef343",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "348a7dd5b3d5a9e19e518e9ea35a59143251eb4a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba430cc65b2823a08a1fca1c9bfca593d71c4e69",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "930841cd7c2b2d5d6ef29ff170a188dd8a06b169",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "98e30dc2a3b673a053fa2f2638c5508405f2dfb0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3f056a72949541bdb44a94383887bd25434964ab",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "da00ead65218f847f762dc998b125f28144f7624",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-p7gr-f84w-hqg5"
       ]
     },
     {
@@ -12878,6 +14718,172 @@
       ]
     },
     {
+      "id": "GHSA-g99v-8hwm-g76g",
+      "description": "OpenClaw has web_search citation redirect SSRF via private-network-allowing policy",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T22:03:09Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.57,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This feature commit added Gemini as a `web_search` provider, extracted citation URLs from Gemini grounding metadata, and introduced `resolveRedirectUrl()` to issue `HEAD` requests with `redirect: \"follow\"` on those citation URLs. That initial implementation used plain `fetch` with no SSRF guard or private/internal-network blocking, so the citation redirect SSRF behavior existed from the feature’s first introduction. It is the root origin of the vulnerable redirect-resolution path.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "3a3c2da9168f93397eeb3109d521819e10dc44fd",
+          "author": "AkosCz",
+          "date": "2026-02-23T08:30:51-06:00",
+          "message": "[Feature]: Add Gemini (Google Search grounding) as web_search provider (#13075)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/tools/web-search.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "advisory_version",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This feature commit added Gemini as a `web_search` provider, extracted citation URLs from Gemini grounding metadata, and introduced `resolveRedirectUrl()` to issue `HEAD` requests with `redirect: \"follow\"` on those citation URLs. That initial implementation used plain `fetch` with no SSRF guard or private/internal-network blocking, so the citation redirect SSRF behavior existed from the feature’s first introduction. It is the root origin of the vulnerable redirect-resolution path.",
+                "confidence": 0.95,
+                "tool_calls_made": 75,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "085c23ce5a26ecfc6d2bf9d439ecb41f53173f81",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3a93a7bb1e47070a010cc190d005daa2ada8f0e5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5b62d5603d7f35541a15378a909e41a16415a447",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fa9148400e53caa81f13e65dee02ab200c3eebbb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8247c25a32a34be30b9e25d064ec85976d5df09d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "aaa7de45fa3c64524740c6d24aee68e18ef56355",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "757e09fe43502bbcea3faac2fc0e49e067f5a22f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "134296276a66510570df580df49e167556990077",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4ba0a4d4fb852e010c53d2e011b961f7337633e4",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6f63fc288af9960d08bd45d093d90e1f643ef343",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "348a7dd5b3d5a9e19e518e9ea35a59143251eb4a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba430cc65b2823a08a1fca1c9bfca593d71c4e69",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "930841cd7c2b2d5d6ef29ff170a188dd8a06b169",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3f056a72949541bdb44a94383887bd25434964ab",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "da00ead65218f847f762dc998b125f28144f7624",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "32ee2f0109a4ecfe44c64969b7438cd30a6a3656",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "67609cc16fbc25bb64d53b6d0a8d1fda842b1569",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "1c0d36eed009f11bb41f717a270d5b83872373cc",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "edd93195529651d02ad5568aaf7a389aa33c8868",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-g99v-8hwm-g76g"
+      ]
+    },
+    {
       "id": "CVE-2025-66689",
       "description": "A path traversal vulnerability exists in Zen MCP Server before 9.8.2 that allows authenticated attackers to read arbitrary files on the system. The vulnerability is caused by flawed logic in the is_dangerous_path() validation function that uses exact string matching against a blacklist of system directories. Attackers can bypass these restrictions by accessing subdirectories of blacklisted paths.",
       "severity": "MEDIUM",
@@ -13327,10 +15333,10 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "ecad5addcae1dfc3b9bd9865ea5977aef5f16843",
-          "author": "mootz12",
+          "sha": "184c1e398317ddb6d75d014b18235f7cdb59b255",
+          "author": "Siddharth Suresh",
           "date": "2026-01-12T18:21:49-05:00",
-          "message": "Add bn254 support and expose poseidon/poseidon2 host functions (#1667)",
+          "message": "Update bn254 typenames and add mapping (#1645)",
           "ai_signals": [
             {
               "tool": "github_copilot",
@@ -13359,7 +15365,150 @@
                 "evidence": []
               }
             ]
-          }
+          },
+          "decomposed_commits": [
+            {
+              "sha": "3cf10a984dba03f68b4f2ed653b715063e983bba",
+              "author_name": "Jay Geng",
+              "message": "Add bn254 support (#1615)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "eb829477e1bcd6305048d6715233598783d8b915",
+              "author_name": "Jay Geng",
+              "message": "Implement Poseidon, Poseidon2 (#1618)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d64ed4c27f9d3c919d4c5369de40a9ba88163f2c",
+              "author_name": "Siddharth Suresh",
+              "message": "Bump env to update bn254 encoding. (#1628)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e516750bd3e2d7624096b9681ad4174f6a7011a0",
+              "author_name": "Matteo Lisotto",
+              "message": "Feature/bn254 neg trait (#1630)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "92d0c7c80ce776b24ef1febb1a7fcec5e0a6389d",
+              "author_name": "Siddharth Suresh",
+              "message": "Main into v25 (#1647)",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8a417950eea7739e03f5e68900c7c06d5595765e",
+              "author_name": "Siddharth Suresh",
+              "message": "Update dependencies (#1649)",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "184c1e398317ddb6d75d014b18235f7cdb59b255",
+              "author_name": "Siddharth Suresh",
+              "message": "Update bn254 typenames and add mapping (#1645)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b23e7d58fa2f3400c5739aaba67046fda8a76f0d",
+              "author_name": "mootz12",
+              "message": "Merge main into release/v25-preview (#1661)",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b3de2659b142be840e82156c3c12da49508b6b1f",
+              "author_name": "mootz12",
+              "message": "Merge remote-tracking branch 'origin' into release/v25-preview",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "984f63e07b08108d6e796a4854ce811ea48c2f53",
+              "author_name": "Jay Geng",
+              "message": "Add comprehensive Poseidon/Poseidon2 support for BN254 and BLS12-381 (#1663)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1b9c6c9b2d01126223cff5a084b0742d5ec3e5bf",
+              "author_name": "Leigh",
+              "message": "Merge branch 'main' into release/v25-preview",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bfd0cc0ab2e31e287ff848ac0d192e4bd6aca5c0",
+              "author_name": "Jay Geng",
+              "message": "improve formatting",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7c86a2add9c94b9c4d33406fd174954c31183baf",
+              "author_name": "Jay Geng",
+              "message": "mention arkworks licence",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4667e58b20e3bbed726fc16c11978746dee4cf59",
+              "author_name": "Jay Geng",
+              "message": "fmt",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4e43bfe9672163b6550a0d25157c59167347eb4d",
+              "author_name": "Jay Geng",
+              "message": "Remove Poseidon, Poseidon2 (#1674)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2f48e6b25f7750d29ffb3366f174504b1755d412",
+              "author_name": "mootz12",
+              "message": "Merge remote-tracking branch 'origin' into release/v25-preview",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8ffe5a152cd368596109bb8934e8507ce9873c1e",
+              "author_name": "mootz12",
+              "message": "chore: expand-tests",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "ecad5addcae1dfc3b9bd9865ea5977aef5f16843"
         }
       ],
       "fix_commits": [
