@@ -16,6 +16,11 @@ import re
 import subprocess
 from pathlib import Path
 
+from cve_analyzer.commit_scoring import (
+    _DEP_BUMP_RE as _DEP_BUMP_MSG_RE,
+    _RELEASE_RE as _RELEASE_MSG_RE,
+)
+
 BACKUP_DIR = Path.home() / ".cache" / "cve-analyzer" / "backup-2026-03-15" / "results"
 CLONE_DIR = Path.home() / ".cache" / "cve-analyzer" / "repos"
 
@@ -27,32 +32,6 @@ TAG_BASED_SOURCES = frozenset({
 
 # PR-based sources may point to squash-merge commits not discoverable via git log
 PR_BASED_SOURCES = frozenset({"github_advisory_pr"})
-
-# -- Commit quality filters --
-
-_RELEASE_MSG_RE = re.compile(
-    r"(?:^|\] )(?:chore\(release\)|release[:(]|bump[: ])|"   # original patterns, allow [tag] prefix
-    r"(?:^|\] )v?\d+\.\d+\.\d+\b|"                           # version-only messages
-    r"\bbumped?\s+version\b|"                                 # "Bumped version for X release"
-    r"\bprepare\s+(?:for\s+)?release\b|"                      # "prepare release" / "prepare for release"
-    r"^(?:preparing|cut)\s+release\b|"                         # "Preparing release 4.0.0"
-    r"^RELEASE[- ]NOTES|"                                     # RELEASE-NOTES: synced
-    r"^This is the \d+\.\d+ release|"                         # prose release messages
-    r"^Changelog\s+for\s+\d+\.\d+|"                           # Changelog entries
-    r"^\S+\s+\d+\.\d+\.\d+$|"                                # "ProjectName 3.4.6" (version-only)
-    r"^go\d+\.\d+\.\d+\b|"                                   # Go release tags: "go1.24.12"
-    r"^`?\d+\.\d+\.\d+`?\s+(?:and\s+`?\d+\.\d+|$)",         # "1.4.1 and 1.4.2", "1.4.1"
-    re.IGNORECASE,
-)
-
-_DEP_BUMP_MSG_RE = re.compile(
-    r"^bump\s+\S+\s+from\s+\S*\d+\.\d+\S*\s+to\s+\S*\d+\.\d+\S*|"
-    r"update\s+\S+\s+requirement\s+from|"
-    r"^chore\(deps\)|^build\(deps\)|"
-    r"^Merge\s+pull\s+request\s+#\d+\s+from\s+dependabot/|"
-    r"^update\s+(?:composer|npm|pip|cargo|go)\s+dependencies\b",  # "Update Composer dependencies"
-    re.IGNORECASE | re.MULTILINE,
-)
 
 _TEST_MSG_RE = re.compile(
     r"^test[:(]|^spec[:(]|^fixture|"       # test: prefix
@@ -84,7 +63,9 @@ _NON_CODE_PATTERNS = re.compile(
     r"(?:^|/)CODEOWNERS$|"                  # CODEOWNERS
     r"(?:^|/)(?:configure|Makefile)$|"      # build config
     r"(?:^|/)m4/|"                          # autoconf macros
-    r"(?:^|/)composer\.json$",              # packaging metadata
+    r"(?:^|/)composer\.json$|"              # packaging metadata
+    r"(?:^|/)\.changeset/|"                 # changeset release files
+    r"(?:^|/)\.release-please",             # release-please config
     re.IGNORECASE,
 )
 
