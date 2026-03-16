@@ -1010,7 +1010,7 @@ def _recompute_ai_confidence(result: dict) -> float:
             continue
         # Only consider authorship signals — workflow signals don't prove
         # AI wrote the code (mirrored from pipeline.py).
-        authorship = [s for s in signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        authorship = [s for s in signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
         if not authorship:
             continue
         ai_bic_count += 1
@@ -1024,7 +1024,7 @@ def _recompute_ai_confidence(result: dict) -> float:
     # Indirect-only penalty (mirrored from pipeline.py)
     if max_score > 0 and best_bic is not None:
         best_signals = best_bic.get("commit", {}).get("ai_signals", [])
-        best_authorship = [s for s in best_signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        best_authorship = [s for s in best_signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
         if best_authorship and all(
             s.get("signal_type", "").startswith("squash_decomposed")
             for s in best_authorship
@@ -1066,7 +1066,7 @@ def build_cve_entry(
         if verdict == "UNRELATED":
             continue
         for sig in signals:
-            if sig.get("signal_type", "") in _WORKFLOW_SIGNAL_TYPES:
+            if sig.get("signal_type", "").removeprefix("squash_decomposed_") in _WORKFLOW_SIGNAL_TYPES:
                 continue
             tool = sig.get("tool", "")
             if tool:
