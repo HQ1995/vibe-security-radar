@@ -1255,8 +1255,7 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by: show the deep verification model with its thinking
-    # level (e.g. "gpt-5.4-high").  Screening models are not shown.
+    # Compute verified_by: show the deep verification model only.
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
     if review and review.get("verdict") in ("confirmed", "uncertain"):
@@ -1265,12 +1264,8 @@ def build_cve_entry(
         for bic in result.get("bug_introducing_commits", []):
             dv = _get_deep_verdict(bic)
             if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
-                model = dv.get("model", "")
-                confidence = dv.get("confidence", "")
-                if model and confidence and isinstance(confidence, str):
-                    verified_by = f"{model}-{confidence}"
-                elif model:
-                    verified_by = model
+                if dv.get("model"):
+                    verified_by = dv["model"]
                 break
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type.
