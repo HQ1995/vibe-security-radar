@@ -671,6 +671,33 @@ _GHSA_SEV_MAP = {
 }
 
 
+def _build_alias_map(ghsa_db_dir: str = DEFAULT_GHSA_DB_DIR) -> dict[str, set[str]]:
+    """Build {vuln_id: set_of_all_aliases} from the GHSA advisory database."""
+    alias_groups: dict[str, set[str]] = {}
+    if not os.path.isdir(ghsa_db_dir):
+        return alias_groups
+    for subdir in ("github-reviewed", "github-unreviewed"):
+        pattern = os.path.join(ghsa_db_dir, subdir, "**", "*.json")
+        for filepath in glob.glob(pattern, recursive=True):
+            try:
+                with open(filepath, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                ghsa_id = data.get("id", "")
+                aliases = data.get("aliases", [])
+                all_ids = set([ghsa_id] + [a for a in aliases if a])
+                # Merge with any existing groups
+                merged = set()
+                for aid in all_ids:
+                    if aid in alias_groups:
+                        merged |= alias_groups[aid]
+                merged |= all_ids
+                for aid in merged:
+                    alias_groups[aid] = merged
+            except (json.JSONDecodeError, OSError):
+                pass
+    return alias_groups
+
+
 def load_ghsa_severities(
     ghsa_db_dir: str = DEFAULT_GHSA_DB_DIR,
 ) -> dict[str, str]:
@@ -796,6 +823,26 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
     return True
 
 
+def _load_audit_overrides() -> set[str]:
+    """Load CVE IDs that were independently audited as true positives.
+
+    These bypass the normal pipeline verdict filter — the audit found
+    AI involvement that the pipeline missed (blame gap, verifier error, etc.).
+    File: scripts/audit_overrides.json — list of {cve_id, reason} dicts.
+    """
+    override_path = os.path.join(os.path.dirname(__file__), "audit_overrides.json")
+    if not os.path.exists(override_path):
+        return set()
+    try:
+        entries = json.load(open(override_path))
+        ids = {e["cve_id"] for e in entries if isinstance(e, dict)}
+        if ids:
+            print(f"  Audit overrides: {len(ids)} CVEs force-included.")
+        return ids
+    except Exception:
+        return set()
+
+
 def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
@@ -806,17 +853,27 @@ def filter_ai_results(
     verifier confirms it's real, a mechanical formula shouldn't
     override that.  For CVEs without deep verification, fall back to
     confidence threshold.
+
+    Audit overrides (scripts/audit_overrides.json) force-include CVEs
+    that were independently verified as true positives despite pipeline
+    rejection.
     """
+    audit_overrides = _load_audit_overrides()
     filtered = []
     excluded_by_verdict = 0
     excluded_rejected = 0
     for r in results:
         if r.get("error", ""):
             continue
+        cve_id = r.get("cve_id", "")
         # Skip rejected/withdrawn CVEs
         desc = (r.get("description") or "").lower()
         if "rejected reason:" in desc or "this cve id has been rejected" in desc:
             excluded_rejected += 1
+            continue
+        # Audit override: force-include independently verified TPs
+        if cve_id in audit_overrides:
+            filtered.append(r)
             continue
         if _has_no_confirmed_verdict(r):
             excluded_by_verdict += 1
@@ -1563,25 +1620,26 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  Excluded {len(no_tools)} CVEs with lost AI signal data (need --no-cache re-analysis).")
     entries = [e for e in entries if e.get("ai_tools")]
 
-    # Deduplicate CVE/GHSA aliases that point to the same vulnerability.
-    # Key by the set of fix commit SHAs + BIC SHAs; prefer CVE-* IDs over GHSA-*.
-    seen_fix_sets: dict[frozenset[str], dict] = {}
+    # Deduplicate CVE/GHSA aliases using the GHSA advisory database.
+    # Different CVEs can share fix commits (one commit fixes multiple vulns),
+    # so we ONLY dedup when the GHSA DB confirms they are aliases.
+    alias_map = _build_alias_map()
+    seen_canonical: dict[str, dict] = {}  # canonical_id -> entry
     deduped_entries: list[dict] = []
     for e in entries:
-        fix_key = frozenset(fc.get("sha", "") for fc in e.get("fix_commits", []))
-        bic_key = frozenset(bc.get("sha", "") for bc in e.get("bug_commits", []))
-        dedup_key = fix_key | bic_key
-        if dedup_key in seen_fix_sets:
-            existing = seen_fix_sets[dedup_key]
+        eid = e["id"]
+        canonical = min(alias_map.get(eid, {eid}))  # smallest ID as canonical
+        if canonical in seen_canonical:
+            existing = seen_canonical[canonical]
             # Prefer CVE-* over GHSA-*
-            if e["id"].startswith("CVE-") and not existing["id"].startswith("CVE-"):
-                seen_fix_sets[dedup_key] = e
+            if eid.startswith("CVE-") and not existing["id"].startswith("CVE-"):
+                seen_canonical[canonical] = e
                 deduped_entries = [x if x["id"] != existing["id"] else e for x in deduped_entries]
-                print(f"  Dedup: {existing['id']} replaced by {e['id']}")
+                print(f"  Dedup: {existing['id']} replaced by {eid} (alias)")
             else:
-                print(f"  Dedup: {e['id']} dropped (duplicate of {existing['id']})")
+                print(f"  Dedup: {eid} dropped (alias of {existing['id']})")
         else:
-            seen_fix_sets[dedup_key] = e
+            seen_canonical[canonical] = e
             deduped_entries.append(e)
     if len(deduped_entries) < len(entries):
         print(f"  Deduplicated {len(entries) - len(deduped_entries)} alias entries.")

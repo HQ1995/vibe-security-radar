@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-17T18:14:36.426603+00:00",
-  "total": 60,
+  "generated_at": "2026-03-17T18:17:34.874774+00:00",
+  "total": 59,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -1632,1024 +1632,6 @@
       ]
     },
     {
-      "id": "GHSA-2m67-cxxq-c3h8",
-      "description": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
-      "severity": "HIGH",
-      "cvss": 8.8,
-      "cwes": [
-        "CWE-22",
-        "CWE-62"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-12T16:37:49Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Rust"
-      ],
-      "confidence": 0.95,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This is the real introducer of the dangling-symlink bypass in `src/security/path.rs`. It added `check_symlink_escape()` with `if current.exists()` before canonicalization; `f50c17e1` directly replaces that with `symlink_metadata()` because `exists()` follows symlinks and returns false for dangling ones. The vulnerable logic fixed by the advisory is therefore authored here.",
-      "root_cause": "",
-      "vuln_type": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "120e5dd2a40c27865514329f1cb27e4b6279668c",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:58:14+08:00",
-          "message": "feat(tools): add path traversal protection to filesystem tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `resolve_path` pattern that performs path validation at the beginning of the operation but fails to account for TOCTOU (Time-of-Check Time-of-Use) vulnerabilities, as it does not re-validate the path immediately before the I/O operation. By relying solely on this single initial resolution/validation step, the code became susceptible to race conditions where the file system state (e.g., symlinks) could change between the initial check and the subsequent read/write operation.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path traversal/Symlink race condition",
-            "vuln_description": "The application fails to properly validate file paths against boundaries, allowing symlink or hardlink attacks (TOCTOU) to access unauthorized files.",
-            "vulnerable_pattern": "Insufficient path canonicalization or validation before file I/O operations.",
-            "causal_chain": "The blamed commit added `validate_path_in_workspace` to `resolve_path` but treated the validation as a one-time setup step rather than a security invariant, creating a TOCTOU vulnerability where the validated path could be replaced by a symlink before actual file I/O occurs."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit first wired `validate_path_in_workspace()` into filesystem tools via `resolve_path()`, so reads/writes/list/edit performed one upfront workspace check and then later did I/O with no revalidation. `f50c17e1` directly changes that pattern by returning the workspace alongside the path and calling `revalidate_path()` immediately before each filesystem operation. That makes 120e5dd2 the introducer of the TOCTOU-prone check-then-use design for `src/tools/filesystem.rs`.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "89d3202f1ab94adf05dfa4c6a5d7c994d9a76106",
-          "author": "qhkmdev90",
-          "date": "2026-02-12T19:32:26+08:00",
-          "message": "feat(rust): implement filesystem and shell tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the initial implementation of the filesystem tools, which relied on a naive `resolve_path` function. This function merely joined strings without performing any canonicalization or security validation, inherently creating the path traversal and TOCTOU vulnerability patterns fixed in the subsequent commit.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path traversal/Symlink race condition",
-            "vuln_description": "The application fails to properly validate file paths against boundaries, allowing symlink or hardlink attacks (TOCTOU) to access unauthorized files.",
-            "vulnerable_pattern": "Insufficient path canonicalization or validation before file I/O operations.",
-            "causal_chain": "The commit introduced `resolve_path` which performs basic string concatenation (`Path::new(workspace).join(path)`) without sanitizing path traversal characters (e.g., '../') or checking against symlinks, directly enabling unauthorized file access."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit created the filesystem tools and authored the raw write/edit behavior that later had to be hardened: `tokio::fs::create_dir_all(parent)` and direct `tokio::fs::write(...)` calls. `bf004a20` replaces those unsafe sinks with secure directory-chain creation and no-follow writes, which is a direct fix to code introduced here. It is therefore the introducer for the symlink/hardlink-following write path in `src/tools/filesystem.rs`.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
-          "author": "qhkmdev90",
-          "date": "2026-02-22T16:09:36+08:00",
-          "message": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/pdf_read.rs",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced `src/tools/pdf_read.rs` with a single `validate_path_in_workspace()` call in `resolve_path()` and then later existence/metadata/extraction I/O on the returned path. `f50c17e1` adds `revalidate_path()` immediately before I/O in this exact tool. That makes 51bc07a0 the introducer of the PDF tool's TOCTOU boundary-bypass window.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "b12a489c3a577fee6d0f7acff68f8ca4ebff8a5d",
-              "author_name": "qhkmdev90",
-              "message": "fix(retry): add auth/context-window/model-not-found as non-retryable",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3e26899399e73251382f6196ed823c743ae292ea",
-              "author_name": "qhkmdev90",
-              "message": "fix(retry): fix dead code, case-sensitivity, and false-positive patterns",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "5ee6f716c5bcdbee59c35e5b769c856a0cb5d00d",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add http_request tool with domain allowlist and SSRF protection",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7b0c5133413f2143124373d5b5a0ecd8023c8ca7",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools/http_request): pin DNS address, cap redirects, fix method fallback",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "051d651036465a8353beaa02de1b647e287f17ac",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools/pdf_read): char-safe truncation, remove as_path round-trip",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "f4b4a891646e777214683afbc6561bf1ec4e69bc",
-              "author_name": "qhkmdev90",
-              "message": "feat(providers): add native Gemini provider with OAuth and thinking model support",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "27f348ca951a49b2dcd43bddeb8c772c5b1e9032",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers/gemini): route API-key users through native provider, validate token expiry",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e2c2100a307cd7b40ef907e1df68f67d574d2b1d",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers/gemini): use selection.model, add Debug with redaction, fix dead from_config",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "9dd9dc22c18fababd757b209d93107e9a0786c85",
-              "author_name": "qhkmdev90",
-              "message": "feat(channels): add Lark/Feishu channel (zeroclaw2 adoption)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "d516ffafd30609e69adad53f77c86cb7da79b108",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): add emoji reaction ack per spec",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "41869fdb1c69ef4f69856062ccfa048598882a8c",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): correct doubled /open-apis in reaction URL",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c3ec05f7ed5dc812dd4becf864f156ed2879585a",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): add request timeouts, fix strip_at off-by-one, deduplicate token fetch",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
-              "author_name": "qhkmdev90",
-              "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ae045fbeeba8f86fa8bf481cb704eb7feb5fc1c1",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/email): async SMTP, redact password in debug, fix ordering/dedup/enabled",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "34a95c839e23e3e8de57a8c3365347ead947f6ed",
-              "author_name": "qhkmdev90",
-              "message": "style: run cargo fmt to fix CI formatting",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            }
-          ],
-          "squash_merge_sha": "51bc07a02484ddfd2ec9c7f382dc43f829a9df86"
-        },
-        {
-          "sha": "dd78cba8c720aab51e428048e607e31e838b478c",
-          "author": "qhkmdev90",
-          "date": "2026-03-01T14:36:16+08:00",
-          "message": "feat(tools): add DocxReadTool with path validation and text extraction",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/docx_read.rs",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit added `src/tools/docx_read.rs` with the same validate-once, use-later pattern as the PDF tool. The fix commit `f50c17e1` inserts `revalidate_path()` immediately before file existence/stat/read activity in this code path. That directly ties the TOCTOU issue in the DOCX tool to this introducer.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "8e856f5fb6d631f49af8dfad3417e1895a024734",
-              "author_name": "qhkmdev90",
-              "message": "chore: make quick-xml unconditional for DOCX support",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "dd78cba8c720aab51e428048e607e31e838b478c",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add DocxReadTool with path validation and text extraction",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "bf856c64b31c3a934cc8290f6d20e4033d2bc22d",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): register docx_read tool and add integration tests",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "f56be3b76a9185332e549babefbee4cb3c138763",
-              "author_name": "qhkmdev90",
-              "message": "docs: add docx_read to CLAUDE.md architecture, update tool count to 30",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "58975675b5f7a6ba753603ca1ed5760a2308d3ce",
-              "author_name": "qhkmdev90",
-              "message": "test(tools): add 7 comprehensive tests for docx_read",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            }
-          ],
-          "squash_merge_sha": "fc11936846e0785a8b2e92d55c56edcd69e4d6e3"
-        },
-        {
-          "sha": "ec7b252ba262e6993bfd4d35e6414d6bf1f12041",
-          "author": "qhkmdev90",
-          "date": "2026-02-22T17:16:08+08:00",
-          "message": "feat(tools): add transcribe tool for voice-to-text via Groq Whisper",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/transcribe.rs",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the `transcribe` tool and validated workspace paths once before later metadata/read access to the resolved file. `f50c17e1` adds `revalidate_path()` right before the transcription I/O, specifically to close that race window. So 5dad36b9 is the introducer of the transcribe-path TOCTOU flaw.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "8db88865b3d0c2496d6610ad7a1fee5cf7e94856",
-              "author_name": "qhkmdev90",
-              "message": "docs: add cache, security & hardware design doc",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "de9d807b9b82e2d1d8b339eb64ee730ad2496b38",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add ToolOutput dual-audience split (ForLLM/ForUser/Silent/IsError/IsAsync)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "53d6859430a40de8aa88a2f1e98691d7a1bd2d23",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools): wire is_error into success flag, add PartialEq, fix integration tests",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "d0135e5b46bb4fd4b337307c25ec76b259818a51",
-              "author_name": "qhkmdev90",
-              "message": "feat(providers): add CooldownTracker with per-reason exponential decay",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "9a05ce9d53988418258531dffc1573311ef27ecb",
-              "author_name": "qhkmdev90",
-              "message": "feat(providers): add 40-pattern error classifier (billing/auth/ratelimit/overloaded/timeout/format)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "22518855cc15e9825ae05a7b5ec64803ef3de600",
-              "author_name": "qhkmdev90",
-              "message": "feat: add /health + /ready HTTP server for Docker/K8s/IoT healthchecks",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ec7b252ba262e6993bfd4d35e6414d6bf1f12041",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add transcribe tool for voice-to-text via Groq Whisper",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "157e9634d90ebf3573b90fb3d41ee5f4d23795dd",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools): rename test_absolute_path_unchanged -> test_absolute_path_not_resolved per spec",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e37b9fae18ba7d8c5124d0c01aca1dd2d0bb5340",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools): harden transcribe tool — path validation, size guard, MIME types, no-panic init",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "e4a3273f059891db59eb8a403178daf66b21ed9e",
-              "author_name": "qhkmdev90",
-              "message": "feat(providers): add provider plugin system (JSON-RPC 2.0 over stdin/stdout)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "6de123251efb2545d85b3e850b4343cb9019bfb0",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers): correct ProviderPluginConfig doc comment — plugins activate when no built-in provider configured",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cb85436101346dbed9e4afbc911cc2de53625119",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers): propagate serialization errors in plugin, document SIGKILL-on-timeout, add TODO for output_format/stop",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "6dd475030d149316e26861f4ba61f0d96bd175c1",
-              "author_name": "qhkmdev90",
-              "message": "feat: add skills marketplace (ClawHub search + install tools)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "dcab7817ac7607b430e041683780d023a9acdc0d",
-              "author_name": "qhkmdev90",
-              "message": "fix(skills): percent-encode query URL, validate slug, add download size limit, fix cache max_size=0",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "59a2a0535665e61b0fe7d44e0c3ead17d5c7b92b",
-              "author_name": "qhkmdev90",
-              "message": "feat(devices): add USB hotplug event system for IoT/robot deployments",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "83f9ce605ce89b9c4eb462fe53a1483707d74145",
-              "author_name": "qhkmdev90",
-              "message": "feat(logging): add component-tagged logging with JSON file output and log_component! macro",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "78e39d42eb2acbd5f39f90fa5d41d4f88877ad5a",
-              "author_name": "qhkmdev90",
-              "message": "chore: remove docs/plans from tracking + fix ToolOutput compatibility",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "523190f3ea14d72f42d87adeb6274b731afa9fc9",
-              "author_name": "qhkmdev90",
-              "message": "ci: trigger fresh run",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7dd115e3699c4cf2d15fb3f876956ca08fc30e79",
-              "author_name": "qhkmdev90",
-              "message": "fix: remove unused imports (custom.rs ToolOutput, logging.rs super::*)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d15687908569cf670f04c488dad5e6daf4db5e67",
-              "author_name": "qhkmdev90",
-              "message": "fix: update e2e test for ToolOutput return type",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "5dad36b962af6258bb059b30bd1b4b5bac3e7442"
-        },
-        {
-          "sha": "8c941697d8a08d13f666f18f059a9c27f351be3b",
-          "author": "qhkmdev90",
-          "date": "2026-03-08T12:22:53+08:00",
-          "message": "feat: add grep, find, and unified diff edit tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit added unified-diff mode to `EditFileTool` and authored a new raw write path: after reading and checking the file it still used direct `tokio::fs::write(&full_path, &new_content)`. `bf004a20` replaces that exact write with the secure no-follow helper, so this commit introduced an additional vulnerable edit code path under the same advisory. It is a BIC for the diff-mode branch even though earlier edit paths were older.",
-                "confidence": 0.95,
-                "tool_calls_made": 103,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "8c941697d8a08d13f666f18f059a9c27f351be3b",
-              "author_name": "qhkmdev90",
-              "message": "feat: add grep, find, and unified diff edit tools",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "529769ddcdbee270bff9d86687db1ab79a4ca7b1",
-              "author_name": "qhkmdev90",
-              "message": "fix(security): enforce workspace boundary on grep/find path args",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c12b10d09511e4ceb82be1087bf6c3c65b848c51",
-              "author_name": "qhkmdev90",
-              "message": "feat: make grep/find default-off, opt-in via coder template or config",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2f76150bc9b9e047811bf71875474b6b3e0148e2",
-              "author_name": "qhkmdev90",
-              "message": "feat(ux): improve discoverability of coding tools (grep, find)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fc08b0e50922de700c94f3df29d01e594bf1bb48",
-              "author_name": "qhkmdev90",
-              "message": "feat(ux): fill remaining coding tools discoverability gaps",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fb1a680c1fe0271f0fc23de74ea9544bc04f0ada",
-              "author_name": "qhkmdev90",
-              "message": "feat(ux): complete coding tools opt-in discoverability",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1f662e9f202fedbc23c085d137ed86e17aec68e9",
-              "author_name": "qhkmdev90",
-              "message": "docs: update comparison table — 32 tools, 3100+ tests",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "60d8581166ea5fd57ba9752a7af775785b3d8010",
-              "author_name": "qhkmdev90",
-              "message": "docs(site): add grep/find, update tool count to 32, document opt-in",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "b43baddc9a481de21f2dd4146d33939d24fb854d"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-2m67-cxxq-c3h8",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-32232",
-        "https://github.com/qhkm/zeptoclaw/pull/324",
-        "https://github.com/qhkm/zeptoclaw/commit/bf004a20d3687a0c1a9e052ec79536e30d6de134",
-        "https://github.com/qhkm/zeptoclaw/commit/f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
-      ]
-    },
-    {
-      "id": "GHSA-46q5-g3j9-wx5c",
-      "description": "ZeptoClaw: Generic webhook channel trusts caller-supplied identity fields; allowlist is checked against untrusted payload data",
-      "severity": "HIGH",
-      "cvss": 8.2,
-      "cwes": [
-        "CWE-306",
-        "CWE-345"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-12T16:36:48Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Rust"
-      ],
-      "confidence": 0.95,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the webhook channel from scratch, including `WebhookPayload { message, sender, chat_id }`, the allowlist check `base_config.is_allowed(&payload.sender)`, and `InboundMessage::new(... payload.sender.trim(), payload.chat_id.trim(), ...)`. It also added `WebhookConfig.allow_from` and wired that config into `BaseChannelConfig`, so the allowlist was bound to caller-controlled JSON identity from day one. The fix reverses exactly that design by adding server-controlled `sender_id`/`chat_id` and making `trust_payload_identity` default to false.",
-      "root_cause": "The webhook channel trusted user-supplied identity fields without proper validation, allowing attackers to spoof identities by passing untrusted payload data against the allowlist.",
-      "vuln_type": "Improper Authentication / Insufficient Verification of Data Authenticity",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
-          "author": "qhkmdev90",
-          "date": "2026-02-14T10:37:14+08:00",
-          "message": "feat: add hooks system, deploy templates, and accumulated features",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/channels/webhook.rs",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `WebhookChannel` implementation, including the initial data structure that parsed and trusted the `sender` and `chat_id` directly from the incoming JSON payload. This established the vulnerable pattern by design, as the initial implementation lacked any mechanism to validate these fields against server-side configuration.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Improper Authentication / Insufficient Verification of Data Authenticity",
-            "vuln_description": "The webhook channel trusted user-supplied identity fields without proper validation, allowing attackers to spoof identities by passing untrusted payload data against the allowlist.",
-            "vulnerable_pattern": "Relying on caller-supplied identity fields in webhook payloads without verifying their authenticity or validating them against a trusted, server-side configuration.",
-            "causal_chain": "The blamed commit created the initial `WebhookChannel` code and associated `Deserialize` logic that automatically mapped the `sender` and `chat_id` fields from the untrusted JSON payload into the `InboundMessage` structure, creating the trust vulnerability from the outset."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the webhook channel from scratch, including `WebhookPayload { message, sender, chat_id }`, the allowlist check `base_config.is_allowed(&payload.sender)`, and `InboundMessage::new(... payload.sender.trim(), payload.chat_id.trim(), ...)`. It also added `WebhookConfig.allow_from` and wired that config into `BaseChannelConfig`, so the allowlist was bound to caller-controlled JSON identity from day one. The fix reverses exactly that design by adding server-controlled `sender_id`/`chat_id` and making `trust_payload_identity` default to false.",
-                "confidence": 0.95,
-                "tool_calls_made": 69,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-32231",
-        "https://github.com/qhkm/zeptoclaw/pull/324",
-        "https://github.com/qhkm/zeptoclaw/commit/bf004a20d3687a0c1a9e052ec79536e30d6de134",
-        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
-      ]
-    },
-    {
       "id": "GHSA-5wp8-q9mx-8jx8",
       "description": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
       "severity": "CRITICAL",
@@ -2957,709 +1939,6 @@
         "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-5wp8-q9mx-8jx8",
         "https://github.com/qhkm/zeptoclaw/commit/68916c3e4f3af107f11940b27854fc7ef517058b",
         "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/security/shell.rs#L218-L243"
-      ]
-    },
-    {
-      "id": "GHSA-76rv-2r9v-c5m6",
-      "description": "zae-limiter: DynamoDB hot partition throttling enables per-entity Denial of Service",
-      "severity": "MEDIUM",
-      "cvss": 4.3,
-      "cwes": [
-        "CWE-770"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-25T22:31:10Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Python"
-      ],
-      "confidence": 0.95,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit added shard doubling/retry plus `_is_wcu_exhausted()` to decide whether to double shards or retry elsewhere. The final fix replaces that heuristic with explicit `SpeculativeFailureReason` checks, showing this commit introduced the fragile shard-decision logic. It made speculative-failure classification security-relevant in the hot-partition mitigation path.",
-      "root_cause": "The application failed to gracefully handle DynamoDB per-partition throttling (hot partitions) and did not properly aggregate capacity across shards, allowing an attacker or heavy load to exhaust resources and trigger a DoS condition per entity.",
-      "vuln_type": "Denial of Service (Resource Exhaustion / Throttling)",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T20:47:45-05:00",
-          "message": "✨ feat(limiter): add shard selection, retry on exhaustion, and shard doubling",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `_is_wcu_exhausted` logic and the initial handling of speculative failures related to shard limits, which the vulnerability analysis identifies as flawed. Specifically, this commit added the rudimentary check that failed to account for correct capacity aggregation and proper handling of DynamoDB throttling states, which the fix commit subsequently replaces with more granular `SpeculativeFailureReason` checks.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion / Throttling)",
-            "vuln_description": "The application failed to gracefully handle DynamoDB per-partition throttling (hot partitions) and did not properly aggregate capacity across shards, allowing an attacker or heavy load to exhaust resources and trigger a DoS condition per entity.",
-            "vulnerable_pattern": "Lack of robust handling for DynamoDB throttles (ProvisionedThroughputExceededException/ThrottlingException) during speculative consumption, and logic errors in capacity calculation ('get_resource_capacity') that failed to correctly deduplicate sharded entities, leading to inaccurate capacity accounting.",
-            "causal_chain": "The blamed commit implemented `_is_wcu_exhausted` using a simplified logic check (comparing tokens_milli < 1000) that failed to correctly interpret DynamoDB partition throttling states. This logic error meant that when the system encountered high contention or throttling, it incorrectly triggered shard doubling or retries without proper deduplication or capacity validation, ultimately leading to the reported DoS condition."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit added shard doubling/retry plus `_is_wcu_exhausted()` to decide whether to double shards or retry elsewhere. The final fix replaces that heuristic with explicit `SpeculativeFailureReason` checks, showing this commit introduced the fragile shard-decision logic. It made speculative-failure classification security-relevant in the hot-partition mitigation path.",
-                "confidence": 0.95,
-                "tool_calls_made": 140,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "3902c8c22868832db6d9f54046e76d5be226f607",
-          "author": "Patrick Sodré",
-          "date": "2026-01-09T20:55:53-05:00",
-          "message": "Initial commit: zae-limiter rate limiting library",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/limiter.py, src/zae_limiter/schema.py",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "The initial implementation stored bucket state under a single entity partition key (`PK=ENTITY#{id}`), so all writes for one busy entity concentrated on one DynamoDB partition. That is the architectural flaw GHSA-76rv later mitigates by moving buckets to per-shard bucket PKs. The blame on `limiter.py`/`schema.py` is incidental, but this commit is the original source of the hot-partition design.",
-                "confidence": 0.95,
-                "tool_calls_made": 140,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "0e6b99c185c2d5de000bc08fe354ffcd06ddab39",
-          "author": "Patrick Sodré",
-          "date": "2026-02-07T15:01:12-05:00",
-          "message": "⚡ perf(limiter): add speculative UpdateItem to skip read round trip (#315)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `speculative_consume` method, which is the core mechanism for handling capacity updates. By implementing this method without logic to differentiate between insufficient capacity and generic DynamoDB throttling exceptions (or implementing granular failure reasoning), it created the foundation for the reported DoS vulnerability where the system fails to correctly account for or recover from partition-level throttling.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion / Throttling)",
-            "vuln_description": "The application failed to gracefully handle DynamoDB per-partition throttling (hot partitions) and did not properly aggregate capacity across shards, allowing an attacker or heavy load to exhaust resources and trigger a DoS condition per entity.",
-            "vulnerable_pattern": "Lack of robust handling for DynamoDB throttles (ProvisionedThroughputExceededException/ThrottlingException) during speculative consumption, and logic errors in capacity calculation ('get_resource_capacity') that failed to correctly deduplicate sharded entities, leading to inaccurate capacity accounting.",
-            "causal_chain": "The commit implemented `speculative_consume` which performs optimistic concurrency control without the necessary handling of DynamoDB's `ProvisionedThroughputExceededException` or sophisticated retry/backoff logic, leading the application to treat throttled requests as application-level capacity exhaustion, effectively causing a DoS."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.7,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "0e6b99 introduced `SpeculativeResult`/`speculative_consume()` failure handling that returned only `old_buckets` and no structured failure reason. The final fix adds `failure_reason` in this exact path because the old API forced later shard logic to infer cause implicitly from bucket contents. This commit was not yet exploitable on its own, but it authored the under-specified failure API later used in the vulnerable shard-decision path.",
-                "confidence": 0.7,
-                "tool_calls_made": 140,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "6bcd260679f3838743cad07da62628487267e914",
-          "author": "Patrick Sodré",
-          "date": "2026-02-21T21:31:35-05:00",
-          "message": "✨ feat(aggregator): filter wcu, proactive sharding, shard propagation",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter_aggregator/processor.py",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit (6bcd260679f3) introduced the initial implementation of `try_proactive_shard` and its associated logic using `wcu_tc_delta` (consumption delta) as the metric for scaling. This logic was flawed because it monitored recent consumption deltas rather than actual token levels, failing to correctly account for sustained load, which directly matches the root cause described in the vulnerability analysis.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Denial of Service (Resource Exhaustion / Throttling)",
-            "vuln_description": "The application failed to gracefully handle DynamoDB per-partition throttling (hot partitions) and did not properly aggregate capacity across shards, allowing an attacker or heavy load to exhaust resources and trigger a DoS condition per entity.",
-            "vulnerable_pattern": "Lack of robust handling for DynamoDB throttles (ProvisionedThroughputExceededException/ThrottlingException) during speculative consumption, and logic errors in capacity calculation ('get_resource_capacity') that failed to correctly deduplicate sharded entities, leading to inaccurate capacity accounting.",
-            "causal_chain": "The commit implemented a proactive sharding mechanism that incorrectly relied on 'wcu_tc_delta' (recent consumption delta) to trigger scaling, rather than assessing sustained capacity depletion, leading to inadequate resource scaling under high-load scenarios."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "6bcd260 added both flawed aggregator behaviors later fixed: `try_proactive_shard()` used the impossible `wcu_tc_delta / capacity >= 0.8` signal, and `propagate_shard_count()` only updated `shard_count` instead of pre-creating full shard items. The design-review docs and final diff call out both problems explicitly. Those bugs left automatic sharding ineffective, so hot-partition DoS remained possible.",
-                "confidence": 0.95,
-                "tool_calls_made": 140,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "e17c29d9331992820eaa30f160399c6930c3d7fb",
-          "author": "Patrick Sodré",
-          "date": "2026-01-28T22:43:35-05:00",
-          "message": "♻️ refactor(schema): implement composite bucket items with ADD-based writes",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/zae_limiter/repository.py",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This composite-bucket rewrite replaced the earlier bucket code with `build_composite_create()`/`get_buckets()` that still used `PK=pk_entity(...), SK=sk_bucket(resource)`. Commit 94a129 later changes exactly that composite layout to per-shard `pk_bucket(..., shard_id)` keys. Because it rewrote the vulnerable storage model and preserved the single-entity partition key, it is a reimplementation BIC.",
-                "confidence": 0.95,
-                "tool_calls_made": 140,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "37e84c9825f329cb7e5c48ce9dea282e85c12233",
-              "author_name": "Patrick Sodré",
-              "message": "♻️ refactor(docs): slim down CLAUDE.md by extracting rules files",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "edfb1785a9f90b675043b6db0fa368d5e1d7da5a",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs: fix documentation drift accumulated since v0.4.0",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "0888791a137eee566f2bbc23a972b708121e3a44",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(docs): add pytest-examples lint pass for documentation code blocks",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "1fa59d119b026dd843da4f2dc87a0527c4badf48",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(docs): add moto-backed execution pass for doc code examples",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4022aaee47c69d3a85802db4e7b4cdd996dccf3b",
-              "author_name": "Patrick Sodré",
-              "message": "👷 ci(docs): add documentation example testing to CI and update testing guide",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "25a64f94f01e992053f0dbd83e9701151691085c",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(docs): enhance runner with async wrapping and globals injection",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "bf834b4e57812ed3e6d93a3d17c8b90338168315",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(docs): fix doc drift and enhance harness to execute 125 blocks",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a88c19770e887005fbc523d0cd2035f9f6d63901",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(docs): rewrite 16 doc blocks from lint-only to fully executable",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "9e2776e552232b2dea026bcc436508de027085b1",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs(schema): add composite bucket items design with test strategy",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "cf93e8758572b77cadaf38afcfc20d974bcd4c3f",
-              "author_name": "Patrick Sodré",
-              "message": "🔥 remove(docs): delete doc-example-testing plan file",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a398117d6cbad8224c53f7cdd2e3434a1b0c318d",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs(schema): add ADR-114 and ADR-115 for composite bucket items",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e17c29d9331992820eaa30f160399c6930c3d7fb",
-              "author_name": "Patrick Sodré",
-              "message": "♻️ refactor(schema): implement composite bucket items with ADD-based writes",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "697366dc9bb2595fb7fd70ac131862cf74573921",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(schema): add coverage for composite write paths and lease retry",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "d9ae64113c8edb089395dbcc4483525144c1a1dd",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(test): update e2e schema version assertion to 2.0.0",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "6691f5a849984a892f9286db9f537f9543b519b6",
-              "author_name": "Patrick Sodré",
-              "message": "🔧 chore(schema): change schema version to 0.7.0",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7b49f30d8a9f71523ad91f8fb1ec863fb9eca3e9",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(test): shorten e2e stack names to fit IAM role name limit",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4633cf4e2cf05fbc4ece361ff2e8bf110ea72a17",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(test): relax schema version assertion for pre-1.0 versions",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e5b14636fcc551dd9f609999858b0569a4837255",
-              "author_name": "Patrick Sodré",
-              "message": "⚡ perf(test): optimize e2e fixtures to share stacks across test classes",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c8adeea6372bdd545a22904ef762e926c723a743",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(infra): deploy Lambda code after stack creation",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "c4f68ade2836e58d0d48f4fcf14486a5145ecd43",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs: add --keep-stacks-on-failure to AWS testing rules",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8251ca820779f89af3e76a94dec63706d60db5e5",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(infra): wait for ESM stabilization after Lambda deployment",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "cc24fa30a1602684ead2fd8b56b201173202009b",
-              "author_name": "Patrick Sodré",
-              "message": "🔥 remove: --keep-stacks-on-failure (never implemented)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "711571f427c69197124c3b6b512fb8e522f6eab3",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(test): update capacity tests for composite bucket items",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8bebf6e4a469f9fb6424e84148ade2d266a50c0d",
-              "author_name": "Patrick Sodré",
-              "message": "✅ test(doctest): add LocalStack fixture for doc integration tests",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c5512787084c2cb17540f336ab8c92573b6cf405",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs: update cost estimates for ADR-114/115 O(1) optimizations",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "55e67ecc53fdd2e2c027f95e836378196b308dac",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs: clean up ADR 104 and remove implemented plan",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "00d3832ccb1a1c6c64d712d27e0f6df773e91f77",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs: add stored-config-default design document",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "0ccebc619fbe5bdfe288add1e6e1d09621570ca5",
-              "author_name": "Patrick Sodré",
-              "message": "✨ feat(limiter): make limits=None the default in acquire()",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "bb21a846262e9454d28b02369a14e6be55530347",
-              "author_name": "Patrick Sodré",
-              "message": "🐛 fix(docs): fix markdown code fences for doctests",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a06e4946b488f9c58e6143412cc1958a82012897",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs(performance): update acquire() parameter order",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "baec470ee3808184a8d90df58c1f36a62bceee37",
-              "author_name": "Patrick Sodré",
-              "message": "🔥 remove: stored-config-default design plan (implemented)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "12135ac656e5963ac41de288e5a17da128b44f10",
-              "author_name": "Patrick Sodré",
-              "message": "📝 docs(performance): update benchmark results from fresh measurements",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "663b687a3748078e447fe2c14692387a4f7e4034"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
-          "repo_url": "https://github.com/zeroae/zae-limiter",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/zeroae/zae-limiter/security/advisories/GHSA-76rv-2r9v-c5m6",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-27695",
-        "https://github.com/zeroae/zae-limiter/commit/481ce44d818d66e31d8837bc48519660ce4c267f",
-        "https://github.com/zeroae/zae-limiter/releases/tag/v0.10.1"
       ]
     },
     {
@@ -6307,6 +4586,93 @@
         "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-8jpq-5h99-ff5r",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26321"
+      ]
+    },
+    {
+      "id": "CVE-2026-28451",
+      "description": "OpenClaw versions prior to 2026.2.14 contain server-side request forgery vulnerabilities in the Feishu extension that allow attackers to fetch attacker-controlled remote URLs without SSRF protections via sendMediaFeishu function and markdown image processing. Attackers can influence tool calls through direct manipulation or prompt injection to trigger requests to internal services and re-upload responses as Feishu media.",
+      "severity": "CRITICAL",
+      "cvss": 6.3,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T22:16:17.210",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
+      "root_cause": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
+      "vuln_type": "Authorization Bypass",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/docx.ts, extensions/feishu/src/media.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the original implementation of the `downloadImage` function in `extensions/feishu/src/docx.ts`. This initial implementation used a generic `fetch` call without enforcing any security boundaries (such as URL validation or size limits), which created the vulnerability that the fix commit subsequently addressed by introducing a runtime-safe media fetcher.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Authorization Bypass",
+            "vuln_description": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
+            "vulnerable_pattern": "N/A - Insufficient information provided in the commit",
+            "causal_chain": "The blamed commit added the `downloadImage` function using standard `fetch` on arbitrary URLs, which enabled a local file disclosure vulnerability; the fix commit later replaced this unsafe `fetch` with a secure runtime method that includes appropriate validation and size restrictions."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
+                "confidence": 0.95,
+                "tool_calls_made": 91,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "b5ab92eef4e4f6099c98817e0917c99ec9e03045",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        },
+        {
+          "sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-x22m-j5qq-j49m",
+        "https://www.vulncheck.com/advisories/openclaw-ssrf-via-feishu-extension-media-fetching"
       ]
     },
     {
@@ -9841,6 +8207,201 @@
               "message": "fix: websocket message broadcasting cross-contamination between person and group channels",
               "ai_signals": [],
               "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "b634aa48dc27a8df7e7e853914071451db00a04c"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "b34ebf85a6445060bbe6770713717624cdd6c03d",
+          "repo_url": "https://github.com/langbot-app/langbot",
+          "source": "osv"
+        },
+        {
+          "sha": "614621ab7b84fe50da3c6137705cde5a99429866",
+          "repo_url": "https://github.com/langbot-app/LangBot",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/28xxx/CVE-2026-28509.json",
+        "https://github.com/langbot-app/LangBot/security/advisories/GHSA-w8gq-g4pc-xh3h",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
+      ]
+    },
+    {
+      "id": "GHSA-w8gq-g4pc-xh3h",
+      "description": "LangBot has a Cross Site Scripting(XSS) Vulnerability",
+      "severity": "MEDIUM",
+      "cvss": 6.3,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-01T17:01:23+08:00",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2565,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit created `web/src/app/home/components/new-version-dialog/NewVersionDialog.tsx` and rendered external release notes (`release.body`) through `ReactMarkdown` with `rehypeRaw` and no sanitization. Blame on the vulnerable lines attributes the `rehypeRaw` import and `rehypePlugins={[rehypeRaw, rehypeHighlight]}` to this commit, and the fix later adds `rehypeSanitize` at that exact location. The same changeset also wired release data in from the cloud-service client, so it introduced a new unsafe raw-HTML rendering surface.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "3757f44af5f35b602bd1370f9a0a1039f546e95d",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-12-01T13:44:01+08:00",
+          "message": "Add markdown rendering support to pipeline debug dialog messages with toggle button",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx",
+          "blame_confidence": 0.27,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "614621ab7b84fe50da3c6137705cde5a99429866",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `react-markdown` implementation in `DebugDialog.tsx` along with plugins like `rehypeRaw`, which enabled arbitrary HTML parsing without sanitization. The vulnerability (XSS) was a direct result of introducing this rendering pipeline without the necessary `rehype-sanitize` step, which the fix commit subsequently added.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Cross Site Scripting (XSS)",
+            "vuln_description": "The application likely had a vulnerable dependency or package version that was susceptible to XSS, which was mitigated by updating the project version and associated lockfile.",
+            "vulnerable_pattern": "Dependency version vulnerability susceptible to CWE-79",
+            "causal_chain": "The blamed commit added `rehypeRaw` to the markdown rendering pipeline in `DebugDialog.tsx` without pairing it with a sanitization plugin, effectively allowing malicious HTML/script injection via markdown output."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced markdown rendering into `web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx` and explicitly added `rehypeRaw` to the `ReactMarkdown` plugin chain for chat message content. Blame on the pre-fix file attributes both the `rehypeRaw` import and the vulnerable `rehypePlugins` lines in `DebugDialog.tsx` to this commit, and the fix later adds `rehypeSanitize` at that exact sink. Although the same commit touched `PluginReadme.tsx`, that change was only a CSS import path update there; the DebugDialog XSS itself was authored here.",
+                "confidence": 0.95,
+                "tool_calls_made": 36,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "3c2785ff8b249562617a42227b936f605636e398",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Initial plan",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3757f44af5f35b602bd1370f9a0a1039f546e95d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Add markdown rendering support to pipeline debug dialog messages with toggle button",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "46163b1c261e6fd994fdb1707687356a7beed9bc",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix code review feedback: remove conflicting styles and imports",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "6199c665b1f298a5b8a856e02670ec5d22b5ea90",
+              "author_name": "Junyan Qin",
+              "message": "perf: styles",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9c4a8dbce849846f2c3bf3752c567708de5d2241",
+              "author_name": "Junyan Qin",
+              "message": "fix: websocket message broadcasting cross-contamination between person and group channels",
+              "ai_signals": [],
+              "touched_blamed_file": true
             }
           ],
           "squash_merge_sha": "b634aa48dc27a8df7e7e853914071451db00a04c"
