@@ -46,6 +46,7 @@ const TOOLS_WITH_ICONS = new Set([
   "leap_new",
   "traycer",
   "atlassian_rovo",
+  "aether",
   "unknown_ai",
 ]);
 

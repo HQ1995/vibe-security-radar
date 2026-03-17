@@ -19,67 +19,118 @@ const DATA_SOURCES = [
     name: "OSV.dev (bulk + API)",
     url: "https://osv.dev",
     description:
-      "Open Source Vulnerability database. Bulk data dumps are used for batch scans; the REST API fills in any gaps.",
+      "Open Source Vulnerability database. Bulk data dumps for batch scans; the REST API fills gaps.",
   },
   {
     name: "GitHub Advisory Database (local clone)",
     url: "https://github.com/github/advisory-database",
     description:
-      "Full git clone of GitHub-reviewed and community-unreviewed advisories. We query this locally instead of hitting the API.",
+      "Full git clone of reviewed and unreviewed advisories. Queried locally, no API needed.",
+  },
+  {
+    name: "Gemnasium DB",
+    url: "https://gitlab.com/gitlab-org/security-products/gemnasium-db",
+    description:
+      "GitLab's vulnerability database. Provides fix commit URLs and fixed versions for additional coverage.",
   },
   {
     name: "NVD",
     url: "https://nvd.nist.gov",
     description:
-      "National Vulnerability Database (NIST). Reference URLs are parsed to extract commit and pull-request links.",
+      "National Vulnerability Database (NIST). Reference URLs are parsed to extract commit and PR links.",
   },
 ] as const;
 
 const LIMITATIONS = [
-  "We can only see AI involvement when the tool leaves a signature (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code manually, we won't know.",
-  "Git blame sometimes points to the wrong commit. The investigator catches most of these and can discover commits that blame missed, but it is not infallible.",
-  "The investigator is a single LLM with tool access. Borderline cases where causality is ambiguous can still go either way.",
-  "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched vulnerabilities are out of scope.",
+  "We can only see AI involvement when the tool leaves a trace (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code by hand, there is nothing to detect.",
+  "Git blame tracks line authorship, not causal responsibility. The investigator catches most misattributions and can discover commits that blame missed entirely, but it is not perfect.",
+  "The investigator is a single LLM with tool access. Borderline cases where causality is genuinely ambiguous can go either way.",
+  "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched issues are out of scope.",
 ] as const;
 
 const PIPELINE_STEPS = [
   {
-    tier: "Tier 1",
-    title: "Bulk advisory ingestion",
-    description:
-      "Load all advisories from the OSV bulk data dump and the local GitHub Advisory Database clone (reviewed + unreviewed). No API calls needed for this tier.",
+    tier: "Phase A",
+    title: "Fix commit discovery",
+    summary:
+      "Pull fix commit SHAs from advisory databases and reference URLs, with LLM-assisted search as a last resort.",
+    details:
+      "Advisory sources are checked in order: OSV bulk data and the local GitHub Advisory Database clone first (no API calls), then Gemnasium DB commit URLs and fixed-version tag resolution, then NVD reference URL parsing for GitHub commits and PRs. If none of those produce a fix commit, and LLM mode is enabled, the pipeline tries two more strategies: a multi-version tag search that uses an LLM to rank candidate commits between version tags, and a description-based search that extracts search terms from the CVE description and scores git log results. Earlier tiers short-circuit later ones.",
   },
   {
-    tier: "Tier 2",
-    title: "NVD references",
-    description:
-      "Parse NVD reference URLs to extract GitHub commit and pull-request links for each CVE.",
+    tier: "Phase B",
+    title: "Bug-introducing commit discovery",
+    summary:
+      "Clone the repo, diff each fix commit, and run SZZ-style git blame to trace who introduced the vulnerable code.",
+    details:
+      "Four blame strategies run in parallel on each fix commit. (1) Blame deleted lines: when a fix removes or modifies code, blame those lines to find who wrote them (strongest causal signal). (2) Context blame: for add-only fixes, blame the surrounding lines in the parent commit. (3) Function history: when context blame finds nothing, trace function-level history with git log -L. (4) Pickaxe search: when a vulnerability analysis identifies a dangerous pattern (e.g., a specific function call), search git history with git log -S to find who first introduced it. An LLM first identifies which files in the fix are actually security-relevant, so blame focuses there instead of diffing everything the fix touched.",
   },
   {
-    tier: "Tier 3",
-    title: "Git log search (fallback)",
-    description:
-      "Search the cloned repository's git log for CVE/GHSA ID mentions when earlier tiers lack fix-commit SHAs. Only searches repos already identified by advisory sources, avoiding false matches from scanner or PoC repositories.",
+    tier: "Phase B+",
+    title: "Squash-merge decomposition",
+    summary:
+      "Large squash-merge commits get broken apart via the GitHub API to find which specific sub-commit introduced the vulnerable code.",
+    details:
+      "When a fix commit or bug-introducing commit is a squash-merge (detected by the (#NNN) PR pattern in the commit message) with more than 30 changed files, the pipeline fetches the original PR sub-commits from the GitHub API. Each sub-commit is scored by file relevance to the CVE. For fix commits, only the CVE-relevant files are blamed instead of all 1000+ files. For bug-introducing commits, the pipeline checks which sub-commit actually touched the blamed file and stores it as the culprit. This matters for AI attribution: if a PR has 17 commits and only one has a Copilot co-author trailer, but that commit did not touch the vulnerable file, the AI signal is dropped.",
   },
   {
-    tier: "Tier 4",
-    title: "Git blame analysis",
-    description:
-      "Clone the repo, diff the fix commit, and run SZZ-style git blame to trace bug-introducing commits. An LLM first identifies which files are actually security-relevant, so we only blame those instead of everything the fix touched.",
+    tier: "Phase C",
+    title: "AI signal detection",
+    summary:
+      "Check each bug-introducing commit for AI coding tool signatures. CI/CD bots are filtered out.",
+    details:
+      "The pipeline scans commit metadata for co-author trailers (e.g., Co-Authored-By: Copilot), author and committer email domains, commit message keywords, and tool-specific patterns. It also looks up the associated PR body for attribution text. For squash-merged BICs, individual PR sub-commits are checked separately, and confidence is scaled by the ratio of AI-authored commits in the PR (a single Copilot commit in a 20-commit PR gets lower confidence than a PR where every commit has it). Known CI/CD bots (Dependabot, Renovate, GitHub Actions, etc.) are explicitly excluded, and an anachronism filter rejects signals where the commit predates the tool's release.",
   },
   {
-    tier: "Tier 5",
-    title: "AI signature detection",
-    description:
-      "Check each bug-introducing commit for AI coding tool signatures: co-author trailers, bot email addresses, commit message markers, and tool-specific metadata. Known CI/CD bots (Dependabot, Renovate, GitHub Actions, etc.) are explicitly filtered out.",
+    tier: "Phase D",
+    title: "Screening verification",
+    summary:
+      "A quick LLM check compares the fix commit diff against the bug-introducing commit diff to verify the causal link.",
+    details:
+      "For each bug-introducing commit with AI signals, an LLM receives both diffs plus the vulnerability description and assesses whether the blamed commit actually introduced the security issue. This is a lightweight single-pass check. Verdicts are CONFIRMED, UNLIKELY, or UNRELATED. When a squash-merge has a culprit sub-commit identified, the LLM analyzes that sub-commit's diff instead of the full squash merge. Results are cached per (BIC SHA, fix SHA, blamed file) tuple.",
   },
   {
-    tier: "Tier 6",
+    tier: "Phase E",
     title: "Deep investigation",
-    description:
-      "An LLM investigator receives the full vulnerability context (all fix commits, all blame candidates) and runs an agentic investigation with tool access (git log, file read, blame, diff, pickaxe search). It can trace chains of related commits and discover bug-introducing commits that blame missed. One investigation per vulnerability, not per commit. Details below.",
+    summary:
+      "A single LLM investigator sees the entire vulnerability at once and runs a multi-step investigation with tool access.",
+    details:
+      "This replaced an earlier per-commit tribunal. The investigator receives all fix commits, all blame candidates, and the CVE description. It has access to git log, file read, blame, diff, and pickaxe search, and runs up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. The verdict is authoritative: if the investigator says UNRELATED, the commit is dropped regardless of what earlier stages said. If it discovers a new bug-introducing commit with AI signals, that gets added to the results.",
   },
 ] as const;
+
+function ExpandableStep({
+  step,
+}: {
+  step: (typeof PIPELINE_STEPS)[number];
+}) {
+  return (
+    <li className="flex gap-4">
+      <span className="mt-0.5 shrink-0 rounded bg-muted px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
+        {step.tier}
+      </span>
+      <details className="group w-full">
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <h3 className="inline font-medium">{step.title}</h3>
+          <span className="ml-2 text-xs text-muted-foreground group-open:hidden">
+            ▸ details
+          </span>
+          <span className="ml-2 text-xs text-muted-foreground hidden group-open:inline">
+            ▾ less
+          </span>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {step.summary}
+          </p>
+        </summary>
+        <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {step.details}
+          </p>
+        </div>
+      </details>
+    </li>
+  );
+}
 
 export default function AboutPage() {
   const stats = getStats();
@@ -120,70 +171,54 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Methodology */}
+      {/* How it works */}
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Each vulnerability goes through a six-tier pipeline. We pull advisory
-          data in bulk where possible and fall back to APIs when needed.
+          Each vulnerability goes through a multi-phase pipeline. We pull
+          advisory data in bulk where possible (no API calls for 95%+ of
+          lookups) and fall back to APIs and LLM-assisted search for the rest.
           Fix commits get traced back to bug-introducing commits via git blame,
-          then we check those commits for AI tool signatures. Finally, an LLM
-          investigator looks at the whole vulnerability at once, not each
-          blamed commit in isolation, so it can trace chains of commits and
-          catch things that line-level blame misses.
+          then those commits are checked for AI tool signatures. For
+          squash-merged PRs, we decompose to the specific sub-commit that
+          introduced the vulnerable code, so a Copilot trailer on an unrelated
+          commit in the same PR does not count. Finally, an LLM investigator
+          looks at the whole vulnerability, not each blame candidate in
+          isolation, and can trace commit chains and discover things that
+          line-level blame misses.
+        </p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Click any phase to see how the algorithm works.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
-            <li key={step.tier} className="flex gap-4">
-              <span className="mt-0.5 shrink-0 rounded bg-muted px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
-                {step.tier}
-              </span>
-              <div>
-                <h3 className="font-medium">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-              </div>
-            </li>
+            <ExpandableStep key={step.tier} step={step} />
           ))}
         </ol>
       </section>
 
-      {/* Investigation Details */}
+      {/* Attribution principle */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Deep investigation
+          How we attribute vulnerabilities to AI
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          Finding an AI signature in a bug-introducing commit is not enough.
-          The commit might have touched the file without causing the actual
-          vulnerability. And git blame can miss the real introducer entirely:
-          it tracks line authorship, not causal responsibility. A commit
-          that made a security credential optional might not show up in
-          blame at all, even though it is the root cause.
+          An AI signature in a bug-introducing commit is not enough. The
+          question we ask: strip out the AI-written code from the change. Does
+          the vulnerability still exist? If it does, the AI tool did not cause
+          it and we drop the attribution.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          So we run one investigation per vulnerability, not per commit. An
-          LLM receives the full context (vulnerability description, all fix
-          commits, every blame candidate) and investigates the vulnerability
-          as a whole. It has tool access to git log, file read, blame, diff,
-          and pickaxe search. It uses them to trace code changes across the
-          repository, follow chains of related commits, and when blame missed
-          something, discover it on its own.
-        </p>
-        <p className="leading-relaxed text-muted-foreground">
-          This replaced an earlier per-commit approach where each blame
-          candidate was verified in isolation. The difference matters for
-          multi-commit vulnerabilities. For example: one commit designs a
-          credential as optional, a later commit enables the feature without
-          requiring it. Both contribute to the vulnerability, but checking
-          each in isolation, the first one looks harmless ("not yet
-          exploitable"). Seeing them together makes the chain obvious. If the
-          investigator determines a commit is unrelated, we drop it.
+          This comes up a lot with squash-merged PRs. Say a PR has 20 commits
+          and one of them has a Copilot co-author trailer. But that commit
+          changed a README, and a different (human-written) commit in the same
+          PR introduced the actual vulnerability. We check file-level overlap
+          between each sub-commit and the blamed file, and remove the AI signal
+          when it does not match.
         </p>
       </section>
 
-      {/* AI Tools Monitored */}
+      {/* AI tools monitored */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">
           AI tools monitored
@@ -205,7 +240,7 @@ export default function AboutPage() {
         </ul>
       </section>
 
-      {/* Data Sources */}
+      {/* Data sources */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold tracking-tight">Data sources</h2>
         <ul className="space-y-3">
@@ -220,7 +255,7 @@ export default function AboutPage() {
                 {source.name}
               </a>
               <span className="text-sm text-muted-foreground">
-                — {source.description}
+                {source.description}
               </span>
             </li>
           ))}
@@ -229,7 +264,7 @@ export default function AboutPage() {
 
       {/* Limitations */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">What we can't detect</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">What we miss</h2>
         <ul className="list-inside list-disc space-y-2 text-muted-foreground">
           {LIMITATIONS.map((limitation) => (
             <li key={limitation} className="leading-relaxed">

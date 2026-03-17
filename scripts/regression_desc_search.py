@@ -123,7 +123,7 @@ def _run_one(cand: dict, model: str) -> dict:
         return {"cve_id": cve_id, "status": "NOT_FOUND", "got_sha": None, "expected_shas": expected_shas}
 
     got_sha = results[0].sha
-    status = "CORRECT" if sha_matches(got_sha, expected_shas) else "WRONG"
+    status = "CORRECT" if sha_matches(got_sha, expected_shas, repo_path=cand["repo_path"]) else "WRONG"
     return {"cve_id": cve_id, "status": status, "got_sha": got_sha, "expected_shas": expected_shas}
 
 
@@ -139,7 +139,7 @@ def _dry_run_one(cand: dict) -> dict:
     published_date = raw.get("published_date") or raw.get("published") or None
 
     try:
-        terms = extract_search_terms(description, cwes)
+        terms = extract_search_terms(description, cwes, cve_id=cve_id)
         if not terms:
             return {"cve_id": cve_id, "status": "NO_TERMS",
                     "top_sha": None, "expected_shas": expected_shas,
@@ -162,7 +162,7 @@ def _dry_run_one(cand: dict) -> dict:
         signals = compute_confidence_signals(top_scored)
 
         top_sha = top_scored[0].sha if top_scored else None
-        match = sha_matches(top_sha, expected_shas) if top_sha else False
+        match = sha_matches(top_sha, expected_shas, repo_path=cand["repo_path"]) if top_sha else False
 
         return {
             "cve_id": cve_id,
@@ -238,6 +238,11 @@ def main() -> None:
     # Load candidates: from fixture or fresh sampling
     if args.fixture:
         candidates = _load_fixture(Path(args.fixture))
+        # Apply --sample to fixture too
+        if args.sample and args.sample < len(candidates):
+            import random as _rng
+            r = _rng.Random(args.seed)
+            candidates = r.sample(candidates, args.sample)
     else:
         candidates = _load_candidates(args.sample, seed=args.seed)
 

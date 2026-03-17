@@ -84,7 +84,26 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".sh": "Shell",
     ".bash": "Shell",
     ".zsh": "Shell",
+    ".sql": "SQL",
+    ".sol": "Solidity",
+    ".tf": "Terraform",
+    ".hcl": "Terraform",
 }
+
+# Template/config extensions that need project-level language inference.
+# These files don't have vulnerabilities on their own — the vulnerability
+# is in the server-side framework that renders them.
+_TEMPLATE_EXTENSIONS = frozenset({
+    ".html", ".htm",          # Django/Jinja2/EJS/Handlebars templates
+    ".xml", ".xsl", ".xslt",
+    ".yaml", ".yml",          # config files
+    ".json",                  # config/data
+    ".erb",                   # Ruby ERB templates
+    ".ejs",                   # Node EJS templates
+    ".hbs",                   # Handlebars templates
+    ".twig",                  # PHP Twig templates
+    ".j2", ".jinja", ".jinja2",  # Jinja2 templates
+})
 
 
 def _file_extension_to_language(filepath: str) -> str | None:
@@ -123,6 +142,44 @@ def _fix_commit_files(fix_commits: list[dict], repos_dir: str) -> list[str]:
     return files
 
 
+def _infer_language_from_template(filepath: str, fix_commits: list[dict] | None,
+                                   repos_dir: str) -> str | None:
+    """Infer the project language when the blamed file is a template/config.
+
+    Template files (.html, .yaml, etc.) don't have vulnerabilities on their
+    own — the bug is in the server-side framework.  Infer the framework
+    language from sibling files in the fix commit diff.
+    """
+    fix_files = _fix_commit_files(fix_commits, repos_dir) if fix_commits else []
+    # Count languages from fix commit files
+    lang_counts: dict[str, int] = {}
+    for f in fix_files:
+        lang = _file_extension_to_language(f)
+        if lang:
+            lang_counts[lang] = lang_counts.get(lang, 0) + 1
+    if lang_counts:
+        return max(lang_counts, key=lang_counts.get)  # type: ignore[arg-type]
+    # Heuristic from template type or path → likely framework
+    ext = os.path.splitext(filepath)[1].lower()
+    ext_hints = {
+        ".erb": "Ruby", ".twig": "PHP", ".ejs": "JavaScript",
+        ".j2": "Python", ".jinja": "Python", ".jinja2": "Python",
+    }
+    if ext in ext_hints:
+        return ext_hints[ext]
+    # Path-based hints for generic extensions like .html
+    path_lower = filepath.lower()
+    path_hints = [
+        ("/templates/", "Python"),       # Django/Flask
+        ("/views/", "PHP"),              # Laravel/PHP
+        ("/resources/views/", "PHP"),    # Laravel
+    ]
+    for pattern, lang in path_hints:
+        if pattern in path_lower:
+            return lang
+    return None
+
+
 def _determine_languages(
     bug_commits: list[dict],
     fix_commits: list[dict] | None = None,
@@ -130,15 +187,34 @@ def _determine_languages(
 ) -> list[str]:
     """Extract sorted unique languages from blamed_file extensions in bug commits.
 
+    For template/config files (.html, .yaml, etc.), infers the project
+    language from fix commit diffs since the vulnerability is in the
+    framework, not the template format itself.
+
     Falls back to fix commit diff files when blamed_file is a placeholder
     (e.g. osv_introduced strategy).
     """
     languages: set[str] = set()
+    needs_inference: list[str] = []
     for bc in bug_commits:
-        filepath = bc.get("blamed_file", "")
-        lang = _file_extension_to_language(filepath)
-        if lang:
-            languages.add(lang)
+        # blamed_file may be comma-separated when a SHA is blamed for multiple files
+        for filepath in bc.get("blamed_file", "").split(", "):
+            filepath = filepath.strip()
+            if not filepath:
+                continue
+            lang = _file_extension_to_language(filepath)
+            if lang:
+                languages.add(lang)
+            elif os.path.splitext(filepath)[1].lower() in _TEMPLATE_EXTENSIONS:
+                needs_inference.append(filepath)
+
+    # Infer language for template files from project context
+    if needs_inference and not languages:
+        for filepath in needs_inference:
+            lang = _infer_language_from_template(filepath, fix_commits, repos_dir)
+            if lang:
+                languages.add(lang)
+                break
 
     # Fallback: infer from fix commit changed files
     if not languages and fix_commits:
@@ -836,6 +912,12 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
     }
     if fix_commit_source:
         entry["fix_commit_source"] = fix_commit_source
+    blame_strategy = bic.get("blame_strategy")
+    if blame_strategy:
+        entry["blame_strategy"] = blame_strategy
+    fix_sha = bic.get("fix_commit_sha")
+    if fix_sha:
+        entry["fix_commit_sha"] = fix_sha
     entry["screening_verification"] = {
         "verdict": llm_v.get("verdict", ""),
         "reasoning": llm_v.get("reasoning", ""),
@@ -935,6 +1017,11 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
                 entry["sha"] = culprit_sha
                 entry["author"] = dc.get("author_name", entry["author"])
                 entry["message"] = _first_line(dc.get("message", ""))
+                # Replace AI signals with culprit's own signals.
+                # The squash-merge's signals are PR-level; the culprit's
+                # signals reflect whether AI actually wrote the vulnerable code.
+                culprit_signals = dc.get("ai_signals", [])
+                entry["ai_signals"] = [_build_signal_entry(s) for s in culprit_signals]
                 break
 
     return entry
@@ -1010,7 +1097,7 @@ def _recompute_ai_confidence(result: dict) -> float:
             continue
         # Only consider authorship signals — workflow signals don't prove
         # AI wrote the code (mirrored from pipeline.py).
-        authorship = [s for s in signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        authorship = [s for s in signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
         if not authorship:
             continue
         ai_bic_count += 1
@@ -1024,7 +1111,7 @@ def _recompute_ai_confidence(result: dict) -> float:
     # Indirect-only penalty (mirrored from pipeline.py)
     if max_score > 0 and best_bic is not None:
         best_signals = best_bic.get("commit", {}).get("ai_signals", [])
-        best_authorship = [s for s in best_signals if s.get("signal_type", "") not in _WORKFLOW_SIGNAL_TYPES]
+        best_authorship = [s for s in best_signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
         if best_authorship and all(
             s.get("signal_type", "").startswith("squash_decomposed")
             for s in best_authorship
@@ -1066,7 +1153,7 @@ def build_cve_entry(
         if verdict == "UNRELATED":
             continue
         for sig in signals:
-            if sig.get("signal_type", "") in _WORKFLOW_SIGNAL_TYPES:
+            if sig.get("signal_type", "").removeprefix("squash_decomposed_") in _WORKFLOW_SIGNAL_TYPES:
                 continue
             tool = sig.get("tool", "")
             if tool:
@@ -1178,32 +1265,20 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by from deep verification + LLM verdicts and manual reviews
-    models: set[str] = set()
-    for bic in result.get("bug_introducing_commits", []):
-        dv = _get_deep_verdict(bic)
-        if dv:
-            # New verifier format: model at top level
-            if dv.get("model"):
-                models.add(dv["model"])
-            # Old tribunal format: model inside agent_verdicts
-            for av in dv.get("agent_verdicts", []):
-                if av.get("model"):
-                    models.add(av["model"])
-        llm_v = _get_screening_verdict(bic)
-        if llm_v and llm_v.get("model"):
-            # Strip strategy prefixes like "osv+" to get the bare model name
-            model = llm_v["model"]
-            if "+" in model:
-                model = model.split("+", 1)[1]
-            models.add(model)
-
+    # Compute verified_by: model + reasoning effort level.
+    # The deep verifier uses reasoning_effort="high" (hardcoded in agent_loop.py).
+    _REASONING_EFFORT = "high"
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
     if review and review.get("verdict") in ("confirmed", "uncertain"):
         verified_by = "Manual"
-    elif models:
-        verified_by = ", ".join(sorted(models))
+    else:
+        for bic in result.get("bug_introducing_commits", []):
+            dv = _get_deep_verdict(bic)
+            if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
+                if dv.get("model"):
+                    verified_by = f"{dv['model']}-{_REASONING_EFFORT}"
+                break
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type.
     # Priority: deep-verify CONFIRMED > screening CONFIRMED (no deep verify).
@@ -1231,7 +1306,13 @@ def build_cve_entry(
                 if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
                     how_introduced = av["reasoning"]
                     break
+            # Preserve screening metadata (vuln_type, root cause) alongside
+            # deep-verify reasoning — deep verify has no vuln_type of its own.
             if how_introduced:
+                llm_v = _get_screening_verdict(bic)
+                if llm_v and llm_v.get("verdict") == "CONFIRMED":
+                    root_cause = llm_v.get("vuln_description", "")
+                    vuln_type = llm_v.get("vuln_type", "")
                 break
 
         # Screening CONFIRMED — only use if deep verify did NOT overrule it

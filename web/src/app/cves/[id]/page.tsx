@@ -8,6 +8,7 @@ import {
   BugCommitTimeline,
   FixCommitTimeline,
 } from "@/components/commit-timeline";
+import { AttributionChain } from "@/components/attribution-chain";
 import { ToolIcon } from "@/components/tool-icon";
 import {
   severityBadgeClass,
@@ -244,22 +245,20 @@ function SummaryCards({
         </div>
       </div>
 
-      {/* Confidence */}
+      {/* Language */}
       <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <Fingerprint className="h-3.5 w-3.5" />
-          Confidence
+          <Code2 className="h-3.5 w-3.5" />
+          Language
         </div>
         <div className="space-y-1.5">
-          <span className="font-mono text-xl font-bold tabular-nums">
-            {formatConfidence(cve.confidence)}
-          </span>
-          <div className="h-1.5 w-full rounded-full bg-muted">
-            <div
-              className="h-1.5 rounded-full bg-primary transition-all"
-              style={{ width: `${Math.round(cve.confidence * 100)}%` }}
-            />
-          </div>
+          {cve.languages.length > 0 ? (
+            cve.languages.map((lang) => (
+              <span key={lang} className="font-semibold text-sm">{lang}</span>
+            ))
+          ) : (
+            <span className="text-sm text-muted-foreground">Unknown</span>
+          )}
         </div>
       </div>
     </div>
@@ -525,6 +524,18 @@ export default async function CveDetailPage({
 
       {/* How AI Introduced This — the star of the page */}
       <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
+
+      {/* Attribution Chain — how we traced the vulnerability */}
+      <CollapsibleSection
+        title="Attribution Chain"
+        icon={<Scale className="h-4 w-4 text-muted-foreground" />}
+      >
+        <AttributionChain
+          bugCommits={cve.bug_commits}
+          fixCommits={cve.fix_commits}
+          repoUrl={repoUrl}
+        />
+      </CollapsibleSection>
 
       {/* Bug-Introducing Commits */}
       <CollapsibleSection

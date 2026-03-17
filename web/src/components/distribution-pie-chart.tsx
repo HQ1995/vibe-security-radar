@@ -22,6 +22,8 @@ interface DistributionPieChartProps {
   readonly iconDir?: string;
   readonly getIconKey?: (key: string) => string;
   readonly themedIcons?: ReadonlySet<string>;
+  /** Override the center total (e.g. unique CVE count instead of sum of slices). */
+  readonly totalOverride?: number;
 }
 
 interface ChartEntry {
@@ -43,6 +45,7 @@ export function DistributionPieChart({
   iconDir,
   getIconKey = (k) => k,
   themedIcons = new Set(),
+  totalOverride,
 }: DistributionPieChartProps) {
   const [activeIndex, setActiveIndex] = React.useState<number | undefined>(
     undefined,
@@ -134,7 +137,7 @@ export function DistributionPieChart({
                           >
                             {activeItem
                               ? activeItem.value
-                              : total.toLocaleString()}
+                              : (totalOverride ?? total).toLocaleString()}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
