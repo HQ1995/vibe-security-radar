@@ -21,6 +21,7 @@ const LANG_ICON_KEY: Readonly<Record<string, string>> = {
   Dart: "dart",
   Scala: "scala",
   Shell: "shell",
+  Perl: "perl",
 };
 
 function getLangIconKey(lang: string): string {
