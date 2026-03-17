@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-17T16:22:16.262366+00:00",
-  "total": 62,
+  "generated_at": "2026-03-17T18:14:36.426603+00:00",
+  "total": 60,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -5409,6 +5409,90 @@
       ]
     },
     {
+      "id": "CVE-2025-59829",
+      "description": "Claude Code: Permission deny bypass is possible through symlink",
+      "severity": "LOW",
+      "cvss": 2.3,
+      "cwes": [
+        "CWE-61"
+      ],
+      "ecosystem": "",
+      "published": "2025-10-03T20:15:33.653",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit created the hookify plugin and authored the exact vulnerable logic later fixed in both `plugins/hookify/core/rule_engine.py` and `plugins/hookify/hooks/pretooluse.py`. In the pre-fix state, `_extract_field()` returned the raw `file_path` from `tool_input` with no canonicalization, so deny/block rules were evaluated against the symlink path rather than the real target. File history, blame on the fix parent, and pickaxe searches all show these lines originated in 59372c09 and were untouched until the CVE fix.",
+      "root_cause": "The application failed to resolve symlinks before evaluating deny rules, allowing an attacker to bypass access controls by pointing a path to a restricted location.",
+      "vuln_type": "Path Traversal / Symlink Bypass",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "59372c0921b0170e81f9c63777962d02347411d5",
+          "author": "Daisy S. Hollman",
+          "date": "2025-11-17T03:18:43-08:00",
+          "message": "feat: Add hookify plugin for custom hook rules via markdown",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "plugins/hookify/core/rule_engine.py, plugins/hookify/hooks/pretooluse.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "ff0fdc06760d9d8d94cf45549908e06e2ffe36d6",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `RuleEngine` class and its initial implementation for evaluating rules. By failing to include symlink resolution when parsing and checking `file_path` inputs, it established the vulnerable pattern that allowed access control bypasses from the very beginning of the component's existence.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal / Symlink Bypass",
+            "vuln_description": "The application failed to resolve symlinks before evaluating deny rules, allowing an attacker to bypass access controls by pointing a path to a restricted location.",
+            "vulnerable_pattern": "Evaluating file system path permissions without canonicalizing paths or resolving symbolic links, leading to path traversal bypasses.",
+            "causal_chain": "The blamed commit created the `RuleEngine` logic, which accepted file paths for permission checks without canonicalization. Since it lacked any mechanism to resolve symlinks, all subsequent access control checks based on path strings were inherently vulnerable to symlink-based path traversal attacks."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created the hookify plugin and authored the exact vulnerable logic later fixed in both `plugins/hookify/core/rule_engine.py` and `plugins/hookify/hooks/pretooluse.py`. In the pre-fix state, `_extract_field()` returned the raw `file_path` from `tool_input` with no canonicalization, so deny/block rules were evaluated against the symlink path rather than the real target. File history, blame on the fix parent, and pickaxe searches all show these lines originated in 59372c09 and were untouched until the CVE fix.",
+                "confidence": 0.95,
+                "tool_calls_made": 47,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ff0fdc06760d9d8d94cf45549908e06e2ffe36d6",
+          "repo_url": "https://github.com/anthropics/claude-code",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/59xxx/CVE-2025-59829.json",
+        "https://github.com/anthropics/claude-code/security/advisories/GHSA-66m2-gx93-v996",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-59829"
+      ]
+    },
+    {
       "id": "CVE-2025-69288",
       "description": "Titra has Remote Code Execution in Admin Functionality",
       "severity": "CRITICAL",
@@ -6223,93 +6307,6 @@
         "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-8jpq-5h99-ff5r",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26321"
-      ]
-    },
-    {
-      "id": "CVE-2026-28451",
-      "description": "OpenClaw versions prior to 2026.2.14 contain server-side request forgery vulnerabilities in the Feishu extension that allow attackers to fetch attacker-controlled remote URLs without SSRF protections via sendMediaFeishu function and markdown image processing. Attackers can influence tool calls through direct manipulation or prompt injection to trigger requests to internal services and re-upload responses as Feishu media.",
-      "severity": "CRITICAL",
-      "cvss": 6.3,
-      "cwes": [
-        "CWE-918"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-05T22:16:17.210",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.855,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
-      "root_cause": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
-      "vuln_type": "Authorization Bypass",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
-          "author": "Yifeng Wang",
-          "date": "2026-02-05T18:26:05+08:00",
-          "message": "feat(feishu): replace built-in SDK with community plugin",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "extensions/feishu/src/docx.ts, extensions/feishu/src/media.ts",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "osv",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the original implementation of the `downloadImage` function in `extensions/feishu/src/docx.ts`. This initial implementation used a generic `fetch` call without enforcing any security boundaries (such as URL validation or size limits), which created the vulnerability that the fix commit subsequently addressed by introducing a runtime-safe media fetcher.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Authorization Bypass",
-            "vuln_description": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
-            "vulnerable_pattern": "N/A - Insufficient information provided in the commit",
-            "causal_chain": "The blamed commit added the `downloadImage` function using standard `fetch` on arbitrary URLs, which enabled a local file disclosure vulnerability; the fix commit later replaced this unsafe `fetch` with a secure runtime method that includes appropriate validation and size restrictions."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
-                "confidence": 0.95,
-                "tool_calls_made": 91,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "b5ab92eef4e4f6099c98817e0917c99ec9e03045",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "osv"
-        },
-        {
-          "sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-x22m-j5qq-j49m",
-        "https://www.vulncheck.com/advisories/openclaw-ssrf-via-feishu-extension-media-fetching"
       ]
     },
     {
@@ -7591,220 +7588,6 @@
                 "reasoning": "This commit introduced the entire deduplicate interceptor and the original DeduplicationHandler implementation. In the new handler, `onResponseData()` unconditionally appends every chunk to `this.#chunks`, and `#notifyWaitingHandlers()` later does `const body = Buffer.concat(this.#chunks)` before replaying the full buffered response to waiters; `lib/interceptor/deduplicate.js` also always attaches duplicate requests via `pendingHandler.addWaitingHandler(handler)`. The fixing commit 5890c7b7 specifically replaces that design with streaming delivery, a `maxBufferSize` cap, and a fallback to dispatch independently once body streaming has started, so b902551e is the commit that introduced the vulnerable unbounded-buffering design.",
                 "confidence": 0.95,
                 "tool_calls_made": 58,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "c75c9c9ef92a9a4cbc61c936aa12099aa9d9b060",
-              "author_name": "Matteo Collina",
-              "message": "feat: add request deduplication to cache interceptor",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "b7139cdc3b288514b193abab1c62a0aa4af3b58e",
-              "author_name": "Matteo Collina",
-              "message": "feat: add diagnostic channel for cache deduplication observability",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a9ee89a85195c5f0853749ee737cf93d32017162",
-              "author_name": "Matteo Collina",
-              "message": "docs: add request deduplication documentation",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3c4ec394c046e0fd9eca43db0c9fbcce5ac890b4",
-              "author_name": "Matteo Collina",
-              "message": "feat: make cache deduplication opt-in via deduplication option",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "6001fabd3b4d78966fcacc3b70a7c1ab70f0287c",
-              "author_name": "Matteo Collina",
-              "message": "test: add tests for per-user header deduplication behavior",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "92cef77edb4ce380f86a439b86e237ce149c5b98",
-              "author_name": "Matteo Collina",
-              "message": "refactor: extract request deduplication to standalone interceptor",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "b154b6bb35cbf647c68c8c48f51e106ea014e47e",
-              "author_name": "Matteo Collina",
-              "message": "feat(deduplicate): add skipHeaderNames and excludeHeaderNames options",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "b902551e2a154fac2b3923d948c074a5640c01b0"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "77594f923cef4c27ee0bad365e7b4c44a199edae",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "cb79c5704ac47e42ce01a72269994fc70e377536",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "2ee00cb322c76b0bf56829462d7c1dc53d1cbe3d",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "5890c7b7076894d00402f0c23c0fe72e59c72ff4",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "74495c63ab23ef39be99983ed6de81df5d203d45",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "84235c62e0fe7494cec13f81d5732db0859df417",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "07a39067a0485c1953196f500d945fe09378a176",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "4147ce21277b3566d02d3be789e5f7a490089db2",
-          "repo_url": "https://github.com/nodejs/undici",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://github.com/nodejs/undici/security/advisories/GHSA-phc3-fgpg-7m6h",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-2581",
-        "https://hackerone.com/reports/3513473",
-        "https://cna.openjsf.org/security-advisories.html"
-      ]
-    },
-    {
-      "id": "GHSA-phc3-fgpg-7m6h",
-      "description": "Undici has Unbounded Memory Consumption in its DeduplicationHandler via Response Buffering that leads to DoS",
-      "severity": "MEDIUM",
-      "cvss": 5.9,
-      "cwes": [
-        "CWE-770"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-13T20:37:58Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "JavaScript",
-        "TypeScript"
-      ],
-      "confidence": 0.81,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire deduplicate feature, including `lib/handler/deduplication-handler.js`, `lib/interceptor/deduplicate.js`, and the corresponding type definitions. In the new handler it immediately implemented unbounded response buffering with `this.#chunks.push(Buffer.from(chunk))` and later `const body = Buffer.concat(this.#chunks)` before replaying the whole body to waiting handlers, which is exactly the behavior removed by fix `5890c7b7`. The same commit also made the design reachable by wiring duplicate requests into `pendingHandler.addWaitingHandler(handler)` with no buffering limit or streaming safeguards.",
-      "root_cause": "The application fails to properly validate the 'upgrade' header, allowing CRLF injection which can lead to request smuggling or other protocol-level attacks.",
-      "vuln_type": "CRLF Injection",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "92cef77edb4ce380f86a439b86e237ce149c5b98",
-          "author": "Matteo Collina",
-          "date": "2025-12-16T23:39:46+01:00",
-          "message": "refactor: extract request deduplication to standalone interceptor",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "lib/handler/deduplication-handler.js, lib/interceptor/deduplicate.js, types/interceptors.d.ts",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "advisory_version",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "5890c7b7076894d00402f0c23c0fe72e59c72ff4",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the DeduplicationHandler class from scratch, including the unbounded '#chunks = []' array that stores all response data indefinitely. This architecture directly enables the 'Unbounded Memory Consumption' vulnerability identified in the CVE, as there were no buffer limits implemented in this initial version.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "CRLF Injection",
-            "vuln_description": "The application fails to properly validate the 'upgrade' header, allowing CRLF injection which can lead to request smuggling or other protocol-level attacks.",
-            "vulnerable_pattern": "Unvalidated header input allowing carriage return and line feed characters (CRLF) to be injected into HTTP headers.",
-            "causal_chain": "The blamed commit introduced the #chunks array without any size constraints or eviction logic. Subsequent responses buffered into this array grow linearly with the response size, leading to uncontrolled memory consumption (DoS) when many or large responses are handled."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire deduplicate feature, including `lib/handler/deduplication-handler.js`, `lib/interceptor/deduplicate.js`, and the corresponding type definitions. In the new handler it immediately implemented unbounded response buffering with `this.#chunks.push(Buffer.from(chunk))` and later `const body = Buffer.concat(this.#chunks)` before replaying the whole body to waiting handlers, which is exactly the behavior removed by fix `5890c7b7`. The same commit also made the design reachable by wiring duplicate requests into `pendingHandler.addWaitingHandler(handler)` with no buffering limit or streaming safeguards.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -10058,201 +9841,6 @@
               "message": "fix: websocket message broadcasting cross-contamination between person and group channels",
               "ai_signals": [],
               "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "b634aa48dc27a8df7e7e853914071451db00a04c"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "b34ebf85a6445060bbe6770713717624cdd6c03d",
-          "repo_url": "https://github.com/langbot-app/langbot",
-          "source": "osv"
-        },
-        {
-          "sha": "614621ab7b84fe50da3c6137705cde5a99429866",
-          "repo_url": "https://github.com/langbot-app/LangBot",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/28xxx/CVE-2026-28509.json",
-        "https://github.com/langbot-app/LangBot/security/advisories/GHSA-w8gq-g4pc-xh3h",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
-      ]
-    },
-    {
-      "id": "GHSA-w8gq-g4pc-xh3h",
-      "description": "LangBot has a Cross Site Scripting(XSS) Vulnerability",
-      "severity": "MEDIUM",
-      "cvss": 6.3,
-      "cwes": [
-        "CWE-79"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-01T17:01:23+08:00",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.2565,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created `web/src/app/home/components/new-version-dialog/NewVersionDialog.tsx` and rendered external release notes (`release.body`) through `ReactMarkdown` with `rehypeRaw` and no sanitization. Blame on the vulnerable lines attributes the `rehypeRaw` import and `rehypePlugins={[rehypeRaw, rehypeHighlight]}` to this commit, and the fix later adds `rehypeSanitize` at that exact location. The same changeset also wired release data in from the cloud-service client, so it introduced a new unsafe raw-HTML rendering surface.",
-      "root_cause": "",
-      "vuln_type": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "3757f44af5f35b602bd1370f9a0a1039f546e95d",
-          "author": "copilot-swe-agent[bot]",
-          "date": "2025-12-01T13:44:01+08:00",
-          "message": "Add markdown rendering support to pipeline debug dialog messages with toggle button",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_email",
-              "matched_text": "Copilot@users.noreply.github.com",
-              "confidence": 0.95
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "committer_email",
-              "matched_text": "Copilot@users.noreply.github.com",
-              "confidence": 0.95
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_name",
-              "matched_text": "copilot-swe-agent[bot]",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx",
-          "blame_confidence": 0.27,
-          "fix_commit_source": "osv",
-          "blame_strategy": "context_blame",
-          "fix_commit_sha": "614621ab7b84fe50da3c6137705cde5a99429866",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `react-markdown` implementation in `DebugDialog.tsx` along with plugins like `rehypeRaw`, which enabled arbitrary HTML parsing without sanitization. The vulnerability (XSS) was a direct result of introducing this rendering pipeline without the necessary `rehype-sanitize` step, which the fix commit subsequently added.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Cross Site Scripting (XSS)",
-            "vuln_description": "The application likely had a vulnerable dependency or package version that was susceptible to XSS, which was mitigated by updating the project version and associated lockfile.",
-            "vulnerable_pattern": "Dependency version vulnerability susceptible to CWE-79",
-            "causal_chain": "The blamed commit added `rehypeRaw` to the markdown rendering pipeline in `DebugDialog.tsx` without pairing it with a sanitization plugin, effectively allowing malicious HTML/script injection via markdown output."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced markdown rendering into `web/src/app/home/pipelines/components/debug-dialog/DebugDialog.tsx` and explicitly added `rehypeRaw` to the `ReactMarkdown` plugin chain for chat message content. Blame on the pre-fix file attributes both the `rehypeRaw` import and the vulnerable `rehypePlugins` lines in `DebugDialog.tsx` to this commit, and the fix later adds `rehypeSanitize` at that exact sink. Although the same commit touched `PluginReadme.tsx`, that change was only a CSS import path update there; the DebugDialog XSS itself was authored here.",
-                "confidence": 0.95,
-                "tool_calls_made": 36,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "3c2785ff8b249562617a42227b936f605636e398",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Initial plan",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3757f44af5f35b602bd1370f9a0a1039f546e95d",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Add markdown rendering support to pipeline debug dialog messages with toggle button",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "46163b1c261e6fd994fdb1707687356a7beed9bc",
-              "author_name": "copilot-swe-agent[bot]",
-              "message": "Fix code review feedback: remove conflicting styles and imports",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "committer_email",
-                  "matched_text": "Copilot@users.noreply.github.com",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "author_name",
-                  "matched_text": "copilot-swe-agent[bot]",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "6199c665b1f298a5b8a856e02670ec5d22b5ea90",
-              "author_name": "Junyan Qin",
-              "message": "perf: styles",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9c4a8dbce849846f2c3bf3752c567708de5d2241",
-              "author_name": "Junyan Qin",
-              "message": "fix: websocket message broadcasting cross-contamination between person and group channels",
-              "ai_signals": [],
-              "touched_blamed_file": true
             }
           ],
           "squash_merge_sha": "b634aa48dc27a8df7e7e853914071451db00a04c"

@@ -1562,6 +1562,31 @@ def main(argv: list[str] | None = None) -> None:
     if no_tools:
         print(f"  Excluded {len(no_tools)} CVEs with lost AI signal data (need --no-cache re-analysis).")
     entries = [e for e in entries if e.get("ai_tools")]
+
+    # Deduplicate CVE/GHSA aliases that point to the same vulnerability.
+    # Key by the set of fix commit SHAs + BIC SHAs; prefer CVE-* IDs over GHSA-*.
+    seen_fix_sets: dict[frozenset[str], dict] = {}
+    deduped_entries: list[dict] = []
+    for e in entries:
+        fix_key = frozenset(fc.get("sha", "") for fc in e.get("fix_commits", []))
+        bic_key = frozenset(bc.get("sha", "") for bc in e.get("bug_commits", []))
+        dedup_key = fix_key | bic_key
+        if dedup_key in seen_fix_sets:
+            existing = seen_fix_sets[dedup_key]
+            # Prefer CVE-* over GHSA-*
+            if e["id"].startswith("CVE-") and not existing["id"].startswith("CVE-"):
+                seen_fix_sets[dedup_key] = e
+                deduped_entries = [x if x["id"] != existing["id"] else e for x in deduped_entries]
+                print(f"  Dedup: {existing['id']} replaced by {e['id']}")
+            else:
+                print(f"  Dedup: {e['id']} dropped (duplicate of {existing['id']})")
+        else:
+            seen_fix_sets[dedup_key] = e
+            deduped_entries.append(e)
+    if len(deduped_entries) < len(entries):
+        print(f"  Deduplicated {len(entries) - len(deduped_entries)} alias entries.")
+    entries = deduped_entries
+
     # Sort: LLM-confirmed first, then by confidence descending
     entries = sorted(
         entries,
