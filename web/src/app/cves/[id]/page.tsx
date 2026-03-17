@@ -244,16 +244,19 @@ function SummaryCards({
         </div>
       </div>
 
-      {/* Severity */}
+      {/* Language */}
       <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <Fingerprint className="h-3.5 w-3.5" />
-          Severity
+          <Code2 className="h-3.5 w-3.5" />
+          Language
         </div>
         <div className="space-y-1.5">
-          <span className="font-semibold text-sm">{cve.severity}</span>
-          {cve.cvss != null && cve.cvss > 0 && (
-            <span className="text-xs text-muted-foreground ml-1">CVSS {cve.cvss}</span>
+          {cve.languages.length > 0 ? (
+            cve.languages.map((lang) => (
+              <span key={lang} className="font-semibold text-sm">{lang}</span>
+            ))
+          ) : (
+            <span className="text-sm text-muted-foreground">Unknown</span>
           )}
         </div>
       </div>
