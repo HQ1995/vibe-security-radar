@@ -197,12 +197,16 @@ def _determine_languages(
     languages: set[str] = set()
     needs_inference: list[str] = []
     for bc in bug_commits:
-        filepath = bc.get("blamed_file", "")
-        lang = _file_extension_to_language(filepath)
-        if lang:
-            languages.add(lang)
-        elif filepath and os.path.splitext(filepath)[1].lower() in _TEMPLATE_EXTENSIONS:
-            needs_inference.append(filepath)
+        # blamed_file may be comma-separated when a SHA is blamed for multiple files
+        for filepath in bc.get("blamed_file", "").split(", "):
+            filepath = filepath.strip()
+            if not filepath:
+                continue
+            lang = _file_extension_to_language(filepath)
+            if lang:
+                languages.add(lang)
+            elif os.path.splitext(filepath)[1].lower() in _TEMPLATE_EXTENSIONS:
+                needs_inference.append(filepath)
 
     # Infer language for template files from project context
     if needs_inference and not languages:
