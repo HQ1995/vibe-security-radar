@@ -41,6 +41,7 @@ export const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
   leap_new: "#10B981",
   traycer: "#A855F7",
   atlassian_rovo: "#0052CC",
+  aether: "#6366F1",
   unknown_ai: "#71717A",
 };
 
@@ -108,6 +109,7 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   leap_new: "Leap.new",
   traycer: "Traycer",
   atlassian_rovo: "Atlassian Rovo",
+  aether: "Aether",
   unknown_ai: "Unknown AI",
 };
 

@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
       </section>
 
       {/* Tool distribution */}
-      <ToolDistributionChart data={stats.by_tool} />
+      <ToolDistributionChart data={stats.by_tool} totalCves={stats.total_cves} />
 
       <section>
         <h2 className="mb-4 text-xl font-semibold">Tools Overview</h2>
