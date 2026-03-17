@@ -55,6 +55,8 @@ export interface BugCommit {
   readonly decomposed_commits?: readonly DecomposedCommit[];
   readonly squash_merge_sha?: string;
   readonly fix_commit_source?: string;
+  readonly blame_strategy?: string;
+  readonly fix_commit_sha?: string;
 }
 
 export interface FixCommit {

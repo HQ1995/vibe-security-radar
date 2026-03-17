@@ -908,6 +908,12 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
     }
     if fix_commit_source:
         entry["fix_commit_source"] = fix_commit_source
+    blame_strategy = bic.get("blame_strategy")
+    if blame_strategy:
+        entry["blame_strategy"] = blame_strategy
+    fix_sha = bic.get("fix_commit_sha")
+    if fix_sha:
+        entry["fix_commit_sha"] = fix_sha
     entry["screening_verification"] = {
         "verdict": llm_v.get("verdict", ""),
         "reasoning": llm_v.get("reasoning", ""),

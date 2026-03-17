@@ -8,6 +8,7 @@ import {
   BugCommitTimeline,
   FixCommitTimeline,
 } from "@/components/commit-timeline";
+import { AttributionChain } from "@/components/attribution-chain";
 import { ToolIcon } from "@/components/tool-icon";
 import {
   severityBadgeClass,
@@ -523,6 +524,18 @@ export default async function CveDetailPage({
 
       {/* How AI Introduced This — the star of the page */}
       <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
+
+      {/* Attribution Chain — how we traced the vulnerability */}
+      <CollapsibleSection
+        title="Attribution Chain"
+        icon={<Scale className="h-4 w-4 text-muted-foreground" />}
+      >
+        <AttributionChain
+          bugCommits={cve.bug_commits}
+          fixCommits={cve.fix_commits}
+          repoUrl={repoUrl}
+        />
+      </CollapsibleSection>
 
       {/* Bug-Introducing Commits */}
       <CollapsibleSection
