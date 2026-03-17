@@ -13,13 +13,13 @@ export function NavHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-lg">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/"
-          className="text-lg font-bold tracking-tight text-foreground"
+          className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-foreground"
         >
-          <span className="text-primary">Vibe</span> Security Radar
+          <span className="text-primary">VSR</span>
         </Link>
         <nav className="flex items-center gap-1">
           {NAV_LINKS.map((link) => {
@@ -29,10 +29,10 @@ export function NavHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {link.label}
