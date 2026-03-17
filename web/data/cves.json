@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-17T13:15:19.883930+00:00",
+  "generated_at": "2026-03-17T13:19:52.722672+00:00",
   "total": 76,
   "cves": [
     {
@@ -19,7 +19,7 @@
         "JavaScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created auth.js and introduced openBrowser() with both the child_process exec import and the vulnerable shell invocation: exec(`${command} \"${url}\"`, ...). The fix commit removes that exact pattern and replaces it with spawn() plus argument arrays. git log search for the string \"exec\" in auth.js shows only this commit adding it and the fix commit removing it, so this is the original introduction of the command-injection flaw.",
       "root_cause": "",
       "vuln_type": "",
@@ -99,7 +99,7 @@
         "C/C++"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit refactored `sort_cmp()` to compare copied element values instead of indices and, in the process, replaced the earlier mutation guard `RARRAY_PTR(ary) != p || size < a || size < b` with the weaker pointer-only check `RARRAY_PTR(ary) != p`. The fix commit `eb398971` changes exactly that logic by snapshotting both the array pointer and length and validating both after user code runs. Even though the sort implementation was already unsafe earlier, this was a reimplementation/regression of the vulnerable logic and therefore a valid BIC.",
       "root_cause": "",
       "vuln_type": "",
@@ -184,7 +184,7 @@
         "Go"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit added `sseHandlerWithHeadSupport` and hard-coded `Access-Control-Allow-Origin: \"*\"` for `/sse` HEAD requests, then served the wrapped handler via `http.Server.ListenAndServe()`. The fix directly rewrites those HEAD-response lines and places the handler behind the new `originGuard` and `hostGuard`, so cd7caff authored vulnerable code that was part of the CVE fix. It was not the original omission of host/origin validation, but it did add a new insecure code path to the same SSE transport.",
       "root_cause": "",
       "vuln_type": "",
@@ -386,7 +386,7 @@
         "C/C++"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the exact optimization that the fix changes: it added the 'invert JMPNOT to JMPIF' block and the write `s->iseq[fail_pos - 2] = OP_JMPIF` without first verifying that the linked jump was actually an `OP_JMPNOT`. The fix commit e50f15c1 directly patches this code by adding `s->iseq[fail_pos - 2] == OP_JMPNOT` to the condition. Pre-2b72 code always emitted a normal `JMP` around failure handling and never rewrote prior instructions, so the bytecode-corruption bug starts here.",
       "root_cause": "",
       "vuln_type": "",
@@ -470,7 +470,7 @@
         "Python"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit made the feature actively vulnerable by adding the Harbor/Quay adapters, the registry-adapter factory, the verify/repository-discovery API logic, and worker discovery code that performed outbound HTTP to the stored URL. Blame on the pre-fix code shows the `self.session.get(...)` calls in both adapters were authored here and used requests' default redirect-following behavior, while `RegistryAdapter` also lacked any destination validation. The fix directly patches these exact additions by validating URLs in the adapter constructor and disabling redirects (`allow_redirects=False`), so this is a confirmed introducer of the exploitable redirect-based SSRF path.",
       "root_cause": "",
       "vuln_type": "",
@@ -800,7 +800,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire vulnerable `.env` persistence mechanism in `src/auth/oauth.ts`: it added `updateEnvFile()`, manual regex-based line replacement, and direct string interpolation of token values into `.env`. The fix commit replaces that exact design with `dotenv.parse()` + `dotenv-stringify()`, showing that the unsafe serialization logic added here was the root cause. The previous revision (`a00b6c592895a6ed9da8b8ba72e5bf43db0a9060`) had no `updateEnvFile()` helper or automatic writing of token values back to `.env` at all.",
       "root_cause": "",
       "vuln_type": "",
@@ -887,7 +887,7 @@
         "Python"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the shard-doubling and shard-retry logic in `RateLimiter`, including `_is_wcu_exhausted()` and the `old_buckets`-based decision path. The fix replaces that inference with an explicit `SpeculativeFailureReason` from the repository and only retries on `APP_LIMIT_EXHAUSTED`, showing that 9f66's original recovery logic was the flawed behavior. In particular, using raw bucket token state to infer why the conditional write failed made the hot-partition mitigation nondeterministic under mixed app-limit/WCU exhaustion.",
       "root_cause": "",
       "vuln_type": "",
@@ -1086,7 +1086,7 @@
         "Rust"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the generic webhook channel, its config schema, and the factory wiring. In that first implementation, the JSON payload required caller-supplied `sender` and `chat_id`, the allowlist check was `base_config.is_allowed(&payload.sender)`, and the published `InboundMessage` also used `payload.sender`/`payload.chat_id` directly. The fix replaces exactly that design with server-controlled `sender_id`/`chat_id`, `trust_payload_identity=false` by default, and optional signature verification, so 2c9deef is the causal bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -1174,7 +1174,7 @@
         "Rust"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This is the real introducer of the dangling-symlink bypass in `src/security/path.rs`. It added `check_symlink_escape()` with `if current.exists()` before canonicalization; `f50c17e1` directly replaces that with `symlink_metadata()` because `exists()` follows symlinks and returns false for dangling ones. The vulnerable logic fixed by the advisory is therefore authored here.",
       "root_cause": "",
       "vuln_type": "",
@@ -1452,7 +1452,7 @@
         "Rust"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the webhook channel from scratch, including `WebhookPayload { message, sender, chat_id }`, the allowlist check `base_config.is_allowed(&payload.sender)`, and `InboundMessage::new(... payload.sender.trim(), payload.chat_id.trim(), ...)`. It also added `WebhookConfig.allow_from` and wired that config into `BaseChannelConfig`, so the allowlist was bound to caller-controlled JSON identity from day one. The fix reverses exactly that design by adding server-controlled `sender_id`/`chat_id` and making `trust_payload_identity` default to false.",
       "root_cause": "",
       "vuln_type": "",
@@ -1535,7 +1535,7 @@
         "Rust"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "Pre-fix blame on src/security/shell.rs lines 130-135 points to this commit for the exact regexes `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. The fix replaces those literals with broader patterns that allow intervening or combined flags, because the original forms were bypassable by inputs like `python3 -P -c` and `python3 -Bc`. This commit therefore introduced the too-narrow argument-matching logic fixed by GHSA-5wp8.",
       "root_cause": "",
       "vuln_type": "",
@@ -1839,7 +1839,7 @@
         "Python"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit added shard doubling/retry plus `_is_wcu_exhausted()` to decide whether to double shards or retry elsewhere. The final fix replaces that heuristic with explicit `SpeculativeFailureReason` checks, showing this commit introduced the fragile shard-decision logic. It made speculative-failure classification security-relevant in the hot-partition mitigation path.",
       "root_cause": "",
       "vuln_type": "",
@@ -2081,7 +2081,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "Although this commit was a security fix for the original ACP bug, it reimplemented requestPermission with `promptRequired = !toolName || DANGEROUS_ACP_TOOLS.has(toolName)`, which still auto-approved any known tool not on the danger list. bb1c3dfe later changed that logic to only auto-approve safe kinds (`read`/`search`), proving 749e28 authored the residual vulnerable behavior later fixed. So 749e28 is a real BIC for the narrower ACP auto-approval issue addressed by bb1c3dfe.",
       "root_cause": "",
       "vuln_type": "",
@@ -2216,7 +2216,7 @@
         "Python"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This is the original introducer. It created the OAuth DCR flow, added the consent form field for user-supplied `ha_url`, made OAuth mode work without a server-side `HOMEASSISTANT_URL`, and added `_validate_ha_credentials()` which performed `GET {ha_url}/api/config` and returned differentiated error messages such as connect timeout, 401, 403, and other HTTP failures. Those are exactly the design and code paths the fix removes to eliminate the SSRF-based error oracle.",
       "root_cause": "",
       "vuln_type": "",
@@ -2517,7 +2517,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the community Feishu plugin’s webhook design: it added `connectionMode: \"webhook\"`, top-level `encryptKey`/`verificationToken` fields as optional strings in `config-schema.ts`, matching JSON-schema entries in `channel.ts`, and `createEventDispatcher()` passing those values through with no requirement that `encryptKey` exist. The monitor still logged that webhook mode was not implemented, so the flaw was not yet reachable, but the insecure design the fix later reverses was authored here. Under the investigation criteria, making the authenticating encrypt key optional is a vulnerability introduction even before the code path became exploitable.",
       "root_cause": "",
       "vuln_type": "",
@@ -2689,7 +2689,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The blamed `channel.ts` lines themselves are policy metadata/warnings, not the direct fail-open check. However this commit introduced the entire Synology Chat channel and wired `createWebhookHandler()` into `startAccount`, making the vulnerable allowlist logic reachable from the registered webhook route. I found no separate later enabler commit, so this SHA is still the introducing commit for the vulnerability even though the `channel.ts` blame is indirect.",
       "root_cause": "",
       "vuln_type": "",
@@ -2806,7 +2806,7 @@
         "JavaScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This later release rewrote the `/get-patch` block into the exact structure present immediately before the fix: `db.get(SELECT id, token_used_at ...)`, then `if (row.token_used_at)`, then a separate `db.run(UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ?)`. Pre-fix blame attributes most lines in the fixed hunk to `5e5a80b5`, showing that this commit reimplemented/preserved the racy logic in the shipped code. Under the stated criteria, that makes it a valid bug-introducing commit as well.",
       "root_cause": "",
       "vuln_type": "",
@@ -2886,7 +2886,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This refactor rewrote the download logic into `readFeishuResponseBuffer` and reintroduced the vulnerable temp-path construction in the new implementation: the lines later fixed by `c821099` are blamed to this commit (`feishu_img_${Date.now()}_${imageKey}` and `feishu_${Date.now()}_${fileKey}`). Although the same flaw already existed from `2267d58`, this commit is still a valid BIC under the stated rules because it reimplemented the vulnerable code during the refactor. `git log -S` for `writeFile(tmpPath)` and the direct diff both show this commit reauthoring the vulnerable write-file path flow.",
       "root_cause": "",
       "vuln_type": "",
@@ -2978,7 +2978,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This same commit also introduced `GroupToolPolicyBySenderConfig` in `src/config/types.tools.ts`, exposing the new per-sender configuration surface that the vulnerable matcher consumed. Pre-3b0c80 versions of `types.tools.ts` had no `toolsBySender` type at all, and the same commit's docs/tests described untyped keys as generic sender IDs/usernames/emails/phone numbers, matching the flawed semantics later hardened in 5547a22. So the file-level blame here also points back to the same true BIC: 3b0c80.",
       "root_cause": "",
       "vuln_type": "",
@@ -3823,7 +3823,7 @@
         "C/C++"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit did not originally author the buggy `tryParseDouble` body, but it rewrote parsing around the new `StreamReader` and added `sr_parseReal(...)` callers that pass `tryParseDouble(start, start + len, ...)` slices from exact-length buffers. `StreamReader::current_ptr()`/`remaining()` operate on heap/mmapped data without an implicit NUL sentinel, so the legacy parser's unchecked `*curr` reads at `curr == s_end` became a real heap-buffer-overflow. It is therefore the exploitability-enabling BIC even though blame on the parser body points older.",
       "root_cause": "",
       "vuln_type": "",
@@ -4490,7 +4490,7 @@
         "TypeScript"
       ],
       "confidence": 0.9,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire iMessage remote-attachment feature: it added `channels.imessage.remoteHost` as an unrestricted `z.string().optional()`, auto-detected `remoteHost` in `monitor-provider.ts`, propagated it into message context, and added `scpFile()` in `stage-sandbox-media.ts`. At the fix parent, the vulnerable lines are still blamed to this commit, including `StrictHostKeyChecking=accept-new` and the unguarded `${remoteHost}:${remotePath}` SCP argument. The fix directly reverses those design choices by validating/normalizing `remoteHost`, adding `--`, and requiring strict host-key checking.",
       "root_cause": "",
       "vuln_type": "",
@@ -4570,7 +4570,7 @@
         "TypeScript"
       ],
       "confidence": 0.9,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This candidate is correctly blamed for the vulnerable write path at the fix parent: lines 143-151 still come from 7a9ff182, including `await scpFile(ctx.MediaRemoteHost, source, dest)` and the re-added `await fs.copyFile(source, dest)` else branch. Its diff introduced remote attachment staging and directly wrote into `dest` without any destination symlink/alias protection. The fix replaces those exact writes with `stageRemoteFileIntoRoot` / `stageLocalFileIntoRoot`, so this commit introduced an additional exploitable form of the bug and reimplemented the existing unsafe local write.",
       "root_cause": "",
       "vuln_type": "",
@@ -4650,7 +4650,7 @@
         "JavaScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created `imports/utils/vm_sandbox.js` as a native `vm.createContext`/`runInContext` replacement for `vm2`, and blame shows the entire vulnerable sandbox implementation was authored here. The fix adds `validateSandboxCode()` directly inside `NodeSandbox.run()` and then wires `timeEntryRule` saves through the same validation, which is a direct hardening of the component introduced by 67c7. It also switched existing admin-script features (time-entry rules, inbound interfaces, outbound interfaces) over to this new sandbox, expanding unsafe code execution to all `NodeVM` consumers.",
       "root_cause": "",
       "vuln_type": "",
@@ -4894,7 +4894,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This same commit also created extensions/feishu/src/docx.ts with downloadImage(url) implemented as a raw fetch(url), and writeDoc/appendDoc immediately called processImages() on markdown image URLs. The fix swaps that code to getFeishuRuntime().channel.media.fetchRemoteMedia() with maxBytes, and blame on the pre-fix lines points back to 2267d58a. So 2267d58a directly introduced the unsafe Feishu doc image-fetch path as well.",
       "root_cause": "",
       "vuln_type": "",
@@ -4981,7 +4981,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the container/host workspace display logic: it added raw `containerWorkspaceDir` to `displayWorkspaceDir`, emitted `Sandbox container workdir: ...`, and inserted raw host workspace text into the workspace guidance string. Those are exactly the new prompt fields sanitized by 6254e96. It therefore widened the existing vulnerability to additional sandbox path values and is a confirmed BIC.",
       "root_cause": "",
       "vuln_type": "",
@@ -5120,7 +5120,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
       "root_cause": "",
       "vuln_type": "",
@@ -5205,7 +5205,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit is the original introducer of the device-bypass flaw. Its diff changed the handshake from unconditionally rejecting missing device identity to `if (!device && !hasTokenAuth)`, so a mere `auth.token` presence skipped the device check before `authorizeGatewayConnect()` ran. The parent version required a device unconditionally, so this commit first made token presence—not validated authentication—sufficient to bypass identity checks.",
       "root_cause": "",
       "vuln_type": "",
@@ -5291,7 +5291,7 @@
         "Rust"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "Although this candidate was blamed via `src/security/mod.rs`, this commit also created `src/security/path.rs` and the original `validate_path_in_workspace()` implementation. That implementation only normalized the path and prefix-checked it against the workspace, so symlink ancestor escapes, hardlink aliasing, and validate-then-use races were outside its security model from the start.",
       "root_cause": "",
       "vuln_type": "",
@@ -6129,7 +6129,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced extensions/feishu/src/bot.ts and first added stripBotMention() with both vulnerable constructions: new RegExp(`@${mention.name}\\\\s*`, \"g\") and new RegExp(mention.key, \"g\"). The same commit also wired parseFeishuMessageEvent() to call stripBotMention() immediately, so the unsafe regexes were reachable as soon as the new Feishu plugin landed. Blame on the pre-fix file attributes the two vulnerable lines to this commit, and pickaxe searches show those exact strings originate here.",
       "root_cause": "",
       "vuln_type": "",
@@ -6216,7 +6216,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This refactor replaced Feishu’s inline matcher with the shared `resolveAllowlistMatchSimple` helper and preserved the insecure `senderName` fallback exactly, then changed Feishu policy to return that helper’s result. Although the flaw already existed earlier, this commit reimplemented the vulnerable logic in new code that the fix later removed. Under the reimplementation rule, it is also a genuine bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -6296,7 +6296,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the exact trusted-proxy bypass that the fix later narrows. Its diff adds `trustedProxyAuthOk` in `message-handler.ts`, passes it into `evaluateMissingDeviceIdentity`, and changes `shouldSkipControlUiPairing` / `evaluateMissingDeviceIdentity` in `connect-policy.ts` so any trusted-proxy Control UI connection can skip device identity and pairing with no `role === \"operator\"` check. The fix commit `ec45c317...` only adds that missing role gate, and pre-fix blame attributes the vulnerable `trustedProxyAuthOk` lines to this commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -6400,7 +6400,7 @@
         "TypeScript"
       ],
       "confidence": 0.81,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire deduplicate interceptor and the original DeduplicationHandler implementation. In the new handler, `onResponseData()` unconditionally appends every chunk to `this.#chunks`, and `#notifyWaitingHandlers()` later does `const body = Buffer.concat(this.#chunks)` before replaying the full buffered response to waiters; `lib/interceptor/deduplicate.js` also always attaches duplicate requests via `pendingHandler.addWaitingHandler(handler)`. The fixing commit 5890c7b7 specifically replaces that design with streaming delivery, a `maxBufferSize` cap, and a fallback to dispatch independently once body streaming has started, so b902551e is the commit that introduced the vulnerable unbounded-buffering design.",
       "root_cause": "",
       "vuln_type": "",
@@ -6611,7 +6611,7 @@
         "TypeScript"
       ],
       "confidence": 0.81,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire deduplicate feature, including `lib/handler/deduplication-handler.js`, `lib/interceptor/deduplicate.js`, and the corresponding type definitions. In the new handler it immediately implemented unbounded response buffering with `this.#chunks.push(Buffer.from(chunk))` and later `const body = Buffer.concat(this.#chunks)` before replaying the whole body to waiting handlers, which is exactly the behavior removed by fix `5890c7b7`. The same commit also made the design reachable by wiring duplicate requests into `pendingHandler.addWaitingHandler(handler)` with no buffering limit or streaming safeguards.",
       "root_cause": "",
       "vuln_type": "",
@@ -6823,7 +6823,7 @@
         "Python"
       ],
       "confidence": 0.76,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire AST-based sanitizer in `langroid/utils/pandas_utils.py` and wired it into `TableChatAgent.pandas_eval`. In the new `CommandValidator`, `ast.Attribute` was explicitly allowed, but there was no `visit_Attribute()` check; `visit_Call()` then recursively visited kwargs/args, so payloads like `df.__init__.__globals__['__builtins__']['eval']` were accepted. The fix commit `30abbc1a...` adds exactly that missing `visit_Attribute()` enforcement and corresponding dunder/private-attribute tests, and blame on the pre-fix file attributes the vulnerable validator lines to `0d9e4a7bb`.",
       "root_cause": "",
       "vuln_type": "",
@@ -6914,7 +6914,7 @@
       ],
       "languages": [],
       "confidence": 0.76,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit added the new `prek-version` input and embedded `${{ inputs.prek-version }}` directly inside a bash `run:` block (`if [ \"${{ inputs.prek-version }}\" = \"latest\" ]` and `python -m pip install prek==${{ inputs.prek-version }}`). The fix later replaces this pattern by passing the input through `env` and expanding a shell variable instead, which is the standard remediation for composite-action injection. So this commit introduced the version-input injection flaw even before later installer changes.",
       "root_cause": "",
       "vuln_type": "",
@@ -7302,7 +7302,7 @@
         "JavaScript"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This is the root introducer of the users/profile feature. It added `htmlWrapper` with raw `<title>${title}...`, accepted unsanitized `username` and `pfp` in `/api/new-user`, stored them verbatim, and rendered them into profile/follower/following HTML. The final fix hardens exactly those design choices by escaping the title and sanitizing username/pfp before storage and lookup, so 85c0995b clearly introduced the core XSS vulnerability.",
       "root_cause": "",
       "vuln_type": "",
@@ -7388,7 +7388,7 @@
         "Java"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit added both `common/.../EmlToPdf.java` and `src/.../ConvertEmlToPDF.java`, creating the entire EML-to-PDF code path that the fix later hardens. In that new code, email HTML is preserved almost verbatim (`processEmailHtmlBody` only strips some CSS) and then passed into `FileToPdf.convertHtmlToPdf`, so remote image URLs in EML content could reach the HTML/PDF renderer without SSRF-specific checks. The repeated blame candidates are all this same commit across later file moves/refactors.",
       "root_cause": "",
       "vuln_type": "",
@@ -7536,7 +7536,7 @@
         "Python"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the exact XSS sink later fixed in ea2462bf: `var __customHotkeys = {{ user.custom_hotkeys|json_dumps_ensure_ascii|safe }}` in `label_studio/templates/base.html`, and `git log -S` shows that line first appeared here. It also added `custom_hotkeys` to `BaseUserSerializer`; because `UserSerializerUpdate` inherits that serializer and only marks `email` read-only, the pre-existing `/api/users/<id>` PATCH path could now modify another in-organization user's `custom_hotkeys`. So this one commit both created the stored-XSS sink and exposed the new field through the existing profile-update/IDOR path, making the account-takeover chain possible.",
       "root_cause": "",
       "vuln_type": "",
@@ -7914,7 +7914,7 @@
         "Go"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The fix changes x/costaking/keeper/hooks_finality.go so that AfterBtcDelegationUnbonded subtracts sats whenever the FP was active in the previous set, instead of only when it was active in both previous and current sets. File history and blame show this function was created in 2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36, and that commit introduced the exact vulnerable guard `if !isFpActiveInPrevSet || !isFpActiveInCurrSet { return nil }`. The same commit also added the finality hook plumbing and wired costaking hooks into app/keepers/keepers.go, making the buggy logic live immediately; because costaking rewards derive TotalScore from ActiveSatoshis, the skipped subtraction leaves phantom active sats that continue to earn rewards after unbond when an FP goes active->inactive in the same block.",
       "root_cause": "",
       "vuln_type": "",
@@ -8354,7 +8354,7 @@
         "TypeScript"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created apps/workers/scripts/parseHtmlSubprocess.ts and wrote the exact vulnerable branch the fix changes: it trusted meta.readableContentHtml and wrapped it directly as readableContent without passing it through DOMPurify, while the fallback extractReadableContent path still sanitized via purify.sanitize(). The fix commit ba3db953 modifies these same lines to add sanitization, so this commit clearly introduced the vulnerable subprocess implementation. Although it was a reimplementation of an existing flaw from crawlerWorker, reimplementing the bug in new code still makes this a confirmed BIC.",
       "root_cause": "",
       "vuln_type": "",
@@ -8510,7 +8510,7 @@
         "TypeScript"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "Blame on the pre-fix file attributes `normalizeToolName`, `parseToolNameFromTitle`, `resolveToolNameForPermission`, and the core `resolvePermissionRequest` auto-approval path to this commit. Its diff widened authorization decisions to server-controlled `_meta`, `rawInput`, and `title` fields, then auto-approved any tool name not forced into the prompt path. The later fixes directly harden and partially replace this exact logic, including tightening `normalizeToolName` in 63dcd28 and replacing the auto-approval policy in 12cc754.",
       "root_cause": "",
       "vuln_type": "",
@@ -8633,7 +8633,7 @@
         "Python"
       ],
       "confidence": 0.54,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the `--netrc-cmd` feature in `yt_dlp/extractor/common.py` and, with it, the vulnerable pattern: interpolating `netrc_machine` into a shell command and executing it with `Popen.run(..., shell=True)`. The fix directly hardens this code path by validating `netrc_machine` before the shell invocation. Without db3ad8a, there was no shell-based `netrc_cmd` path to inject into.",
       "root_cause": "",
       "vuln_type": "",
@@ -8766,7 +8766,7 @@
         "JavaScript"
       ],
       "confidence": 0.2565,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The initial commit created the plugin and introduced the original vulnerable pattern: `var command = 'sudo date --iso-8601 -u -s \"' + datetime + '\"'` executed via `spawn('sh', ['-c', command])`. That is the first occurrence of untrusted `navigation.datetime` data being interpolated into a shell command. It establishes the flawed design that the 2026 fix finally mitigates.",
       "root_cause": "",
       "vuln_type": "",
@@ -8920,7 +8920,7 @@
         "TypeScript"
       ],
       "confidence": 0.2565,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The same fix adds rehypeSanitize to NewVersionDialog.tsx, and blame on the pre-fix rehypePlugins line points directly to a9a262ea. The a9a262ea diff created NewVersionDialog.tsx with ReactMarkdown configured as [rehypeRaw, rehypeHighlight] for release.body, again enabling raw HTML without sanitization. Since the vulnerable rendering was present at file introduction, this commit introduced that XSS vector.",
       "root_cause": "",
       "vuln_type": "",
@@ -9113,7 +9113,7 @@
         "TypeScript"
       ],
       "confidence": 0.2565,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created `web/src/app/home/components/new-version-dialog/NewVersionDialog.tsx` and rendered external release notes (`release.body`) through `ReactMarkdown` with `rehypeRaw` and no sanitization. Blame on the vulnerable lines attributes the `rehypeRaw` import and `rehypePlugins={[rehypeRaw, rehypeHighlight]}` to this commit, and the fix later adds `rehypeSanitize` at that exact location. The same changeset also wired release data in from the cloud-service client, so it introduced a new unsafe raw-HTML rendering surface.",
       "root_cause": "",
       "vuln_type": "",
@@ -9307,7 +9307,7 @@
         "TypeScript"
       ],
       "confidence": 0.2137,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit rewrote native prompt image loading to trust sandbox.fsBridge.resolvePath/readFile and removed the direct assertSandboxPath(root=sandboxRoot) validation from run/images.ts. That authored the exact vulnerable design the fix later hardens: sandbox validation was delegated entirely to the bridge, with no separate workspaceOnly/root check in loadImageFromRef or detectAndLoadPromptImages. Even though the initial bridge was still workspace-root-confined, this commit introduced the flawed code path that later became exploitable when bridge semantics expanded.",
       "root_cause": "",
       "vuln_type": "",
@@ -9406,7 +9406,7 @@
         "JavaScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit added the original FileViewer implementation at `src/ui/Desktop/Apps/File Manager/components/FileViewer.tsx`, including the SVG preview branch that renders remote file contents with `dangerouslySetInnerHTML={{ __html: content }}`. `git blame` on the vulnerable pre-fix lines in the later renamed file traces line 723 (`dangerouslySetInnerHTML`) back to this commit, and `git log -S dangerouslySetInnerHTML` shows the pattern first appears here and is only removed by the fix. That is the stored-XSS sink fixed in `ad86c204` by switching SVG rendering to a base64 data URL inside `<img>`/`PhotoView`.",
       "root_cause": "",
       "vuln_type": "",
@@ -11132,7 +11132,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced Feishu webhook mode in extensions/feishu/src/monitor.ts by adding monitorWebhook(), creating an HTTP server, and wiring server.on(\"request\", Lark.adaptDefault(...)) with no byte or time guard. Blame on the pre-fix file assigns the vulnerable request-handler line directly to this commit. The fix wraps exactly this handler with installRequestBodyLimitGuard, so this is the Feishu BIC.",
       "root_cause": "",
       "vuln_type": "",
@@ -11232,7 +11232,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire Taysell implementation, including `templates/backend-in-a-box/index.js` with the original `/paypal/webhook` handler that trusted `req.body` and marked orders COMPLETED without any PayPal signature/webhook-ID verification. The same commit also created `/get-patch` with no one-time-use tracking for `purchase_token`, and set `PBKDF2_ITERATIONS = 100000` in both `templates/backend-in-a-box/index.js` and `lib/taysell-utils.ts`; those are the exact areas later hardened by `57b7634`. The blamed `lib/handlers/buy-handler.ts` lines were only the pre-fix error-handling path and are not the security root cause, but the commit is still the true BIC because it authored the vulnerable backend design and weak KDF setting.",
       "root_cause": "",
       "vuln_type": "",
@@ -11312,7 +11312,7 @@
         "Rust"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced `src/tools/android/actions.rs` and the original `device_shell()` implementation. In that initial version, dangerous `rm` commands were blocked only by literal substring checks for `\"rm -rf\"` and `\"rm -r\"`, which is the flawed design the fix replaced with flag-aware parsing; reordered/combined forms such as `rm -fr`, `rm -f -r`, and long-option equivalents were not parsed and could bypass the guard. Git history shows this file/function did not exist earlier, so this is the commit that introduced the vulnerable Android shell behavior.",
       "root_cause": "",
       "vuln_type": "",
@@ -11418,7 +11418,7 @@
         "Python"
       ],
       "confidence": 0.95,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the `StackGlobal.run()` validation `if not module.isidentifier() or not attr.isidentifier(): raise ValueError(...)`. That rejects dotted module names such as `multiprocessing.util`, which are exactly the kind of imports the 2026 fix adjusted to `all(m.isidentifier() for m in module.split(\".\"))`. Because `check_safety()` does not wrap analysis in exception handling, this validation made dotted dangerous imports evade or break static analysis, so it is a real introducer for the dotted-module bypass fixed by `eb299b45`.",
       "root_cause": "",
       "vuln_type": "",
@@ -11528,7 +11528,7 @@
         "C/C++"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the vulnerable C helper `ary_fill_exec` and exposed it as the Ruby method `__fill_exec`. In the new code, `ary_fill_exec` accepted `start` and `length` via `mrb_get_args`, then performed `mrb_value *ptr = ARY_PTR(ary) + start;` and wrote `length` elements without first rejecting negative `start`/`length`. The fix commit `93619f06...` adds exactly those missing validations at the top of this function. Before this commit, `Array#fill` was implemented in Ruby with `self[i] = ...`, so this C reimplementation is the point where the out-of-bounds write bug was introduced.",
       "root_cause": "",
       "vuln_type": "",
@@ -12357,7 +12357,7 @@
         "PHP"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit did more than tweak Blade help text: it also rewrote `ApplicationDeploymentJob` to auto-inject only `--env-file` into custom Docker Compose build commands. It still did not enforce `-f`, so a user-supplied `docker compose build` could continue to resolve the repository's compose file instead of Coolify's generated one. The later fix replaces this env-file-only logic with `injectDockerComposeFlags(...)`, so this commit reauthored the vulnerable build-command path.",
       "root_cause": "",
       "vuln_type": "",
@@ -12445,7 +12445,7 @@
         "Rust"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The initial commit created `fix_command`/`get_command_output` and introduced the original privileged command re-execution path: `Command::new(&split_command[0]) ... .output()?` with no `setuid`/`setgid` or other credential drop. Pickaxe shows `fn get_command_output(...)` first appears here, and blame on the pre-fix code still attributes the core command construction and environment setup lines to this commit. The later fix adds explicit permission detection and uid/gid dropping before execution, so `ec1f1462` authored the flawed security design from the start.",
       "root_cause": "",
       "vuln_type": "",
@@ -12544,7 +12544,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created `src/agents/subagent-spawn.ts` and reimplemented the cross-agent spawn logic in `spawnSubagentDirect()` without any sandbox-inheritance check. The fix commit directly inserts the missing `resolveSandboxRuntimeStatus()` guard into that new helper, and blame on the fix parent attributes the relevant pre-check/cross-agent block to this commit. It also added the `/subagents spawn` command, so it introduced a fresh vulnerable implementation and an additional entry point.",
       "root_cause": "",
       "vuln_type": "",
@@ -12733,7 +12733,7 @@
         "Python"
       ],
       "confidence": 0.855,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created the Python EVM implementation, including the shared `utils.py`/`constants.py` layer that mixed v2 CAIP-2 handling with legacy v1 aliases and network maps, and the facilitator/client code that depended on those shared helpers. The later fixes `55a439...` and `1fccd53...` directly unwind those original choices by moving v1 constants into a separate namespace and by stopping facilitators from deriving chain/token context from shared network config helpers. Although the same SHA is also blamed on some unrelated Python bugfix lines, it genuinely introduced the security-relevant Python EVM design that was fixed.",
       "root_cause": "",
       "vuln_type": "",
@@ -13128,7 +13128,7 @@
         "Rust"
       ],
       "confidence": 0.76,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the entire email feature: `EmailConfig.allowed_senders`, the example config using that allowlist, `EmailChannel::is_sender_allowed()`, and `process_unseen()` extracting `parsed.from().address()` and using that parsed `From` value for allowlist checks and inbound sender identity. Pickaxe searches for `allowed_senders`, `is_sender_allowed(`, and `Blocked email from` all point back to this commit as the first introduction. The later fix `bf004a20` does not change that logic; it only adds warnings/docs/config-validation text explicitly stating that `allowed_senders` trusts the parsed `From` header only, confirming that this commit introduced the flawed trust model.",
       "root_cause": "",
       "vuln_type": "",
@@ -13455,7 +13455,7 @@
         "Python"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit is the PyQt5-side reimplementation of the same flaw. The fixed `prettyfonts/v11/v11-PyQt5.py::open_file()` now inserts `MAX_SAFE_SIZE` before `f.read()`, and blame on the pre-fix version attributes the vulnerable read body to 4ed0b21c; `git log -S` also shows the exact string `with open(path, \"r\", encoding=\"utf-8\", errors=\"replace\") as f:` was introduced here for PyQt5. Because it rewrote `open_file()` and preserved the unbounded whole-file read, it newly introduced the vulnerable code in the fixed PyQt5 lineage.",
       "root_cause": "",
       "vuln_type": "",
@@ -13560,7 +13560,7 @@
         "Go"
       ],
       "confidence": 0.7,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This qpack v0.6 rewrite authored the exact vulnerable forms later fixed in http3/headers.go, http3/server.go, and http3/stream.go: it replaced slice-based parsing with DecodeFunc-based parseHeaders/requestFromHeaders/updateResponseFromHeaders, but still never enforced any limit on the decompressed field-section size. The fix commit directly adds a sizeLimit parameter to those functions and threads MaxHeaderBytes into the server and client call sites. Even though the flaw existed earlier, this commit reimplemented the vulnerable logic and therefore counts as a real bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -13670,7 +13670,7 @@
         "TypeScript"
       ],
       "confidence": 0.63,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This candidate is not just blame drift: git history shows several fixed files were newly created here (`src/app/tabs/tabManager.ts`, `src/app/views/urlView.ts`, `src/app/views/webContentsManager.ts`, `src/app/windows/baseWindow.ts`, `src/app/windows/popoutManager.ts`, `src/common/views/viewManager.ts`), and the exact payload-bearing log statements fixed in 722938 first appear in this commit. It also introduced the current `SERVER_REMOVED` event-based removal flow in `src/common/servers/serverManager.ts` without any session/data cleanup hook. Some blamed lines in moved legacy files predate this commit, but a88d64 still authored a substantial part of the vulnerable code and is a real BIC.",
       "root_cause": "",
       "vuln_type": "",
@@ -14219,7 +14219,7 @@
         "Go"
       ],
       "confidence": 0.63,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created `linode/producerimagesharegroupmember/framework_resource.go` and added `tflog.Debug(..., {\"options\": createOpts})` immediately after building `ImageShareGroupAddMemberOptions{Token, Label}`. The same commit's schema marked `token` as `Sensitive: true`, so logging the full options struct bypassed Terraform's sensitivity handling and exposed the token in debug logs. Although the same SHA also touched `framework_provider.go`, the real introduction is the new resource implementation added by this commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -14359,7 +14359,7 @@
         "Python"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This later security/DoS commit rewrote `parse_feed` to use `urllib.request.urlopen(url, timeout=30)` after only checking that the scheme was `http` or `https`. Blame on the vulnerable pre-fix code attributes the URL parsing, scheme check, and `urlopen(url)` fetch to this SHA, and the later SSRF fix replaced those lines with `backend.util.request.Requests.get(url)`, which performs private-IP/SSRF validation. Because this commit reimplemented the fetch logic while preserving arbitrary server-side access to attacker-supplied URLs, it is also a true bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -14432,7 +14432,7 @@
         "PHP"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit rewrote runImport() and re-authored the vulnerable custom-location branch as `docker cp {$this->customLocation} {$this->container}:{$tmpPath}` without validation or escaping. Git pickaxe finds the exact current vulnerable string introduced here, and blame on the pre-fix file attributes that line to fbdd8e5. Even though the flaw already existed conceptually, this is a reimplementation of the vulnerable code path and therefore a confirmed BIC as well.",
       "root_cause": "",
       "vuln_type": "",
@@ -14546,7 +14546,7 @@
         "Rust"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This refactor extracted workspaces code into the new `backend/windmill-api-workspaces/src/workspaces.rs` file and reimplemented the vulnerable `WorkspaceSettings` struct and `get_settings` handler there. Pre-fix blame on the exact lines later fixed (`slack_oauth_client_secret` in the struct, query, and return path) points to this commit in the new file. Because the active vulnerable implementation was rewritten here, this is also a bug-introducing commit under the 'reimplementation is bug introduction' rule.",
       "root_cause": "",
       "vuln_type": "",
@@ -14625,7 +14625,7 @@
         "C#"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced `AotScriptObjectMapper` and mapped `before_json`/`after_json` into the template context while still omitting any `before_sensitive`/`after_sensitive` mapping. Blame on the pre-fix mapper points directly to this commit for the vulnerable `before_json`/`after_json` lines. The later fix adds sensitivity objects and masking logic to this exact mapping path, so this is a reimplementation BIC for the active renderer.",
       "root_cause": "",
       "vuln_type": "",
@@ -14869,7 +14869,7 @@
         "Perl"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "The vulnerable implementation is already present in this repository's initial import: lib/HTTP/Session2/Random.pm contains the `/dev/urandom` path plus the weak fallback `substr(Digest::SHA::sha1_hex(rand() . $$ . {} . Time::HiRes::time()), int(rand(4)), 31)`, and t/09_random.t explicitly tests that fallback. Blame on the vulnerable lines at the pre-fix state resolves past merge 24844b3 to the boundary/root commit f8a08a8, and the file history shows no intervening commit that introduced or rewrote the generator before 9cfde4d7 replaced it with Crypt::SysRandom. The embedded Changes file also indicates this design predates the current git history (introduced in the 1.02/1.06 era), but f8a08a8 is the first attributable git SHA in this repository carrying the vulnerable code.",
       "root_cause": "",
       "vuln_type": "",
@@ -14948,7 +14948,7 @@
         "TypeScript"
       ],
       "confidence": 0.57,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This feature commit added Gemini as a `web_search` provider, extracted citation URLs from Gemini grounding metadata, and introduced `resolveRedirectUrl()` to issue `HEAD` requests with `redirect: \"follow\"` on those citation URLs. That initial implementation used plain `fetch` with no SSRF guard or private/internal-network blocking, so the citation redirect SSRF behavior existed from the feature’s first introduction. It is the root origin of the vulnerable redirect-resolution path.",
       "root_cause": "",
       "vuln_type": "",
@@ -15114,7 +15114,7 @@
         "Python"
       ],
       "confidence": 0.475,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced `is_dangerous_path()` with the exact-match check `return str(resolved) in DANGEROUS_PATHS or resolved.parent == resolved`, which is the logic later fixed by the security patch. Blame on the vulnerable pre-fix lines attributes the core line to 4151c3c3, and `git log -S` shows this is the commit that first added `is_dangerous_path()`. The same commit also changed `resolve_and_validate_path()` from a safer `relative_to(SECURITY_ROOT)` workspace-boundary model to the weaker blacklist-based model, making arbitrary absolute-path access possible so long as the path was not an exact blacklisted directory string.",
       "root_cause": "",
       "vuln_type": "",
@@ -15279,7 +15279,7 @@
         "Python"
       ],
       "confidence": 0.42,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced `SendDiscordFileBlock` and explicitly documented that its `file` input supports a URL, data URI, or local path. In the new URL-handling branch, it performed `async with aiohttp.ClientSession() as session` followed by `session.get(file)` on user-controlled HTTP(S) input, with no SSRF validation. The repository already had the safer `backend.util.request.Requests` infrastructure available, so this commit is the first clear introduction of the vulnerable behavior.",
       "root_cause": "",
       "vuln_type": "",
@@ -15353,7 +15353,7 @@
         "Rust"
       ],
       "confidence": 0.42,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This SourceIp policy-evaluation refactor rewrote the `validate_admin_request(...)` call in ImportIam to add remote-address handling and preserved the same incorrect `ExportIAMAction` requirement. Blame on the pre-fix file attributes the vulnerable action line to this commit, and the actual fix later replaces that exact line with `ImportIAMAction`. Under the reimplementation rule, this commit reintroduced the vulnerable authorization check in the form that existed immediately before the fix.",
       "root_cause": "",
       "vuln_type": "",
@@ -15426,7 +15426,7 @@
         "PHP"
       ],
       "confidence": 0.42,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created .github/workflows/release-please.yml and immediately used GitHub expression values from steps.release.outputs directly inside shell run blocks. The later fix rewrites that exact pattern to pass values through env instead, so this is the first introduction of the vulnerable release-workflow interpolation pattern.",
       "root_cause": "",
       "vuln_type": "",
@@ -15540,7 +15540,7 @@
         "Rust"
       ],
       "confidence": 0.42,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced BN254 support and copied the same vulnerable `Fr` design into `soroban-sdk/src/crypto/bn254.rs`: raw `From<U256>` construction, raw `TryFromVal<Env, Val>`, and equality over the underlying `U256` representation instead of canonical field elements. The main fix modifies those exact BN254 construction paths to reduce modulo `r`, making this the BN254 bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
@@ -15763,7 +15763,7 @@
         "PHP"
       ],
       "confidence": 0.42,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit created .github/workflows/release-please.yml and introduced direct GitHub expression interpolation inside a run block, including echoing ${{ steps.release.outputs.releases_created }} in the shell script. The fix moves those values into env variables and references $RELEASES_CREATED instead, which directly reverses this pattern. It is the first introducer of the unsafe expression-in-script design in the release workflow.",
       "root_cause": "",
       "vuln_type": "",
@@ -15878,7 +15878,7 @@
         "TypeScript"
       ],
       "confidence": 0.28,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit is the first one that introduced the vulnerable onboarding flow: `git log -S` shows it created `OnboardingController`, `getOnboardingStatus`, `updateOnboardingConfig`, and `getOnboardingConfig`, and blame at the pre-fix state attributes the vulnerable `POST /onboarding/config` path and most of the onboarding service logic to this SHA. In `onboarding.controller.ts` it exposed `POST /onboarding/config` without any auth/admin guards, and in `infra-config.service.ts` it intentionally bypassed the normal protected-key restrictions with `updateMany(configEntries, false)` / `getMany(..., false)` for onboarding. The same commit also added only client-side rerun gating in `hoppscotch-sh-admin/src/modules/admin.ts` using `canReRunOnboarding`, but the server did not enforce that rule until the fix commit `a1be60da649296c9c94511499928b15f295c8a18` added a backend status check before updating config. The candidate blame on `errors.ts` is incidental noise: this commit's `errors.ts` diff only removed unrelated strings, while the fix added brand-new onboarding error constants there.",
       "root_cause": "",
       "vuln_type": "",
@@ -16347,7 +16347,7 @@
         "Go"
       ],
       "confidence": 0.189,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit replaced token-based attachment download with a direct GET /items/{id}/attachments/{attachment_id} flow that called AttachmentPath on attachmentID alone. No group/user authorization was added, and the fix later changes this exact GET path to pass ctx.GID and enforce group membership in the repo query. Even though older code already had authorization issues, this commit reimplemented the read path with the same flaw.",
       "root_cause": "",
       "vuln_type": "",
@@ -16695,7 +16695,7 @@
         "Swift"
       ],
       "confidence": 0.0,
-      "verified_by": "gpt-5.4",
+      "verified_by": "gpt-5.4-high",
       "how_introduced": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
       "root_cause": "",
       "vuln_type": "",

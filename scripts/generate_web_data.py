@@ -1255,7 +1255,9 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by: show the deep verification model only.
+    # Compute verified_by: model + reasoning effort level.
+    # The deep verifier uses reasoning_effort="high" (hardcoded in agent_loop.py).
+    _REASONING_EFFORT = "high"
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
     if review and review.get("verdict") in ("confirmed", "uncertain"):
@@ -1265,7 +1267,7 @@ def build_cve_entry(
             dv = _get_deep_verdict(bic)
             if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
                 if dv.get("model"):
-                    verified_by = dv["model"]
+                    verified_by = f"{dv['model']}-{_REASONING_EFFORT}"
                 break
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type.
