@@ -1055,7 +1055,7 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
 
     # Promote culprit sub-commit as the primary BIC when available.
     # If culprit_sha not set in cache, infer from decomposed commits:
-    # prefer sub-commits that touched the blamed file, else keep squash merge.
+    # prefer sub-commits that touched the blamed file AND have AI signals.
     culprit_sha = bic.get("culprit_sha", "")
     if not culprit_sha and decomposed:
         touched = [dc for dc in decomposed if dc.get("ai_signals") and dc.get("touched_blamed_file") is True]
@@ -1065,19 +1065,21 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
             # Multiple file-confirmed sub-commits — pick highest signal confidence
             best = max(touched, key=lambda dc: max((s.get("confidence", 0) for s in dc.get("ai_signals", [])), default=0))
             culprit_sha = best.get("sha", "")
-        # When no sub-commit has touched_blamed_file=True, don't guess —
-        # keep the squash merge as the BIC (avoids promoting empty commits).
+        # When no AI sub-commit touched the blamed file, don't promote —
+        # keep the squash merge as the BIC to preserve its AI signals.
+        # Promoting a non-AI sub-commit would erase the attribution.
     if culprit_sha and decomposed:
         for dc in decomposed:
             if dc.get("sha") == culprit_sha:
+                culprit_signals = dc.get("ai_signals", [])
+                # Only promote if the culprit has AI signals.
+                # Otherwise keep the squash merge (which has signals) as the BIC.
+                if not culprit_signals:
+                    break
                 entry["squash_merge_sha"] = entry["sha"]
                 entry["sha"] = culprit_sha
                 entry["author"] = dc.get("author_name", entry["author"])
                 entry["message"] = _first_line(dc.get("message", ""))
-                # Replace AI signals with culprit's own signals.
-                # The squash-merge's signals are PR-level; the culprit's
-                # signals reflect whether AI actually wrote the vulnerable code.
-                culprit_signals = dc.get("ai_signals", [])
                 entry["ai_signals"] = [_build_signal_entry(s) for s in culprit_signals]
                 break
 
@@ -1284,10 +1286,11 @@ def build_cve_entry(
     # (e.g. culprit sub-commit has no AI signals even though the squash
     # merge did — trailer pollution from merge commits in the PR).
     # Skip this filter for audit-overridden CVEs.
+    pre_filter_count = len(bug_commits)
     if not is_override:
         bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
-    if not bug_commits:
-        return None  # No AI-attributed BICs left → not an AI-introduced vuln
+    if pre_filter_count > 0 and not bug_commits:
+        return None  # Had BICs but all lost signals during decomposition
 
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
