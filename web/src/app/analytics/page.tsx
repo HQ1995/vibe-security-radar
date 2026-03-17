@@ -1,7 +1,7 @@
 import { getCves, getStats } from "@/lib/data";
 import { buildToolData } from "@/lib/tool-utils";
 import { buildLanguageData } from "@/lib/language-utils";
-import { buildRepoData, topNWithTies } from "@/lib/repo-utils";
+import { buildRepoData } from "@/lib/repo-utils";
 import { ToolCard } from "@/components/tool-card";
 import { ToolDistributionChart } from "@/components/tool-distribution-chart";
 import { LanguageCard } from "@/components/language-card";
@@ -20,7 +20,10 @@ export default function AnalyticsPage() {
 
   const toolData = buildToolData(stats.by_tool, cves.cves);
   const languageData = buildLanguageData(stats.by_language, cves.cves);
-  const repoData = topNWithTies(buildRepoData(stats.by_repo, cves.cves), 10);
+  const allRepoData = buildRepoData(stats.by_repo, cves.cves);
+  const VISIBLE_REPOS = 6;
+  const visibleRepos = allRepoData.slice(0, VISIBLE_REPOS);
+  const hiddenRepos = allRepoData.slice(VISIBLE_REPOS);
 
   return (
     <main className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
@@ -70,11 +73,16 @@ export default function AnalyticsPage() {
       )}
 
       {/* Top repositories */}
-      {repoData.length > 0 && (
+      {visibleRepos.length > 0 && (
         <section>
-          <h2 className="mb-4 text-xl font-semibold">Top Repositories</h2>
+          <h2 className="mb-4 text-xl font-semibold">
+            Top Repositories
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({allRepoData.length})
+            </span>
+          </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {repoData.map((rd) => (
+            {visibleRepos.map((rd) => (
               <RepoCard
                 key={rd.repo}
                 repo={rd.repo}
@@ -83,6 +91,24 @@ export default function AnalyticsPage() {
               />
             ))}
           </div>
+          {hiddenRepos.length > 0 && (
+            <details className="mt-4 group">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">Show {hiddenRepos.length} more repositories ▸</span>
+                <span className="hidden group-open:inline">Show less ▾</span>
+              </summary>
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {hiddenRepos.map((rd) => (
+                  <RepoCard
+                    key={rd.repo}
+                    repo={rd.repo}
+                    count={rd.count}
+                    severities={rd.severities}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
         </section>
       )}
     </main>
