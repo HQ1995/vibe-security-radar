@@ -1255,32 +1255,23 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by from deep verification + LLM verdicts and manual reviews
-    models: set[str] = set()
-    for bic in result.get("bug_introducing_commits", []):
-        dv = _get_deep_verdict(bic)
-        if dv:
-            # New verifier format: model at top level
-            if dv.get("model"):
-                models.add(dv["model"])
-            # Old tribunal format: model inside agent_verdicts
-            for av in dv.get("agent_verdicts", []):
-                if av.get("model"):
-                    models.add(av["model"])
-        llm_v = _get_screening_verdict(bic)
-        if llm_v and llm_v.get("model"):
-            # Strip strategy prefixes like "osv+" to get the bare model name
-            model = llm_v["model"]
-            if "+" in model:
-                model = model.split("+", 1)[1]
-            models.add(model)
-
+    # Compute verified_by: show the deep verification model with its thinking
+    # level (e.g. "gpt-5.4-high").  Screening models are not shown.
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
     if review and review.get("verdict") in ("confirmed", "uncertain"):
         verified_by = "Manual"
-    elif models:
-        verified_by = ", ".join(sorted(models))
+    else:
+        for bic in result.get("bug_introducing_commits", []):
+            dv = _get_deep_verdict(bic)
+            if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
+                model = dv.get("model", "")
+                confidence = dv.get("confidence", "")
+                if model and confidence and isinstance(confidence, str):
+                    verified_by = f"{model}-{confidence}"
+                elif model:
+                    verified_by = model
+                break
 
     # Populate how_introduced (causal chain), root_cause, and vuln_type.
     # Priority: deep-verify CONFIRMED > screening CONFIRMED (no deep verify).
