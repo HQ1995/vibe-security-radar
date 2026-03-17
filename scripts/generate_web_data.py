@@ -935,6 +935,11 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
                 entry["sha"] = culprit_sha
                 entry["author"] = dc.get("author_name", entry["author"])
                 entry["message"] = _first_line(dc.get("message", ""))
+                # Replace AI signals with culprit's own signals.
+                # The squash-merge's signals are PR-level; the culprit's
+                # signals reflect whether AI actually wrote the vulnerable code.
+                culprit_signals = dc.get("ai_signals", [])
+                entry["ai_signals"] = [_build_signal_entry(s) for s in culprit_signals]
                 break
 
     return entry
