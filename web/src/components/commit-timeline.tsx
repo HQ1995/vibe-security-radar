@@ -98,30 +98,23 @@ function DecomposedCommitsSection({
   readonly repoUrl?: string;
   readonly culpritSha?: string;
 }) {
-  // Separate culprit from other sub-commits
-  const culprits = commits.filter((dc) => dc.sha === culpritSha);
+  // Culprit is already shown as the card header — only show other sub-commits here
   const others = commits.filter((dc) => dc.sha !== culpritSha);
+  if (others.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-2">
-      {/* Culprit sub-commit shown directly */}
-      {culprits.map((dc) => (
-        <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
-      ))}
-      {/* Other sub-commits collapsed */}
-      {others.length > 0 && (
-        <details className="group/sub">
-          <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <span className="group-open/sub:rotate-90 transition-transform">&#9654;</span>
-            {others.length} other sub-commit{others.length > 1 ? "s" : ""} in this PR
-          </summary>
-          <div className="mt-2 space-y-1.5 border-l-2 border-muted pl-3">
-            {others.map((dc) => (
-              <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
-            ))}
-          </div>
-        </details>
-      )}
+    <div className="mt-3">
+      <details className="group/sub">
+        <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <span className="group-open/sub:rotate-90 transition-transform">&#9654;</span>
+          {others.length} other sub-commit{others.length > 1 ? "s" : ""} in this PR
+        </summary>
+        <div className="mt-2 space-y-1.5 border-l-2 border-muted pl-3">
+          {others.map((dc) => (
+            <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -185,7 +178,7 @@ function BugCommitCard({
         </div>
         {commit.squash_merge_sha && (
           <p className="mt-1 text-xs text-muted-foreground/70">
-            From squash merge{" "}
+            Extracted from squash merge{" "}
             {repoUrl ? (
               <a
                 href={buildCommitUrl(repoUrl, commit.squash_merge_sha)}
@@ -193,10 +186,10 @@ function BugCommitCard({
                 rel="noopener noreferrer"
                 className="font-mono underline-offset-4 hover:underline"
               >
-                {commit.squash_merge_sha.slice(0, 12)}
+                {commit.squash_merge_sha.slice(0, 7)}
               </a>
             ) : (
-              <code className="font-mono">{commit.squash_merge_sha.slice(0, 12)}</code>
+              <code className="font-mono">{commit.squash_merge_sha.slice(0, 7)}</code>
             )}
           </p>
         )}
