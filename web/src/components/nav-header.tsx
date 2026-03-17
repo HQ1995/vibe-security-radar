@@ -17,9 +17,9 @@ export function NavHeader() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/"
-          className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-foreground"
+          className="text-sm font-semibold tracking-wide text-foreground uppercase"
         >
-          <span className="text-primary">VSR</span>
+          Vibe Security Radar
         </Link>
         <nav className="flex items-center gap-1">
           {NAV_LINKS.map((link) => {
@@ -31,7 +31,7 @@ export function NavHeader() {
                 href={link.href}
                 className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                   isActive
-                    ? "text-primary font-medium"
+                    ? "text-foreground font-medium"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

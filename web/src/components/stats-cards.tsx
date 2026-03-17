@@ -16,42 +16,27 @@ export function StatsCards({ stats }: StatsCardsProps) {
     totalAnalyzed > 0 ? Math.round((withFix / totalAnalyzed) * 100) : 0;
 
   return (
-    <div className="space-y-4">
-      {/* Three key numbers */}
-      <div className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-border bg-border">
+    <section>
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
         <div className="bg-card px-5 py-5">
-          <p className="font-[family-name:var(--font-display)] text-4xl font-extrabold tabular-nums text-primary">
-            {totalCves}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            AI-linked vulnerabilities
-          </p>
+          <p className="text-3xl font-bold tabular-nums">{totalCves}</p>
+          <p className="mt-1 text-xs text-muted-foreground">AI-linked CVEs</p>
         </div>
         <div className="bg-card px-5 py-5">
-          <p className="font-[family-name:var(--font-display)] text-4xl font-extrabold tabular-nums text-foreground">
-            {aiToolsDetected}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            AI tools detected
-          </p>
+          <p className="text-3xl font-bold tabular-nums">{aiToolsDetected}</p>
+          <p className="mt-1 text-xs text-muted-foreground">AI tools</p>
         </div>
         <div className="bg-card px-5 py-5">
-          <p className="font-[family-name:var(--font-display)] text-4xl font-extrabold tabular-nums text-amber-400">
-            {criticalHigh}
-          </p>
+          <p className="text-3xl font-bold tabular-nums">{criticalHigh}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Critical / High</p>
+        </div>
+        <div className="bg-card px-5 py-5">
+          <p className="text-3xl font-bold tabular-nums">{totalAnalyzed.toLocaleString()}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Critical / High
+            Advisories scanned ({fixPct}% with fix)
           </p>
         </div>
       </div>
-
-      {/* Coverage line */}
-      <p className="text-xs text-muted-foreground">
-        <span className="tabular-nums text-foreground/70">{totalAnalyzed.toLocaleString()}</span> advisories
-        analyzed{" · "}
-        <span className="tabular-nums text-foreground/70">{withFix.toLocaleString()}</span> with
-        fix commits ({fixPct}%)
-      </p>
-    </div>
+    </section>
   );
 }
