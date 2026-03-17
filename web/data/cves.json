@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-17T18:17:34.874774+00:00",
-  "total": 59,
+  "generated_at": "2026-03-17T18:21:55.396898+00:00",
+  "total": 61,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -8423,6 +8423,223 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/28xxx/CVE-2026-28509.json",
         "https://github.com/langbot-app/LangBot/security/advisories/GHSA-w8gq-g4pc-xh3h",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
+      ]
+    },
+    {
+      "id": "GHSA-9f72-qcpw-2hxc",
+      "description": "OpenClaw: Native prompt image auto-load did not honor tools.fs.workspaceOnly in sandboxed runs",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-200",
+        "CWE-284"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T19:08:08Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2137,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit rewrote `loadImageFromRef` in `src/agents/pi-embedded-runner/run/images.ts` to use `sandbox.bridge.resolvePath` and `bridge.readFile`, removing the prior `assertSandboxPath(... root: sandboxRoot)` workspace-root enforcement. Blame on the pre-fix code attributes the vulnerable sandbox-resolution lines in `images.ts` and the `attempt.ts` caller change from `sandboxRoot` to `{ root, bridge }` to this commit. The fix directly addresses this design by re-adding a post-resolution `assertSandboxPath` check and threading `workspaceOnly` into the prompt-image path.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "8d74578ceb0c3b913555dff6265821eb0fc09749",
+          "author": "Tyler Yust",
+          "date": "2026-01-17T03:10:10-08:00",
+          "message": "feat: native image injection for vision-capable models",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/pi-embedded-runner/run/images.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "370d115549c0dadace0902775eea0d5094aedfdc",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `src/agents/pi-embedded-runner/run/images.ts` file, which implemented the image loading logic for the first time. During this implementation, it failed to incorporate the necessary sandbox validation checks (like `workspaceOnly`) that the fix commit later added, thereby establishing the missing security boundary from the inception of this feature.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Access Control / Information Exposure",
+            "vuln_description": "The native prompt image auto-loading mechanism failed to validate if the image path resided within the allowed workspace directory during sandboxed runs, potentially allowing unauthorized file access.",
+            "vulnerable_pattern": "Missing check against `tools.fs.workspaceOnly` configuration when resolving and loading images in the native prompt runner.",
+            "causal_chain": "The initial implementation of `loadImageFromRef` in the blamed commit lacked the mandatory `workspaceOnly` validation logic, which was a required security control for sandboxed execution, leading directly to the path traversal vulnerability."
+          },
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNLIKELY",
+                "reasoning": "This commit introduced native prompt image auto-load, but its sandboxed path handling was anchored to `sandboxRoot` and explicitly enforced `assertSandboxPath({ cwd: sandboxRoot, root: sandboxRoot })` before reading. That kept sandboxed image loads inside the workspace root, and `tools.fs.workspaceOnly` did not exist yet in this revision. The later fix does not reverse this design; the under-restriction came when a later refactor replaced this guard with fs-bridge resolution.",
+                "confidence": 0.95,
+                "tool_calls_made": 88,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "370d115549c0dadace0902775eea0d5094aedfdc",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-9f72-qcpw-2hxc",
+        "https://github.com/openclaw/openclaw/commit/370d115549c0dadace0902775eea0d5094aedfdc"
+      ]
+    },
+    {
+      "id": "CVE-2026-32247",
+      "description": "Graphiti vulnerable to Cypher Injection via unsanitized node_labels in search filters",
+      "severity": "HIGH",
+      "cvss": 8.1,
+      "cwes": [
+        "CWE-943"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T19:16:19.733",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This Kuzu-support refactor rewrote both node and edge search-filter constructors into their modern form and, for non-KUZU providers, reintroduced direct `|`.join of `filters.node_labels` into Cypher label expressions. Blame on the pre-fix file points the exact vulnerable lines (`node_labels = '|'.join(filters.node_labels)` and the resulting `n:` / `m:` filters) to this commit. Under the investigation rules, that reimplementation is a fresh bug introduction.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "1d94f7a3e3cebeba404aa4b48cf3d0742750595f",
+          "author": "prestonrasmussen",
+          "date": "2026-02-16T10:05:51-08:00",
+          "message": "feat: add driver operations architecture with abstract interfaces and concrete implementations",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "graphiti_core/driver/neo4j/operations/search_ops.py, graphiti_core/driver/falkordb_driver.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "7d65d5e77e89a199a62d737634eaa26dbb04d037",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit (1d94f7a3e3ce) introduced a massive refactor that included the file 'graphiti_core/driver/neo4j/operations/search_ops.py'. The vulnerability involves Cypher injection within search operations, which were explicitly rewritten and heavily expanded in this commit.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Cypher Injection",
+            "vuln_description": "The application was vulnerable to Cypher injection because user-supplied node_labels in search filters were not properly sanitized before being included in database queries.",
+            "vulnerable_pattern": "The fix is implemented as a dependency update (bumping graphiti-core to 0.28.2), so the vulnerable pattern exists within the external library, not the repository files themselves.",
+            "causal_chain": "The blamed commit introduced a significant rewrite of the Neo4j driver and its search operations, which likely introduced the mechanism where unsanitized user inputs were improperly concatenated into Cypher queries, creating the injection vector later patched by the fix commit."
+          },
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "This candidate was surfaced from files touched by the fix, but the relevant hunks in `graphiti_core/driver/neo4j/operations/search_ops.py` and `graphiti_core/driver/falkordb_driver.py` are about `group_ids` fulltext-query handling, not `node_labels` search-filter construction. The actual Cypher-injection sink fixed for this CVE is in `graphiti_core/search/search_filters.py`, where user-controlled `node_labels` are interpolated into Cypher label expressions. `99923c03` only created/refactored search-ops wrappers that call those helpers; it did not introduce the unsafe label-building logic.",
+                "confidence": 0.95,
+                "tool_calls_made": 59,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "1d94f7a3e3cebeba404aa4b48cf3d0742750595f",
+              "author_name": "prestonrasmussen",
+              "message": "feat: add driver operations architecture with abstract interfaces and concrete implementations",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "cde351fddd99ad52afd6cf83bda57ff5a3620a77",
+              "author_name": "prestonrasmussen",
+              "message": "fix: address PR review feedback",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "489e714dde06a72437231ac2b17a0f3cc4bd9e53",
+              "author_name": "prestonrasmussen",
+              "message": "fix: make namespace init graceful for drivers missing operations",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "99923c0352a4679c373b16f0ce45f1391fd589c9"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "77b16096baf755d6c6102f4b50a3725d3e7f7ac7",
+          "repo_url": "https://github.com/getzep/graphiti",
+          "source": "osv"
+        },
+        {
+          "sha": "7d65d5e77e89a199a62d737634eaa26dbb04d037",
+          "repo_url": "https://github.com/getzep/graphiti",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32247.json",
+        "https://github.com/getzep/graphiti/releases/tag/v0.28.2",
+        "https://github.com/getzep/graphiti/security/advisories/GHSA-gg5m-55jj-8m5g",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-32247"
       ]
     },
     {

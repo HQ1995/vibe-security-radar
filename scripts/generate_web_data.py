@@ -1193,6 +1193,7 @@ def build_cve_entry(
     nvd_dates: dict[str, str] | None = None,
     ghsa_severities: dict[str, str] | None = None,
     reviews: dict[str, dict] | None = None,
+    audit_overrides: set[str] | None = None,
 ) -> dict | None:
     """Transform a cached analysis result dict into a web-friendly CVE entry.
 
@@ -1237,6 +1238,7 @@ def build_cve_entry(
         sha = fc.get("sha", "")
         if sha:
             fix_source_by_sha[sha] = fc.get("source", "")
+    is_override = result.get("cve_id", "") in (audit_overrides or set())
     bug_commits_raw = [
         _build_bug_commit(
             bic,
@@ -1245,7 +1247,7 @@ def build_cve_entry(
         )
         for bic in raw_bics
         if bic.get("commit", {}).get("ai_signals")
-        and _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY")
+        and (is_override or _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY"))
     ]
     # Merge BICs with the same SHA (same commit blamed for multiple files).
     # Keep the first entry and append extra blamed_file values.
@@ -1281,7 +1283,9 @@ def build_cve_entry(
     # Drop BICs whose AI signals were removed during squash decomposition
     # (e.g. culprit sub-commit has no AI signals even though the squash
     # merge did — trailer pollution from merge commits in the PR).
-    bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
+    # Skip this filter for audit-overridden CVEs.
+    if not is_override:
+        bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
     if not bug_commits:
         return None  # No AI-attributed BICs left → not an AI-introduced vuln
 
@@ -1613,12 +1617,22 @@ def main(argv: list[str] | None = None) -> None:
 
     # Transform (build_cve_entry returns None when all AI signals are lost
     # during squash decomposition — trailer pollution from merge commits)
-    entries = [e for e in (build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered) if e is not None]
+    audit_override_ids = _load_audit_overrides()
+    entries = [e for e in (build_cve_entry(r, nvd_dates, ghsa_severities, reviews, audit_override_ids) for r in filtered) if e is not None]
     # Drop entries with no AI tools (signals lost from cache — need re-analysis)
-    no_tools = [e for e in entries if not e.get("ai_tools")]
+    # Audit overrides keep their tools from the override file if pipeline missed them.
+    for e in entries:
+        if not e.get("ai_tools") and e["id"] in audit_override_ids:
+            # Pull tool info from the audit override
+            override_file = os.path.join(os.path.dirname(__file__), "audit_overrides.json")
+            for ov in json.load(open(override_file)):
+                if ov["cve_id"] == e["id"] and "tools" in ov:
+                    e["ai_tools"] = ov["tools"]
+                    break
+    no_tools = [e for e in entries if not e.get("ai_tools") and e["id"] not in audit_override_ids]
     if no_tools:
         print(f"  Excluded {len(no_tools)} CVEs with lost AI signal data (need --no-cache re-analysis).")
-    entries = [e for e in entries if e.get("ai_tools")]
+    entries = [e for e in entries if e.get("ai_tools") or e["id"] in audit_override_ids]
 
     # Deduplicate CVE/GHSA aliases using the GHSA advisory database.
     # Different CVEs can share fix commits (one commit fixes multiple vulns),
