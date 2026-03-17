@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-17T03:55:53.463658+00:00",
-  "total": 74,
+  "generated_at": "2026-03-17T05:30:56.033321+00:00",
+  "total": 76,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -2498,6 +2498,177 @@
       "references": [
         "https://github.com/homeassistant-ai/ha-mcp/security/advisories/GHSA-fmfg-9g7c-3vq7",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32111"
+      ]
+    },
+    {
+      "id": "GHSA-g353-mgv3-8pcj",
+      "description": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+      "severity": "HIGH",
+      "cvss": 8.6,
+      "cwes": [
+        "CWE-347"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:55:34Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit introduced the community Feishu plugin’s webhook design: it added `connectionMode: \"webhook\"`, top-level `encryptKey`/`verificationToken` fields as optional strings in `config-schema.ts`, matching JSON-schema entries in `channel.ts`, and `createEventDispatcher()` passing those values through with no requirement that `encryptKey` exist. The monitor still logged that webhook mode was not implemented, so the flaw was not yet reachable, but the insecure design the fix later reverses was authored here. Under the investigation criteria, making the authenticating encrypt key optional is a vulnerability introduction even before the code path became exploitable.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/channel.ts, extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the specific JSON schema for the Feishu plugin where `encryptKey` was defined as a simple `{ type: \"string\" }` rather than the `secretInputJsonSchema` used for other sensitive credentials. This inconsistent schema definition facilitated the bypass of mandatory encryption key validation, as it did not enforce the same security constraints or handling as the verification token.",
+            "model": "gemini-3-flash-preview",
+            "vuln_type": "Improper Verification of Cryptographic Signature",
+            "vuln_description": "The application incorrectly allowed Feishu webhooks to be authenticated using only a verification token, bypassing mandatory encryption key validation which is required to prevent forged events.",
+            "vulnerable_pattern": "Verification of Feishu webhook events based solely on a `verificationToken` without enforcing the presence and validation of an `encryptKey`.",
+            "causal_chain": "1. The blamed commit introduced a new configuration schema for Feishu accounts. 2. In this schema, `encryptKey` was defined as a standard string while `appSecret` and `verificationToken` were defined using `secretInputJsonSchema`. 3. This discrepancy led to the application logic accepting configurations where the encryption key was missing or improperly handled, allowing for unencrypted/forged webhook events."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.7,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the community Feishu plugin’s webhook design: it added `connectionMode: \"webhook\"`, top-level `encryptKey`/`verificationToken` fields as optional strings in `config-schema.ts`, matching JSON-schema entries in `channel.ts`, and `createEventDispatcher()` passing those values through with no requirement that `encryptKey` exist. The monitor still logged that webhook mode was not implemented, so the flaw was not yet reachable, but the insecure design the fix later reverses was authored here. Under the investigation criteria, making the authenticating encrypt key optional is a vulnerability introduction even before the code path became exploitable.",
+                "confidence": 0.7,
+                "tool_calls_made": 105,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T19:18:25+08:00",
+          "message": "feat(feishu): sync with clawdbot-feishu #137 (multi-account support)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This multi-account rework reintroduced the same flaw for named accounts: it added account-level `encryptKey: z.string().optional()` / JSON-schema entries and changed account resolution and `createEventDispatcher(account)` to feed account-specific optional `encryptKey` and `verificationToken` into the SDK dispatcher. The fix later adds account-level encrypt-key validation in exactly these paths. Because this was a fresh reimplementation for multi-account webhook configs, it is a relevant BIC for the account-scoped variant of the bug.",
+                "confidence": 0.95,
+                "tool_calls_made": 105,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+          "author": "Yifeng Wang",
+          "date": "2026-02-10T08:19:44+08:00",
+          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/monitor.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit made the vulnerability exploitable in OpenClaw itself by implementing webhook mode in `monitor.ts` with `http.createServer()` and `Lark.adaptDefault(path, eventDispatcher, { autoChallenge: true })`. The server was started even when `encryptKey` was unset, so token-only configurations now accepted inbound events through the built-in Feishu monitor. It is the concrete enabler commit that turned the earlier insecure design into a reachable forged-event vulnerability.",
+                "confidence": 0.95,
+                "tool_calls_made": 105,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+              "author_name": "Yifeng Wang",
+              "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+        "https://github.com/openclaw/openclaw/pull/44087",
+        "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
       ]
     },
     {
@@ -8579,114 +8750,6 @@
       ]
     },
     {
-      "id": "CVE-2026-28473",
-      "description": "OpenClaw versions prior to 2026.2.2 contain an authorization bypass vulnerability where clients with operator.write scope can approve or deny exec approval requests by sending the /approve chat command. The /approve command path invokes exec.approval.resolve through an internal privileged gateway client, bypassing the operator.approvals permission check that protects direct RPC calls.",
-      "severity": "HIGH",
-      "cvss": 7.2,
-      "cwes": [
-        "CWE-863"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-05T22:16:21.220",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.38,
-      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
-      "how_introduced": "This commit introduced the entire `/approve` command path: it added `src/auto-reply/reply/commands-approve.ts`, registered the handler, and added tests asserting that `/approve` should call `exec.approval.resolve`. The new handler only checked `params.command.isAuthorizedSender` and then invoked `callGateway` with the internal privileged `GATEWAY_CLIENT`/`BACKEND` identity, which bypassed the existing direct-RPC `operator.approvals` scope check in `src/gateway/server-methods.ts`. The fix commit later changed this same handler to require `operator.approvals` (or `operator.admin`) for internal gateway channels, so this is the commit that introduced the vulnerable authorization bypass.",
-      "root_cause": "",
-      "vuln_type": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "01d568c9f54585d2df3002e1090067c9dd621e43",
-          "author": "Lucas Czekaj",
-          "date": "2026-01-24T12:56:40-08:00",
-          "message": "feat(discord): add exec approval forwarding to DMs",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/auto-reply/reply/commands-approve.ts",
-          "blame_confidence": 0.4,
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the `handleApproveCommand` function, which failed to verify the required `operator.approvals` permission scope before invoking the sensitive `exec.approval.resolve` RPC method. By adding the command handler without enforcing the necessary authorization check, this commit enabled the authorization bypass vulnerability.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "OS Command Injection",
-            "vuln_description": "The application fails to sanitize shell metacharacters in command execution requests, allowing attackers to inject and execute arbitrary commands by bypassing intended allowlist restrictions.",
-            "vulnerable_pattern": "Unsanitized user input passed to a system shell executor (e.g., cmd.exe) allowing metacharacter injection.",
-            "causal_chain": "The blamed commit created the handler for the /approve command and invoked `callGateway({ method: 'exec.approval.resolve', ... })` without checking if the sender possessed the `operator.approvals` scope, directly leading to the authorization bypass described in the CVE."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire `/approve` command path: it added `src/auto-reply/reply/commands-approve.ts`, registered the handler, and added tests asserting that `/approve` should call `exec.approval.resolve`. The new handler only checked `params.command.isAuthorizedSender` and then invoked `callGateway` with the internal privileged `GATEWAY_CLIENT`/`BACKEND` identity, which bypassed the existing direct-RPC `operator.approvals` scope check in `src/gateway/server-methods.ts`. The fix commit later changed this same handler to require `operator.approvals` (or `operator.admin`) for internal gateway channels, so this is the commit that introduced the vulnerable authorization bypass.",
-                "confidence": 0.95,
-                "tool_calls_made": 81,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "01d568c9f54585d2df3002e1090067c9dd621e43",
-              "author_name": "Lucas Czekaj",
-              "message": "feat(discord): add exec approval forwarding to DMs",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e3bfdee116da4ab56aaabf444bd4b517a3bc997f",
-              "author_name": "Peter Steinberger",
-              "message": "feat: generic exec approvals forwarding (#1621) (thanks @czekaj)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "483fba41b9f9fb57964f31b90a2ddacb185d54d7"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "95cd2210f93d6ab2acc5e29dbad6065294365863",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "osv"
-        },
-        {
-          "sha": "efe2a464afcff55bb5a95b959e6bd9ec0fef086e",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://www.vulncheck.com/advisories/openclaw-authorization-bypass-via-approve-chat-command",
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-mqpw-46fh-299h"
-      ]
-    },
-    {
       "id": "CVE-2026-23515",
       "description": "RCE - Command Injection in Signal K set-system-time plugin",
       "severity": "CRITICAL",
@@ -11050,6 +11113,103 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22804.json",
         "https://github.com/Termix-SSH/Termix/security/advisories/GHSA-m3cv-5hgp-hv35",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-22804"
+      ]
+    },
+    {
+      "id": "CVE-2026-28478",
+      "description": "OpenClaw versions prior to 2026.2.13 contain a denial of service vulnerability in webhook handlers that buffer request bodies without strict byte or time limits. Remote unauthenticated attackers can send oversized JSON payloads or slow uploads to webhook endpoints causing memory pressure and availability degradation.",
+      "severity": "HIGH",
+      "cvss": 8.7,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T22:16:22.210",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit introduced Feishu webhook mode in extensions/feishu/src/monitor.ts by adding monitorWebhook(), creating an HTTP server, and wiring server.on(\"request\", Lark.adaptDefault(...)) with no byte or time guard. Blame on the pre-fix file assigns the vulnerable request-handler line directly to this commit. The fix wraps exactly this handler with installRequestBodyLimitGuard, so this is the Feishu BIC.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+          "author": "Yifeng Wang",
+          "date": "2026-02-10T08:19:44+08:00",
+          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/monitor.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability is described as a Telegram webhook authentication bypass, whereas the provided code diffs are specifically for an extension named 'feishu' (a different service). Furthermore, the fix commit modifies request body handling in the Feishu monitoring module, which is unrelated to the missing secret validation required for Telegram webhooks.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Request Forgery / Auth Bypass",
+            "vuln_description": "The application fails to verify the authenticity of incoming Telegram webhook requests because the `channels.telegram.webhookSecret` is missing or not implemented, allowing unauthorized parties to spoof requests.",
+            "vulnerable_pattern": "Missing validation of Telegram webhook secret token in the webhook handler endpoint.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced Feishu webhook mode in extensions/feishu/src/monitor.ts by adding monitorWebhook(), creating an HTTP server, and wiring server.on(\"request\", Lark.adaptDefault(...)) with no byte or time guard. Blame on the pre-fix file assigns the vulnerable request-handler line directly to this commit. The fix wraps exactly this handler with installRequestBodyLimitGuard, so this is the Feishu BIC.",
+                "confidence": 0.95,
+                "tool_calls_made": 113,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+              "author_name": "Yifeng Wang",
+              "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3cbcba10cf30c2ffb898f0d8c7dfb929f15f8930",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-q447-rj3r-2cgh",
+        "https://www.vulncheck.com/advisories/openclaw-denial-of-service-via-unbounded-webhook-request-body-buffering"
       ]
     },
     {
@@ -16516,6 +16676,296 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53108.json",
         "https://github.com/sysadminsmedia/homebox/security/advisories/GHSA-m6vx-pg9q-vq6m",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-53108"
+      ]
+    },
+    {
+      "id": "GHSA-7h7g-x2px-94hj",
+      "description": "OpenClaw: Pairing setup codes exposed long-lived shared gateway credentials instead of short-lived bootstrap tokens",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:54:18Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Swift"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gemini-3.1-flash-lite-preview, gpt-5.4",
+      "how_introduced": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
+      "root_cause": "",
+      "vuln_type": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
+          "author": "Hongwei Ma",
+          "date": "2026-02-16T16:22:51+00:00",
+          "message": "feat: QR code scanning for gateway onboarding",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "advisory_version",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit introduces `GatewayConnectDeepLink`, which is a data transfer object for handling deep links, but it does not contain the logic for plugin auto-discovery or execution. The fix commit modifies `GatewayConnectDeepLink` to add a `bootstrapToken` field, which addresses authentication or verification for deep links, but the actual vulnerability (arbitrary code execution via workspace plugins) resides in a different part of the system responsible for plugin management, not this deep link parser.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Arbitrary Code Execution (CWE-829)",
+            "vuln_description": "The application's plugin auto-discovery mechanism incorrectly trusted and executed code from repositories without proper validation or isolation, allowing untrusted code to run.",
+            "vulnerable_pattern": "Automated loading and execution of plugins or configuration payloads from workspace directories without source verification.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
+                "confidence": 0.95,
+                "tool_calls_made": 154,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
+              "author_name": "Hongwei Ma",
+              "message": "feat: QR code scanning for gateway onboarding",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "bc05143e4e3c6e5b7ef36e28d01dcd54f9d24804",
+              "author_name": "Mariano Belinky",
+              "message": "Onboarding/Media: harden QR scanner and data URL parsing",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7cbaae15e0b7887a7a6f7e69229cab4aeba32242",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: restore onboarding wizard flow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4825bb52c4b287df76757a4a8acfb27150095802",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: stabilize QR onboarding pairing",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b0f7428c297ba6425d3c5fff27b0228ccbbfe30f",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: resume pairing clears paused state",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7843ab5e450cceb29ab86b7a20c50d44d6ee20a3",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: avoid onboarding modal when gateway already configured",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ff3f90af972b9f1da8f5e4f0898bc33e489d6b5d",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: stop auth step flip-flop during reconnect",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ee11388e38e7971d354b991b452a8d7fa267e648",
+              "author_name": "Emanuel Stadler",
+              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in Settings sheet",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a779205580f617365819a321c07aae4e00f0dcfc",
+              "author_name": "Emanuel Stadler",
+              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in GatewayQuickSetupSheet",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f187cac489414970ff5124b00f6baca44f98b49a",
+              "author_name": "Nimrod Gutman",
+              "message": "fix(ios): include device identity for operator gateway session",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7ed2e1bfe9c376fd02cfbf613b2352f72608064e",
+              "author_name": "Mariano Belinky",
+              "message": "ios: route launch onboarding/settings via startup route",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a07790c3848f8d4bd5a4961a2beb41c396820b90",
+              "author_name": "Mariano Belinky",
+              "message": "chore: scope onboarding pack to iOS and pairing surfaces",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c967c59bb7ae910459fc297eb3f09527bb26884c",
+              "author_name": "Mariano Belinky",
+              "message": "changelog: add iOS onboarding QR flow entry",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bbd041dc1eb1749b3bb73df295c5619fc584f9af",
+              "author_name": "Mariano Belinky",
+              "message": "device-pair: use ascii qr fallback in plugin flow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a87eadea19e9d2e693300ac7382cd338eb87b472",
+              "author_name": "Mariano Belinky",
+              "message": "style: format device-pair qr fallback",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "130e59a9c09604f78e6e62da85392ed927547fc8"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "bf89947a8e9ec5d278b71a8c438ce414dd04a2d6",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "7dc447f79f83908c06d9220723881e2047d1278c",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ff47876e61b2af14f34ed72b5b61989ada8d8fc6",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e8a162d3d8a0643416098f612108c3546efd8733",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b14a5c6713b8e88e414063b806f1fd1fd676a856",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9692dc7668cb3886562ca264a5853964f917f8db",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4da617e1783af7c79affb8ce39093c96333cd454",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ddeb4239443f9a548c7c2ac15cbcaec0d8889336",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e951a42bcb863fd03495c9ad1781574f2dfdd6b2",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b2e21e37920c98e94c7611eb44901d133c5ac929",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9cd54ea8824462b876733471132f2bd7b8c1b0b0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "904db27019ae2b5a96c1568cba962af02f6f3aba",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fd568c4f743d1cec6abfba5dbfcb2c5534f0c9c9",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9cb0fa58c20c71e22a58f4b499a982fa169f6385",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6c196c913fc3fde51f3e2e1087ed94a6920fac1f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f3c00fce157867d3aadd4041e578bbb40b4841d0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "433e65711f78492e961e5da678de91175b4f151b",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "08da1b47badccb8aa7fbd1e7bb5a8af5ff848622",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b858d6c3a91ee94905131a2d41b7ee17608ebd00",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d5b3f2ed71f2aec49e4f48034f0d96a7c6c72591",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7h7g-x2px-94hj",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
       ]
     }
   ]
