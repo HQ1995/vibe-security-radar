@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -328,14 +329,39 @@ def analyze_funnel(results: list[dict]) -> None:
             print(f"  Confidence: min={min(web_conf):.2f}  median={sorted(web_conf)[len(web_conf)//2]:.2f}  max={max(web_conf):.2f}")
 
 
+def _in_coverage_window(r: dict, since: str) -> bool:
+    """Check if a result falls within the coverage window (>= since)."""
+    cve_id = r.get("cve_id", "")
+    year = int(since[:4]) if len(since) >= 4 else 0
+    if cve_id.startswith("CVE-"):
+        parts = cve_id.split("-")
+        if len(parts) >= 2 and parts[1].isdigit():
+            return int(parts[1]) >= year
+    # GHSA, OSV, etc. — include conservatively
+    return True
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Pipeline funnel diagnostics")
+    parser.add_argument("--since", default="2025-05",
+                        help="Coverage window start (YYYY-MM, default: 2025-05)")
+    parser.add_argument("--all", action="store_true",
+                        help="Include all cached results (no date filter)")
+    args = parser.parse_args()
+
     if not RESULTS_DIR.exists():
         print(f"No results directory at {RESULTS_DIR}", file=sys.stderr)
         sys.exit(1)
 
     print(f"Loading results from {RESULTS_DIR} ...")
     results = load_results()
-    print(f"Loaded {len(results):,} cached results.\n")
+    total_loaded = len(results)
+
+    if not args.all:
+        results = [r for r in results if _in_coverage_window(r, args.since)]
+        print(f"Loaded {total_loaded:,} cached results, {len(results):,} in coverage window (>= {args.since}).\n")
+    else:
+        print(f"Loaded {total_loaded:,} cached results (no date filter).\n")
 
     analyze_funnel(results)
 
