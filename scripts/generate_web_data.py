@@ -1136,8 +1136,12 @@ def build_cve_entry(
     nvd_dates: dict[str, str] | None = None,
     ghsa_severities: dict[str, str] | None = None,
     reviews: dict[str, dict] | None = None,
-) -> dict:
-    """Transform a cached analysis result dict into a web-friendly CVE entry."""
+) -> dict | None:
+    """Transform a cached analysis result dict into a web-friendly CVE entry.
+
+    Returns None if all AI signals are lost during squash decomposition
+    (trailer pollution — AI co-author on merge commits, not on vuln code).
+    """
     severity_str = result.get("severity", "")
 
     # Deduplicated list of AI tool names — only authorship signals from BICs
@@ -1216,6 +1220,13 @@ def build_cve_entry(
             seen_reasonings.add(reasoning)
         deduped.append(bc)
     bug_commits = deduped
+
+    # Drop BICs whose AI signals were removed during squash decomposition
+    # (e.g. culprit sub-commit has no AI signals even though the squash
+    # merge did — trailer pollution from merge commits in the PR).
+    bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
+    if not bug_commits:
+        return None  # No AI-attributed BICs left → not an AI-introduced vuln
 
     # Use NVD published date if available, fall back to year from CVE ID
     cve_id = result.get("cve_id", "")
@@ -1543,8 +1554,9 @@ def main(argv: list[str] | None = None) -> None:
         nvd_dates.update(commit_dates)
         print(f"  Resolved {len(commit_dates)} of {len(still_missing)} from git history.")
 
-    # Transform
-    entries = [build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered]
+    # Transform (build_cve_entry returns None when all AI signals are lost
+    # during squash decomposition — trailer pollution from merge commits)
+    entries = [e for e in (build_cve_entry(r, nvd_dates, ghsa_severities, reviews) for r in filtered) if e is not None]
     # Drop entries with no AI tools (signals lost from cache — need re-analysis)
     no_tools = [e for e in entries if not e.get("ai_tools")]
     if no_tools:
