@@ -1302,7 +1302,13 @@ def build_cve_entry(
                 if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
                     how_introduced = av["reasoning"]
                     break
+            # Preserve screening metadata (vuln_type, root cause) alongside
+            # deep-verify reasoning — deep verify has no vuln_type of its own.
             if how_introduced:
+                llm_v = _get_screening_verdict(bic)
+                if llm_v and llm_v.get("verdict") == "CONFIRMED":
+                    root_cause = llm_v.get("vuln_description", "")
+                    vuln_type = llm_v.get("vuln_type", "")
                 break
 
         # Screening CONFIRMED — only use if deep verify did NOT overrule it
