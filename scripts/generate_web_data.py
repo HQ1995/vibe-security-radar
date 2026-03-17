@@ -84,7 +84,26 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".sh": "Shell",
     ".bash": "Shell",
     ".zsh": "Shell",
+    ".sql": "SQL",
+    ".sol": "Solidity",
+    ".tf": "Terraform",
+    ".hcl": "Terraform",
 }
+
+# Template/config extensions that need project-level language inference.
+# These files don't have vulnerabilities on their own — the vulnerability
+# is in the server-side framework that renders them.
+_TEMPLATE_EXTENSIONS = frozenset({
+    ".html", ".htm",          # Django/Jinja2/EJS/Handlebars templates
+    ".xml", ".xsl", ".xslt",
+    ".yaml", ".yml",          # config files
+    ".json",                  # config/data
+    ".erb",                   # Ruby ERB templates
+    ".ejs",                   # Node EJS templates
+    ".hbs",                   # Handlebars templates
+    ".twig",                  # PHP Twig templates
+    ".j2", ".jinja", ".jinja2",  # Jinja2 templates
+})
 
 
 def _file_extension_to_language(filepath: str) -> str | None:
@@ -123,6 +142,44 @@ def _fix_commit_files(fix_commits: list[dict], repos_dir: str) -> list[str]:
     return files
 
 
+def _infer_language_from_template(filepath: str, fix_commits: list[dict] | None,
+                                   repos_dir: str) -> str | None:
+    """Infer the project language when the blamed file is a template/config.
+
+    Template files (.html, .yaml, etc.) don't have vulnerabilities on their
+    own — the bug is in the server-side framework.  Infer the framework
+    language from sibling files in the fix commit diff.
+    """
+    fix_files = _fix_commit_files(fix_commits, repos_dir) if fix_commits else []
+    # Count languages from fix commit files
+    lang_counts: dict[str, int] = {}
+    for f in fix_files:
+        lang = _file_extension_to_language(f)
+        if lang:
+            lang_counts[lang] = lang_counts.get(lang, 0) + 1
+    if lang_counts:
+        return max(lang_counts, key=lang_counts.get)  # type: ignore[arg-type]
+    # Heuristic from template type or path → likely framework
+    ext = os.path.splitext(filepath)[1].lower()
+    ext_hints = {
+        ".erb": "Ruby", ".twig": "PHP", ".ejs": "JavaScript",
+        ".j2": "Python", ".jinja": "Python", ".jinja2": "Python",
+    }
+    if ext in ext_hints:
+        return ext_hints[ext]
+    # Path-based hints for generic extensions like .html
+    path_lower = filepath.lower()
+    path_hints = [
+        ("/templates/", "Python"),       # Django/Flask
+        ("/views/", "PHP"),              # Laravel/PHP
+        ("/resources/views/", "PHP"),    # Laravel
+    ]
+    for pattern, lang in path_hints:
+        if pattern in path_lower:
+            return lang
+    return None
+
+
 def _determine_languages(
     bug_commits: list[dict],
     fix_commits: list[dict] | None = None,
@@ -130,15 +187,30 @@ def _determine_languages(
 ) -> list[str]:
     """Extract sorted unique languages from blamed_file extensions in bug commits.
 
+    For template/config files (.html, .yaml, etc.), infers the project
+    language from fix commit diffs since the vulnerability is in the
+    framework, not the template format itself.
+
     Falls back to fix commit diff files when blamed_file is a placeholder
     (e.g. osv_introduced strategy).
     """
     languages: set[str] = set()
+    needs_inference: list[str] = []
     for bc in bug_commits:
         filepath = bc.get("blamed_file", "")
         lang = _file_extension_to_language(filepath)
         if lang:
             languages.add(lang)
+        elif filepath and os.path.splitext(filepath)[1].lower() in _TEMPLATE_EXTENSIONS:
+            needs_inference.append(filepath)
+
+    # Infer language for template files from project context
+    if needs_inference and not languages:
+        for filepath in needs_inference:
+            lang = _infer_language_from_template(filepath, fix_commits, repos_dir)
+            if lang:
+                languages.add(lang)
+                break
 
     # Fallback: infer from fix commit changed files
     if not languages and fix_commits:
