@@ -1109,7 +1109,7 @@ def _bic_dict_is_excluded(bic: dict) -> bool:
 _UNLIKELY_PENALTIES_DICT: dict[str, float] = {
     "high": 0.25,
     "medium": 0.5,
-    "low": 1.0,
+    "low": 0.85,
 }
 
 
@@ -1355,16 +1355,19 @@ def build_cve_entry(
                     verified_by = f"{dv['model']}-{_REASONING_EFFORT}"
                 break
 
-    # Populate how_introduced (causal chain), root_cause, and vuln_type.
-    # Priority: deep-verify CONFIRMED > screening CONFIRMED (no deep verify).
-    # If deep verify says UNLIKELY/UNRELATED, screening CONFIRMED is ignored
-    # for that BIC — the deep verifier overrules screening.
+    # Populate how_introduced, root_cause, vuln_type, and vulnerable_pattern.
+    # Priority: screening causal_chain (concise) > deep-verify reasoning (verbose).
+    # Deep verify still gates *which* BICs are valid (UNLIKELY/UNRELATED are
+    # filtered out), but for the summary text we prefer the structured screening
+    # fields when available.
     how_introduced = ""
     root_cause = ""
     vuln_type = ""
+    vulnerable_pattern = ""
     screening_fallback = ""
     screening_root_cause = ""
     screening_vuln_type = ""
+    screening_vulnerable_pattern = ""
 
     for bic in result.get("bug_introducing_commits", []):
         dv = _get_deep_verdict(bic)
@@ -1374,23 +1377,27 @@ def build_cve_entry(
 
         # Best source: deep verify CONFIRMED
         if dv_verdict == "CONFIRMED":
-            if dv.get("reasoning"):
-                how_introduced = dv["reasoning"]
-            # Old format: reasoning inside agent_verdicts
-            for av in dv.get("agent_verdicts", []):
-                if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
-                    how_introduced = av["reasoning"]
-                    break
-            # Preserve screening metadata (vuln_type, root cause) alongside
-            # deep-verify reasoning — deep verify has no vuln_type of its own.
+            llm_v = _get_screening_verdict(bic)
+            if llm_v and llm_v.get("verdict") == "CONFIRMED":
+                # Prefer screening causal_chain (concise) over deep-verify
+                # reasoning (verbose forensic analysis).
+                how_introduced = llm_v.get("causal_chain", "") or dv.get("reasoning", "")
+                root_cause = llm_v.get("vuln_description", "")
+                vuln_type = llm_v.get("vuln_type", "")
+                vulnerable_pattern = llm_v.get("vulnerable_pattern", "")
+            else:
+                # No screening — fall back to deep verify reasoning.
+                how_introduced = dv.get("reasoning", "")
+                # Old format: reasoning inside agent_verdicts
+                for av in dv.get("agent_verdicts", []):
+                    if av.get("verdict") == "CONFIRMED" and av.get("reasoning"):
+                        how_introduced = av["reasoning"]
+                        break
             if how_introduced:
-                llm_v = _get_screening_verdict(bic)
-                if llm_v and llm_v.get("verdict") == "CONFIRMED":
-                    root_cause = llm_v.get("vuln_description", "")
-                    vuln_type = llm_v.get("vuln_type", "")
                 break
 
-        # Screening CONFIRMED — only use if deep verify did NOT overrule it
+        # Screening CONFIRMED — only use when no deep verify exists for this
+        # BIC (any deep verdict, even UNLIKELY, takes precedence).
         llm_v = _get_screening_verdict(bic)
         if llm_v and llm_v.get("verdict") == "CONFIRMED" and not dv_verdict:
             # No deep verify exists for this BIC — screening is acceptable
@@ -1399,12 +1406,14 @@ def build_cve_entry(
                 screening_fallback = candidate
                 screening_root_cause = llm_v.get("vuln_description", "")
                 screening_vuln_type = llm_v.get("vuln_type", "")
+                screening_vulnerable_pattern = llm_v.get("vulnerable_pattern", "")
 
     # Use screening only as fallback when no deep-verify CONFIRMED was found
     if not how_introduced and screening_fallback:
         how_introduced = screening_fallback
         root_cause = screening_root_cause
         vuln_type = screening_vuln_type
+        vulnerable_pattern = screening_vulnerable_pattern
 
     # Best verdict across all BICs (for list table display).
     # UNRELATED and UNLIKELY BICs are filtered out of bug_commits above,
@@ -1433,6 +1442,7 @@ def build_cve_entry(
         "how_introduced": how_introduced,
         "root_cause": root_cause,
         "vuln_type": vuln_type,
+        "vulnerable_pattern": vulnerable_pattern,
         "verdict": best_verdict,
         "bug_commits": bug_commits,
         "fix_commits": result.get("fix_commits", []),
