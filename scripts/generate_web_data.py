@@ -113,6 +113,10 @@ def _file_extension_to_language(filepath: str) -> str | None:
     """
     if not filepath:
         return None
+    # GitHub Actions composite actions (action.yml / action.yaml)
+    basename = os.path.basename(filepath).lower()
+    if basename in ("action.yml", "action.yaml"):
+        return "GitHub Actions"
     ext = os.path.splitext(filepath)[1].lower()
     return EXTENSION_TO_LANGUAGE.get(ext)
 

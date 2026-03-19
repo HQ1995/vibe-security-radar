@@ -51,7 +51,12 @@ export function formatPublished(published: string): string {
     });
   }
   try {
-    const date = new Date(published);
+    // Date-only strings ("2025-05-01") are parsed as UTC by Date constructor,
+    // which shifts the day in non-UTC timezones. Parse as local date instead.
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(published);
+    const date = dateOnly
+      ? new Date(Number(published.slice(0, 4)), Number(published.slice(5, 7)) - 1, Number(published.slice(8, 10)))
+      : new Date(published);
     if (isNaN(date.getTime())) return published;
     return date.toLocaleDateString("en-US", {
       year: "numeric",

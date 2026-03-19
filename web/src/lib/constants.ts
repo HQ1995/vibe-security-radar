@@ -158,6 +158,7 @@ export const LANGUAGE_COLORS: Readonly<Record<string, string>> = {
   Nim: "#FFE953",
   Perl: "#0298C3",
   Shell: "#89E051",
+  "GitHub Actions": "#2088FF",
 };
 
 export const LANGUAGE_FALLBACK_COLOR = "#71717A";
