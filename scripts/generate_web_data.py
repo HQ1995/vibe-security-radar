@@ -1219,9 +1219,13 @@ def build_cve_entry(
     # Deduplicated list of AI tool names — only authorship signals from BICs
     # whose effective verdict is CONFIRMED or missing (benefit of the doubt).
     # Workflow signals (merge_workflow, ai_review_bot) are excluded.
-    # Signals with very low confidence (< 0.1) are noise from squash
-    # decomposition scaling and should not promote a tool to the display list.
-    _MIN_TOOL_DISPLAY_CONFIDENCE = 0.1
+    # "unknown_ai" from message_keyword matches are noisy (e.g. "AI Add
+    # questions" matching "AI-generated") — only display unknown_ai when it
+    # has a strong signal type like co_author_trailer or author_email.
+    _STRONG_SIGNAL_TYPES = frozenset({
+        "co_author_trailer", "co_author_trailer_generic",
+        "author_email", "committer_email",
+    })
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
         commit = bic.get("commit", {})
@@ -1232,13 +1236,17 @@ def build_cve_entry(
         if verdict == "UNRELATED":
             continue
         for sig in signals:
-            if sig.get("signal_type", "").removeprefix("squash_decomposed_") in _WORKFLOW_SIGNAL_TYPES:
-                continue
-            if sig.get("confidence", 0) < _MIN_TOOL_DISPLAY_CONFIDENCE:
+            base_type = sig.get("signal_type", "").removeprefix("squash_decomposed_")
+            if base_type in _WORKFLOW_SIGNAL_TYPES:
                 continue
             tool = sig.get("tool", "")
-            if tool:
-                ai_tools_set.add(tool)
+            if not tool:
+                continue
+            # unknown_ai from weak signal types (message_keyword, pr_body)
+            # is too noisy to display — require a strong signal type.
+            if tool == "unknown_ai" and base_type not in _STRONG_SIGNAL_TYPES:
+                continue
+            ai_tools_set.add(tool)
     ai_tools = sorted(ai_tools_set)
 
     # Only include BICs with AI signals whose effective verdict is CONFIRMED
