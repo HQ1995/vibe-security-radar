@@ -843,6 +843,18 @@ def _load_audit_overrides() -> set[str]:
         return set()
 
 
+def _load_audit_override_details() -> dict[str, dict]:
+    """Load full audit override entries keyed by CVE ID."""
+    override_path = os.path.join(os.path.dirname(__file__), "audit_overrides.json")
+    if not os.path.exists(override_path):
+        return {}
+    try:
+        entries = json.load(open(override_path))
+        return {e["cve_id"]: e for e in entries if isinstance(e, dict)}
+    except Exception:
+        return {}
+
+
 def filter_ai_results(
     results: list[dict],
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
@@ -1207,6 +1219,9 @@ def build_cve_entry(
     # Deduplicated list of AI tool names — only authorship signals from BICs
     # whose effective verdict is CONFIRMED or missing (benefit of the doubt).
     # Workflow signals (merge_workflow, ai_review_bot) are excluded.
+    # Signals with very low confidence (< 0.1) are noise from squash
+    # decomposition scaling and should not promote a tool to the display list.
+    _MIN_TOOL_DISPLAY_CONFIDENCE = 0.1
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
         commit = bic.get("commit", {})
@@ -1218,6 +1233,8 @@ def build_cve_entry(
             continue
         for sig in signals:
             if sig.get("signal_type", "").removeprefix("squash_decomposed_") in _WORKFLOW_SIGNAL_TYPES:
+                continue
+            if sig.get("confidence", 0) < _MIN_TOOL_DISPLAY_CONFIDENCE:
                 continue
             tool = sig.get("tool", "")
             if tool:
@@ -1426,6 +1443,46 @@ def build_cve_entry(
             break
         if v == "UNLIKELY" and best_verdict != "CONFIRMED":
             best_verdict = "UNLIKELY"
+
+    # Audit override: when the pipeline's deep verifier got it wrong and an
+    # independent audit confirmed AI involvement, override verdict/verified_by
+    # and use screening data for descriptions.  Also strip the incorrect
+    # deep-verify reasoning from bug_commits so the UI doesn't show it.
+    if is_override and best_verdict != "CONFIRMED":
+        best_verdict = "CONFIRMED"
+        verified_by = "independent-audit"
+        # Fall back to screening for descriptions if deep verify didn't CONFIRM
+        if not how_introduced:
+            for bic in result.get("bug_introducing_commits", []):
+                llm_v = _get_screening_verdict(bic)
+                if llm_v and llm_v.get("verdict") == "CONFIRMED":
+                    how_introduced = llm_v.get("causal_chain", "")
+                    root_cause = llm_v.get("vuln_description", "")
+                    vuln_type = llm_v.get("vuln_type", "")
+                    vulnerable_pattern = llm_v.get("vulnerable_pattern", "")
+                    if how_introduced:
+                        break
+        # Replace incorrect deep-verify verdicts on bug_commits with the
+        # screening verdict so the UI shows the correct reasoning.
+        for bc in bug_commits:
+            v = bc.get("verification", {})
+            if v and (v.get("verdict") or "").upper() in ("UNLIKELY", "UNRELATED"):
+                sv = bc.get("screening_verification", {})
+                if sv and sv.get("verdict") == "CONFIRMED":
+                    bc["verification"] = {
+                        "verdict": "CONFIRMED",
+                        "confidence": sv.get("confidence", 0.8),
+                        "models": ["independent-audit"],
+                        "agent_verdicts": [{
+                            "model": "independent-audit",
+                            "verdict": "CONFIRMED",
+                            "reasoning": sv.get("reasoning", ""),
+                            "confidence": sv.get("confidence", 0.8),
+                            "tool_calls_made": 0,
+                            "steps_completed": ["audit_override"],
+                            "evidence": [],
+                        }],
+                    }
 
     return {
         "id": cve_id,
