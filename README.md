@@ -56,21 +56,30 @@ See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference and 
 
 ```
 ├── cve-analyzer/              # Python CLI tool
-│   ├── src/cve_analyzer/      # Source code
+│   ├── src/cve_analyzer/      # Source code (7-tier fix discovery pipeline)
 │   ├── tests/                 # Pytest suite (JSON fixtures, no real API calls)
 │   └── pyproject.toml
 ├── web/                       # Next.js dashboard
-│   ├── src/                   # App Router pages + components
+│   ├── src/app/               # App Router: home, /cves, /cves/[id], /cves/month/[month],
+│   │                          #   /analytics, /about, /tools
+│   ├── src/components/        # Shared UI components
 │   └── data/                  # Generated JSON (cves.json, stats.json)
 └── scripts/
     ├── generate_web_data.py   # Transforms cached results → web JSON
+    ├── pipeline_funnel.py     # Pipeline stage conversion analysis
     ├── audit_queue.py         # Picks the next audit target by priority
     ├── audit_select.py        # Stratified sampling for audit batches
     ├── audit_actionable.py    # Filters to audit targets worth investigating
     ├── audit_patterns.py      # Cross-audit pattern analysis
     ├── audit_recurring.py     # Tracks repeat findings across audits
+    ├── audit_lock.py          # Multi-process audit locking
     ├── monitor.sh             # Pipeline monitoring
     ├── profile.py             # Pipeline performance profiler
+    ├── regression_tag_search.py    # Tag search algorithm regression tests
+    ├── regression_desc_search.py   # Description search regression tests
+    ├── regression_ref_search.py    # Reference search regression tests
+    ├── regression_ground_truth.py  # Ground truth dataset management
+    ├── build_verified_fixture.py   # Build verified test fixtures
     └── slop-detector/         # Experimental commit-level AI detection tool
 ```
 

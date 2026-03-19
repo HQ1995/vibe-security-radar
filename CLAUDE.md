@@ -6,9 +6,9 @@ Detect AI-introduced vulnerabilities by analyzing CVE fix commits for AI co-auth
 
 | Directory | What | Stack |
 |-----------|------|-------|
-| `cve-analyzer/` | CLI tool — CVE discovery, git blame, AI signal detection | Python 3.13, uv |
-| `web/` | Dashboard — visualizes results | Next.js 16, React 19, TailwindCSS |
-| `scripts/` | Data pipeline and audit scripts |
+| `cve-analyzer/` | CLI tool — 7-tier fix discovery, git blame, AI signal detection | Python 3.13, uv |
+| `web/` | Dashboard — CVE browser, analytics, tool pages | Next.js 16, React 19, TailwindCSS |
+| `scripts/` | Data pipeline, audit, and regression test scripts |
 
 Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 
@@ -38,9 +38,11 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
 - **Deep verifier**: Single-model investigator with tool access (git log, file read, etc.) to filter false positives. Replaced the old 3-model tribunal voting.
+- **Conflict resolver**: Claude Agent SDK with MCP git tools resolves divergent BIC verdicts. Batched execution to minimize subprocess overhead.
 - **`/audit`**: Independent deep verification of individual CVEs
 - **Audit queue**: `python scripts/audit_queue.py` — picks the next audit target by priority. Use this instead of the default Phase 0 selection when running `/audit` without a specific CVE ID.
 - **Audit scripts**: `scripts/audit_select.py` (stratified sampling), `audit_actionable.py` (worth-investigating filter), `audit_patterns.py` (cross-audit patterns), `audit_recurring.py` (repeat findings)
+- **Regression tests**: `scripts/regression_tag_search.py`, `regression_desc_search.py`, `regression_ref_search.py` — algorithm regression suites with ground-truth fixtures in `scripts/fixtures/`
 
 ## Code Conventions
 
