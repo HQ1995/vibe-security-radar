@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-19T14:34:15.667665+00:00",
-  "total": 69,
+  "generated_at": "2026-03-19T18:26:53.538497+00:00",
+  "total": 68,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -463,340 +463,6 @@
         "https://github.com/mruby/mruby/issues/6701",
         "https://github.com/mruby/mruby/issues/6701#issue-3802609843",
         "https://vuldb.com/?ctiid.344501"
-      ]
-    },
-    {
-      "id": "CVE-2026-2376",
-      "description": "A flaw was found in mirror-registry where an authenticated user can trick the system into accessing unintended internal or restricted systems by providing malicious web addresses. \n\nWhen the application processes these addresses, it automatically follows redirects without verifying the final destination, allowing attackers to route requests to systems they should not have access to.",
-      "severity": "MEDIUM",
-      "cvss": 4.9,
-      "cwes": [
-        "CWE-601"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-12T19:16:16.200",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Python"
-      ],
-      "confidence": 0.95,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "The blamed commit implemented the HarborAdapter, which utilized requests (or similar) without explicitly disabling redirects or validating the final URL destination. This created the vulnerable state that allowed for subsequent SSRF exploitation.",
-      "root_cause": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
-      "vuln_type": "SSRF",
-      "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "a6d759cd016b452f58bb0b3cca30487745f074d7",
-          "author": "Shaon H",
-          "date": "2026-01-27T11:49:37-08:00",
-          "message": "feat(mirror): add repository discovery endpoint with registry adapters (PROJQUAY-1266)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "util/orgmirror/harbor_adapter.py, util/orgmirror/quay_adapter.py, endpoints/api/org_mirror.py, util/orgmirror/__init__.py, data/model/org_mirror.py, util/orgmirror/registry_adapter.py",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "github_advisory_pr",
-          "blame_strategy": "context_blame",
-          "fix_commit_sha": "5ad2b732310999ad0f1b711a72047005a4283710",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the entire `HarborAdapter` module, including the logic for fetching registry data without redirect validation. This commit established the initial implementation that failed to account for redirect-based SSRF, making it the introduction point of the vulnerable pattern.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "SSRF",
-            "vuln_description": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
-            "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
-            "causal_chain": "The blamed commit implemented the HarborAdapter, which utilized requests (or similar) without explicitly disabling redirects or validating the final URL destination. This created the vulnerable state that allowed for subsequent SSRF exploitation."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit made the feature actively vulnerable by adding the Harbor/Quay adapters, the registry-adapter factory, the verify/repository-discovery API logic, and worker discovery code that performed outbound HTTP to the stored URL. Blame on the pre-fix code shows the `self.session.get(...)` calls in both adapters were authored here and used requests' default redirect-following behavior, while `RegistryAdapter` also lacked any destination validation. The fix directly patches these exact additions by validating URLs in the adapter constructor and disabling redirects (`allow_redirects=False`), so this is a confirmed introducer of the exploitable redirect-based SSRF path.",
-                "confidence": 0.95,
-                "tool_calls_made": 68,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "a6d759cd016b452f58bb0b3cca30487745f074d7",
-              "author_name": "Shaon H",
-              "message": "feat(mirror): add repository discovery endpoint with registry adapters (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "c6d9345859b2992b4d4c5ee7a3d58e8e44b27ce3",
-              "author_name": "Shaon H",
-              "message": "feat(mirror): add verify connection endpoint for org mirroring (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3209344334702056a83e3b1a57e324cdee43dda0",
-              "author_name": "Shaon H",
-              "message": "feat(mirror): extend repomirrorworker for org-level mirroring (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "1fb43c29d69add9d8cdc01d0719ee08b3dcd9b3e",
-              "author_name": "Shaon H",
-              "message": "feat(mirror): add sync-now and sync-cancel endpoints for org mirroring (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "ebde5e3a1a3319fb3f8fac7771decfb431e0e770",
-              "author_name": "Shaon H",
-              "message": "fix(migration): separate org mirror columns into new migration (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "335746986e4cfdad3851fba9af3e5873241a817b",
-              "author_name": "Shaon H",
-              "message": "feat(mirror): use Bearer token auth for Quay API v1 repository discovery (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "467f6a60b40fa8942b4cde07029896c30cc3ff71",
-              "author_name": "Shaon H",
-              "message": "test(mirror): add unit tests for org-level mirror worker and v2auth (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8254458275edf2403fa8967702151dd18ad8051d",
-              "author_name": "Shaon H",
-              "message": "fix(mirror): address linting issues in org-level mirroring code (PROJQUAY-1266)",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "af0f5f8eb2ea810f578e528f4a91e907abf54937",
-              "author_name": "Shaon H",
-              "message": "fix(mirror): delegate repo status propagation to worker (PROJQUAY-1266)",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "3869d001aec3e90271bd71ab7ed1490383254dca"
-        },
-        {
-          "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
-          "author": "Shaon H",
-          "date": "2026-01-19T16:01:15-08:00",
-          "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "endpoints/api/org_mirror.py, data/model/org_mirror.py",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory_pr",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "9afe28a53b85fc40ce367cc78a5addcead88abe1",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the new `endpoints/api/org_mirror.py` file which implements the organization-level mirroring functionality. Since the vulnerability involves processing external registry URLs without SSRF validation, and this commit is the point where the `external_registry_url` input was first introduced and processed in the application, it is responsible for the vulnerable pattern.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "SSRF",
-            "vuln_description": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
-            "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
-            "causal_chain": "The blamed commit added the `OrgMirrorConfig` API resource which accepts and stores `external_registry_url` without any SSRF validation logic, creating the flaw where the system later followed unverified URLs."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the org-mirror CRUD/model layer that first accepted and persisted attacker-controlled `external_registry_url` values with no SSRF validation. The security fix adds `_validate_registry_url(...)` in the POST/PUT API paths and `validate_external_registry_url(...)` in `create_org_mirror_config`/`update_org_mirror_config`, directly reversing the behavior added here. Although verify/discovery were still stubs at this point, this commit established the insecure design of trusting user-supplied registry URLs.",
-                "confidence": 0.95,
-                "tool_calls_made": 68,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "7f07e970be3c2cc80a6ac387e111a300a3b11122",
-              "author_name": "Shaon H",
-              "message": "mirror: Add FEATURE_ORG_MIRROR feature flag (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "bb7c06aec08ad6135b8d4b475b96a44e19b62ef9",
-              "author_name": "Shaon H",
-              "message": "mirror: Add POST endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "95d498f252c3d784e81a32e5781104daf578d8a7",
-              "author_name": "Shaon H",
-              "message": "mirror: Add DELETE endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "24d6083f5a43f0e5961eb1ed3bafe4c9cf468c63",
-              "author_name": "Shaon H",
-              "message": "mirror: Add PUT endpoint for org mirror config (PROJQUAY-1266)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "90e64bfe4aee3f7828a70b033e57ac1a0021c9ea",
-              "author_name": "Shaon H",
-              "message": "fix test failure",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "92b6f4729a5e29159f8864f923e5ea22081f9bb8"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "9afe28a53b85fc40ce367cc78a5addcead88abe1",
-          "repo_url": "https://github.com/quay/quay",
-          "source": "github_advisory_pr"
-        },
-        {
-          "sha": "72d581753d9e84d629e53f6f0a775bb27383bd96",
-          "repo_url": "https://github.com/quay/quay",
-          "source": "github_advisory_pr"
-        },
-        {
-          "sha": "5ad2b732310999ad0f1b711a72047005a4283710",
-          "repo_url": "https://github.com/quay/quay",
-          "source": "github_advisory_pr"
-        }
-      ],
-      "references": [
-        "https://access.redhat.com/security/cve/CVE-2026-2376",
-        "https://bugzilla.redhat.com/show_bug.cgi?id=2439117"
       ]
     },
     {
@@ -3619,6 +3285,91 @@
       ]
     },
     {
+      "id": "CVE-2025-55526",
+      "description": "n8n-workflows Main Commit ee25413 allows attackers to execute a directory traversal via the download_workflow function within api_server.py",
+      "severity": "CRITICAL",
+      "cvss": 9.1,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2025-08-26T14:15:41.410",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-high",
+      "how_introduced": "The initial commit implemented the file download handler using unsanitized user input in `os.path.join`, directly creating the directory traversal flaw.",
+      "root_cause": "The application fails to properly sanitize file paths used in the download_workflow function, allowing an attacker to escape intended directories.",
+      "vuln_type": "Directory Traversal",
+      "vulnerable_pattern": "Unsafe path concatenation or resolution using user-controlled input without validation to prevent directory traversal sequences (e.g., '../').",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "ff958e486e1f8de4f7fd43c70ef357b8d6eaf433",
+          "author": "console-1",
+          "date": "2025-06-21T00:13:46+02:00",
+          "message": "⚡ Complete workflow naming convention overhaul and documentation system optimization",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "api_server.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "64f9f86f87c23705fda6faa9947a947bf48b12c2",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `api_server.py` file from scratch, which contained the original `download_workflow` function using the insecure `os.path.join('workflows', filename)` pattern. This implementation directly enables the directory traversal vulnerability identified in the analysis.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Directory Traversal",
+            "vuln_description": "The application fails to properly sanitize file paths used in the download_workflow function, allowing an attacker to escape intended directories.",
+            "vulnerable_pattern": "Unsafe path concatenation or resolution using user-controlled input without validation to prevent directory traversal sequences (e.g., '../').",
+            "causal_chain": "The initial commit implemented the file download handler using unsanitized user input in `os.path.join`, directly creating the directory traversal flaw."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude",
+                "verdict": "CONFIRMED",
+                "reasoning": "[conflict-resolver] Commit ff958e4 created api_server.py as a new file, which contains the vulnerable download_workflow function using unsanitized os.path.join('workflows', filename) allowing directory traversal. The fix commit 64f9f86 replaced this pattern with rglob-based filename matching. The deep verifier incorrectly focused only on workflow_db.py changes and missed that the BIC commit authored the entire api_server.py file including the vulnerable code.",
+                "confidence": 0.95,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "conflict_resolution"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "64f9f86f87c23705fda6faa9947a947bf48b12c2",
+          "repo_url": "https://github.com/Zie619/n8n-workflows",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://github.com/Zie619/n8n-workflows/issues/48"
+      ]
+    },
+    {
       "id": "CVE-2025-59829",
       "description": "Claude Code permission deny bypass through symlink",
       "severity": "LOW",
@@ -4660,6 +4411,340 @@
         "https://github.com/kromitgmbh/titra/releases/tag/0.99.49",
         "https://github.com/kromitgmbh/titra/security/advisories/GHSA-pqgx-6wg3-gmvr",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-69288"
+      ]
+    },
+    {
+      "id": "CVE-2026-2376",
+      "description": "A flaw was found in mirror-registry where an authenticated user can trick the system into accessing unintended internal or restricted systems by providing malicious web addresses. \n\nWhen the application processes these addresses, it automatically follows redirects without verifying the final destination, allowing attackers to route requests to systems they should not have access to.",
+      "severity": "MEDIUM",
+      "cvss": 4.9,
+      "cwes": [
+        "CWE-601"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T19:16:16.200",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit implemented the HarborAdapter, which utilized requests (or similar) without explicitly disabling redirects or validating the final URL destination. This created the vulnerable state that allowed for subsequent SSRF exploitation.",
+      "root_cause": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
+      "vuln_type": "SSRF",
+      "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "a6d759cd016b452f58bb0b3cca30487745f074d7",
+          "author": "Shaon H",
+          "date": "2026-01-27T11:49:37-08:00",
+          "message": "feat(mirror): add repository discovery endpoint with registry adapters (PROJQUAY-1266)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "util/orgmirror/harbor_adapter.py, util/orgmirror/quay_adapter.py, endpoints/api/org_mirror.py, util/orgmirror/__init__.py, data/model/org_mirror.py, util/orgmirror/registry_adapter.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory_pr",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "5ad2b732310999ad0f1b711a72047005a4283710",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the entire `HarborAdapter` module, including the logic for fetching registry data without redirect validation. This commit established the initial implementation that failed to account for redirect-based SSRF, making it the introduction point of the vulnerable pattern.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "SSRF",
+            "vuln_description": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
+            "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
+            "causal_chain": "The blamed commit implemented the HarborAdapter, which utilized requests (or similar) without explicitly disabling redirects or validating the final URL destination. This created the vulnerable state that allowed for subsequent SSRF exploitation."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the base `RegistryAdapter` that accepted an arbitrary registry URL and normalized it with `self.base_url = url.rstrip(\"/\")`, but performed no SSRF or destination validation before later HTTP use. The fix adds `validate_external_registry_url(url, resolve_dns=True, ...)` directly to this constructor, and pickaxe on that exact `self.base_url` line points to 3869.",
+                "confidence": 0.95,
+                "tool_calls_made": 84,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "a6d759cd016b452f58bb0b3cca30487745f074d7",
+              "author_name": "Shaon H",
+              "message": "feat(mirror): add repository discovery endpoint with registry adapters (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "c6d9345859b2992b4d4c5ee7a3d58e8e44b27ce3",
+              "author_name": "Shaon H",
+              "message": "feat(mirror): add verify connection endpoint for org mirroring (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3209344334702056a83e3b1a57e324cdee43dda0",
+              "author_name": "Shaon H",
+              "message": "feat(mirror): extend repomirrorworker for org-level mirroring (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1fb43c29d69add9d8cdc01d0719ee08b3dcd9b3e",
+              "author_name": "Shaon H",
+              "message": "feat(mirror): add sync-now and sync-cancel endpoints for org mirroring (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ebde5e3a1a3319fb3f8fac7771decfb431e0e770",
+              "author_name": "Shaon H",
+              "message": "fix(migration): separate org mirror columns into new migration (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "335746986e4cfdad3851fba9af3e5873241a817b",
+              "author_name": "Shaon H",
+              "message": "feat(mirror): use Bearer token auth for Quay API v1 repository discovery (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "467f6a60b40fa8942b4cde07029896c30cc3ff71",
+              "author_name": "Shaon H",
+              "message": "test(mirror): add unit tests for org-level mirror worker and v2auth (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8254458275edf2403fa8967702151dd18ad8051d",
+              "author_name": "Shaon H",
+              "message": "fix(mirror): address linting issues in org-level mirroring code (PROJQUAY-1266)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "af0f5f8eb2ea810f578e528f4a91e907abf54937",
+              "author_name": "Shaon H",
+              "message": "fix(mirror): delegate repo status propagation to worker (PROJQUAY-1266)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "3869d001aec3e90271bd71ab7ed1490383254dca"
+        },
+        {
+          "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
+          "author": "Shaon H",
+          "date": "2026-01-19T16:01:15-08:00",
+          "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "endpoints/api/org_mirror.py, data/model/org_mirror.py",
+          "blame_confidence": 0.7,
+          "fix_commit_source": "github_advisory_pr",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "9afe28a53b85fc40ce367cc78a5addcead88abe1",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the new `endpoints/api/org_mirror.py` file which implements the organization-level mirroring functionality. Since the vulnerability involves processing external registry URLs without SSRF validation, and this commit is the point where the `external_registry_url` input was first introduced and processed in the application, it is responsible for the vulnerable pattern.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "SSRF",
+            "vuln_description": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
+            "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
+            "causal_chain": "The blamed commit added the `OrgMirrorConfig` API resource which accepts and stores `external_registry_url` without any SSRF validation logic, creating the flaw where the system later followed unverified URLs."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced `create_org_mirror_config()` and `update_org_mirror_config()` and stored `external_registry_url` directly into `OrgMirrorConfig` without validation. The fix adds `validate_external_registry_url(...)` to those exact model functions, and pickaxe on `external_registry_url=external_registry_url` / `config.external_registry_url = external_registry_url` returns 92b6.",
+                "confidence": 0.95,
+                "tool_calls_made": 84,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "7f07e970be3c2cc80a6ac387e111a300a3b11122",
+              "author_name": "Shaon H",
+              "message": "mirror: Add FEATURE_ORG_MIRROR feature flag (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4ae1b6488650ea07f1caa4759d282bd2c9968bb9",
+              "author_name": "Shaon H",
+              "message": "mirror: Add GET endpoint for org mirror config (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "bb7c06aec08ad6135b8d4b475b96a44e19b62ef9",
+              "author_name": "Shaon H",
+              "message": "mirror: Add POST endpoint for org mirror config (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "95d498f252c3d784e81a32e5781104daf578d8a7",
+              "author_name": "Shaon H",
+              "message": "mirror: Add DELETE endpoint for org mirror config (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "24d6083f5a43f0e5961eb1ed3bafe4c9cf468c63",
+              "author_name": "Shaon H",
+              "message": "mirror: Add PUT endpoint for org mirror config (PROJQUAY-1266)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "90e64bfe4aee3f7828a70b033e57ac1a0021c9ea",
+              "author_name": "Shaon H",
+              "message": "fix test failure",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "92b6f4729a5e29159f8864f923e5ea22081f9bb8"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "9afe28a53b85fc40ce367cc78a5addcead88abe1",
+          "repo_url": "https://github.com/quay/quay",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "72d581753d9e84d629e53f6f0a775bb27383bd96",
+          "repo_url": "https://github.com/quay/quay",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "5ad2b732310999ad0f1b711a72047005a4283710",
+          "repo_url": "https://github.com/quay/quay",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [
+        "https://access.redhat.com/security/cve/CVE-2026-2376",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2439117"
       ]
     },
     {
@@ -12937,12 +13022,12 @@
         "C/C++"
       ],
       "confidence": 0.2375,
-      "verified_by": "",
-      "how_introduced": "",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "UNLIKELY",
+      "verified_by": "independent-audit",
+      "how_introduced": "The commit 5df014602503 refactored the parsing infrastructure in tiny_obj_loader.h and introduced a vulnerable implementation of tryParseDouble that did not correctly validate input lengths or boundaries before processing numeric strings, leading to the heap-buffer-overflow during float conversion.",
+      "root_cause": "The parser was susceptible to a heap-buffer-overflow during the conversion of ASCII strings to floating-point numbers due to unsafe parsing logic.",
+      "vuln_type": "Heap-buffer-overflow",
+      "vulnerable_pattern": "unsafe floating point parsing implementation in tinyobj::tryParseDouble, likely lacking bounds checking or proper termination handling.",
+      "verdict": "CONFIRMED",
       "bug_commits": [
         {
           "sha": "5df014602503685c5244f74ef64644d872b62e59",
@@ -12982,20 +13067,20 @@
             "causal_chain": "The commit 5df014602503 refactored the parsing infrastructure in tiny_obj_loader.h and introduced a vulnerable implementation of tryParseDouble that did not correctly validate input lengths or boundaries before processing numeric strings, leading to the heap-buffer-overflow during float conversion."
           },
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude"
+              "independent-audit"
             ],
             "agent_verdicts": [
               {
-                "model": "claude",
-                "verdict": "UNLIKELY",
-                "reasoning": "[conflict-resolver] The BIC commit f27721f only made a single-line change to tryParseDouble (tightening an overflow guard from '2147483647/10' to '(2147483647-9)/10') and added new sr_parseReal call sites that invoke the pre-existing tryParseDouble. The vulnerable exponent-parsing logic (heap-buffer-overflow in the end_not_reached/IS_DIGIT pattern) existed identically in the commit before f27721f (parent 8322e00). The fix commit (966edce) replaced the entire hand-written tryParseDouble with a fast_float-based implementation. f27721f did not author the vulnerable code; it only reused it from new call sites. The screening verdict incorrectly attributed the vulnerability to f27721f's refactoring.",
-                "confidence": 0.95,
+                "model": "independent-audit",
+                "verdict": "CONFIRMED",
+                "reasoning": "The blamed commit introduced a significant rework of the parser implementation in tiny_obj_loader.h, including the introduction of new parsing logic that often lacks the rigorous bounds checking required for safe floating-point conversion, which is the root cause of the heap-buffer-overflow.",
+                "confidence": 0.8,
                 "tool_calls_made": 0,
                 "steps_completed": [
-                  "conflict_resolution"
+                  "audit_override"
                 ],
                 "evidence": []
               }
@@ -13588,387 +13673,6 @@
       ],
       "references": [
         "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=490598877"
-      ]
-    },
-    {
-      "id": "GHSA-96qw-h329-v5rg",
-      "description": "Shakapacker has environment variable leak via EnvironmentPlugin that exposes secrets to client-side bundles",
-      "severity": "HIGH",
-      "cvss": 7.5,
-      "cwes": [
-        "CWE-200"
-      ],
-      "ecosystem": "",
-      "published": "2026-01-08T21:13:37Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "JavaScript"
-      ],
-      "confidence": 0.0,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "The blamed commit initialized the RSPack plugin configuration with `new rspack.EnvironmentPlugin(process.env)`, effectively hardcoding an insecure configuration that leaked all server-side environment variables into the client-side bundle.",
-      "root_cause": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
-      "vuln_type": "Information Exposure",
-      "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
-          "author": "Justin Gordon",
-          "date": "2025-09-25T17:13:00-10:00",
-          "message": "Fix CI failures and add Rspack install support",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "package/plugins/rspack.js",
-          "blame_confidence": 0.765,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit (591e3de9f111) introduced the `package/plugins/rspack.js` file, which contained the line `new rspack.EnvironmentPlugin(process.env)`. This line directly passes all environment variables to the plugin, creating the vulnerable pattern identified in the analysis.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Information Exposure",
-            "vuln_description": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
-            "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
-            "causal_chain": "The blamed commit initialized the RSPack plugin configuration with `new rspack.EnvironmentPlugin(process.env)`, effectively hardcoding an insecure configuration that leaked all server-side environment variables into the client-side bundle."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit added both `package/plugins/webpack.js` and `package/plugins/rspack.js`, each with `new ...EnvironmentPlugin(process.env)`. Blame on the pre-fix `package/plugins/webpack.ts` and `package/plugins/rspack.ts` points those vulnerable lines back to 591e’s `.js` files, showing the later TypeScript migration did not originate them. It is therefore the current-code origin of the fixed lines and the first introduction of the rspack-specific leak.",
-                "confidence": 0.95,
-                "tool_calls_made": 81,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "a7188041c0fff9f7b85e4c29e6e1600ec14a4008",
-              "author_name": "Judah Meek",
-              "message": "Add RSPack support into Shakapacker",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "a1d20b7a55d99fcb922a9bf6dcc18f5c083f146f",
-              "author_name": "Judah Meek",
-              "message": "simplify dummy",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "67e7c48abfcd348b6bdf3178f006cc0ee157b3e4",
-              "author_name": "Justin Gordon",
-              "message": "Release 9.0.0-beta.0",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "cc38c942ec99e4444d10e1b05b9e1fc88be7a496",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "d0c27f38d31f4934486088db3ce3af23e3a177f7",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "b95ed09b690e998e6ca3ba7c5f5ff7bfd9de028d",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "78500ea8b5a042ad7325c8965903c262fbf3df9f",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e5ac73b4d144ede233359fbd0cf6968701496d68",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "aa9c4a60c26a33249245ab8198220b20237695b1",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "5bee0fa2db45f30481e579dffe6a36d7596819ea",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ab2fe22d2a3e213912f3ec29b3788bdaf99dba11",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "da56b8b5539e0cf34c8d1dd1c5003416a03eaaaa",
-              "author_name": "Justin Gordon",
-              "message": "Per review.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "1f55bb2c1ddf77a439a53bd8b6728bd8796e049f",
-              "author_name": "Justin Gordon",
-              "message": "add dummy-rspack",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f465a39d85f3e61d3a6d972df08a798be54600f5",
-              "author_name": "Justin Gordon",
-              "message": "⏺ Fixed! The key issue was that rspack-manifest-plugin's entrypointFiles parameter contains relative paths like",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "81a4a09c9725e36c6b16cd4a760fe3e01029ebfc",
-              "author_name": "Justin Gordon",
-              "message": "⏺ Commit it. The change from \\Afile:/// to \\Afile: is necessary to handle yalc's file:.yalc/shakapacker format,",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4797a8c0c49dad1a4c70f25282d8e88e039be631",
-              "author_name": "Justin Gordon",
-              "message": "hmr",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2361cf22c9c198e7310cf8265ffc2f11e2aef4e9",
-              "author_name": "Justin Gordon",
-              "message": "test app",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e9101c5ca51f89aba6412e01b2b3a08d0e98be33",
-              "author_name": "Justin Gordon",
-              "message": "⏺ The hot-update files are still in the manifest (lines 16, 27, 32) even though writeToDisk should exclude them.",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "4dbe03932443915b9e069ed41c223dd47f281919",
-              "author_name": "Justin Gordon",
-              "message": "remove unnecessary",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "1ccd14186b861d3ae4c0c19219a7853c07d47720",
-              "author_name": "Justin Gordon",
-              "message": "fixed hmr",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2b4bf732abbcc75294fb7b6757d5458bfde148fc",
-              "author_name": "Justin Gordon",
-              "message": "minor stuff hmr working at this point",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
-              "author_name": "Justin Gordon",
-              "message": "Fix CI failures and add Rspack install support",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "ec4da16b05da71be6895174bd821bf76d2e9b1ad",
-              "author_name": "Justin Gordon",
-              "message": "Exclude spec/dummy-rspack from root RuboCop scan",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a982d685ca47415f6fdef20c9cd383e33469ce3d",
-              "author_name": "Justin Gordon",
-              "message": "Rename 'bundler' config to 'assets_bundler' to avoid confusion",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "08561be400aa69d37b1c0e49b9f3230687d89755",
-              "author_name": "Justin Gordon",
-              "message": "Fix Prettier formatting in base.js",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ec7d0f09116c278d74b4cd730527340b4d24a6f1",
-              "author_name": "Justin Gordon",
-              "message": "Fix test compilation issues",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2f5fa74a2a34abcd3c27983ebc05cd2e35cfd0ff",
-              "author_name": "Justin Gordon",
-              "message": "Add ENV override for assets_bundler configuration",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ecd490bc2dc8d55913d6f06b2d85dd4b9e176af9",
-              "author_name": "Justin Gordon",
-              "message": "Remove rspack-test directory (was accidentally added as submodule)",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e0492b8ddca68b7140037cea841ad567c755ac46",
-              "author_name": "Justin Gordon",
-              "message": "Fix generator tests by compiling assets before running RSpec",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e07e52500b8c054551dcbcd6ab3b854097b31a6f",
-              "author_name": "Justin Gordon",
-              "message": "Improve generator tests and documentation",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "af34c41971f35bbe79023ca6325098deb5e95621",
-              "author_name": "Justin Gordon",
-              "message": "Address PR review comments for dual bundler architecture",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f22b0af88edb3dd08a9bd24cb0d24eb03d93e8f9",
-              "author_name": "Justin Gordon",
-              "message": "Fix ESLint formatting issues",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3b5294ed1029a0a61870fd06bfbbdece663bac52",
-              "author_name": "Justin Gordon",
-              "message": "Fix RuboCop indentation issue in configuration.rb",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2668ab598565f5334ddd2a52a3e3eb88847e1b7e",
-              "author_name": "Justin Gordon",
-              "message": "Fix critical issues with environment variable names and test specs",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "1d1d71a8cc14d6f60a23cf6c6715683d9a92183e",
-              "author_name": "Justin Gordon",
-              "message": "Fix remaining test failures",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fb2b345a623c63443d4daf452297c873ad1a0caa",
-              "author_name": "Justin Gordon",
-              "message": "Fix final configuration spec test",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f8dd3ab21ae4985d45d45cc497d6b7e82e5f88ac",
-              "author_name": "Justin Gordon",
-              "message": "fix: Generator test failures by supporting ENV APP_ROOT",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "591e3de9f1113a7d2f131315622b41588682d08a"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
-          "repo_url": "https://github.com/shakacode/shakapacker",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/shakacode/shakapacker/security/advisories/GHSA-96qw-h329-v5rg",
-        "https://github.com/shakacode/shakapacker/pull/857",
-        "https://github.com/shakacode/shakapacker/commit/3e06781b18383c5c2857ed3a722f7b91bdc1bc0e"
       ]
     },
     {
@@ -15870,6 +15574,166 @@
       ]
     },
     {
+      "id": "CVE-2025-70040",
+      "description": "An issue pertaining to CWE-532: Insertion of Sensitive Information into Log File was discovered in LupinLin1 jimeng-web-mcp v2.1.2. This allows an attacker to obtain sensitive information.",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-09T16:16:15.360",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blame on src/api.ts points at banner lines, but that is misleading. This commit replaced the live API entrypoints with a JimengClient wrapper (`globalApiClient = new JimengClient(token)` / `return client.generateImage(params)`), which made the earlier `saveRequestLog()` file-logging code execute on normal image generation. Because it enabled the sensitive request logging path in production use, it is a real BIC/enabler.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "ee345bcde9237619f77f1e75aaea5ccc678168a6",
+          "author": "lupin",
+          "date": "2025-09-14T02:45:30+08:00",
+          "message": "Complete JiMeng MCP server implementation and testing infrastructure",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/api.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "592df056abd59064f59b38ac86d6ba7f90ac39c5",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The fix commit removes a console log message describing a refactoring status, which is not related to the core vulnerability of sensitive information exposure during connection processes. The blamed commit (ee345bcde923) is a massive refactor that replaced the entire file content, but the fix commit itself deals only with cleanup of a promotional log message, suggesting the vulnerability is unrelated to the specific changes in the fix or the blamed commit context provided.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "CWE-532: Insertion of Sensitive Information into Log File",
+            "vuln_description": "Sensitive information, likely connection credentials or user data, was being written to logs in plain text during server connection processes. The fix introduces a centralized logger to sanitize or remove this sensitive output.",
+            "vulnerable_pattern": "Logging raw connection objects or parameters directly to the console or log files without filtering sensitive fields.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The blame on src/api.ts points at banner lines, but that is misleading. This commit replaced the live API entrypoints with a JimengClient wrapper (`globalApiClient = new JimengClient(token)` / `return client.generateImage(params)`), which made the earlier `saveRequestLog()` file-logging code execute on normal image generation. Because it enabled the sensitive request logging path in production use, it is a real BIC/enabler.",
+                "confidence": 0.95,
+                "tool_calls_made": 127,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "02ce59455404f8c9ef5dbf8a53481aeabeddcc25",
+          "author": "lupin",
+          "date": "2025-09-12T13:54:51+08:00",
+          "message": "Initial commit: JiMeng MCP Server",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/api.ts, src/index.ts, src/server.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "592df056abd59064f59b38ac86d6ba7f90ac39c5",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "02ce594 created the always-on server debug logs that 592df later removes or gates: `Environment token available`, `Environment token length`, `Raw params received`, `Received raw parameters`, and prompt/file-path validation output. Pickaxe on those exact strings points back to this initial commit. This is the clearest direct origin of the sensitive console logging fixed by 592df.",
+                "confidence": 0.95,
+                "tool_calls_made": 127,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "f3d73ce40951613f15176b9b372aa91d8b830f8f",
+          "author": "lupin",
+          "date": "2025-09-14T02:44:21+08:00",
+          "message": "Add gen_type parameter to draft_content component structure",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/api/JimengClient.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "592df056abd59064f59b38ac86d6ba7f90ac39c5",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This discovered commit added `saveRequestLog()` to `src/api/JimengClient.ts` and called it from `performGeneration()`, writing `prompt`, `requestData`, and `requestParams` into `jimeng-request-log-<date>.json`. It is the first commit that introduces an explicit log-file sink matching CWE-532. Even though ee345 later wired this client into the public API, f3d73ce authored the insecure file-logging design itself.",
+                "confidence": 0.95,
+                "tool_calls_made": 127,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "592df056abd59064f59b38ac86d6ba7f90ac39c5",
+          "repo_url": "https://github.com/LupinLin1/jimeng-web-mcp",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://gist.github.com/zcxlighthouse/73b4ea07d1056ca9f100d11bfb4c8aa5",
+        "https://github.com/LupinLin1"
+      ]
+    },
+    {
       "id": "CVE-2026-21882",
       "description": "theshit's Improper Privilege Dropping Allows Local Privilege Escalation via Command Re-execution",
       "severity": "HIGH",
@@ -15970,299 +15834,6 @@
         "https://github.com/AsfhtgkDavid/theshit/security/advisories/GHSA-2j3p-gqw5-g59j",
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/21xxx/CVE-2026-21882.json",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-21882"
-      ]
-    },
-    {
-      "id": "CVE-2026-32294",
-      "description": "JetKVM prior to 0.5.4 does not verify the authenticity of downloaded firmware files. An attacker-in-the-middle or a compromised update server could modify the firmware and the corresponding SHA256 hash to pass verification.",
-      "severity": "HIGH",
-      "cvss": 7.0,
-      "cwes": [
-        "CWE-345",
-        "CWE-347"
-      ],
-      "ecosystem": "",
-      "published": "2026",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Go"
-      ],
-      "confidence": 0.855,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit wrote the exact vulnerable code that 8e7b6ce fixes. In internal/ota/utils.go it added downloadSignature without rejecting a 0-byte body, and verifyFile only performed GPG verification when `len(signature) > 0`, so an empty `.sig` response bypassed signature verification entirely. It also introduced `shouldBypassSignatureCheck(version, customVersionUpdate)` returning true for any prerelease version, and its tests explicitly expected `\"1.2.3-dev.1\"` to bypass even without any local opt-in check.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "a76954d19e93afd54d463c1b3a60d222087c7fec",
-          "author": "Adam Shiervani",
-          "date": "2026-03-05T18:26:23+01:00",
-          "message": "Cleanup OTA code: eliminate redundant parsing, TOCTOU, and duplication",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "internal/ota/utils.go",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "description_search",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "8e7b6ce4e3e699440507d049c83ef9689b5557b3",
-          "screening_verification": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit (a76954d19e93) refactors existing GPG key management logic, specifically changing how keys are fetched and cached, but it does not appear to remove or weaken the signature verification logic itself. The vulnerability involves an improper bypass mechanism in the update verification flow (as seen in the fix's modification to `shouldBypassSignatureCheck`), while the blamed commit focuses on GPG transport logic rather than the core verification logic that was later hardened.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Improper Verification of Cryptographic Signature",
-            "vuln_description": "The firmware update mechanism failed to properly verify the authenticity and integrity of downloaded firmware files, allowing attackers to inject malicious updates.",
-            "vulnerable_pattern": "The system relied on simple hash matching without cryptographic signature verification (e.g., RSA/ECDSA) to ensure the firmware was signed by a trusted authority.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit wrote the exact vulnerable code that 8e7b6ce fixes. In internal/ota/utils.go it added downloadSignature without rejecting a 0-byte body, and verifyFile only performed GPG verification when `len(signature) > 0`, so an empty `.sig` response bypassed signature verification entirely. It also introduced `shouldBypassSignatureCheck(version, customVersionUpdate)` returning true for any prerelease version, and its tests explicitly expected `\"1.2.3-dev.1\"` to bypass even without any local opt-in check.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "33c277c243d1aad01e998ebe794b977981069032",
-              "author_name": "Adam Shiervani",
-              "message": "Implement GPG signature verification for OTA updates",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "95a7d16b16a1721a9fe51fc8c1e0f86b3e28dd07",
-              "author_name": "Adam Shiervani",
-              "message": "Add tests for GPG signature verification in OTA updates",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8e73edecb376d7d9eeb751fcc0266e7a3d49210e",
-              "author_name": "Adam Shiervani",
-              "message": "Refactor error message for missing GPG signature URL in OTA updates",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "656630214dd8e9ae94afb9ad28a75f6b935b2edb",
-              "author_name": "Adam Shiervani",
-              "message": "Refactor OTA update process to improve signature handling",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "7aae9de72f27bed6d248aec8fb7355a851485744",
-              "author_name": "Adam Shiervani",
-              "message": "Refactor GPG key caching to validate keyring before storing",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fb37526b89baf5ec78db4c5324de5a03b0c930fa",
-              "author_name": "Adam Shiervani",
-              "message": "Update Makefile to enhance E2E test process with optional OTA signature verification",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "820429c129826de1da25b891ccc4bb2cd8aac0a3",
-              "author_name": "Adam Shiervani",
-              "message": "Comment out non-working keyservers and update root key fingerprint",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ec09edad3c6a2974ddedcdc744e11a3d4ec02813",
-              "author_name": "Adam Shiervani",
-              "message": "Add Ubunutu keyserver",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3a0b7102cd01af548ce2122d40f2acc579b7d545",
-              "author_name": "Adam Shiervani",
-              "message": "Update root key fingerprint for GPG signature verification in OTA updates",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4cc4b362a87ce3b62565110ca3e2fce2ab2b6c33",
-              "author_name": "Adam Shiervani",
-              "message": "Add signed OTA E2E test and full E2E test suite to Makefile",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "adadde1a8d934e3033a5efbbda0a8085b57248b5",
-              "author_name": "Adam Shiervani",
-              "message": "Update IP address extraction in test_local_update.sh to exclude all localhost addresses",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "0c2b09af610458478263df59d47f1e33c02abd18",
-              "author_name": "Adam Shiervani",
-              "message": "Add GPG public key fetching tests with caching and error handling",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "56046dbe0c962e88d1c9ff430e447b5d9b3dfeb4",
-              "author_name": "Adam Shiervani",
-              "message": "Enhance build and testing scripts for signed OTA updates",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "9308c22831496a41f22158ebcf9e77e2df5fd623",
-              "author_name": "Adam Shiervani",
-              "message": "Add fingerprint extraction and validation for GPG keys",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c6c96329fe59ec452df17805d1568fb4ed14b955",
-              "author_name": "Adam Shiervani",
-              "message": "Simplify bypass mechanism of OTA signature checks",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "62430ea7c7b86db63076d532f6265af7f1f741c0",
-              "author_name": "Adam Shiervani",
-              "message": "Refactor E2E testing and release workflows",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "57aafbc18d84825f5242c68569509f9337c6c4ae",
-              "author_name": "Adam Shiervani",
-              "message": "Enhance OTA testing framework and scripts",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3c8007103649d32587b440ce1549a968fcde18e9",
-              "author_name": "Adam Shiervani",
-              "message": "Improve local network IP detection in OTA helpers by implementing route-based detection as a primary method, falling back to interface scanning if necessary.",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2759ef64977a7e969a5bac3870fcdb6771219e2d",
-              "author_name": "Adam Shiervani",
-              "message": "Add support for unsigned OTA version testing",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "de075f1026d400be1dfbcfc3af18d64df53409ae",
-              "author_name": "Adam Shiervani",
-              "message": "Update Makefile to include core E2E tests and enhance dev release validation",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "8d36e8d769021a25be0e99f81c871f3812434f32",
-              "author_name": "Adam Shiervani",
-              "message": "Enhance Makefile and testing scripts for improved OTA validation",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a331a71a564677edd5f8ddaf06a8c80790b75298",
-              "author_name": "Adam Shiervani",
-              "message": "Final release confirmation of prod releases",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a76954d19e93afd54d463c1b3a60d222087c7fec",
-              "author_name": "Adam Shiervani",
-              "message": "Cleanup OTA code: eliminate redundant parsing, TOCTOU, and duplication",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "3557fbd0a44632c8f2d9f9ad971f3a6e0ecd66d5",
-              "author_name": "Adam Shiervani",
-              "message": "Merge remote-tracking branch 'origin/dev' into feat/signed-releases",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "2cb8fe45de4a4a38ac8f25d32098d11ca6869865",
-              "author_name": "Adam Shiervani",
-              "message": "E2E: fix flaky tests, add unsigned OTA to dev test lane",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "6ee1544600352bfb095cdd532c448574e8c6386a",
-              "author_name": "Adam Shiervani",
-              "message": "Remove stale dev_release checklist item from PR templates",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "11b99d59fd70fa2e0e9884c7b699eae1b1c83556"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "8e7b6ce4e3e699440507d049c83ef9689b5557b3",
-          "repo_url": "https://github.com/jetkvm/kvm",
-          "source": "description_search",
-          "blame_confidence": 0.8
-        }
-      ],
-      "references": [
-        "https://eclypsium.com/blog/kvm-devices-the-keys-to-your-kingdom-are-hanging-on-the-network/",
-        "https://github.com/jetkvm/kvm/releases/tag/release%2F0.5.4",
-        "https://raw.githubusercontent.com/cisagov/CSAF/develop/csaf_files/IT/white/2025/va-26-076-01.json",
-        "https://www.cve.org/CVERecord?id=CVE-2026-32294"
       ]
     },
     {
@@ -16666,8 +16237,7 @@
       "ecosystem": "",
       "published": "2025-10-08T06:15:35.130",
       "ai_tools": [
-        "cursor",
-        "unknown_ai"
+        "cursor"
       ],
       "languages": [
         "JavaScript"
@@ -18860,299 +18430,6 @@
         "https://github.com/getzep/graphiti/releases/tag/v0.28.2",
         "https://github.com/getzep/graphiti/security/advisories/GHSA-gg5m-55jj-8m5g",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32247"
-      ]
-    },
-    {
-      "id": "GHSA-7h7g-x2px-94hj",
-      "description": "OpenClaw: Pairing setup codes exposed long-lived shared gateway credentials instead of short-lived bootstrap tokens",
-      "severity": "LOW",
-      "cvss": 2.5,
-      "cwes": [
-        "CWE-532"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-13T20:54:18Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Swift"
-      ],
-      "confidence": 0.0,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
-          "author": "Hongwei Ma",
-          "date": "2026-02-16T16:22:51+00:00",
-          "message": "feat: QR code scanning for gateway onboarding",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "advisory_version",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "bf89947a8e9ec5d278b71a8c438ce414dd04a2d6",
-          "screening_verification": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit introduces `GatewayConnectDeepLink`, which is a data transfer object for handling deep links, but it does not contain the logic for plugin auto-discovery or execution. The fix commit modifies `GatewayConnectDeepLink` to add a `bootstrapToken` field, which addresses authentication or verification for deep links, but the actual vulnerability (arbitrary code execution via workspace plugins) resides in a different part of the system responsible for plugin management, not this deep link parser.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Arbitrary Code Execution (CWE-829)",
-            "vuln_description": "The application's plugin auto-discovery mechanism incorrectly trusted and executed code from repositories without proper validation or isolation, allowing untrusted code to run.",
-            "vulnerable_pattern": "Automated loading and execution of plugins or configuration payloads from workspace directories without source verification.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
-                "confidence": 0.95,
-                "tool_calls_made": 154,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
-              "author_name": "Hongwei Ma",
-              "message": "feat: QR code scanning for gateway onboarding",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "bc05143e4e3c6e5b7ef36e28d01dcd54f9d24804",
-              "author_name": "Mariano Belinky",
-              "message": "Onboarding/Media: harden QR scanner and data URL parsing",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7cbaae15e0b7887a7a6f7e69229cab4aeba32242",
-              "author_name": "Mariano Belinky",
-              "message": "iOS: restore onboarding wizard flow",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "4825bb52c4b287df76757a4a8acfb27150095802",
-              "author_name": "Mariano Belinky",
-              "message": "iOS: stabilize QR onboarding pairing",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "b0f7428c297ba6425d3c5fff27b0228ccbbfe30f",
-              "author_name": "Mariano Belinky",
-              "message": "iOS: resume pairing clears paused state",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7843ab5e450cceb29ab86b7a20c50d44d6ee20a3",
-              "author_name": "Mariano Belinky",
-              "message": "iOS: avoid onboarding modal when gateway already configured",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ff3f90af972b9f1da8f5e4f0898bc33e489d6b5d",
-              "author_name": "Mariano Belinky",
-              "message": "iOS: stop auth step flip-flop during reconnect",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "ee11388e38e7971d354b991b452a8d7fa267e648",
-              "author_name": "Emanuel Stadler",
-              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in Settings sheet",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a779205580f617365819a321c07aae4e00f0dcfc",
-              "author_name": "Emanuel Stadler",
-              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in GatewayQuickSetupSheet",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f187cac489414970ff5124b00f6baca44f98b49a",
-              "author_name": "Nimrod Gutman",
-              "message": "fix(ios): include device identity for operator gateway session",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7ed2e1bfe9c376fd02cfbf613b2352f72608064e",
-              "author_name": "Mariano Belinky",
-              "message": "ios: route launch onboarding/settings via startup route",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a07790c3848f8d4bd5a4961a2beb41c396820b90",
-              "author_name": "Mariano Belinky",
-              "message": "chore: scope onboarding pack to iOS and pairing surfaces",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c967c59bb7ae910459fc297eb3f09527bb26884c",
-              "author_name": "Mariano Belinky",
-              "message": "changelog: add iOS onboarding QR flow entry",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "bbd041dc1eb1749b3bb73df295c5619fc584f9af",
-              "author_name": "Mariano Belinky",
-              "message": "device-pair: use ascii qr fallback in plugin flow",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "a87eadea19e9d2e693300ac7382cd338eb87b472",
-              "author_name": "Mariano Belinky",
-              "message": "style: format device-pair qr fallback",
-              "ai_signals": [],
-              "touched_blamed_file": false
-            }
-          ],
-          "squash_merge_sha": "130e59a9c09604f78e6e62da85392ed927547fc8"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "bf89947a8e9ec5d278b71a8c438ce414dd04a2d6",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "7dc447f79f83908c06d9220723881e2047d1278c",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "ff47876e61b2af14f34ed72b5b61989ada8d8fc6",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "e8a162d3d8a0643416098f612108c3546efd8733",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "b14a5c6713b8e88e414063b806f1fd1fd676a856",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "9692dc7668cb3886562ca264a5853964f917f8db",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "4da617e1783af7c79affb8ce39093c96333cd454",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "ddeb4239443f9a548c7c2ac15cbcaec0d8889336",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "e951a42bcb863fd03495c9ad1781574f2dfdd6b2",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "b2e21e37920c98e94c7611eb44901d133c5ac929",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "9cd54ea8824462b876733471132f2bd7b8c1b0b0",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "904db27019ae2b5a96c1568cba962af02f6f3aba",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "fd568c4f743d1cec6abfba5dbfcb2c5534f0c9c9",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "9cb0fa58c20c71e22a58f4b499a982fa169f6385",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "6c196c913fc3fde51f3e2e1087ed94a6920fac1f",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "f3c00fce157867d3aadd4041e578bbb40b4841d0",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "433e65711f78492e961e5da678de91175b4f151b",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "08da1b47badccb8aa7fbd1e7bb5a8af5ff848622",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "b858d6c3a91ee94905131a2d41b7ee17608ebd00",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "d5b3f2ed71f2aec49e4f48034f0d96a7c6c72591",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7h7g-x2px-94hj",
-        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
       ]
     }
   ]
