@@ -80,6 +80,7 @@ export interface CveEntry {
   readonly how_introduced: string;
   readonly root_cause?: string;
   readonly vuln_type?: string;
+  readonly vulnerable_pattern?: string;
   readonly verdict: string;
   readonly bug_commits: readonly BugCommit[];
   readonly fix_commits: readonly FixCommit[];

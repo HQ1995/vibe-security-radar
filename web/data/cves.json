@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-17T19:11:31.053615+00:00",
-  "total": 59,
+  "generated_at": "2026-03-18T18:40:51.548540+00:00",
+  "total": 60,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -20,9 +20,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created auth.js and introduced openBrowser() with both the child_process exec import and the vulnerable shell invocation: exec(`${command} \"${url}\"`, ...). The fix commit removes that exact pattern and replaces it with spawn() plus argument arrays. git log search for the string \"exec\" in auth.js shows only this commit adding it and the fix commit removing it, so this is the original introduction of the command-injection flaw.",
+      "how_introduced": "1. Blamed commit e08547 introduces auth.js and the child_process.exec dependency. 2. It implements the openBrowser function using shell execution: exec(`${command} \"${url}\"`). 3. This pattern allows an attacker to break out of the URL string and execute arbitrary system commands via the shell.",
       "root_cause": "The openBrowser function failed to properly validate or sanitize user-supplied input, allowing an attacker to inject arbitrary commands into the system shell execution.",
       "vuln_type": "command injection",
+      "vulnerable_pattern": "Passing unvalidated user input directly into a system command execution sink (e.g., child_process.exec or similar) within the openBrowser function.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -102,9 +103,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit refactored `sort_cmp()` to compare copied element values instead of indices and, in the process, replaced the earlier mutation guard `RARRAY_PTR(ary) != p || size < a || size < b` with the weaker pointer-only check `RARRAY_PTR(ary) != p`. The fix commit `eb398971` changes exactly that logic by snapshotting both the array pointer and length and validating both after user code runs. Even though the sort implementation was already unsafe earlier, this was a reimplementation/regression of the vulnerable logic and therefore a valid BIC.",
+      "how_introduced": "The blamed commit introduced a comparison mechanism in `sort_cmp` that captures a pointer `p` (RARRAY_PTR(ary)) to detect array reallocations. However, this check was insufficient to detect all forms of reallocations or modifications (specifically those changing length or buffer content without necessarily changing the head pointer), allowing the heapify or insertion sort logic to continue using stale pointers into a reallocated buffer, leading to use-after-free.",
       "root_cause": "The Array#sort! function in mruby suffered from a use-after-realloc vulnerability within sort_cmp, where the array buffer could be reallocated during the sorting process, causing existing pointers to become invalid.",
       "vuln_type": "Use-after-free / Use-after-realloc",
+      "vulnerable_pattern": "Accessing array elements or pointers that may have been invalidated by a realloc call triggered within the sort comparison function.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -189,9 +191,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit added `sseHandlerWithHeadSupport` and hard-coded `Access-Control-Allow-Origin: \"*\"` for `/sse` HEAD requests, then served the wrapped handler via `http.Server.ListenAndServe()`. The fix directly rewrites those HEAD-response lines and places the handler behind the new `originGuard` and `hostGuard`, so cd7caff authored vulnerable code that was part of the CVE fix. It was not the original omission of host/origin validation, but it did add a new insecure code path to the same SSE transport.",
+      "how_introduced": "The blamed commit added an HTTP handler that accepted SSE requests without validating the origin or Host header, and specifically included a permissive wildcard CORS policy (Access-Control-Allow-Origin: *), thereby creating the vulnerable surface area.",
       "root_cause": "The MCP Server SSE transport lacked validation of the Host header, allowing potential DNS rebinding attacks where a malicious website could interact with local MCP server instances.",
       "vuln_type": "DNS Rebinding",
+      "vulnerable_pattern": "Lack of Host header verification or origin checking in SSE transport connections, allowing unauthorized requests to bypass same-origin protections.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -393,9 +396,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the exact optimization that the fix changes: it added the 'invert JMPNOT to JMPIF' block and the write `s->iseq[fail_pos - 2] = OP_JMPIF` without first verifying that the linked jump was actually an `OP_JMPNOT`. The fix commit e50f15c1 directly patches this code by adding `s->iseq[fail_pos - 2] == OP_JMPNOT` to the condition. Pre-2b72 code always emitted a normal `JMP` around failure handling and never rewrote prior instructions, so the bytecode-corruption bug starts here.",
+      "how_introduced": "The blamed commit implemented an optimization that assumes the instruction at `fail_pos - 2` is always `OP_JMPNOT`. Without this check, other instruction types (like JMP from undefined variables) could be incorrectly overwritten with `OP_JMPIF`, corrupting the bytecode execution and triggering the use-after-free.",
       "root_cause": "The JMPNOT-to-JMPIF bytecode optimization creates bytecode corruption leading to a use-after-free condition in the mruby virtual machine during execution.",
       "vuln_type": "Use-after-free",
+      "vulnerable_pattern": "Incorrect bytecode generation logic during JMPNOT-to-JMPIF optimization that produces invalid jump targets or corrupts stack state",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -479,9 +483,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit made the feature actively vulnerable by adding the Harbor/Quay adapters, the registry-adapter factory, the verify/repository-discovery API logic, and worker discovery code that performed outbound HTTP to the stored URL. Blame on the pre-fix code shows the `self.session.get(...)` calls in both adapters were authored here and used requests' default redirect-following behavior, while `RegistryAdapter` also lacked any destination validation. The fix directly patches these exact additions by validating URLs in the adapter constructor and disabling redirects (`allow_redirects=False`), so this is a confirmed introducer of the exploitable redirect-based SSRF path.",
+      "how_introduced": "The blamed commit implemented the HarborAdapter, which utilized requests (or similar) without explicitly disabling redirects or validating the final URL destination. This created the vulnerable state that allowed for subsequent SSRF exploitation.",
       "root_cause": "The application allowed Server-Side Request Forgery (SSRF) because it followed redirects when processing user-provided web addresses without validating the final destination against allowed targets.",
       "vuln_type": "SSRF",
+      "vulnerable_pattern": "Fetching remote URLs using library functions (like requests) without checking destination IP/host allowlists or disabling automatic redirect following",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -813,9 +818,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire vulnerable `.env` persistence mechanism in `src/auth/oauth.ts`: it added `updateEnvFile()`, manual regex-based line replacement, and direct string interpolation of token values into `.env`. The fix commit replaces that exact design with `dotenv.parse()` + `dotenv-stringify()`, showing that the unsafe serialization logic added here was the root cause. The previous revision (`a00b6c592895a6ed9da8b8ba72e5bf43db0a9060`) had no `updateEnvFile()` helper or automatic writing of token values back to `.env` at all.",
+      "how_introduced": "The blamed commit introduced the `updateEnvFile` utility using a flawed regex-based string manipulation approach (`const newLine = ${key}=${value};`), which directly concatenates untrusted input into the environment file configuration, directly enabling the reported injection vulnerability.",
       "root_cause": "The application fails to properly sanitize or validate configuration inputs, allowing an attacker to inject malicious environment variables via the OAuth process.",
       "vuln_type": "Environment Variable Injection",
+      "vulnerable_pattern": "Unsanitized input being passed directly into environment variable configuration or process execution context during the OAuth flow.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -902,9 +908,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the shard-doubling and shard-retry logic in `RateLimiter`, including `_is_wcu_exhausted()` and the `old_buckets`-based decision path. The fix replaces that inference with an explicit `SpeculativeFailureReason` from the repository and only retries on `APP_LIMIT_EXHAUSTED`, showing that 9f66's original recovery logic was the flawed behavior. In particular, using raw bucket token state to infer why the conditional write failed made the hot-partition mitigation nondeterministic under mixed app-limit/WCU exhaustion.",
+      "how_introduced": "The blamed commit implemented `_is_wcu_exhausted` using a simplified logic check (comparing tokens_milli < 1000) that failed to correctly interpret DynamoDB partition throttling states. This logic error meant that when the system encountered high contention or throttling, it incorrectly triggered shard doubling or retries without proper deduplication or capacity validation, ultimately leading to the reported DoS condition.",
       "root_cause": "The application failed to gracefully handle DynamoDB per-partition throttling (hot partitions) and did not properly aggregate capacity across shards, allowing an attacker or heavy load to exhaust resources and trigger a DoS condition per entity.",
       "vuln_type": "Denial of Service (Resource Exhaustion / Throttling)",
+      "vulnerable_pattern": "Lack of robust handling for DynamoDB throttles (ProvisionedThroughputExceededException/ThrottlingException) during speculative consumption, and logic errors in capacity calculation ('get_resource_capacity') that failed to correctly deduplicate sharded entities, leading to inaccurate capacity accounting.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1560,9 +1567,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the generic webhook channel, its config schema, and the factory wiring. In that first implementation, the JSON payload required caller-supplied `sender` and `chat_id`, the allowlist check was `base_config.is_allowed(&payload.sender)`, and the published `InboundMessage` also used `payload.sender`/`payload.chat_id` directly. The fix replaces exactly that design with server-controlled `sender_id`/`chat_id`, `trust_payload_identity=false` by default, and optional signature verification, so 2c9deef is the causal bug-introducing commit.",
+      "how_introduced": "The blamed commit created the initial `WebhookChannel` code and associated `Deserialize` logic that automatically mapped the `sender` and `chat_id` fields from the untrusted JSON payload into the `InboundMessage` structure, creating the trust vulnerability from the outset.",
       "root_cause": "The webhook channel trusted user-supplied identity fields without proper validation, allowing attackers to spoof identities by passing untrusted payload data against the allowlist.",
       "vuln_type": "Improper Authentication / Insufficient Verification of Data Authenticity",
+      "vulnerable_pattern": "Relying on caller-supplied identity fields in webhook payloads without verifying their authenticity or validating them against a trusted, server-side configuration.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1649,9 +1657,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Pre-fix blame on src/security/shell.rs lines 130-135 points to this commit for the exact regexes `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. The fix replaces those literals with broader patterns that allow intervening or combined flags, because the original forms were bypassable by inputs like `python3 -P -c` and `python3 -Bc`. This commit therefore introduced the too-narrow argument-matching logic fixed by GHSA-5wp8.",
+      "how_introduced": "1. Blamed commit introduces `REGEX_BLOCKED_PATTERNS` using rigid space-sensitive regexes like `python[23]?\\s+-c\\s+`. 2. These regexes only match commands where `-c` immediately follows the executable name. 3. This allows an attacker to bypass the blocklist by inserting other flags (e.g., `python3 -P -c '...'`), leading to OS command injection.",
       "root_cause": "The application failed to properly sanitize shell arguments, allowing attackers to bypass blocklists using argument permutation (specifically involving rm flags in Android).",
       "vuln_type": "OS Command Injection",
+      "vulnerable_pattern": "Permitting arbitrary flag permutation or insufficient filtering of command arguments that allows escaping intended blocklists.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -1959,9 +1968,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Although this commit was a security fix for the original ACP bug, it reimplemented requestPermission with `promptRequired = !toolName || DANGEROUS_ACP_TOOLS.has(toolName)`, which still auto-approved any known tool not on the danger list. bb1c3dfe later changed that logic to only auto-approve safe kinds (`read`/`search`), proving 749e28 authored the residual vulnerable behavior later fixed. So 749e28 is a real BIC for the narrower ACP auto-approval issue addressed by bb1c3dfe.",
+      "how_introduced": "The blamed commit implemented a naive tool name extraction and a permissive logic flow that automatically selected 'allow_once' permissions without robust verification, directly enabling the 'auto-approval' vulnerability described.",
       "root_cause": "The application allowed unauthorized tool invocation due to improper validation of safe kinds and automatic approval of ACP permissions, allowing potential command injection or privilege escalation.",
       "vuln_type": "Improper Access Control / Command Injection",
+      "vulnerable_pattern": "Permissive or insufficient validation of tool 'kind' identifiers during the ACP permission approval process.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2096,9 +2106,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This is the original introducer. It created the OAuth DCR flow, added the consent form field for user-supplied `ha_url`, made OAuth mode work without a server-side `HOMEASSISTANT_URL`, and added `_validate_ha_credentials()` which performed `GET {ha_url}/api/config` and returned differentiated error messages such as connect timeout, 401, 403, and other HTTP failures. Those are exactly the design and code paths the fix removes to eliminate the SSRF-based error oracle.",
+      "how_introduced": "The blamed commit added the `create_consent_html` function which performs string interpolation without escaping, enabling XSS, and simultaneously added logic in `OAuthProxyClient` that trusts the `ha_url` provided by the OAuth token claims, directly enabling SSRF.",
       "root_cause": "The application's OAuth consent form lacked proper validation of user-supplied URLs and improper escaping of input, allowing for Server-Side Request Forgery (SSRF) and Cross-Site Scripting (XSS).",
       "vuln_type": "SSRF and XSS",
+      "vulnerable_pattern": "Unvalidated URL processing in OAuth flow leading to SSRF and lack of output encoding/sanitization in consent form rendering leading to XSS.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2401,9 +2412,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the community Feishu plugin’s webhook design: it added `connectionMode: \"webhook\"`, top-level `encryptKey`/`verificationToken` fields as optional strings in `config-schema.ts`, matching JSON-schema entries in `channel.ts`, and `createEventDispatcher()` passing those values through with no requirement that `encryptKey` exist. The monitor still logged that webhook mode was not implemented, so the flaw was not yet reachable, but the insecure design the fix later reverses was authored here. Under the investigation criteria, making the authenticating encrypt key optional is a vulnerability introduction even before the code path became exploitable.",
+      "how_introduced": "1. The blamed commit introduced a new configuration schema for Feishu accounts. 2. In this schema, `encryptKey` was defined as a standard string while `appSecret` and `verificationToken` were defined using `secretInputJsonSchema`. 3. This discrepancy led to the application logic accepting configurations where the encryption key was missing or improperly handled, allowing for unencrypted/forged webhook events.",
       "root_cause": "The application incorrectly allowed Feishu webhooks to be authenticated using only a verification token, bypassing mandatory encryption key validation which is required to prevent forged events.",
       "vuln_type": "Improper Verification of Cryptographic Signature",
+      "vulnerable_pattern": "Verification of Feishu webhook events based solely on a `verificationToken` without enforcing the presence and validation of an `encryptKey`.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2579,9 +2591,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "The blamed `channel.ts` lines themselves are policy metadata/warnings, not the direct fail-open check. However this commit introduced the entire Synology Chat channel and wired `createWebhookHandler()` into `startAccount`, making the vulnerable allowlist logic reachable from the registered webhook route. I found no separate later enabler commit, so this SHA is still the introducing commit for the vulnerability even though the `channel.ts` blame is indirect.",
+      "how_introduced": "The blamed commit implemented the `checkUserAllowed` function with an explicit check that returns `true` when the allowlist is empty. This logic, which serves as a fail-open default, created the authorization bypass vulnerability that allowed unauthorized agent dispatch.",
       "root_cause": "The application's 'allowlist' policy for Synology Chat incorrectly permitted all requests when the allowedUserIds list was empty, instead of denying them by default.",
       "vuln_type": "Improper Authorization (Access Control Bypass)",
+      "vulnerable_pattern": "if (allowedUserIds.length === 0) { return true; } // Logic that defaults to 'allow' when an allowlist is empty",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2701,6 +2714,7 @@
       "how_introduced": "This later release rewrote the `/get-patch` block into the exact structure present immediately before the fix: `db.get(SELECT id, token_used_at ...)`, then `if (row.token_used_at)`, then a separate `db.run(UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ?)`. Pre-fix blame attributes most lines in the fixed hunk to `5e5a80b5`, showing that this commit reimplemented/preserved the racy logic in the shipped code. Under the stated criteria, that makes it a valid bug-introducing commit as well.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2783,6 +2797,7 @@
       "how_introduced": "This refactor rewrote the download logic into `readFeishuResponseBuffer` and reintroduced the vulnerable temp-path construction in the new implementation: the lines later fixed by `c821099` are blamed to this commit (`feishu_img_${Date.now()}_${imageKey}` and `feishu_${Date.now()}_${fileKey}`). Although the same flaw already existed from `2267d58`, this commit is still a valid BIC under the stated rules because it reimplemented the vulnerable code during the refactor. `git log -S` for `writeFile(tmpPath)` and the direct diff both show this commit reauthoring the vulnerable write-file path flow.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2873,9 +2888,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit did not originally author the buggy `tryParseDouble` body, but it rewrote parsing around the new `StreamReader` and added `sr_parseReal(...)` callers that pass `tryParseDouble(start, start + len, ...)` slices from exact-length buffers. `StreamReader::current_ptr()`/`remaining()` operate on heap/mmapped data without an implicit NUL sentinel, so the legacy parser's unchecked `*curr` reads at `curr == s_end` became a real heap-buffer-overflow. It is therefore the exploitability-enabling BIC even though blame on the parser body points older.",
+      "how_introduced": "The commit 5df014602503 refactored the parsing infrastructure in tiny_obj_loader.h and introduced a vulnerable implementation of tryParseDouble that did not correctly validate input lengths or boundaries before processing numeric strings, leading to the heap-buffer-overflow during float conversion.",
       "root_cause": "The parser was susceptible to a heap-buffer-overflow during the conversion of ASCII strings to floating-point numbers due to unsafe parsing logic.",
       "vuln_type": "Heap-buffer-overflow",
+      "vulnerable_pattern": "unsafe floating point parsing implementation in tinyobj::tryParseDouble, likely lacking bounds checking or proper termination handling.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -3541,9 +3557,10 @@
       ],
       "confidence": 0.9,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire iMessage remote-attachment feature: it added `channels.imessage.remoteHost` as an unrestricted `z.string().optional()`, auto-detected `remoteHost` in `monitor-provider.ts`, propagated it into message context, and added `scpFile()` in `stage-sandbox-media.ts`. At the fix parent, the vulnerable lines are still blamed to this commit, including `StrictHostKeyChecking=accept-new` and the unguarded `${remoteHost}:${remotePath}` SCP argument. The fix directly reverses those design choices by validating/normalizing `remoteHost`, adding `--`, and requiring strict host-key checking.",
+      "how_introduced": "The blamed commit added the `scpFile` function which used insecure SSH options (StrictHostKeyChecking=accept-new) and passed unvalidated user input directly into the `spawn` arguments for the `scp` command, enabling potential command injection and MITM attacks.",
       "root_cause": "The application failed to properly validate remote hosts and enforce strict host-key checking when establishing SCP/SSH connections for iMessage attachments, allowing for potential command injection or man-in-the-middle attacks.",
       "vuln_type": "Command Injection / Improper Certificate Validation",
+      "vulnerable_pattern": "Unvalidated remote host strings passed to SCP/SSH commands and lack of strict host-key verification during attachment retrieval.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -3623,9 +3640,10 @@
       ],
       "confidence": 0.9,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This candidate is correctly blamed for the vulnerable write path at the fix parent: lines 143-151 still come from 7a9ff182, including `await scpFile(ctx.MediaRemoteHost, source, dest)` and the re-added `await fs.copyFile(source, dest)` else branch. Its diff introduced remote attachment staging and directly wrote into `dest` without any destination symlink/alias protection. The fix replaces those exact writes with `stageRemoteFileIntoRoot` / `stageLocalFileIntoRoot`, so this commit introduced an additional exploitable form of the bug and reimplemented the existing unsafe local write.",
+      "how_introduced": "The commit implemented the file staging logic using `path.join(destDir, fileName)` followed by `fs.copyFile(source, dest)` without any path validation, allowing an attacker to provide a malicious filename containing '..' sequences to write files outside of the sandbox workspace.",
       "root_cause": "The application fails to validate the destination path when staging media into a sandbox, allowing an attacker to use symlinks to overwrite files outside the intended sandbox directory.",
       "vuln_type": "Path Traversal (Symlink attack)",
+      "vulnerable_pattern": "Unvalidated path manipulation when writing files to a destination, susceptible to symlink traversal",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -3705,9 +3723,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created the hookify plugin and authored the exact vulnerable logic later fixed in both `plugins/hookify/core/rule_engine.py` and `plugins/hookify/hooks/pretooluse.py`. In the pre-fix state, `_extract_field()` returned the raw `file_path` from `tool_input` with no canonicalization, so deny/block rules were evaluated against the symlink path rather than the real target. File history, blame on the fix parent, and pickaxe searches all show these lines originated in 59372c09 and were untouched until the CVE fix.",
+      "how_introduced": "The blamed commit created the `RuleEngine` logic, which accepted file paths for permission checks without canonicalization. Since it lacked any mechanism to resolve symlinks, all subsequent access control checks based on path strings were inherently vulnerable to symlink-based path traversal attacks.",
       "root_cause": "The application failed to resolve symlinks before evaluating deny rules, allowing an attacker to bypass access controls by pointing a path to a restricted location.",
       "vuln_type": "Path Traversal / Symlink Bypass",
+      "vulnerable_pattern": "Evaluating file system path permissions without canonicalizing paths or resolving symbolic links, leading to path traversal bypasses.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -3789,9 +3808,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created `imports/utils/vm_sandbox.js` as a native `vm.createContext`/`runInContext` replacement for `vm2`, and blame shows the entire vulnerable sandbox implementation was authored here. The fix adds `validateSandboxCode()` directly inside `NodeSandbox.run()` and then wires `timeEntryRule` saves through the same validation, which is a direct hardening of the component introduced by 67c7. It also switched existing admin-script features (time-entry rules, inbound interfaces, outbound interfaces) over to this new sandbox, expanding unsafe code execution to all `NodeVM` consumers.",
+      "how_introduced": "The developer introduced a `NodeSandbox` class that utilized the native `vm` module to execute untrusted JavaScript. Because the implementation lacked the security constraints or input validation logic later added in the fix, it permitted access to dangerous globals and modules, enabling a user to execute arbitrary code outside the intended sandbox restrictions.",
       "root_cause": "The application used an insecure NodeVM implementation that failed to properly isolate or sanitize untrusted JavaScript code, allowing for sandbox escape and remote code execution.",
       "vuln_type": "Remote Code Execution (RCE)",
+      "vulnerable_pattern": "Execution of untrusted JavaScript code within a NodeVM sandbox without sufficient restrictions or improper configuration of the VM environment.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -4517,9 +4537,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This same commit also created extensions/feishu/src/docx.ts with downloadImage(url) implemented as a raw fetch(url), and writeDoc/appendDoc immediately called processImages() on markdown image URLs. The fix swaps that code to getFeishuRuntime().channel.media.fetchRemoteMedia() with maxBytes, and blame on the pre-fix lines points back to 2267d58a. So 2267d58a directly introduced the unsafe Feishu doc image-fetch path as well.",
+      "how_introduced": "The blamed commit added the `downloadImage` function using standard `fetch` on arbitrary URLs, which enabled a local file disclosure vulnerability; the fix commit later replaced this unsafe `fetch` with a secure runtime method that includes appropriate validation and size restrictions.",
       "root_cause": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
       "vuln_type": "Authorization Bypass",
+      "vulnerable_pattern": "N/A - Insufficient information provided in the commit",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -4606,9 +4627,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit also created extensions/feishu/src/docx.ts and registered the `feishu_doc` tool. Blame on the pre-fix file shows `downloadImage(url)` with raw `fetch(url)` and the `processImages` calls from `writeDoc`/`appendDoc` all originate here; the fix replaces that fetch with `getFeishuRuntime().channel.media.fetchRemoteMedia(...)`. Because the commit introduced both the markdown image downloader and the tool entrypoints that invoke it, it is the bug-introducing commit for the docx SSRF vector as well.",
+      "how_introduced": "The blamed commit added the `downloadImage` function using standard `fetch` on arbitrary URLs, which enabled a local file disclosure vulnerability; the fix commit later replaced this unsafe `fetch` with a secure runtime method that includes appropriate validation and size restrictions.",
       "root_cause": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
       "vuln_type": "Authorization Bypass",
+      "vulnerable_pattern": "N/A - Insufficient information provided in the commit",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -4693,9 +4715,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit is the original introducer of the device-bypass flaw. Its diff changed the handshake from unconditionally rejecting missing device identity to `if (!device && !hasTokenAuth)`, so a mere `auth.token` presence skipped the device check before `authorizeGatewayConnect()` ran. The parent version required a device unconditionally, so this commit first made token presence—not validated authentication—sufficient to bypass identity checks.",
+      "how_introduced": "The blamed commit modified the handshake logic to allow connections when 'hasTokenAuth' is true even if the 'device' object is missing; this created the insecure state where a presence check replaced a validation check, allowing attackers to bypass authentication.",
       "root_cause": "The application fails to sanitize shell metacharacters in command execution requests, allowing attackers to inject and execute arbitrary commands by bypassing intended allowlist restrictions.",
       "vuln_type": "OS Command Injection",
+      "vulnerable_pattern": "Unsanitized user input passed to a system shell executor (e.g., cmd.exe) allowing metacharacter injection.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -4784,6 +4807,7 @@
       "how_introduced": "Although this candidate was blamed via `src/security/mod.rs`, this commit also created `src/security/path.rs` and the original `validate_path_in_workspace()` implementation. That implementation only normalized the path and prefix-checked it against the workspace, so symlink ancestor escapes, hardlink aliasing, and validate-then-use races were outside its security model from the start.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5631,9 +5655,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced extensions/feishu/src/bot.ts and first added stripBotMention() with both vulnerable constructions: new RegExp(`@${mention.name}\\\\s*`, \"g\") and new RegExp(mention.key, \"g\"). The same commit also wired parseFeishuMessageEvent() to call stripBotMention() immediately, so the unsafe regexes were reachable as soon as the new Feishu plugin landed. Blame on the pre-fix file attributes the two vulnerable lines to this commit, and pickaxe searches show those exact strings originate here.",
+      "how_introduced": "The commit added stripBotMention which uses new RegExp(`@${mention.name}\\s*`, 'g') and new RegExp(mention.key, 'g') where mention.name and mention.key come from Feishu message metadata. By passing unescaped, attacker-controlled mention strings into RegExp constructors, the code allowed malicious regex syntax or pathological patterns to be injected, leading to regex injection and potential ReDoS via catastrophic backtracking.",
       "root_cause": "RegExp objects are constructed directly from Feishu mention metadata without escaping or validation, allowing attacker-controlled mention text to inject complex regex patterns that can cause ReDoS (exponential backtracking) or change matching behavior.",
       "vuln_type": "Regular expression injection / ReDoS",
+      "vulnerable_pattern": "new RegExp(mention) or RegExp(mention, flags) where 'mention' is taken directly from Feishu mention metadata (an unescaped, user-controlled string)",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5723,6 +5748,7 @@
       "how_introduced": "This refactor replaced Feishu’s inline matcher with the shared `resolveAllowlistMatchSimple` helper and preserved the insecure `senderName` fallback exactly, then changed Feishu policy to return that helper’s result. Although the flaw already existed earlier, this commit reimplemented the vulnerable logic in new code that the fix later removed. Under the reimplementation rule, it is also a genuine bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5802,9 +5828,10 @@
       ],
       "confidence": 0.855,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the exact trusted-proxy bypass that the fix later narrows. Its diff adds `trustedProxyAuthOk` in `message-handler.ts`, passes it into `evaluateMissingDeviceIdentity`, and changes `shouldSkipControlUiPairing` / `evaluateMissingDeviceIdentity` in `connect-policy.ts` so any trusted-proxy Control UI connection can skip device identity and pairing with no `role === \"operator\"` check. The fix commit `ec45c317...` only adds that missing role gate, and pre-fix blame attributes the vulnerable `trustedProxyAuthOk` lines to this commit.",
+      "how_introduced": "The commit implemented the 'trustedProxyAuthOk' logic in both message handling blocks without validating the user's role. Because this logic was missing the 'role === \"operator\"' check, the system incorrectly validated unauthorized or improper roles as 'trusted-proxy', leading to the authentication bypass.",
       "root_cause": "The system failed to properly validate pairing status for WebSocket connections, allowing unpaired node sessions to interact with the Trusted-proxy Control UI due to insufficient authorization checks.",
       "vuln_type": "Authentication Bypass / Improper Authorization",
+      "vulnerable_pattern": "Processing control-ui messages without verifying if the underlying node session is correctly paired/authorized.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -5909,9 +5936,10 @@
       ],
       "confidence": 0.81,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire deduplicate interceptor and the original DeduplicationHandler implementation. In the new handler, `onResponseData()` unconditionally appends every chunk to `this.#chunks`, and `#notifyWaitingHandlers()` later does `const body = Buffer.concat(this.#chunks)` before replaying the full buffered response to waiters; `lib/interceptor/deduplicate.js` also always attaches duplicate requests via `pendingHandler.addWaitingHandler(handler)`. The fixing commit 5890c7b7 specifically replaces that design with streaming delivery, a `maxBufferSize` cap, and a fallback to dispatch independently once body streaming has started, so b902551e is the commit that introduced the vulnerable unbounded-buffering design.",
+      "how_introduced": "The blamed commit introduced the #chunks array without any size constraints or eviction logic. Subsequent responses buffered into this array grow linearly with the response size, leading to uncontrolled memory consumption (DoS) when many or large responses are handled.",
       "root_cause": "The application fails to properly validate the 'upgrade' header, allowing CRLF injection which can lead to request smuggling or other protocol-level attacks.",
       "vuln_type": "CRLF Injection",
+      "vulnerable_pattern": "Unvalidated header input allowing carriage return and line feed characters (CRLF) to be injected into HTTP headers.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6123,9 +6151,10 @@
       ],
       "confidence": 0.76,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire AST-based sanitizer in `langroid/utils/pandas_utils.py` and wired it into `TableChatAgent.pandas_eval`. In the new `CommandValidator`, `ast.Attribute` was explicitly allowed, but there was no `visit_Attribute()` check; `visit_Call()` then recursively visited kwargs/args, so payloads like `df.__init__.__globals__['__builtins__']['eval']` were accepted. The fix commit `30abbc1a...` adds exactly that missing `visit_Attribute()` enforcement and corresponding dunder/private-attribute tests, and blame on the pre-fix file attributes the vulnerable validator lines to `0d9e4a7bb`.",
+      "how_introduced": "The blamed commit implemented a `CommandValidator` that primarily focused on method calls and arguments, failing to inspect or restrict attribute access (via `ast.Attribute`). This omission allowed attackers to bypass WAF restrictions by accessing sensitive or dangerous attributes (like `__globals__`), necessitating the subsequent addition of `visit_Attribute` in the fix commit.",
       "root_cause": "The commit message only indicates a version bump without code changes, suggesting the vulnerability fix might be missing from this commit or implemented elsewhere, but the CVE describes RCE in TableChatAgent due to WAF bypass.",
       "vuln_type": "Code Injection (RCE)",
+      "vulnerable_pattern": "Unknown (no code changes provided in this commit)",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6311,9 +6340,10 @@
       "languages": [],
       "confidence": 0.76,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit added the new `prek-version` input and embedded `${{ inputs.prek-version }}` directly inside a bash `run:` block (`if [ \"${{ inputs.prek-version }}\" = \"latest\" ]` and `python -m pip install prek==${{ inputs.prek-version }}`). The fix later replaces this pattern by passing the input through `env` and expanding a shell variable instead, which is the standard remediation for composite-action injection. So this commit introduced the version-input injection flaw even before later installer changes.",
+      "how_introduced": "The commit added the `prek run` command line with direct interpolation of `${{ inputs.extra_args }}`, which allowed attackers to provide shell metacharacters as arguments, resulting in arbitrary code execution.",
       "root_cause": "The composite action improperly handled user input, allowing attackers to inject arbitrary shell commands through input parameters.",
       "vuln_type": "Command Injection",
+      "vulnerable_pattern": "Direct interpolation of untrusted input into shell command arguments within the 'run' step of the composite action.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6706,6 +6736,7 @@
       "how_introduced": "This is the root introducer of the users/profile feature. It added `htmlWrapper` with raw `<title>${title}...`, accepted unsanitized `username` and `pfp` in `/api/new-user`, stored them verbatim, and rendered them into profile/follower/following HTML. The final fix hardens exactly those design choices by escaping the title and sanitizing username/pfp before storage and lookup, so 85c0995b clearly introduced the core XSS vulnerability.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -6792,9 +6823,10 @@
       ],
       "confidence": 0.7,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the exact XSS sink later fixed in ea2462bf: `var __customHotkeys = {{ user.custom_hotkeys|json_dumps_ensure_ascii|safe }}` in `label_studio/templates/base.html`, and `git log -S` shows that line first appeared here. It also added `custom_hotkeys` to `BaseUserSerializer`; because `UserSerializerUpdate` inherits that serializer and only marks `email` read-only, the pre-existing `/api/users/<id>` PATCH path could now modify another in-organization user's `custom_hotkeys`. So this one commit both created the stored-XSS sink and exposed the new field through the existing profile-update/IDOR path, making the account-takeover chain possible.",
+      "how_introduced": "The developer introduced the `custom_hotkeys` feature, creating a new database field and exposing it to the frontend via `base.html`. In that template, they rendered the input using the `|safe` Jinja filter, which explicitly tells the template engine not to escape the output, directly resulting in the XSS vulnerability.",
       "root_cause": "The application fails to properly sanitize the 'custom_hotkeys' user profile field, allowing attackers to inject malicious scripts that execute when viewed, enabling account takeover.",
       "vuln_type": "Stored XSS",
+      "vulnerable_pattern": "Rendering user-controlled input (custom_hotkeys) directly into the HTML template without escaping or sanitization.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -7172,9 +7204,10 @@
       ],
       "confidence": 0.7,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "The fix changes x/costaking/keeper/hooks_finality.go so that AfterBtcDelegationUnbonded subtracts sats whenever the FP was active in the previous set, instead of only when it was active in both previous and current sets. File history and blame show this function was created in 2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36, and that commit introduced the exact vulnerable guard `if !isFpActiveInPrevSet || !isFpActiveInCurrSet { return nil }`. The same commit also added the finality hook plumbing and wired costaking hooks into app/keepers/keepers.go, making the buggy logic live immediately; because costaking rewards derive TotalScore from ActiveSatoshis, the skipped subtraction leaves phantom active sats that continue to earn rewards after unbond when an FP goes active->inactive in the same block.",
+      "how_introduced": "The blamed commit implemented the hook `AfterBtcDelegationUnbonded` with an `if !isFpActiveInPrevSet || !isFpActiveInCurrSet` check, which prevented proper stake accounting updates when a finality provider transitioned to an inactive state during the unbonding process, thereby leaving phantom stakes in the system.",
       "root_cause": "The costaking mechanism incorrectly accounted for inactive finality provider (FP) stakes, allowing 'phantom stakes' to continue earning rewards after a BTC unbonding process had occurred.",
       "vuln_type": "Incorrect Accounting / Logic Error",
+      "vulnerable_pattern": "Improper state management or hook logic in the costaking module that failed to correctly invalidate or update stake accounting when a finality provider became inactive or an unbonding event triggered.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -7614,9 +7647,10 @@
       ],
       "confidence": 0.57,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created apps/workers/scripts/parseHtmlSubprocess.ts and wrote the exact vulnerable branch the fix changes: it trusted meta.readableContentHtml and wrapped it directly as readableContent without passing it through DOMPurify, while the fallback extractReadableContent path still sanitized via purify.sanitize(). The fix commit ba3db953 modifies these same lines to add sanitization, so this commit clearly introduced the vulnerable subprocess implementation. Although it was a reimplementation of an existing flaw from crawlerWorker, reimplementing the bug in new code still makes this a confirmed BIC.",
+      "how_introduced": "The blamed commit added the `main()` function in `parseHtmlSubprocess.ts` that directly assigned plugin-provided metadata (`meta.readableContentHtml`) to `readableContent` without sanitization. This created the vulnerable pathway where un-sanitized HTML from plugins (like the Reddit plugin) was passed into the system, enabling stored XSS.",
       "root_cause": "The Reddit plugin failed to sanitize metascraper output, allowing malicious payloads to bypass DOMPurify and execute arbitrary scripts.",
       "vuln_type": "Stored XSS",
+      "vulnerable_pattern": "Unsanitized rendering of metascraper output data in the DOM",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -7772,9 +7806,10 @@
       ],
       "confidence": 0.57,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Blame on the pre-fix file attributes `normalizeToolName`, `parseToolNameFromTitle`, `resolveToolNameForPermission`, and the core `resolvePermissionRequest` auto-approval path to this commit. Its diff widened authorization decisions to server-controlled `_meta`, `rawInput`, and `title` fields, then auto-approved any tool name not forced into the prompt path. The later fixes directly harden and partially replace this exact logic, including tightening `normalizeToolName` in 63dcd28 and replacing the auto-approval policy in 12cc754.",
+      "how_introduced": "The blamed commit implemented `resolveToolNameForPermission`, which retrieves tool names from metadata (`_meta`) and raw input (`rawInput`) using `readFirstStringValue`. Because this implementation lacked length constraints and strict regex validation, it allowed malicious tool names to pass through and be processed by the auto-approval logic.",
       "root_cause": "The OpenClaw ACP client failed to properly validate tool metadata during permission auto-approval, allowing malicious actors to bypass authorization checks by manipulating untrusted metadata fields.",
       "vuln_type": "Authorization Bypass",
+      "vulnerable_pattern": "Implicitly trusting tool metadata fields to authorize actions without server-side verification or strict schema enforcement.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -7900,6 +7935,7 @@
       "how_introduced": "The initial commit created the plugin and introduced the original vulnerable pattern: `var command = 'sudo date --iso-8601 -u -s \"' + datetime + '\"'` executed via `spawn('sh', ['-c', command])`. That is the first occurrence of untrusted `navigation.datetime` data being interpolated into a shell command. It establishes the flawed design that the 2026 fix finally mitigates.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -8056,6 +8092,7 @@
       "how_introduced": "The same fix adds rehypeSanitize to NewVersionDialog.tsx, and blame on the pre-fix rehypePlugins line points directly to a9a262ea. The a9a262ea diff created NewVersionDialog.tsx with ReactMarkdown configured as [rehypeRaw, rehypeHighlight] for release.body, again enabling raw HTML without sanitization. Since the vulnerable rendering was present at file introduction, this commit introduced that XSS vector.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -8251,6 +8288,7 @@
       "how_introduced": "This commit created `web/src/app/home/components/new-version-dialog/NewVersionDialog.tsx` and rendered external release notes (`release.body`) through `ReactMarkdown` with `rehypeRaw` and no sanitization. Blame on the vulnerable lines attributes the `rehypeRaw` import and `rehypePlugins={[rehypeRaw, rehypeHighlight]}` to this commit, and the fix later adds `rehypeSanitize` at that exact location. The same changeset also wired release data in from the cloud-service client, so it introduced a new unsafe raw-HTML rendering surface.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -8443,9 +8481,10 @@
       ],
       "confidence": 0.0,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "When adding provider-aware search filters, this commit rewrote the vulnerable branches to use raw node_labels = '|'.join(filters.node_labels) and then interpolate that into n:/m: label expressions for non-Kuzu providers. These are the exact pre-fix lines blamed immediately before 7d65, so this is a reimplementation of the vulnerability in the refactored search_filters code.",
+      "how_introduced": "This Kuzu-support refactor rewrote `search_filters.py` and authored the exact pre-fix vulnerable lines blamed in the final file: `node_labels = '|'.join(filters.node_labels)`, `node_label_filter = 'n:' + node_labels`, and `node_label_filter = 'n:' + node_labels + ' AND m:' + node_labels`. Although it was a refactor, it reimplemented the unsafe raw interpolation in the code that 7d65d5e later hardens with `validate_node_labels()`. Under the bug-introducer criteria, this reimplementation is itself a valid BIC.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -8485,9 +8524,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "UNRELATED",
-                "reasoning": "The blamed FalkorDB hunk is also about group_ids, not node_labels. Blame on the pre-fix file shows the relevant build_fulltext_query lines were authored earlier by d725fcdf and 45882dd5, so 99923 is just file-overlap/blame drift from the bundled hardening patch and did not introduce the CVE's node_labels flaw.",
+                "reasoning": "The fix hunk in graphiti_core/driver/falkordb_driver.py only adds `validate_group_ids(group_ids)` inside FalkorDB fulltext query construction. The reported CVE is the unsafe interpolation of `node_labels` into Cypher label filters, which lives in `graphiti_core/search/search_filters.py` and predates this architecture change. So this blamed file is tied to separate group_id validation, not the node_labels search-filter vulnerability.",
                 "confidence": 0.95,
-                "tool_calls_made": 104,
+                "tool_calls_made": 83,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -8582,6 +8621,7 @@
       "how_introduced": "This commit added the original FileViewer implementation at `src/ui/Desktop/Apps/File Manager/components/FileViewer.tsx`, including the SVG preview branch that renders remote file contents with `dangerouslySetInnerHTML={{ __html: content }}`. `git blame` on the vulnerable pre-fix lines in the later renamed file traces line 723 (`dangerouslySetInnerHTML`) back to this commit, and `git log -S dangerouslySetInnerHTML` shows the pattern first appears here and is only removed by the fix. That is the stored-XSS sink fixed in `ad86c204` by switching SVG rendering to a base64 data URL inside `<img>`/`PhotoView`.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10310,6 +10350,7 @@
       "how_introduced": "This commit introduced Feishu webhook mode in extensions/feishu/src/monitor.ts by adding monitorWebhook(), creating an HTTP server, and wiring server.on(\"request\", Lark.adaptDefault(...)) with no byte or time guard. Blame on the pre-fix file assigns the vulnerable request-handler line directly to this commit. The fix wraps exactly this handler with installRequestBodyLimitGuard, so this is the Feishu BIC.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10412,6 +10453,7 @@
       "how_introduced": "This commit introduced the entire Taysell implementation, including `templates/backend-in-a-box/index.js` with the original `/paypal/webhook` handler that trusted `req.body` and marked orders COMPLETED without any PayPal signature/webhook-ID verification. The same commit also created `/get-patch` with no one-time-use tracking for `purchase_token`, and set `PBKDF2_ITERATIONS = 100000` in both `templates/backend-in-a-box/index.js` and `lib/taysell-utils.ts`; those are the exact areas later hardened by `57b7634`. The blamed `lib/handlers/buy-handler.ts` lines were only the pre-fix error-handling path and are not the security root cause, but the commit is still the true BIC because it authored the vulnerable backend design and weak KDF setting.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10494,6 +10536,7 @@
       "how_introduced": "This commit introduced `src/tools/android/actions.rs` and the original `device_shell()` implementation. In that initial version, dangerous `rm` commands were blocked only by literal substring checks for `\"rm -rf\"` and `\"rm -r\"`, which is the flawed design the fix replaced with flag-aware parsing; reordered/combined forms such as `rm -fr`, `rm -f -r`, and long-option equivalents were not parsed and could bypass the guard. Git history shows this file/function did not exist earlier, so this is the commit that introduced the vulnerable Android shell behavior.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10602,6 +10645,7 @@
       "how_introduced": "This commit introduced the `StackGlobal.run()` validation `if not module.isidentifier() or not attr.isidentifier(): raise ValueError(...)`. That rejects dotted module names such as `multiprocessing.util`, which are exactly the kind of imports the 2026 fix adjusted to `all(m.isidentifier() for m in module.split(\".\"))`. Because `check_safety()` does not wrap analysis in exception handling, this validation made dotted dangerous imports evade or break static analysis, so it is a real introducer for the dotted-module bypass fixed by `eb299b45`.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10712,6 +10756,7 @@
       "how_introduced": "This commit did more than tweak Blade help text: it also rewrote `ApplicationDeploymentJob` to auto-inject only `--env-file` into custom Docker Compose build commands. It still did not enforce `-f`, so a user-supplied `docker compose build` could continue to resolve the repository's compose file instead of Coolify's generated one. The later fix replaces this env-file-only logic with `injectDockerComposeFlags(...)`, so this commit reauthored the vulnerable build-command path.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10802,6 +10847,7 @@
       "how_introduced": "The initial commit created `fix_command`/`get_command_output` and introduced the original privileged command re-execution path: `Command::new(&split_command[0]) ... .output()?` with no `setuid`/`setgid` or other credential drop. Pickaxe shows `fn get_command_output(...)` first appears here, and blame on the pre-fix code still attributes the core command construction and environment setup lines to this commit. The later fix adds explicit permission detection and uid/gid dropping before execution, so `ec1f1462` authored the flawed security design from the start.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10882,6 +10928,299 @@
       ]
     },
     {
+      "id": "CVE-2026-32294",
+      "description": "JetKVM prior to 0.5.4 does not verify the authenticity of downloaded firmware files. An attacker-in-the-middle or a compromised update server could modify the firmware and the corresponding SHA256 hash to pass verification.",
+      "severity": "HIGH",
+      "cvss": 7.0,
+      "cwes": [
+        "CWE-345",
+        "CWE-347"
+      ],
+      "ecosystem": "",
+      "published": "2026",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit wrote the exact vulnerable code that 8e7b6ce fixes. In internal/ota/utils.go it added downloadSignature without rejecting a 0-byte body, and verifyFile only performed GPG verification when `len(signature) > 0`, so an empty `.sig` response bypassed signature verification entirely. It also introduced `shouldBypassSignatureCheck(version, customVersionUpdate)` returning true for any prerelease version, and its tests explicitly expected `\"1.2.3-dev.1\"` to bypass even without any local opt-in check.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "a76954d19e93afd54d463c1b3a60d222087c7fec",
+          "author": "Adam Shiervani",
+          "date": "2026-03-05T18:26:23+01:00",
+          "message": "Cleanup OTA code: eliminate redundant parsing, TOCTOU, and duplication",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "internal/ota/utils.go",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "8e7b6ce4e3e699440507d049c83ef9689b5557b3",
+          "screening_verification": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit (a76954d19e93) refactors existing GPG key management logic, specifically changing how keys are fetched and cached, but it does not appear to remove or weaken the signature verification logic itself. The vulnerability involves an improper bypass mechanism in the update verification flow (as seen in the fix's modification to `shouldBypassSignatureCheck`), while the blamed commit focuses on GPG transport logic rather than the core verification logic that was later hardened.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Verification of Cryptographic Signature",
+            "vuln_description": "The firmware update mechanism failed to properly verify the authenticity and integrity of downloaded firmware files, allowing attackers to inject malicious updates.",
+            "vulnerable_pattern": "The system relied on simple hash matching without cryptographic signature verification (e.g., RSA/ECDSA) to ensure the firmware was signed by a trusted authority.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit wrote the exact vulnerable code that 8e7b6ce fixes. In internal/ota/utils.go it added downloadSignature without rejecting a 0-byte body, and verifyFile only performed GPG verification when `len(signature) > 0`, so an empty `.sig` response bypassed signature verification entirely. It also introduced `shouldBypassSignatureCheck(version, customVersionUpdate)` returning true for any prerelease version, and its tests explicitly expected `\"1.2.3-dev.1\"` to bypass even without any local opt-in check.",
+                "confidence": 0.95,
+                "tool_calls_made": 61,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "33c277c243d1aad01e998ebe794b977981069032",
+              "author_name": "Adam Shiervani",
+              "message": "Implement GPG signature verification for OTA updates",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "95a7d16b16a1721a9fe51fc8c1e0f86b3e28dd07",
+              "author_name": "Adam Shiervani",
+              "message": "Add tests for GPG signature verification in OTA updates",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8e73edecb376d7d9eeb751fcc0266e7a3d49210e",
+              "author_name": "Adam Shiervani",
+              "message": "Refactor error message for missing GPG signature URL in OTA updates",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "656630214dd8e9ae94afb9ad28a75f6b935b2edb",
+              "author_name": "Adam Shiervani",
+              "message": "Refactor OTA update process to improve signature handling",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7aae9de72f27bed6d248aec8fb7355a851485744",
+              "author_name": "Adam Shiervani",
+              "message": "Refactor GPG key caching to validate keyring before storing",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fb37526b89baf5ec78db4c5324de5a03b0c930fa",
+              "author_name": "Adam Shiervani",
+              "message": "Update Makefile to enhance E2E test process with optional OTA signature verification",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "820429c129826de1da25b891ccc4bb2cd8aac0a3",
+              "author_name": "Adam Shiervani",
+              "message": "Comment out non-working keyservers and update root key fingerprint",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec09edad3c6a2974ddedcdc744e11a3d4ec02813",
+              "author_name": "Adam Shiervani",
+              "message": "Add Ubunutu keyserver",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3a0b7102cd01af548ce2122d40f2acc579b7d545",
+              "author_name": "Adam Shiervani",
+              "message": "Update root key fingerprint for GPG signature verification in OTA updates",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4cc4b362a87ce3b62565110ca3e2fce2ab2b6c33",
+              "author_name": "Adam Shiervani",
+              "message": "Add signed OTA E2E test and full E2E test suite to Makefile",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "adadde1a8d934e3033a5efbbda0a8085b57248b5",
+              "author_name": "Adam Shiervani",
+              "message": "Update IP address extraction in test_local_update.sh to exclude all localhost addresses",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0c2b09af610458478263df59d47f1e33c02abd18",
+              "author_name": "Adam Shiervani",
+              "message": "Add GPG public key fetching tests with caching and error handling",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "56046dbe0c962e88d1c9ff430e447b5d9b3dfeb4",
+              "author_name": "Adam Shiervani",
+              "message": "Enhance build and testing scripts for signed OTA updates",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9308c22831496a41f22158ebcf9e77e2df5fd623",
+              "author_name": "Adam Shiervani",
+              "message": "Add fingerprint extraction and validation for GPG keys",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c6c96329fe59ec452df17805d1568fb4ed14b955",
+              "author_name": "Adam Shiervani",
+              "message": "Simplify bypass mechanism of OTA signature checks",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "62430ea7c7b86db63076d532f6265af7f1f741c0",
+              "author_name": "Adam Shiervani",
+              "message": "Refactor E2E testing and release workflows",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "57aafbc18d84825f5242c68569509f9337c6c4ae",
+              "author_name": "Adam Shiervani",
+              "message": "Enhance OTA testing framework and scripts",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3c8007103649d32587b440ce1549a968fcde18e9",
+              "author_name": "Adam Shiervani",
+              "message": "Improve local network IP detection in OTA helpers by implementing route-based detection as a primary method, falling back to interface scanning if necessary.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2759ef64977a7e969a5bac3870fcdb6771219e2d",
+              "author_name": "Adam Shiervani",
+              "message": "Add support for unsigned OTA version testing",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "de075f1026d400be1dfbcfc3af18d64df53409ae",
+              "author_name": "Adam Shiervani",
+              "message": "Update Makefile to include core E2E tests and enhance dev release validation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8d36e8d769021a25be0e99f81c871f3812434f32",
+              "author_name": "Adam Shiervani",
+              "message": "Enhance Makefile and testing scripts for improved OTA validation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a331a71a564677edd5f8ddaf06a8c80790b75298",
+              "author_name": "Adam Shiervani",
+              "message": "Final release confirmation of prod releases",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a76954d19e93afd54d463c1b3a60d222087c7fec",
+              "author_name": "Adam Shiervani",
+              "message": "Cleanup OTA code: eliminate redundant parsing, TOCTOU, and duplication",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "3557fbd0a44632c8f2d9f9ad971f3a6e0ecd66d5",
+              "author_name": "Adam Shiervani",
+              "message": "Merge remote-tracking branch 'origin/dev' into feat/signed-releases",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2cb8fe45de4a4a38ac8f25d32098d11ca6869865",
+              "author_name": "Adam Shiervani",
+              "message": "E2E: fix flaky tests, add unsigned OTA to dev test lane",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6ee1544600352bfb095cdd532c448574e8c6386a",
+              "author_name": "Adam Shiervani",
+              "message": "Remove stale dev_release checklist item from PR templates",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "11b99d59fd70fa2e0e9884c7b699eae1b1c83556"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "8e7b6ce4e3e699440507d049c83ef9689b5557b3",
+          "repo_url": "https://github.com/jetkvm/kvm",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://eclypsium.com/blog/kvm-devices-the-keys-to-your-kingdom-are-hanging-on-the-network/",
+        "https://github.com/jetkvm/kvm/releases/tag/release%2F0.5.4",
+        "https://raw.githubusercontent.com/cisagov/CSAF/develop/csaf_files/IT/white/2025/va-26-076-01.json",
+        "https://www.cve.org/CVERecord?id=CVE-2026-32294"
+      ]
+    },
+    {
       "id": "GHSA-p7gr-f84w-hqg5",
       "description": "OpenClaw's sandboxed sessions_spawn now enforces sandbox inheritance for cross-agent spawns",
       "severity": "LOW",
@@ -10903,6 +11242,7 @@
       "how_introduced": "This commit created `src/agents/subagent-spawn.ts` and reimplemented the cross-agent spawn logic in `spawnSubagentDirect()` without any sandbox-inheritance check. The fix commit directly inserts the missing `resolveSandboxRuntimeStatus()` guard into that new helper, and blame on the fix parent attributes the relevant pre-check/cross-agent block to this commit. It also added the `/subagents spawn` command, so it introduced a fresh vulnerable implementation and an additional entry point.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -11097,6 +11437,7 @@
       "how_introduced": "This commit introduced the entire email feature: `EmailConfig.allowed_senders`, the example config using that allowlist, `EmailChannel::is_sender_allowed()`, and `process_unseen()` extracting `parsed.from().address()` and using that parsed `From` value for allowlist checks and inbound sender identity. Pickaxe searches for `allowed_senders`, `is_sender_allowed(`, and `Blocked email from` all point back to this commit as the first introduction. The later fix `bf004a20` does not change that logic; it only adds warnings/docs/config-validation text explicitly stating that `allowed_senders` trusts the parsed `From` header only, confirming that this commit introduced the flawed trust model.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -11426,6 +11767,7 @@
       "how_introduced": "This qpack v0.6 rewrite authored the exact vulnerable forms later fixed in http3/headers.go, http3/server.go, and http3/stream.go: it replaced slice-based parsing with DecodeFunc-based parseHeaders/requestFromHeaders/updateResponseFromHeaders, but still never enforced any limit on the decompressed field-section size. The fix commit directly adds a sizeLimit parameter to those functions and threads MaxHeaderBytes into the server and client call sites. Even though the flaw existed earlier, this commit reimplemented the vulnerable logic and therefore counts as a real bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -11538,6 +11880,7 @@
       "how_introduced": "This commit created `linode/producerimagesharegroupmember/framework_resource.go` and added `tflog.Debug(..., {\"options\": createOpts})` immediately after building `ImageShareGroupAddMemberOptions{Token, Label}`. The same commit's schema marked `token` as `Sensitive: true`, so logging the full options struct bypassed Terraform's sensitivity handling and exposed the token in debug logs. Although the same SHA also touched `framework_provider.go`, the real introduction is the new resource implementation added by this commit.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -11680,6 +12023,7 @@
       "how_introduced": "This later security/DoS commit rewrote `parse_feed` to use `urllib.request.urlopen(url, timeout=30)` after only checking that the scheme was `http` or `https`. Blame on the vulnerable pre-fix code attributes the URL parsing, scheme check, and `urlopen(url)` fetch to this SHA, and the later SSRF fix replaced those lines with `backend.util.request.Requests.get(url)`, which performs private-IP/SSRF validation. Because this commit reimplemented the fetch logic while preserving arbitrary server-side access to attacker-supplied URLs, it is also a true bug-introducing commit.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -11954,6 +12298,7 @@
       "how_introduced": "This commit rewrote runImport() and re-authored the vulnerable custom-location branch as `docker cp {$this->customLocation} {$this->container}:{$tmpPath}` without validation or escaping. Git pickaxe finds the exact current vulnerable string introduced here, and blame on the pre-fix file attributes that line to fbdd8e5. Even though the flaw already existed conceptually, this is a reimplementation of the vulnerable code path and therefore a confirmed BIC as well.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -12072,6 +12417,7 @@
       "how_introduced": "This refactor extracted workspaces code into the new `backend/windmill-api-workspaces/src/workspaces.rs` file and reimplemented the vulnerable `WorkspaceSettings` struct and `get_settings` handler there. Pre-fix blame on the exact lines later fixed (`slack_oauth_client_secret` in the struct, query, and return path) points to this commit in the new file. Because the active vulnerable implementation was rewritten here, this is also a bug-introducing commit under the 'reimplementation is bug introduction' rule.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -12338,6 +12684,7 @@
       "how_introduced": "This commit introduced `AotScriptObjectMapper` and mapped `before_json`/`after_json` into the template context while still omitting any `before_sensitive`/`after_sensitive` mapping. Blame on the pre-fix mapper points directly to this commit for the vulnerable `before_json`/`after_json` lines. The later fix adds sensitivity objects and masking logic to this exact mapping path, so this is a reimplementation BIC for the active renderer.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -15020,6 +15367,7 @@
       "how_introduced": "The vulnerable implementation is already present in this repository's initial import: lib/HTTP/Session2/Random.pm contains the `/dev/urandom` path plus the weak fallback `substr(Digest::SHA::sha1_hex(rand() . $$ . {} . Time::HiRes::time()), int(rand(4)), 31)`, and t/09_random.t explicitly tests that fallback. Blame on the vulnerable lines at the pre-fix state resolves past merge 24844b3 to the boundary/root commit f8a08a8, and the file history shows no intervening commit that introduced or rewrote the generator before 9cfde4d7 replaced it with Crypt::SysRandom. The embedded Changes file also indicates this design predates the current git history (introduced in the 1.02/1.06 era), but f8a08a8 is the first attributable git SHA in this repository carrying the vulnerable code.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -15101,6 +15449,7 @@
       "how_introduced": "This feature commit added Gemini as a `web_search` provider, extracted citation URLs from Gemini grounding metadata, and introduced `resolveRedirectUrl()` to issue `HEAD` requests with `redirect: \"follow\"` on those citation URLs. That initial implementation used plain `fetch` with no SSRF guard or private/internal-network blocking, so the citation redirect SSRF behavior existed from the feature’s first introduction. It is the root origin of the vulnerable redirect-resolution path.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -15349,6 +15698,7 @@
       "how_introduced": "This commit introduced `SendDiscordFileBlock` and explicitly documented that its `file` input supports a URL, data URI, or local path. In the new URL-handling branch, it performed `async with aiohttp.ClientSession() as session` followed by `session.get(file)` on user-controlled HTTP(S) input, with no SSRF validation. The repository already had the safer `backend.util.request.Requests` infrastructure available, so this commit is the first clear introduction of the vulnerable behavior.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -15462,6 +15812,7 @@
       "how_introduced": "This commit replaced token-based attachment download with a direct GET /items/{id}/attachments/{attachment_id} flow that called AttachmentPath on attachmentID alone. No group/user authorization was added, and the fix later changes this exact GET path to pass ctx.GID and enforce group membership in the repo query. Even though older code already had authorization issues, this commit reimplemented the read path with the same flaw.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -15812,6 +16163,7 @@
       "how_introduced": "This commit introduced the iOS QR/deeplink pairing path in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, adding `GatewayConnectDeepLink` with `token` and `password` fields and `fromSetupCode()` parsing of `{url, token?, password?}` payloads. The same commit also added QR output to `extensions/device-pair/index.ts`, so the vulnerable long-lived credentials were both rendered into QR setup codes and consumed by the iOS flow. The fix later changes this exact path to use `bootstrapToken` instead.",
       "root_cause": "",
       "vuln_type": "",
+      "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {

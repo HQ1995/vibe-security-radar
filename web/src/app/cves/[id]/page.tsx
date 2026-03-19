@@ -20,7 +20,7 @@ import {
   getModelRank,
 } from "@/lib/constants";
 import { LanguageBadge } from "@/components/language-badge";
-import { formatPublished, buildCommitUrl } from "@/lib/commit-utils";
+import { formatPublished, buildCommitUrl, extractRepoName } from "@/lib/commit-utils";
 import type { CveEntry, BugCommit, Verification } from "@/lib/types";
 import {
   ShieldAlert,
@@ -135,6 +135,9 @@ function verdictCardBg(verdict: string): string {
 // --- Section components ---
 
 function PageHeader({ cve }: { readonly cve: CveEntry }) {
+  const repoUrl = cve.fix_commits[0]?.repo_url;
+  const repoName = repoUrl ? extractRepoName(repoUrl) : "";
+
   return (
     <div className="space-y-3">
       <Link
@@ -148,6 +151,19 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl font-mono">
         {cve.id}
       </h1>
+
+      {repoName && (
+        <a
+          href={repoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors"
+        >
+          <Code2 className="h-3.5 w-3.5" />
+          {repoName}
+          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+        </a>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
         {cve.published && <span>{formatPublished(cve.published)}</span>}
@@ -274,7 +290,8 @@ function HowIntroducedCallout({
 }) {
   const hasSummary = cve.how_introduced.length > 0;
   const hasRootCause = (cve.root_cause ?? "").length > 0;
-  if (!hasSummary && !hasRootCause) return null;
+  const hasPattern = (cve.vulnerable_pattern ?? "").length > 0;
+  if (!hasSummary && !hasRootCause && !hasPattern) return null;
 
   return (
     <div className="rounded-xl border border-l-4 border-l-primary bg-primary/5 p-5">
@@ -289,11 +306,16 @@ function HowIntroducedCallout({
           </Badge>
         )}
       </div>
+      {hasPattern && (
+        <code className="block rounded-md bg-muted/60 px-3 py-2 font-mono text-xs leading-relaxed mb-3">
+          {cve.vulnerable_pattern}
+        </code>
+      )}
       {hasSummary && (
         <p className="text-sm leading-relaxed">{cve.how_introduced}</p>
       )}
       {hasRootCause && (
-        <div className={hasSummary ? "mt-3 pt-3 border-t border-primary/10" : ""}>
+        <div className={hasSummary || hasPattern ? "mt-3 pt-3 border-t border-primary/10" : ""}>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Root Cause</p>
           <p className="text-sm leading-relaxed text-muted-foreground">{cve.root_cause}</p>
         </div>
