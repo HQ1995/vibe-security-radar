@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-19T12:19:45.900545+00:00",
-  "total": 62,
+  "generated_at": "2026-03-19T14:34:15.667665+00:00",
+  "total": 69,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -1753,6 +1753,365 @@
       ]
     },
     {
+      "id": "GHSA-4cm8-xpfv-jv6f",
+      "description": "ZeptoClaw: Email Sender Spoofing to bypass Header-Only From Allowlist Validation",
+      "severity": "MEDIUM",
+      "cvss": 6.5,
+      "cwes": [
+        "CWE-306",
+        "CWE-345"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T16:38:22Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit introduced the entire email channel, including `EmailConfig.allowed_senders`, `is_sender_allowed()`, and the `process_unseen()` logic that parses `from` from the inbound email's `From` header (`parsed.from()...address()`), checks that header value against the allowlist, and then uses the same `from` as the inbound sender/chat identity. The later fix `bf004a20` only adds documentation and runtime/config warnings that `allowed_senders` trusts the parsed `From` header, so the flawed trust model was present from the feature's first implementation. Pickaxe on `allowed_senders` and `InboundMessage::new(\"email\", &from, &from, &content)` also traces those vulnerable patterns back to this commit.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
+          "author": "qhkmdev90",
+          "date": "2026-02-14T10:37:14+08:00",
+          "message": "feat: add hooks system, deploy templates, and accumulated features",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/channels/webhook.rs",
+          "blame_confidence": 0.27,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `WebhookChannel` implementation, including the initial data structure that parsed and trusted the `sender` and `chat_id` directly from the incoming JSON payload. This established the vulnerable pattern by design, as the initial implementation lacked any mechanism to validate these fields against server-side configuration.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Improper Authentication / Insufficient Verification of Data Authenticity",
+            "vuln_description": "The webhook channel trusted user-supplied identity fields without proper validation, allowing attackers to spoof identities by passing untrusted payload data against the allowlist.",
+            "vulnerable_pattern": "Relying on caller-supplied identity fields in webhook payloads without verifying their authenticity or validating them against a trusted, server-side configuration.",
+            "causal_chain": "The blamed commit created the initial `WebhookChannel` code and associated `Deserialize` logic that automatically mapped the `sender` and `chat_id` fields from the untrusted JSON payload into the `InboundMessage` structure, creating the trust vulnerability from the outset."
+          }
+        },
+        {
+          "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+          "author": "qhkmdev90",
+          "date": "2026-02-22T16:09:36+08:00",
+          "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/channels/email_channel.rs",
+          "blame_confidence": 0.27,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The vulnerability is related to path traversal and symlink/hardlink race conditions during file I/O. The blamed commit (f972f8617445) introduces the EmailChannel module configuration and logic, which deals with network protocols (IMAP/SMTP), not local file path handling or boundary validation. The fix commit (bf004a20d368) merely adds documentation warnings about sender authentication, which is unrelated to the file system security issues described in the CVE.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path traversal/Symlink race condition",
+            "vuln_description": "The application fails to properly validate file paths against boundaries, allowing symlink or hardlink attacks (TOCTOU) to access unauthorized files.",
+            "vulnerable_pattern": "Insufficient path canonicalization or validation before file I/O operations.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the entire email channel, including `EmailConfig.allowed_senders`, `is_sender_allowed()`, and the `process_unseen()` logic that parses `from` from the inbound email's `From` header (`parsed.from()...address()`), checks that header value against the allowlist, and then uses the same `from` as the inbound sender/chat identity. The later fix `bf004a20` only adds documentation and runtime/config warnings that `allowed_senders` trusts the parsed `From` header, so the flawed trust model was present from the feature's first implementation. Pickaxe on `allowed_senders` and `InboundMessage::new(\"email\", &from, &from, &content)` also traces those vulnerable patterns back to this commit.",
+                "confidence": 0.95,
+                "tool_calls_made": 72,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "b12a489c3a577fee6d0f7acff68f8ca4ebff8a5d",
+              "author_name": "qhkmdev90",
+              "message": "fix(retry): add auth/context-window/model-not-found as non-retryable",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3e26899399e73251382f6196ed823c743ae292ea",
+              "author_name": "qhkmdev90",
+              "message": "fix(retry): fix dead code, case-sensitivity, and false-positive patterns",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5ee6f716c5bcdbee59c35e5b769c856a0cb5d00d",
+              "author_name": "qhkmdev90",
+              "message": "feat(tools): add http_request tool with domain allowlist and SSRF protection",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7b0c5133413f2143124373d5b5a0ecd8023c8ca7",
+              "author_name": "qhkmdev90",
+              "message": "fix(tools/http_request): pin DNS address, cap redirects, fix method fallback",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
+              "author_name": "qhkmdev90",
+              "message": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "051d651036465a8353beaa02de1b647e287f17ac",
+              "author_name": "qhkmdev90",
+              "message": "fix(tools/pdf_read): char-safe truncation, remove as_path round-trip",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f4b4a891646e777214683afbc6561bf1ec4e69bc",
+              "author_name": "qhkmdev90",
+              "message": "feat(providers): add native Gemini provider with OAuth and thinking model support",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "27f348ca951a49b2dcd43bddeb8c772c5b1e9032",
+              "author_name": "qhkmdev90",
+              "message": "fix(providers/gemini): route API-key users through native provider, validate token expiry",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e2c2100a307cd7b40ef907e1df68f67d574d2b1d",
+              "author_name": "qhkmdev90",
+              "message": "fix(providers/gemini): use selection.model, add Debug with redaction, fix dead from_config",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9dd9dc22c18fababd757b209d93107e9a0786c85",
+              "author_name": "qhkmdev90",
+              "message": "feat(channels): add Lark/Feishu channel (zeroclaw2 adoption)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d516ffafd30609e69adad53f77c86cb7da79b108",
+              "author_name": "qhkmdev90",
+              "message": "fix(channels/lark): add emoji reaction ack per spec",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "41869fdb1c69ef4f69856062ccfa048598882a8c",
+              "author_name": "qhkmdev90",
+              "message": "fix(channels/lark): correct doubled /open-apis in reaction URL",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c3ec05f7ed5dc812dd4becf864f156ed2879585a",
+              "author_name": "qhkmdev90",
+              "message": "fix(channels/lark): add request timeouts, fix strip_at off-by-one, deduplicate token fetch",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+              "author_name": "qhkmdev90",
+              "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ae045fbeeba8f86fa8bf481cb704eb7feb5fc1c1",
+              "author_name": "qhkmdev90",
+              "message": "fix(channels/email): async SMTP, redact password in debug, fix ordering/dedup/enabled",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "34a95c839e23e3e8de57a8c3365347ead947f6ed",
+              "author_name": "qhkmdev90",
+              "message": "style: run cargo fmt to fix CI formatting",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "51bc07a02484ddfd2ec9c7f382dc43f829a9df86"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a27236766a07dfcfb278877d075820ba2f91df9a",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ec2743309478a52339d627a21849637a5836bb3f",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-4cm8-xpfv-jv6f",
+        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
+      ]
+    },
+    {
       "id": "GHSA-5wp8-q9mx-8jx8",
       "description": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
       "severity": "CRITICAL",
@@ -1813,9 +2172,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "Pre-fix blame on src/security/shell.rs lines 130-135 points to this commit for the exact regexes `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. The fix replaces those literals with broader patterns that allow intervening or combined flags, because the original forms were bypassable by inputs like `python3 -P -c` and `python3 -Bc`. This commit therefore introduced the too-narrow argument-matching logic fixed by GHSA-5wp8.",
+                "reasoning": "This commit added the exact inline-code blocklist regexes that the fix widens: `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. Those patterns only matched when `-c`/`-e` immediately followed the executable, so extra or combined flags like `python3 -P -c` or `python3 -Bc` bypassed the blocklist. The fix directly replaces these strings, so this commit is the origin of that argument-injection bypass vector.",
                 "confidence": 0.95,
-                "tool_calls_made": 51,
+                "tool_calls_made": 36,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -1859,9 +2218,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced `ShellAllowlistMode` and the exact allowlist check `if self.allowlist_mode != ShellAllowlistMode::Off && !self.allowlist.is_empty()`, blamed on pre-fix lines 317-340 in src/security/shell.rs. That design only validated the first token, so chained commands like `git status; python -c ...` bypassed the allowlist, and the `!self.allowlist.is_empty()` guard made Strict+empty behave like Off. The fix directly rewrites this logic and even flips the commit's original test that asserted empty Strict should allow everything.",
+                "reasoning": "This commit introduced the allowlist feature and the vulnerable logic `if self.allowlist_mode != Off && !self.allowlist.is_empty()` plus a first-token-only check using `split_whitespace().next()`. That design lets a command like `git status; <second command>` pass strict allowlisting if the first token is allowlisted, and it makes an empty strict allowlist silently behave like Off. The screening hypothesis was directionally right that this commit introduced the allowlist flaw, but wrong to attribute the python/perl/ruby/node regexes to it; those came later in `d3480ca...`.",
                 "confidence": 0.95,
-                "tool_calls_made": 51,
+                "tool_calls_made": 36,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -1929,14 +2288,14 @@
               "author_name": "qhkmdev90",
               "message": "feat: add BubblewrapRuntime (Linux bwrap OCI sandbox)",
               "ai_signals": [],
-              "touched_blamed_file": null
+              "touched_blamed_file": false
             },
             {
               "sha": "b4e53371343eb8b9a529b98ec0e2b23f447e3388",
               "author_name": "qhkmdev90",
               "message": "fix: declare bubblewrap module in runtime/mod.rs",
               "ai_signals": [],
-              "touched_blamed_file": null
+              "touched_blamed_file": false
             },
             {
               "sha": "182b7c83ebb8053651a743736af29cf3ecaf7209",
@@ -2032,7 +2391,7 @@
           "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
-            "confidence": 0.7,
+            "confidence": 0.95,
             "models": [
               "gpt-5.4"
             ],
@@ -2040,9 +2399,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "The initial introduction of `ShellSecurityConfig` already blocked sensitive paths via raw substring matching: `DEFAULT_BLOCKED_PATTERNS` contained `/etc/passwd`, `/etc/shadow`, and SSH path literals, and `validate_command()` used `command_lower.contains(&pattern_lower)`. That means the wildcard/glob bypass existed from the first version of shell command validation. Commit 7a2 later reimplemented the module with the same flawed design, so 91f6 is an earlier introducer of the same vulnerability class.",
-                "confidence": 0.7,
-                "tool_calls_made": 51,
+                "reasoning": "This is the earliest origin of the wildcard-bypass design. It created `ShellSecurityConfig`, added sensitive path literals such as `/etc/passwd` and `/etc/shadow`, and checked them only with plain substring matching of the full command. A globbed filename like `/etc/pass[w]d` would not contain the literal string and therefore evaded blocking from the very first implementation; `7a2db...` later reimplemented the same flaw.",
+                "confidence": 0.95,
+                "tool_calls_made": 36,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -2824,10 +3183,10 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This later release rewrote the `/get-patch` block into the exact structure present immediately before the fix: `db.get(SELECT id, token_used_at ...)`, then `if (row.token_used_at)`, then a separate `db.run(UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ?)`. Pre-fix blame attributes most lines in the fixed hunk to `5e5a80b5`, showing that this commit reimplemented/preserved the racy logic in the shipped code. Under the stated criteria, that makes it a valid bug-introducing commit as well.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
+      "how_introduced": "The commit implemented the vulnerable check-then-act pattern where the application first queried the database to check if a token was used, and only afterwards marked it as used, creating a TOCTOU (Time-of-Check to Time-of-Use) race condition.",
+      "root_cause": "The /get-patch endpoint lacked proper synchronization, allowing a purchase token to be reused multiple times through concurrent requests.",
+      "vuln_type": "Race condition / Replay attack",
+      "vulnerable_pattern": "Lack of atomicity or state verification when processing purchase tokens in the /get-patch endpoint.",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -2867,9 +3226,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit explicitly added `token_used_at` replay protection and changed `/get-patch` to first `SELECT` the purchase, check `row.token_used_at`, and only afterward `UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP`. That split check-then-act flow is exactly the race window fixed by `fdf67a6`, which replaces it with a single conditional `UPDATE ... AND token_used_at IS NULL`. Even though the commit intended to improve security, it introduced the vulnerable non-atomic design.",
+                "reasoning": "57b76343 explicitly added the anti-replay mechanism: a new `token_used_at` column, an `if (row.token_used_at)` check in `/get-patch`, and a separate `UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ?` after the SELECT/read path. That is the exact non-atomic check-then-act pattern that fdf67a6 replaces with a single conditional UPDATE (`... AND token_used_at IS NULL`). So this commit introduced the race-condition vulnerability as fixed.",
                 "confidence": 0.95,
-                "tool_calls_made": 28,
+                "tool_calls_made": 35,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -2982,6 +3341,114 @@
         "https://github.com/openclaw/openclaw/commit/c821099157a9767d4df208c6b12f214946507871",
         "https://github.com/openclaw/openclaw/commit/cdb00fe2428000e7a08f9b7848784a0049176705",
         "https://github.com/openclaw/openclaw/commit/ec232a9e2dff60f0e3d7e827a7c868db5254473f"
+      ]
+    },
+    {
+      "id": "GHSA-wccx-j62j-r448",
+      "description": "Fickling has `always_check_safety()` bypass: pickle.loads and _pickle.loads remain unhooked",
+      "severity": "CRITICAL",
+      "cvss": 9.5,
+      "cwes": [
+        "CWE-693"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-04T21:30:16Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit implemented `run_hook` with incomplete coverage by only patching `pickle.load`, leaving `pickle.loads` and `_pickle.loads` exposed and unmonitored.",
+      "root_cause": "The library failed to intercept key entry points (pickle.loads and _pickle.loads) in the pickle module, allowing attackers to bypass safety checks by calling these unhooked functions directly.",
+      "vuln_type": "insecure deserialization (sandbox bypass)",
+      "vulnerable_pattern": "Missing hooks or wrappers around standard library pickle deserialization functions (pickle.loads, _pickle.loads), allowing execution of unverified pickle data.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "f1fc0c1bea213611155d709761398713659e1824",
+          "author": "Lucas Bourtoule",
+          "date": "2025-11-26T12:06:47+01:00",
+          "message": "Fix PyTorch v1.3+ hook bypass by hooking pickle.Unpickler class",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/hook.py",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "8c24c6edabceab156cfd41f4d70b650e1cdad1f7",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `run_hook` function but only included an instruction to hook `pickle.load`. It neglected to hook `pickle.loads` and `_pickle.loads` within this specific function, directly creating the gap that allowed attackers to bypass the security wrapper.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "insecure deserialization (sandbox bypass)",
+            "vuln_description": "The library failed to intercept key entry points (pickle.loads and _pickle.loads) in the pickle module, allowing attackers to bypass safety checks by calling these unhooked functions directly.",
+            "vulnerable_pattern": "Missing hooks or wrappers around standard library pickle deserialization functions (pickle.loads, _pickle.loads), allowing execution of unverified pickle data.",
+            "causal_chain": "The blamed commit implemented `run_hook` with incomplete coverage by only patching `pickle.load`, leaving `pickle.loads` and `_pickle.loads` exposed and unmonitored."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit rewrote `run_hook()` to provide broader 'safe versions' of pickle deserialization by adding `pickle.Unpickler`/`_pickle.Unpickler` hooks, but it still left `pickle.loads`, `_pickle.load`, and `_pickle.loads` unhooked. The fix commit patches this exact reworked function by adding those missing hook assignments. The screening hypothesis was incomplete: 8714627 did not originally introduce `pickle.load = loader.load` (that came earlier), but it did reimplement/expand the vulnerable hook logic without closing the remaining bypasses.",
+                "confidence": 0.95,
+                "tool_calls_made": 68,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "f1fc0c1bea213611155d709761398713659e1824",
+              "author_name": "Lucas Bourtoule",
+              "message": "Fix PyTorch v1.3+ hook bypass by hooking pickle.Unpickler class",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "1c0535a5d59bb96c5370677e6f8961909c5958aa",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Fix Ruff linting reports",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "8714627126fd89b5306b55fbb7aa7efd01e45302"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "8c24c6edabceab156cfd41f4d70b650e1cdad1f7",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-wccx-j62j-r448",
+        "https://github.com/trailofbits/fickling/commit/8c24c6edabceab156cfd41f4d70b650e1cdad1f7",
+        "https://github.com/trailofbits/fickling/releases/tag/v0.1.9"
       ]
     },
     {
@@ -3153,7 +3620,7 @@
     },
     {
       "id": "CVE-2025-59829",
-      "description": "Claude Code: Permission deny bypass is possible through symlink",
+      "description": "Claude Code permission deny bypass through symlink",
       "severity": "LOW",
       "cvss": 2.3,
       "cwes": [
@@ -3212,9 +3679,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit created the hookify plugin and authored the exact vulnerable logic later fixed in both `plugins/hookify/core/rule_engine.py` and `plugins/hookify/hooks/pretooluse.py`. In the pre-fix state, `_extract_field()` returned the raw `file_path` from `tool_input` with no canonicalization, so deny/block rules were evaluated against the symlink path rather than the real target. File history, blame on the fix parent, and pickaxe searches all show these lines originated in 59372c09 and were untouched until the CVE fix.",
+                "reasoning": "The same commit also introduced `pretooluse.py` with `elif tool_name in ['Edit', 'Write', 'MultiEdit']:` so file-event rules were not run for `Read`. The fix directly modifies that line to add `Read`, and blame/pickaxe both attribute the original exclusion to 59372c09. This omission is an exploit-enabling design flaw for the CVE path: read-based deny rules were never evaluated for the symlinked read case the fix describes.",
                 "confidence": 0.95,
-                "tool_calls_made": 47,
+                "tool_calls_made": 55,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -3231,7 +3698,6 @@
         }
       ],
       "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/59xxx/CVE-2025-59829.json",
         "https://github.com/anthropics/claude-code/security/advisories/GHSA-66m2-gx93-v996",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-59829"
       ]
@@ -5424,6 +5890,625 @@
       ]
     },
     {
+      "id": "GHSA-3j63-5h8p-gf7c",
+      "description": "x402 SDK vulnerable in outdated versions in resource servers for builders",
+      "severity": "HIGH",
+      "cvss": 0.0,
+      "cwes": [],
+      "ecosystem": "",
+      "published": "2025-08-20T20:51:55Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit implemented the 'sign-in-with-x' extension and the `createSIWxSettleHook` function, which failed to validate protocol versions or handle the 'resource' field as optional. This lack of validation created the missing version check vulnerability that the subsequent fix patch had to address.",
+      "root_cause": "The facilitator verify/settle requests lacked a version parameter, potentially allowing processing of requests using incompatible or deprecated protocol versions that could lead to logic bypasses or interoperability vulnerabilities.",
+      "vuln_type": "Missing version validation / Request forgery protection",
+      "vulnerable_pattern": "Missing 'x402Version' field in facilitator request body definitions",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "8c15e97cb72caea7fe85e966c0f415b61afe4032",
+          "author": "sragss",
+          "date": "2026-02-02T18:39:02-05:00",
+          "message": "refactor(extensions/siwx): Migrate to supportedChains[] architecture",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "typescript/packages/extensions/src/sign-in-with-x/hooks.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "1ab1c86f016161f27593bf17c9a2333c2201ab10",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the 'sign-in-with-x' extension logic, including the specific `createSIWxSettleHook` implementation where the vulnerability resided. By adding this new feature without implementing the necessary version validation or robust resource handling, it established the vulnerable pattern that was later addressed in the fix commit.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Missing version validation / Request forgery protection",
+            "vuln_description": "The facilitator verify/settle requests lacked a version parameter, potentially allowing processing of requests using incompatible or deprecated protocol versions that could lead to logic bypasses or interoperability vulnerabilities.",
+            "vulnerable_pattern": "Missing 'x402Version' field in facilitator request body definitions",
+            "causal_chain": "The blamed commit implemented the 'sign-in-with-x' extension and the `createSIWxSettleHook` function, which failed to validate protocol versions or handle the 'resource' field as optional. This lack of validation created the missing version check vulnerability that the subsequent fix patch had to address."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix changes `createSIWxSettleHook` from requiring `paymentPayload.resource` to allowing it to be optional, and adds an early return before `new URL(...)` when `resource` is absent. Blame on the pre-fix file attributes both the inline type `paymentPayload: { payload: unknown; resource: { url: string } }` and the crashing dereference `ctx.paymentPayload.resource.url` to fe429949. Pickaxe searches for those exact strings show they were introduced in fe429949 and only removed in the fix. The screening hypothesis is only partially right: this commit did introduce the bug, but the evidence supports a missing optional-resource/null check, not any missing protocol-version validation.",
+                "confidence": 0.95,
+                "tool_calls_made": 49,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "bf03da70ec2f750ce6721f7f8dee41a8d505073d",
+              "author_name": "sragss",
+              "message": "feat(extensions): add Sign-In-With-X (SIWX) extension",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "88bcdb6bc58e4c1d51d2589468a109d77ec3acf1",
+              "author_name": "sragss",
+              "message": "simplify; remove future looking code",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "64f2af257172bd1b91aec5c4037841dc8fba68ee",
+              "author_name": "sragss",
+              "message": "add integration test",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "792f1b1127a10135dbe8e46edf8d0004eb90738e",
+              "author_name": "sragss",
+              "message": "address own comments",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8341789f50221d77150f2b4f1a187b5407a4adf1",
+              "author_name": "sragss",
+              "message": "update readme, rm TODO.md",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "11e73e171b4d20989075ffe050f4f1f77d1cd985",
+              "author_name": "sragss",
+              "message": "add SIWS",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f3d8ab912f1dae7ce5fad5edb7beff0b3cd3fb0a",
+              "author_name": "sragss",
+              "message": "cleanup",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6123e9c26f32e2ceca4a9a903159fde5bb553b2b",
+              "author_name": "sragss",
+              "message": "further cleanup",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "81b77a1026584c964050d39cf4690b1e567d6f76",
+              "author_name": "sragss",
+              "message": "split code path btwn evm and solana",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e42ed9cf63e1aac75e3ae6bcede604a098441da0",
+              "author_name": "sragss",
+              "message": "mv solana constants",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "977e73f8f848385235e291fdb6671ef31634a76e",
+              "author_name": "sragss",
+              "message": "fmt",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e4f7e9c84475012d55ff2254c7a65caae6e8ce4e",
+              "author_name": "sragss",
+              "message": "lint",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "dfb9464be5ba9cf1fd052ba7641e117a9a22c2d7",
+              "author_name": "sragss",
+              "message": "rm .claude",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "13559004e3e57d6553254a664f2a2da508ad0be0",
+              "author_name": "sragss",
+              "message": "smart wallet verifier",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1348f36427aa6ec46a15cd51cfaf583cd318a47b",
+              "author_name": "sragss",
+              "message": "add domain param; support outside EVM verifier for contract wallets; Solana CAIP-2 compliant; rm clockskew slop",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b9812f12c8bb25d10961be8f7d8ea158fc09955e",
+              "author_name": "sragss",
+              "message": "fix missing type field; update lock file",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "159b6fce794431347d6fcfe7c3c0a61b5a430559",
+              "author_name": "sragss",
+              "message": "Add Sign-In-With-X extension spec",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "56cb90562477d7740b2389aa281cb75cfd7019b1",
+              "author_name": "sragss",
+              "message": "server & client siwx examples",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "dc6b2d3391dd2090fe1d6d1f387ffebd7909bef6",
+              "author_name": "sragss",
+              "message": "chore: update pnpm-lock.yaml for sign-in-with-x examples",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3a05c20fb3ccad7edc7b8212af111747cdd7e38f",
+              "author_name": "sragss",
+              "message": "Add wrapFetchWithSIWx helper to @x402/extensions",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "03199d960398b739255966cb21ee9f7b7dec87ae",
+              "author_name": "sragss",
+              "message": "feat(extensions/siwx): Add lifecycle hooks for simplified DevX",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7e0379b351647e0d0899f5a20c5472c9a904990a",
+              "author_name": "sragss",
+              "message": "fix(extensions/siwx): Improve hooks robustness and add tests",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ad3a6cb0ae20a1be1a9a9d4ebd6c6b3006219cdd",
+              "author_name": "sragss",
+              "message": "fix(extensions/siwx): Only record payment if settlement succeeded",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "da4db9e2186070f72f1b8ba4594fe3723216526b",
+              "author_name": "sragss",
+              "message": "style: Fix JSDoc and lint errors",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "bb2472ccdf0d90112fe8f78116560940b4521c63",
+              "author_name": "sragss",
+              "message": "style: Fix formatting and JSDoc in examples",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8c15e97cb72caea7fe85e966c0f415b61afe4032",
+              "author_name": "sragss",
+              "message": "refactor(extensions/siwx): Migrate to supportedChains[] architecture",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "9a0a600eb78e9fb0d718480c847d8aa5e934d71d",
+              "author_name": "sragss",
+              "message": "fix(examples): Add getChainId() to signer for proper SIWX chain matching",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6f548b7badbd2bf72e38f240b1a8a071e283974b",
+              "author_name": "sragss",
+              "message": "refactor(extensions/siwx): Extract duplicated getSignerChainId helper",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "215c477087f34a1e015899c3be9958a485e5f946",
+              "author_name": "sragss",
+              "message": "feat(examples/siwx): Add payment header logging to client",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "26b9c2e3f9741e4294df0e74e42ce588a4ff1ec6",
+              "author_name": "sragss",
+              "message": "fix(examples/siwx): Improve payment flow logging",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "818a93d12109392bef73e44a2a2bab5f6e61220d",
+              "author_name": "sragss",
+              "message": "fix(examples/siwx): Add 300ms delay to avoid facilitator race condition",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "415c13c62a82f1c014a1527513ebb9590319a162",
+              "author_name": "sragss",
+              "message": "refactor(extensions/siwx): Use payment network instead of signer chain detection",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "4c79c3bd8265a64d4538c7c7ec1b44127499b1c2",
+              "author_name": "sragss",
+              "message": "refactor(extensions/siwx): Auto-derive network/domain/uri from context",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "52cf4c3c53cc20cdedf142612b5ab30589e8174d",
+              "author_name": "sragss",
+              "message": "refactor(extensions/siwx): Remove time-based fields from declareSIWxExtension",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f7eb5a857e22dde5b4526d57005c7d2400643377",
+              "author_name": "sragss",
+              "message": "docs(extensions/siwx): Add smart wallet docs, align signature schemes",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "239d395e51f517ee1123076f4a6c870fb933bf4d",
+              "author_name": "sragss",
+              "message": "chore: regenerate pnpm lockfile",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7cd74f12872da79d7341de3fff49ee152a36a23e",
+              "author_name": "sragss",
+              "message": "fix(examples/siwx): Add missing JSDoc to onEvent function",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a2812995876b80c429fc0a17b30dc227f5ab4aad",
+              "author_name": "sragss",
+              "message": "fix(extensions/siwx): Use result.payer instead of extracting from payload",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "145c163966a7779ad9b4b21cb08f76abe552d468",
+              "author_name": "sragss",
+              "message": "feat(extensions/siwx): Add optional nonce tracking to prevent replay attacks",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b5dcf99f18720fbb453d8109d1ac3b40b462e127",
+              "author_name": "sragss",
+              "message": "chore: Add changeset for SIWX extension",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "646031b86e7484299e865cf6cf0870ab6830316c",
+              "author_name": "sragss",
+              "message": "fix(examples/siwx): Add missing JSDoc params for onEvent function",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bd161bed3ed9842aea3145f5824c5b4db4f8617c",
+              "author_name": "Sam Ragsdale",
+              "message": "Merge pull request #8 from sragss/siwx-solana-fix",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "63445e9dc2ddcbc7683a9fc5bdf3d4cf399aad9e",
+              "author_name": "sragss",
+              "message": "fix(extensions/siwx): Require both nonce methods or neither",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "fe42994900a445155be7a697de060c5a34f36a2d"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "1ab1c86f016161f27593bf17c9a2333c2201ab10",
+          "repo_url": "https://github.com/coinbase/x402",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://github.com/coinbase/x402/security/advisories/GHSA-3j63-5h8p-gf7c"
+      ]
+    },
+    {
+      "id": "GHSA-83pf-v6qq-pwmr",
+      "description": "Fickling has a detection bypass via stdlib network-protocol constructors",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-184"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-20T18:24:46Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit added the `UNSAFE_IMPORTS` block to `fickling/fickle.py`, defining which modules were considered dangerous. Because it failed to include several standard library network-protocol modules (such as `smtplib` and `imaplib`) in this newly created list, it created the incomplete blacklist that allowed the security bypass.",
+      "root_cause": "The security tool failed to flag unsafe network-related modules from the Python standard library, allowing potentially malicious code to be executed by bypassing import checks.",
+      "vuln_type": "Incomplete blacklist / Bypass",
+      "vulnerable_pattern": "An allowlist or blacklist (UNSAFE_IMPORTS) that was missing critical network-protocol modules (smtplib, imaplib, etc.)",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+          "author": "Dan Guido",
+          "date": "2026-01-22T18:14:12-05:00",
+          "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/fickle.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the `UNSAFE_IMPORTS` blacklist containing the initial set of network modules (like `urllib`, `requests`, `httplib`). By explicitly defining this list at this point in time, the commit established the incomplete blacklist policy that failed to account for other standard library network-protocol modules, thereby directly creating the omission vulnerability that was later patched.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Incomplete blacklist / Bypass",
+            "vuln_description": "The security tool failed to flag unsafe network-related modules from the Python standard library, allowing potentially malicious code to be executed by bypassing import checks.",
+            "vulnerable_pattern": "An allowlist or blacklist (UNSAFE_IMPORTS) that was missing critical network-protocol modules (smtplib, imaplib, etc.)",
+            "causal_chain": "The blamed commit added the `UNSAFE_IMPORTS` block to `fickling/fickle.py`, defining which modules were considered dangerous. Because it failed to include several standard library network-protocol modules (such as `smtplib` and `imaplib`) in this newly created list, it created the incomplete blacklist that allowed the security bypass."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit did not create `UNSAFE_IMPORTS` from scratch, but it did expand it with the exact `# Network and web modules` subsection that the fix later amended. Its diff adds `aiohttp`, `httplib`, `http`, `ssl`, `requests`, `urllib`, and `urllib2`, yet omits the later-fixed stdlib protocol modules (`smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, `nntplib`). So the screening hypothesis is only partly right: 19e828d did not introduce the block itself, but it did author the incomplete network blacklist that this advisory fixes.",
+                "confidence": 0.95,
+                "tool_calls_made": 58,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+              "author_name": "Dan Guido",
+              "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "421182286c4034279298b7b1608fde8d0f95ec31",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove CVE/GHSA references from unsafe imports comments",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7dba01a213623c22f6460bc914ba41f5d8556f3b",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove non-ML modules from UnsafeImportsML.UNSAFE_MODULES",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8dd78e7753ea2048d5ee312f9ae3404f91c08ce3",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Update bypass tests with real PickleScan advisory payloads",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8740de0c4eca73799bb23e86a5d287165bd5a09a",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Fix STACK_GLOBAL validation to allow dotted attribute names",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "f7598584dc2527b273eb3f4e2b9296e6a1c01430",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove duplicate entries from UnsafeImportsML.UNSAFE_IMPORTS",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8bf4ae3fa663bf18152ff099e17f2e93fff00bf1",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Merge branch 'master' into integrate-picklescan-bypasses",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "19e828d26b248a4a39fcee2643306a6cd78dbb76"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-83pf-v6qq-pwmr",
+        "https://github.com/trailofbits/fickling/pull/233",
+        "https://github.com/trailofbits/fickling/commit/6d20564d23acf14b42ec883908aed159be7b9ade"
+      ]
+    },
+    {
       "id": "GHSA-c6hr-w26q-c636",
       "description": "OpenClaw has ReDoS and regex injection via unescaped Feishu mention metadata in RegExp construction",
       "severity": "LOW",
@@ -5597,6 +6682,135 @@
       ]
     },
     {
+      "id": "GHSA-r48f-3986-4f9c",
+      "description": "fickling modules linecache, difflib and gc are missing from the unsafe modules blocklist",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-184"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:57:40Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit established a comprehensive blocklist for dangerous modules but failed to include 'gc', 'linecache', and 'difflib', thereby creating the security gap that the fix later addressed by appending these specific modules.",
+      "root_cause": "The library failed to block potentially unsafe modules (linecache, difflib, gc) during the pickle deserialization process, allowing arbitrary code execution or gadget chains.",
+      "vuln_type": "Insecure Deserialization / Improper Input Validation",
+      "vulnerable_pattern": "An incomplete allowlist/blocklist of modules in `UNSAFE_IMPORTS` allowed dangerous modules to be imported/accessed during unpickling.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "3084847c930298b547d575faaa228cc8b2daa930",
+          "author": "Dan Guido",
+          "date": "2026-02-19T16:16:17-07:00",
+          "message": "Expand dangerous imports blocklist for better coverage",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "fickling/fickle.py",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit refactored and significantly expanded the `UNSAFE_IMPORTS` blocklist, effectively establishing the current allowlist/blocklist structure. By explicitly defining which modules were considered dangerous at that time, it created the omission of 'linecache', 'difflib', and 'gc', which were not included in this overhaul and remained unblocked until the fix.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Insecure Deserialization / Improper Input Validation",
+            "vuln_description": "The library failed to block potentially unsafe modules (linecache, difflib, gc) during the pickle deserialization process, allowing arbitrary code execution or gadget chains.",
+            "vulnerable_pattern": "An incomplete allowlist/blocklist of modules in `UNSAFE_IMPORTS` allowed dangerous modules to be imported/accessed during unpickling.",
+            "causal_chain": "The blamed commit established a comprehensive blocklist for dangerous modules but failed to include 'gc', 'linecache', and 'difflib', thereby creating the security gap that the fix later addressed by appending these specific modules."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit rewrote and massively expanded `UNSAFE_IMPORTS` into a broad categorized blocklist 'for better coverage'. In doing so, it authored the current-style vulnerable list while still omitting `gc`, `linecache`, and `difflib`; the fix later appends those exact modules into this rewritten list. So the screening hypothesis is substantially correct, although this is a later reimplementation rather than the earliest origin of the flaw.",
+                "confidence": 0.95,
+                "tool_calls_made": 70,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "3084847c930298b547d575faaa228cc8b2daa930",
+              "author_name": "Dan Guido",
+              "message": "Expand dangerous imports blocklist for better coverage",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "d508736107f5855817e234345aa2ceb1c98f50ed",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Remove redundant dotted entries from UNSAFE_IMPORTS",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "6a7656a684a71b58d64677a36a148d53316c911b",
+              "author_name": "Thomas Chauchefoin",
+              "message": "Move numpy/torch dotted imports to UnsafeImportsML.UNSAFE_MODULES",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "93cb67974f3e826a2433339bab92f94b138de645"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-r48f-3986-4f9c",
+        "https://github.com/trailofbits/fickling/commit/7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+        "https://github.com/trailofbits/fickling/releases/tag/v0.1.10"
+      ]
+    },
+    {
       "id": "GHSA-vvgp-4c28-m3jm",
       "description": "OpenClaw has a Trusted-proxy Control UI pairing bypass which allows unpaired node sessions",
       "severity": "MEDIUM",
@@ -5765,9 +6979,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire deduplicate interceptor and the original DeduplicationHandler implementation. In the new handler, `onResponseData()` unconditionally appends every chunk to `this.#chunks`, and `#notifyWaitingHandlers()` later does `const body = Buffer.concat(this.#chunks)` before replaying the full buffered response to waiters; `lib/interceptor/deduplicate.js` also always attaches duplicate requests via `pendingHandler.addWaitingHandler(handler)`. The fixing commit 5890c7b7 specifically replaces that design with streaming delivery, a `maxBufferSize` cap, and a fallback to dispatch independently once body streaming has started, so b902551e is the commit that introduced the vulnerable unbounded-buffering design.",
+                "reasoning": "The relevant fix is 5890c7b7076894d00402f0c23c0fe72e59c72ff4, which removes the original full-response buffering design from the deduplicate feature. In b902551e2a154fac2b3923d948c074a5640c01b0, `lib/handler/deduplication-handler.js` was created with `#chunks = []`, `this.#chunks.push(Buffer.from(chunk))`, and `const body = Buffer.concat(this.#chunks)`, while `lib/interceptor/deduplicate.js` always wrapped the primary matching request in `new DeduplicationHandler(...)` and unconditionally attached later requests with `pendingHandler.addWaitingHandler(handler)`. Pickaxe searches for those exact strings trace them back to b902, and there was no earlier implementation to inherit from; this commit introduced the unbounded in-memory response buffering that the fix replaces with streaming plus bounded paused-handler buffering.",
                 "confidence": 0.95,
-                "tool_calls_made": 58,
+                "tool_calls_made": 48,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -7504,6 +8718,512 @@
         "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6",
         "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32231"
+      ]
+    },
+    {
+      "id": "CVE-2026-24762",
+      "description": "RustFS Logs Sensitive Credentials in Plaintext",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-03T16:16:14.057",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.63,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "This commit introduced the new `Credentials` type with `#[derive(Debug)]`, made `init_global_action_credentials` return `Result<(), Box<Credentials>>`, and changed `main.rs` to log `init_global_action_credentials failed: {e:?}`. Fix commit `2108c4ad...` directly reverses that design by masking `Credentials` debug output and replacing the boxed-credentials error type.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "576af7f40c027b330455bc4609ec709e642e689d",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-06-27T00:28:28+08:00",
+          "message": "Initial plan",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "crates/utils/src/notify/mod.rs",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "74759b6e99b528fd4d849601ecf5c63141cba8a1",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the functions `extract_req_params`, `extract_req_params_header`, and `extract_resp_elements`, which unconditionally copy all HTTP headers into a HashMap. This code pattern directly enables the logging of sensitive headers (like Authorization tokens) if the application later logs the output of these functions, which aligns with the root cause of the identified vulnerability.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "CWE-532: Insertion of Sensitive Information into Log File",
+            "vuln_description": "The application logs sensitive credentials in plaintext, likely due to improper logging configurations or debug statements that output sensitive objects or error structures containing credentials.",
+            "vulnerable_pattern": "Logging of objects or structs that contain sensitive fields (such as credentials) without sanitization or redaction during request handling.",
+            "causal_chain": "The blamed commit added utility functions that extract all HTTP headers into a Map without any filtering or redaction mechanism. When the application logic subsequently used these functions to prepare data for logging, it inadvertently included sensitive credential headers in the log output."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.7,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created `crates/utils/src/notify/mod.rs` with `extract_req_params` and `extract_req_params_header`, both of which copy every HTTP header into a `HashMap<String, String>` with no filtering or redaction. Later code paths used these helpers to populate audit/event data, so this is the origin of the unfiltered-header capture design described in the screening hypothesis.",
+                "confidence": 0.7,
+                "tool_calls_made": 145,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "576af7f40c027b330455bc4609ec709e642e689d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Initial plan",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "91c07128843d4cf7165785c02e16cc42e0a0e5b1",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "feat: implement console service separation from endpoint",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e86b6b36c09de76eb7cf6b1eed1cf8e0452cd2b0",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "feat: add console separation documentation and tests",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "46f0986031eabedb8710290d1b59d9fa150f5b47",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "feat: enhance console separation with configurable CORS and improved Docker support",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "19921fdc6439eec9d3c238dced545ce3acd5959e",
+              "author_name": "houseme",
+              "message": "Merge branch 'main' into copilot/fix-423",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fc1564d229f905a91a5b2637f0ec7d9db9f69768",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "feat: implement enhanced console separation with security hardening and monitoring",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ffd0900b181f752405b909215ffb38fd6bdb8826",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "refactor: implement console TLS following endpoint logic and improve configuration",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c1f5869e842e22cc26315935365f08a69f08f898",
+              "author_name": "houseme",
+              "message": "add tower-http feature \"timeout｜limit\"",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "73c83c7a5c5914e2f6d1df422d79f77ea34deb5f",
+              "author_name": "houseme",
+              "message": "add dependencies crates `axum-server`",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "443a3c46d73b348f175d989ef574c0c6fe0dbd5f",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "refactor: reconstruct console server with enhanced tower-http features and environment variables",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d3bd8a3a4e6f29dcd0b6c811591c10eea96a97f2",
+              "author_name": "houseme",
+              "message": "upgrade dep",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "adfb16a0ed6a52b8bad39c1e6af0ae4eeb9eb420",
+              "author_name": "houseme",
+              "message": "Merge branch 'main' of github.com:rustfs/rustfs into copilot/fix-423",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "541077d4778f6ed5119972d244fcb63ea79e5bce",
+              "author_name": "houseme",
+              "message": "improve code for dns and console port `:9001`",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6c861d37dbacbec7ed5cba567c17c89ae10639a3",
+              "author_name": "houseme",
+              "message": "Merge branch 'main' into copilot/fix-423",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7740a332649e4238b6bf02d8d1181cc496e1be5c",
+              "author_name": "houseme",
+              "message": "improve code",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f08f2019f73acf182baa2c6dd4f81315107eeb70",
+              "author_name": "houseme",
+              "message": "fix",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "168a30c321eb2cc0e8e324bf1a1d6177c27cbc15",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "docs: comprehensive improvement of console separation documentation and Docker deployment standards",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bebdbbb1a26399f1e8fd288b16078a6ee3c27f26",
+              "author_name": "houseme",
+              "message": "fmt",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "05753c2c9e841c9a150b3aedf77e068f859508d2",
+              "author_name": "houseme",
+              "message": "add logs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "69bfd7d28134482e7985947363e5553f4511d43e",
+              "author_name": "houseme",
+              "message": "improve code for Config handler",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d42a47c65d57b3be5996c78cd93b567bebb221a4",
+              "author_name": "houseme",
+              "message": "remove logs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "82286001cbfb591bd32d7770281252d2354a12d1",
+              "author_name": "houseme",
+              "message": "fix",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9f201fcc7c4319141a550eb1ed60838fead0c02f",
+              "author_name": "houseme",
+              "message": "Merge branch 'main' into copilot/fix-423",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "26f84a9696acdaa2e2a96a6127722a2c58dfff96"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "2ee81496b06f02b94c5e06f58a5beab592e60a91",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e377c7e7f9900da57757cc8d73b2ccdbc4496979",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2108c4ad2810418ba418ea67e75615fe6048ed46",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "16160b7b84f757392b173986188872f3a9cf412a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "1c085590cac220764d010615f933153ff941d444",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "022e3dfc21d9bcae45598859fbad735e24f6d978",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ab84da24ef4f2d66852b480a88da960799e94d42",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "26c0230e8fdc4a6ae6fa004ffe1a1f89d64b9400",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8edb1affc0af265064b2e220330b7bc861ae25d3",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "74759b6e99b528fd4d849601ecf5c63141cba8a1",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "db29c0cae284c70216cba391c3b9db3ec0c1ed50",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d251b9fb357e668b8537de350593e0c5b28427e5",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "173dad27d1ea5f98774aac2abe7e62085688287a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "461ba3aeba19d7ab740fbb7c64087a27107f6264",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "43bf8466334e716d05f003c493e18bb830c75fa9",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "51e8a4820f9f38433c9e2728a05c064f81e24d0d",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4890fb25c12b774b67afb2eba1bdc21da8c8034d",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "65de487eba3c9e2d57c2541087060fe08c30dc9a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e5284a85ed9ffa4ee83105d6ac318cf87fc5d34b",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "db5e72e475b6a86361f1f625224cf64ed4985a95",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/rustfs/rustfs/security/advisories/GHSA-r54g-49rx-98cr",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-24762"
       ]
     },
     {
@@ -10486,10 +12206,10 @@
       ],
       "confidence": 0.2565,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit created the Python EVM implementation, including the shared `utils.py`/`constants.py` layer that mixed v2 CAIP-2 handling with legacy v1 aliases and network maps, and the facilitator/client code that depended on those shared helpers. The later fixes `55a439...` and `1fccd53...` directly unwind those original choices by moving v1 constants into a separate namespace and by stopping facilitators from deriving chain/token context from shared network config helpers. Although the same SHA is also blamed on some unrelated Python bugfix lines, it genuinely introduced the security-relevant Python EVM design that was fixed.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
+      "how_introduced": "The blamed commit implemented the 'sign-in-with-x' extension and the `createSIWxSettleHook` function, which failed to validate protocol versions or handle the 'resource' field as optional. This lack of validation created the missing version check vulnerability that the subsequent fix patch had to address.",
+      "root_cause": "The facilitator verify/settle requests lacked a version parameter, potentially allowing processing of requests using incompatible or deprecated protocol versions that could lead to logic bypasses or interoperability vulnerabilities.",
+      "vuln_type": "Missing version validation / Request forgery protection",
+      "vulnerable_pattern": "Missing 'x402Version' field in facilitator request body definitions",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
@@ -10521,20 +12241,18 @@
           },
           "verification": {
             "verdict": "CONFIRMED",
-            "confidence": 0.7,
+            "confidence": 0.95,
             "models": [
-              "claude"
+              "gpt-5.4"
             ],
             "agent_verdicts": [
               {
-                "model": "claude",
+                "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "[conflict-resolver] The BIC commit fe42994 created hooks.ts with `resource: { url: string }` (non-optional) in createSIWxSettleHook, accessing ctx.paymentPayload.resource.url without a null check. Fix commit 1ab1c86 changed this to `resource?: { url: string }` with a null guard, because PaymentPayload.resource is optional per the v2 spec (section 5.2.2). Git pickaxe confirms fe42994 first introduced the `resource: { url: string }` pattern and 1ab1c86 removed it. The deep verifier correctly notes this is separate from the EVM chain context issue (55a4396/1fccd53), but the GHSA encompasses 20 fix commits addressing multiple security issues across the x402 SDK, including spec compliance. Fix 29fe09a makes PaymentPayload fields optional per v2 spec, and 1ab1c86 is the corresponding consumer-side fix in hooks.ts. The BIC wrote the exact vulnerable code that the fix changes.",
-                "confidence": 0.7,
-                "tool_calls_made": 0,
-                "steps_completed": [
-                  "conflict_resolution"
-                ],
+                "reasoning": "The actual fix for this advisory in TypeScript is 1ab1c86, which changes createSIWxSettleHook from blindly dereferencing ctx.paymentPayload.resource.url to treating resource as optional and returning early when it is missing. Pickaxe on the exact vulnerable string (\"ctx.paymentPayload.resource.url\") traces its first introduction to fe429949, and blame on the pre-fix file state attributes the vulnerable settle-hook lines to that same commit. The screening hypothesis's \"missing version validation\" part is not supported by the code history: neither 1ab1c86 nor later SIWX commits add any version check, so the confirmed issue introduced here is the unsafe required-resource assumption/null dereference.",
+                "confidence": 0.95,
+                "tool_calls_made": 88,
+                "steps_completed": [],
                 "evidence": []
               }
             ]
@@ -11201,6 +12919,1056 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/28xxx/CVE-2026-28509.json",
         "https://github.com/langbot-app/LangBot/security/advisories/GHSA-w8gq-g4pc-xh3h",
         "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
+      ]
+    },
+    {
+      "id": "OSV-2026-371",
+      "description": "Heap-buffer-overflow in tinyobj::tryParseDouble",
+      "severity": "HIGH",
+      "cvss": 0.0,
+      "cwes": [],
+      "ecosystem": "",
+      "published": "2026-03-10T11:17:16+09:00",
+      "ai_tools": [
+        "claude_code",
+        "github_copilot"
+      ],
+      "languages": [
+        "C/C++"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [
+        {
+          "sha": "5df014602503685c5244f74ef64644d872b62e59",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2026-03-07T00:51:40+09:00",
+          "message": "Add max_iter guards to parsing loops and mmap support for .obj/.mtl loading",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "blame_strategy": "osv_introduced",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced a significant rework of the parser implementation in tiny_obj_loader.h, including the introduction of new parsing logic that often lacks the rigorous bounds checking required for safe floating-point conversion, which is the root cause of the heap-buffer-overflow.",
+            "model": "osv+gemini-3.1-flash-lite-preview",
+            "vuln_type": "Heap-buffer-overflow",
+            "vuln_description": "The parser was susceptible to a heap-buffer-overflow during the conversion of ASCII strings to floating-point numbers due to unsafe parsing logic.",
+            "vulnerable_pattern": "unsafe floating point parsing implementation in tinyobj::tryParseDouble, likely lacking bounds checking or proper termination handling.",
+            "causal_chain": "The commit 5df014602503 refactored the parsing infrastructure in tiny_obj_loader.h and introduced a vulnerable implementation of tryParseDouble that did not correctly validate input lengths or boundaries before processing numeric strings, leading to the heap-buffer-overflow during float conversion."
+          },
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "claude"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude",
+                "verdict": "UNLIKELY",
+                "reasoning": "[conflict-resolver] The BIC commit f27721f only made a single-line change to tryParseDouble (tightening an overflow guard from '2147483647/10' to '(2147483647-9)/10') and added new sr_parseReal call sites that invoke the pre-existing tryParseDouble. The vulnerable exponent-parsing logic (heap-buffer-overflow in the end_not_reached/IS_DIGIT pattern) existed identically in the commit before f27721f (parent 8322e00). The fix commit (966edce) replaced the entire hand-written tryParseDouble with a fast_float-based implementation. f27721f did not author the vulnerable code; it only reused it from new call sites. The screening verdict incorrectly attributed the vulnerability to f27721f's refactoring.",
+                "confidence": 0.95,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "conflict_resolution"
+                ],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "5f9f7f6c41819fed57fff4f88ce542381bb822be",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Initial plan",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5df014602503685c5244f74ef64644d872b62e59",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Add max_iter guards to parsing loops and mmap support for .obj/.mtl loading",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "f2c657b41584040c82eba5cfa76eea66dcf58b94",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Rewrite parser from line-based to byte-stream-based with EOF guards",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "c57ed2cef9a91868e73fcebcf3cf226c7a4b73d1",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Rewrite parser to byte-stream based with StreamReader for bounds-checked parsing",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "70ba4b38cfe6c0a3a1f23ffa0da61d64de3a2612",
+              "author_name": "Syoyo Fujita",
+              "message": "Merge remote-tracking branch 'origin/release' into copilot/harden-obj-mtl-parsing",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "07ba3299e3372443578a24b0f99bbdac42ed47c7",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tiny_obj_loader.h",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "5ef0c485a5912eec08bd95eb38e2fc3ea0d40b10",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Integrate changes from release: Windows long paths, texcoord w-component, BOM in callback, test fixes",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "86edfe9a0497f495285e215ff966d8b58f58432d",
+              "author_name": "Syoyo Fujita",
+              "message": "Resolve merge conflicts between copilot/harden-obj-mtl-parsing and release",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "5b4f7003ff56fc84d25d7872967b516a5686ed36",
+              "author_name": "Syoyo Fujita",
+              "message": "Add clang-style parse error reporting with early return on failure",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "fbd2ed04dc7fefce69570ee58b2ce0050befb22f",
+              "author_name": "Syoyo Fujita",
+              "message": "Polish: hoist warning_context out of loop, fix no-op test",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "1fd9603461e620a9cb895c94b2060af9c0abdc3d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Co-authored-by: syoyo <18676+syoyo@users.noreply.github.com>",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "751703373de9bbd4e8336e0fb1f5a23f4041821a",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tiny_obj_loader.h",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "502d5ef8fd317024f3ad34f8cf0c2d19762a95d3",
+              "author_name": "Syoyo Fujita",
+              "message": "Update tests/tester.cc",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ecc124e83e69cfa6eeca1c0752ca74cb44ffcd37",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix sr_parseTagTriple slash-delimited count parsing and add regression assertions",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "02c350cef5c3ccb85c92713ed95e2e48e06e0c56",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix high/medium review findings: complete attrib reset, usemtl delimiter check, remove duplicate windows.h and dead errss",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ea9bf104e3b0b794d1c3a8ecc8734e44de7efd9a",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Address low severity review items: document read_token, unify line_num naming, extract sr_skipTagField helper, refactor mmap to RAII MappedFile",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b62d3ba994295fdaa48add1875c486c611f0afe3",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Harden MappedFile with is_mapped flag to prevent unmapping string literals",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7dde60aa09eac3bdbf9878fc66b938a2ab389112",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Run GPT-5.3-Codex comprehensive review",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "496cd2831c6702caa1d784af57d98eb9f258c64e",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Remove accidental CTest artifact and ignore Testing/Temporary",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d5aac19f653548512f4f1fd611494d07541d01e4",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Fix stream offset handling and add oversized stream guards/tests",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "9b6d594299bac7bb9520dcfe5a7e719c2e6d3656",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Final deep-review fixes for mtllib callback failure path",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "14e6a5ab4d0c2bdc329aec8e3938736041d5ce5d",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-2 deep review fixes for mtllib empty tokens and mmap size guard parity",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "07d2c252f349d7219c1ffe3f1b0ad2159b5d0467",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-3 deep review: preserve mtllib backslashes and harden stream size check",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "55a0f27b8bff397c830beca5047a54c4d4991ae8",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-4 review: fix callback usemtl parsing and harden int parsing",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "a7365043580a4f9749c6232e198b59839de9884a",
+              "author_name": "copilot-swe-agent[bot]",
+              "message": "Stage-5 review: harden size parsing and Windows mmap path",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "author_name",
+                  "matched_text": "copilot-swe-agent[bot]",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "dd5bbd8d70fe44eb34d2688ea96849195b7fa291",
+              "author_name": "Syoyo Fujita",
+              "message": "Final polish: fix overflow guards, zero-length normalize, and minor inconsistencies",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "f27721f3c9cd20af4d4eee789431b92d0e0c4477"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "966edceaf8cdca7996c4e9a1c5ced2938de63366",
+          "repo_url": "https://github.com/tinyobjloader/tinyobjloader",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=490598877"
+      ]
+    },
+    {
+      "id": "GHSA-96qw-h329-v5rg",
+      "description": "Shakapacker has environment variable leak via EnvironmentPlugin that exposes secrets to client-side bundles",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-200"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-08T21:13:37Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "The blamed commit initialized the RSPack plugin configuration with `new rspack.EnvironmentPlugin(process.env)`, effectively hardcoding an insecure configuration that leaked all server-side environment variables into the client-side bundle.",
+      "root_cause": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
+      "vuln_type": "Information Exposure",
+      "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+          "author": "Justin Gordon",
+          "date": "2025-09-25T17:13:00-10:00",
+          "message": "Fix CI failures and add Rspack install support",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "package/plugins/rspack.js",
+          "blame_confidence": 0.765,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit (591e3de9f111) introduced the `package/plugins/rspack.js` file, which contained the line `new rspack.EnvironmentPlugin(process.env)`. This line directly passes all environment variables to the plugin, creating the vulnerable pattern identified in the analysis.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Information Exposure",
+            "vuln_description": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
+            "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
+            "causal_chain": "The blamed commit initialized the RSPack plugin configuration with `new rspack.EnvironmentPlugin(process.env)`, effectively hardcoding an insecure configuration that leaked all server-side environment variables into the client-side bundle."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit added both `package/plugins/webpack.js` and `package/plugins/rspack.js`, each with `new ...EnvironmentPlugin(process.env)`. Blame on the pre-fix `package/plugins/webpack.ts` and `package/plugins/rspack.ts` points those vulnerable lines back to 591e’s `.js` files, showing the later TypeScript migration did not originate them. It is therefore the current-code origin of the fixed lines and the first introduction of the rspack-specific leak.",
+                "confidence": 0.95,
+                "tool_calls_made": 81,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "a7188041c0fff9f7b85e4c29e6e1600ec14a4008",
+              "author_name": "Judah Meek",
+              "message": "Add RSPack support into Shakapacker",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "a1d20b7a55d99fcb922a9bf6dcc18f5c083f146f",
+              "author_name": "Judah Meek",
+              "message": "simplify dummy",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "67e7c48abfcd348b6bdf3178f006cc0ee157b3e4",
+              "author_name": "Justin Gordon",
+              "message": "Release 9.0.0-beta.0",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cc38c942ec99e4444d10e1b05b9e1fc88be7a496",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d0c27f38d31f4934486088db3ce3af23e3a177f7",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b95ed09b690e998e6ca3ba7c5f5ff7bfd9de028d",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "78500ea8b5a042ad7325c8965903c262fbf3df9f",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e5ac73b4d144ede233359fbd0cf6968701496d68",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "aa9c4a60c26a33249245ab8198220b20237695b1",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5bee0fa2db45f30481e579dffe6a36d7596819ea",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ab2fe22d2a3e213912f3ec29b3788bdaf99dba11",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "da56b8b5539e0cf34c8d1dd1c5003416a03eaaaa",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1f55bb2c1ddf77a439a53bd8b6728bd8796e049f",
+              "author_name": "Justin Gordon",
+              "message": "add dummy-rspack",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f465a39d85f3e61d3a6d972df08a798be54600f5",
+              "author_name": "Justin Gordon",
+              "message": "⏺ Fixed! The key issue was that rspack-manifest-plugin's entrypointFiles parameter contains relative paths like",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "81a4a09c9725e36c6b16cd4a760fe3e01029ebfc",
+              "author_name": "Justin Gordon",
+              "message": "⏺ Commit it. The change from \\Afile:/// to \\Afile: is necessary to handle yalc's file:.yalc/shakapacker format,",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4797a8c0c49dad1a4c70f25282d8e88e039be631",
+              "author_name": "Justin Gordon",
+              "message": "hmr",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2361cf22c9c198e7310cf8265ffc2f11e2aef4e9",
+              "author_name": "Justin Gordon",
+              "message": "test app",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e9101c5ca51f89aba6412e01b2b3a08d0e98be33",
+              "author_name": "Justin Gordon",
+              "message": "⏺ The hot-update files are still in the manifest (lines 16, 27, 32) even though writeToDisk should exclude them.",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "4dbe03932443915b9e069ed41c223dd47f281919",
+              "author_name": "Justin Gordon",
+              "message": "remove unnecessary",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1ccd14186b861d3ae4c0c19219a7853c07d47720",
+              "author_name": "Justin Gordon",
+              "message": "fixed hmr",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2b4bf732abbcc75294fb7b6757d5458bfde148fc",
+              "author_name": "Justin Gordon",
+              "message": "minor stuff hmr working at this point",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+              "author_name": "Justin Gordon",
+              "message": "Fix CI failures and add Rspack install support",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ec4da16b05da71be6895174bd821bf76d2e9b1ad",
+              "author_name": "Justin Gordon",
+              "message": "Exclude spec/dummy-rspack from root RuboCop scan",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a982d685ca47415f6fdef20c9cd383e33469ce3d",
+              "author_name": "Justin Gordon",
+              "message": "Rename 'bundler' config to 'assets_bundler' to avoid confusion",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "08561be400aa69d37b1c0e49b9f3230687d89755",
+              "author_name": "Justin Gordon",
+              "message": "Fix Prettier formatting in base.js",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec7d0f09116c278d74b4cd730527340b4d24a6f1",
+              "author_name": "Justin Gordon",
+              "message": "Fix test compilation issues",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2f5fa74a2a34abcd3c27983ebc05cd2e35cfd0ff",
+              "author_name": "Justin Gordon",
+              "message": "Add ENV override for assets_bundler configuration",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ecd490bc2dc8d55913d6f06b2d85dd4b9e176af9",
+              "author_name": "Justin Gordon",
+              "message": "Remove rspack-test directory (was accidentally added as submodule)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e0492b8ddca68b7140037cea841ad567c755ac46",
+              "author_name": "Justin Gordon",
+              "message": "Fix generator tests by compiling assets before running RSpec",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e07e52500b8c054551dcbcd6ab3b854097b31a6f",
+              "author_name": "Justin Gordon",
+              "message": "Improve generator tests and documentation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "af34c41971f35bbe79023ca6325098deb5e95621",
+              "author_name": "Justin Gordon",
+              "message": "Address PR review comments for dual bundler architecture",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f22b0af88edb3dd08a9bd24cb0d24eb03d93e8f9",
+              "author_name": "Justin Gordon",
+              "message": "Fix ESLint formatting issues",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3b5294ed1029a0a61870fd06bfbbdece663bac52",
+              "author_name": "Justin Gordon",
+              "message": "Fix RuboCop indentation issue in configuration.rb",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2668ab598565f5334ddd2a52a3e3eb88847e1b7e",
+              "author_name": "Justin Gordon",
+              "message": "Fix critical issues with environment variable names and test specs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1d1d71a8cc14d6f60a23cf6c6715683d9a92183e",
+              "author_name": "Justin Gordon",
+              "message": "Fix remaining test failures",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fb2b345a623c63443d4daf452297c873ad1a0caa",
+              "author_name": "Justin Gordon",
+              "message": "Fix final configuration spec test",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f8dd3ab21ae4985d45d45cc497d6b7e82e5f88ac",
+              "author_name": "Justin Gordon",
+              "message": "fix: Generator test failures by supporting ENV APP_ROOT",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "591e3de9f1113a7d2f131315622b41588682d08a"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+          "repo_url": "https://github.com/shakacode/shakapacker",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/shakacode/shakapacker/security/advisories/GHSA-96qw-h329-v5rg",
+        "https://github.com/shakacode/shakapacker/pull/857",
+        "https://github.com/shakacode/shakapacker/commit/3e06781b18383c5c2857ed3a722f7b91bdc1bc0e"
       ]
     },
     {
@@ -12299,7 +15067,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire Taysell implementation, including `templates/backend-in-a-box/index.js` with the original `/paypal/webhook` handler that trusted `req.body` and marked orders COMPLETED without any PayPal signature/webhook-ID verification. The same commit also created `/get-patch` with no one-time-use tracking for `purchase_token`, and set `PBKDF2_ITERATIONS = 100000` in both `templates/backend-in-a-box/index.js` and `lib/taysell-utils.ts`; those are the exact areas later hardened by `57b7634`. The blamed `lib/handlers/buy-handler.ts` lines were only the pre-fix error-handling path and are not the security root cause, but the commit is still the true BIC because it authored the vulnerable backend design and weak KDF setting.",
+      "how_introduced": "Pickaxe and file history show this release commit created the affected code from scratch: `templates/backend-in-a-box/index.js`, `lib/taysell-utils.ts`, and `lib/handlers/buy-handler.ts` all first appear here. In `templates/backend-in-a-box/index.js` it introduced the vulnerable `/paypal/webhook` handler that trusted `req.body` directly with no PayPal signature verification (`const webhookEvent = req.body;`) and the `/get-patch` logic that accepted any valid `purchase_token` repeatedly because there was no `token_used_at` check/update. It also introduced `PBKDF2_ITERATIONS = 100000` in both the backend template and `lib/taysell-utils.ts`, which the fix later raised to 310000. The `buy-handler.ts` lines blamed to this same commit are only the original CLI error message and are unrelated to the security issue, but that does not change that this commit is the real introducer of the actual vulnerable code.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
@@ -12342,9 +15110,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire Taysell implementation, including `templates/backend-in-a-box/index.js` with the original `/paypal/webhook` handler that trusted `req.body` and marked orders COMPLETED without any PayPal signature/webhook-ID verification. The same commit also created `/get-patch` with no one-time-use tracking for `purchase_token`, and set `PBKDF2_ITERATIONS = 100000` in both `templates/backend-in-a-box/index.js` and `lib/taysell-utils.ts`; those are the exact areas later hardened by `57b7634`. The blamed `lib/handlers/buy-handler.ts` lines were only the pre-fix error-handling path and are not the security root cause, but the commit is still the true BIC because it authored the vulnerable backend design and weak KDF setting.",
+                "reasoning": "Pickaxe and file history show this release commit created the affected code from scratch: `templates/backend-in-a-box/index.js`, `lib/taysell-utils.ts`, and `lib/handlers/buy-handler.ts` all first appear here. In `templates/backend-in-a-box/index.js` it introduced the vulnerable `/paypal/webhook` handler that trusted `req.body` directly with no PayPal signature verification (`const webhookEvent = req.body;`) and the `/get-patch` logic that accepted any valid `purchase_token` repeatedly because there was no `token_used_at` check/update. It also introduced `PBKDF2_ITERATIONS = 100000` in both the backend template and `lib/taysell-utils.ts`, which the fix later raised to 310000. The `buy-handler.ts` lines blamed to this same commit are only the original CLI error message and are unrelated to the security issue, but that does not change that this commit is the real introducer of the actual vulnerable code.",
                 "confidence": 0.95,
-                "tool_calls_made": 46,
+                "tool_calls_made": 35,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -12382,7 +15150,7 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced `src/tools/android/actions.rs` and the original `device_shell()` implementation. In that initial version, dangerous `rm` commands were blocked only by literal substring checks for `\"rm -rf\"` and `\"rm -r\"`, which is the flawed design the fix replaced with flag-aware parsing; reordered/combined forms such as `rm -fr`, `rm -f -r`, and long-option equivalents were not parsed and could bypass the guard. Git history shows this file/function did not exist earlier, so this is the commit that introduced the vulnerable Android shell behavior.",
+      "how_introduced": "This commit created `src/tools/android/actions.rs` and introduced `device_shell()`. In that initial implementation, commands were normalized and checked with `lower.contains()` against literal substrings including `\"rm -rf\"` and `\"rm -r\"`, which only catches exact spellings and misses argument permutations like `rm -fr`, `rm -r -f`, `rm --recursive --force`, and path-prefixed/busybox forms. The fix replaces that exact logic with `rm_invocation_args()`/`is_rm_recursive_force()` token-and-flag parsing, showing that the flawed literal-substring design was the bug. The same commit also exposed the reachable `\"shell\"` Android action in `src/tools/android/mod.rs`, so it both introduced and enabled the vulnerable path.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
@@ -12425,9 +15193,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced `src/tools/android/actions.rs` and the original `device_shell()` implementation. In that initial version, dangerous `rm` commands were blocked only by literal substring checks for `\"rm -rf\"` and `\"rm -r\"`, which is the flawed design the fix replaced with flag-aware parsing; reordered/combined forms such as `rm -fr`, `rm -f -r`, and long-option equivalents were not parsed and could bypass the guard. Git history shows this file/function did not exist earlier, so this is the commit that introduced the vulnerable Android shell behavior.",
+                "reasoning": "This commit created `src/tools/android/actions.rs` and introduced `device_shell()`. In that initial implementation, commands were normalized and checked with `lower.contains()` against literal substrings including `\"rm -rf\"` and `\"rm -r\"`, which only catches exact spellings and misses argument permutations like `rm -fr`, `rm -r -f`, `rm --recursive --force`, and path-prefixed/busybox forms. The fix replaces that exact logic with `rm_invocation_args()`/`is_rm_recursive_force()` token-and-flag parsing, showing that the flawed literal-substring design was the bug. The same commit also exposed the reachable `\"shell\"` Android action in `src/tools/android/mod.rs`, so it both introduced and enabled the vulnerable path.",
                 "confidence": 0.95,
-                "tool_calls_made": 28,
+                "tool_calls_made": 43,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -12439,7 +15207,7 @@
               "author_name": "qhkmdev90",
               "message": "feat: add Android device control tool (feature-gated)",
               "ai_signals": [],
-              "touched_blamed_file": null
+              "touched_blamed_file": true
             },
             {
               "sha": "e7c1a68d5e7cd99ba0edc32f7d376f00246b6c76",
@@ -13771,337 +16539,6 @@
       ],
       "references": [
         "https://github.com/openml"
-      ]
-    },
-    {
-      "id": "GHSA-4cm8-xpfv-jv6f",
-      "description": "ZeptoClaw: Email Sender Spoofing to bypass Header-Only From Allowlist Validation",
-      "severity": "MEDIUM",
-      "cvss": 6.5,
-      "cwes": [
-        "CWE-306",
-        "CWE-345"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-12T16:38:22Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "Rust"
-      ],
-      "confidence": 0.76,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "This commit introduced the entire email feature: `EmailConfig.allowed_senders`, the example config using that allowlist, `EmailChannel::is_sender_allowed()`, and `process_unseen()` extracting `parsed.from().address()` and using that parsed `From` value for allowlist checks and inbound sender identity. Pickaxe searches for `allowed_senders`, `is_sender_allowed(`, and `Blocked email from` all point back to this commit as the first introduction. The later fix `bf004a20` does not change that logic; it only adds warnings/docs/config-validation text explicitly stating that `allowed_senders` trusts the parsed `From` header only, confirming that this commit introduced the flawed trust model.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
-          "author": "qhkmdev90",
-          "date": "2026-02-22T16:09:36+08:00",
-          "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/channels/email_channel.rs",
-          "blame_confidence": 0.8,
-          "fix_commit_source": "advisory_version",
-          "blame_strategy": "context_blame",
-          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "screening_verification": {
-            "verdict": "UNRELATED",
-            "reasoning": "The vulnerability is related to path traversal and symlink/hardlink race conditions during file I/O. The blamed commit (f972f8617445) introduces the EmailChannel module configuration and logic, which deals with network protocols (IMAP/SMTP), not local file path handling or boundary validation. The fix commit (bf004a20d368) merely adds documentation warnings about sender authentication, which is unrelated to the file system security issues described in the CVE.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Path traversal/Symlink race condition",
-            "vuln_description": "The application fails to properly validate file paths against boundaries, allowing symlink or hardlink attacks (TOCTOU) to access unauthorized files.",
-            "vulnerable_pattern": "Insufficient path canonicalization or validation before file I/O operations.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the entire email feature: `EmailConfig.allowed_senders`, the example config using that allowlist, `EmailChannel::is_sender_allowed()`, and `process_unseen()` extracting `parsed.from().address()` and using that parsed `From` value for allowlist checks and inbound sender identity. Pickaxe searches for `allowed_senders`, `is_sender_allowed(`, and `Blocked email from` all point back to this commit as the first introduction. The later fix `bf004a20` does not change that logic; it only adds warnings/docs/config-validation text explicitly stating that `allowed_senders` trusts the parsed `From` header only, confirming that this commit introduced the flawed trust model.",
-                "confidence": 0.95,
-                "tool_calls_made": 123,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "b12a489c3a577fee6d0f7acff68f8ca4ebff8a5d",
-              "author_name": "qhkmdev90",
-              "message": "fix(retry): add auth/context-window/model-not-found as non-retryable",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "3e26899399e73251382f6196ed823c743ae292ea",
-              "author_name": "qhkmdev90",
-              "message": "fix(retry): fix dead code, case-sensitivity, and false-positive patterns",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "5ee6f716c5bcdbee59c35e5b769c856a0cb5d00d",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add http_request tool with domain allowlist and SSRF protection",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "7b0c5133413f2143124373d5b5a0ecd8023c8ca7",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools/http_request): pin DNS address, cap redirects, fix method fallback",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
-              "author_name": "qhkmdev90",
-              "message": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "051d651036465a8353beaa02de1b647e287f17ac",
-              "author_name": "qhkmdev90",
-              "message": "fix(tools/pdf_read): char-safe truncation, remove as_path round-trip",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f4b4a891646e777214683afbc6561bf1ec4e69bc",
-              "author_name": "qhkmdev90",
-              "message": "feat(providers): add native Gemini provider with OAuth and thinking model support",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "27f348ca951a49b2dcd43bddeb8c772c5b1e9032",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers/gemini): route API-key users through native provider, validate token expiry",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "e2c2100a307cd7b40ef907e1df68f67d574d2b1d",
-              "author_name": "qhkmdev90",
-              "message": "fix(providers/gemini): use selection.model, add Debug with redaction, fix dead from_config",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "9dd9dc22c18fababd757b209d93107e9a0786c85",
-              "author_name": "qhkmdev90",
-              "message": "feat(channels): add Lark/Feishu channel (zeroclaw2 adoption)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "d516ffafd30609e69adad53f77c86cb7da79b108",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): add emoji reaction ack per spec",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "41869fdb1c69ef4f69856062ccfa048598882a8c",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): correct doubled /open-apis in reaction URL",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "c3ec05f7ed5dc812dd4becf864f156ed2879585a",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/lark): add request timeouts, fix strip_at off-by-one, deduplicate token fetch",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": false
-            },
-            {
-              "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
-              "author_name": "qhkmdev90",
-              "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "ae045fbeeba8f86fa8bf481cb704eb7feb5fc1c1",
-              "author_name": "qhkmdev90",
-              "message": "fix(channels/email): async SMTP, redact password in debug, fix ordering/dedup/enabled",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "34a95c839e23e3e8de57a8c3365347ead947f6ed",
-              "author_name": "qhkmdev90",
-              "message": "style: run cargo fmt to fix CI formatting",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            }
-          ],
-          "squash_merge_sha": "51bc07a02484ddfd2ec9c7f382dc43f829a9df86"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "a27236766a07dfcfb278877d075820ba2f91df9a",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "ec2743309478a52339d627a21849637a5836bb3f",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-4cm8-xpfv-jv6f",
-        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
       ]
     },
     {
