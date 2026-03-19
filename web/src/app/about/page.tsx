@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getStats } from "@/lib/data";
 import { DataFreshness } from "@/components/data-freshness";
-import { TOOL_DISPLAY_NAMES } from "@/lib/constants";
+import { TOOL_DISPLAY_NAMES, TOOL_URLS } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "About - Vibe Security Radar",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 /** Derive the tool list from the single source of truth, excluding the catch-all. */
 const AI_TOOLS = Object.entries(TOOL_DISPLAY_NAMES)
   .filter(([key]) => key !== "unknown_ai")
-  .map(([, name]) => name);
+  .map(([key, name]) => ({ key, name, url: TOOL_URLS[key] }));
 
 const DATA_SOURCES = [
   {
@@ -127,9 +127,9 @@ const PIPELINE_STEPS = [
     tier: "Phase F",
     title: "Conflict resolution",
     summary:
-      "When multiple bug-introducing commits produce divergent verdicts, a Claude Agent SDK resolver with git MCP tools adjudicates.",
+      "When screening and deep investigation disagree on a BIC, a Claude Agent SDK resolver with git MCP tools adjudicates.",
     details:
-      "A single CVE can have multiple fix commits, each blaming different bug-introducing commits. When deep investigation produces conflicting verdicts across these BICs — for example, one is CONFIRMED and another is UNLIKELY for the same underlying vulnerability — the conflict resolver steps in. It runs as a Claude Agent SDK subprocess with MCP-based git tools (log, blame, diff, file read) so it can independently inspect the repository. It sees all competing verdicts and their evidence, then decides which BIC is the true root cause. Conflicts are batched per-CVE to minimize subprocess overhead. The resolver's verdict is final and overwrites earlier per-BIC decisions.",
+      "For each bug-introducing commit, screening (Phase D) and deep investigation (Phase E) produce independent verdicts. When these disagree — for example, screening says CONFIRMED but the deep investigator says UNLIKELY — the conflict resolver steps in for that individual BIC. It runs as a Claude Agent SDK subprocess with MCP-based git tools (log, blame, diff, file read) so it can independently inspect the repository. It sees both verdicts and their evidence, then makes the final call. Conflicts are batched per-CVE to minimize subprocess overhead. The resolver's verdict is final and overwrites earlier decisions.",
   },
 ] as const;
 
@@ -245,9 +245,9 @@ export default function AboutPage() {
               candidates — running up to 50 tool calls per case. It can
               override earlier stages, trace code across renames, and
               discover bug-introducing commits that line-level blame missed.
-              When multiple blame candidates produce conflicting verdicts, a
-              conflict resolver with independent repository access
-              adjudicates. The result is conservative: we drop attribution
+              When screening and deep investigation disagree on a
+              blame candidate, a conflict resolver with independent
+              repository access adjudicates. The result is conservative: we drop attribution
               when causality is uncertain.
             </p>
           </div>
@@ -300,11 +300,21 @@ export default function AboutPage() {
         </p>
         <ul className="flex flex-wrap gap-2">
           {AI_TOOLS.map((tool) => (
-            <li
-              key={tool}
-              className="rounded-md border border-border bg-muted/50 px-3 py-1 text-sm"
-            >
-              {tool}
+            <li key={tool.key}>
+              {tool.url ? (
+                <a
+                  href={tool.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-md border border-border bg-muted/50 px-3 py-1 text-sm transition-colors hover:bg-muted hover:text-primary"
+                >
+                  {tool.name}
+                </a>
+              ) : (
+                <span className="inline-block rounded-md border border-border bg-muted/50 px-3 py-1 text-sm">
+                  {tool.name}
+                </span>
+              )}
             </li>
           ))}
         </ul>
