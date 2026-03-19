@@ -131,44 +131,49 @@ class TestFilterAiResults:
         assert "CVE-A" in ids
         assert "CVE-B" not in ids
 
-    def test_respects_min_confidence_threshold(self):
-        # _recompute_ai_confidence uses best signal * blame_confidence.
-        # Build BICs with specific confidence values to test the threshold.
-        def _bic(signal_conf: float, blame_conf: float) -> list[dict]:
-            return [
-                {
-                    "commit": {
-                        "sha": "abc",
-                        "author_name": "dev",
-                        "author_email": "dev@example.com",
-                        "committer_name": "dev",
-                        "committer_email": "dev@example.com",
-                        "message": "fix",
-                        "authored_date": "2026-01-15T00:00:00Z",
-                        "ai_signals": [
-                            {"tool": "cursor", "signal_type": "co_author_trailer",
-                             "matched_text": "x", "confidence": signal_conf}
-                        ],
-                    },
-                    "blamed_file": "main.py",
-                    "blamed_lines": [1],
-                    "blame_confidence": blame_conf,
+    def test_filters_by_verdict_not_confidence(self):
+        """filter_ai_results uses verdict-based filtering: CONFIRMED passes,
+        UNLIKELY/UNRELATED are excluded, no deep verify = benefit of the doubt."""
+        def _bic_with_deep(verdict: str | None) -> list[dict]:
+            bic = {
+                "commit": {
+                    "sha": "abc",
+                    "author_name": "dev",
+                    "author_email": "dev@example.com",
+                    "committer_name": "dev",
+                    "committer_email": "dev@example.com",
+                    "message": "fix",
+                    "authored_date": "2026-01-15T00:00:00Z",
+                    "ai_signals": [
+                        {"tool": "cursor", "signal_type": "co_author_trailer",
+                         "matched_text": "x", "confidence": 0.9}
+                    ],
+                },
+                "blamed_file": "main.py",
+                "blamed_lines": [1],
+                "blame_confidence": 0.9,
+            }
+            if verdict is not None:
+                bic["deep_verification"] = {
+                    "verdict": verdict,
+                    "confidence": "high",
+                    "reasoning": "test",
+                    "model": "test-model",
                 }
-            ]
+            return [bic]
 
         results = [
-            # 0.9 * 0.9 = 0.81 → above 0.5
-            _make_result(cve_id="CVE-A", bug_introducing_commits=_bic(0.9, 0.9)),
-            # 0.3 * 0.3 = 0.09 → below 0.5
-            _make_result(cve_id="CVE-B", bug_introducing_commits=_bic(0.3, 0.3)),
-            # 0.1 * 0.1 = 0.01 → below 0.5
-            _make_result(cve_id="CVE-C", bug_introducing_commits=_bic(0.1, 0.1)),
+            _make_result(cve_id="CVE-CONFIRMED", bug_introducing_commits=_bic_with_deep("CONFIRMED")),
+            _make_result(cve_id="CVE-UNLIKELY", bug_introducing_commits=_bic_with_deep("UNLIKELY")),
+            _make_result(cve_id="CVE-UNRELATED", bug_introducing_commits=_bic_with_deep("UNRELATED")),
+            _make_result(cve_id="CVE-NODEEP", bug_introducing_commits=_bic_with_deep(None)),
         ]
-        filtered = filter_ai_results(results, min_confidence=0.5)
+        filtered = filter_ai_results(results)
         ids = [r["cve_id"] for r in filtered]
-        assert "CVE-A" in ids
-        assert "CVE-B" not in ids
-        assert "CVE-C" not in ids
+        assert "CVE-CONFIRMED" in ids
+        assert "CVE-UNLIKELY" not in ids
+        assert "CVE-UNRELATED" not in ids
+        assert "CVE-NODEEP" in ids  # benefit of the doubt
 
     def test_empty_input(self):
         assert filter_ai_results([]) == []
@@ -280,13 +285,43 @@ class TestBuildCveEntry:
         assert entry["fix_commits"] == []
 
     def test_deduplicates_ai_tools(self):
-        result = _make_result(
-            ai_signals=[
-                {"tool": "cursor", "signal_type": "co_author_trailer", "matched_text": "x", "confidence": 0.9},
-                {"tool": "cursor", "signal_type": "commit_message", "matched_text": "y", "confidence": 0.8},
-                {"tool": "copilot", "signal_type": "co_author_trailer", "matched_text": "z", "confidence": 0.7},
-            ]
-        )
+        """ai_tools is extracted from BIC-level signals, not top-level ai_signals."""
+        bics = [
+            {
+                "commit": {
+                    "sha": "aaa",
+                    "author_name": "dev", "author_email": "dev@example.com",
+                    "committer_name": "dev", "committer_email": "dev@example.com",
+                    "message": "feat: add endpoint",
+                    "authored_date": "2026-01-15T00:00:00Z",
+                    "ai_signals": [
+                        {"tool": "cursor", "signal_type": "co_author_trailer", "matched_text": "x", "confidence": 0.9},
+                        {"tool": "cursor", "signal_type": "commit_message", "matched_text": "y", "confidence": 0.8},
+                    ],
+                },
+                "fix_commit_sha": "abc123",
+                "blamed_file": "src/main.py",
+                "blamed_lines": [10],
+                "blame_confidence": 0.9,
+            },
+            {
+                "commit": {
+                    "sha": "bbb",
+                    "author_name": "dev", "author_email": "dev@example.com",
+                    "committer_name": "dev", "committer_email": "dev@example.com",
+                    "message": "feat: add helper",
+                    "authored_date": "2026-01-16T00:00:00Z",
+                    "ai_signals": [
+                        {"tool": "copilot", "signal_type": "co_author_trailer", "matched_text": "z", "confidence": 0.7},
+                    ],
+                },
+                "fix_commit_sha": "abc123",
+                "blamed_file": "src/helper.py",
+                "blamed_lines": [5],
+                "blame_confidence": 0.8,
+            },
+        ]
+        result = _make_result(bug_introducing_commits=bics)
         entry = build_cve_entry(result)
         assert sorted(entry["ai_tools"]) == ["copilot", "cursor"]
 
@@ -408,12 +443,12 @@ class TestFileExtensionToLanguage:
         assert _file_extension_to_language("lib.rs") == "Rust"
 
     def test_c_extensions(self):
-        assert _file_extension_to_language("main.c") == "C"
-        assert _file_extension_to_language("header.h") == "C"
+        assert _file_extension_to_language("main.c") == "C/C++"
+        assert _file_extension_to_language("header.h") == "C/C++"
 
     def test_cpp_extensions(self):
-        assert _file_extension_to_language("main.cpp") == "C++"
-        assert _file_extension_to_language("main.cc") == "C++"
+        assert _file_extension_to_language("main.cpp") == "C/C++"
+        assert _file_extension_to_language("main.cc") == "C/C++"
 
     def test_unknown_extension_returns_none(self):
         assert _file_extension_to_language("data.csv") is None
@@ -654,8 +689,11 @@ def _make_bic_dict(
         "blame_confidence": blame_conf,
     }
     if verdict is not None:
-        bic["screening_verification"] = {
+        # _bic_dict_is_excluded checks deep_verification (authoritative),
+        # not screening_verification (advisory only).
+        bic["deep_verification"] = {
             "verdict": verdict,
+            "confidence": "high",
             "reasoning": "test",
             "model": "test-model",
         }
@@ -709,7 +747,9 @@ class TestRecomputeAiConfidenceUnrelated:
         conf = _recompute_ai_confidence(result)
         assert abs(conf - 0.81) < 0.01
 
-    def test_unlikely_still_included(self):
+    def test_unlikely_still_included_but_penalized(self):
+        """UNLIKELY BICs are included (not excluded) but receive a 0.25x
+        penalty for high-confidence UNLIKELY verdicts."""
         bic = _make_bic_dict(
             "cursor", signal_conf=0.9, blame_conf=0.9,
             verdict="UNLIKELY", sha="aaa111",
@@ -719,7 +759,8 @@ class TestRecomputeAiConfidenceUnrelated:
             "ai_signals": bic["commit"]["ai_signals"],
         }
         conf = _recompute_ai_confidence(result)
-        assert abs(conf - 0.81) < 0.01
+        # 0.9 * 0.9 * 0.25 (high-confidence UNLIKELY penalty) = 0.2025
+        assert abs(conf - 0.2025) < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -732,6 +773,7 @@ def _make_bic_with_verdicts(
     screening_verdict=None,
     screening_reasoning="",
     screening_causal_chain="",
+    screening_vulnerable_pattern="",
     deep_verdict=None,
     deep_confidence="high",
     deep_reasoning="",
@@ -761,6 +803,7 @@ def _make_bic_with_verdicts(
             "verdict": screening_verdict,
             "reasoning": screening_reasoning,
             "causal_chain": screening_causal_chain,
+            "vulnerable_pattern": screening_vulnerable_pattern,
             "vuln_type": "Test Vuln",
             "vuln_description": "Test description",
             "model": "test-model",
@@ -850,3 +893,126 @@ class TestHowIntroducedPriority:
         )
         entry = build_cve_entry(result)
         assert "processIncludes" in entry["how_introduced"]
+
+    def test_causal_chain_preferred_over_deep_reasoning(self):
+        """When both screening causal_chain and deep verify reasoning exist
+        for the same CONFIRMED BIC, prefer causal_chain (more concise)."""
+        bic = _make_bic_with_verdicts(
+            sha="both",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Concise: commit added unsanitized input interpolation",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="Verbose forensic analysis about the commit and its context",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert "Concise" in entry["how_introduced"]
+        assert "Verbose" not in entry["how_introduced"]
+
+    def test_deep_reasoning_fallback_when_no_causal_chain(self):
+        """If screening exists but has empty causal_chain, fall back to
+        deep verify reasoning."""
+        bic = _make_bic_with_verdicts(
+            sha="no_chain",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="Deep verify found path traversal in the commit",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert "path traversal" in entry["how_introduced"]
+
+    def test_vulnerable_pattern_output_from_screening(self):
+        """vulnerable_pattern from screening should appear in entry."""
+        bic = _make_bic_with_verdicts(
+            sha="vp_test",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="The commit introduced XSS",
+            screening_vulnerable_pattern="Unsanitized innerHTML assignment",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["vulnerable_pattern"] == "Unsanitized innerHTML assignment"
+
+    def test_vulnerable_pattern_from_deep_confirmed_with_screening(self):
+        """vulnerable_pattern should come from screening even when deep verify
+        is CONFIRMED."""
+        bic = _make_bic_with_verdicts(
+            sha="vp_deep",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="causal chain text",
+            screening_vulnerable_pattern="Direct SQL string concatenation",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="The commit introduced SQL injection",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["vulnerable_pattern"] == "Direct SQL string concatenation"
+
+    def test_vulnerable_pattern_empty_when_no_screening(self):
+        """vulnerable_pattern should be empty when no screening exists."""
+        bic = _make_bic_with_verdicts(
+            sha="no_screen",
+            deep_verdict="CONFIRMED",
+            deep_reasoning="Deep verify found the issue",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["vulnerable_pattern"] == ""
+
+    def test_vulnerable_pattern_from_screening_fallback(self):
+        """vulnerable_pattern should be set even when only screening (no deep
+        verify) provides it."""
+        bic = _make_bic_with_verdicts(
+            sha="screen_only",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Screening explanation",
+            screening_vulnerable_pattern="Unvalidated redirect target",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["vulnerable_pattern"] == "Unvalidated redirect target"
+
+    def test_vulnerable_pattern_suppressed_when_deep_says_unlikely(self):
+        """vulnerable_pattern should be empty when deep verify overrules
+        screening CONFIRMED with UNLIKELY."""
+        bic = _make_bic_with_verdicts(
+            sha="suppressed",
+            screening_verdict="CONFIRMED",
+            screening_causal_chain="Screening says XSS",
+            screening_vulnerable_pattern="innerHTML = userInput",
+            deep_verdict="UNLIKELY",
+            deep_reasoning="Deep verify disagrees",
+        )
+        result = _make_result(
+            bug_introducing_commits=[bic],
+            ai_signals=[{"tool": "claude_code", "signal_type": "co_author_trailer",
+                         "matched_text": "Co-authored-by: Claude", "confidence": 0.95}],
+        )
+        entry = build_cve_entry(result)
+        assert entry["vulnerable_pattern"] == ""
