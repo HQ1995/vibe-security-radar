@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getCves } from "@/lib/data";
+import { getCves, getStats } from "@/lib/data";
 import { CveListClient } from "@/components/cve-list";
 import { DataFreshness } from "@/components/data-freshness";
 
@@ -10,6 +10,7 @@ export const metadata = {
 
 export default function CvesPage() {
   const data = getCves();
+  const stats = getStats();
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -18,7 +19,7 @@ export default function CvesPage() {
         <p className="text-muted-foreground">
           All vulnerabilities with detected AI coding tool involvement
         </p>
-        <DataFreshness generatedAt={data.generated_at} />
+        <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
       </div>
       <Suspense fallback={<div className="text-sm text-muted-foreground">Loading filters…</div>}>
         <CveListClient cves={data.cves} />

@@ -41,11 +41,37 @@ const DATA_SOURCES = [
   },
 ] as const;
 
-const LIMITATIONS = [
-  "We can only see AI involvement when the tool leaves a trace (co-author trailers, bot emails, commit message markers). If a developer pastes AI-generated code by hand, there is nothing to detect.",
-  "Git blame tracks line authorship, not causal responsibility. The investigator catches most misattributions and can discover commits that blame missed entirely, but it is not perfect.",
-  "The investigator is a single LLM with tool access. Borderline cases where causality is genuinely ambiguous can go either way.",
-  "We only cover publicly disclosed vulnerabilities with available fix commits. Closed-source bugs and unpatched issues are out of scope.",
+const LIMITATION_CATEGORIES = [
+  {
+    title: "Detection blind spots",
+    items: [
+      "We can only see AI involvement when the tool leaves a trace — co-author trailers, bot emails, commit message markers. If a developer pastes AI-generated code by hand, or uses a tool that does not stamp commits, there is nothing to detect. This means our numbers are a lower bound.",
+      "Different AI tools leave different amounts of metadata. Claude Code and GitHub Copilot have strong co-author conventions; others are harder to detect. This creates uneven coverage across tools.",
+    ],
+  },
+  {
+    title: "Attribution accuracy",
+    items: [
+      "Git blame tracks line authorship, not semantic causality. A line can be blamed on commit X even if the real root cause is a design decision in commit Y. The deep investigator catches most of these, but not all.",
+      "Squash-merge decomposition depends on the GitHub API returning sub-commits. Force-pushed PRs or rebased branches may lose the original commit history, making per-commit attribution impossible.",
+      "The investigator is a single LLM with tool access. Borderline cases where causality is genuinely ambiguous can go either way. We do not claim 100% accuracy on any individual case.",
+    ],
+  },
+  {
+    title: "Coverage scope",
+    items: [
+      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) with available fix commits in public repositories — including CI/CD configuration vulnerabilities such as GitHub Actions composite action injection. Closed-source bugs, unpatched issues, and vulnerabilities without fix commits are out of scope.",
+      "Our analysis starts from May 2025. Vulnerabilities disclosed or fixed before that date are not covered, even if AI tools were involved.",
+      "We do not analyze whether AI tools are more or less likely to introduce vulnerabilities compared to human developers. This project measures incidence, not relative risk.",
+    ],
+  },
+  {
+    title: "Methodological constraints",
+    items: [
+      "Our approach is inherently retrospective. We find AI-authored vulnerabilities after they are reported and fixed. We cannot predict which AI-generated code will become vulnerable.",
+      "The pipeline is conservative by design: we would rather miss a true positive than report a false positive. This means our count underestimates the real number of AI-linked vulnerabilities.",
+    ],
+  },
 ] as const;
 
 const PIPELINE_STEPS = [
@@ -96,6 +122,14 @@ const PIPELINE_STEPS = [
       "A single LLM investigator sees the entire vulnerability at once and runs a multi-step investigation with tool access.",
     details:
       "This replaced an earlier per-commit tribunal. The investigator receives all fix commits, all blame candidates, and the CVE description. It has access to git log, file read, blame, diff, and pickaxe search, and runs up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. The verdict is authoritative: if the investigator says UNRELATED, the commit is dropped regardless of what earlier stages said. If it discovers a new bug-introducing commit with AI signals, that gets added to the results.",
+  },
+  {
+    tier: "Phase F",
+    title: "Conflict resolution",
+    summary:
+      "When multiple bug-introducing commits produce divergent verdicts, a Claude Agent SDK resolver with git MCP tools adjudicates.",
+    details:
+      "A single CVE can have multiple fix commits, each blaming different bug-introducing commits. When deep investigation produces conflicting verdicts across these BICs — for example, one is CONFIRMED and another is UNLIKELY for the same underlying vulnerability — the conflict resolver steps in. It runs as a Claude Agent SDK subprocess with MCP-based git tools (log, blame, diff, file read) so it can independently inspect the repository. It sees all competing verdicts and their evidence, then decides which BIC is the true root cause. Conflicts are batched per-CVE to minimize subprocess overhead. The resolver's verdict is final and overwrites earlier per-BIC decisions.",
   },
 ] as const;
 
@@ -171,24 +205,60 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Core methodology */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Core methodology</h2>
         <p className="leading-relaxed text-muted-foreground">
-          Each vulnerability goes through a multi-phase pipeline. We pull
-          advisory data in bulk where possible (no API calls for 95%+ of
-          lookups) and fall back to APIs and LLM-assisted search for the rest.
-          Fix commits get traced back to bug-introducing commits via git blame,
-          then those commits are checked for AI tool signatures. For
-          squash-merged PRs, we decompose to the specific sub-commit that
-          introduced the vulnerable code, so a Copilot trailer on an unrelated
-          commit in the same PR does not count. Finally, an LLM investigator
-          looks at the whole vulnerability, not each blame candidate in
-          isolation, and can trace commit chains and discover things that
-          line-level blame misses.
+          Our approach has three steps: <strong>find the fix</strong>,{" "}
+          <strong>trace the blame</strong>, and{" "}
+          <strong>verify the cause</strong>.
         </p>
+        <div className="space-y-4 rounded-lg border border-border bg-muted/20 px-5 py-4">
+          <div className="space-y-1">
+            <h3 className="font-medium">1. Find the fix commit</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              We aggregate vulnerability data from four advisory databases
+              (OSV, GitHub Advisory Database, Gemnasium, NVD) and extract
+              the commit that fixed each vulnerability. 95%+ of lookups use
+              local bulk data with no API calls.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-medium">2. Trace who introduced the bug</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Using SZZ-style git blame on the fix commit, we trace backward
+              to the commit that introduced the vulnerable code. For
+              squash-merged PRs, we decompose to individual sub-commits so
+              attribution is per-commit, not per-PR. We then scan the
+              bug-introducing commit for AI tool signatures: co-author
+              trailers, bot emails, and commit message markers from{" "}
+              {AI_TOOLS.length}+ tools.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-medium">3. Verify causality</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              An AI signature in a commit is not enough. A screening pass
+              checks whether the blamed commit actually introduced the
+              security issue. Then a deep investigator with git tool access
+              examines the entire vulnerability — all fix commits, all blame
+              candidates — running up to 50 tool calls per case. It can
+              override earlier stages, trace code across renames, and
+              discover bug-introducing commits that line-level blame missed.
+              When multiple blame candidates produce conflicting verdicts, a
+              conflict resolver with independent repository access
+              adjudicates. The result is conservative: we drop attribution
+              when causality is uncertain.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Pipeline details */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-semibold tracking-tight">Pipeline details</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Click any phase to see how the algorithm works.
+          Click any phase to see the algorithm in detail.
         </p>
         <ol className="space-y-4">
           {PIPELINE_STEPS.map((step) => (
@@ -263,15 +333,26 @@ export default function AboutPage() {
       </section>
 
       {/* Limitations */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">What we miss</h2>
-        <ul className="list-inside list-disc space-y-2 text-muted-foreground">
-          {LIMITATIONS.map((limitation) => (
-            <li key={limitation} className="leading-relaxed">
-              {limitation}
-            </li>
-          ))}
-        </ul>
+      <section className="space-y-6">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Limitations &amp; what we miss
+        </h2>
+        <p className="leading-relaxed text-muted-foreground">
+          This is an observational study with inherent blind spots. We are
+          transparent about what we can and cannot measure.
+        </p>
+        {LIMITATION_CATEGORIES.map((category) => (
+          <div key={category.title} className="space-y-2">
+            <h3 className="font-medium">{category.title}</h3>
+            <ul className="list-inside list-disc space-y-2 text-muted-foreground">
+              {category.items.map((item) => (
+                <li key={item} className="leading-relaxed">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       {/* Contact */}
