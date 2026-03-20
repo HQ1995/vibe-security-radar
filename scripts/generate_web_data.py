@@ -801,12 +801,23 @@ def _effective_verdict(bic: dict) -> str:
 def _has_no_confirmed_verdict(result: dict) -> bool:
     """Return True if no BIC has a CONFIRMED verdict with AI involvement.
 
+    CVE-level ai_involved is authoritative when present (from deep
+    investigation).  Falls back to per-BIC verdict logic for older results.
+
     Deep verification is authoritative: only CONFIRMED passes.
     UNLIKELY and UNRELATED both cause exclusion — UNLIKELY means the
     verifier thinks the AI probably didn't cause the vulnerability.
 
     BICs with no deep verdict still pass (benefit of the doubt).
     """
+    # CVE-level ai_involved is authoritative when present
+    ai_involved = result.get("ai_involved")
+    if ai_involved is True:
+        return False   # include
+    if ai_involved is False:
+        return True    # exclude
+
+    # Fallback for old results: existing per-BIC logic
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
         has_llm = _get_screening_verdict(bic) is not None
@@ -1496,7 +1507,10 @@ def build_cve_entry(
                         }],
                     }
 
-    return {
+    # CVE-level ai_contribution from investigation (preferred over per-BIC reasoning)
+    ai_contribution = result.get("ai_contribution", "")
+
+    entry = {
         "id": cve_id,
         "description": result.get("description", ""),
         "severity": severity,
@@ -1508,7 +1522,7 @@ def build_cve_entry(
         "languages": _determine_languages(bug_commits, result.get("fix_commits")),
         "confidence": _recompute_ai_confidence(result),
         "verified_by": verified_by,
-        "how_introduced": how_introduced,
+        "how_introduced": ai_contribution or how_introduced,
         "root_cause": root_cause,
         "vuln_type": vuln_type,
         "vulnerable_pattern": vulnerable_pattern,
@@ -1517,6 +1531,9 @@ def build_cve_entry(
         "fix_commits": result.get("fix_commits", []),
         "references": result.get("references", []),
     }
+    if ai_contribution:
+        entry["ai_contribution"] = ai_contribution
+    return entry
 
 
 # ---------------------------------------------------------------------------
