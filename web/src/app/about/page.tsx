@@ -45,8 +45,9 @@ const LIMITATION_CATEGORIES = [
   {
     title: "Detection blind spots",
     items: [
-      "We can only see AI involvement when the tool leaves a trace — co-author trailers, bot emails, commit message markers. If a developer pastes AI-generated code by hand, or uses a tool that does not stamp commits, there is nothing to detect. This means our numbers are a lower bound.",
+      "Our detection relies entirely on metadata signals: co-author trailers, bot emails, commit message markers. Code written with AI assistance but committed without any of these markers is invisible to us. This is the single biggest limitation — many developers use AI tools in ways that leave no trace (copy-pasting from ChatGPT, using tools that don't stamp commits, or stripping co-author trailers before pushing). Our numbers are a strict lower bound on AI-linked vulnerabilities.",
       "Different AI tools leave different amounts of metadata. Claude Code and GitHub Copilot have strong co-author conventions; others are harder to detect. This creates uneven coverage across tools.",
+      "We are developing LLM-based code fingerprinting to detect AI-generated code by its stylistic and structural patterns, independent of commit metadata. This would catch cases where AI involvement is obvious from the code itself but invisible in the git history.",
     ],
   },
   {
@@ -60,7 +61,7 @@ const LIMITATION_CATEGORIES = [
   {
     title: "Coverage scope",
     items: [
-      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) with available fix commits in public repositories — including CI/CD configuration vulnerabilities such as GitHub Actions composite action injection. Closed-source bugs, unpatched issues, and vulnerabilities without fix commits are out of scope.",
+      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) in public repositories — including CI/CD configuration vulnerabilities such as GitHub Actions composite action injection. When advisory databases don't provide a fix commit, the pipeline uses LLM-assisted search (version-tag ranking and description-based git log search) to discover it. About 10% of our confirmed cases rely on these AI-inferred fix commits. Closed-source bugs and unpatched issues are still out of scope.",
       "Our analysis starts from May 2025. Vulnerabilities disclosed or fixed before that date are not covered, even if AI tools were involved.",
       "We do not analyze whether AI tools are more or less likely to introduce vulnerabilities compared to human developers. This project measures incidence, not relative risk.",
     ],
@@ -70,6 +71,8 @@ const LIMITATION_CATEGORIES = [
     items: [
       "Our approach is inherently retrospective. We find AI-authored vulnerabilities after they are reported and fixed. We cannot predict which AI-generated code will become vulnerable.",
       "The pipeline is conservative by design: we would rather miss a true positive than report a false positive. This means our count underestimates the real number of AI-linked vulnerabilities.",
+      "We use LLMs to judge whether AI-authored code caused a vulnerability. This creates a circularity: the investigator may have systematic blind spots or biases when evaluating AI-generated code patterns. We mitigate this with multi-model verification and conflict resolution, but cannot fully eliminate it.",
+      "We can audit for false positives (cases we flagged incorrectly), but we have no systematic way to measure our false negative rate — the number of AI-caused vulnerabilities we miss entirely. The true count is unknowable with metadata-only detection.",
     ],
   },
 ] as const;
