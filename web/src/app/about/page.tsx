@@ -52,7 +52,7 @@ const LIMITATION_CATEGORIES = [
   {
     title: "Attribution accuracy",
     items: [
-      "Git blame tracks line authorship, not semantic causality. A line can be blamed on commit X even if the real root cause is a design decision in commit Y. The deep investigator catches most of these, but not all.",
+      "Git blame tracks line authorship, not semantic causality. A line can be blamed on commit X even if the real root cause is a design decision in commit Y. The deep investigator's CVE-level analysis catches most of these, but not all.",
       "Squash-merge decomposition depends on the GitHub API returning sub-commits. Force-pushed PRs or rebased branches may lose the original commit history, making per-commit attribution impossible.",
       "The investigator is a single LLM with tool access. Borderline cases where causality is genuinely ambiguous can go either way. We do not claim 100% accuracy on any individual case.",
     ],
@@ -119,9 +119,9 @@ const PIPELINE_STEPS = [
     tier: "Phase E",
     title: "Deep investigation",
     summary:
-      "A single LLM investigator sees the entire vulnerability at once and runs a multi-step investigation with tool access.",
+      "A single LLM investigator sees the entire vulnerability at once, runs a multi-step investigation with tool access, and answers a CVE-level question: did AI-authored code contribute to introducing this vulnerability?",
     details:
-      "This replaced an earlier per-commit tribunal. The investigator receives all fix commits, all blame candidates, and the CVE description. It has access to git log, file read, blame, diff, and pickaxe search, and runs up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. The verdict is authoritative: if the investigator says UNRELATED, the commit is dropped regardless of what earlier stages said. If it discovers a new bug-introducing commit with AI signals, that gets added to the results.",
+      "The investigator receives all fix commits, all blame candidates, and the CVE description. It has access to git log, file read, blame, diff, and pickaxe search, and runs up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. Instead of just rating each commit, it answers a vulnerability-level question: was AI part of the causal chain? This is the verdict that decides what appears on the site. Per-commit assessments are kept as supporting evidence, but they no longer drive the final call.",
   },
   {
     tier: "Phase F",
@@ -242,13 +242,16 @@ export default function AboutPage() {
               checks whether the blamed commit actually introduced the
               security issue. Then a deep investigator with git tool access
               examines the entire vulnerability — all fix commits, all blame
-              candidates — running up to 50 tool calls per case. It can
-              override earlier stages, trace code across renames, and
-              discover bug-introducing commits that line-level blame missed.
-              When screening and deep investigation disagree on a
-              blame candidate, a conflict resolver with independent
-              repository access adjudicates. The result is conservative: we drop attribution
-              when causality is uncertain.
+              candidates — running up to 50 tool calls per case. Instead of
+              rating each commit separately, it answers one question: did
+              AI-authored code help cause this vulnerability? This catches
+              things that per-commit analysis misses — an AI commit that
+              changed how a function gets called, making old code newly
+              exploitable, or a squash-merge where the AI sub-commit never
+              touched the vulnerable file. When screening and deep investigation disagree
+              on a blame candidate, a conflict resolver with independent
+              repository access adjudicates. The result is conservative: we
+              drop attribution when causality is uncertain.
             </p>
           </div>
         </div>
@@ -273,18 +276,22 @@ export default function AboutPage() {
           How we attribute vulnerabilities to AI
         </h2>
         <p className="leading-relaxed text-muted-foreground">
-          An AI signature in a bug-introducing commit is not enough. The
-          question we ask: strip out the AI-written code from the change. Does
-          the vulnerability still exist? If it does, the AI tool did not cause
-          it and we drop the attribution.
+          An AI signature in a bug-introducing commit is not enough. We ask
+          the question at the vulnerability level: did AI-authored code help
+          cause this? That could mean the AI wrote the vulnerable lines, or
+          changed how a function gets called so that old code became
+          exploitable, or added a feature without the security checks it
+          needed. If the AI commits were not part of the causal chain, we
+          drop the attribution.
         </p>
         <p className="leading-relaxed text-muted-foreground">
-          This comes up a lot with squash-merged PRs. Say a PR has 20 commits
-          and one of them has a Copilot co-author trailer. But that commit
+          This matters for squash-merged PRs especially. Say a PR has 20
+          commits and one has a Copilot co-author trailer. But that commit
           changed a README, and a different (human-written) commit in the same
           PR introduced the actual vulnerability. We check file-level overlap
-          between each sub-commit and the blamed file, and remove the AI signal
-          when it does not match.
+          between each sub-commit and the blamed file, and the deep
+          investigator independently verifies whether AI code was actually part
+          of the causal chain.
         </p>
       </section>
 

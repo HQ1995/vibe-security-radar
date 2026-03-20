@@ -113,6 +113,55 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   unknown_ai: "Unknown AI",
 };
 
+export const TOOL_URLS: Readonly<Record<string, string>> = {
+  claude_code: "https://docs.anthropic.com/en/docs/claude-code",
+  cursor: "https://www.cursor.com",
+  aider: "https://aider.chat",
+  github_copilot: "https://github.com/features/copilot",
+  devin: "https://devin.ai",
+  windsurf: "https://windsurf.com",
+  codeium: "https://codeium.com",
+  amazon_q: "https://aws.amazon.com/q/developer",
+  sweep: "https://sweep.dev",
+  openai_codex: "https://openai.com/index/openai-codex",
+  google_gemini: "https://gemini.google.com",
+  google_jules: "https://jules.google",
+  tabnine: "https://www.tabnine.com",
+  sourcegraph_cody: "https://sourcegraph.com/cody",
+  opencode: "https://opencode.ai",
+  kiro: "https://kiro.dev",
+  jetbrains_junie: "https://www.jetbrains.com/junie",
+  roo_code: "https://roocode.com",
+  cline: "https://cline.bot",
+  openhands: "https://www.all-hands.dev",
+  lovable: "https://lovable.dev",
+  fine_dev: "https://fine.dev",
+  replit_agent: "https://replit.com",
+  qodo: "https://www.qodo.ai",
+  continue_dev: "https://continue.dev",
+  augment_code: "https://www.augmentcode.com",
+  trae: "https://trae.ai",
+  gitlab_duo: "https://about.gitlab.com/gitlab-duo",
+  kimi_code: "https://kimi.ai",
+  google_antigravity: "https://antigravity.dev",
+  kilo_code: "https://kilocode.ai",
+  codegeex: "https://codegeex.cn",
+  bolt_new: "https://bolt.new",
+  zencoder: "https://zencoder.ai",
+  codegpt: "https://codegpt.co",
+  amp: "https://ampcode.com",
+  v0: "https://v0.dev",
+  same_dev: "https://same.dev",
+  leap_new: "https://leap.new",
+  traycer: "https://traycer.ai",
+  atlassian_rovo: "https://www.atlassian.com/rovo",
+  aether: "https://aether.engineer",
+};
+
+export function getToolUrl(tool: string): string | undefined {
+  return TOOL_URLS[tool];
+}
+
 export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   co_author_trailer: "Co-author trailer",
   author_email: "Author email",
