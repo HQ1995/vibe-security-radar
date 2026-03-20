@@ -272,6 +272,7 @@ export function formatConfidence(confidence: number): string {
 const MODEL_METADATA: Readonly<
   Record<string, { displayName: string; detailName: string; provider: string; rank: number }>
 > = {
+  "claude-code": { displayName: "Claude Code", detailName: "Claude Code", provider: "anthropic-sdk", rank: 0 },
   "claude-opus-4-6": { displayName: "Claude", detailName: "Claude Opus 4.6", provider: "anthropic", rank: 0 },
   "gemini-3.1-pro-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Pro", provider: "google", rank: 0 },
   "gemini-3.1-flash-lite-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Flash Lite", provider: "google", rank: 2 },
@@ -279,26 +280,37 @@ const MODEL_METADATA: Readonly<
   "gpt-5.4": { displayName: "GPT", detailName: "GPT-5.4", provider: "openai", rank: 0 },
 };
 
+/** Reasoning mode suffixes appended to model names in verified_by fields. */
+const REASONING_SUFFIXES = ["-high", "-thinking"] as const;
+
+/** Strip reasoning suffix (e.g. "-high", "-thinking") to get the base model name. */
+function stripReasoningSuffix(model: string): string {
+  for (const suffix of REASONING_SUFFIXES) {
+    if (model.endsWith(suffix)) return model.slice(0, -suffix.length);
+  }
+  return model;
+}
+
 /** Get short display name for a verification model (used in table badges). */
 export function getModelDisplayName(model: string): string {
-  return MODEL_METADATA[model]?.displayName ?? model;
+  return MODEL_METADATA[stripReasoningSuffix(model)]?.displayName ?? model;
 }
 
 /** Get full display name for a verification model (used in detail pages). */
 export function getModelDetailName(model: string): string {
-  return MODEL_METADATA[model]?.detailName ?? model;
+  return MODEL_METADATA[stripReasoningSuffix(model)]?.detailName ?? model;
 }
 
 /** Model strength rank (lower = stronger). Unknown models default to 99. */
 export function getModelRank(model: string): number {
-  return MODEL_METADATA[model]?.rank ?? 99;
+  return MODEL_METADATA[stripReasoningSuffix(model)]?.rank ?? 99;
 }
 
 /** Keep only the strongest (lowest rank) model per provider. */
 export function deduplicateModels(models: string[]): string[] {
   const bestPerProvider = new Map<string, { model: string; rank: number }>();
   for (const model of models) {
-    const info = MODEL_METADATA[model];
+    const info = MODEL_METADATA[stripReasoningSuffix(model)];
     if (!info) {
       // Unknown model — treat as its own unique provider
       bestPerProvider.set(model, { model, rank: 0 });

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-20T19:42:25.009963+00:00",
+  "generated_at": "2026-03-20T22:20:32.720074+00:00",
   "total": 72,
   "cves": [
     {
@@ -2093,7 +2093,7 @@
         "TypeScript"
       ],
       "confidence": 0.95,
-      "verified_by": "claude-high",
+      "verified_by": "claude-code",
       "how_introduced": "AI-assisted code contributed directly: the initial Synology Chat feature commit `03586e3d0057b5975090d50dadcc5bc95b51f977`, explicitly co-authored by Claude Opus and screened as Claude Code-assisted, introduced both the fail-open helper (`checkUserAllowed` returning true for an empty allowlist) and the webhook authorization path that trusted that result. That combination created the unauthorized agent-dispatch condition fixed by `0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5`.",
       "root_cause": "The application's 'allowlist' policy for Synology Chat incorrectly permitted all requests when the allowedUserIds list was empty, instead of denying them by default.",
       "vuln_type": "Improper Authorization (Access Control Bypass)",
@@ -3233,7 +3233,7 @@
         "Python"
       ],
       "confidence": 0.855,
-      "verified_by": "claude-high",
+      "verified_by": "claude-code",
       "how_introduced": "Yes. The AI-authored commit ff958e486e1f8de4f7fd43c70ef357b8d6eaf433 created api_server.py and introduced `download_workflow` using attacker-controlled `filename` in `os.path.join(\"workflows\", filename)` with no validation or canonicalization. A later human refactor preserved that unsafe path construction, but the vulnerable design originated in the Claude Code-generated commit.",
       "root_cause": "The application fails to properly sanitize file paths used in the download_workflow function, allowing an attacker to escape intended directories.",
       "vuln_type": "Directory Traversal",
@@ -3319,7 +3319,7 @@
         "Python"
       ],
       "confidence": 0.855,
-      "verified_by": "claude-high",
+      "verified_by": "claude-code",
       "how_introduced": "AI-authored code in the hookify plugin directly introduced one of the vulnerable paths: commit 59372c0921b0170e81f9c63777962d02347411d5 created RuleEngine file-path checks that compared raw user-supplied path strings instead of canonicalized real paths, enabling symlink-based deny bypasses. A separate human-authored plugin (security-guidance) introduced the same class of flaw, but AI code was still part of the causal chain for the CVE because it wrote vulnerable permission-checking logic that the fix later reversed.",
       "root_cause": "The application failed to resolve symlinks before evaluating deny rules, allowing an attacker to bypass access controls by pointing a path to a restricted location.",
       "vuln_type": "Path Traversal / Symlink Bypass",
@@ -3406,7 +3406,7 @@
         "PHP"
       ],
       "confidence": 0.855,
-      "verified_by": "claude-opus-4-6-high",
+      "verified_by": "claude-opus-4-6-thinking",
       "how_introduced": "AI-authored code (Claude Code) directly contributed to the vulnerability in multiple ways: (1) f8146f5a59 added a debug toggle feature to deployment views that exposed debug logs (potentially containing private keys) to all team members without any role-based access check; (2) f152ec00ad deliberately weakened an authorization check from 'update' to 'view' permission for loadStorageOnServer(), allowing read-only members to access server file contents; (3) b878dc8102 introduced an API middleware authorization check with a flawed `(int)` cast on team_id that could be bypassed when team_id was null/0; (4) f77ad4cbd9 migrated Storage/Form.php to use explicit public properties for `$key` and `$secret` without adding member access controls.",
       "root_cause": "Insufficient authorization checks allowed team members with lower privileges to access or view sensitive credentials (like private keys) that should only be accessible to root users or administrators.",
       "vuln_type": "Insecure Authorization / Broken Access Control",
@@ -4703,7 +4703,7 @@
         "TypeScript"
       ],
       "confidence": 0.855,
-      "verified_by": "claude-high",
+      "verified_by": "claude-code",
       "how_introduced": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d directly introduced the vulnerable Feishu media pipeline: it added `sendMediaFeishu` that trusted attacker-controlled `mediaUrl` values as local paths and read them with `fs.readFileSync`, and it wired that function into the outbound adapter/media capability so the flaw was reachable immediately.",
       "root_cause": "The provided commit information appears to be a changelog update and does not contain the actual security patch for the CVE, indicating a discrepancy between the provided commit and the vulnerability description.",
       "vuln_type": "Authorization Bypass",
@@ -7538,7 +7538,7 @@
         "TypeScript"
       ],
       "confidence": 0.76,
-      "verified_by": "claude-opus-4-6-high",
+      "verified_by": "claude-opus-4-6-thinking",
       "how_introduced": "AI-authored code (Claude Code) contributed to introducing this vulnerability in multiple ways. Commit 33e2d53be308 (Claude Code co-authored) implemented the Telegram `sendMessage` action handler without passing the `cfg` configuration context, allowing the action to execute without workspace/billing validation. Commit 506bed5aed40 (Claude Code co-authored) did the same for `sendSticker` and `searchSticker` handlers. Commit 483fba41b9f9 (Claude Code co-authored) created the Discord exec approval handler that showed only a single command preview without distinguishing argv-bound text from shell payloads, enabling basename-spoofed wrapper approval mismatches that could override workspace boundaries.",
       "root_cause": "",
       "vuln_type": "",
@@ -9036,7 +9036,7 @@
         "C#"
       ],
       "confidence": 0.57,
-      "verified_by": "claude-high",
+      "verified_by": "claude-code",
       "how_introduced": "Yes. AI-authored commits directly introduced and reimplemented vulnerable report-generation logic: Copilot/SWE bot wrote the original Variable Group diff bug (48441e79), the first AzApi resource template that printed raw body values (9f2645f), the unsafe RenderAzapiBody helper refactor (4f902bf), and the azapi_update_resource template that exposed the same unmasked body data on a new report path (5c1daf49).",
       "root_cause": "The tool failed to redact or mask sensitive information within generated reports, leading to the exposure of confidential values.",
       "vuln_type": "Sensitive Value Exposure",

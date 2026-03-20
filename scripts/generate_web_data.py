@@ -1380,9 +1380,24 @@ def build_cve_entry(
         if inferred:
             severity = inferred
 
-    # Compute verified_by: model + reasoning effort level.
-    # The deep verifier uses reasoning_effort="high" (hardcoded in agent_loop.py).
-    _REASONING_EFFORT = "high"
+    # Compute verified_by: model + reasoning mode suffix.
+    # OpenAI uses reasoning_effort="high"; Claude uses adaptive thinking;
+    # Gemini uses thinking_budget.  Suffix reflects the actual API parameter.
+    def _model_with_reasoning_tag(model: str) -> str:
+        """Append a reasoning-mode suffix to the model name.
+
+        claude-code is the SDK-based conflict resolver — no suffix needed
+        since the SDK controls its own model version internally.
+        """
+        m = model.lower()
+        if m in ("claude-code", "claude"):
+            return "claude-code"     # SDK-managed, no suffix
+        if "claude" in m:
+            return f"{model}-thinking"  # adaptive thinking
+        if "gemini" in m:
+            return f"{model}-thinking"  # thinkingConfig
+        return f"{model}-high"          # OpenAI reasoning_effort
+
     verified_by = ""
     review = reviews.get(cve_id) if reviews else None
     if review and review.get("verdict") in ("confirmed", "uncertain"):
@@ -1392,7 +1407,7 @@ def build_cve_entry(
             dv = _get_deep_verdict(bic)
             if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
                 if dv.get("model"):
-                    verified_by = f"{dv['model']}-{_REASONING_EFFORT}"
+                    verified_by = _model_with_reasoning_tag(dv["model"])
                 break
 
     # Populate how_introduced, root_cause, vuln_type, and vulnerable_pattern.
