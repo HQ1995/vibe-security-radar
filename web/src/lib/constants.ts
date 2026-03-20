@@ -291,14 +291,27 @@ function stripReasoningSuffix(model: string): string {
   return model;
 }
 
+/** Readable suffix labels for reasoning modes. */
+const REASONING_SUFFIX_LABELS: Readonly<Record<string, string>> = {
+  "-high": "High",
+  "-thinking": "Thinking",
+};
+
 /** Get short display name for a verification model (used in table badges). */
 export function getModelDisplayName(model: string): string {
-  return MODEL_METADATA[stripReasoningSuffix(model)]?.displayName ?? model;
+  const base = stripReasoningSuffix(model);
+  const meta = MODEL_METADATA[base];
+  if (!meta) return model;
+  const suffix = model.slice(base.length); // e.g. "-high", "-thinking", or ""
+  const label = REASONING_SUFFIX_LABELS[suffix];
+  // Gemini model names are already long enough — skip the suffix
+  if (meta.provider === "google") return meta.detailName;
+  return label ? `${meta.detailName} ${label}` : meta.detailName;
 }
 
 /** Get full display name for a verification model (used in detail pages). */
 export function getModelDetailName(model: string): string {
-  return MODEL_METADATA[stripReasoningSuffix(model)]?.detailName ?? model;
+  return getModelDisplayName(model);
 }
 
 /** Model strength rank (lower = stronger). Unknown models default to 99. */
