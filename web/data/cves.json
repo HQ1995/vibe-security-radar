@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-21T18:04:47.064858+00:00",
-  "total": 70,
+  "generated_at": "2026-03-22T03:00:34.043678+00:00",
+  "total": 78,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -9315,6 +9315,12 @@
             },
             {
               "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
               "signal_type": "author_name",
               "matched_text": "copilot-swe-agent[bot]",
               "confidence": 0.95
@@ -9472,6 +9478,12 @@
                 {
                   "tool": "github_copilot",
                   "signal_type": "author_email",
+                  "matched_text": "Copilot@users.noreply.github.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "committer_email",
                   "matched_text": "Copilot@users.noreply.github.com",
                   "confidence": 0.95
                 },
@@ -10949,6 +10961,7 @@
       "published": "2026-03-20T20:44:52Z",
       "ai_tools": [
         "claude_code",
+        "devin",
         "github_copilot"
       ],
       "languages": [
@@ -10963,28 +10976,16 @@
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "e4a4c300cd20dc34166e25565908d0a9afdb58f5",
-          "author": "devin-ai-integration[bot]",
+          "sha": "430f68266653c0f54ca9bbb30f6982c9373855f5",
+          "author": "Devin AI",
           "date": "2025-06-26T18:30:05+09:00",
-          "message": "Migrate pdf-lib into pdfme monorepo (#1059)",
+          "message": "Migrate pdf-lib into pdfme monorepo",
           "ai_signals": [
             {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            },
-            {
               "tool": "devin",
-              "signal_type": "merge_workflow",
-              "matched_text": "devin-ai-integration[bot]",
-              "confidence": 0.8
-            },
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot",
-              "confidence": 0.7
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
             }
           ],
           "blamed_file": "packages/pdf-lib/src/core/streams/DecodeStream.ts",
@@ -11024,7 +11025,14 @@
               "sha": "430f68266653c0f54ca9bbb30f6982c9373855f5",
               "author_name": "Devin AI",
               "message": "Migrate pdf-lib into pdfme monorepo",
-              "ai_signals": [],
+              "ai_signals": [
+                {
+                  "tool": "devin",
+                  "signal_type": "author_name",
+                  "matched_text": "Devin AI",
+                  "confidence": 0.95
+                }
+              ],
               "touched_blamed_file": true
             },
             {
@@ -11146,7 +11154,8 @@
               "ai_signals": [],
               "touched_blamed_file": false
             }
-          ]
+          ],
+          "squash_merge_sha": "e4a4c300cd20dc34166e25565908d0a9afdb58f5"
         }
       ],
       "fix_commits": [
@@ -12338,6 +12347,1578 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
       ],
       "ai_contribution": "Yes. AI-authored code in commit b634aa48dc27a8df7e7e853914071451db00a04c (author: Copilot) directly introduced one of the vulnerable XSS sinks by rendering pipeline chat `plainText` through ReactMarkdown with `rehypeRaw` and no sanitization, making attacker-controlled HTML executable in the web UI."
+    },
+    {
+      "id": "GHSA-7jx5-9fjg-hp4m",
+      "description": "OpenClaw ACP client has permission auto-approval bypass via untrusted tool metadata",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-639",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-27T22:08:36Z",
+      "ai_tools": [
+        "aether"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced the ACP permission model that auto-approved any tool not on a dangerous denylist using an untyped `toolCall.name` value. Later human commits ee31cd47b49f4b2f128a69a2a3745ca9db68b3be and bb1c3dfe10766fd996ef220ff9d3f967eb717faa refactored and narrowed that logic, but they still trusted untrusted tool metadata/kinds until 12cc7543 and 63dcd28a replaced it with trusted core-tool IDs, path scoping, and stricter validation.",
+      "root_cause": "The OpenClaw ACP client failed to properly validate tool metadata during permission auto-approval, allowing malicious actors to bypass authorization checks by manipulating untrusted metadata fields.",
+      "vuln_type": "Authorization Bypass",
+      "vulnerable_pattern": "Implicitly trusting tool metadata fields to authorize actions without server-side verification or strict schema enforcement.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+          "author": "aether-ai-agent",
+          "date": "2026-02-13T14:28:50+01:00",
+          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "author_name",
+              "matched_text": "aether-ai-agent",
+              "confidence": 0.95
+            },
+            {
+              "tool": "aether",
+              "signal_type": "author_email",
+              "matched_text": "@tryaether.ai",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/acp/client.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the functions `resolveToolNameForPermission` and `parseToolNameFromTitle`, which are responsible for extracting tool names from metadata and raw input without sufficient length or pattern validation. This commit established the logic that reads and trusts these untrusted metadata fields, creating the exact vulnerable pattern of implicit trust that the fix later addresses by adding strict checks.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Authorization Bypass",
+            "vuln_description": "The OpenClaw ACP client failed to properly validate tool metadata during permission auto-approval, allowing malicious actors to bypass authorization checks by manipulating untrusted metadata fields.",
+            "vulnerable_pattern": "Implicitly trusting tool metadata fields to authorize actions without server-side verification or strict schema enforcement.",
+            "causal_chain": "The blamed commit implemented `resolveToolNameForPermission`, which retrieves tool names from metadata (`_meta`) and raw input (`rawInput`) using `readFirstStringValue`. Because this implementation lacked length constraints and strict regex validation, it allowed malicious tool names to pass through and be processed by the auto-approval logic."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced `resolveToolNameForPermission`, which explicitly derives the tool identity from untrusted `toolCall._meta`, `toolCall.rawInput`, and `toolCall.title`. It also introduced `normalizeToolName`/`parseToolNameFromTitle` without the length and character validation added later in 63dcd28a. The pre-fix blame and pickaxe results show these exact functions originated here, so this commit directly introduced the metadata-based trust chain that the CVE fixes harden.",
+                "confidence": 0.95,
+                "tool_calls_made": 62,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+              "author_name": "aether-ai-agent",
+              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+              "ai_signals": [
+                {
+                  "tool": "aether",
+                  "signal_type": "author_name",
+                  "matched_text": "aether-ai-agent",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "aether",
+                  "signal_type": "author_email",
+                  "matched_text": "@tryaether.ai",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
+              "author_name": "Peter Steinberger",
+              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "12cc754332f9a7c92e158ce7644aa22df79c0904",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7jx5-9fjg-hp4m",
+        "https://github.com/openclaw/openclaw/commit/12cc754332f9a7c92e158ce7644aa22df79c0904",
+        "https://github.com/openclaw/openclaw/commit/63dcd28ae0be2de1c75af09cc81841cebeec068f",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.23"
+      ],
+      "ai_contribution": "AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced the ACP permission model that auto-approved any tool not on a dangerous denylist using an untyped `toolCall.name` value. Later human commits ee31cd47b49f4b2f128a69a2a3745ca9db68b3be and bb1c3dfe10766fd996ef220ff9d3f967eb717faa refactored and narrowed that logic, but they still trusted untrusted tool metadata/kinds until 12cc7543 and 63dcd28a replaced it with trusted core-tool IDs, path scoping, and stricter validation."
+    },
+    {
+      "id": "GHSA-phc3-fgpg-7m6h",
+      "description": "Undici has Unbounded Memory Consumption in its DeduplicationHandler via Response Buffering that leads to DoS",
+      "severity": "MEDIUM",
+      "cvss": 5.9,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:37:58Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.2137,
+      "verified_by": "claude-code",
+      "how_introduced": "Yes. Based on the provided attribution metadata, Claude Code contributed by introducing commit b902551e, which added the deduplicate interceptor and its DeduplicationHandler design that buffered every response chunk in an unbounded in-memory array and replayed the full body to waiting handlers. That AI-authored feature directly created the memory-consumption DoS later fixed by streaming chunks and adding maxBufferSize / late-attach safeguards.",
+      "root_cause": "The application fails to properly validate the 'upgrade' header, allowing CRLF injection which can lead to request smuggling or other protocol-level attacks.",
+      "vuln_type": "CRLF Injection",
+      "vulnerable_pattern": "Unvalidated header input allowing carriage return and line feed characters (CRLF) to be injected into HTTP headers.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "92cef77edb4ce380f86a439b86e237ce149c5b98",
+          "author": "Matteo Collina",
+          "date": "2025-12-16T23:39:46+01:00",
+          "message": "refactor: extract request deduplication to standalone interceptor",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "lib/handler/deduplication-handler.js, lib/interceptor/deduplicate.js",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "5890c7b7076894d00402f0c23c0fe72e59c72ff4",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit introduced the DeduplicationHandler class from scratch, including the unbounded '#chunks = []' array that stores all response data indefinitely. This architecture directly enables the 'Unbounded Memory Consumption' vulnerability identified in the CVE, as there were no buffer limits implemented in this initial version.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "CRLF Injection",
+            "vuln_description": "The application fails to properly validate the 'upgrade' header, allowing CRLF injection which can lead to request smuggling or other protocol-level attacks.",
+            "vulnerable_pattern": "Unvalidated header input allowing carriage return and line feed characters (CRLF) to be injected into HTTP headers.",
+            "causal_chain": "The blamed commit introduced the #chunks array without any size constraints or eviction logic. Subsequent responses buffered into this array grow linearly with the response size, leading to uncontrolled memory consumption (DoS) when many or large responses are handled."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude",
+                "verdict": "CONFIRMED",
+                "reasoning": "[conflict-resolver] Commit b902551e created lib/handler/deduplication-handler.js as a new file, introducing the #chunks = [] array with no size limit and onResponseData() that does this.#chunks.push(Buffer.from(chunk)) without any bounds checking. The fix commit 5890c7b7 directly removes #chunks and replaces it with per-handler streaming with a maxBufferSize limit (default 5MB). The deep verifier incorrectly focused on types/interceptors.d.ts rather than the actual runtime file lib/handler/deduplication-handler.js where the vulnerability was introduced.",
+                "confidence": 0.95,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "conflict_resolution"
+                ],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "c75c9c9ef92a9a4cbc61c936aa12099aa9d9b060",
+              "author_name": "Matteo Collina",
+              "message": "feat: add request deduplication to cache interceptor",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b7139cdc3b288514b193abab1c62a0aa4af3b58e",
+              "author_name": "Matteo Collina",
+              "message": "feat: add diagnostic channel for cache deduplication observability",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a9ee89a85195c5f0853749ee737cf93d32017162",
+              "author_name": "Matteo Collina",
+              "message": "docs: add request deduplication documentation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3c4ec394c046e0fd9eca43db0c9fbcce5ac890b4",
+              "author_name": "Matteo Collina",
+              "message": "feat: make cache deduplication opt-in via deduplication option",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6001fabd3b4d78966fcacc3b70a7c1ab70f0287c",
+              "author_name": "Matteo Collina",
+              "message": "test: add tests for per-user header deduplication behavior",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "92cef77edb4ce380f86a439b86e237ce149c5b98",
+              "author_name": "Matteo Collina",
+              "message": "refactor: extract request deduplication to standalone interceptor",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b154b6bb35cbf647c68c8c48f51e106ea014e47e",
+              "author_name": "Matteo Collina",
+              "message": "feat(deduplicate): add skipHeaderNames and excludeHeaderNames options",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "b902551e2a154fac2b3923d948c074a5640c01b0"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "77594f923cef4c27ee0bad365e7b4c44a199edae",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "cb79c5704ac47e42ce01a72269994fc70e377536",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2ee00cb322c76b0bf56829462d7c1dc53d1cbe3d",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5890c7b7076894d00402f0c23c0fe72e59c72ff4",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "74495c63ab23ef39be99983ed6de81df5d203d45",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "84235c62e0fe7494cec13f81d5732db0859df417",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "07a39067a0485c1953196f500d945fe09378a176",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4147ce21277b3566d02d3be789e5f7a490089db2",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/nodejs/undici/security/advisories/GHSA-phc3-fgpg-7m6h",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-2581",
+        "https://hackerone.com/reports/3513473",
+        "https://cna.openjsf.org/security-advisories.html"
+      ],
+      "ai_contribution": "Yes. Based on the provided attribution metadata, Claude Code contributed by introducing commit b902551e, which added the deduplicate interceptor and its DeduplicationHandler design that buffered every response chunk in an unbounded in-memory array and replayed the full body to waiting handlers. That AI-authored feature directly created the memory-consumption DoS later fixed by streaming chunks and adding maxBufferSize / late-attach safeguards."
+    },
+    {
+      "id": "GHSA-96qw-h329-v5rg",
+      "description": "Shakapacker has environment variable leak via EnvironmentPlugin that exposes secrets to client-side bundles",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-200"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-08T21:13:37Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.1817,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. Per the provided metadata, AI-authored commit 591e3de9f1113a7d2f131315622b41588682d08a directly added the vulnerable Rspack default `new rspack.EnvironmentPlugin(process.env)` and also reimplemented the same unsafe full-environment exposure in the extracted webpack plugin. The original webpack design predated AI, but AI code was part of the causal chain and expanded/maintained the vulnerable behavior.",
+      "root_cause": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
+      "vuln_type": "Information Exposure",
+      "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+          "author": "Justin Gordon",
+          "date": "2025-09-25T17:13:00-10:00",
+          "message": "Fix CI failures and add Rspack install support",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "package/plugins/rspack.js",
+          "blame_confidence": 0.765,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit (591e3de9f111) introduced the `package/plugins/rspack.js` file, which contained the line `new rspack.EnvironmentPlugin(process.env)`. This line directly passes all environment variables to the plugin, creating the vulnerable pattern identified in the analysis.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Information Exposure",
+            "vuln_description": "The EnvironmentPlugin was inadvertently exposing all environment variables to client-side bundles, allowing sensitive server-side secrets to be leaked to the browser. The fix introduces a filtering mechanism to explicitly allow-list environment variables.",
+            "vulnerable_pattern": "Passing process.env directly into the Webpack/Rspack EnvironmentPlugin without sanitization or filtering.",
+            "causal_chain": "The blamed commit initialized the RSPack plugin configuration with `new rspack.EnvironmentPlugin(process.env)`, effectively hardcoding an insecure configuration that leaked all server-side environment variables into the client-side bundle."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The screening hypothesis is correct. This commit added brand-new `package/plugins/rspack.js` with `new rspack.EnvironmentPlugin(process.env)`, and `git_log_search` shows that exact Rspack pattern first appears here. It also added `package/plugins/webpack.js` with `new webpack.EnvironmentPlugin(process.env)` while extracting plugin logic out of `package/environments/base.js`; pre-fix blame of the fixed `rspack.ts` and `webpack.ts` lines maps those current vulnerable lines back to this commit.",
+                "confidence": 0.95,
+                "tool_calls_made": 78,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "a7188041c0fff9f7b85e4c29e6e1600ec14a4008",
+              "author_name": "Judah Meek",
+              "message": "Add RSPack support into Shakapacker",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "a1d20b7a55d99fcb922a9bf6dcc18f5c083f146f",
+              "author_name": "Judah Meek",
+              "message": "simplify dummy",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "67e7c48abfcd348b6bdf3178f006cc0ee157b3e4",
+              "author_name": "Justin Gordon",
+              "message": "Release 9.0.0-beta.0",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cc38c942ec99e4444d10e1b05b9e1fc88be7a496",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d0c27f38d31f4934486088db3ce3af23e3a177f7",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b95ed09b690e998e6ca3ba7c5f5ff7bfd9de028d",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "78500ea8b5a042ad7325c8965903c262fbf3df9f",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e5ac73b4d144ede233359fbd0cf6968701496d68",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "aa9c4a60c26a33249245ab8198220b20237695b1",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5bee0fa2db45f30481e579dffe6a36d7596819ea",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ab2fe22d2a3e213912f3ec29b3788bdaf99dba11",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "da56b8b5539e0cf34c8d1dd1c5003416a03eaaaa",
+              "author_name": "Justin Gordon",
+              "message": "Per review.",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1f55bb2c1ddf77a439a53bd8b6728bd8796e049f",
+              "author_name": "Justin Gordon",
+              "message": "add dummy-rspack",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f465a39d85f3e61d3a6d972df08a798be54600f5",
+              "author_name": "Justin Gordon",
+              "message": "⏺ Fixed! The key issue was that rspack-manifest-plugin's entrypointFiles parameter contains relative paths like",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "81a4a09c9725e36c6b16cd4a760fe3e01029ebfc",
+              "author_name": "Justin Gordon",
+              "message": "⏺ Commit it. The change from \\Afile:/// to \\Afile: is necessary to handle yalc's file:.yalc/shakapacker format,",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4797a8c0c49dad1a4c70f25282d8e88e039be631",
+              "author_name": "Justin Gordon",
+              "message": "hmr",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2361cf22c9c198e7310cf8265ffc2f11e2aef4e9",
+              "author_name": "Justin Gordon",
+              "message": "test app",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e9101c5ca51f89aba6412e01b2b3a08d0e98be33",
+              "author_name": "Justin Gordon",
+              "message": "⏺ The hot-update files are still in the manifest (lines 16, 27, 32) even though writeToDisk should exclude them.",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "4dbe03932443915b9e069ed41c223dd47f281919",
+              "author_name": "Justin Gordon",
+              "message": "remove unnecessary",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1ccd14186b861d3ae4c0c19219a7853c07d47720",
+              "author_name": "Justin Gordon",
+              "message": "fixed hmr",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2b4bf732abbcc75294fb7b6757d5458bfde148fc",
+              "author_name": "Justin Gordon",
+              "message": "minor stuff hmr working at this point",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+              "author_name": "Justin Gordon",
+              "message": "Fix CI failures and add Rspack install support",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ec4da16b05da71be6895174bd821bf76d2e9b1ad",
+              "author_name": "Justin Gordon",
+              "message": "Exclude spec/dummy-rspack from root RuboCop scan",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a982d685ca47415f6fdef20c9cd383e33469ce3d",
+              "author_name": "Justin Gordon",
+              "message": "Rename 'bundler' config to 'assets_bundler' to avoid confusion",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "08561be400aa69d37b1c0e49b9f3230687d89755",
+              "author_name": "Justin Gordon",
+              "message": "Fix Prettier formatting in base.js",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec7d0f09116c278d74b4cd730527340b4d24a6f1",
+              "author_name": "Justin Gordon",
+              "message": "Fix test compilation issues",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2f5fa74a2a34abcd3c27983ebc05cd2e35cfd0ff",
+              "author_name": "Justin Gordon",
+              "message": "Add ENV override for assets_bundler configuration",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ecd490bc2dc8d55913d6f06b2d85dd4b9e176af9",
+              "author_name": "Justin Gordon",
+              "message": "Remove rspack-test directory (was accidentally added as submodule)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e0492b8ddca68b7140037cea841ad567c755ac46",
+              "author_name": "Justin Gordon",
+              "message": "Fix generator tests by compiling assets before running RSpec",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e07e52500b8c054551dcbcd6ab3b854097b31a6f",
+              "author_name": "Justin Gordon",
+              "message": "Improve generator tests and documentation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "af34c41971f35bbe79023ca6325098deb5e95621",
+              "author_name": "Justin Gordon",
+              "message": "Address PR review comments for dual bundler architecture",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f22b0af88edb3dd08a9bd24cb0d24eb03d93e8f9",
+              "author_name": "Justin Gordon",
+              "message": "Fix ESLint formatting issues",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3b5294ed1029a0a61870fd06bfbbdece663bac52",
+              "author_name": "Justin Gordon",
+              "message": "Fix RuboCop indentation issue in configuration.rb",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2668ab598565f5334ddd2a52a3e3eb88847e1b7e",
+              "author_name": "Justin Gordon",
+              "message": "Fix critical issues with environment variable names and test specs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1d1d71a8cc14d6f60a23cf6c6715683d9a92183e",
+              "author_name": "Justin Gordon",
+              "message": "Fix remaining test failures",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fb2b345a623c63443d4daf452297c873ad1a0caa",
+              "author_name": "Justin Gordon",
+              "message": "Fix final configuration spec test",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f8dd3ab21ae4985d45d45cc497d6b7e82e5f88ac",
+              "author_name": "Justin Gordon",
+              "message": "fix: Generator test failures by supporting ENV APP_ROOT",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "591e3de9f1113a7d2f131315622b41588682d08a"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+          "repo_url": "https://github.com/shakacode/shakapacker",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/shakacode/shakapacker/security/advisories/GHSA-96qw-h329-v5rg",
+        "https://github.com/shakacode/shakapacker/pull/857",
+        "https://github.com/shakacode/shakapacker/commit/3e06781b18383c5c2857ed3a722f7b91bdc1bc0e"
+      ],
+      "ai_contribution": "Yes. Per the provided metadata, AI-authored commit 591e3de9f1113a7d2f131315622b41588682d08a directly added the vulnerable Rspack default `new rspack.EnvironmentPlugin(process.env)` and also reimplemented the same unsafe full-environment exposure in the extracted webpack plugin. The original webpack design predated AI, but AI code was part of the causal chain and expanded/maintained the vulnerable behavior."
+    },
+    {
+      "id": "CVE-2025-11445",
+      "description": "A vulnerability was detected in Kilo Code up to 4.86.0. Affected is the function ClineProvider of the file src/core/webview/ClineProvider.ts of the component Prompt Handler. Performing manipulation results in injection. The attack can be initiated remotely. The exploit is now public and may be used. Applying a patch is the recommended action to fix this issue.",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-74",
+        "CWE-707"
+      ],
+      "ecosystem": "",
+      "published": "2025-10-08T09:15:33.013",
+      "ai_tools": [
+        "ai_assisted"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The confirmed introducer is commit 7457e679cf73f722f6db7a204ec7be903a4f4fd3, which the provided attribution data flags as AI-assisted (unknown_ai); that merge changed the newly added outside-workspace auto-approval defaults in ClineProvider from the upstream safe value `false` to vulnerable `true`, enabling the prompt-injection write-outside-workspace attack path.",
+      "root_cause": "The application failed to properly validate file paths during write operations, allowing remote attackers to write files outside of the intended workspace directory.",
+      "vuln_type": "Path Traversal / Arbitrary File Write",
+      "vulnerable_pattern": "Permitting file write operations based on unsanitized user-supplied paths without checking against the workspace root directory.",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "a414c7d028ccd4ec0cdd604de9d91fdec9bd4267",
+          "author": "Chris Estreich",
+          "date": "2025-03-31T15:12:37+02:00",
+          "message": "Wrangle our settings-related types and add support for settings import / export (#1997)",
+          "ai_signals": [
+            {
+              "tool": "unknown_ai",
+              "signal_type": "ai_review_bot",
+              "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
+              "confidence": 0.4
+            }
+          ],
+          "blamed_file": "src/core/webview/ClineProvider.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory_pr",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "4da5627eb31208020669303f418c28e726c6f99e",
+          "screening_verification": {
+            "verdict": "CONFIRMED",
+            "reasoning": "The blamed commit performed a large refactoring of ClineProvider.ts, where it introduced the vulnerable configuration setting 'alwaysAllowWriteOutsideWorkspace: true' as the default state. This change enabled the dangerous behavior that the subsequent fix specifically corrected by flipping the flag to 'false'.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Path Traversal / Arbitrary File Write",
+            "vuln_description": "The application failed to properly validate file paths during write operations, allowing remote attackers to write files outside of the intended workspace directory.",
+            "vulnerable_pattern": "Permitting file write operations based on unsanitized user-supplied paths without checking against the workspace root directory.",
+            "causal_chain": "During the massive refactoring in commit a414c7d028cc, the configuration for 'alwaysAllowWriteOutsideWorkspace' was introduced or set to 'true', effectively disabling the path restriction mechanism and enabling the path traversal vulnerability."
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This is the commit that wrote the exact lines later fixed by 4da5627: pre-fix blame on src/core/webview/ClineProvider.ts attributes `alwaysAllowReadOnlyOutsideWorkspace ?? true` / `alwaysAllowWriteOutsideWorkspace ?? true` in both `getStateToPostToWebview()` and `getState()` to 7457e679cf. Comparing upstream v3.11.0 (e1ca1b93a63bf4b4f79d0b65c750ee279c552dff) to 7457 shows those defaults changed from `false` to `true`, and the merge even annotates the block with `// kilocode_change: default values set to true`. That unsafe default is exactly what the fix reverted back to `false`.",
+                "confidence": 0.95,
+                "tool_calls_made": 86,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "7bf143e30202cfd7af9942465f79bb8f59caee37",
+              "author_name": "R00-B0T",
+              "message": "Changeset version bump (#1881)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "89013ddd20915a05aec7c9ffa2ca27e0c8130f2d",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1914)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e8d6a552b34757222e5fc505cf1b135438e7313e",
+              "author_name": "feifei",
+              "message": "i18n: Update numeric formatting suffixes to improve consistency (#1939)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cc2420ea1a1b9c74fac452b116f0b76937bedad8",
+              "author_name": "teddyOOXX",
+              "message": "fix qwq model in openai provider (#1940)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "2985172c619b09242abf816684bd7e60a25e6082",
+              "author_name": "Taiki Maekawa",
+              "message": "feat: add bedrock application inference profile (#1938)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "83ba22a44ce3f28fae139b84dbd5e334b4cf3ccf",
+              "author_name": "aheizi",
+              "message": "optimize context files (fix) (#1933)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "30f9d8f0324a9ff316cab5aa7863dac980696950",
+              "author_name": "Matt Rubens",
+              "message": "Better openrouter error handling (#1945)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "15338ed76aa9165739ba963f9c20bd0ef1cd5cea",
+              "author_name": "Matt Rubens",
+              "message": "Bring back open files and git results in mention suggestions (#1946)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "187979af2b16e1f8720b84a7bf8526db73a6300c",
+              "author_name": "KJ7LNW",
+              "message": "feat: add test declarations support in typescript tree-sitter queries (#1899)",
+              "ai_signals": [
+                {
+                  "tool": "roo_code",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8ad4fff0d2b8a511f1092dd15f4c3aac1218949d",
+              "author_name": "Steven T. Cramer",
+              "message": "Removed hardcoded filenames to GlobalFileNames constants. (#1904)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "953a9c777afab02a50a53d1034df4c2aeedcbde5",
+              "author_name": "KJ7LNW",
+              "message": "refactor: align tree-sitter output with other tools (#1859)",
+              "ai_signals": [
+                {
+                  "tool": "roo_code",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fdcc679f9f4ddd6e2f5d31a70696888a603b2079",
+              "author_name": "Wojciech Kordalski",
+              "message": "Add `taskCreated` event to API and subscribe to Cline events earlier (#1942)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "2953baef9760b1f98015bb9688c3388ef0430725",
+              "author_name": "ying",
+              "message": "[clinerules] search clinerule in parent folders which make it easier to share within a github repo (#1832)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c74c235d330405750ccbdba19f49cd087d2da8f1",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1936)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "92dd8e36da2e44d74e3df494b0f9e222957cad29",
+              "author_name": "cannuri",
+              "message": "Fix browser tool visibility in system prompt preview (#1840)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "92850023c9f811aab81a0e419f09d685d8b2abeb",
+              "author_name": "Chris Estreich",
+              "message": "Run 'npm audit fix' on everything (#1817)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1c9daf5a48a8299b4d922de51455b27015e9087d",
+              "author_name": "Jiayuan Chen",
+              "message": "Support customize storage path (#1941)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "809e8cd6bc63e1be4f90137c6663d2cdbcd888af",
+              "author_name": "Rian Santos",
+              "message": "#906 - Add watchPaths option to McpHub for file change detection (#1755)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d91467fbd6fe9fe09e3f214789f40b718a3eea1d",
+              "author_name": "Mikhail Beliakov",
+              "message": "fix: Readme docs links (#1951)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "418694befa671cdae52d41182b3fb515671c31db",
+              "author_name": "Chad Gauthier",
+              "message": "Update UX for text area (#1953)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "ai_review_bot",
+                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
+                  "confidence": 0.4
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fe4e73279c30d6261e4681ffca37589e4ccef915",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1949)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6d8e7bbfbd6191dde75f998275ef2ca8bfc3fd14",
+              "author_name": "Jiayuan Chen",
+              "message": "Internationalization support for custom storage path functionality (#1957)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fbc31c3d992b7af2094b3f16ce2ce97b34e371c5",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1958)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4fa4943d5f6635ea73c4dc2389985b92cef5f6d4",
+              "author_name": "Matt Rubens",
+              "message": "Revert \"[clinerules] search clinerule in parent folders which make it easier to share within a github repo\" (#1959)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "237ee329ee5c0297b859eb55f06e54ccd46225fd",
+              "author_name": "黄远成",
+              "message": "Support mcp image resource (#1962)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "94421391121a12932a1e1de8a3763f15e46c27bc",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1960)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1810efe496bab7c6d72a4468bb89d8c77479eb6a",
+              "author_name": "Matt Rubens",
+              "message": "Additional checkbox for auto-approving reads and writes outside of the workspace (#1965)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "22d01ce67a8ef99ba13d03405b5acefb392bca11",
+              "author_name": "Matt Rubens",
+              "message": "Add specific strings for read/edit outside of the workspace (#1970)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0bc4f30c23c288b81b76264bd9530a741d69cf12",
+              "author_name": "axb",
+              "message": "add new task command (#1648)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "45299a9aea98933d864573c2cbfcb370869aeba4",
+              "author_name": "Peter Dave Hello",
+              "message": "Fix the supportsPromptCache value for OpenAI models (#1923)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec423a715cc4d4ce11ec5eb09491eb5dff41067a",
+              "author_name": "Diarmid Mackenzie",
+              "message": "Fetch instructions (#1869)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "ai_review_bot",
+                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
+                  "confidence": 0.4
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8613daf515fbd5302666b82a8258f98c45ae62d9",
+              "author_name": "Samuel",
+              "message": "Added Gemini 2.5 Pro model to Google Gemini Provider (#1974)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "6258493f0d5b89f31f245230795a7bad29dcd3b8",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1967)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b8549f1f26a4fa553c78995d49faad36d4840b6e",
+              "author_name": "Matt Rubens",
+              "message": "Auto-approval logic for fetch_instructions (#1976)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f773bc3024f1e086c955d723134d8d180f983b64",
+              "author_name": "Diarmid Mackenzie",
+              "message": "Remove \"Enable Custom Mode Creation Through Prompts\" toggle (#1980)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "3cd549b81149d7ff9121f5277bb372d1341f07e7",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1978)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2c77043801c103db51ed7577ae0c9d2fb6e6d7a7",
+              "author_name": "Matt Rubens",
+              "message": "v3.10.4 (#1983)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1d1c33549cfb5e6fc8440627fe8916bc0d4c12dc",
+              "author_name": "R00-B0T",
+              "message": "Changeset version bump (#1947)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f071a43b266022e2989e9140c739a4f57a89ebdb",
+              "author_name": "Eugène P.",
+              "message": "Updated value of max tokens for gemini-2.5-pro-03-25 to correct one (#1985)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7d2b6b7d3d1f67ef37df3ae0e4ad4648c80d3973",
+              "author_name": "Matt Rubens",
+              "message": "v3.10.5 (#1986)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1f36694e2d9322f9f2c8d0f0729d973782ae9591",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1984)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "599d451bd1cc44c07c0bde694d08f2fa0d5e289a",
+              "author_name": "Chris Estreich",
+              "message": "Fix task completion events (#1981)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "be8527c9957fe1b18b0e053e8ec1b70ed65ab129",
+              "author_name": "R00-B0T",
+              "message": "Changeset version bump (#1987)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0fd0800ba9ccb911e3754faccf3977793e970038",
+              "author_name": "Matt Rubens",
+              "message": "Show openrouter key balance on the settings page (#1990)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1fb34b81fa442c401dc998a4939f8d6b9c66d529",
+              "author_name": "Matt Rubens",
+              "message": "Show requesty key balance on the settings screen (#1995)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "55bbe88e392a392dbd789aa854847a98955ad6e5",
+              "author_name": "jwc11",
+              "message": "feat: add pinning and sorting for API configurations dropdown (#2001)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "a414c7d028ccd4ec0cdd604de9d91fdec9bd4267",
+              "author_name": "Chris Estreich",
+              "message": "Wrangle our settings-related types and add support for settings import / export (#1997)",
+              "ai_signals": [
+                {
+                  "tool": "unknown_ai",
+                  "signal_type": "ai_review_bot",
+                  "matched_text": "Co-authored-by: ellipsis-dev[bot] <65095814+ellipsis-dev[bot]",
+                  "confidence": 0.4
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "4d744bb94a93c8b227766738d7b6d574b06e6361",
+              "author_name": "Matt Rubens",
+              "message": "New icon (#2020)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c62e8f2ee23d3f07393e2ef32d4b882a0e077761",
+              "author_name": "Sam Hoang Van",
+              "message": "feat @-mention window path style & file with space (#1924)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "c7ac0c5db547edc500740af55a87601ef3dec411",
+              "author_name": "aheizi",
+              "message": "Support project level mcp (#1841)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b6107c62b1d3eeb6f2f71a79285b50e11e340b6c",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#1991)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3c75b81f0d7c4c509518069de5a3d305cf9cfd2b",
+              "author_name": "KJ7LNW",
+              "message": "Fix: Restore file truncation backward compatibility and fix regressions (#2022)",
+              "ai_signals": [
+                {
+                  "tool": "roo_code",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b3efe3e4fb75651667a6a7a7de48d397fb868dde",
+              "author_name": "Chris Estreich",
+              "message": "Add execa, zod-to-ts, and tsx as dev dependencies (#2025)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e464c41970dbed4ffc7a9866d752b6db56ce688c",
+              "author_name": "Chris Estreich",
+              "message": "Add tsup as a dev dependency (#2029)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0fd399de7880594ed358c7d0fcdb5a357872f691",
+              "author_name": "Chris Estreich",
+              "message": "Automatically generate `roo-code.d.ts` (including type generation via zod-to-ts) (#2024)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7eb469f636ebe26116dbdb012770ef39ebb4bc28",
+              "author_name": "Chris Estreich",
+              "message": "Re-enable ClineProvider tests (#2047)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "3d0fc3ccc5aa5829b9e189d5b844727cc337bf27",
+              "author_name": "Chris Estreich",
+              "message": "Add config getters to RooCodeAPI (#2048)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "d4c7493674dd46dbb820547bb86f1a39543cac88",
+              "author_name": "Chris Estreich",
+              "message": "Remove redundant zod schemas (#2051)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "317e5446fb1b6fdcd1abd37104671766ba8c3dd7",
+              "author_name": "KJ7LNW",
+              "message": "Fix list_code_definition_names to support files (#2046)",
+              "ai_signals": [
+                {
+                  "tool": "roo_code",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Eric Wheeler <roo",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "62a7bc7959220dedd6c04e60d2b884822f4f76c6",
+              "author_name": "Diarmid Mackenzie",
+              "message": "Refactor fetch instructions to new file (#2056)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b46f6adb78ded5d20529bb42000dc23beb79f4f8",
+              "author_name": "Matt Rubens",
+              "message": "Extract code for read_file from Cline (#2059)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e7e5511b6525e2946d4420c657b6d04c177ba19f",
+              "author_name": "Sam Hoang Van",
+              "message": "feat: prioritize \"Add to Context\" and add line number tracking (#2063)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "dbe0ede9a7148abd8b37a36aca3c356678a71ddb",
+              "author_name": "Chris Estreich",
+              "message": "Handle null [x]ModelInfo types, recover from settings schema parse errors (#2064)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "105bc3c0d5a00583627356fe7b02f70d050e08af",
+              "author_name": "Chris Estreich",
+              "message": "Require exactly node v20.18.1 (#2065)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5fbf56321624dbe5613707fdd63cbfaeea882489",
+              "author_name": "Greg Taylor",
+              "message": "Add an activation command for other extensions (#2073)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "683ff2fd8a07f023bc676d00a062ff1ca843b6f8",
+              "author_name": "Hannes Rudolph",
+              "message": "Update bug_report.yml (#1994)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d7278d367e960e3f4f7b6506c1d9e69a12e5228f",
+              "author_name": "aheizi",
+              "message": "Fix mention file name is not fully displayed (#2026)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cbe7075f4f3f8e52bbc84518d0fae0f5db959af2",
+              "author_name": "Afshawn Lotfi",
+              "message": "In-Editor Browser Improvements (#1601)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "bedb7de72bf0e769f5a612bff7b84963f3151bcf",
+              "author_name": "Matt Rubens",
+              "message": "Add missing awaits on refactored tools (#2078)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e15fa227c5080838b1801946e2f7c273d9f5459f",
+              "author_name": "Nico Bihan",
+              "message": "Added Gemini 2.5 Pro model to GCP Vertex AI Provider (#2079)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9bb50eaba37475b679634c51c973b6098f78be3e",
+              "author_name": "Matt Rubens",
+              "message": "Display info about partial reads in chat row (#2080)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ec01dd27ef5d3323ff76a96ce26a026c57f15be5",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#2023)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "40a0766161cde8ec961053800a4925709dd9ce06",
+              "author_name": "Matt Rubens",
+              "message": "Handle multiple API pages worth of contributors (#2088)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "db66e8df4964cf027523eb01136d608370a2da74",
+              "author_name": "github-actions[bot]",
+              "message": "Update contributors list (#2089)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e95afc250bf0fe4494366785b0ffd9847a050864",
+              "author_name": "Bhavesh Ramburn",
+              "message": "Refactor/cline.ts/list files (#2067)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "72894c22a0488b93dd11f150908cfc910c5b5dc8",
+              "author_name": "Matt Rubens",
+              "message": "Remove switch from tools (#2091)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1242ba808e766fee746ae1aa6cac19b768cdd2a9",
+              "author_name": "Matt Rubens",
+              "message": "Fix a type in the listFiles tool (#2092)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "26c3fe6535b2c265b89a9ce435736a6db743a059",
+              "author_name": "Matt Rubens",
+              "message": "Move write_to_file to a tool file (#2093)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "02f63fc522dc6e1edb13ab1923c76d87226f976b",
+              "author_name": "Matt Rubens",
+              "message": "Move apply_diff to a tool file (#2094)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d5328770e789068bc0cc75dca3884a7fa16a9527",
+              "author_name": "Matt Rubens",
+              "message": "Move insert_content to a tool file (#2095)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bdb668b68bf7ade54c1a658250973a839af4cacf",
+              "author_name": "Matt Rubens",
+              "message": "Move search_and_replace to a tool file (#2096)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "da2af71106f8feb2e39824e82fd9cbca7356abba",
+              "author_name": "Matt Rubens",
+              "message": "Move list_code_definition_names to a tool file (#2097)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9be36ddcf3d42248a9c657ec575456f52c7af8ae",
+              "author_name": "Matt Rubens",
+              "message": "Move search_files to a tool file (#2098)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "38365085d711b5e89246db9ef0b397debfffab5a",
+              "author_name": "Matt Rubens",
+              "message": "Move browser_action to a tool file (#2099)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "937b1f3c9003a15de0e0b2e9187f039c6c3d2d5d",
+              "author_name": "Matt Rubens",
+              "message": "Move execute_command to a tool file (#2100)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9b0790fce73b14e56b1d4b7a50d898d8b9298a76",
+              "author_name": "Matt Rubens",
+              "message": "Move use_mcp_tool and access_mcp_resource to tool files (#2101)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "253d0fecb2424a74e21f829797aae63a5a0fdb2f",
+              "author_name": "Matt Rubens",
+              "message": "Move new_task, switch_mode, attempt_completion, and ask_followup_question to tool files (#2102)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "87b06476bbc054bbae57f907c5146b8ad514067f",
+              "author_name": "Matt Rubens",
+              "message": "Do a little code cleanup now that tools are refactored out (#2103)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2303f67afb37d5f71437d7776210581f28a92aec",
+              "author_name": "Chris Estreich",
+              "message": "Clean up the way we compute the current diff strategy (#2049)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "cf487fbfae55a128bfdb938f274b370ae29e00d5",
+              "author_name": "feifei",
+              "message": "i18n Add translations for task pinning and unpinning (#2109)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "712ca71ee037daf20e0f6d834c356e2311f5f36f",
+              "author_name": "Matt Rubens",
+              "message": "Remove the ask promise error (#2107)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "37ecf9648b3fb859c46699fb44a93bb0747ce979",
+              "author_name": "Matt Rubens",
+              "message": "Link to the settings page from the auto approve toolbar (#2111)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "592494fb2924ef8aaff4411ff19192e3473758a0",
+              "author_name": "Matt Rubens",
+              "message": "Link to provider docs from the API options (#2112)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a7d31aa9ba819b4a608c9507634088034e4aff0d",
+              "author_name": "Matt Rubens",
+              "message": "Revert \"Remove the ask promise error\" (#2117)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2c5f95616242cb8a52e354477650b904edbee733",
+              "author_name": "Matt Rubens",
+              "message": "Parse the retry out of the gemini 429 response (#2118)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b74e1e89da35b87b6275acc8a62cf247185b385c",
+              "author_name": "Matt Rubens",
+              "message": "Fix Gemini command escaping (#2120)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d3df9547977592f47a8824f5df7d702589e2c720",
+              "author_name": "feifei",
+              "message": "Fix switching profiles to ensure only the selected profile is switche… (#2119)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "60e122f2ca5fb57d114e569e903019a635fb3bfc",
+              "author_name": "Matt Rubens",
+              "message": "Tweaks to support prompt line number format (#2121)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b788aa1ec4f2f683b4f6d5a14befaadc33ad4d36",
+              "author_name": "Matt Rubens",
+              "message": "Remove the ask promise error (#2123)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "520326648b0ae8557ca98e6fe2e7bf21210a53db",
+              "author_name": "Matt Rubens",
+              "message": "Revert \"Remove the ask promise error\" (#2126)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "7457e679cf73f722f6db7a204ec7be903a4f4fd3"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4da5627eb31208020669303f418c28e726c6f99e",
+          "repo_url": "https://github.com/Kilo-Org/kilocode",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "2fdddf89edba41ec3a527134e485a3388c464333",
+          "repo_url": "https://github.com/Kilo-Org/kilocode",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [
+        "https://github.com/Kilo-Org/kilocode/pull/2244/commits/2fdddf89edba41ec3a527134e485a3388c464333",
+        "https://vuldb.com/?ctiid.327382",
+        "https://vuldb.com/?id.327382",
+        "https://vuldb.com/?submit.667004",
+        "https://mcpsec.dev/advisories/2025-10-02-kilo-code-ai-agent-supply-chain-attack/"
+      ],
+      "ai_contribution": "Yes. The confirmed introducer is commit 7457e679cf73f722f6db7a204ec7be903a4f4fd3, which the provided attribution data flags as AI-assisted (unknown_ai); that merge changed the newly added outside-workspace auto-approval defaults in ClineProvider from the upstream safe value `false` to vulnerable `true`, enabling the prompt-injection write-outside-workspace attack path."
     },
     {
       "id": "CVE-2026-32247",
@@ -13750,6 +15331,115 @@
       "ai_contribution": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`."
     },
     {
+      "id": "GHSA-f7ww-2725-qvw2",
+      "description": "OpenClaw: Node system.run approval bypass via parent-symlink cwd rebind",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-367",
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T23:35:56Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.9,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code in de898c423b95d818b15050143c737cdf1c301398 made node exec approval requests validate successfully by switching optional approval fields from invalid nulls to undefined, which enabled the vulnerable approval-based system.run path without the later immutable approval-time cwd/argv binding. The core mutable-cwd design was introduced by earlier human-authored commits, but the AI commit was part of the causal chain that made the weakness reachable.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "de898c423b95d818b15050143c737cdf1c301398",
+          "author": "Lucas Czekaj",
+          "date": "2026-01-21T18:14:51-08:00",
+          "message": "fix(exec): pass undefined instead of null for optional approval params",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/cli/nodes-cli/register.invoke.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
+          "screening_verification": {
+            "verdict": "UNLIKELY",
+            "reasoning": "The blamed commit only changes the values of 'resolvedPath' and 'sessionKey' from null to undefined. It does not introduce the vulnerable TOCTOU symlink handling logic that the fix addresses.",
+            "model": "gemini-3.1-pro-preview",
+            "vuln_type": "TOCTOU / Symlink Attack",
+            "vuln_description": "The application was vulnerable to a Time-of-Check Time-of-Use (TOCTOU) issue where an attacker could exploit symlink-based current working directory rebinding to bypass approval checks during node execution.",
+            "vulnerable_pattern": "Relying on the current working directory path for approval validation without verifying that the directory structure (symlinks) remains unchanged between the check and the actual execution.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit changed node exec approval requests in src/cli/nodes-cli/register.invoke.ts from `resolvedPath: null` / `sessionKey: null` to `undefined`. The schema at that time used `Type.Optional(Type.String())`, and the added test in the same commit documents that `null` was rejected while `undefined` was accepted, so this change made `exec.approval.request` succeed for the node approval flow. It did not invent the mutable-cwd design, but it enabled that vulnerable path to execute in practice, which makes it part of the vulnerability introduction chain.",
+                "confidence": 0.95,
+                "tool_calls_made": 130,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4b4718c8dfce2e2c48404aa5088af7c013bed60b",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "4e690e09c746408b5e27617a20cb3fdc5190dbda",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "d06632ba45a8482192792c55d5ff0b2e21abb0a7",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "d82c042b09727a6148f3ca651b254c4a677aff26",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-f7ww-2725-qvw2",
+        "https://github.com/openclaw/openclaw/commit/4b4718c8dfce2e2c48404aa5088af7c013bed60b",
+        "https://github.com/openclaw/openclaw/commit/4e690e09c746408b5e27617a20cb3fdc5190dbda",
+        "https://github.com/openclaw/openclaw/commit/78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
+        "https://github.com/openclaw/openclaw/commit/d06632ba45a8482192792c55d5ff0b2e21abb0a7",
+        "https://github.com/openclaw/openclaw/commit/d82c042b09727a6148f3ca651b254c4a677aff26"
+      ],
+      "ai_contribution": "AI-authored code in de898c423b95d818b15050143c737cdf1c301398 made node exec approval requests validate successfully by switching optional approval fields from invalid nulls to undefined, which enabled the vulnerable approval-based system.run path without the later immutable approval-time cwd/argv binding. The core mutable-cwd design was introduced by earlier human-authored commits, but the AI commit was part of the causal chain that made the weakness reachable."
+    },
+    {
       "id": "CVE-2025-12330",
       "description": "A security flaw has been discovered in Willow CMS up to 1.4.0. This issue affects some unknown processing of the file /admin/articles/add of the component Add Post Page. The manipulation of the argument title/body results in cross site scripting. The attack may be launched remotely. The exploit has been released to the public and may be exploited.",
       "severity": "MEDIUM",
@@ -14683,6 +16373,121 @@
       "ai_contribution": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach."
     },
     {
+      "id": "GHSA-2mc2-g238-722j",
+      "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-295",
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:35:21Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.81,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/config/zod-schema.providers-core.ts, src/imessage/monitor/monitor-provider.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
+        "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+      ]
+    },
+    {
+      "id": "GHSA-cfvj-7rx7-fc7c",
+      "description": "OpenClaw: stageSandboxMedia destination symlink traversal can overwrite files outside sandbox workspace",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:18:28Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.81,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-cfvj-7rx7-fc7c",
+        "https://github.com/openclaw/openclaw/commit/17ede52a4be3034f6ec4b883ac6b81ad0101558a"
+      ]
+    },
+    {
       "id": "CVE-2025-64702",
       "description": "quic-go HTTP/3 QPACK Header Expansion DoS",
       "severity": "MEDIUM",
@@ -15419,233 +17224,6 @@
         "https://metacpan.org/release/TOKUHIROM/HTTP-Session2-1.11/source/lib/HTTP/Session2/Random.pm#L35"
       ],
       "ai_contribution": "Yes. The AI-assisted root import commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3 (Co-Authored-By Claude Opus 4.6) is the first available commit in this repo that adds `HTTP::Session2::Random::generate_session_id`, including the insecure fallback `substr(Digest::SHA::sha1_hex(rand() . $$ . {} . Time::HiRes::time()),int(rand(4)),31);`. That same snapshot already had all session-store implementations calling this generator, so AI-authored code directly contributed to the vulnerable design."
-    },
-    {
-      "id": "GHSA-7jx5-9fjg-hp4m",
-      "description": "OpenClaw ACP client has permission auto-approval bypass via untrusted tool metadata",
-      "severity": "HIGH",
-      "cvss": 8.0,
-      "cwes": [
-        "CWE-639",
-        "CWE-863"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-27T22:08:36Z",
-      "ai_tools": [
-        "aether"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.57,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced the ACP permission model that auto-approved any tool not on a dangerous denylist using an untyped `toolCall.name` value. Later human commits ee31cd47b49f4b2f128a69a2a3745ca9db68b3be and bb1c3dfe10766fd996ef220ff9d3f967eb717faa refactored and narrowed that logic, but they still trusted untrusted tool metadata/kinds until 12cc7543 and 63dcd28a replaced it with trusted core-tool IDs, path scoping, and stricter validation.",
-      "root_cause": "The OpenClaw ACP client failed to properly validate tool metadata during permission auto-approval, allowing malicious actors to bypass authorization checks by manipulating untrusted metadata fields.",
-      "vuln_type": "Authorization Bypass",
-      "vulnerable_pattern": "Implicitly trusting tool metadata fields to authorize actions without server-side verification or strict schema enforcement.",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
-          "author": "aether-ai-agent",
-          "date": "2026-02-13T22:28:43+11:00",
-          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
-          "ai_signals": [
-            {
-              "tool": "aether",
-              "signal_type": "author_name",
-              "matched_text": "aether-ai-agent",
-              "confidence": 0.95
-            },
-            {
-              "tool": "aether",
-              "signal_type": "author_email",
-              "matched_text": "@tryaether.ai",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/acp/client.ts",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This AI-authored commit was the first ACP permission handler and introduced the flawed architecture: it read `toolCall.name` from a non-SDK field and auto-approved every request whose untrusted name was not in `DANGEROUS_ACP_TOOLS`. Although ee31 later refactored the code, the later fixes reverse this same design choice by moving from denylisting untrusted names to allowlisting trusted core tool IDs. That makes 749e28d part of the causal introduction of the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
-              "author_name": "aether-ai-agent",
-              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
-              "ai_signals": [
-                {
-                  "tool": "aether",
-                  "signal_type": "author_name",
-                  "matched_text": "aether-ai-agent",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "aether",
-                  "signal_type": "author_email",
-                  "matched_text": "@tryaether.ai",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
-            },
-            {
-              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
-              "author_name": "Peter Steinberger",
-              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
-              "ai_signals": [],
-              "touched_blamed_file": true
-            }
-          ],
-          "squash_merge_sha": "749e28dec796f77697398acbfc7a64d4439d7cad"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "12cc754332f9a7c92e158ce7644aa22df79c0904",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7jx5-9fjg-hp4m",
-        "https://github.com/openclaw/openclaw/commit/12cc754332f9a7c92e158ce7644aa22df79c0904",
-        "https://github.com/openclaw/openclaw/commit/63dcd28ae0be2de1c75af09cc81841cebeec068f",
-        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.23"
-      ],
-      "ai_contribution": "AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced the ACP permission model that auto-approved any tool not on a dangerous denylist using an untyped `toolCall.name` value. Later human commits ee31cd47b49f4b2f128a69a2a3745ca9db68b3be and bb1c3dfe10766fd996ef220ff9d3f967eb717faa refactored and narrowed that logic, but they still trusted untrusted tool metadata/kinds until 12cc7543 and 63dcd28a replaced it with trusted core-tool IDs, path scoping, and stricter validation."
-    },
-    {
-      "id": "GHSA-cpqf-f22c-r95x",
-      "description": "Vite Plugin React has a Denial of Service Vulnerability in React Server Components",
-      "severity": "HIGH",
-      "cvss": 7.5,
-      "cwes": [
-        "CWE-1395",
-        "CWE-400",
-        "CWE-502"
-      ],
-      "ecosystem": "",
-      "published": "2025-12-12T16:41:08Z",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.57,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. Copilot-authored commit 486ebb03 changed `packages/plugin-rsc/src/core/rsc.ts` so React 19.2.1+ would again deserialize client references on the server, reopening the unsafe RSC deserialization path exercised by the vulnerable vendored React 19.2.x code. The Claude-coauthored `plugin-react` preamble commit was unrelated.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "486ebb03defe1608505fd8ecd05623f6ec1c4571",
-          "author": "Copilot",
-          "date": "2025-12-04T10:23:22+09:00",
-          "message": "fix(rsc): fix deserializing client reference in server environment with React 19.2.1+ (#1000)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "author_email",
-              "matched_text": "Copilot@users.noreply.github.com",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "packages/plugin-rsc/src/core/rsc.ts",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "advisory_version",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "db1c6656a1d47fca5219d89991e505989e4298a5",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.7,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This Copilot-authored commit rewrote the `SERVER_DECODE_CLIENT_PREFIX` branch in `packages/plugin-rsc/src/core/rsc.ts`, adding `getOwnPropertyDescriptor` support so React 19.2.1+ would successfully deserialize client references on the server. The immediately preceding React 19.2.1 bump had broken that round-trip and the repo skipped serialization/action-bind tests until this commit restored them, so it made attacker-controlled RSC deserialization reachable again. Because the CVE is a DoS in that React RSC deserialization path and the later fix was only to upgrade React to 19.2.3, this commit is part of the causal chain that introduced exploitability.",
-                "confidence": 0.7,
-                "tool_calls_made": 154,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "cfa3c8b3ead0dc9c71046e6edf64c6c2b9909e2b",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "db1c6656a1d47fca5219d89991e505989e4298a5",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "1f372b65aca67a58230f4eabbc704f43f53b5236",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "f4c4f9a438b61c53e4fff5cdea614fcb6dcb597f",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "f127a24376a90a82acf5b8aad4be750bec3045f3",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "239a25badbc823584c04167deba9242a61ee8397",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        },
-        {
-          "sha": "38c2a706002b2fd9e424234051b390a917033260",
-          "repo_url": "https://github.com/vitejs/vite-plugin-react",
-          "source": "advisory_version"
-        }
-      ],
-      "references": [
-        "https://github.com/vitejs/vite-plugin-react/security/advisories/GHSA-cpqf-f22c-r95x"
-      ],
-      "ai_contribution": "Yes. Copilot-authored commit 486ebb03 changed `packages/plugin-rsc/src/core/rsc.ts` so React 19.2.1+ would again deserialize client references on the server, reopening the unsafe RSC deserialization path exercised by the vulnerable vendored React 19.2.x code. The Claude-coauthored `plugin-react` preamble commit was unrelated."
     },
     {
       "id": "GHSA-g99v-8hwm-g76g",
@@ -16878,216 +18456,6 @@
       "ai_contribution": "AI-assisted code contributed directly: commit 01168661990e2abc37d45d700767ece4b04e8bfa (co-authored with Claude / marked claude_code) introduced SendDiscordFileBlock with explicit URL support and fetched user-controlled URLs via raw aiohttp (`session.get(file)`) without SSRF validation. Later commits mostly moved that code until a later hardening switched the fetch to the validated `Requests().get()` path."
     },
     {
-      "id": "CVE-2026-27938",
-      "description": "WPGraphQL Repo Vulnerable to Command Injection via Unsanitized GitHub Actions Expression in Release Workflow",
-      "severity": "HIGH",
-      "cvss": 7.7,
-      "cwes": [
-        "CWE-78"
-      ],
-      "ecosystem": "",
-      "published": "2026-02-26T02:16:21.960",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "PHP"
-      ],
-      "confidence": 0.42,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-coauthored commits 1be5bd4ecb54556f8fb13327fef86534af97268f and e7c1e336ee82e8fe020ca5d6052fa9d330185387 directly added vulnerable `${{ }}` interpolations inside `run:` blocks in the affected GitHub Actions workflows. Later human-authored commits expanded the same unsafe pattern, but AI-authored code was part of the introduction chain.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "1be5bd4ecb54556f8fb13327fef86534af97268f",
-          "author": "Jason Bahl",
-          "date": "2026-01-16T10:33:12-07:00",
-          "message": "chore: migrate to monorepo structure (#3467)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": ".github/workflows/release-please.yml",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "osv",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "25de66d9cd31f0237ba62453173a649400b6d055",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit created `.github/workflows/release-please.yml` and introduced direct `${{ ... }}` interpolation inside `run:` blocks, including debug and release-summary lines using `steps.release.outputs.*`. De0c2d590593f1099546ad517106e454a498bc58 changes those run-block interpolations to `env:` variables, so 1be5bd4 is a real introducer of the unsafe pattern in the release workflow.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "e7c1e336ee82e8fe020ca5d6052fa9d330185387",
-          "author": "Jason Bahl",
-          "date": "2026-02-04T23:54:55-07:00",
-          "message": "feat: import WPGraphQL IDE into monorepo (#3542)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": ".github/workflows/update-release-pr.yml",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "osv",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "25de66d9cd31f0237ba62453173a649400b6d055",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "In `.github/workflows/update-release-pr.yml`, this commit added the `Update version constants` step with `node scripts/update-version-constants.js --version=${{ steps.version_info.outputs.version }} --component=${{ steps.version_info.outputs.component }} --plugin-dir=${{ steps.version_info.outputs.plugin_dir }}` inside a `run:` block. De0c2d590593f1099546ad517106e454a498bc58 rewrites that exact step to pass values through `env:` and quoted shell variables, so this commit directly introduced vulnerable code.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "25de66d9cd31f0237ba62453173a649400b6d055",
-          "repo_url": "https://github.com/wp-graphql/wp-graphql",
-          "source": "osv"
-        },
-        {
-          "sha": "de0c2d590593f1099546ad517106e454a498bc58",
-          "repo_url": "https://github.com/wp-graphql/wp-graphql",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/27xxx/CVE-2026-27938.json",
-        "https://github.com/wp-graphql/wp-graphql/security/advisories/GHSA-4q9f-mjxf-rx7x",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-27938"
-      ],
-      "ai_contribution": "AI-coauthored commits 1be5bd4ecb54556f8fb13327fef86534af97268f and e7c1e336ee82e8fe020ca5d6052fa9d330185387 directly added vulnerable `${{ }}` interpolations inside `run:` blocks in the affected GitHub Actions workflows. Later human-authored commits expanded the same unsafe pattern, but AI-authored code was part of the introduction chain."
-    },
-    {
-      "id": "CVE-2026-32322",
-      "description": "soroban-sdk: `Fr` scalar field equality comparison bypasses modular reduction",
-      "severity": "MEDIUM",
-      "cvss": 5.3,
-      "cwes": [
-        "CWE-697"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-13T19:54:42.610",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "Rust"
-      ],
-      "confidence": 0.42,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. The Copilot-assisted commit ecad5addcae1dfc3b9bd9865ea5977aef5f16843 directly introduced the BN254 `Fr` implementation with unreduced constructors (`Self(value)`, `Ok(Fr(u))`) and raw `PartialEq`, which is exactly the behavior later fixed by modular reduction on construction. The other AI-tagged candidate, a3cefc1682d1d1ae2d894225c426af4cea7b752f, is unrelated.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "ecad5addcae1dfc3b9bd9865ea5977aef5f16843",
-          "author": "mootz12",
-          "date": "2026-01-12T18:21:49-05:00",
-          "message": "Add bn254 support and expose poseidon/poseidon2 host functions (#1667)",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "soroban-sdk/src/crypto/bn254.rs",
-          "blame_confidence": 0.6,
-          "blame_strategy": "verifier_discovered",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit created `soroban-sdk/src/crypto/bn254.rs`, and its diff introduced the exact vulnerable BN254 pattern later fixed in 082424b30bf22ea7fb8c79f16ccd135e0ae9f3db: `impl From<U256> for Fr { Self(value) }`, `TryFromVal<Env, Val> for Fr` returning `Ok(Fr(u))`, plus `PartialEq` comparing the raw underlying `U256`. Because BN254 support did not exist before this commit, it is the direct origin of the missing modular reduction for BN254 `Fr` values.",
-                "confidence": 0.95,
-                "tool_calls_made": 56,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "dcbea44513feb7734af6b6c4aced2c4a7a2715d0",
-          "repo_url": "https://github.com/stellar/rs-soroban-sdk",
-          "source": "osv"
-        },
-        {
-          "sha": "d3e1ab2424388b10893b796b0c8e405c5edd03d2",
-          "repo_url": "https://github.com/stellar/rs-soroban-sdk",
-          "source": "osv"
-        },
-        {
-          "sha": "34f7f53ae31e0fd02aab436a9872e79fa671ca02",
-          "repo_url": "https://github.com/stellar/rs-soroban-sdk",
-          "source": "osv"
-        },
-        {
-          "sha": "082424b30bf22ea7fb8c79f16ccd135e0ae9f3db",
-          "repo_url": "https://github.com/stellar/rs-soroban-sdk",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32322.json",
-        "https://github.com/stellar/rs-soroban-sdk/security/advisories/GHSA-x2hw-px52-wp4m",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-32322"
-      ],
-      "ai_contribution": "Yes. The Copilot-assisted commit ecad5addcae1dfc3b9bd9865ea5977aef5f16843 directly introduced the BN254 `Fr` implementation with unreduced constructors (`Self(value)`, `Ok(Fr(u))`) and raw `PartialEq`, which is exactly the behavior later fixed by modular reduction on construction. The other AI-tagged candidate, a3cefc1682d1d1ae2d894225c426af4cea7b752f, is unrelated."
-    },
-    {
       "id": "GHSA-4cm8-xpfv-jv6f",
       "description": "ZeptoClaw: Email Sender Spoofing to bypass Header-Only From Allowlist Validation",
       "severity": "MEDIUM",
@@ -17420,6 +18788,652 @@
       "ai_contribution": "AI-authored code did contribute: commit 51bc07a02484ddfd2ec9c7f382dc43f829a9df86, generated with Claude Code, introduced the Email channel, the `EmailConfig.allowed_senders` access-control surface, and the vulnerable logic that trusted the parsed inbound `From` header as sender identity. A later AI-authored commit (4538f6c6e97db7ec03c98f4d418182b9248f4ace) touched the same file but did not introduce the spoofing weakness."
     },
     {
+      "id": "GHSA-7h7g-x2px-94hj",
+      "description": "OpenClaw: Pairing setup codes exposed long-lived shared gateway credentials instead of short-lived bootstrap tokens",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:54:18Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [
+        "Swift",
+        "TypeScript"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The original leak was introduced by human-authored setup-code generators, but AI-authored commit 130e59a9 added the iOS QR/deep-link onboarding path that parsed setup codes and persisted their embedded shared `token`/`password`, extending the insecure design into a first-class mobile pairing flow. That made AI code part of the causal chain even though it was not the first root introducer.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
+          "author": "Hongwei Ma",
+          "date": "2026-02-16T16:22:51+00:00",
+          "message": "feat: QR code scanning for gateway onboarding",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "bf89947a8e9ec5d278b71a8c438ce414dd04a2d6",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit introduces `GatewayConnectDeepLink`, which is a data transfer object for handling deep links, but it does not contain the logic for plugin auto-discovery or execution. The fix commit modifies `GatewayConnectDeepLink` to add a `bootstrapToken` field, which addresses authentication or verification for deep links, but the actual vulnerability (arbitrary code execution via workspace plugins) resides in a different part of the system responsible for plugin management, not this deep link parser.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Arbitrary Code Execution (CWE-829)",
+            "vuln_description": "The application's plugin auto-discovery mechanism incorrectly trusted and executed code from repositories without proper validation or isolation, allowing untrusted code to run.",
+            "vulnerable_pattern": "Automated loading and execution of plugins or configuration payloads from workspace directories without source verification.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced `GatewayConnectDeepLink` with `token`/`password` fields in `apps/shared/OpenClawKit/Sources/OpenClawKit/DeepLinks.swift`, and its new iOS onboarding flow immediately stored those values from scanned setup codes (`handleScannedLink` sets `gatewayToken`/`gatewayPassword`). The fix changes exactly this path by adding `bootstrapToken` and clearing shared credentials when a bootstrap token is present. Even though the setup-code generator existed elsewhere, this AI-authored commit enabled the insecure shared-credential design in the QR onboarding path.",
+                "confidence": 0.95,
+                "tool_calls_made": 168,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "06adadc759de4f1be2e130ee1ab41eec353272c8",
+              "author_name": "Hongwei Ma",
+              "message": "feat: QR code scanning for gateway onboarding",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "bc05143e4e3c6e5b7ef36e28d01dcd54f9d24804",
+              "author_name": "Mariano Belinky",
+              "message": "Onboarding/Media: harden QR scanner and data URL parsing",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7cbaae15e0b7887a7a6f7e69229cab4aeba32242",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: restore onboarding wizard flow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4825bb52c4b287df76757a4a8acfb27150095802",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: stabilize QR onboarding pairing",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b0f7428c297ba6425d3c5fff27b0228ccbbfe30f",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: resume pairing clears paused state",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7843ab5e450cceb29ab86b7a20c50d44d6ee20a3",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: avoid onboarding modal when gateway already configured",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ff3f90af972b9f1da8f5e4f0898bc33e489d6b5d",
+              "author_name": "Mariano Belinky",
+              "message": "iOS: stop auth step flip-flop during reconnect",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "ee11388e38e7971d354b991b452a8d7fa267e648",
+              "author_name": "Emanuel Stadler",
+              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in Settings sheet",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a779205580f617365819a321c07aae4e00f0dcfc",
+              "author_name": "Emanuel Stadler",
+              "message": "iOS: fix Fatal error: No Observable object of type NodeAppModel in GatewayQuickSetupSheet",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f187cac489414970ff5124b00f6baca44f98b49a",
+              "author_name": "Nimrod Gutman",
+              "message": "fix(ios): include device identity for operator gateway session",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7ed2e1bfe9c376fd02cfbf613b2352f72608064e",
+              "author_name": "Mariano Belinky",
+              "message": "ios: route launch onboarding/settings via startup route",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a07790c3848f8d4bd5a4961a2beb41c396820b90",
+              "author_name": "Mariano Belinky",
+              "message": "chore: scope onboarding pack to iOS and pairing surfaces",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c967c59bb7ae910459fc297eb3f09527bb26884c",
+              "author_name": "Mariano Belinky",
+              "message": "changelog: add iOS onboarding QR flow entry",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bbd041dc1eb1749b3bb73df295c5619fc584f9af",
+              "author_name": "Mariano Belinky",
+              "message": "device-pair: use ascii qr fallback in plugin flow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a87eadea19e9d2e693300ac7382cd338eb87b472",
+              "author_name": "Mariano Belinky",
+              "message": "style: format device-pair qr fallback",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "130e59a9c09604f78e6e62da85392ed927547fc8"
+        },
+        {
+          "sha": "7387b20e7822e36c081bf3e5a6855f99c0c52b2c",
+          "author": "Claude",
+          "date": "2026-01-24T19:09:24-03:00",
+          "message": "style: format compact.ts and run.ts with oxfmt",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "author_email",
+              "matched_text": "claude@anthropic.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "committer_email",
+              "matched_text": "claude@anthropic.com",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/pi-embedded-runner/run.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ff47876e61b2af14f34ed72b5b61989ada8d8fc6",
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "966cb2b9e72e3b535be5ad7a07fb785c2be50302",
+              "author_name": "Rodrigo Uroz",
+              "message": "fix: detect Anthropic 'Request size exceeds model context window' as context overflow",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "eaacdacaed5bdabce2972a37ccfb6aa3f2f7b771",
+              "author_name": "Rodrigo Uroz",
+              "message": "fix(tests): remove unused imports and helper from test files",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e565b3f4a58c2ded531fb1a423fea6e12ea9e2d9",
+              "author_name": "Claude",
+              "message": "fix: trigger auto-compaction on context overflow promptError",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7387b20e7822e36c081bf3e5a6855f99c0c52b2c",
+              "author_name": "Claude",
+              "message": "style: format compact.ts and run.ts with oxfmt",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "author_email",
+                  "matched_text": "claude@anthropic.com",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "claude_code",
+                  "signal_type": "committer_email",
+                  "matched_text": "claude@anthropic.com",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "04074a810ab1d3eb25bb8d39ea52b148ea838cea",
+              "author_name": "Peter Steinberger",
+              "message": "fix: tighten context overflow match (#1627) (thanks @rodrigouroz)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "9ceac415c5ac028f32e03f3a81f89a88e3ee4c2a"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "bf89947a8e9ec5d278b71a8c438ce414dd04a2d6",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "7dc447f79f83908c06d9220723881e2047d1278c",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ff47876e61b2af14f34ed72b5b61989ada8d8fc6",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e8a162d3d8a0643416098f612108c3546efd8733",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b14a5c6713b8e88e414063b806f1fd1fd676a856",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9692dc7668cb3886562ca264a5853964f917f8db",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4da617e1783af7c79affb8ce39093c96333cd454",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ddeb4239443f9a548c7c2ac15cbcaec0d8889336",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e951a42bcb863fd03495c9ad1781574f2dfdd6b2",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b2e21e37920c98e94c7611eb44901d133c5ac929",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9cd54ea8824462b876733471132f2bd7b8c1b0b0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "904db27019ae2b5a96c1568cba962af02f6f3aba",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fd568c4f743d1cec6abfba5dbfcb2c5534f0c9c9",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9cb0fa58c20c71e22a58f4b499a982fa169f6385",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6c196c913fc3fde51f3e2e1087ed94a6920fac1f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f3c00fce157867d3aadd4041e578bbb40b4841d0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "433e65711f78492e961e5da678de91175b4f151b",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "08da1b47badccb8aa7fbd1e7bb5a8af5ff848622",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b858d6c3a91ee94905131a2d41b7ee17608ebd00",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d5b3f2ed71f2aec49e4f48034f0d96a7c6c72591",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7h7g-x2px-94hj",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+      ],
+      "ai_contribution": "Yes. The original leak was introduced by human-authored setup-code generators, but AI-authored commit 130e59a9 added the iOS QR/deep-link onboarding path that parsed setup codes and persisted their embedded shared `token`/`password`, extending the insecure design into a first-class mobile pairing flow. That made AI code part of the causal chain even though it was not the first root introducer."
+    },
+    {
+      "id": "GHSA-87v3-4cfp-cm76",
+      "description": "Cross-Site Scripting (XSS) via SVG Schema innerHTML Injection in @pdfme/schemas",
+      "severity": "MEDIUM",
+      "cvss": 6.1,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-18T16:10:26Z",
+      "ai_tools": [
+        "devin"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "58f7f1ab6845ceba94b0457b08657fa4388fdf4d",
+          "author": "Devin AI",
+          "date": "2025-03-05T19:46:54+09:00",
+          "message": "Fix TypeScript type compatibility issues across packages",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "packages/schemas/src/select/index.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "3b1769d5be88fd4d291cb9838121f0e4e87c6b9f",
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "a039de426934b7e35a1f3db34a7829d54013a003",
+              "author_name": "Devin AI",
+              "message": "Fix lint errors across multiple packages",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "9ee12922fca164434111c880102e2131f6c2ac0e",
+              "author_name": "Devin AI",
+              "message": "Fix type safety issues in tables/pdfRender.ts",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5e0fe2e00b177e420f5f52a8feb4fb972ba3b870",
+              "author_name": "Devin AI",
+              "message": "Fix remaining lint errors in multiple packages",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "e57f6a41a2458b80c3ebb426e8a6c3e898b676f9",
+              "author_name": "Devin AI",
+              "message": "Fix type error in DetailView/index.tsx",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "65bb40ed0ad92df1b46d1b918e0c05668ac8f981",
+              "author_name": "hand-dot",
+              "message": "Enable problematic test in Playground E2E Tests",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "45917f87fb3333ee8a0cff72526f6fa9aa2bc998",
+              "author_name": "hand-dot",
+              "message": "TMP",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "58f7f1ab6845ceba94b0457b08657fa4388fdf4d",
+              "author_name": "Devin AI",
+              "message": "Fix TypeScript type compatibility issues across packages",
+              "ai_signals": [
+                {
+                  "tool": "devin",
+                  "signal_type": "author_name",
+                  "matched_text": "Devin AI",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "66cfffa22eb6b68a3b31ca3f4735fff4fb9dd81f",
+              "author_name": "hand-dot",
+              "message": "Refactor typedI18n function to use a type-safe key assertion for i18n",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "2eff1734ca85e3068ffa78d14558e15b58b366a8"
+        },
+        {
+          "sha": "fca7c8ffede76f2658ff700b583e3bae506700ec",
+          "author": "Devin AI",
+          "date": "2025-03-05T14:57:53+09:00",
+          "message": "Fix linting errors in packages/common directory",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "packages/common/src/dynamicTemplate.ts",
+          "blame_confidence": 0.27,
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "69f6be160bc79b30cbdc1125e18f8a49d0e33929",
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "fca7c8ffede76f2658ff700b583e3bae506700ec",
+              "author_name": "Devin AI",
+              "message": "Fix linting errors in packages/common directory",
+              "ai_signals": [
+                {
+                  "tool": "devin",
+                  "signal_type": "author_name",
+                  "matched_text": "Devin AI",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "db8f9bf525f05fc61c67b8911b7e34394e600a5f",
+              "author_name": "Devin AI",
+              "message": "Fix type error in helper.ts getFontNamesInSchemas function",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bf0a4def54a9779db557bc7ed40c34e64977d70a",
+              "author_name": "Devin AI",
+              "message": "Fix type errors in schemas package and test files",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f31a09cfaa0d78d3d94c18c67e513408adf90ccd",
+              "author_name": "Devin AI",
+              "message": "Revert strict type changes to maintain backward compatibility",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "6a2d86f58827dff699a3bc3b7af2826e20651d7e"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3b1769d5be88fd4d291cb9838121f0e4e87c6b9f",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba835ef802653dba48d40ed2fde817245e3430de",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0cb63519792745d135fcc51f450f2e8b5a550dd3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "de18c27577131e6f4e212e14acaee85913f99d76",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a221fdea86e045bae3af946c660438c7f3706f35",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8fa67ff22ffa8a2cb4b9f50fdaceebed8f7893b2",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "06e9de30484ceba5360d8106ba79c852fc48e1a3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "318802f4e45fa4c171802e41546c54e82739773f",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "c86a6d28753977a3e0bc66f201314bb196a1ff99",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9a3604a23fb0a4202143345e4abc816c158a8660",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a1eb5925bbdcd0b0899c8b79f78ee251f44629ee",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "bb790538aecc146ed99c3a74f2333f7e711b64a4",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f677be56b3df06f7e811bfd63160ec4e7276951d",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2f0e57eb24fbbfcdd2a2ca7f39e5f7dd7be250b5",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2cae25d8bcdc80d4a167f3fb29dd73b71c488572",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "03ad029dcdccb44627981c7469c4115c90d46e83",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2725514ef3ec82844a6932c48038e91d7c85a041",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5cddf77ba61c3ef5f0c5049c8f3e1eda3bb4f93a",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "38a62e48cf00b94c3fe7efa2abb742ad362ad720",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "53c78ac62732be6024a921f7bd87784c5177df4e",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/pdfme/pdfme/security/advisories/GHSA-87v3-4cfp-cm76"
+      ]
+    },
+    {
       "id": "GHSA-m69h-jm2f-2pv8",
       "description": "OpenClaw: Feishu reaction events could bypass group authorization and mention gating",
       "severity": "LOW",
@@ -17458,6 +19472,280 @@
         "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
       ],
       "ai_contribution": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass."
+    },
+    {
+      "id": "GHSA-qq9g-96v4-m3cj",
+      "description": "Cross-Site Scripting (XSS) via Select Schema Option Value Injection in @pdfme/schemas",
+      "severity": "MEDIUM",
+      "cvss": 6.1,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-18T16:10:16Z",
+      "ai_tools": [
+        "devin"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.2375,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "58f7f1ab6845ceba94b0457b08657fa4388fdf4d",
+          "author": "Devin AI",
+          "date": "2025-03-05T19:46:54+09:00",
+          "message": "Fix TypeScript type compatibility issues across packages",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "packages/schemas/src/select/index.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "3b1769d5be88fd4d291cb9838121f0e4e87c6b9f",
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "a039de426934b7e35a1f3db34a7829d54013a003",
+              "author_name": "Devin AI",
+              "message": "Fix lint errors across multiple packages",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "9ee12922fca164434111c880102e2131f6c2ac0e",
+              "author_name": "Devin AI",
+              "message": "Fix type safety issues in tables/pdfRender.ts",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "5e0fe2e00b177e420f5f52a8feb4fb972ba3b870",
+              "author_name": "Devin AI",
+              "message": "Fix remaining lint errors in multiple packages",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "e57f6a41a2458b80c3ebb426e8a6c3e898b676f9",
+              "author_name": "Devin AI",
+              "message": "Fix type error in DetailView/index.tsx",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "65bb40ed0ad92df1b46d1b918e0c05668ac8f981",
+              "author_name": "hand-dot",
+              "message": "Enable problematic test in Playground E2E Tests",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "45917f87fb3333ee8a0cff72526f6fa9aa2bc998",
+              "author_name": "hand-dot",
+              "message": "TMP",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "58f7f1ab6845ceba94b0457b08657fa4388fdf4d",
+              "author_name": "Devin AI",
+              "message": "Fix TypeScript type compatibility issues across packages",
+              "ai_signals": [
+                {
+                  "tool": "devin",
+                  "signal_type": "author_name",
+                  "matched_text": "Devin AI",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "66cfffa22eb6b68a3b31ca3f4735fff4fb9dd81f",
+              "author_name": "hand-dot",
+              "message": "Refactor typedI18n function to use a type-safe key assertion for i18n",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "2eff1734ca85e3068ffa78d14558e15b58b366a8"
+        },
+        {
+          "sha": "fca7c8ffede76f2658ff700b583e3bae506700ec",
+          "author": "Devin AI",
+          "date": "2025-03-05T14:57:53+09:00",
+          "message": "Fix linting errors in packages/common directory",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "packages/common/src/dynamicTemplate.ts",
+          "blame_confidence": 0.27,
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "69f6be160bc79b30cbdc1125e18f8a49d0e33929",
+          "screening_verification": null,
+          "decomposed_commits": [
+            {
+              "sha": "fca7c8ffede76f2658ff700b583e3bae506700ec",
+              "author_name": "Devin AI",
+              "message": "Fix linting errors in packages/common directory",
+              "ai_signals": [
+                {
+                  "tool": "devin",
+                  "signal_type": "author_name",
+                  "matched_text": "Devin AI",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "db8f9bf525f05fc61c67b8911b7e34394e600a5f",
+              "author_name": "Devin AI",
+              "message": "Fix type error in helper.ts getFontNamesInSchemas function",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "bf0a4def54a9779db557bc7ed40c34e64977d70a",
+              "author_name": "Devin AI",
+              "message": "Fix type errors in schemas package and test files",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f31a09cfaa0d78d3d94c18c67e513408adf90ccd",
+              "author_name": "Devin AI",
+              "message": "Revert strict type changes to maintain backward compatibility",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "6a2d86f58827dff699a3bc3b7af2826e20651d7e"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3b1769d5be88fd4d291cb9838121f0e4e87c6b9f",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba835ef802653dba48d40ed2fde817245e3430de",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0cb63519792745d135fcc51f450f2e8b5a550dd3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "de18c27577131e6f4e212e14acaee85913f99d76",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a221fdea86e045bae3af946c660438c7f3706f35",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8fa67ff22ffa8a2cb4b9f50fdaceebed8f7893b2",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "06e9de30484ceba5360d8106ba79c852fc48e1a3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "318802f4e45fa4c171802e41546c54e82739773f",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "c86a6d28753977a3e0bc66f201314bb196a1ff99",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "9a3604a23fb0a4202143345e4abc816c158a8660",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a1eb5925bbdcd0b0899c8b79f78ee251f44629ee",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "bb790538aecc146ed99c3a74f2333f7e711b64a4",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f677be56b3df06f7e811bfd63160ec4e7276951d",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2f0e57eb24fbbfcdd2a2ca7f39e5f7dd7be250b5",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2cae25d8bcdc80d4a167f3fb29dd73b71c488572",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "03ad029dcdccb44627981c7469c4115c90d46e83",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2725514ef3ec82844a6932c48038e91d7c85a041",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5cddf77ba61c3ef5f0c5049c8f3e1eda3bb4f93a",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "38a62e48cf00b94c3fe7efa2abb742ad362ad720",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "53c78ac62732be6024a921f7bd87784c5177df4e",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/pdfme/pdfme/security/advisories/GHSA-qq9g-96v4-m3cj"
+      ]
     },
     {
       "id": "CVE-2025-53108",
@@ -17810,6 +20098,78 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2025-53108"
       ],
       "ai_contribution": "AI-assisted code contributed via commit 606a92b5d5c8d3e3e4d24f73021804de2a81c1cb, which reimplemented attachment handling after the documents-table removal and kept authorization based on raw attachment IDs instead of group-scoped checks. That Copilot-assisted reimplementation was part of the causal chain even though the original missing-authorization design first appeared in earlier human-authored commits."
+    },
+    {
+      "id": "CVE-2026-30924",
+      "description": "qui CORS Misconfiguration: Arbitrary Origins Trusted",
+      "severity": "CRITICAL",
+      "cvss": 9.0,
+      "cwes": [
+        "CWE-942"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T21:17:09.943",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "languages": [],
+      "confidence": 0.1069,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-assisted commit f01101d6f24b0c5f4a15b858d87ecd1d7c4ab5e8 did not author the unsafe `AllowOriginFunc(...){ return true }` CORS policy, but it added the auth-disabled / reverse-proxy deployment mode without any accompanying CORS restriction, expanding the impact of the pre-existing arbitrary-origin trust for proxy-authenticated deployments. The original CORS bug itself was introduced earlier by human-authored commits.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "424f7a0de089dce881e8bbecd220163a78e0295f",
+          "repo_url": "https://github.com/autobrr/qui",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/autobrr/qui/security/advisories/GHSA-h8vw-ph9r-xpch",
+        "https://github.com/autobrr/qui/commit/424f7a0de089dce881e8bbecd220163a78e0295f"
+      ],
+      "ai_contribution": "Yes. The AI-assisted commit f01101d6f24b0c5f4a15b858d87ecd1d7c4ab5e8 did not author the unsafe `AllowOriginFunc(...){ return true }` CORS policy, but it added the auth-disabled / reverse-proxy deployment mode without any accompanying CORS restriction, expanding the impact of the pre-existing arbitrary-origin trust for proxy-authenticated deployments. The original CORS bug itself was introduced earlier by human-authored commits."
+    },
+    {
+      "id": "GHSA-wpph-cjgr-7c39",
+      "description": "OpenClaw's typed sender-key matching for toolsBySender prevents identity-collision policy bypass",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T23:12:21Z",
+      "ai_tools": [
+        "ai_assisted"
+      ],
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-assisted commit 3b0c80ce245b293fae817ec800c5e3a9c0ec7ee8 (Claude/claude_code) directly introduced the vulnerable `toolsBySender` design and matcher: it flattened sender IDs, phone numbers, usernames, and display names into one normalized key space, then matched all of those candidate fields against the same map. That is exactly the behavior the fix replaces with typed `id:/e164:/username:/name:` buckets and an ID-only legacy fallback.",
+      "root_cause": "The application failed to properly distinguish between different sender identities in 'toolsBySender' configurations, leading to potential identity-collision where a user could inadvertently or maliciously assume permissions assigned to a different user with a matching key.",
+      "vuln_type": "Incorrect Authorization / Improper Access Control",
+      "vulnerable_pattern": "Insufficiently specific sender-key matching logic in group policy validation that allowed cross-identity access",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "5547a2275cb69413af3b62c795b93214fe913b57",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-wpph-cjgr-7c39",
+        "https://github.com/openclaw/openclaw/commit/5547a2275cb69413af3b62c795b93214fe913b57"
+      ],
+      "ai_contribution": "Yes. AI-assisted commit 3b0c80ce245b293fae817ec800c5e3a9c0ec7ee8 (Claude/claude_code) directly introduced the vulnerable `toolsBySender` design and matcher: it flattened sender IDs, phone numbers, usernames, and display names into one normalized key space, then matched all of those candidate fields against the same map. That is exactly the behavior the fix replaces with typed `id:/e164:/username:/name:` buckets and an ID-only legacy fallback."
     }
   ]
 }
