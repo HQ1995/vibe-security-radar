@@ -1142,9 +1142,16 @@ def _get_effective_signals_dict(bic: dict) -> list[dict]:
 
 
 def _compute_confidence(result: dict) -> float:
-    """Compute AI confidence using the unified scoring module."""
-    from cve_analyzer.models import CveAnalysisResult
-    from cve_analyzer.scoring import compute_ai_confidence
+    """Compute AI confidence using the unified scoring module.
+
+    Adds cve-analyzer/src to sys.path lazily so the script can still run
+    standalone from the repo root.
+    """
+    _src = os.path.join(os.path.dirname(__file__), "..", "cve-analyzer", "src")
+    if _src not in sys.path:
+        sys.path.insert(0, os.path.abspath(_src))
+    from cve_analyzer.models import CveAnalysisResult  # noqa: E402
+    from cve_analyzer.scoring import compute_ai_confidence  # noqa: E402
     parsed = CveAnalysisResult.from_dict(result)
     parsed.rebuild_signals()
     return compute_ai_confidence(parsed)
