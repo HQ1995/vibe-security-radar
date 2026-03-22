@@ -42,9 +42,8 @@ DEFAULT_REPOS_DIR = os.path.expanduser("~/.cache/cve-analyzer/repos")
 DEFAULT_OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "web" / "data")
 DEFAULT_MIN_CONFIDENCE = 0.0
 
-# Workflow signal types — AI participated in merge/review but didn't write code.
-# Keep in sync with WORKFLOW_SIGNAL_TYPES in cve_analyzer/models.py.
-_WORKFLOW_SIGNAL_TYPES: frozenset[str] = frozenset({"merge_workflow", "ai_review_bot"})
+# Workflow signal types — imported from cve_analyzer after sys.path setup below.
+_WORKFLOW_SIGNAL_TYPES: frozenset[str] = frozenset()  # set after _ensure_cve_analyzer_importable()
 
 # File extension → language mapping for language analytics
 EXTENSION_TO_LANGUAGE: dict[str, str] = {
@@ -1135,23 +1134,27 @@ def _get_effective_signals_dict(bic: dict) -> list[dict]:
     pr_signals = bic.get("pr_signals", [])
     if culprit_sha and decomposed:
         culprit = next((dc for dc in decomposed if dc.get("sha") == culprit_sha), None)
-        if culprit and culprit.get("touched_blamed_file"):
+        if culprit and culprit.get("touched_blamed_file") is not False:
             return culprit.get("ai_signals", []) + pr_signals
         return pr_signals
     return bic.get("commit", {}).get("ai_signals", []) + pr_signals
 
 
-def _compute_confidence(result: dict) -> float:
-    """Compute AI confidence using the unified scoring module.
-
-    Adds cve-analyzer/src to sys.path lazily so the script can still run
-    standalone from the repo root.
-    """
-    _src = os.path.join(os.path.dirname(__file__), "..", "cve-analyzer", "src")
+def _ensure_cve_analyzer_importable() -> None:
+    """Add cve-analyzer/src to sys.path if not already present."""
+    _src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "cve-analyzer", "src"))
     if _src not in sys.path:
-        sys.path.insert(0, os.path.abspath(_src))
-    from cve_analyzer.models import CveAnalysisResult  # noqa: E402
-    from cve_analyzer.scoring import compute_ai_confidence  # noqa: E402
+        sys.path.insert(0, _src)
+
+
+_ensure_cve_analyzer_importable()
+from cve_analyzer.models import CveAnalysisResult, WORKFLOW_SIGNAL_TYPES  # noqa: E402
+from cve_analyzer.scoring import compute_ai_confidence  # noqa: E402
+_WORKFLOW_SIGNAL_TYPES = WORKFLOW_SIGNAL_TYPES  # override placeholder
+
+
+def _compute_confidence(result: dict) -> float:
+    """Compute AI confidence using the unified scoring module."""
     parsed = CveAnalysisResult.from_dict(result)
     parsed.rebuild_signals()
     return compute_ai_confidence(parsed)
