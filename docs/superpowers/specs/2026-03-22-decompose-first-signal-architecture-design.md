@@ -132,6 +132,8 @@ Not every squash merge needs decomposition. API calls are expensive.
 | BIC has no signals, repo has no AI activity | No | Nothing to find |
 | BIC is not a squash merge (individual commit) | No | Already atomic |
 
+**Single-CVE mode fallback:** `repo_ai_activity` is populated during batch runs, not inline during `analyze CVE-XXXX`. For single-CVE mode, Phase B.1 runs a lightweight AI activity check on the repo (scan recent 50 commits for AI signals) if `repo_ai_activity` is not already cached. This adds ~1s but prevents missing the OpenClaw pattern in single-CVE analysis.
+
 ### API-efficient decomposition
 
 Within a decomposition, minimize API calls:
@@ -232,11 +234,30 @@ Extract the confidence formula into a shared module:
 # cve_analyzer/scoring.py
 
 def compute_ai_confidence(result: CveAnalysisResult) -> float:
-    """Single confidence computation used by both pipeline and web data generation."""
-    ...
+    """Single confidence computation used by both pipeline and web data generation.
+
+    CRITICAL: Iterates bic.effective_signals(), NOT bic.commit.ai_signals.
+    The old code read bic.commit.ai_signals directly — after this redesign,
+    authoritative signals live on the culprit DC for decomposed BICs.
+    """
+    best_score = 0.0
+    for bic in result.bug_introducing_commits:
+        signals = bic.effective_signals()
+        authorship = [s for s in signals if s.signal_type not in WORKFLOW_SIGNAL_TYPES]
+        if not authorship:
+            continue
+        # ... existing scoring logic using authorship signals ...
+    return best_score
 ```
 
 Both `pipeline.py` and `generate_web_data.py` import from `scoring.py`. The duplicate `_recompute_ai_confidence` in `generate_web_data.py` is deleted.
+
+### `_apply_confidence_cleanup` refactoring
+
+The existing `_apply_confidence_cleanup` (pipeline.py:1145-1192) reads `bic.commit.ai_signals` in two loops. After this redesign:
+- Its signal-filtering logic is absorbed into `rebuild_signals()` which uses `effective_signals()`
+- Its UNRELATED-BIC exclusion logic moves into `effective_signals()` (return `[]` when BIC is excluded)
+- The function itself is deleted; `rebuild_signals()` + `compute_ai_confidence()` replaces it
 
 ## Signal Integrity Checker
 
@@ -248,11 +269,12 @@ def verify_signal_integrity(result: CveAnalysisResult) -> list[str]:
     issues = []
 
     # 1. Top-level signals must match effective signals aggregate
-    top = {(s.tool, s.signal_type, s.matched_text) for s in result.ai_signals}
+    # Use tool.value (string) not tool (enum) — matches deduplicate_signals() key
+    top = {(s.tool.value, s.signal_type, s.matched_text) for s in result.ai_signals}
     eff = set()
     for bic in result.bug_introducing_commits:
         for s in bic.effective_signals():
-            eff.add((s.tool, s.signal_type, s.matched_text))
+            eff.add((s.tool.value, s.signal_type, s.matched_text))
     if top != eff:
         issues.append("top-level ai_signals out of sync with effective_signals()")
 
@@ -309,13 +331,13 @@ Called before every `cache.save_cached()`. Violations are logged as warnings (no
 
 | File | Changes |
 |------|---------|
-| `models.py` | AiSignal: add `origin`. BIC: add `pr_signals`, `effective_signals()`, `decomposition_attempted`, `decomposition_failed`. CveAnalysisResult: add `rebuild_signals()`. DecomposedCommit: add `committer_name`, `committer_email`. |
-| `pipeline.py` | Phase B: remove signal detection from `_collect_blamed()`. New Phase B.1 (decomposition). New Phase B.2 (signal detection). `rescan_signals()`: rewrite with `origin`-based logic. Remove `_apply_confidence_cleanup` signal clearing. Call `rebuild_signals()` before save. Call `verify_signal_integrity()` before save. Re-enter Phase B.1 for verifier-discovered BICs. |
-| `pr_enrichment.py` | Split into decomposition (Phase B.1) and PR body scan (Phase B.2). `decompose_squash_signals()`: remove `squash_decomposed_` prefix. Add smart decomposition trigger (repo AI activity check). Add API-efficient file fetch (only for AI sub-commits). |
-| `ai_signatures.py` | `detect_ai_signals()`: set `origin="commit_metadata"`. `detect_ai_signals_in_text()`: set `origin="pr_body"`. |
-| `scoring.py` (new) | Extract `_compute_ai_confidence_score` from pipeline.py. Single implementation. |
-| `integrity.py` (new) | `verify_signal_integrity()` function. |
-| `generate_web_data.py` | Delete `_recompute_ai_confidence`, import from `scoring.py`. Fix `_has_no_confirmed_verdict` loop logic. Use `effective_signals()` concept for `ai_tools_set` computation. |
+| `models.py` | AiSignal: add `origin` field + `from_dict` migration (infer origin from signal_type for old data). BIC: add `pr_signals`, `effective_signals()`, `decomposition_attempted`, `decomposition_failed`, update `to_dict`/`from_dict`. CveAnalysisResult: add `rebuild_signals()`. DecomposedCommit: add `committer_name`, `committer_email`. |
+| `pipeline.py` | Phase B: remove signal detection from `_collect_blamed()`. New Phase B.1 (decomposition, extracted from old B.5). New Phase B.2 (signal detection on atomic commits). Delete `_apply_confidence_cleanup` (logic absorbed into `rebuild_signals()` + `scoring.py`). `rescan_signals()`: rewrite with `origin`-based logic. Call `rebuild_signals()` + `verify_signal_integrity()` before save. Re-enter Phase B.1 for verifier-discovered BICs after Phase D. Update `_needs_enrich` guard to recognize both old and new phase timing keys. Update all `_compute_ai_confidence` call sites to use `scoring.compute_ai_confidence`. |
+| `pr_enrichment.py` | Split into decomposition (Phase B.1) and PR body scan (Phase B.2). `decompose_squash_signals()`: remove `squash_decomposed_` prefix, set `origin="commit_metadata"` on signals. Add smart decomposition trigger (repo AI activity check + lightweight scan for single-CVE mode). Add API-efficient file fetch (only for AI sub-commits). Remove `bic_is_individual` skip guard from PR body scan (B.2 runs independently of B.1). |
+| `ai_signatures.py` | `detect_ai_signals()`: set `origin="commit_metadata"` on returned signals. `detect_ai_signals_in_text()`: set `origin="pr_body"`. |
+| `scoring.py` (new) | Extract `_compute_ai_confidence_score` from pipeline.py. Uses `bic.effective_signals()` (not `bic.commit.ai_signals`). Single implementation shared by pipeline and web data generation. |
+| `integrity.py` (new) | `verify_signal_integrity()` function. Uses `tool.value` (string) for set comparisons to match `deduplicate_signals()` key format. |
+| `generate_web_data.py` | Delete `_recompute_ai_confidence`, import from `scoring.py`. Fix `_has_no_confirmed_verdict` loop logic (UNRELATED exclusion + early return). Use `effective_signals()` concept for `ai_tools_set` computation (consult decomposed sub-commit signals, not just `bic.commit.ai_signals`). |
 | `cache.py` | `save_cached()`: call `result.rebuild_signals()` and `verify_signal_integrity()` before write. |
 
 ## Migration Strategy
@@ -324,16 +346,21 @@ Called before every `cache.save_cached()`. Violations are logged as warnings (no
 
 - New fields (`origin`, `pr_signals`, etc.) default to safe values in `from_dict()`
 - Old cached results work without migration
-- `origin` defaults to `"commit_metadata"` (safe assumption for pre-existing signals)
-- `squash_decomposed_*` prefix still recognized during deserialization: mapped to `origin="commit_metadata"` with prefix stripped from `signal_type`
+- `AiSignal.from_dict()` infers `origin` from `signal_type` for old data:
+  - `signal_type.startswith("squash_decomposed_")` → strip prefix, set `origin="commit_metadata"`
+  - `signal_type in ("pr_body_keyword", "pr_body")` → set `origin="pr_body"`
+  - All others → `origin="commit_metadata"` (default)
+- `BugIntroducingCommit.from_dict()`: populate `pr_signals` from `commit.ai_signals` where `origin="pr_body"` (extract PR signals to their own field)
+- Phase timing keys: `from_dict()` recognizes both old (`"Phase B.5 (PR enrich)"`) and new (`"Phase B.1 (decompose)"`, `"Phase B.2 (signals)"`) keys for the `_needs_enrich` guard
 - `rescan_signals` gradually modernizes cache entries as they're touched
 - No batch migration script needed
 
 ## Verification Plan
 
-1. All 2274 existing tests pass
-2. Re-run rescan on full cache — no signal loss, no new false positives
-3. Regenerate web data — count should be >= 78 (no regressions)
-4. Independent audit of 5 random CVEs from website — all confirmed TP
-5. Re-analyze 3 known OpenClaw CVEs — signals correctly detected via smart decomposition
-6. `verify_signal_integrity()` reports 0 violations on regenerated web data
+1. All existing tests pass (add new tests for `origin` migration, `effective_signals()`, `rebuild_signals()`)
+2. Add fixture test: old-format cache with `squash_decomposed_*` and `pr_body_keyword` signals → rescan preserves them correctly under `origin`-based logic
+3. Re-run `rescan_signals` on full cache — 0 `lost_ai`, `verify_signal_integrity()` reports 0 violations on every saved entry
+4. Regenerate web data — pin baseline count before migration (currently 78), no regressions
+5. Independent audit of 5 random CVEs from website — all confirmed TP
+6. Re-analyze 3 known OpenClaw CVEs in single-CVE mode — signals correctly detected via smart decomposition
+7. Verify phase timing key migration: old cached results with `"Phase B.5 (PR enrich)"` are not re-enriched unnecessarily
