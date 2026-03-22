@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-22T06:40:38.510376+00:00",
-  "total": 78,
+  "generated_at": "2026-03-22T20:06:14.025679+00:00",
+  "total": 77,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -5832,87 +5832,6 @@
       "ai_contribution": "AI-coauthored commits directly introduced several vulnerable tool paths: the original filesystem write/edit implementation, the later one-time `validate_path_in_workspace` integration, and the PDF/DOCX/transcribe tools all trusted path validation as a setup step instead of a security invariant and/or performed unsafe writes that followed links. Although the dangling-symlink bug in `check_symlink_escape()` itself came from a non-AI commit, AI-authored code was a substantial part of the causal chain for the CVE."
     },
     {
-      "id": "CVE-2026-3503",
-      "description": "Protection mechanism failure in wolfCrypt post-quantum implementations (ML-KEM and ML-DSA) in wolfSSL on ARM Cortex-M microcontrollers allows a physical attacker to compromise key material and/or cryptographic outcomes via induced transient faults that corrupt or redirect seed/pointer values during Keccak-based expansion.\n\n\n\n\nThis issue affects wolfSSL (wolfCrypt): commit hash d86575c766e6e67ef93545fa69c04d6eb49400c6.",
-      "severity": "MEDIUM",
-      "cvss": 4.3,
-      "cwes": [
-        "CWE-335"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-19T19:16:20.570",
-      "ai_tools": [
-        "devin"
-      ],
-      "languages": [
-        "C/C++"
-      ],
-      "confidence": 0.855,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Devin AI directly contributed by creating the new ML-KEM implementation file `wolfcrypt/src/wc_mlkem.c` with the same shared-buffer `rho`/`sigma` seed-pointer design that the fix later hardens with separate storage and integrity checks. Even though the pattern existed earlier in human-authored Kyber code, this AI-authored reimplementation was a new vulnerable code path and part of the causal chain for the CVE.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "f4b770c5ab6de2b23c4c4a8d22e15bb8c12c92a9",
-          "author": "Devin AI",
-          "date": "2025-03-05T22:38:07+00:00",
-          "message": "Update Kyber APIs to ML-KEM APIs",
-          "ai_signals": [
-            {
-              "tool": "devin",
-              "signal_type": "author_name",
-              "matched_text": "Devin AI",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "wolfcrypt/src/wc_mlkem.c",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "github_advisory_pr",
-          "blame_strategy": "context_blame",
-          "fix_commit_sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit introduced the initial implementation of `wc_mlkem.c`, which lacked the necessary fault-hardening checks. Because the code was implemented without these redundant verification steps, it was inherently susceptible to the fault injection vulnerability that the subsequent fix addresses.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Fault injection vulnerability",
-            "vuln_description": "The ML-KEM and ML-DSA implementations were susceptible to physical fault injection attacks that could corrupt seed values or pointers during Keccak-based expansion, potentially compromising cryptographic operations.",
-            "vulnerable_pattern": "Lack of redundant checks or verification steps during Keccak-based expansion (e.g., Keccak state updates or seed expansion) that allow transient faults to corrupt the internal state or pointers.",
-            "causal_chain": "The initial commit introduced the ML-KEM implementation without any verification logic (such as checking buffer integrity or redundant state verification) during Keccak-based expansion, creating the vulnerability window where transient faults could corrupt key material."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This AI-authored commit created `wolfcrypt/src/wc_mlkem.c` and introduced `wc_MlKemKey_MakeKeyWithRandom()` with `byte buf[2 * KYBER_SYM_SZ + 1]; byte* rho = buf; byte* sigma = buf + KYBER_SYM_SZ;`, then passed `sigma` into noise/keygen routines. The fix reverses that design by moving `sigma` to separate storage and verifying the copied seed, which is exactly the fault-hardening missing here. Although later rename work changed some identifiers, this commit wrote the vulnerable ML-KEM implementation file, so under the reimplementation rule it is a true BIC.",
-                "confidence": 0.95,
-                "tool_calls_made": 96,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
-          "repo_url": "https://github.com/wolfSSL/wolfssl",
-          "source": "github_advisory_pr"
-        }
-      ],
-      "references": [],
-      "ai_contribution": "Devin AI directly contributed by creating the new ML-KEM implementation file `wolfcrypt/src/wc_mlkem.c` with the same shared-buffer `rho`/`sigma` seed-pointer design that the fix later hardens with separate storage and integrity checks. Even though the pattern existed earlier in human-authored Kyber code, this AI-authored reimplementation was a new vulnerable code path and part of the causal chain for the CVE."
-    },
-    {
       "id": "GHSA-3j63-5h8p-gf7c",
       "description": "x402 SDK vulnerable in outdated versions in resource servers for builders",
       "severity": "HIGH",
@@ -8384,96 +8303,6 @@
         "https://github.com/shakacode/shakapacker/commit/3e06781b18383c5c2857ed3a722f7b91bdc1bc0e"
       ],
       "ai_contribution": "Yes. Per the provided metadata, AI-authored commit 591e3de9f1113a7d2f131315622b41588682d08a directly added the vulnerable Rspack default `new rspack.EnvironmentPlugin(process.env)` and also reimplemented the same unsafe full-environment exposure in the extracted webpack plugin. The original webpack design predated AI, but AI code was part of the causal chain and expanded/maintained the vulnerable behavior."
-    },
-    {
-      "id": "CVE-2025-53903",
-      "description": "The Scratch Channel Has Potential Cross-Site Scripting (XSS) Vulnerability",
-      "severity": "LOW",
-      "cvss": 1.3,
-      "cwes": [
-        "CWE-79"
-      ],
-      "ecosystem": "",
-      "published": "2025-07-15T19:15:23.220",
-      "ai_tools": [
-        "github_copilot"
-      ],
-      "languages": [
-        "JavaScript"
-      ],
-      "confidence": 0.7,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-assisted code did contribute. The Copilot Autofix co-authored commit 941c54de24c7f86461b9aa518c29d72c62f11646 rewrote the profile image sink to `<img src=\"${escapeHtml(user.pfp)}\">`, but `escape-html` does not restrict dangerous URL schemes like `javascript:`; the final fix replaced that exact AI-assisted code with an allowlisted `escapeAttribute` helper and input sanitization.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "941c54de24c7f86461b9aa518c29d72c62f11646",
-          "author": "snoopythe3",
-          "date": "2025-04-23T17:58:18+01:00",
-          "message": "Potential fix for code scanning alert no. 8: Reflected cross-site scripting",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "api/users.js",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "osv",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
-          "screening_verification": {
-            "verdict": "CONFIRMED",
-            "reasoning": "The blamed commit (941c54de24c7) introduced a partial fix by adding basic HTML escaping, but it failed to properly sanitize the `pfp` (profile picture) URL for use in an `src` attribute. By simply using `escapeHtml(user.pfp)` instead of validating the URL scheme, it allowed for 'javascript:' URI-based XSS, which the later fix commit (90b39eb56b27) correctly addressed using `escapeAttribute`.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Cross-Site Scripting (XSS)",
-            "vuln_description": "The application fails to properly sanitize or encode user-provided input before rendering it in the browser, allowing for the injection and execution of arbitrary JavaScript.",
-            "vulnerable_pattern": "Unsanitized user-controlled data being returned in API responses or rendered directly in the UI without output encoding.",
-            "causal_chain": "The blamed commit added `escapeHtml` to various output fields, but applied it to an `<img> src` attribute without enforcing a safe URL protocol. This permitted malicious inputs like 'javascript:alert(1)' to bypass the HTML escaping (since 'javascript:alert(1)' is technically valid HTML content), leading to XSS."
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This candidate is the last author of the pre-fix `img src` line, and its diff shows it introduced `escapeHtml(user.pfp)` into `<img src=\"...\">` while adding the `escape-html` dependency. That was an incomplete fix: HTML-escaping a URL-valued attribute does not block schemes like `javascript:`, which is why the final fix replaced it with `escapeAttribute()` that only allows `http`/`https` URLs. The screening hypothesis is correct: this AI-assisted commit re-authored the vulnerable sink into the still-vulnerable form that the fix later changed.",
-                "confidence": 0.95,
-                "tool_calls_made": 46,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
-          "repo_url": "https://github.com/the-scratch-channel/tsc-web-client",
-          "source": "osv"
-        },
-        {
-          "sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
-          "repo_url": "https://github.com/The-Scratch-Channel/the-scratch-channel.github.io",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53903.json",
-        "https://github.com/The-Scratch-Channel/the-scratch-channel.github.io/security/advisories/GHSA-25wp-g9g6-7fr9",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-53903"
-      ],
-      "ai_contribution": "AI-assisted code did contribute. The Copilot Autofix co-authored commit 941c54de24c7f86461b9aa518c29d72c62f11646 rewrote the profile image sink to `<img src=\"${escapeHtml(user.pfp)}\">`, but `escape-html` does not restrict dangerous URL schemes like `javascript:`; the final fix replaced that exact AI-assisted code with an allowlisted `escapeAttribute` helper and input sanitization."
     },
     {
       "id": "CVE-2026-22033",
@@ -17180,6 +17009,60 @@
       "ai_contribution": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach."
     },
     {
+      "id": "CVE-2026-3503",
+      "description": "Protection mechanism failure in wolfCrypt post-quantum implementations (ML-KEM and ML-DSA) in wolfSSL on ARM Cortex-M microcontrollers allows a physical attacker to compromise key material and/or cryptographic outcomes via induced transient faults that corrupt or redirect seed/pointer values during Keccak-based expansion.\n\n\n\n\nThis issue affects wolfSSL (wolfCrypt): commit hash d86575c766e6e67ef93545fa69c04d6eb49400c6.",
+      "severity": "MEDIUM",
+      "cvss": 4.3,
+      "cwes": [
+        "CWE-335"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T19:16:20.570",
+      "ai_tools": [
+        "devin"
+      ],
+      "languages": [
+        "C/C++"
+      ],
+      "confidence": 0.76,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "f4b770c5ab6de2b23c4c4a8d22e15bb8c12c92a9",
+          "author": "Devin AI",
+          "date": "2025-03-05T22:38:07+00:00",
+          "message": "Update Kyber APIs to ML-KEM APIs",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "wolfcrypt/src/wc_mlkem.c",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "github_advisory_pr",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
+          "repo_url": "https://github.com/wolfSSL/wolfssl",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": []
+    },
+    {
       "id": "CVE-2025-64702",
       "description": "quic-go HTTP/3 QPACK Header Expansion DoS",
       "severity": "MEDIUM",
@@ -17292,6 +17175,69 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2025-64702"
       ],
       "ai_contribution": "Yes. The AI-coauthored commit b7886d5c901700febc41c739bd93851eac5d315e rewrote HTTP/3/QPACK header decoding to the new qpack v0.6.0 API and authored the exact unbounded decode/parse loop that the fix later amends with decompressed-size accounting, so AI-authored code was part of the causal chain even though the underlying design flaw originally dates back to the first HTTP/3 implementation."
+    },
+    {
+      "id": "CVE-2025-53903",
+      "description": "The Scratch Channel Has Potential Cross-Site Scripting (XSS) Vulnerability",
+      "severity": "LOW",
+      "cvss": 1.3,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2025-07-15T19:15:23.220",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.63,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "941c54de24c7f86461b9aa518c29d72c62f11646",
+          "author": "snoopythe3",
+          "date": "2025-04-23T17:58:18+01:00",
+          "message": "Potential fix for code scanning alert no. 8: Reflected cross-site scripting",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "api/users.js",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
+          "repo_url": "https://github.com/the-scratch-channel/tsc-web-client",
+          "source": "osv"
+        },
+        {
+          "sha": "90b39eb56b27b2bac29001abb1a3cac0964b8ddb",
+          "repo_url": "https://github.com/The-Scratch-Channel/the-scratch-channel.github.io",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/53xxx/CVE-2025-53903.json",
+        "https://github.com/The-Scratch-Channel/the-scratch-channel.github.io/security/advisories/GHSA-25wp-g9g6-7fr9",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-53903"
+      ]
     },
     {
       "id": "CVE-2026-27900",
@@ -19555,115 +19501,6 @@
       "ai_contribution": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass."
     },
     {
-      "id": "GHSA-f7ww-2725-qvw2",
-      "description": "OpenClaw: Node system.run approval bypass via parent-symlink cwd rebind",
-      "severity": "HIGH",
-      "cvss": 8.0,
-      "cwes": [
-        "CWE-367",
-        "CWE-59"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-02T23:35:56Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.225,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-authored code in de898c423b95d818b15050143c737cdf1c301398 made node exec approval requests validate successfully by switching optional approval fields from invalid nulls to undefined, which enabled the vulnerable approval-based system.run path without the later immutable approval-time cwd/argv binding. The core mutable-cwd design was introduced by earlier human-authored commits, but the AI commit was part of the causal chain that made the weakness reachable.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "de898c423b95d818b15050143c737cdf1c301398",
-          "author": "Lucas Czekaj",
-          "date": "2026-01-21T18:14:51-08:00",
-          "message": "fix(exec): pass undefined instead of null for optional approval params",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/cli/nodes-cli/register.invoke.ts",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
-          "screening_verification": {
-            "verdict": "UNLIKELY",
-            "reasoning": "The blamed commit only changes the values of 'resolvedPath' and 'sessionKey' from null to undefined. It does not introduce the vulnerable TOCTOU symlink handling logic that the fix addresses.",
-            "model": "gemini-3.1-pro-preview",
-            "vuln_type": "TOCTOU / Symlink Attack",
-            "vuln_description": "The application was vulnerable to a Time-of-Check Time-of-Use (TOCTOU) issue where an attacker could exploit symlink-based current working directory rebinding to bypass approval checks during node execution.",
-            "vulnerable_pattern": "Relying on the current working directory path for approval validation without verifying that the directory structure (symlinks) remains unchanged between the check and the actual execution.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This AI-authored commit changed node exec approval requests in src/cli/nodes-cli/register.invoke.ts from `resolvedPath: null` / `sessionKey: null` to `undefined`. The schema at that time used `Type.Optional(Type.String())`, and the added test in the same commit documents that `null` was rejected while `undefined` was accepted, so this change made `exec.approval.request` succeed for the node approval flow. It did not invent the mutable-cwd design, but it enabled that vulnerable path to execute in practice, which makes it part of the vulnerability introduction chain.",
-                "confidence": 0.95,
-                "tool_calls_made": 130,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "4b4718c8dfce2e2c48404aa5088af7c013bed60b",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "4e690e09c746408b5e27617a20cb3fdc5190dbda",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "d06632ba45a8482192792c55d5ff0b2e21abb0a7",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        },
-        {
-          "sha": "d82c042b09727a6148f3ca651b254c4a677aff26",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-f7ww-2725-qvw2",
-        "https://github.com/openclaw/openclaw/commit/4b4718c8dfce2e2c48404aa5088af7c013bed60b",
-        "https://github.com/openclaw/openclaw/commit/4e690e09c746408b5e27617a20cb3fdc5190dbda",
-        "https://github.com/openclaw/openclaw/commit/78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
-        "https://github.com/openclaw/openclaw/commit/d06632ba45a8482192792c55d5ff0b2e21abb0a7",
-        "https://github.com/openclaw/openclaw/commit/d82c042b09727a6148f3ca651b254c4a677aff26"
-      ],
-      "ai_contribution": "AI-authored code in de898c423b95d818b15050143c737cdf1c301398 made node exec approval requests validate successfully by switching optional approval fields from invalid nulls to undefined, which enabled the vulnerable approval-based system.run path without the later immutable approval-time cwd/argv binding. The core mutable-cwd design was introduced by earlier human-authored commits, but the AI commit was part of the causal chain that made the weakness reachable."
-    },
-    {
       "id": "GHSA-2mc2-g238-722j",
       "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
       "severity": "LOW",
@@ -19687,28 +19524,7 @@
       "vuln_type": "",
       "vulnerable_pattern": "",
       "verdict": "",
-      "bug_commits": [
-        {
-          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
-          "author": "Tyler Yust",
-          "date": "2026-01-16T15:51:42-08:00",
-          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/config/zod-schema.providers-core.ts, src/imessage/monitor/monitor-provider.ts",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
-          "screening_verification": null
-        }
-      ],
+      "bug_commits": [],
       "fix_commits": [
         {
           "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
@@ -19744,28 +19560,7 @@
       "vuln_type": "",
       "vulnerable_pattern": "",
       "verdict": "",
-      "bug_commits": [
-        {
-          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
-          "author": "Tyler Yust",
-          "date": "2026-01-16T15:51:42-08:00",
-          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
-          "screening_verification": null
-        }
-      ],
+      "bug_commits": [],
       "fix_commits": [
         {
           "sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
