@@ -15,7 +15,7 @@ Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 ## Data Flow
 
 ```
-cd cve-analyzer && uv run cve-analyzer batch --all --since 2025-05-01 --llm-verify
+cd cve-analyzer && uv run cve-analyzer batch --all --since 2025-05-01
 python scripts/generate_web_data.py   # → web/data/cves.json + stats.json
 cd web && npm run build
 ```
