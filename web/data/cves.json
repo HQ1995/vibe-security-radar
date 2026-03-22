@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-22T06:10:07.492489+00:00",
+  "generated_at": "2026-03-22T06:40:38.510376+00:00",
   "total": 78,
   "cves": [
     {
@@ -14054,6 +14054,982 @@
       ]
     },
     {
+      "id": "CVE-2026-22804",
+      "description": "Termix has a Stored XSS in File Manager leading to Local File Inclusion (LFI) in Electron and Session Hijacking in Browser",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-269",
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-12T23:15:53.063",
+      "ai_tools": [
+        "claude_code",
+        "google_gemini"
+      ],
+      "languages": [
+        "JavaScript",
+        "Shell",
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code directly introduced the stored XSS: commit a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a (explicitly marked as Claude Code-generated) created FileViewer with an SVG preview branch that injects untrusted file contents via dangerouslySetInnerHTML. That sink made attacker-controlled files execute script in the File Manager, which in browsers can hijack the session and in Electron can be leveraged for local file access.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "ecb12d72fe75f687e1bfc46533ec1a65164ef230",
+          "author": "ZacharyZcR",
+          "date": "2025-10-01T15:40:10-05:00",
+          "message": "Fix SSH key upload and credential editing issues",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "(from OSV introduced)",
+          "blame_confidence": 1.0,
+          "blame_strategy": "osv_introduced",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit modifies UI logic for a Credential Editor component, specifically handling how SSH keys are uploaded or pasted. The vulnerability identified is a Stored XSS and LFI issue within the 'File Manager' component of the backend, which is unrelated to the credential management UI logic modified in this commit.",
+            "model": "osv+gemini-3.1-flash-lite-preview",
+            "vuln_type": "Stored XSS and LFI",
+            "vuln_description": "The File Manager lacked sufficient input sanitization and validation on file operations and metadata, allowing an attacker to inject malicious scripts (Stored XSS) and manipulate file paths to access unauthorized local files (LFI).",
+            "vulnerable_pattern": "Unsanitized user-controlled file paths or filenames processed by file management logic, coupled with inadequate access control checks on file system operations.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced FileViewer from scratch and added the vulnerable SVG rendering path: it classifies .svg as an image, detects SVG files, and renders their server-provided contents with `dangerouslySetInnerHTML={{ __html: content }}`. Pickaxe search shows this is the first commit in the repository to add that exact dangerous sink, and post-fix searches show the pattern is removed. Earlier backend file-reading code existed, but without this new unsanitized DOM injection there was no stored XSS in the viewer.",
+                "confidence": 0.95,
+                "tool_calls_made": 77,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "ecb12d72fe75f687e1bfc46533ec1a65164ef230",
+              "author_name": "ZacharyZcR",
+              "message": "Fix SSH key upload and credential editing issues",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "301303079b724e281fdedca84bcf53e0960bbd18",
+              "author_name": "ZacharyZcR",
+              "message": "Add comprehensive SSH key management and validation features",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c903a36acec7c423b4be7eca04d79b45d2c58615",
+              "author_name": "ZacharyZcR",
+              "message": "Optimize credentials interface and add i18n improvements",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9cf0a14cea52e8a9878f5c6bce1f1f7837261cbf",
+              "author_name": "ZacharyZcR",
+              "message": "Implement direct SSH key generation with ssh2 native API",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1ac96e7c74d332091df8e77f33965e6336b28c79",
+              "author_name": "ZacharyZcR",
+              "message": "Add passphrase support for SSH key generation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a674073ec8416bf56f128959d0ccdb95d9eee89c",
+              "author_name": "ZacharyZcR",
+              "message": "Implement SSH key deployment feature with credential resolution",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a4feb67c081f69e1408ec161ac2cc05cc51555db",
+              "author_name": "ZacharyZcR",
+              "message": "Add SSH key generation and deployment features (#234)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2323885b6c803fbc6b4a3001ddbbea7c5df72d9d",
+              "author_name": "jedi04",
+              "message": "feat: Added function to handle symlink (#227)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "18f67d22bc13f7a7e7e9d6cb1c3e14c4c06e693f",
+              "author_name": "ZacharyZcR",
+              "message": "Improve encryption security: expand field coverage and add key validation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a501df8dde39e9af9e2b95a3bb7ac1e620780711",
+              "author_name": "ZacharyZcR",
+              "message": "Fix database encryption write operations and initialization",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0839cb4134cb8c307bcccd8c86a92c6e24272922",
+              "author_name": "ZacharyZcR",
+              "message": "Improve migration status detection for new databases",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e8b6746278991597975ea4297afa9013e8b95638",
+              "author_name": "ZacharyZcR",
+              "message": "Fix macOS special character input in terminal (Issue #41)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d28b89f5364b7199f57717a813873d0cb5889bf8",
+              "author_name": "jedi04",
+              "message": "Added option to clone host (#241)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d9b1bf03f120c84687a61da57dbb0b99c10064f8",
+              "author_name": "Karmaa",
+              "message": "Merge branch 'dev-1.7.0' into main",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "c2545f927958f05973dfb3573a4ff2376c68dc13",
+              "author_name": "ZacharyZcR",
+              "message": "Merge branch 'main' of https://github.com/ZacharyZcR/Termix",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "182b60a42867bcb2dfcf861e2932758790d8b7f5",
+              "author_name": "ZacharyZcR",
+              "message": "Add optional password requirement for SSH sessions (Issue #118)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "957bc5e41b0bbe11ff1180385d9c9a924546097a",
+              "author_name": "ZacharyZcR",
+              "message": "Fix SSH encryption and add file download functionality",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "49e7159939737d605612746561fde07b54411952",
+              "author_name": "ZacharyZcR",
+              "message": "Implement modern file manager with drag-and-drop interface",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b50ee1965fb4bd09fe4330775d72f4e8e9376dc3",
+              "author_name": "ZacharyZcR",
+              "message": "Fix modern file manager SSH connection and button functionality",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cd70e63a1b6de0ddc237d2711927a0d44643fe52",
+              "author_name": "ZacharyZcR",
+              "message": "Fix critical file selection and SSH connection issues in modern file manager",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7c7754ba11032a39c20a3d732eca77c4f3b94e74",
+              "author_name": "ZacharyZcR",
+              "message": "Fix file manager navigation buttons - implement proper directory navigation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fee7af3c466798249941acf7b6b56fc3b69eb194",
+              "author_name": "ZacharyZcR",
+              "message": "Fix file manager view mode toggle - add grid and list view support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "dcce5d1eec9f9e9fdb6e498a5412855845823465",
+              "author_name": "ZacharyZcR",
+              "message": "Remove legacy file manager view toggle - simplify architecture",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "501de0626627dc5eda2009d767f6ba79eeda8a5e",
+              "author_name": "ZacharyZcR",
+              "message": "Fix context menu click-outside behavior - Windows Explorer style",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "22ac7d8596b8b0b4237ffddb87c4e6f0bdc1a072",
+              "author_name": "ZacharyZcR",
+              "message": "Implement draggable file windows - Windows Explorer style",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e364c202133873cdc9b7801f921e1ffb9fdee576",
+              "author_name": "ZacharyZcR",
+              "message": "Add smart large file handling for unknown file types",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0497ff139e66c8f14e4395119dded1641146a29a",
+              "author_name": "ZacharyZcR",
+              "message": "Fix SSH connection issues and enable no-extension file editing",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f4f5e47e48c7f3b942f20c0d4752bb04700bf924",
+              "author_name": "ZacharyZcR",
+              "message": "Refactor file window components to use shadcn design tokens",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1d79fd721edc5e6fdb8b71df9840b767ebfe0363",
+              "author_name": "ZacharyZcR",
+              "message": "Optimize search highlighting: change from background colors to text color changes",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "978981dd6bddac9476c04a122df11e02fd31b0f3",
+              "author_name": "ZacharyZcR",
+              "message": "Fix search highlighting scroll issue and improve color contrast",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5e2d463678bfb328db15bd4d007c3f7a2dd5d7e6",
+              "author_name": "ZacharyZcR",
+              "message": "Add comprehensive code editing support with syntax highlighting",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "560b47532c37669a5b9bc71e08fc13140cc15a53",
+              "author_name": "ZacharyZcR",
+              "message": "Add official programming language icons and YAML support",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7bb09935a6d4f3bce080e3594526c82c4cf8d565",
+              "author_name": "ZacharyZcR",
+              "message": "Fix icon import error and classify YAML as code files",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7bcc863270e685443b838d784ee636c6e781d20a",
+              "author_name": "ZacharyZcR",
+              "message": "Fix SiJava import error - replace with SiOracle",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "82f5f9afa960a1d6ebfecd2f1f4a7b3b38a1712e",
+              "author_name": "ZacharyZcR",
+              "message": "Add missing SiXml import",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bce3fcc41e6bbdc958598c5b9b4d2ee802e20ab5",
+              "author_name": "ZacharyZcR",
+              "message": "Implement Windows-style inline file/folder renaming and creation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "86a7ef891420c36040598ce52fb748298cf98d14",
+              "author_name": "ZacharyZcR",
+              "message": "Enhance inline editing visual design and UX",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "be6fabf1294a2b36bd4d44bdefa28b5a608d48fa",
+              "author_name": "ZacharyZcR",
+              "message": "Fix SSH connection loss causing operation failures",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "523f6412a7413fcc2c0564d5edbcabdcea040d7f",
+              "author_name": "ZacharyZcR",
+              "message": "Fix API parameters for createSSHFile and createSSHFolder",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fb7b452a1ce485dc356b60f258dc8f5a66431a59",
+              "author_name": "ZacharyZcR",
+              "message": "Implement proper file/folder creation workflow with inline editing",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "16de73d6ad6f5bc90ddd9c6a479bc2fe98804a1d",
+              "author_name": "ZacharyZcR",
+              "message": "Add comprehensive file information display to file manager",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7059ebcc0e5403255d6f19e7036bd37375ac9c46",
+              "author_name": "ZacharyZcR",
+              "message": "修复文件管理器滚动功能和软链接支持",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3fa3c9e3525f4343e3bc066d7700a13537922b2c",
+              "author_name": "ZacharyZcR",
+              "message": "修复文件管理器面包屑导航和状态栏显示问题",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "12733685d73ddf2648e26f9db1c5ba3f9a055c71",
+              "author_name": "ZacharyZcR",
+              "message": "实现完整的文件管理器框选功能",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bf166d602fb4344249f4d08fc8da96abfd1d4a38",
+              "author_name": "ZacharyZcR",
+              "message": "优化文件管理器视觉设计和安全性",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cae9097034112cd309628cf7244344da32f15ce9",
+              "author_name": "ZacharyZcR",
+              "message": "Implement complete file manager keyboard shortcuts and copy functionality",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2ea5383ef06b7bea9ab483fba2ff3def74b9ac27",
+              "author_name": "ZacharyZcR",
+              "message": "Implement unified file editing for all non-media files",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "claude_code",
+                  "signal_type": "message_keyword",
+                  "matched_text": "Generated with Claude Code",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "681a223bed5ed6be46563cebca00bb1c13e40e1f",
+              "author_name": "ZacharyZcR",
+              "message": "实现文件拖拽功能",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3f90faf1d0834b6c0524b0ffb0c75de686317717",
+              "author_name": "ZacharyZcR",
+              "message": "重新设计diff功能：使用Monaco Editor实现专业级文件对比",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d79d4355948365c91e5e7b04b5117c7bc5d3fc1e",
+              "author_name": "ZacharyZcR",
+              "message": "实现跨边界拖拽功能：支持从浏览器拖拽文件到系统",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e0e4e6915978be2549f50539354605d161a3b00d",
+              "author_name": "ZacharyZcR",
+              "message": "优化文件管理器拖拽体验：实现智能跟随tooltip和统一状态管理",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f70a2102db815304775264b5620c16e097e03fdf",
+              "author_name": "ZacharyZcR",
+              "message": "实现可执行文件检测和运行功能：支持终端集成和右键菜单操作",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "948704055b2fccc7eeaabbd30488854387c93b5c",
+              "author_name": "ZacharyZcR",
+              "message": "清理调试信息，保持代码整洁",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a0c3ce307d1632b27347620912cb11a7fad4c861",
+              "author_name": "ZacharyZcR",
+              "message": "修复核心UI文本的i18n问题：支持多语言切换",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "54d3668093bdc09ca2d0a98f28f96320552ef0c3",
+              "author_name": "ZacharyZcR",
+              "message": "修复文件管理器凭证认证问题：支持加密凭证和新密钥字段",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "7fc474b9e459d810b4fc8889effa6e3ef756061b",
+              "author_name": "ZacharyZcR",
+              "message": "实现文件管理器面包屑可编辑路径输入功能",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4e915a1b3e95bf5b88f9cf7c7be482d4cb77d97b",
+              "author_name": "ZacharyZcR",
+              "message": "修复文件管理器多个关键问题",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "42c6f1e2d04c88c5b51eb22633c0e6a8bb712d6e",
+              "author_name": "ZacharyZcR",
+              "message": "修复文件管理器侧边栏显示问题",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "91462021b57075c7a4f374e2b9920312bb54a910",
+              "author_name": "ZacharyZcR",
+              "message": "修复侧边栏滚动容器结构：防止状态栏被挤掉并显示滚动条",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2a8133dc36c6c3449863e854b27fb00cb35486a4",
+              "author_name": "ZacharyZcR",
+              "message": "Implement file manager sidebar context menu functionality",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8fd46f2383719d819a46f0bf406def60937ebff1",
+              "author_name": "ZacharyZcR",
+              "message": "Fix hardcoded text and add missing i18n translations in file manager",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5ec9451ef2aa43743e7f6a0de28b9866b29613e0",
+              "author_name": "ZacharyZcR",
+              "message": "Fix file upload 400 Bad Request error in file manager",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "fc14389e59fd6a0829295f7051d7fd0f70b03d8c",
+              "author_name": "ZacharyZcR",
+              "message": "Implement database export/import functionality for hardware migration",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cb7bb3c8646bd970d1ccf803f68ad6aaed7a4062",
+              "author_name": "Karmaa",
+              "message": "Merge branch 'LukeGus:main' into feature/database-export-import-dev-1.7.0",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8afd84d96df2043cef147bde9317b1e8982d4e3e",
+              "author_name": "LukeGus",
+              "message": "Cleanup files and improve file manager.",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1f0c741ced602181ff31245cf79f7d8a20169350",
+              "author_name": "ZacharyZcR",
+              "message": "dev-1.7.0 (#294)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "700aa9e07d77094cd397fa16428939471a07bcd3",
+              "author_name": "LukeGus",
+              "message": "Fix homepage auth",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8f8ebf0c7f4f913a6e4e7c85a55bc87358cd8b75",
+              "author_name": "LukeGus",
+              "message": "Clean up files, fix bugs in file manager, update api ports, etc.",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "8f1482dea9ce0565c7d47df231d8aae0eca8aea1",
+              "author_name": "LukeGus",
+              "message": "Update action build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "1d399fc9396b121058941857b49e181946526c95",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "f38cce1ffb9d5b5d34d9b7dd42e5066b14cba35a",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "158e805e0464c764e84d415fe6724f60ac5e3d4a",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9b1dbdcc0a5c260ff3f1ecc4a54d6d1050c097cc",
+              "author_name": "LukeGus",
+              "message": "Fix mobile UI and SSL",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "edbc2b978c7b94d14d5c1ea24972acdec26fd71c",
+              "author_name": "LukeGus",
+              "message": "Fix SSL terminals and fix SSL issues",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "092c8e4218b6c082042b7e1371c0c880763a0af7",
+              "author_name": "LukeGus",
+              "message": "Fix SSL docker issues",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "62bc684fff8c3e80d3ce34dbc4ce4364ec68c8aa",
+              "author_name": "LukeGus",
+              "message": "Fix encryption not working after restarting",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9b12515676687b4f5084ec7599ee20d5d1474aed",
+              "author_name": "LukeGus",
+              "message": "Fix env not loading after restart, update translsations, fix export DB nginx conf",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "0da4652a31eedd1646172799ac1303668b0748a2",
+              "author_name": "LukeGus",
+              "message": "Add versioning system to electron, update nginx configurations for file uploads, fix UI issues in file manager",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b09cf8967392bb83b5f6afcfb146f9425fb1f14a",
+              "author_name": "ZacharyZcR",
+              "message": "FEATURE: Docker log-based password recovery with KEK-DEK preservation (#303)",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "56e3194a7c9253687f8d2b13f5b2551ad48e8587",
+              "author_name": "LukeGus",
+              "message": "Update legacy code and remove debugs",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "18517621d60fa27d2ed7b7b9f5dae7010adb0ca1",
+              "author_name": "LukeGus",
+              "message": "Fix build error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "ab6b1e284f641a6b3a1ef7b87ae228a642e10ce0",
+              "author_name": "LukeGus",
+              "message": "Fix nginx error",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "33aa648d28fb98f253c008a7de1cd81335aedc4d",
+              "author_name": "LukeGus",
+              "message": "Fix encryption not loading",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "54e7ac8bfdbc51a08787cf53331e6a6cdbb7c7b4",
+              "author_name": "LukeGus",
+              "message": "Fix encryption not loading",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "5afe22547041df51e47ba264e149d2e560820fb3",
+              "author_name": "LukeGus",
+              "message": "Fix certificate regeneration, svg files encrypting, and file manager being able to be dragged off screen.",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "2cd1cb64a3613be017ba0df944b8b695929b283d",
+              "author_name": "LukeGus",
+              "message": "Add session lock notifications and change timeouts",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "b0f25a69719e4eef757ae31dd981a1ce6f31e85a",
+              "author_name": "LukeGus",
+              "message": "Improved JWT security",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "3691e22d49459e288603063c9764e79ff53be9a4",
+              "author_name": "LukeGus",
+              "message": "Fix send reset code UI",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "dfbaf0d2f139be57914088b64de9529c8b3a4f92",
+              "author_name": "LukeGus",
+              "message": "Begin undo #303",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d2ba934f61d0aca55b9b874ca79c0c12ac9f0990",
+              "author_name": "LukeGus",
+              "message": "Completely remove PR 303",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "bc8aa690992540efaa90513d21c62d03d3d7bf6c",
+              "author_name": "LukeGus",
+              "message": "Code cleanup",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "a79b640914423a0eeb5db0750bf081a288a8a77a",
+              "author_name": "LukeGus",
+              "message": "Fix credentials UI",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "6eb304b8e49a946e44043ddcc71e015da138daf1",
+              "author_name": "LukeGus",
+              "message": "Update packages and improve SSL generation",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e2146cdfbffc7efbc0afb9035be6726275b1368f",
+              "author_name": "LukeGus",
+              "message": "Format",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "cfa7c26c49aca277970eeb2130339dd3d270d599",
+              "author_name": "LukeGus",
+              "message": "Fix docker build error and SSL regeneration",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "d1b43452062f4a8a092d83fa640025706a01a152",
+              "author_name": "LukeGus",
+              "message": "Update electron builds, fix backend issues",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "e670894e52396b50bc2751537092a32881eae4d2",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "9969d17c57704523461539d3ac90ca6202c2bd5e",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "4b377659f65f0bd8fda58a9979964abed58170b5",
+              "author_name": "LukeGus",
+              "message": "Fix docker build and electron SSL",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "984cabdc2ff79970972054d6de252c59587aee72",
+              "author_name": "LukeGus",
+              "message": "Fix docker build",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ad86c2040b70c1a8b2df3f83037c1b904a67bfe4",
+          "repo_url": "https://github.com/lukegus/termix",
+          "source": "osv"
+        },
+        {
+          "sha": "ad86c2040b70c1a8b2df3f83037c1b904a67bfe4",
+          "repo_url": "https://github.com/termix-ssh/termix",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22804.json",
+        "https://github.com/Termix-SSH/Termix/security/advisories/GHSA-m3cv-5hgp-hv35",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-22804"
+      ],
+      "ai_contribution": "AI-authored code directly introduced the stored XSS: commit a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a (explicitly marked as Claude Code-generated) created FileViewer with an SVG preview branch that injects untrusted file contents via dangerouslySetInnerHTML. That sink made attacker-controlled files execute script in the File Manager, which in browsers can hijack the session and in Electron can be leveraged for local file access."
+    },
+    {
       "id": "CVE-2026-28478",
       "description": "OpenClaw versions prior to 2026.2.13 contain a denial of service vulnerability in webhook handlers that buffer request bodies without strict byte or time limits. Remote unauthenticated attackers can send oversized JSON payloads or slow uploads to webhook endpoints causing memory pressure and availability degradation.",
       "severity": "HIGH",
@@ -16202,6 +17178,120 @@
         "https://github.com/openclaw/openclaw/security/advisories/GHSA-p7gr-f84w-hqg5"
       ],
       "ai_contribution": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach."
+    },
+    {
+      "id": "CVE-2025-64702",
+      "description": "quic-go HTTP/3 QPACK Header Expansion DoS",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-11T21:15:54.707",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.7,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-coauthored commit b7886d5c901700febc41c739bd93851eac5d315e rewrote HTTP/3/QPACK header decoding to the new qpack v0.6.0 API and authored the exact unbounded decode/parse loop that the fix later amends with decompressed-size accounting, so AI-authored code was part of the causal chain even though the underlying design flaw originally dates back to the first HTTP/3 implementation.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "afc7e45ba199e2837232b988e946928b5b8e4358",
+          "author": "Marten Seemann",
+          "date": "2025-11-19T16:02:37+08:00",
+          "message": "qlog invalid trailers",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "blamed_file": "http3/headers.go, http3/server.go, http3/stream.go",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
+          "screening_verification": {
+            "verdict": "UNRELATED",
+            "reasoning": "The blamed commit modifies `http3/conn.go` to add logging (`maybeQlogInvalidHeadersFrame`) when trailer parsing fails. This change is entirely unrelated to the `http3/headers.go` file where the vulnerable unbounded header parsing logic resided and where the fix was implemented.",
+            "model": "gemini-3.1-flash-lite-preview",
+            "vuln_type": "Resource Exhaustion / DoS",
+            "vuln_description": "The QPACK header decompression process lacked sufficient limits on the size of decompressed headers, allowing an attacker to trigger excessive resource consumption through specially crafted header blocks.",
+            "vulnerable_pattern": "Unbounded or insufficiently bounded allocation of memory during the decompression of QPACK headers, leading to potential exhaustion of resources when processing large or malicious header blocks.",
+            "causal_chain": ""
+          },
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit likewise rewired client response handling to `updateResponseFromHeaders(res, decodeFn, &hfs)`, again routing data through the new DecodeFunc-based parser without any decompressed-size bound. The fix's change to pass `s.maxHeaderBytes` into `updateResponseFromHeaders` is directly reversing that omission. So b788 also confirmedly introduced the currently vulnerable client-side path.",
+                "confidence": 0.95,
+                "tool_calls_made": 83,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "e2e460ab3d41af882f69c5d82243ef55bc8caed3",
+              "author_name": "Marten Seemann",
+              "message": "update qpack to v0.6.0",
+              "ai_signals": [],
+              "touched_blamed_file": null
+            },
+            {
+              "sha": "afc7e45ba199e2837232b988e946928b5b8e4358",
+              "author_name": "Marten Seemann",
+              "message": "qlog invalid trailers",
+              "ai_signals": [
+                {
+                  "tool": "github_copilot",
+                  "signal_type": "co_author_trailer_generic",
+                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+                  "confidence": 0.7
+                }
+              ],
+              "touched_blamed_file": null
+            }
+          ],
+          "squash_merge_sha": "b7886d5c901700febc41c739bd93851eac5d315e"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
+          "repo_url": "https://github.com/lucas-clemente/quic-go",
+          "source": "osv"
+        },
+        {
+          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
+          "repo_url": "https://github.com/quic-go/quic-go",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64702.json",
+        "https://github.com/quic-go/quic-go/security/advisories/GHSA-g754-hx8w-x2g6",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-64702"
+      ],
+      "ai_contribution": "Yes. The AI-coauthored commit b7886d5c901700febc41c739bd93851eac5d315e rewrote HTTP/3/QPACK header decoding to the new qpack v0.6.0 API and authored the exact unbounded decode/parse loop that the fix later amends with decompressed-size accounting, so AI-authored code was part of the causal chain even though the underlying design flaw originally dates back to the first HTTP/3 implementation."
     },
     {
       "id": "CVE-2026-27900",
@@ -19039,1095 +20129,6 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2025-53108"
       ],
       "ai_contribution": "AI-assisted code contributed via commit 606a92b5d5c8d3e3e4d24f73021804de2a81c1cb, which reimplemented attachment handling after the documents-table removal and kept authorization based on raw attachment IDs instead of group-scoped checks. That Copilot-assisted reimplementation was part of the causal chain even though the original missing-authorization design first appeared in earlier human-authored commits."
-    },
-    {
-      "id": "CVE-2025-64702",
-      "description": "quic-go HTTP/3 QPACK Header Expansion DoS",
-      "severity": "MEDIUM",
-      "cvss": 5.3,
-      "cwes": [
-        "CWE-770"
-      ],
-      "ecosystem": "",
-      "published": "2025-12-11T21:15:54.707",
-      "ai_tools": [
-        "ai_assisted"
-      ],
-      "languages": [
-        "Go"
-      ],
-      "confidence": 0.0,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. The AI-coauthored commit b7886d5c901700febc41c739bd93851eac5d315e rewrote HTTP/3/QPACK header decoding to the new qpack v0.6.0 API and authored the exact unbounded decode/parse loop that the fix later amends with decompressed-size accounting, so AI-authored code was part of the causal chain even though the underlying design flaw originally dates back to the first HTTP/3 implementation.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "afc7e45ba199e2837232b988e946928b5b8e4358",
-          "author": "Marten Seemann",
-          "date": "2025-11-19T16:02:37+08:00",
-          "message": "qlog invalid trailers",
-          "ai_signals": [
-            {
-              "tool": "github_copilot",
-              "signal_type": "co_author_trailer_generic",
-              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-              "confidence": 0.7
-            }
-          ],
-          "blamed_file": "http3/headers.go, http3/server.go, http3/stream.go",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "osv",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
-          "screening_verification": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit modifies `http3/conn.go` to add logging (`maybeQlogInvalidHeadersFrame`) when trailer parsing fails. This change is entirely unrelated to the `http3/headers.go` file where the vulnerable unbounded header parsing logic resided and where the fix was implemented.",
-            "model": "gemini-3.1-flash-lite-preview",
-            "vuln_type": "Resource Exhaustion / DoS",
-            "vuln_description": "The QPACK header decompression process lacked sufficient limits on the size of decompressed headers, allowing an attacker to trigger excessive resource consumption through specially crafted header blocks.",
-            "vulnerable_pattern": "Unbounded or insufficiently bounded allocation of memory during the decompression of QPACK headers, leading to potential exhaustion of resources when processing large or malicious header blocks.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit likewise rewired client response handling to `updateResponseFromHeaders(res, decodeFn, &hfs)`, again routing data through the new DecodeFunc-based parser without any decompressed-size bound. The fix's change to pass `s.maxHeaderBytes` into `updateResponseFromHeaders` is directly reversing that omission. So b788 also confirmedly introduced the currently vulnerable client-side path.",
-                "confidence": 0.95,
-                "tool_calls_made": 83,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "e2e460ab3d41af882f69c5d82243ef55bc8caed3",
-              "author_name": "Marten Seemann",
-              "message": "update qpack to v0.6.0",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "afc7e45ba199e2837232b988e946928b5b8e4358",
-              "author_name": "Marten Seemann",
-              "message": "qlog invalid trailers",
-              "ai_signals": [
-                {
-                  "tool": "github_copilot",
-                  "signal_type": "co_author_trailer_generic",
-                  "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
-                  "confidence": 0.7
-                }
-              ],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "b7886d5c901700febc41c739bd93851eac5d315e"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
-          "repo_url": "https://github.com/lucas-clemente/quic-go",
-          "source": "osv"
-        },
-        {
-          "sha": "5b2d2129f8315da41e01eff0a847ab38a34e83a8",
-          "repo_url": "https://github.com/quic-go/quic-go",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64702.json",
-        "https://github.com/quic-go/quic-go/security/advisories/GHSA-g754-hx8w-x2g6",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-64702"
-      ],
-      "ai_contribution": "Yes. The AI-coauthored commit b7886d5c901700febc41c739bd93851eac5d315e rewrote HTTP/3/QPACK header decoding to the new qpack v0.6.0 API and authored the exact unbounded decode/parse loop that the fix later amends with decompressed-size accounting, so AI-authored code was part of the causal chain even though the underlying design flaw originally dates back to the first HTTP/3 implementation."
-    },
-    {
-      "id": "CVE-2026-22804",
-      "description": "Termix has a Stored XSS in File Manager leading to Local File Inclusion (LFI) in Electron and Session Hijacking in Browser",
-      "severity": "HIGH",
-      "cvss": 8.0,
-      "cwes": [
-        "CWE-269",
-        "CWE-79"
-      ],
-      "ecosystem": "",
-      "published": "2026-01-12T23:15:53.063",
-      "ai_tools": [
-        "ai_assisted"
-      ],
-      "languages": [
-        "JavaScript",
-        "Shell",
-        "TypeScript"
-      ],
-      "confidence": 0.0,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-authored code directly introduced the stored XSS: commit a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a (explicitly marked as Claude Code-generated) created FileViewer with an SVG preview branch that injects untrusted file contents via dangerouslySetInnerHTML. That sink made attacker-controlled files execute script in the File Manager, which in browsers can hijack the session and in Electron can be leveraged for local file access.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "ecb12d72fe75f687e1bfc46533ec1a65164ef230",
-          "author": "ZacharyZcR",
-          "date": "2025-10-01T15:40:10-05:00",
-          "message": "Fix SSH key upload and credential editing issues",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "(from OSV introduced)",
-          "blame_confidence": 1.0,
-          "blame_strategy": "osv_introduced",
-          "screening_verification": {
-            "verdict": "UNRELATED",
-            "reasoning": "The blamed commit modifies UI logic for a Credential Editor component, specifically handling how SSH keys are uploaded or pasted. The vulnerability identified is a Stored XSS and LFI issue within the 'File Manager' component of the backend, which is unrelated to the credential management UI logic modified in this commit.",
-            "model": "osv+gemini-3.1-flash-lite-preview",
-            "vuln_type": "Stored XSS and LFI",
-            "vuln_description": "The File Manager lacked sufficient input sanitization and validation on file operations and metadata, allowing an attacker to inject malicious scripts (Stored XSS) and manipulate file paths to access unauthorized local files (LFI).",
-            "vulnerable_pattern": "Unsanitized user-controlled file paths or filenames processed by file management logic, coupled with inadequate access control checks on file system operations.",
-            "causal_chain": ""
-          },
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced FileViewer from scratch and added the vulnerable SVG rendering path: it classifies .svg as an image, detects SVG files, and renders their server-provided contents with `dangerouslySetInnerHTML={{ __html: content }}`. Pickaxe search shows this is the first commit in the repository to add that exact dangerous sink, and post-fix searches show the pattern is removed. Earlier backend file-reading code existed, but without this new unsanitized DOM injection there was no stored XSS in the viewer.",
-                "confidence": 0.95,
-                "tool_calls_made": 77,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          },
-          "decomposed_commits": [
-            {
-              "sha": "ecb12d72fe75f687e1bfc46533ec1a65164ef230",
-              "author_name": "ZacharyZcR",
-              "message": "Fix SSH key upload and credential editing issues",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "301303079b724e281fdedca84bcf53e0960bbd18",
-              "author_name": "ZacharyZcR",
-              "message": "Add comprehensive SSH key management and validation features",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c903a36acec7c423b4be7eca04d79b45d2c58615",
-              "author_name": "ZacharyZcR",
-              "message": "Optimize credentials interface and add i18n improvements",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9cf0a14cea52e8a9878f5c6bce1f1f7837261cbf",
-              "author_name": "ZacharyZcR",
-              "message": "Implement direct SSH key generation with ssh2 native API",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1ac96e7c74d332091df8e77f33965e6336b28c79",
-              "author_name": "ZacharyZcR",
-              "message": "Add passphrase support for SSH key generation",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a674073ec8416bf56f128959d0ccdb95d9eee89c",
-              "author_name": "ZacharyZcR",
-              "message": "Implement SSH key deployment feature with credential resolution",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a4feb67c081f69e1408ec161ac2cc05cc51555db",
-              "author_name": "ZacharyZcR",
-              "message": "Add SSH key generation and deployment features (#234)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2323885b6c803fbc6b4a3001ddbbea7c5df72d9d",
-              "author_name": "jedi04",
-              "message": "feat: Added function to handle symlink (#227)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "18f67d22bc13f7a7e7e9d6cb1c3e14c4c06e693f",
-              "author_name": "ZacharyZcR",
-              "message": "Improve encryption security: expand field coverage and add key validation",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a501df8dde39e9af9e2b95a3bb7ac1e620780711",
-              "author_name": "ZacharyZcR",
-              "message": "Fix database encryption write operations and initialization",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0839cb4134cb8c307bcccd8c86a92c6e24272922",
-              "author_name": "ZacharyZcR",
-              "message": "Improve migration status detection for new databases",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e8b6746278991597975ea4297afa9013e8b95638",
-              "author_name": "ZacharyZcR",
-              "message": "Fix macOS special character input in terminal (Issue #41)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d28b89f5364b7199f57717a813873d0cb5889bf8",
-              "author_name": "jedi04",
-              "message": "Added option to clone host (#241)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d9b1bf03f120c84687a61da57dbb0b99c10064f8",
-              "author_name": "Karmaa",
-              "message": "Merge branch 'dev-1.7.0' into main",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "c2545f927958f05973dfb3573a4ff2376c68dc13",
-              "author_name": "ZacharyZcR",
-              "message": "Merge branch 'main' of https://github.com/ZacharyZcR/Termix",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "182b60a42867bcb2dfcf861e2932758790d8b7f5",
-              "author_name": "ZacharyZcR",
-              "message": "Add optional password requirement for SSH sessions (Issue #118)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "957bc5e41b0bbe11ff1180385d9c9a924546097a",
-              "author_name": "ZacharyZcR",
-              "message": "Fix SSH encryption and add file download functionality",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "49e7159939737d605612746561fde07b54411952",
-              "author_name": "ZacharyZcR",
-              "message": "Implement modern file manager with drag-and-drop interface",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b50ee1965fb4bd09fe4330775d72f4e8e9376dc3",
-              "author_name": "ZacharyZcR",
-              "message": "Fix modern file manager SSH connection and button functionality",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cd70e63a1b6de0ddc237d2711927a0d44643fe52",
-              "author_name": "ZacharyZcR",
-              "message": "Fix critical file selection and SSH connection issues in modern file manager",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7c7754ba11032a39c20a3d732eca77c4f3b94e74",
-              "author_name": "ZacharyZcR",
-              "message": "Fix file manager navigation buttons - implement proper directory navigation",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fee7af3c466798249941acf7b6b56fc3b69eb194",
-              "author_name": "ZacharyZcR",
-              "message": "Fix file manager view mode toggle - add grid and list view support",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "dcce5d1eec9f9e9fdb6e498a5412855845823465",
-              "author_name": "ZacharyZcR",
-              "message": "Remove legacy file manager view toggle - simplify architecture",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "501de0626627dc5eda2009d767f6ba79eeda8a5e",
-              "author_name": "ZacharyZcR",
-              "message": "Fix context menu click-outside behavior - Windows Explorer style",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "22ac7d8596b8b0b4237ffddb87c4e6f0bdc1a072",
-              "author_name": "ZacharyZcR",
-              "message": "Implement draggable file windows - Windows Explorer style",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e364c202133873cdc9b7801f921e1ffb9fdee576",
-              "author_name": "ZacharyZcR",
-              "message": "Add smart large file handling for unknown file types",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0497ff139e66c8f14e4395119dded1641146a29a",
-              "author_name": "ZacharyZcR",
-              "message": "Fix SSH connection issues and enable no-extension file editing",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "f4f5e47e48c7f3b942f20c0d4752bb04700bf924",
-              "author_name": "ZacharyZcR",
-              "message": "Refactor file window components to use shadcn design tokens",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1d79fd721edc5e6fdb8b71df9840b767ebfe0363",
-              "author_name": "ZacharyZcR",
-              "message": "Optimize search highlighting: change from background colors to text color changes",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "978981dd6bddac9476c04a122df11e02fd31b0f3",
-              "author_name": "ZacharyZcR",
-              "message": "Fix search highlighting scroll issue and improve color contrast",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "5e2d463678bfb328db15bd4d007c3f7a2dd5d7e6",
-              "author_name": "ZacharyZcR",
-              "message": "Add comprehensive code editing support with syntax highlighting",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "560b47532c37669a5b9bc71e08fc13140cc15a53",
-              "author_name": "ZacharyZcR",
-              "message": "Add official programming language icons and YAML support",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7bb09935a6d4f3bce080e3594526c82c4cf8d565",
-              "author_name": "ZacharyZcR",
-              "message": "Fix icon import error and classify YAML as code files",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7bcc863270e685443b838d784ee636c6e781d20a",
-              "author_name": "ZacharyZcR",
-              "message": "Fix SiJava import error - replace with SiOracle",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "82f5f9afa960a1d6ebfecd2f1f4a7b3b38a1712e",
-              "author_name": "ZacharyZcR",
-              "message": "Add missing SiXml import",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "bce3fcc41e6bbdc958598c5b9b4d2ee802e20ab5",
-              "author_name": "ZacharyZcR",
-              "message": "Implement Windows-style inline file/folder renaming and creation",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "86a7ef891420c36040598ce52fb748298cf98d14",
-              "author_name": "ZacharyZcR",
-              "message": "Enhance inline editing visual design and UX",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "be6fabf1294a2b36bd4d44bdefa28b5a608d48fa",
-              "author_name": "ZacharyZcR",
-              "message": "Fix SSH connection loss causing operation failures",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "523f6412a7413fcc2c0564d5edbcabdcea040d7f",
-              "author_name": "ZacharyZcR",
-              "message": "Fix API parameters for createSSHFile and createSSHFolder",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fb7b452a1ce485dc356b60f258dc8f5a66431a59",
-              "author_name": "ZacharyZcR",
-              "message": "Implement proper file/folder creation workflow with inline editing",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "16de73d6ad6f5bc90ddd9c6a479bc2fe98804a1d",
-              "author_name": "ZacharyZcR",
-              "message": "Add comprehensive file information display to file manager",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7059ebcc0e5403255d6f19e7036bd37375ac9c46",
-              "author_name": "ZacharyZcR",
-              "message": "修复文件管理器滚动功能和软链接支持",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3fa3c9e3525f4343e3bc066d7700a13537922b2c",
-              "author_name": "ZacharyZcR",
-              "message": "修复文件管理器面包屑导航和状态栏显示问题",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "12733685d73ddf2648e26f9db1c5ba3f9a055c71",
-              "author_name": "ZacharyZcR",
-              "message": "实现完整的文件管理器框选功能",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "bf166d602fb4344249f4d08fc8da96abfd1d4a38",
-              "author_name": "ZacharyZcR",
-              "message": "优化文件管理器视觉设计和安全性",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cae9097034112cd309628cf7244344da32f15ce9",
-              "author_name": "ZacharyZcR",
-              "message": "Implement complete file manager keyboard shortcuts and copy functionality",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2ea5383ef06b7bea9ab483fba2ff3def74b9ac27",
-              "author_name": "ZacharyZcR",
-              "message": "Implement unified file editing for all non-media files",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                },
-                {
-                  "tool": "claude_code",
-                  "signal_type": "message_keyword",
-                  "matched_text": "Generated with Claude Code",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "681a223bed5ed6be46563cebca00bb1c13e40e1f",
-              "author_name": "ZacharyZcR",
-              "message": "实现文件拖拽功能",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3f90faf1d0834b6c0524b0ffb0c75de686317717",
-              "author_name": "ZacharyZcR",
-              "message": "重新设计diff功能：使用Monaco Editor实现专业级文件对比",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d79d4355948365c91e5e7b04b5117c7bc5d3fc1e",
-              "author_name": "ZacharyZcR",
-              "message": "实现跨边界拖拽功能：支持从浏览器拖拽文件到系统",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e0e4e6915978be2549f50539354605d161a3b00d",
-              "author_name": "ZacharyZcR",
-              "message": "优化文件管理器拖拽体验：实现智能跟随tooltip和统一状态管理",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "f70a2102db815304775264b5620c16e097e03fdf",
-              "author_name": "ZacharyZcR",
-              "message": "实现可执行文件检测和运行功能：支持终端集成和右键菜单操作",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "948704055b2fccc7eeaabbd30488854387c93b5c",
-              "author_name": "ZacharyZcR",
-              "message": "清理调试信息，保持代码整洁",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a0c3ce307d1632b27347620912cb11a7fad4c861",
-              "author_name": "ZacharyZcR",
-              "message": "修复核心UI文本的i18n问题：支持多语言切换",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "54d3668093bdc09ca2d0a98f28f96320552ef0c3",
-              "author_name": "ZacharyZcR",
-              "message": "修复文件管理器凭证认证问题：支持加密凭证和新密钥字段",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "7fc474b9e459d810b4fc8889effa6e3ef756061b",
-              "author_name": "ZacharyZcR",
-              "message": "实现文件管理器面包屑可编辑路径输入功能",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "4e915a1b3e95bf5b88f9cf7c7be482d4cb77d97b",
-              "author_name": "ZacharyZcR",
-              "message": "修复文件管理器多个关键问题",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "42c6f1e2d04c88c5b51eb22633c0e6a8bb712d6e",
-              "author_name": "ZacharyZcR",
-              "message": "修复文件管理器侧边栏显示问题",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "91462021b57075c7a4f374e2b9920312bb54a910",
-              "author_name": "ZacharyZcR",
-              "message": "修复侧边栏滚动容器结构：防止状态栏被挤掉并显示滚动条",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2a8133dc36c6c3449863e854b27fb00cb35486a4",
-              "author_name": "ZacharyZcR",
-              "message": "Implement file manager sidebar context menu functionality",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "8fd46f2383719d819a46f0bf406def60937ebff1",
-              "author_name": "ZacharyZcR",
-              "message": "Fix hardcoded text and add missing i18n translations in file manager",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "5ec9451ef2aa43743e7f6a0de28b9866b29613e0",
-              "author_name": "ZacharyZcR",
-              "message": "Fix file upload 400 Bad Request error in file manager",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "fc14389e59fd6a0829295f7051d7fd0f70b03d8c",
-              "author_name": "ZacharyZcR",
-              "message": "Implement database export/import functionality for hardware migration",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cb7bb3c8646bd970d1ccf803f68ad6aaed7a4062",
-              "author_name": "Karmaa",
-              "message": "Merge branch 'LukeGus:main' into feature/database-export-import-dev-1.7.0",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "8afd84d96df2043cef147bde9317b1e8982d4e3e",
-              "author_name": "LukeGus",
-              "message": "Cleanup files and improve file manager.",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1f0c741ced602181ff31245cf79f7d8a20169350",
-              "author_name": "ZacharyZcR",
-              "message": "dev-1.7.0 (#294)",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "700aa9e07d77094cd397fa16428939471a07bcd3",
-              "author_name": "LukeGus",
-              "message": "Fix homepage auth",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "8f8ebf0c7f4f913a6e4e7c85a55bc87358cd8b75",
-              "author_name": "LukeGus",
-              "message": "Clean up files, fix bugs in file manager, update api ports, etc.",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "8f1482dea9ce0565c7d47df231d8aae0eca8aea1",
-              "author_name": "LukeGus",
-              "message": "Update action build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "1d399fc9396b121058941857b49e181946526c95",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "f38cce1ffb9d5b5d34d9b7dd42e5066b14cba35a",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "158e805e0464c764e84d415fe6724f60ac5e3d4a",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9b1dbdcc0a5c260ff3f1ecc4a54d6d1050c097cc",
-              "author_name": "LukeGus",
-              "message": "Fix mobile UI and SSL",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "edbc2b978c7b94d14d5c1ea24972acdec26fd71c",
-              "author_name": "LukeGus",
-              "message": "Fix SSL terminals and fix SSL issues",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "092c8e4218b6c082042b7e1371c0c880763a0af7",
-              "author_name": "LukeGus",
-              "message": "Fix SSL docker issues",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "62bc684fff8c3e80d3ce34dbc4ce4364ec68c8aa",
-              "author_name": "LukeGus",
-              "message": "Fix encryption not working after restarting",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9b12515676687b4f5084ec7599ee20d5d1474aed",
-              "author_name": "LukeGus",
-              "message": "Fix env not loading after restart, update translsations, fix export DB nginx conf",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "0da4652a31eedd1646172799ac1303668b0748a2",
-              "author_name": "LukeGus",
-              "message": "Add versioning system to electron, update nginx configurations for file uploads, fix UI issues in file manager",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b09cf8967392bb83b5f6afcfb146f9425fb1f14a",
-              "author_name": "ZacharyZcR",
-              "message": "FEATURE: Docker log-based password recovery with KEK-DEK preservation (#303)",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "56e3194a7c9253687f8d2b13f5b2551ad48e8587",
-              "author_name": "LukeGus",
-              "message": "Update legacy code and remove debugs",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "18517621d60fa27d2ed7b7b9f5dae7010adb0ca1",
-              "author_name": "LukeGus",
-              "message": "Fix build error",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "ab6b1e284f641a6b3a1ef7b87ae228a642e10ce0",
-              "author_name": "LukeGus",
-              "message": "Fix nginx error",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "33aa648d28fb98f253c008a7de1cd81335aedc4d",
-              "author_name": "LukeGus",
-              "message": "Fix encryption not loading",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "54e7ac8bfdbc51a08787cf53331e6a6cdbb7c7b4",
-              "author_name": "LukeGus",
-              "message": "Fix encryption not loading",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "5afe22547041df51e47ba264e149d2e560820fb3",
-              "author_name": "LukeGus",
-              "message": "Fix certificate regeneration, svg files encrypting, and file manager being able to be dragged off screen.",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "2cd1cb64a3613be017ba0df944b8b695929b283d",
-              "author_name": "LukeGus",
-              "message": "Add session lock notifications and change timeouts",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "b0f25a69719e4eef757ae31dd981a1ce6f31e85a",
-              "author_name": "LukeGus",
-              "message": "Improved JWT security",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "3691e22d49459e288603063c9764e79ff53be9a4",
-              "author_name": "LukeGus",
-              "message": "Fix send reset code UI",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "dfbaf0d2f139be57914088b64de9529c8b3a4f92",
-              "author_name": "LukeGus",
-              "message": "Begin undo #303",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d2ba934f61d0aca55b9b874ca79c0c12ac9f0990",
-              "author_name": "LukeGus",
-              "message": "Completely remove PR 303",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "bc8aa690992540efaa90513d21c62d03d3d7bf6c",
-              "author_name": "LukeGus",
-              "message": "Code cleanup",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "a79b640914423a0eeb5db0750bf081a288a8a77a",
-              "author_name": "LukeGus",
-              "message": "Fix credentials UI",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "6eb304b8e49a946e44043ddcc71e015da138daf1",
-              "author_name": "LukeGus",
-              "message": "Update packages and improve SSL generation",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e2146cdfbffc7efbc0afb9035be6726275b1368f",
-              "author_name": "LukeGus",
-              "message": "Format",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "cfa7c26c49aca277970eeb2130339dd3d270d599",
-              "author_name": "LukeGus",
-              "message": "Fix docker build error and SSL regeneration",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "d1b43452062f4a8a092d83fa640025706a01a152",
-              "author_name": "LukeGus",
-              "message": "Update electron builds, fix backend issues",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "e670894e52396b50bc2751537092a32881eae4d2",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "9969d17c57704523461539d3ac90ca6202c2bd5e",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "4b377659f65f0bd8fda58a9979964abed58170b5",
-              "author_name": "LukeGus",
-              "message": "Fix docker build and electron SSL",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            },
-            {
-              "sha": "984cabdc2ff79970972054d6de252c59587aee72",
-              "author_name": "LukeGus",
-              "message": "Fix docker build",
-              "ai_signals": [],
-              "touched_blamed_file": null
-            }
-          ],
-          "squash_merge_sha": "a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a"
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "ad86c2040b70c1a8b2df3f83037c1b904a67bfe4",
-          "repo_url": "https://github.com/lukegus/termix",
-          "source": "osv"
-        },
-        {
-          "sha": "ad86c2040b70c1a8b2df3f83037c1b904a67bfe4",
-          "repo_url": "https://github.com/termix-ssh/termix",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22804.json",
-        "https://github.com/Termix-SSH/Termix/security/advisories/GHSA-m3cv-5hgp-hv35",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-22804"
-      ],
-      "ai_contribution": "AI-authored code directly introduced the stored XSS: commit a7fa40393d14dbb8ff1cc3b9d29fd7c014efc45a (explicitly marked as Claude Code-generated) created FileViewer with an SVG preview branch that injects untrusted file contents via dangerouslySetInnerHTML. That sink made attacker-controlled files execute script in the File Manager, which in browsers can hijack the session and in Electron can be leveraged for local file access."
     },
     {
       "id": "GHSA-wpph-cjgr-7c39",
