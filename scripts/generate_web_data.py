@@ -818,11 +818,21 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
         return True    # exclude
 
     # Fallback for old results: existing per-BIC logic
+    has_passing_bic = False
     for bic in result.get("bug_introducing_commits", []):
         has_signals = bool(bic.get("commit", {}).get("ai_signals"))
+        # Also check decomposed sub-commit signals
+        if not has_signals:
+            for dc in bic.get("decomposed_commits", []):
+                if dc.get("ai_signals"):
+                    has_signals = True
+                    break
+        # Also check pr_signals
+        if not has_signals:
+            has_signals = bool(bic.get("pr_signals"))
         has_llm = _get_screening_verdict(bic) is not None
         if not has_signals and not has_llm:
-            continue  # no AI involvement at all
+            continue
 
         dv = _get_deep_verdict(bic)
         if dv:
@@ -830,12 +840,12 @@ def _has_no_confirmed_verdict(result: dict) -> bool:
             # Only CONFIRMED passes; UNLIKELY and UNRELATED are excluded
             if dv_verdict == "CONFIRMED":
                 return False
-            continue
+            continue  # UNLIKELY or UNRELATED — skip this BIC
 
-        # No deep verification — accept (benefit of the doubt)
-        return False
+        # No deep verification — benefit of the doubt
+        has_passing_bic = True
 
-    return True
+    return not has_passing_bic
 
 
 def _load_audit_overrides() -> set[str]:
@@ -1113,108 +1123,31 @@ def _build_bug_commit(bic: dict, repo_url: str = "", fix_commit_source: str = ""
     return entry
 
 
-_EXCLUSION_VERDICTS_DICT = frozenset({"UNRELATED"})
+def _get_effective_signals_dict(bic: dict) -> list[dict]:
+    """Dict-based mirror of BugIntroducingCommit.effective_signals().
 
-
-def _bic_dict_is_excluded(bic: dict) -> bool:
-    """Return True if this BIC dict should be excluded from AI confidence scoring.
-
-    Dict-based mirror of ``_bic_is_excluded()`` in pipeline.py.
-    Deep verification verdict is authoritative and checked first.
+    Returns the culprit sub-commit's signals + pr_signals if the BIC is a
+    decomposed squash merge with a confirmed culprit, otherwise commit signals
+    + pr_signals.
     """
-    dv = _get_deep_verdict(bic)
-    if dv:
-        dv_final = (dv.get("final_verdict") or "").upper()
-        if dv_final in _EXCLUSION_VERDICTS_DICT:
-            return True
-        # CONFIRMED or other → not excluded, even if LLM said UNRELATED
-        return False
-    # Screening verdict is advisory only — never exclude based on it.
-    return False
+    culprit_sha = bic.get("culprit_sha", "")
+    decomposed = bic.get("decomposed_commits", [])
+    pr_signals = bic.get("pr_signals", [])
+    if culprit_sha and decomposed:
+        culprit = next((dc for dc in decomposed if dc.get("sha") == culprit_sha), None)
+        if culprit and culprit.get("touched_blamed_file"):
+            return culprit.get("ai_signals", []) + pr_signals
+        return pr_signals
+    return bic.get("commit", {}).get("ai_signals", []) + pr_signals
 
 
-_UNLIKELY_PENALTIES_DICT: dict[str, float] = {
-    "high": 0.25,
-    "medium": 0.5,
-    "low": 0.85,
-}
-
-
-def _get_unlikely_penalty_dict(bic: dict) -> float:
-    """Return penalty multiplier for UNLIKELY deep_verification.
-
-    Dict-based mirror of _get_unlikely_penalty() in pipeline.py.
-    Only checks deep_verification (has confidence field).
-    """
-    vv = bic.get("deep_verification") or bic.get("verification_verdict")
-    if not vv:
-        return 1.0
-    if (vv.get("verdict") or "").upper() != "UNLIKELY":
-        return 1.0
-    confidence = (vv.get("confidence") or "low").lower()
-    return _UNLIKELY_PENALTIES_DICT.get(confidence, 1.0)
-
-
-def _recompute_ai_confidence(result: dict) -> float:
-    """Recompute AI confidence from raw BIC data.
-
-    Penalties applied (in order):
-    1. Indirect-only penalty (0.25x) when ALL signals on best BIC are
-       ``squash_decomposed_*``.
-    2. Diffuse blame penalty when total BICs > 50:
-       a. Count damping: multiply by (50 / total).
-       b. AI ratio damping: if AI BICs < 50% of total, multiply by
-          max(ai_bic_count / total, 0.1).
-    3. Confidence floor: scores < 0.05 are zeroed.
-
-    Mirrors _compute_ai_confidence() in cve_analyzer/pipeline.py.
-    Keep both in sync when the scoring formula changes.
-    """
-    bics = result.get("bug_introducing_commits", [])
-    total = len(bics)
-    max_score = 0.0
-    best_bic: dict | None = None
-    ai_bic_count = 0
-    for bic in bics:
-        signals = bic.get("commit", {}).get("ai_signals", [])
-        if not signals:
-            continue
-        if _bic_dict_is_excluded(bic):
-            continue
-        # Only consider authorship signals — workflow signals don't prove
-        # AI wrote the code (mirrored from pipeline.py).
-        authorship = [s for s in signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
-        if not authorship:
-            continue
-        ai_bic_count += 1
-        best_signal = max(s.get("confidence", 0) for s in authorship)
-        score = best_signal * bic.get("blame_confidence", 0)
-        score *= _get_unlikely_penalty_dict(bic)
-        if score > max_score:
-            max_score = score
-            best_bic = bic
-
-    # Indirect-only penalty (mirrored from pipeline.py)
-    if max_score > 0 and best_bic is not None:
-        best_signals = best_bic.get("commit", {}).get("ai_signals", [])
-        best_authorship = [s for s in best_signals if s.get("signal_type", "").removeprefix("squash_decomposed_") not in _WORKFLOW_SIGNAL_TYPES]
-        if best_authorship and all(
-            s.get("signal_type", "").startswith("squash_decomposed")
-            for s in best_authorship
-        ):
-            max_score *= 0.25  # _INDIRECT_ONLY_PENALTY — keep in sync with pipeline.py
-
-    # Diffuse blame penalty (mirrored from pipeline.py)
-    if total > 50 and max_score > 0:
-        max_score *= (50 / total)
-        ai_ratio = ai_bic_count / total
-        if ai_ratio < 0.5:
-            max_score *= max(ai_ratio, 0.1)
-
-    # Confidence floor (mirrored from pipeline.py)
-    if 0 < max_score < 0.05:
-        max_score = 0.0
-    return round(max_score, 4)
+def _compute_confidence(result: dict) -> float:
+    """Compute AI confidence using the unified scoring module."""
+    from cve_analyzer.models import CveAnalysisResult
+    from cve_analyzer.scoring import compute_ai_confidence
+    parsed = CveAnalysisResult.from_dict(result)
+    parsed.rebuild_signals()
+    return compute_ai_confidence(parsed)
 
 
 def build_cve_entry(
@@ -1243,15 +1176,15 @@ def build_cve_entry(
     })
     ai_tools_set: set[str] = set()
     for bic in result.get("bug_introducing_commits", []):
-        commit = bic.get("commit", {})
-        signals = commit.get("ai_signals", [])
+        # Use effective signals: culprit DC signals if decomposed, else commit signals
+        signals = _get_effective_signals_dict(bic)
         if not signals:
             continue
         verdict = _effective_verdict(bic)
         if verdict == "UNRELATED":
             continue
         for sig in signals:
-            base_type = sig.get("signal_type", "").removeprefix("squash_decomposed_")
+            base_type = sig.get("signal_type", "")
             if base_type in _WORKFLOW_SIGNAL_TYPES:
                 continue
             tool = sig.get("tool", "")
@@ -1535,7 +1468,7 @@ def build_cve_entry(
         "published": published,
         "ai_tools": ai_tools,
         "languages": _determine_languages(bug_commits, result.get("fix_commits")),
-        "confidence": _recompute_ai_confidence(result),
+        "confidence": _compute_confidence(result),
         "verified_by": verified_by,
         "how_introduced": ai_contribution or how_introduced,
         "root_cause": root_cause,
