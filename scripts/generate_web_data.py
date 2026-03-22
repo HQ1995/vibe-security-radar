@@ -1743,6 +1743,11 @@ def main(argv: list[str] | None = None) -> None:
                 if ov["cve_id"] == e["id"] and "tools" in ov:
                     e["ai_tools"] = ov["tools"]
                     break
+    # When ai_involved=True (investigator confirmed), use ai_contribution
+    # as the tool label if no pipeline signals survived.
+    for e in entries:
+        if not e.get("ai_tools") and e.get("ai_contribution"):
+            e["ai_tools"] = ["ai_assisted"]
     no_tools = [e for e in entries if not e.get("ai_tools") and e["id"] not in audit_override_ids]
     if no_tools:
         print(f"  Excluded {len(no_tools)} CVEs with lost AI signal data (need --no-cache re-analysis).")
