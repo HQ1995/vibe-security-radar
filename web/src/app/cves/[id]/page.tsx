@@ -258,6 +258,11 @@ function SummaryCards({
               <span className="font-semibold text-sm">{getToolDisplayName(tool)}</span>
             </div>
           ))}
+          {cve.signal_source === "pr_body" && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Signal from PR description only — not from commit metadata
+            </p>
+          )}
         </div>
       </div>
 

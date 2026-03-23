@@ -55,6 +55,9 @@ export function RecentCvesTable({ cves }: RecentCvesTableProps) {
                     {cve.ai_tools.map((tool) => (
                       <ToolIcon key={tool} tool={tool} size={18} />
                     ))}
+                    {cve.signal_source === "pr_body" && (
+                      <span className="text-[10px] text-muted-foreground border border-muted-foreground/30 rounded px-1">PR</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>

@@ -1185,6 +1185,8 @@ def build_cve_entry(
         "author_email", "committer_email",
     })
     ai_tools_set: set[str] = set()
+    has_commit_signal = False
+    has_pr_body_signal = False
     for bic in result.get("bug_introducing_commits", []):
         # Use effective signals: culprit DC signals if decomposed, else commit signals
         signals = _get_effective_signals_dict(bic)
@@ -1205,7 +1207,18 @@ def build_cve_entry(
             if tool == "unknown_ai" and base_type not in _STRONG_SIGNAL_TYPES:
                 continue
             ai_tools_set.add(tool)
+            origin = sig.get("origin", "commit_metadata")
+            if origin == "pr_body":
+                has_pr_body_signal = True
+            else:
+                has_commit_signal = True
     ai_tools = sorted(ai_tools_set)
+    if has_commit_signal and has_pr_body_signal:
+        signal_source = "both"
+    elif has_pr_body_signal:
+        signal_source = "pr_body"
+    else:
+        signal_source = "commit"
 
     # Only include BICs with AI signals whose effective verdict is CONFIRMED
     # or missing.  Skip commits without AI signals (plain human commits from
@@ -1477,6 +1490,7 @@ def build_cve_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
+        "signal_source": signal_source,
         "languages": _determine_languages(bug_commits, result.get("fix_commits")),
         "confidence": _compute_confidence(result),
         "verified_by": verified_by,
