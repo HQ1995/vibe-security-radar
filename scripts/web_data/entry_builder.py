@@ -360,15 +360,22 @@ def build_entry(
         # that effective_signals() filters out.
         best_tool = ""
         best_confidence = 0.0
-        best_reason = ""
+        best_sha = ""
+        best_sig_type = ""
+        best_verdict = ""
+        best_source = ""  # "commit", "sub-commit", "pr_body"
         for bic in result.bug_introducing_commits:
             verdict = _effective_verdict(bic)
-            # Collect ALL signals from every source
-            all_sigs = list(bic.commit.ai_signals)
+            # Collect (signal, source_description) pairs from every source
+            sig_sources: list[tuple] = []
+            for sig in bic.commit.ai_signals:
+                sig_sources.append((sig, bic.commit.sha[:12], "commit", verdict))
             for dc in bic.decomposed_commits:
-                all_sigs.extend(dc.ai_signals)
-            all_sigs.extend(bic.pr_signals)
-            for sig in all_sigs:
+                for sig in dc.ai_signals:
+                    sig_sources.append((sig, dc.sha[:12], "sub-commit", verdict))
+            for sig in bic.pr_signals:
+                sig_sources.append((sig, bic.commit.sha[:12], "pr_body", verdict))
+            for sig, sha, source, v in sig_sources:
                 if sig.signal_type in WORKFLOW_SIGNAL_TYPES:
                     continue
                 if sig.tool.value == "unknown_ai":
@@ -376,16 +383,30 @@ def build_entry(
                 if sig.confidence > best_confidence:
                     best_tool = sig.tool.value
                     best_confidence = sig.confidence
-                    if verdict == "UNRELATED":
-                        best_reason = "AI signal on a different commit in the same PR, not on the vulnerability-introducing code"
-                    else:
-                        best_reason = "AI signal on a non-culprit sub-commit within the squash merge"
+                    best_sha = sha
+                    best_sig_type = sig.signal_type
+                    best_verdict = v
+                    best_source = source
         if best_tool:
             ai_tools = [best_tool]
-            signal_note = best_reason
+            # Build detailed explanation
+            where = f"{best_sig_type} signal on {best_source} {best_sha}"
+            if best_verdict == "UNRELATED":
+                why = "that commit was ruled unrelated to the vulnerability"
+            elif best_source == "sub-commit":
+                why = "that sub-commit did not modify the vulnerable file"
+            else:
+                why = "no direct link to the vulnerability-introducing code"
+            signal_note = (
+                f"Detected {best_tool} ({where}), but {why}. "
+                f"Tool inferred from the same PR — see ai_contribution for the investigator's causal analysis."
+            )
         else:
             ai_tools = ["ai_assisted"]
-            signal_note = "AI involvement confirmed by investigator but no tool-specific signal detected"
+            signal_note = (
+                "AI involvement confirmed by investigator but no tool-specific commit signal detected. "
+                "See ai_contribution for the investigator's causal analysis."
+            )
 
     # ------------------------------------------------------------------
     # 3. Bug commits list
