@@ -354,14 +354,21 @@ def build_entry(
     # ------------------------------------------------------------------
     signal_note = ""
     if result.ai_involved is True and not ai_tools:
-        # Scan all BICs (including UNRELATED) for the best AI tool signal
-        # to give users a concrete tool name instead of generic "ai_assisted"
+        # Scan ALL signals across all BICs — effective_signals, commit signals,
+        # decomposed sub-commit signals (even touched=False), and PR signals.
+        # This catches tools like roo_code/copilot on non-culprit sub-commits
+        # that effective_signals() filters out.
         best_tool = ""
         best_confidence = 0.0
         best_reason = ""
         for bic in result.bug_introducing_commits:
             verdict = _effective_verdict(bic)
-            for sig in bic.effective_signals():
+            # Collect ALL signals from every source
+            all_sigs = list(bic.commit.ai_signals)
+            for dc in bic.decomposed_commits:
+                all_sigs.extend(dc.ai_signals)
+            all_sigs.extend(bic.pr_signals)
+            for sig in all_sigs:
                 if sig.signal_type in WORKFLOW_SIGNAL_TYPES:
                     continue
                 if sig.tool.value == "unknown_ai":
@@ -372,7 +379,7 @@ def build_entry(
                     if verdict == "UNRELATED":
                         best_reason = "AI signal on a different commit in the same PR, not on the vulnerability-introducing code"
                     else:
-                        best_reason = "AI signal detected but on a non-culprit sub-commit within the squash merge"
+                        best_reason = "AI signal on a non-culprit sub-commit within the squash merge"
         if best_tool:
             ai_tools = [best_tool]
             signal_note = best_reason
