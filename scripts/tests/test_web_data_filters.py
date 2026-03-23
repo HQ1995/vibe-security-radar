@@ -10,6 +10,7 @@ from cve_analyzer.models import (
     BugIntroducingCommit,
     CommitInfo,
     CveAnalysisResult,
+    FilteringLog,
     LlmVerdict,
     BlameVerdict,
 )
@@ -258,3 +259,67 @@ class TestShouldIncludeBicLogic:
         bic = make_bic(ai_signals=[make_signal()], deep_verification=dv)
         result = make_result(bics=[bic])
         assert should_include(result)
+
+
+# ---------------------------------------------------------------------------
+# should_include — FilteringLog population
+# ---------------------------------------------------------------------------
+
+class TestShouldIncludeFilteringLog:
+    def test_populates_filtering_log_included(self):
+        dv = {"verdict": "CONFIRMED", "reasoning": "AI wrote this"}
+        bic = make_bic(ai_signals=[make_signal()], deep_verification=dv)
+        result = make_result(bics=[bic])
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is True
+        assert result.filtering_log.final_included is True
+        assert result.filtering_log.exclusion_reason == ""
+
+    def test_populates_filtering_log_excluded_error(self):
+        result = make_result(error="Repository not found")
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is False
+        assert result.filtering_log.final_included is False
+        assert result.filtering_log.exclusion_reason == "error"
+
+    def test_populates_filtering_log_excluded_rejected_cve(self):
+        result = make_result(description="Rejected reason: duplicate")
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is False
+        assert result.filtering_log.final_included is False
+        assert result.filtering_log.exclusion_reason == "rejected_cve"
+
+    def test_populates_filtering_log_excluded_ai_not_involved(self):
+        result = make_result(ai_involved=False)
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is False
+        assert result.filtering_log.final_included is False
+        assert result.filtering_log.exclusion_reason == "ai_not_involved"
+
+    def test_populates_filtering_log_excluded_no_confirmed_verdict(self):
+        # No BICs → falls through to no_confirmed_verdict
+        result = make_result(ai_involved=None)
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is False
+        assert result.filtering_log.final_included is False
+        assert result.filtering_log.exclusion_reason == "no_confirmed_verdict"
+
+    def test_populates_filtering_log_included_ai_involved_true(self):
+        result = make_result(ai_involved=True)
+        result.filtering_log = FilteringLog()
+        assert should_include(result) is True
+        assert result.filtering_log.final_included is True
+        assert result.filtering_log.exclusion_reason == ""
+
+    def test_no_filtering_log_does_not_crash(self):
+        """Results without filtering_log don't crash."""
+        result = make_result(error="broken")
+        # No filtering_log set (it's None)
+        assert should_include(result) is False
+
+    def test_filtering_log_not_mutated_when_none(self):
+        """When filtering_log is None, result.filtering_log stays None."""
+        result = make_result(ai_involved=True)
+        assert result.filtering_log is None
+        should_include(result)
+        assert result.filtering_log is None

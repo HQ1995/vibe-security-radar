@@ -43,20 +43,32 @@ def should_include(
        - No deep verification or fallback → benefit of the doubt (has_passing = True).
     7. Return has_passing.
     """
+    included, reason = _should_include_with_reason(result, audit_overrides)
+    if result.filtering_log is not None:
+        result.filtering_log.final_included = included
+        result.filtering_log.exclusion_reason = reason
+    return included
+
+
+def _should_include_with_reason(
+    result: CveAnalysisResult,
+    audit_overrides: set[str] | None = None,
+) -> tuple[bool, str]:
+    """Core inclusion logic returning (included, exclusion_reason)."""
     if result.error:
-        return False
+        return False, "error"
 
     desc = (result.description or "").lower()
     if "rejected reason:" in desc or "this cve id has been rejected" in desc:
-        return False
+        return False, "rejected_cve"
 
     if audit_overrides and result.cve_id in audit_overrides:
-        return True
+        return True, ""
 
     if result.ai_involved is True:
-        return True
+        return True, ""
     if result.ai_involved is False:
-        return False
+        return False, "ai_not_involved"
 
     # Fallback: per-BIC verdict logic
     has_passing = False
@@ -70,11 +82,13 @@ def should_include(
         if dv and not is_fallback_verdict(dv):
             verdict = (dv.get("final_verdict") or dv.get("verdict") or "").upper()
             if verdict == "CONFIRMED":
-                return True
+                return True, ""
             # UNLIKELY or UNRELATED — skip this BIC
             continue
 
         # No deep verification or fallback verdict → benefit of the doubt
         has_passing = True
 
-    return has_passing
+    if has_passing:
+        return True, ""
+    return False, "no_confirmed_verdict"
