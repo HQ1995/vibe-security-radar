@@ -350,10 +350,35 @@ def build_entry(
         signal_source = "commit"
 
     # ------------------------------------------------------------------
-    # 2. ai_involved fallback
+    # 2. ai_involved fallback — infer potential tool from ALL BICs
     # ------------------------------------------------------------------
+    signal_note = ""
     if result.ai_involved is True and not ai_tools:
-        ai_tools = ["ai_assisted"]
+        # Scan all BICs (including UNRELATED) for the best AI tool signal
+        # to give users a concrete tool name instead of generic "ai_assisted"
+        best_tool = ""
+        best_confidence = 0.0
+        best_reason = ""
+        for bic in result.bug_introducing_commits:
+            verdict = _effective_verdict(bic)
+            for sig in bic.effective_signals():
+                if sig.signal_type in WORKFLOW_SIGNAL_TYPES:
+                    continue
+                if sig.tool.value == "unknown_ai":
+                    continue
+                if sig.confidence > best_confidence:
+                    best_tool = sig.tool.value
+                    best_confidence = sig.confidence
+                    if verdict == "UNRELATED":
+                        best_reason = "AI signal on a different commit in the same PR, not on the vulnerability-introducing code"
+                    else:
+                        best_reason = "AI signal detected but on a non-culprit sub-commit within the squash merge"
+        if best_tool:
+            ai_tools = [best_tool]
+            signal_note = best_reason
+        else:
+            ai_tools = ["ai_assisted"]
+            signal_note = "AI involvement confirmed by investigator but no tool-specific signal detected"
 
     # ------------------------------------------------------------------
     # 3. Bug commits list
@@ -582,6 +607,7 @@ def build_entry(
         "ai_tools": ai_tools,
         "ai_involved": result.ai_involved,
         "signal_source": signal_source,
+        **({"signal_note": signal_note} if signal_note else {}),
         "languages": determine_languages(bug_commits, fix_commits_dicts),
         "confidence": compute_ai_confidence(result),
         "verified_by": verified_by,

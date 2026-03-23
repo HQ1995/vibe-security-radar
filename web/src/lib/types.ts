@@ -75,6 +75,7 @@ export interface CveEntry {
   readonly published: string;
   readonly ai_tools: readonly string[];
   readonly signal_source: "commit" | "pr_body" | "both";
+  readonly signal_note?: string;
   readonly languages: readonly string[];
   readonly confidence: number;
   readonly verified_by: string;
