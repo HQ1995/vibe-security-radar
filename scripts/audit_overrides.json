@@ -10,5 +10,12 @@
     "reason": "Audit confirmed: Copilot+Claude commit f27721f rewrote OBJ parser from null-terminated strings to raw buffer pointers, making tryParseDouble boundary-check gaps exploitable (heap-buffer-overflow). Deep verifier missed calling-context safety contract change. OSS-Fuzz bisection confirms.",
     "tools": ["github_copilot", "claude_code"],
     "audited": "2026-03-19"
+  },
+  {
+    "cve_id": "GHSA-gc24-px2r-5qmf",
+    "reason": "Audit confirmed: Claude Code commit a7319f0e added unauthenticated debug endpoint (simulate-print-complete) to printers.py, contributing to CWE-306 (77+ endpoints missing auth). Root cause (missing auth middleware + hardcoded JWT secret) was human-authored by JesseFPV in f8857ba6. Repo also has heavy copilot-swe-agent[bot] involvement in PR #322 (cadtoolbox fork). Pipeline lost this BIC because _cap_bics runs before signal detection, dropping the AI-signaled BIC from the top-20 cap.",
+    "tools": ["claude_code"],
+    "pipeline_bug": "_cap_bics ordering: caps BICs before signal detection, so AI-preservation logic in _keep_top_bics is dead code",
+    "audited": "2026-03-24"
   }
 ]
