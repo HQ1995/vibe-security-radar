@@ -34,14 +34,11 @@ export default function HomePage() {
             Georgia Tech SSLab
           </a>
         </p>
-        <p className="mt-2 max-w-2xl text-xs leading-relaxed text-muted-foreground/70">
-          Detection is based on git co-author trailers, bot emails, and commit
-          message markers — not all AI-assisted code leaves these traces. This
-          project is under active development; results may contain errors.
-          See{" "}
+        <p className="mt-2 text-xs text-muted-foreground/70">
+          Actively developed. Results may contain errors or omissions.{" "}
           <a href="/about" className="underline underline-offset-2 hover:text-muted-foreground">
-            methodology &amp; limitations
-          </a>.
+            How it works
+          </a>
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <a
