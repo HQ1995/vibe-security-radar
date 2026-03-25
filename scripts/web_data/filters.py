@@ -70,6 +70,10 @@ def _should_include_with_reason(
     if result.ai_involved is False:
         return False, "ai_not_involved"
 
+    # Screening said "not worth investigating" → no deep verify ran → exclude
+    if result.screening is not None and not result.screening.worth_investigating:
+        return False, "screening_rejected"
+
     # Fallback: per-BIC verdict logic
     has_passing = False
     for bic in result.bug_introducing_commits:
