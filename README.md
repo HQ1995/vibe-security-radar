@@ -1,87 +1,42 @@
 # Vibe Security Radar
 
-Public tracker for security vulnerabilities introduced by AI coding tools.
+Tracking real CVEs where AI-generated code introduced the vulnerability.
 
-The project has two parts:
+We scan public advisory databases (OSV, GitHub Advisory Database, NVD), trace each fix commit back to the code that introduced the bug via git blame, check for AI tool signatures (co-author trailers, bot emails, commit message markers), and verify causality with an LLM investigator.
 
-| Directory | What | Stack |
-|-----------|------|-------|
-| `cve-analyzer/` | CLI tool that discovers and analyzes vulnerabilities | Python 3.13, uv |
-| `web/` | Dashboard that visualizes the results | Next.js 16, React 19, TailwindCSS |
+**This is a research project from [Georgia Tech SSLab](https://gts3.org)** (Systems Software & Security Lab, School of Cybersecurity and Privacy).
 
-Data flows from the analyzer to the web frontend:
-
-```
-cve-analyzer batch --all --llm-verify
-        ↓  (cached in ~/.cache/cve-analyzer/results/)
-python scripts/generate_web_data.py
-        ↓  (writes web/data/cves.json + stats.json)
-cd web && npm run build
-```
+> Detection relies on commit metadata — not all AI-assisted code leaves traces. Our numbers are a strict lower bound. The project is under active development and results may contain errors. See the [methodology & limitations](https://vibe-security-radar.vercel.app/about) page.
 
 ## Quick Start
 
-### 1. Set up the analyzer
-
 ```bash
-cd cve-analyzer
-uv sync
-```
+# 1. Set up
+cd cve-analyzer && uv sync
+export GITHUB_TOKEN="ghp_..."
 
-### 2. Configure API tokens
-
-```bash
-export GITHUB_TOKEN="ghp_..."       # Required for reasonable rate limits
-export NVD_API_KEY="..."            # Optional, improves NVD rate limit
-```
-
-### 3. Run a batch analysis
-
-```bash
-# Analyze all ecosystems from May 2025 onward, with LLM verification
+# 2. Run batch analysis
 uv run cve-analyzer batch --all --since 2025-05-01 --llm-verify
-```
 
-### 4. Generate web data and preview
-
-```bash
+# 3. Generate web data and preview
 python scripts/generate_web_data.py
 cd web && npm install && npm run dev
-# Open http://localhost:3000
 ```
 
-See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference and architecture details.
+See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference.
 
-## Repository Layout
+## How It Works
 
-```
-├── cve-analyzer/              # Python CLI tool
-│   ├── src/cve_analyzer/      # Source code (7-tier fix discovery pipeline)
-│   ├── tests/                 # Pytest suite (JSON fixtures, no real API calls)
-│   └── pyproject.toml
-├── web/                       # Next.js dashboard
-│   ├── src/app/               # App Router: home, /cves, /cves/[id], /cves/month/[month],
-│   │                          #   /analytics, /about, /tools
-│   ├── src/components/        # Shared UI components
-│   └── data/                  # Generated JSON (cves.json, stats.json)
-└── scripts/
-    ├── generate_web_data.py   # Transforms cached results → web JSON
-    ├── pipeline_funnel.py     # Pipeline stage conversion analysis
-    ├── audit_queue.py         # Picks the next audit target by priority
-    ├── audit_select.py        # Stratified sampling for audit batches
-    ├── audit_actionable.py    # Filters to audit targets worth investigating
-    ├── audit_patterns.py      # Cross-audit pattern analysis
-    ├── audit_recurring.py     # Tracks repeat findings across audits
-    ├── audit_lock.py          # Multi-process audit locking
-    ├── monitor.sh             # Pipeline monitoring
-    ├── profile.py             # Pipeline performance profiler
-    ├── regression_tag_search.py    # Tag search algorithm regression tests
-    ├── regression_desc_search.py   # Description search regression tests
-    ├── regression_ref_search.py    # Reference search regression tests
-    ├── regression_ground_truth.py  # Ground truth dataset management
-    ├── build_verified_fixture.py   # Build verified test fixtures
-    └── slop-detector/         # Experimental commit-level AI detection tool
-```
+1. **Find the fix commit** — aggregate from OSV, GHSA, Gemnasium, NVD; fall back to LLM-assisted git log search
+2. **Trace who introduced the bug** — SZZ-style git blame, squash-merge decomposition via GitHub API
+3. **Detect AI signals** — co-author trailers, bot emails, commit message markers from 15+ AI tools
+4. **Screen** — per-CVE LLM triage filters out cases where AI commits are clearly unrelated (~80% precision)
+5. **Deep investigate** — LLM agent with git tool access (50 tool calls) answers: did AI-authored code help cause this vulnerability?
+6. **Fallback** — Claude Agent SDK subprocess retries when the primary model fails
+
+## Contributing
+
+Found a false positive? Think we missed something? [Open an issue](https://github.com/HQ1995/vibe-security-radar/issues) or email hanqing@gatech.edu.
 
 ## License
 
