@@ -19,6 +19,7 @@ Usage:
 import argparse
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 from audit_lock import load_claimed_cves
@@ -186,24 +187,22 @@ def score_fp_candidate(data, ai_bics):
         score += 15
         reasons.append("decomposed-signal")
 
-    # Noisy blame strategies
-    noisy_strategies = {"pattern_search", "context_blame", "heuristic_blame"}
+    # Noisy blame strategies (must match BlameStrategy enum in models.py)
+    noisy_strategies = {"pattern_search", "context_blame"}
     for b in ai_bics:
         if b.get("blame_strategy") in noisy_strategies:
             score += 15
             reasons.append(f"noisy-blame({b['blame_strategy']})")
             break
 
-    # Low blame confidence
-    for b in ai_bics:
-        conf = b.get("blame_confidence", 1.0)
-        if conf < 0.5:
-            score += 20
-            reasons.append(f"low-conf({conf:.2f})")
-        elif conf < 0.7:
-            score += 10
-            reasons.append(f"med-conf({conf:.2f})")
-        break
+    # Low blame confidence (worst across all AI BICs)
+    worst_conf = min((b.get("blame_confidence", 1.0) for b in ai_bics), default=1.0)
+    if worst_conf < 0.5:
+        score += 20
+        reasons.append(f"low-conf({worst_conf:.2f})")
+    elif worst_conf < 0.7:
+        score += 10
+        reasons.append(f"med-conf({worst_conf:.2f})")
 
     # Single signal is more fragile than multiple
     total_signals = sum(len(_effective_signals(b)) for b in ai_bics)
@@ -400,7 +399,6 @@ def print_stats(fp_queue, fn_queue, results, audited):
         print(f"FN score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores)//2]})")
 
     # Reason distribution for top candidates
-    from collections import Counter
     if fn_queue:
         fn_reasons = Counter()
         for _, _, reasons in fn_queue[:50]:
