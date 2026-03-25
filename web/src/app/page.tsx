@@ -24,7 +24,7 @@ export default function HomePage() {
           Real CVEs where AI-generated code introduced the vulnerability.
         </p>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          A research project from{" "}
+          by{" "}
           <a
             href="https://gts3.org"
             target="_blank"
