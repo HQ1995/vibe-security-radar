@@ -4,12 +4,16 @@
 Scores and ranks CVEs by how likely they are to be false positives or
 false negatives, so auditors review the most suspicious cases first.
 
+Signal resolution mirrors BugIntroducingCommit.effective_signals() from
+cve_analyzer/models.py — update _effective_signals() if that method changes.
+
 Usage:
   audit_queue.py              # show next pick + queue summary
   audit_queue.py --top 10     # show top 10 from each queue
   audit_queue.py --fp         # show only FP queue
   audit_queue.py --fn         # show only FN queue
   audit_queue.py --json       # machine-readable output
+  audit_queue.py --stats      # queue health overview
 """
 
 import argparse
@@ -29,13 +33,68 @@ HIGH_AI_ECOSYSTEMS = {"npm", "PyPI", "crates.io", "Go", "NuGet"}
 AI_ADOPTION_CUTOFF = "2025-06-01"
 
 
+# ── Signal resolution (mirrors models.py) ────────────────────────────────────
+
+
+def _effective_signals(bic):
+    """Authoritative AI signals for a BIC dict.
+
+    Mirrors BugIntroducingCommit.effective_signals() from models.py:
+    - If decomposed with culprit: culprit signals + PR signals
+    - Otherwise: commit signals + PR signals
+    """
+    pr_sigs = bic.get("pr_signals", [])
+    culprit = bic.get("culprit_sha", "")
+    decomposed = bic.get("decomposed_commits", [])
+
+    if culprit and decomposed:
+        dc = next((d for d in decomposed if d.get("sha") == culprit), None)
+        if dc and dc.get("touched_blamed_file") is not False:
+            return list(dc.get("ai_signals", [])) + list(pr_sigs)
+        return list(pr_sigs)
+    return list(bic.get("commit", {}).get("ai_signals", [])) + list(pr_sigs)
+
+
+def _all_ai_signals(bic):
+    """ALL AI signals from any decomposed sub-commit + PR signals.
+
+    Broader than _effective_signals — includes signals from sub-commits
+    that did NOT touch the blamed file. Used for FN detection (any AI
+    presence in the PR is worth investigating).
+    """
+    signals = []
+    for dc in bic.get("decomposed_commits", []):
+        signals.extend(dc.get("ai_signals", []))
+    signals.extend(bic.get("pr_signals", []))
+    if not bic.get("decomposed_commits"):
+        signals.extend(bic.get("commit", {}).get("ai_signals", []))
+    return signals
+
+
 def _get_ai_bics(data):
-    """Extract BICs that have AI signals."""
+    """Extract BICs that have effective AI signals (authoritative source)."""
     return [
         b
         for b in data.get("bug_introducing_commits", [])
-        if b.get("commit", {}).get("ai_signals")
+        if _effective_signals(b)
     ]
+
+
+def _get_deep_verdict(bic):
+    """Return the best deep-verification verdict dict (new or old format).
+
+    Normalizes deep_verification to include ``final_verdict`` key
+    (it stores ``verdict`` natively) so callers can use one key.
+    """
+    vv = bic.get("deep_verification") or bic.get("verification_verdict")
+    if vv:
+        if "final_verdict" not in vv and "verdict" in vv:
+            return {**vv, "final_verdict": vv["verdict"]}
+        return vv
+    return bic.get("tribunal_verdict")
+
+
+# ── Loading ──────────────────────────────────────────────────────────────────
 
 
 def load_audited():
@@ -48,7 +107,6 @@ def load_audited():
             audited = {f.get("cve_id", "") for f in findings}
         except Exception:
             pass
-    # Also exclude CVEs currently being audited by other sessions
     audited |= load_claimed_cves()
     return audited, findings
 
@@ -67,18 +125,7 @@ def load_results():
     return results
 
 
-def _get_deep_verdict(bic):
-    """Return the best deep-verification verdict dict (new or old format).
-
-    Normalizes deep_verification to include ``final_verdict`` key
-    (it stores ``verdict`` natively) so callers can use one key.
-    """
-    vv = bic.get("deep_verification") or bic.get("verification_verdict")
-    if vv:
-        if "final_verdict" not in vv and "verdict" in vv:
-            return {**vv, "final_verdict": vv["verdict"]}
-        return vv
-    return bic.get("tribunal_verdict")
+# ── FP scoring ───────────────────────────────────────────────────────────────
 
 
 def score_fp_candidate(data, ai_bics):
@@ -101,18 +148,16 @@ def score_fp_candidate(data, ai_bics):
     )
 
     if has_verified_confirmed:
-        # Already confirmed — low priority for FP audit
         score -= 20
         reasons.append("verified-confirmed")
     elif has_verified_unlikely:
-        # Deep verify said UNLIKELY but we kept the signal — worth checking
         score += 40
         reasons.append("verified-unlikely")
     else:
         score += 30
         reasons.append("unverified")
 
-    # Split votes (non-unanimous) — only applies to old tribunal format
+    # Split votes — only applies to old tribunal format
     for b in ai_bics:
         tv = b.get("tribunal_verdict") or {}
         if tv.get("majority_count") and tv.get("agent_count"):
@@ -121,15 +166,25 @@ def score_fp_candidate(data, ai_bics):
                 reasons.append("split-vote")
                 break
 
-    # Inherited/squash signals are more likely false
-    has_squash = any(
-        "squash" in sig.get("signal_type", "") or "decomposed" in sig.get("signal_type", "")
+    # Signals only from PR body (weaker than commit metadata)
+    pr_body_only = all(
+        all(s.get("origin") == "pr_body" for s in _effective_signals(b))
         for b in ai_bics
-        for sig in b.get("commit", {}).get("ai_signals", [])
+        if _effective_signals(b)
     )
-    if has_squash:
+    if pr_body_only:
         score += 20
-        reasons.append("squash-signal")
+        reasons.append("pr-body-only")
+
+    # Signals from decomposed sub-commit (inherited through squash)
+    has_decomp_signal = any(
+        b.get("culprit_sha") and b.get("decomposed_commits")
+        and any(dc.get("ai_signals") for dc in b.get("decomposed_commits", []))
+        for b in ai_bics
+    )
+    if has_decomp_signal:
+        score += 15
+        reasons.append("decomposed-signal")
 
     # Noisy blame strategies
     noisy_strategies = {"pattern_search", "context_blame", "heuristic_blame"}
@@ -139,7 +194,7 @@ def score_fp_candidate(data, ai_bics):
             reasons.append(f"noisy-blame({b['blame_strategy']})")
             break
 
-    # Low confidence
+    # Low blame confidence
     for b in ai_bics:
         conf = b.get("blame_confidence", 1.0)
         if conf < 0.5:
@@ -151,9 +206,7 @@ def score_fp_candidate(data, ai_bics):
         break
 
     # Single signal is more fragile than multiple
-    total_signals = sum(
-        len(b.get("commit", {}).get("ai_signals", [])) for b in ai_bics
-    )
+    total_signals = sum(len(_effective_signals(b)) for b in ai_bics)
     if total_signals == 1:
         score += 10
         reasons.append("single-signal")
@@ -167,8 +220,14 @@ def score_fp_candidate(data, ai_bics):
     return score, reasons
 
 
+# ── FN scoring ───────────────────────────────────────────────────────────────
+
+
 def score_fn_candidate(data, tp_repos, tp_authors):
-    """Score a CVE without AI signals by FN likelihood. Higher = audit first."""
+    """Score a CVE without effective AI signals by FN likelihood.
+
+    Higher = more likely to be a false negative, audit first.
+    """
     score = 0
     reasons = []
 
@@ -194,8 +253,8 @@ def score_fn_candidate(data, tp_repos, tp_authors):
 
     # Recent BIC (AI adoption era)
     for b in bics:
-        author_date = b.get("commit", {}).get("author_date", "")
-        if author_date and author_date >= AI_ADOPTION_CUTOFF:
+        authored_date = b.get("commit", {}).get("authored_date", "")
+        if authored_date and authored_date >= AI_ADOPTION_CUTOFF:
             score += 20
             reasons.append("recent-bic")
             break
@@ -221,7 +280,25 @@ def score_fn_candidate(data, tp_repos, tp_authors):
             reasons.append("squash-merge-bic")
             break
 
+    # AI present in PR but not on culprit (effective_signals empty,
+    # but all_ai_signals non-empty — AI was there, just not attributed)
+    for b in bics:
+        if not _effective_signals(b) and _all_ai_signals(b):
+            score += 35
+            reasons.append("ai-in-pr-not-culprit")
+            break
+
+    # Repo has known AI tool usage (git log patterns, config files)
+    repo_activity = data.get("repo_ai_activity", [])
+    if repo_activity:
+        score += 10
+        tools = {a.split(":")[1] if ":" in a else a for a in repo_activity}
+        reasons.append(f"repo-ai({','.join(sorted(tools)[:3])})")
+
     return score, reasons
+
+
+# ── Queue building ───────────────────────────────────────────────────────────
 
 
 def build_queues(results, audited):
@@ -243,7 +320,7 @@ def build_queues(results, audited):
                 tp_authors.add(b.get("commit", {}).get("author_email", ""))
         staged.append((cve_id, data, ai_bics))
 
-    # Score from staged data (ai_bics already computed)
+    # Score from staged data
     for cve_id, data, ai_bics in staged:
         if cve_id in audited:
             continue
@@ -266,9 +343,28 @@ def build_queues(results, audited):
     return fp_queue, fn_candidates
 
 
+def _is_fn_finding(finding):
+    """Heuristic: was this finding from an FN audit?
+
+    Checks multiple signals since findings format varies across sessions.
+    """
+    # Explicit field (if present)
+    if finding.get("audit_type") == "fn_detection":
+        return True
+    # Verdict suggests FN was found
+    v = (finding.get("verdict") or finding.get("independent_verdict") or "").upper()
+    if v == "FALSE_NEGATIVE":
+        return True
+    # Pipeline had no AI signals but audit found something
+    pv = str(finding.get("pipeline_verdict", ""))
+    if "confidence=0" in pv or "no AI" in pv.lower() or "no ai_signals" in pv.lower():
+        return True
+    return False
+
+
 def _pick_next(fp_queue, fn_queue, findings):
     """Pick the next audit target, alternating FP/FN (every 3rd is FN)."""
-    fn_audited = sum(1 for f in findings if f.get("audit_type") == "fn_detection")
+    fn_audited = sum(1 for f in findings if _is_fn_finding(f))
     fp_audited = len(findings) - fn_audited
 
     if fn_queue and fp_audited > 0 and fp_audited % 3 == 0:
@@ -280,21 +376,59 @@ def _pick_next(fp_queue, fn_queue, findings):
     return None, None, 0
 
 
+# ── CLI ──────────────────────────────────────────────────────────────────────
+
+
+def print_stats(fp_queue, fn_queue, results, audited):
+    """Print queue health overview."""
+    total = len(results)
+    with_bics = sum(1 for d in results if d.get("bug_introducing_commits"))
+    with_signals = sum(1 for d in results if _get_ai_bics(d))
+    print(f"=== Queue Health ===")
+    print(f"Total results:     {total}")
+    print(f"With BICs:         {with_bics}")
+    print(f"With AI signals:   {with_signals} (effective_signals)")
+    print(f"Audited:           {len(audited)}")
+    print(f"FP candidates:     {len(fp_queue)}")
+    print(f"FN candidates:     {len(fn_queue)}")
+    print()
+    if fp_queue:
+        scores = [s for s, _, _ in fp_queue]
+        print(f"FP score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores)//2]})")
+    if fn_queue:
+        scores = [s for s, _, _ in fn_queue]
+        print(f"FN score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores)//2]})")
+
+    # Reason distribution for top candidates
+    from collections import Counter
+    if fn_queue:
+        fn_reasons = Counter()
+        for _, _, reasons in fn_queue[:50]:
+            for r in reasons:
+                fn_reasons[r.split("(")[0]] += 1
+        print(f"\nTop FN reasons (top 50): {dict(fn_reasons.most_common(8))}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Smart audit queue")
     parser.add_argument("--top", type=int, default=5, help="Show top N from each queue")
     parser.add_argument("--fp", action="store_true", help="Show only FP queue")
     parser.add_argument("--fn", action="store_true", help="Show only FN queue")
     parser.add_argument("--json", action="store_true", help="Machine-readable output")
+    parser.add_argument("--stats", action="store_true", help="Queue health overview")
     args = parser.parse_args()
 
-    if not args.fp and not args.fn:
+    if not args.fp and not args.fn and not args.stats:
         args.fp = args.fn = True
 
     audited, findings = load_audited()
     results = load_results()
     fp_queue, fn_queue = build_queues(results, audited)
     next_type, next_cve, next_score = _pick_next(fp_queue, fn_queue, findings)
+
+    if args.stats:
+        print_stats(fp_queue, fn_queue, results, audited)
+        return
 
     if args.json:
         out = {}

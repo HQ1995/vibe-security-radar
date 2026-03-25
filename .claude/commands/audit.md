@@ -82,28 +82,71 @@ If the pattern existed before → the commit is not the true origin. Keep tracin
 
 ## Phase 2: Compare with Pipeline (do this AFTER Phase 1)
 
-Now read the full cached result:
+**Do not assume you know the pipeline's data format.** Read the code and data to find out.
+
+### 2a. Understand how the pipeline represents its conclusion
+
+Read the pipeline's data model and scoring logic to understand the current schema:
+- `cve-analyzer/src/cve_analyzer/models.py` — data structures (what fields exist, how verdicts/signals are stored)
+- `cve-analyzer/src/cve_analyzer/scoring.py` — how confidence is computed, what verdict fields are checked
+
+This tells you which fields carry the pipeline's conclusion and how to interpret them.
+
+### 2b. Read the cached result
+
 ```bash
 cat ~/.cache/cve-analyzer/results/<CVE-ID>.json | python3 -m json.tool
 ```
 
-Compare:
+Using your understanding from 2a, extract:
+- What origin commits did the pipeline find?
+- What AI signals did the pipeline detect, and on which commits?
+- What is the pipeline's verdict and confidence?
+
+### 2c. Compare
+
 - **Did the pipeline find the same origin commit you found?** If not, why?
 - **Did the pipeline detect AI involvement that you didn't, or vice versa?**
 - **Is the pipeline's confidence score appropriate for what you found?**
 
-**Pipeline verdict**: check `verification_verdict.verdict` first, fall back to `tribunal_verdict.final_verdict`. Screening (`llm_verdict`) is advisory only.
-
-Classify any discrepancy:
-- **SHALLOW_BLAME**: Pipeline blamed a move/copy commit, true origin is earlier/in a different file
-- **WRONG_FIX**: Pipeline used wrong fix commit from OSV/GHSA
-- **SIGNAL_ON_FIX**: Pipeline detected AI on fix commit, confused with bug introduction
-- **COSMETIC_BLAME**: Pipeline blamed AI commit that only touched docs/tests/formatting
-- **SCORING_BUG**: Pipeline found the right data but computed wrong confidence
-- **STALE_CACHE**: Pipeline result is outdated
-- **CORRECT**: Pipeline and audit agree
+Classify any discrepancy with a short tag (e.g. `shallow-blame`, `wrong-fix`, `signal-on-fix`, `cosmetic-blame`, `scoring-bug`, `stale-cache`, `correct`). Don't use a fixed taxonomy — describe what actually happened.
 
 ## Phase 3: Save Finding & Release
+
+### 3a. Learn the current finding format
+
+Read existing findings to match their format:
+```bash
+python3 -c "
+import json; from pathlib import Path
+p = Path.home() / '.cache/cve-analyzer/audit/findings.json'
+if p.exists():
+    findings = json.loads(p.read_text())
+    if findings:
+        print(json.dumps(findings[-1], indent=2))
+    else:
+        print('Empty findings list')
+else:
+    print('No findings file yet')
+"
+```
+
+If findings exist, match the existing schema exactly. If no findings exist, use this minimal format:
+```json
+{
+  "cve_id": "<CVE-ID>",
+  "verdict": "CONFIRMED|UNLIKELY|UNRELATED|NO_AI|FIX_ONLY",
+  "confidence": "HIGH|MEDIUM|LOW",
+  "reasoning": "<your independent analysis>",
+  "pipeline_agrees": true|false,
+  "pipeline_verdict": "<what the pipeline concluded, in its own terms>",
+  "notes": "<discrepancy details, root cause if disagreement, null if agreement>",
+  "auditor": "audit-agent",
+  "timestamp": <unix timestamp>
+}
+```
+
+### 3b. Save and release
 
 ```bash
 cd ~/agents/ai-slop/scripts && python3 -c "
@@ -112,32 +155,9 @@ import json, sys
 save_finding(json.load(sys.stdin))
 print('Saved.')
 " <<'FINDING'
-{
-  "cve_id": "<CVE-ID>",
-  "timestamp": "<ISO-8601>",
-  "independent_verdict": "CONFIRMED|UNLIKELY|UNRELATED|NO_AI|FIX_ONLY",
-  "confidence": "HIGH|MEDIUM|LOW",
-  "vulnerability_type": "<CWE or description>",
-  "fix_commit_valid": true,
-  "pipeline_verdict": "<from verification_verdict or tribunal_verdict>",
-  "agreement": <true|false>,
-  "stages": {
-    "fix_validation": "CORRECT|PARTIAL|WRONG",
-    "blame_agreement": "SAME|DIFFERENT|EXTRA|MISSING|SHALLOW",
-    "signal_verification": "REAL_SIGNAL|INHERITED|FALSE_SIGNAL|FIX_ONLY",
-    "causality": "CONFIRMED|UNLIKELY|UNRELATED"
-  },
-  "disagreement_phase": "<blame|signal|causality|null>",
-  "root_cause": "<explanation if disagreement, null otherwise>",
-  "improvement_suggestions": [
-    {"suggestion": "...", "priority": "FIX|OBSERVE|WONTFIX", "rationale": "..."}
-  ],
-  "fix_applied": null
-}
+<your finding JSON here>
 FINDING
 ```
-
-`fix_applied` is set when a pipeline code fix is implemented based on this finding. Format: `{"commit": "<sha>", "description": "...", "files": ["..."]}`. Leave null if no fix was made.
 
 Release claim (always, even on error):
 ```bash
@@ -151,32 +171,40 @@ cd ~/agents/ai-slop/scripts && python3 audit_lock.py check <CVE-ID>
 
 ## Phase 4: Pattern Analysis
 
-Run after every 10th saved finding:
+Run after every 10th saved finding. Read findings, then compute stats dynamically based on whatever fields exist:
 
-```python
+```bash
 python3 -c "
 import json; from pathlib import Path; from collections import Counter
-findings = json.loads((Path.home() / '.cache/cve-analyzer/audit/findings.json').read_text())
+p = Path.home() / '.cache/cve-analyzer/audit/findings.json'
+findings = json.loads(p.read_text()) if p.exists() else []
 total = len(findings)
 if total % 10 != 0:
     print(f'Total: {total} (next analysis at {total + (10 - total % 10)})')
 else:
-    print(f'Total: {total}')
-    agree = sum(1 for f in findings if f.get('agreement'))
-    print(f'Agreement: {agree}/{total} ({100*agree/total:.0f}%)')
-    unfixed = [f for f in findings if not f.get('fix_applied')]
-    phases = Counter(f.get('disagreement_phase') for f in unfixed if not f.get('agreement'))
-    print(f'Disagreements by phase: {dict(phases)}')
-    blames = Counter(f['stages'].get('blame_agreement') for f in unfixed)
-    print(f'Blame accuracy: {dict(blames)}')
-    # Check for OBSERVE items that should promote to FIX (>=3 occurrences)
-    suggestions = Counter()
-    for f in unfixed:
-        for s in f.get('improvement_suggestions', []):
-            if isinstance(s, dict) and s.get('priority') == 'OBSERVE':
-                suggestions[s.get('suggestion', '')[:80]] += 1
-    promotable = {k: v for k, v in suggestions.items() if v >= 3}
-    if promotable:
-        print(f'Promote OBSERVE->FIX (>=3 occurrences): {promotable}')
+    print(f'=== Audit Analysis (n={total}) ===')
+    # Agreement rate — try common field names, skip entries missing the field
+    agree_key = next((k for k in ['pipeline_agrees', 'agreement'] if any(k in f for f in findings)), None)
+    if agree_key:
+        has_field = [f for f in findings if agree_key in f]
+        agree = sum(1 for f in has_field if f[agree_key])
+        n = len(has_field)
+        print(f'Agreement: {agree}/{n} ({100*agree/n:.0f}%) — {total - n} entries lack field')
+    # Verdict distribution
+    verdict_key = next((k for k in ['verdict', 'independent_verdict'] if any(k in f for f in findings)), None)
+    if verdict_key:
+        verdicts = Counter(f.get(verdict_key) for f in findings)
+        print(f'Verdicts: {dict(verdicts)}')
+    # Confidence distribution
+    if any('confidence' in f for f in findings):
+        confs = Counter(f.get('confidence') for f in findings)
+        print(f'Confidence: {dict(confs)}')
+    # Disagreement notes (for manual review)
+    disagree = [f for f in findings if not f.get(agree_key, True)] if agree_key else []
+    if disagree:
+        print(f'Disagreements ({len(disagree)}):')
+        for f in disagree[-5:]:
+            note = f.get('notes', f.get('root_cause', '?'))
+            print(f'  {f.get(\"cve_id\", \"?\")}: {str(note)[:100]}')
 "
 ```
