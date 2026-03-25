@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-24T16:34:34.721597+00:00",
-  "total": 64,
+  "generated_at": "2026-03-25T04:05:51.510144+00:00",
+  "total": 99,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -2655,16 +2655,16 @@
       "ai_contribution": "AI-assisted code contributed via commit 5c2cb6c591e4b63c2df0549ad2202403256e2a96, which added Feishu webhook mode and bound `Lark.adaptDefault(...)` directly to an HTTP server with no request-body size or upload-time guard. That AI-authored change was part of the vulnerable webhook surface, even though several other non-AI commits independently introduced similar boundedness flaws in other webhook handlers."
     },
     {
-      "id": "GHSA-2m67-cxxq-c3h8",
-      "description": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
+      "id": "CVE-2026-32231",
+      "description": "ZeptoClaw: Generic webhook channel trusts caller-supplied identity fields; allowlist is checked against untrusted payload data",
       "severity": "HIGH",
-      "cvss": 8.8,
+      "cvss": 8.2,
       "cwes": [
-        "CWE-22",
-        "CWE-62"
+        "CWE-306",
+        "CWE-345"
       ],
       "ecosystem": "",
-      "published": "2026-03-12T16:37:49Z",
+      "published": "2026-03-12T19:16:17.027",
       "ai_tools": [
         "claude_code"
       ],
@@ -2675,28 +2675,28 @@
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. AI-authored commits 89d3202f1ab94adf05dfa4c6a5d7c994d9a76106 and 120e5dd2a40c27865514329f1cb27e4b6279668c introduced the insecure filesystem tool implementation and then wired in one-time workspace validation without revalidation, secure open, or hardlink-safe write semantics. Even though the dangling-symlink bug itself traces to a later non-AI commit, AI-authored code was part of the causal chain that made this CVE possible.",
+      "how_introduced": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "89d3202f1ab94adf05dfa4c6a5d7c994d9a76106",
+          "sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
           "author": "qhkmdev90",
-          "date": "2026-02-12T19:32:26+08:00",
-          "message": "feat(rust): implement filesystem and shell tools",
+          "date": "2026-02-14T10:37:14+08:00",
+          "message": "feat: add hooks system, deploy templates, and accumulated features",
           "ai_signals": [
             {
               "tool": "claude_code",
               "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
               "confidence": 0.95
             }
           ],
-          "blamed_file": "src/tools/filesystem.rs",
+          "blamed_file": "src/channels/webhook.rs",
           "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
+          "fix_commit_source": "osv",
           "blame_strategy": "blame_deleted",
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
@@ -2710,47 +2710,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This AI-authored commit introduced src/tools/filesystem.rs, including WriteFileTool/EditFileTool code that used tokio::fs::create_dir_all and tokio::fs::write directly on already-resolved paths. bf004a20 later removes those exact write paths and replaces them with write_file_secure_blocking(), O_NOFOLLOW, secure directory-chain creation, and hardlink-aware checks, showing that 89d320 wrote the insecure filesystem mutation logic. The screening note's webhook reference is irrelevant, but the commit is still a real BIC for this CVE because it authored the vulnerable write/edit implementation in the file actually fixed.",
+                "reasoning": "Pickaxe searches for `if !base_config.is_allowed(&payload.sender)`, `payload.sender.trim()`, `sender: String,`, and `chat_id: String,` all point to this commit, which created `src/channels/webhook.rs`. In that new file, `WebhookPayload` required `sender` and `chat_id` from JSON, `handle_connection()` only checked that they were non-empty, then used `payload.sender` for the allowlist check and built `InboundMessage` from `payload.sender` / `payload.chat_id`. The same commit also added `WebhookConfig` and factory wiring with `auth_token` and `allow_from` but no server-controlled identity fields, so the vulnerable payload-trusting design was present from the feature’s initial introduction.",
                 "confidence": 0.95,
-                "tool_calls_made": 84,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        },
-        {
-          "sha": "120e5dd2a40c27865514329f1cb27e4b6279668c",
-          "author": "qhkmdev90",
-          "date": "2026-02-13T00:58:14+08:00",
-          "message": "feat(tools): add path traversal protection to filesystem tools",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/tools/filesystem.rs",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "Pickaxe on validate_path_in_workspace(path, workspace)? shows this AI-authored commit first wired workspace path validation into the filesystem tools. That created the exact 'check once, then perform I/O later' pattern that f50c17e1 fixes by adding revalidate_path immediately before read/write/list/edit operations. Under the CVE's TOCTOU component, this commit is a BIC because it made the filesystem tools rely on a stale pre-I/O validation result.",
-                "confidence": 0.95,
-                "tool_calls_made": 84,
+                "tool_calls_made": 62,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -2762,23 +2724,138 @@
         {
           "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "github_advisory"
+          "source": "osv"
         },
         {
-          "sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
+          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32231.json",
+        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6",
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-32231"
+      ],
+      "ai_contribution": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in."
+    },
+    {
+      "id": "GHSA-5wp8-q9mx-8jx8",
+      "description": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
+      "severity": "CRITICAL",
+      "cvss": 10.0,
+      "cwes": [
+        "CWE-77"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T00:38:14Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "d3480ca94087b74f110bb5b80fc8219b32c8b8b5",
+          "author": "qhkmdev90",
+          "date": "2026-02-14T11:30:23+08:00",
+          "message": "security: fix 6 findings from code security review + pre-launch prep",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/security/shell.rs",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix widens the exact regexes this commit added: `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. Pickaxe shows those strings first appear in d3480ca, and the advisory explicitly notes they were bypassed by extra/intervening flags like `python3 -P -c` and `perl -w -e`. This commit therefore directly introduced the argument-injection/blocklist-bypass pattern fixed in 68916c3.",
+                "confidence": 0.95,
+                "tool_calls_made": 60,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "91f6c2bf98e40238ad4d175513f0ee400fd62068",
+          "author": "qhkmdev90",
+          "date": "2026-02-13T01:02:27+08:00",
+          "message": "feat(security): add shell command security configuration",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/security/shell.rs",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created `ShellSecurityConfig` and initially blocked sensitive paths using plain substring matching over `blocked_patterns`, via `command_lower.contains(&pattern_lower)`. Pickaxe on sensitive literals like `\"/etc/passwd\"`, `\"/etc/shadow\"`, and `\"~/.ssh/\"` traces their first introduction to 91f6c2bf, and that design was already bypassable with shell glob/bracket expansions because it required the exact literal text to appear. So the wildcard filename bypass predates 7a2db595; 7a2 later rewrote the file but did not remove the original flaw.",
+                "confidence": 0.95,
+                "tool_calls_made": 60,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
           "repo_url": "https://github.com/qhkm/zeptoclaw",
           "source": "github_advisory"
         }
       ],
       "references": [
-        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-2m67-cxxq-c3h8",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-32232",
-        "https://github.com/qhkm/zeptoclaw/pull/324",
-        "https://github.com/qhkm/zeptoclaw/commit/bf004a20d3687a0c1a9e052ec79536e30d6de134",
-        "https://github.com/qhkm/zeptoclaw/commit/f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
-        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-5wp8-q9mx-8jx8",
+        "https://github.com/qhkm/zeptoclaw/commit/68916c3e4f3af107f11940b27854fc7ef517058b",
+        "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/security/shell.rs#L218-L243"
       ],
-      "ai_contribution": "Yes. AI-authored commits 89d3202f1ab94adf05dfa4c6a5d7c994d9a76106 and 120e5dd2a40c27865514329f1cb27e4b6279668c introduced the insecure filesystem tool implementation and then wired in one-time workspace validation without revalidation, secure open, or hardlink-safe write semantics. Even though the dangling-symlink bug itself traces to a later non-AI commit, AI-authored code was part of the causal chain that made this CVE possible."
+      "ai_contribution": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions."
     },
     {
       "id": "GHSA-8g98-m4j9-qww5",
@@ -2904,6 +2981,46 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32111"
       ],
       "ai_contribution": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c."
+    },
+    {
+      "id": "GHSA-hhjv-jq77-cmvx",
+      "description": "zeptoclaw has Android device shell blocklist bypass via argument permutation",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T00:35:29Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-hhjv-jq77-cmvx",
+        "https://github.com/qhkm/zeptoclaw/commit/68916c3e4f3af107f11940b27854fc7ef517058b",
+        "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/tools/android/actions.rs#L413-L424"
+      ],
+      "ai_contribution": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`."
     },
     {
       "id": "GHSA-vh5j-5fhq-9xwg",
@@ -3689,6 +3806,51 @@
       "ai_contribution": "Yes. Although the original lack of server-side body sanitization was introduced earlier by human-authored code, the AI-generated commit 9d2f09c reimplemented the live front-end article body renderers as raw `echo htmlspecialchars_decode($content)` sinks while `/admin/articles/add` still stored unsanitized body HTML. That AI-authored reimplementation kept stored XSS reachable and is part of the causal chain."
     },
     {
+      "id": "CVE-2025-32393",
+      "description": "AutoGPT has a DoS vulnerability in ReadRSSFeedBlock",
+      "severity": "HIGH",
+      "cvss": 8.7,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-05T23:15:52.763",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "both",
+      "languages": [
+        "Python",
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "73603a8ce54418bc4eba730429854bf072a65f7f",
+          "repo_url": "https://github.com/significant-gravitas/autogpt",
+          "source": "osv"
+        },
+        {
+          "sha": "57a06f70883ce6be18738c6ae8bb41085c71e266",
+          "repo_url": "https://github.com/Significant-Gravitas/AutoGPT",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/32xxx/CVE-2025-32393.json",
+        "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-5cqw-g779-9f9x",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-32393"
+      ]
+    },
+    {
       "id": "CVE-2025-51480",
       "description": "Path Traversal vulnerability in onnx.external_data_helper.save_external_data in ONNX 1.17.0 allows attackers to overwrite arbitrary files by supplying crafted external_data.location paths containing traversal sequences, bypassing intended directory restrictions.",
       "severity": "HIGH",
@@ -3808,6 +3970,289 @@
         "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-r55v-q5pc-j57f",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-62615"
       ]
+    },
+    {
+      "id": "CVE-2025-62616",
+      "description": "AutoGPT has SSRF vulnerability in SendDiscordFileBlock",
+      "severity": "CRITICAL",
+      "cvss": 9.3,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-04T23:15:55.500",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "e2a9923f3056157b89f6659bb1a201e301eff0f7",
+          "repo_url": "https://github.com/significant-gravitas/autogpt",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/62xxx/CVE-2025-62616.json",
+        "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-ggc4-4fmm-9hmc",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-62616"
+      ]
+    },
+    {
+      "id": "CVE-2025-64420",
+      "description": "Coolify members can see private key of root user",
+      "severity": "CRITICAL",
+      "cvss": 10.0,
+      "cwes": [
+        "CWE-522"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-05T20:16:02.700",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6-thinking",
+      "how_introduced": "AI-authored code (Claude Code) directly contributed to the vulnerability in multiple ways: (1) f8146f5a59 added a debug toggle feature to deployment views that exposed debug logs (potentially containing private keys) to all team members without any role-based access check; (2) f152ec00ad deliberately weakened an authorization check from 'update' to 'view' permission for loadStorageOnServer(), allowing read-only members to access server file contents; (3) b878dc8102 introduced an API middleware authorization check with a flawed `(int)` cast on team_id that could be bypassed when team_id was null/0; (4) f77ad4cbd9 migrated Storage/Form.php to use explicit public properties for `$key` and `$secret` without adding member access controls.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "f8146f5a5931326ac31858e4ae2b64831bcc2d09",
+          "author": "Andras Bacsai",
+          "date": "2025-12-04T10:57:58+01:00",
+          "message": "Add log search, download, and collapsible sections with lazy loading",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Livewire/Project/Application/Deployment/Show.php",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "c9246559994f5006390c7665825e3bbd60370bb6",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude-opus-4-6"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude-opus-4-6",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit (Claude Code) added the `$is_debug_enabled` property and `toggleDebug()` method to the Deployment Show component. Before this commit, there was no debug toggle feature in this component. The fix modifies exactly the line `$this->is_debug_enabled = $this->application->settings->is_debug_enabled;` to gate it behind `auth()->user()->isMember()` check, and the Blade template wraps the toggle button in `@can('update', $application)`. This commit introduced the vulnerable code pattern: exposing debug information to all authenticated users without role-based access control.",
+                "confidence": 0.95,
+                "tool_calls_made": 45,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "f152ec00ada70757da38e0b789f049b14d813e33",
+          "author": "Andras Bacsai",
+          "date": "2025-12-11T14:18:58+01:00",
+          "message": "fix: Detect read-only Docker volumes with long-form syntax and enable refresh",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Livewire/Project/Service/FileStorage.php",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "c9246559994f5006390c7665825e3bbd60370bb6",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude-opus-4-6"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude-opus-4-6",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit (Claude Code) explicitly changed the authorization check in `loadStorageOnServer()` from `$this->authorize('update', $this->resource)` to `$this->authorize('view', $this->resource)`, with a comment stating 'Loading content is a read operation, so we use view permission'. The fix reverses this exact change back to 'update' permission. Before this commit, the authorization required 'update' permission, which was more restrictive. This deliberate weakening of the permission check allowed team members with only 'view' access to load server file contents that could contain sensitive data.",
+                "confidence": 0.95,
+                "tool_calls_made": 45,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "f77ad4cbd9ee82d3015e36ab8d23121f1a8143dd",
+          "author": "Andras Bacsai",
+          "date": "2025-10-13T15:38:59+02:00",
+          "message": "Complete Livewire legacy model binding migration (25+ components)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Livewire/Project/Service/StackForm.php, app/Livewire/Storage/Form.php",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "c9246559994f5006390c7665825e3bbd60370bb6",
+          "screening_verification": null,
+          "pr_url": "https://github.com/coollabsio/coolify/pull/6862",
+          "pr_title": "Complete Livewire legacy model binding migration (25+ components)",
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude-opus-4-6"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude-opus-4-6",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit (Claude Code) migrated Storage/Form.php from Livewire legacy model binding to explicit public properties. It introduced `public string $key;` and `public string $secret;` as explicit component properties, and created the `syncData()` method that copies `$this->storage->key` and `$this->storage->secret` into these public properties. Before this commit, the storage model's key/secret were accessed through Livewire's model binding (`storage.key`, `storage.secret`), which is a different access pattern. The fix adds member-based hiding logic (`$this->key = ''; $this->secret = '';` for members) to these exact properties introduced by this commit.",
+                "confidence": 0.95,
+                "tool_calls_made": 45,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "c9246559994f5006390c7665825e3bbd60370bb6",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64420.json",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-qwxj-qch7-whpc",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-64420"
+      ],
+      "ai_contribution": "AI-authored code (Claude Code) directly contributed to the vulnerability in multiple ways: (1) f8146f5a59 added a debug toggle feature to deployment views that exposed debug logs (potentially containing private keys) to all team members without any role-based access check; (2) f152ec00ad deliberately weakened an authorization check from 'update' to 'view' permission for loadStorageOnServer(), allowing read-only members to access server file contents; (3) b878dc8102 introduced an API middleware authorization check with a flawed `(int)` cast on team_id that could be bypassed when team_id was null/0; (4) f77ad4cbd9 migrated Storage/Form.php to use explicit public properties for `$key` and `$secret` without adding member access controls."
+    },
+    {
+      "id": "CVE-2025-64423",
+      "description": "Coolify has a Privilege Escalation - low privileged users can see and use admin invitation links",
+      "severity": "HIGH",
+      "cvss": 7.7,
+      "cwes": [
+        "CWE-287"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-05T21:16:12.550",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.855,
+      "verified_by": "claude-opus-4-6-thinking",
+      "how_introduced": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "62c394d3a1dba6aa6d4ab1456b7a7911f6b72639",
+          "author": "Andras Bacsai",
+          "date": "2025-11-25T09:52:08+01:00",
+          "message": "feat: add Hetzner server provisioning API endpoints",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Http/Controllers/Api/CloudProviderTokensController.php, app/Http/Controllers/Api/HetznerController.php",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "description_search",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "claude-opus-4-6"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "claude-opus-4-6",
+                "verdict": "CONFIRMED",
+                "reasoning": "Same commit also created HetznerController.php without `$this->authorize('create', [Server::class])` in the createServer() method. The fix adds this authorization check. The AI code enabled server provisioning via API without verifying that the authenticated user has sufficient privileges.",
+                "confidence": 0.95,
+                "tool_calls_made": 55,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "description_search",
+          "blame_confidence": 0.8
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64423.json",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-4fqm-797g-7m6j",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-64423"
+      ],
+      "ai_contribution": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer."
     },
     {
       "id": "CVE-2025-69288",
@@ -3968,6 +4413,180 @@
       "ai_contribution": "Yes. AI-authored commits first added unconditional server/API debug logging, then added a dedicated `saveRequestLog()` routine that serialized prompts and request payloads into `jimeng-request-log-*.json`, and finally wired that logging client into the live API path. Those AI-generated commits are directly in the causal chain for the CWE-532 information exposure."
     },
     {
+      "id": "CVE-2026-21882",
+      "description": "theshit's Improper Privilege Dropping Allows Local Privilege Escalation via Command Re-execution",
+      "severity": "HIGH",
+      "cvss": 8.4,
+      "cwes": [
+        "CWE-250",
+        "CWE-269",
+        "CWE-273"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T20:16:26.130",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-authored commit 0fc1b4f701171346848fd4f3b3faa967442108fb rewrote `get_command_output` into a timeout-based re-execution path that still spawned the target command with inherited privileges and no UID/GID drop or sudo/doas sanitization; those AI-authored lines were still present in the vulnerable pre-fix mainline (`src/fix.rs` at eb5b3c3…). The underlying flawed design started earlier in the human-authored init commit, but the AI commit materially contributed by reimplementing the vulnerable command-execution path.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "0fc1b4f701171346848fd4f3b3faa967442108fb",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-08-22T19:35:01+00:00",
+          "message": "Implement timeout functionality for command execution",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/fix.rs",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "5293957b119e55212dce2c6dcbaf1d7eb794602a",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit replaced the original `get_command_output` with a new timeout-enabled implementation using `let child = Command::new(&split_command[0]) ... .spawn()?` and `receiver.recv_timeout(timeout)`, but it still performed command re-execution with the process's existing privileges and without any privilege drop. `git_log_search` shows both `let child = Command::new(&split_command[0])` and `fn get_command_timeout(command_name: &str)` were introduced here, and blame on the vulnerable pre-fix mainline (`eb5b3c3...`, `src/fix.rs:137-170`) attributes the key execution/timeout lines to this commit. The fix deletes this AI-authored implementation and replaces it with code that detects sudo/doas/SUID contexts and calls `setgid`/`setuid` before execution, so this commit is a real reimplementation BIC, not just blame drift.",
+                "confidence": 0.95,
+                "tool_calls_made": 77,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "fe96d690302cf818b1798e45de9fc5ecdf57d40c",
+          "repo_url": "https://github.com/asfhtgkdavid/theshit",
+          "source": "osv"
+        },
+        {
+          "sha": "5293957b119e55212dce2c6dcbaf1d7eb794602a",
+          "repo_url": "https://github.com/AsfhtgkDavid/theshit",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/AsfhtgkDavid/theshit/security/advisories/GHSA-2j3p-gqw5-g59j",
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/21xxx/CVE-2026-21882.json",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-21882"
+      ],
+      "ai_contribution": "Yes. The AI-authored commit 0fc1b4f701171346848fd4f3b3faa967442108fb rewrote `get_command_output` into a timeout-based re-execution path that still spawned the target command with inherited privileges and no UID/GID drop or sudo/doas sanitization; those AI-authored lines were still present in the vulnerable pre-fix mainline (`src/fix.rs` at eb5b3c3…). The underlying flawed design started earlier in the human-authored init commit, but the AI commit materially contributed by reimplementing the vulnerable command-execution path."
+    },
+    {
+      "id": "CVE-2026-2581",
+      "description": "This is an uncontrolled resource consumption vulnerability (CWE-400) that can lead to Denial of Service (DoS).\n\nIn vulnerable Undici versions, when interceptors.deduplicate() is enabled, response data for deduplicated requests could be accumulated in memory for downstream handlers. An attacker-controlled or untrusted upstream endpoint can exploit this with large/chunked responses and concurrent identical requests, causing high memory usage and potential OOM process termination.\n\nImpacted users a",
+      "severity": "MEDIUM",
+      "cvss": 5.9,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T21:16:25.930",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "JavaScript",
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-attributed deduplicate feature commit `b902551e2a154fac2b3923d948c074a5640c01b0` (screening links it to Claude Code subcommit `92cef77edb4c`) introduced the `DeduplicationHandler`/`deduplicate` implementation that copied every response chunk into an in-memory array and replayed the full body with `Buffer.concat`, which is exactly the design reversed by the fix. The other AI-tagged candidate, `b12081c340b69716c75a9f73687748b46858fbda`, was unrelated SOCKS5 error-type work and did not contribute.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "77594f923cef4c27ee0bad365e7b4c44a199edae",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5890c7b7076894d00402f0c23c0fe72e59c72ff4",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "cb79c5704ac47e42ce01a72269994fc70e377536",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2ee00cb322c76b0bf56829462d7c1dc53d1cbe3d",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "74495c63ab23ef39be99983ed6de81df5d203d45",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "84235c62e0fe7494cec13f81d5732db0859df417",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "07a39067a0485c1953196f500d945fe09378a176",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4147ce21277b3566d02d3be789e5f7a490089db2",
+          "repo_url": "https://github.com/nodejs/undici",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://hackerone.com/reports/3513473",
+        "https://cna.openjsf.org/security-advisories.html",
+        "https://github.com/nodejs/undici/security/advisories/GHSA-phc3-fgpg-7m6h"
+      ],
+      "ai_contribution": "Yes. The AI-attributed deduplicate feature commit `b902551e2a154fac2b3923d948c074a5640c01b0` (screening links it to Claude Code subcommit `92cef77edb4c`) introduced the `DeduplicationHandler`/`deduplicate` implementation that copied every response chunk into an in-memory array and replayed the full body with `Buffer.concat`, which is exactly the design reversed by the fix. The other AI-tagged candidate, `b12081c340b69716c75a9f73687748b46858fbda`, was unrelated SOCKS5 error-type work and did not contribute."
+    },
+    {
       "id": "CVE-2026-28451",
       "description": "OpenClaw versions prior to 2026.2.14 contain server-side request forgery vulnerabilities in the Feishu extension that allow attackers to fetch attacker-controlled remote URLs without SSRF protections via sendMediaFeishu function and markdown image processing. Attackers can influence tool calls through direct manipulation or prompt injection to trigger requests to internal services and re-upload responses as Feishu media.",
       "severity": "CRITICAL",
@@ -4051,6 +4670,89 @@
       "ai_contribution": "Yes. The confirmed introducer is AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d, which rewrote the Feishu integration and directly added the unsafe raw URL fetches in both sendMediaFeishu and docx markdown-image handling, bypassing the project’s pre-existing shared media loaders that already enforced SSRF protections."
     },
     {
+      "id": "CVE-2026-28472",
+      "description": "OpenClaw versions prior to 2026.2.2 contain a vulnerability in the gateway WebSocket connect handshake in which it allows skipping device identity checks when auth.token is present but not validated. Attackers can connect to the gateway without providing device identity or pairing by exploiting the presence check instead of validation, potentially gaining operator access in vulnerable deployments.",
+      "severity": "CRITICAL",
+      "cvss": 9.2,
+      "cwes": [
+        "CWE-306"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T22:16:21.017",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-coauthored commit 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 first replaced the strict missing-device rejection with a mere auth.token presence check, letting the handshake skip device identity before shared credentials were actually validated. Later human commits refactored and expanded the same flaw, but the initial vulnerable design came from AI-assisted code.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
+          "author": "David Hurley",
+          "date": "2026-01-20T11:46:47-05:00",
+          "message": "fix: allow token auth to bypass device identity requirement",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "fe81b1d7125a014b8280da461f34efbf5f761575",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Pickaxe on the vulnerable pattern shows this is the first commit that added `const hasTokenAuth = !!connectParams.auth?.token;` and changed the guard from `if (!device)` to `if (!device && !hasTokenAuth)`. That made device identity optional based only on token presence, while `authorizeGatewayConnect` still ran later, so the bypass happened before the token was validated. The fix reverses exactly that design by computing auth first and using `sharedAuthOk` instead of token presence.",
+                "confidence": 0.95,
+                "tool_calls_made": 58,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "95cd2210f93d6ab2acc5e29dbad6065294365863",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        },
+        {
+          "sha": "fe81b1d7125a014b8280da461f34efbf5f761575",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-rv39-79c4-7459",
+        "https://www.vulncheck.com/advisories/openclaw-device-identity-check-bypass-in-gateway-websocket-connect-handshake"
+      ],
+      "ai_contribution": "Yes. The AI-coauthored commit 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 first replaced the strict missing-device rejection with a mere auth.token presence check, letting the handshake skip device identity before shared credentials were actually validated. Later human commits refactored and expanded the same flaw, but the initial vulnerable design came from AI-assisted code."
+    },
+    {
       "id": "CVE-2026-28508",
       "description": "Idno: Unauthenticated SSRF via URL Unfurl Endpoint",
       "severity": "CRITICAL",
@@ -4089,23 +4791,460 @@
       ]
     },
     {
-      "id": "CVE-2026-2889",
-      "description": "A vulnerability was detected in CCExtractor up to 0.96.5. Affected is the function processmp4 in the library src/lib_ccx/mp4.c. Performing a manipulation results in use after free. The attack is only possible with local access. The exploit is now public and may be used. Upgrading to version 0.96.6 is able to address this issue. The patch is named fd7271bae238ccb3ae8a71304ea64f0886324925. You should upgrade the affected component.",
-      "severity": "LOW",
-      "cvss": 4.8,
+      "id": "CVE-2026-32232",
+      "description": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
+      "severity": "HIGH",
+      "cvss": 8.8,
       "cwes": [
-        "CWE-416",
-        "CWE-119"
+        "CWE-22",
+        "CWE-62"
       ],
       "ecosystem": "",
-      "published": "2026-02-21T22:15:59.353",
+      "published": "2026-03-12T19:16:17.263",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "120e5dd2a40c27865514329f1cb27e4b6279668c",
+          "author": "qhkmdev90",
+          "date": "2026-02-13T00:58:14+08:00",
+          "message": "feat(tools): add path traversal protection to filesystem tools",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/tools/filesystem.rs",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Pickaxe shows this is the first commit adding `let safe_path = validate_path_in_workspace(path, workspace)?;` to filesystem tool path resolution. That made read/write/list/edit rely on a single pre-I/O boundary check, but the code still performed the actual filesystem operations later with no immediate revalidation; f50 fixes exactly that by adding `revalidate_path(...)` before I/O. This commit therefore introduced the core validate-then-use boundary-bypass pattern for filesystem tools.",
+                "confidence": 0.95,
+                "tool_calls_made": 107,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "89d3202f1ab94adf05dfa4c6a5d7c994d9a76106",
+          "author": "qhkmdev90",
+          "date": "2026-02-12T19:32:26+08:00",
+          "message": "feat(rust): implement filesystem and shell tools",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/tools/filesystem.rs",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Pickaxe traces the original `tokio::fs::create_dir_all(parent)` and raw `tokio::fs::write(...)` filesystem write/edit sinks to this commit. bf004 later replaces those exact sink patterns with secure directory-chain creation and `O_NOFOLLOW`-based writing, because the original implementation followed symlinks and had no hardlink protection. Even though later commits changed the calling context to enforce workspace boundaries, this commit authored the unsafe write primitives that remained in the exploit chain.",
+                "confidence": 0.95,
+                "tool_calls_made": 107,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "8c941697d8a08d13f666f18f059a9c27f351be3b",
+          "author": "qhkmdev90",
+          "date": "2026-03-08T12:22:53+08:00",
+          "message": "feat: add grep, find, and unified diff edit tools",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/tools/filesystem.rs",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "osv",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit added unified-diff mode to `EditFileTool` and introduced a new write path that still performed `revalidate_path`/`check_hardlink_write` and then called raw `tokio::fs::write(...)`. bf004 replaces that write path with `write_file_secure(...)`, showing the remaining issue was the final write itself: it still followed symlinks and left a race between validation and use. So b43 expanded the vulnerability with a new, still-insecure edit surface.",
+                "confidence": 0.95,
+                "tool_calls_made": 107,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "8c941697d8a08d13f666f18f059a9c27f351be3b",
+              "author_name": "qhkmdev90",
+              "message": "feat: add grep, find, and unified diff edit tools",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "529769ddcdbee270bff9d86687db1ab79a4ca7b1",
+              "author_name": "qhkmdev90",
+              "message": "fix(security): enforce workspace boundary on grep/find path args",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c12b10d09511e4ceb82be1087bf6c3c65b848c51",
+              "author_name": "qhkmdev90",
+              "message": "feat: make grep/find default-off, opt-in via coder template or config",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "2f76150bc9b9e047811bf71875474b6b3e0148e2",
+              "author_name": "qhkmdev90",
+              "message": "feat(ux): improve discoverability of coding tools (grep, find)",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fc08b0e50922de700c94f3df29d01e594bf1bb48",
+              "author_name": "qhkmdev90",
+              "message": "feat(ux): fill remaining coding tools discoverability gaps",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "fb1a680c1fe0271f0fc23de74ea9544bc04f0ada",
+              "author_name": "qhkmdev90",
+              "message": "feat(ux): complete coding tools opt-in discoverability",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1f662e9f202fedbc23c085d137ed86e17aec68e9",
+              "author_name": "qhkmdev90",
+              "message": "docs: update comparison table — 32 tools, 3100+ tests",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "60d8581166ea5fd57ba9752a7af775785b3d8010",
+              "author_name": "qhkmdev90",
+              "message": "docs(site): add grep/find, update tool count to 32, document opt-in",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "b43baddc9a481de21f2dd4146d33939d24fb854d"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "osv"
+        },
+        {
+          "sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "osv"
+        },
+        {
+          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32232.json",
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-2m67-cxxq-c3h8",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-32232"
+      ],
+      "ai_contribution": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad."
+    },
+    {
+      "id": "CVE-2026-33331",
+      "description": "oRPC is an tool that helps build APIs that are end-to-end type-safe and adhere to OpenAPI standards. Prior to version 1.13.9, a stored cross-site scripting (XSS) vulnerability exists in the OpenAPI documentation generation of orpc. If an attacker can control any field within the OpenAPI specification (such as info.description), they can break out of the JSON context and execute arbitrary JavaScript when a user views the generated API documentation. This issue has been patched in version 1.13.9.",
+      "severity": "HIGH",
+      "cvss": 8.2,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-15T15:07:39+07:00",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript",
+        "Vue"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commit 4f28b69506c28889c9a0a870875cc8055980ab89 added Swagger UI support and embedded `stringifyJSON(swaggerConfig)` directly into an inline `<script>` without HTML-safe escaping, which is the exact stored-XSS sink removed by the fix. Because that commit was authored by Copilot and directly introduced the unsafe rendering path, AI code materially contributed to the vulnerability.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "3816dda8c6013787901519cefff6b4c315509045",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "267a406c43bad6bfe0ee3b03d6d6bfbd56b6539a",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "903c4525cb302ce126309ef2060753d7128b5578",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0997c10e96ea1d6a8aab9fa65ab1a956350d2ea5",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a45fc956158801c2b44ca9f3eb9629c9acd52cd9",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8812be1238e47996c83564e93b8b02b931400236",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "325aa5d092f0a833aacb0137d66149d29ddd17fe",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "70a1a818e01444ae973d541a44e9911f4ae5ec3b",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4f0efa8a1d3fa8e8317a4b03cc3945a5dfd68add",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "62c96657c90139c7514ccb4f17fac28c891ad88d",
+          "repo_url": "https://github.com/middleapi/orpc",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Yes. AI-authored commit 4f28b69506c28889c9a0a870875cc8055980ab89 added Swagger UI support and embedded `stringifyJSON(swaggerConfig)` directly into an inline `<script>` without HTML-safe escaping, which is the exact stored-XSS sink removed by the fix. Because that commit was authored by Copilot and directly introduced the unsafe rendering path, AI code materially contributed to the vulnerability."
+    },
+    {
+      "id": "CVE-2026-3503",
+      "description": "Protection mechanism failure in wolfCrypt post-quantum implementations (ML-KEM and ML-DSA) in wolfSSL on ARM Cortex-M microcontrollers allows a physical attacker to compromise key material and/or cryptographic outcomes via induced transient faults that corrupt or redirect seed/pointer values during Keccak-based expansion.\n\n\n\n\nThis issue affects wolfSSL (wolfCrypt): commit hash d86575c766e6e67ef93545fa69c04d6eb49400c6.",
+      "severity": "MEDIUM",
+      "cvss": 4.3,
+      "cwes": [
+        "CWE-335"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T19:16:20.570",
+      "ai_tools": [
+        "devin"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "C/C++"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Devin AI directly contributed by creating the new ML-KEM implementation file `wolfcrypt/src/wc_mlkem.c` with the same shared-buffer `rho`/`sigma` seed-pointer design that the fix later hardens with separate storage and integrity checks. Even though the pattern existed earlier in human-authored Kyber code, this AI-authored reimplementation was a new vulnerable code path and part of the causal chain for the CVE.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "f4b770c5ab6de2b23c4c4a8d22e15bb8c12c92a9",
+          "author": "Devin AI",
+          "date": "2025-03-05T22:38:07+00:00",
+          "message": "Update Kyber APIs to ML-KEM APIs",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "wolfcrypt/src/wc_mlkem.c",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory_pr",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit created `wolfcrypt/src/wc_mlkem.c` and introduced `wc_MlKemKey_MakeKeyWithRandom()` with `byte buf[2 * KYBER_SYM_SZ + 1]; byte* rho = buf; byte* sigma = buf + KYBER_SYM_SZ;`, then passed `sigma` into noise/keygen routines. The fix reverses that design by moving `sigma` to separate storage and verifying the copied seed, which is exactly the fault-hardening missing here. Although later rename work changed some identifiers, this commit wrote the vulnerable ML-KEM implementation file, so under the reimplementation rule it is a true BIC.",
+                "confidence": 0.95,
+                "tool_calls_made": 96,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "65a1a6887747949ed148d8be3350b86ecff24fbc",
+          "repo_url": "https://github.com/wolfSSL/wolfssl",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Devin AI directly contributed by creating the new ML-KEM implementation file `wolfcrypt/src/wc_mlkem.c` with the same shared-buffer `rho`/`sigma` seed-pointer design that the fix later hardens with separate storage and integrity checks. Even though the pattern existed earlier in human-authored Kyber code, this AI-authored reimplementation was a new vulnerable code path and part of the causal chain for the CVE."
+    },
+    {
+      "id": "GHSA-345p-7cg4-v4c7",
+      "description": "@modelcontextprotocol/sdk has cross-client data leak via shared server/transport instance reuse",
+      "severity": "HIGH",
+      "cvss": 7.1,
+      "cwes": [
+        "CWE-362"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-04T20:04:16Z",
       "ai_tools": [
         "claude_code"
       ],
       "ai_involved": null,
-      "signal_source": "both",
+      "signal_source": "commit",
       "languages": [
-        "C/C++"
+        "TypeScript"
       ],
       "confidence": 0.855,
       "verified_by": "",
@@ -4116,66 +5255,63 @@
       "verdict": "",
       "bug_commits": [
         {
-          "sha": "1aa9762f19615ce396c4a48d0e85b7716207fcda",
-          "author": "Carlos Fernandez",
-          "date": "2026-02-18T09:35:11-08:00",
-          "message": "Add 32-bit (x86) Windows build support",
+          "sha": "09623e2aa5044f9e9da62c73d820a8250b9d97ed",
+          "author": "Paul Carleton",
+          "date": "2025-12-02T13:23:06+00:00",
+          "message": "Merge commit from fork",
           "ai_signals": [
             {
               "tool": "claude_code",
               "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
               "confidence": 0.95
             }
           ],
-          "blamed_file": "windows/installer.wxs",
+          "blamed_file": "src/examples/server/ssePollingExample.ts",
           "blame_confidence": 0.9,
-          "fix_commit_source": "osv",
+          "fix_commit_source": "advisory_version",
           "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "185631dcb0217b4ad09d43009cb69f0593996a5d",
-          "screening_verification": null
-        },
-        {
-          "sha": "e4374204bd121236b5414d55d53a86c0546684c7",
-          "author": "Carlos Fernandez",
-          "date": "2025-12-29T17:05:51+01:00",
-          "message": "fix(windows): Configure MSI as 64-bit installer",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "windows/installer.wxs",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "osv",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "185631dcb0217b4ad09d43009cb69f0593996a5d",
+          "fix_commit_sha": "a05be176cabeae1f933b676e3ce024bf02e2314d",
           "screening_verification": null
         }
       ],
       "fix_commits": [
         {
-          "sha": "fd7271bae238ccb3ae8a71304ea64f0886324925",
-          "repo_url": "https://github.com/ccextractor/ccextractor",
-          "source": "osv"
+          "sha": "4f01e7e0708e1a85ccc7dbf39e850005f2d9ff03",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
         },
         {
-          "sha": "185631dcb0217b4ad09d43009cb69f0593996a5d",
-          "repo_url": "https://github.com/ccextractor/ccextractor",
-          "source": "osv"
+          "sha": "aa81a66556fb4434d8a6d1b70f7ac9fc40b5d325",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "50d9fa3cd12e807e7963bcb9e1548786d3d5d941",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fe9c07b465871394c7069207c86513df9c1194a4",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a05be176cabeae1f933b676e3ce024bf02e2314d",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6aba0659654e1ff0699844524595922a61e44cb9",
+          "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+          "source": "advisory_version"
         }
       ],
       "references": [
-        "https://github.com/oneafter/0123/blob/main/cc3/repro",
-        "https://vuldb.com/?id.347182",
-        "https://vuldb.com/?submit.755029",
-        "https://github.com/CCExtractor/ccextractor/",
-        "https://github.com/CCExtractor/ccextractor/releases/tag/v0.96.6",
-        "https://vuldb.com/?ctiid.347182",
-        "https://github.com/CCExtractor/ccextractor/issues/2055"
+        "https://github.com/modelcontextprotocol/typescript-sdk/security/advisories/GHSA-345p-7cg4-v4c7",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-25536",
+        "https://github.com/modelcontextprotocol/typescript-sdk/issues/204",
+        "https://github.com/modelcontextprotocol/typescript-sdk/issues/243"
       ]
     },
     {
@@ -4216,49 +5352,44 @@
       "ai_contribution": "Yes. The AI-assisted commit fe42994900a445155be7a697de060c5a34f36a2d created the SIWX settle hook and directly wrote the unsafe assumption that `paymentPayload.resource` is always present, then dereferenced `ctx.paymentPayload.resource.url` without a guard. That is the exact behavior fixed in 1ab1c86f016161f27593bf17c9a2333c2201ab10."
     },
     {
-      "id": "GHSA-5cqw-g779-9f9x",
-      "description": "AutoGPT has a DoS vulnerability in ReadRSSFeedBlock",
-      "severity": "HIGH",
-      "cvss": 8.0,
+      "id": "GHSA-83pf-v6qq-pwmr",
+      "description": "Fickling has a detection bypass via stdlib network-protocol constructors",
+      "severity": "LOW",
+      "cvss": 2.5,
       "cwes": [
-        "CWE-770"
+        "CWE-184"
       ],
       "ecosystem": "",
-      "published": "2025-10-02T19:55:55+07:00",
+      "published": "2026-02-20T18:24:46Z",
       "ai_tools": [
         "claude_code"
       ],
-      "ai_involved": null,
+      "ai_involved": true,
       "signal_source": "both",
       "languages": [
-        "Python",
-        "TypeScript"
+        "Python"
       ],
       "confidence": 0.855,
-      "verified_by": "",
-      "how_introduced": "",
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-assisted code in 19e828d26b248a4a39fcee2643306a6cd78dbb76 materially contributed to the CVE: it expanded `UNSAFE_IMPORTS` with a new network-module section, but still omitted `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib`, the exact gap closed by the fix. The broader incomplete-blocklist design predates AI involvement, but this Claude-coauthored commit rewrote the relevant network coverage and left the stdlib network-protocol constructor bypass in place.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
-      "verdict": "",
+      "verdict": "CONFIRMED",
       "bug_commits": [],
       "fix_commits": [
         {
-          "sha": "73603a8ce54418bc4eba730429854bf072a65f7f",
-          "repo_url": "https://github.com/significant-gravitas/autogpt",
-          "source": "osv"
-        },
-        {
-          "sha": "57a06f70883ce6be18738c6ae8bb41085c71e266",
-          "repo_url": "https://github.com/Significant-Gravitas/AutoGPT",
-          "source": "osv"
+          "sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
         }
       ],
       "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/32xxx/CVE-2025-32393.json",
-        "https://github.com/Significant-Gravitas/AutoGPT/security/advisories/GHSA-5cqw-g779-9f9x",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-32393"
-      ]
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-83pf-v6qq-pwmr",
+        "https://github.com/trailofbits/fickling/pull/233",
+        "https://github.com/trailofbits/fickling/commit/6d20564d23acf14b42ec883908aed159be7b9ade"
+      ],
+      "ai_contribution": "AI-assisted code in 19e828d26b248a4a39fcee2643306a6cd78dbb76 materially contributed to the CVE: it expanded `UNSAFE_IMPORTS` with a new network-module section, but still omitted `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib`, the exact gap closed by the fix. The broader incomplete-blocklist design predates AI involvement, but this Claude-coauthored commit rewrote the relevant network coverage and left the stdlib network-protocol constructor bypass in place."
     },
     {
       "id": "GHSA-c6hr-w26q-c636",
@@ -4437,6 +5568,85 @@
       "ai_contribution": "Yes. AI-authored commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 added the unauthenticated `debug_simulate_print_complete` printer route that `a82f9278d2d587b7042a0858aab79fd8b6e3add9` later secured. When `f8857ba66643eb3ce97116dd90c0e75a9474f924` introduced optional authentication without a default-deny layer for existing API routes, that AI-authored endpoint became one of the exposed endpoints covered by the CVE; I found no evidence AI authored the hardcoded JWT secret."
     },
     {
+      "id": "GHSA-r48f-3986-4f9c",
+      "description": "fickling modules linecache, difflib and gc are missing from the unsafe modules blocklist",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-184"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:57:40Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+          "repo_url": "https://github.com/trailofbits/fickling",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/trailofbits/fickling/security/advisories/GHSA-r48f-3986-4f9c",
+        "https://github.com/trailofbits/fickling/commit/7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+        "https://github.com/trailofbits/fickling/releases/tag/v0.1.10"
+      ],
+      "ai_contribution": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions."
+    },
+    {
+      "id": "GHSA-wrrr-8jcv-wjf5",
+      "description": "LobeHub Vulnerable to Improper Authorization in Presigned Upload",
+      "severity": "MEDIUM",
+      "cvss": 5.7,
+      "cwes": [
+        "CWE-73"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-01T17:39:40Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "2c1762b85acb84467ed5e799afe1499cd2f912e6",
+          "repo_url": "https://github.com/lobehub/lobehub",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/lobehub/lobehub/security/advisories/GHSA-wrrr-8jcv-wjf5",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-23835",
+        "https://github.com/lobehub/lobehub/commit/2c1762b85acb84467ed5e799afe1499cd2f912e6"
+      ]
+    },
+    {
       "id": "CVE-2026-23522",
       "description": "Lobe Chat has IDOR in Knowledge Base File Removal that Allows Cross User File Deletion",
       "severity": "LOW",
@@ -4489,6 +5699,317 @@
       ]
     },
     {
+      "id": "CVE-2026-25481",
+      "description": "Langroid has WAF Bypass Leading to RCE in TableChatAgent",
+      "severity": "CRITICAL",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-94"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-04T20:16:07.447",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.76,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-assisted commit 0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6 (Claude Code/Copilot coauthored) introduced the new CommandValidator-based sanitizer and wired it into TableChatAgent’s default eval path, but it allowed ast.Attribute nodes without any visit_Attribute enforcement while still using Python eval as the sink. That omission let attackers traverse dunder/private attributes such as __init__.__globals__['__builtins__']['eval'] to bypass the WAF and recover RCE.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "65f2e5ecafafdb5027236a94253021fce287cdac",
+          "repo_url": "https://github.com/langroid/langroid",
+          "source": "osv"
+        },
+        {
+          "sha": "30abbc1a854dee22fbd2f8b2f575dfdabdb603ea",
+          "repo_url": "https://github.com/langroid/langroid",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/25xxx/CVE-2026-25481.json",
+        "https://github.com/langroid/langroid/security/advisories/GHSA-jqq5-wc57-f8hj",
+        "https://github.com/langroid/langroid/security/advisories/GHSA-x34r-63hx-w57f",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-25481"
+      ],
+      "ai_contribution": "Yes. AI-assisted commit 0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6 (Claude Code/Copilot coauthored) introduced the new CommandValidator-based sanitizer and wired it into TableChatAgent’s default eval path, but it allowed ast.Attribute nodes without any visit_Attribute enforcement while still using Python eval as the sink. That omission let attackers traverse dunder/private attributes such as __init__.__globals__['__builtins__']['eval'] to bypass the WAF and recover RCE."
+    },
+    {
+      "id": "CVE-2026-33312",
+      "description": "Vikunja is an open-source self-hosted task management platform. Starting in version 0.20.2 and prior to version 2.2.0, the `DELETE /api/v1/projects/:project/background` endpoint checks `CanRead` permission instead of `CanUpdate`, allowing any user with read-only access to a project to permanently delete its background image. Version 2.2.0 fixes the issue.",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T08:28:56+01:00",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [
+        "Go",
+        "JavaScript",
+        "TypeScript",
+        "Vue"
+      ],
+      "confidence": 0.76,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "a498dd69915a006c07e9d82660a2185d7e8136ee",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "be0aaa70601af919f68fa1153f76bcf6335bc0b5",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "15aa773212260f3902a17f4fc6c34e7e8efd6a05",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b7a14080983d2781e1428be9b77fae319e7788e4",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "49419619bd0052bdd7e727404a9284acd928a903",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "049f4a6be46f9460bd516f489ef9f569574bc70d",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d8570c603da1f26635ce6048d6af85ede827abfb",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4c80932b6475ad54a2e2a81541d89a3b8471a762",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4cd63f93a48d784dd2566c26a0642ec0c69d3d8f",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b5afe82713cf755d7d8bf624b5799aa3e0677676",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "54d977532e9e9a99281bc56965583d07f3913b21",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "18f16878a84952cf5d0ddb583385dc340d1f5ff3",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "39acdac531feadc77bb3aa9a064eb6d639a964e2",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "1f2aef776ccdd0ac1405fc8bcbb47084091d42eb",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "659e73af05af154dda315d025e8b3a12705e4a7e",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "cdf5d30a425d032f749b78b98b828f25ad882615",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "82c24a826a6170ba5fdd5e32b48dfd3235a995b2",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b9d4d5e4acc9f7313bc3374ce451c9d24be202ce",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b0ede53c051d45a3e861450187e64c5342be5362",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "28cc9e0571c98bb04d216e5fe47aaa503a1e887b",
+          "repo_url": "https://github.com/go-vikunja/vikunja",
+          "source": "advisory_version"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "CVE-2026-33332",
+      "description": "NiceGUI is a Python-based UI framework. Prior to version 3.9.0, NiceGUI's app.add_media_file() and app.add_media_files() media routes accept a user-controlled query parameter that influences how files are read during streaming. The parameter is passed to the range-response implementation without validation, allowing an attacker to bypass chunked streaming and force the server to load entire files into memory at once. With large media files and concurrent requests, this can lead to excessive memo",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-20",
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-25T17:03:31+01:00",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "both",
+      "languages": [
+        "JavaScript",
+        "Python"
+      ],
+      "confidence": 0.76,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "c275d93b872b0bb0b921c7a3ffa7bb319618fd9b",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "38b04bd9bca000623b7808f49813b1facd53cbb2",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3e4e6c16904ac3a37d6967204e350ce827fb995d",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "461a203cffe4c0178f9f73242fce76a323c06727",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "af528430f24e1d49f675f54a8bce18db9512972d",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0237b18722aacaa371197392ad0253441a09deef",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "58209ff414ae2da791b2b24f34417c3b628d2d61",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2e9c89a130102e15f16015d3ccafdcd6feb262e7",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0d9656dda06e24f4d7230b01372c7c72cd9ff871",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "39291654e469c41fe6a01820d5ac13ca182f68c9",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e7be14e2f1b9c3d0f11f9c70e7590f716a7a9d6b",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "c200afd9eac71eca1c570d7d8c7de976ef3f0689",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "57bd585a42a64358c3c7762c43a5c7a0dba2e52c",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "c47e5c0b7e93317b517576add94ad5752373031f",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "7e119bf3609a536c67192d26f37348195cf1cca6",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "0eed6ac54d6379a593f7fb255653c2ce2ae569ff",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "45b312d8f4985c7bd3c9bab4a47fc8b9633bad28",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b2601776bbc7f3600d2dbd10f2da281f6cf06f00",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "49bb838ca52c3fd87d3aeea73402c3f2a9a1a637",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "cfd1d2269a90ed45938d93b5ed61a48c9c4b21e3",
+          "repo_url": "https://github.com/zauberzeug/nicegui",
+          "source": "advisory_version"
+        }
+      ],
+      "references": []
+    },
+    {
       "id": "GHSA-pwf7-47c3-mfhx",
       "description": "j178/prek-action vulnerable to arbitrary code injection in composite action",
       "severity": "CRITICAL",
@@ -4526,6 +6047,138 @@
         "https://github.com/j178/prek-action/commit/6b7c6ef5c3875c766893b881b40773cd5605bde3"
       ],
       "ai_contribution": "AI-authored code did contribute: Copilot commit a7c5a005 directly introduced a new shell-injection path by interpolating `${{ inputs.prek-version }}` into bash. A later AI commit (346373c1) also preserved and expanded the already-existing unsafe `extra_args` sink, although that specific sink originated earlier in a non-AI commit."
+    },
+    {
+      "id": "CVE-2025-34291",
+      "description": "Langflow versions up to and including 1.6.9 contain a chained vulnerability that enables account takeover and remote code execution. An overly permissive CORS configuration (allow_origins='*' with allow_credentials=True) combined with a refresh token cookie configured as SameSite=None allows a malicious webpage to perform cross-origin requests that include credentials and successfully call the refresh endpoint. An attacker-controlled origin can therefore obtain fresh access_token / refresh_token",
+      "severity": "HIGH",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-346"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-05T23:15:47.433",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "both",
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.7268,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "4962dbefb0caba09f1c19c25177f24d029fd13f7",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "835b480406ee8a136da0e3e7212a00d7f09cf864",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "87bf73560e11909ec4712081ab3f4b9674d80630",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "912836bea84cd76bf02c46faaa5b71dafca5d038",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "3019e1f644670ec53ce7af9bc4d74d490ae1c433",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "0328ae8f5dfd6f0244bd71ae18da1005ea85265d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "f5cf8ffc13a43037249b3ebbb30eda6e027b9842",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "b5745903033208d4eae98fcbc3276a3563ba86e3",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "95aa64133ddfdc7b32731baa4a6150f854d7f582",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "d614f01c1da46a041c8ec477fb68f2e41c669b2d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "52a36a1b4d6c0f309430e412687bade8a0160b61",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "4b42d7c01d4faf8f6385de419654d1b3e99b9675",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "8744c5a61ff4d0b67cf17d216676e790ed20c129",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "84bca94150d794c996d577a94b379d50579127b4",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "3a6412f7fa71c73e3b2c886824b5b3254fc01512",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "50ff06fd29316c3ada00ed3f2c7b2dc4e9c57eef",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "156a018abd7d79ad00739a4967d9be463435e80c",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "74941b5ff98150c35c21c33b5c4f9e2443ac586d",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "4517ffef223e0bd3afc4520437666aa5f993431e",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        },
+        {
+          "sha": "bc7413323e44a7249757b1cf5d843c50aea38fd6",
+          "repo_url": "https://github.com/langflow-ai/langflow",
+          "source": "github_advisory_pr"
+        }
+      ],
+      "references": [
+        "https://www.vulncheck.com/advisories/langflow-cors-misconfiguration-to-token-hijack-and-rce"
+      ]
     },
     {
       "id": "CVE-2026-29023",
@@ -4886,92 +6539,6 @@
       "ai_contribution": "Yes. AI-coauthored commits 92b6f4729a5e29159f8864f923e5ea22081f9bb8 and 3869d001aec3e90271bd71ab7ed1490383254dca introduced the org-mirroring code that accepted arbitrary external_registry_url values, stored them without SSRF validation, and then used them in outbound requests that followed redirects by default. Those AI-assisted changes are the causal chain reversed by the SSRF fix."
     },
     {
-      "id": "CVE-2026-32231",
-      "description": "ZeptoClaw: Generic webhook channel trusts caller-supplied identity fields; allowlist is checked against untrusted payload data",
-      "severity": "HIGH",
-      "cvss": 8.2,
-      "cwes": [
-        "CWE-306",
-        "CWE-345"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-12T19:16:17.027",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "ai_involved": true,
-      "signal_source": "commit",
-      "languages": [
-        "Rust"
-      ],
-      "confidence": 0.665,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
-          "author": "qhkmdev90",
-          "date": "2026-02-14T10:37:14+08:00",
-          "message": "feat: add hooks system, deploy templates, and accumulated features",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "src/channels/webhook.rs",
-          "blame_confidence": 0.7,
-          "fix_commit_source": "osv",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "Pickaxe searches for `if !base_config.is_allowed(&payload.sender)`, `payload.sender.trim()`, `sender: String,`, and `chat_id: String,` all point to this commit, which created `src/channels/webhook.rs`. In that new file, `WebhookPayload` required `sender` and `chat_id` from JSON, `handle_connection()` only checked that they were non-empty, then used `payload.sender` for the allowlist check and built `InboundMessage` from `payload.sender` / `payload.chat_id`. The same commit also added `WebhookConfig` and factory wiring with `auth_token` and `allow_from` but no server-controlled identity fields, so the vulnerable payload-trusting design was present from the feature’s initial introduction.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "osv"
-        },
-        {
-          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
-          "repo_url": "https://github.com/qhkm/zeptoclaw",
-          "source": "osv"
-        }
-      ],
-      "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32231.json",
-        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6",
-        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
-        "https://nvd.nist.gov/vuln/detail/CVE-2026-32231"
-      ],
-      "ai_contribution": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in."
-    },
-    {
       "id": "CVE-2026-27900",
       "description": "Terraform Provider Debug Logs Vulnerable to Sensitive Information Exposure",
       "severity": "MEDIUM",
@@ -5050,6 +6617,128 @@
         }
       ],
       "references": []
+    },
+    {
+      "id": "CVE-2025-66210",
+      "description": "Coolify Vulnerable to Authenticated Remote Code Execution via Command Injection in Database Import",
+      "severity": "CRITICAL",
+      "cvss": 9.4,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-23T22:15:52.217",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.57,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commits were part of the causal chain: 94560ea6c7a841840638e7c73a4b5d6da2afe713 (Claude Code) reimplemented S3-based database restore with unsafe shell interpolation of unvalidated bucket/path values, and fbdd8e5f03c75e3d899b82c48c6a88bf463e52da (Claude Code) re-authored the unsafe local server-file import branch using raw customLocation in a docker command. Another AI-authored commit, 56f32d0f87609d48c4f9f8d766c96c183bcd60f9, was unrelated.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "fbdd8e5f03c75e3d899b82c48c6a88bf463e52da",
+          "author": "Andras Bacsai",
+          "date": "2025-11-17T14:13:10+01:00",
+          "message": "fix: improve robustness and security in database restore flows",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Livewire/Project/Database/Import.php",
+          "blame_confidence": 0.6,
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "0ecaa191db150bbc1ce120b00821517a4404990f",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.7,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Although framed as a security improvement, this AI-authored commit rewrote runImport() and re-authored the exact unsafe local import line that the later fix changes: `docker cp {$this->customLocation} {$this->container}:{$tmpPath}`. The local-path vulnerability already existed from 40d9, but this commit newly wrote vulnerable code during the refactor, and the investigation rules treat such reimplementation as bug introduction as well. It did not add validation or escaping for customLocation until 9113ed later fixed it.",
+                "confidence": 0.7,
+                "tool_calls_made": 62,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "94560ea6c7a841840638e7c73a4b5d6da2afe713",
+          "author": "Andras Bacsai",
+          "date": "2025-11-17T10:05:18+01:00",
+          "message": "feat: streamline S3 restore with single-step flow and improved UI consistency",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "app/Livewire/Project/Database/Import.php",
+          "blame_confidence": 0.6,
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "0ecaa191db150bbc1ce120b00821517a4404990f",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored reimplementation replaced the earlier two-step S3 download flow with a new single-step restore flow and wrote the exact vulnerable S3 shell commands later fixed in 9113ed: `mc stat s3temp/{$bucket}/{$cleanPath}` and `mc cp s3temp/{$bucket}/{$cleanPath} {$helperTmpPath}`. It escaped endpoint/key/secret, but still left bucket and user-controlled s3Path unvalidated and unescaped in shell context. Because it newly wrote the vulnerable code present immediately before the fix, it is a confirmed BIC under the reimplementation rule.",
+                "confidence": 0.95,
+                "tool_calls_made": 62,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d9ec105430869a98d0b3415c76a5d519403269a0",
+          "repo_url": "https://github.com/coollabsio/coolify",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/66xxx/CVE-2025-66210.json",
+        "https://github.com/coollabsio/coolify/releases/tag/v4.0.0-beta.451",
+        "https://github.com/coollabsio/coolify/security/advisories/GHSA-q33h-22xm-4cgh",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-66210"
+      ],
+      "ai_contribution": "Yes. AI-authored commits were part of the causal chain: 94560ea6c7a841840638e7c73a4b5d6da2afe713 (Claude Code) reimplemented S3-based database restore with unsafe shell interpolation of unvalidated bucket/path values, and fbdd8e5f03c75e3d899b82c48c6a88bf463e52da (Claude Code) re-authored the unsafe local server-file import branch using raw customLocation in a docker command. Another AI-authored commit, 56f32d0f87609d48c4f9f8d766c96c183bcd60f9, was unrelated."
     },
     {
       "id": "CVE-2025-67751",
@@ -5342,6 +7031,115 @@
         "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/67xxx/CVE-2025-67751.json",
         "https://github.com/ChurchCRM/CRM/security/advisories/GHSA-wxcc-gvfv-56fg",
         "https://nvd.nist.gov/vuln/detail/CVE-2025-67751"
+      ]
+    },
+    {
+      "id": "CVE-2025-68399",
+      "description": "ChurchCRM has Stored Cross-Site Scripting (XSS) In GroupEditor.php",
+      "severity": "LOW",
+      "cvss": 2.0,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-17T22:16:02.083",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [
+        "PHP"
+      ],
+      "confidence": 0.57,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "c8ad31eab5217a60a070de5dca38e75998f008e3",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2025-10-12T19:05:33+00:00",
+          "message": "Move upgrade routines to VersionUtils utility class",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/ChurchCRM/Service/UpgradeService.php",
+          "blame_confidence": 0.6,
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "0c3566166c3849cdfe54b0696540b7bcbdad800b",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "58673c4800107217e419cc70d3369f9c557fa3fb",
+          "repo_url": "https://github.com/churchcrm/crm",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/68xxx/CVE-2025-68399.json",
+        "https://github.com/ChurchCRM/CRM/security/advisories/GHSA-gfxf-w4cg-c54j",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-68399"
+      ]
+    },
+    {
+      "id": "CVE-2026-22256",
+      "description": "Salvo is vulnerable to reflected XSS in the list_html function",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-08T19:16:00.107",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [],
+      "confidence": 0.57,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "6d3cd29e80a583c07f73917991471290f5480315",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22256.json",
+        "https://github.com/salvo-rs/salvo/blob/16efeba312a274739606ce76366d921768628654/crates/serve-static/src/dir.rs#L593",
+        "https://github.com/salvo-rs/salvo/security/advisories/GHSA-rjf8-2wcw-f6mp",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-22256"
       ]
     },
     {
@@ -7841,6 +9639,39 @@
       "references": []
     },
     {
+      "id": "CVE-2026-2835",
+      "description": "An HTTP Request Smuggling vulnerability (CWE-444) has been found in Pingora's parsing of HTTP/1.0 and Transfer-Encoding requests. The issue occurs due to improperly allowing HTTP/1.0 request bodies to be close-delimited and incorrect handling of multiple Transfer-Encoding values, allowing attackers to send HTTP/1.0 requests in a way that would desync Pingora’s request framing from backend servers’.\n\nImpact\n\nThis vulnerability primarily affects standalone Pingora deployments in front of certain b",
+      "severity": "CRITICAL",
+      "cvss": 9.3,
+      "cwes": [
+        "CWE-444"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T00:15:57.860",
+      "ai_tools": [
+        "cursor"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [],
+      "confidence": 0.57,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "faac65b0c2a0bfdbfdc5f13a1591f53f3c15321a",
+          "repo_url": "https://github.com/cloudflare/pingora",
+          "source": "osv"
+        }
+      ],
+      "references": []
+    },
+    {
       "id": "CVE-2026-2836",
       "description": "A cache poisoning vulnerability has been found in the Pingora HTTP proxy framework’s default cache key construction. The issue occurs because the default HTTP cache key implementation generates cache keys using only the URI path, excluding critical factors such as the host header (authority). Operators relying on the default are vulnerable to cache poisoning, and cross-origin responses may be improperly served to users.\n\n\nImpact\n\nThis vulnerability affects users of Pingora's alpha proxy caching ",
       "severity": "HIGH",
@@ -7973,7 +9804,7 @@
       ],
       "confidence": 0.57,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. The AI-coauthored root commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3 added lib/HTTP/Session2/Random.pm with the exact weak fallback later removed by the fix: a SHA-1 of rand(), PID, and time, used when /dev/urandom was unavailable. The later AI-tagged screened commits only changed version strings, documentation, or client-store packaging and did not introduce or enable the weak session-id generation.",
+      "how_introduced": "Yes. AI co-authored commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3, which is the first commit in this repo to add lib/HTTP/Session2/Random.pm with the weak rand()-based fallback and the session-store modules that call it. The later AI-flagged candidate commits were false positives: they changed docs/versioning or restored callers only after Random.pm had already been fixed.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
@@ -8008,9 +9839,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This root commit introduced the exact code later removed by the fix in lib/HTTP/Session2/Random.pm: optional /dev/urandom use with a fallback of substr(Digest::SHA::sha1_hex(rand() . $$ . {} . Time::HiRes::time()), int(rand(4)), 31). Blame of the pre-fix Random.pm shows all vulnerable lines originate in f8a08a8, and diff-range checks show Random.pm stayed unchanged from f8a08a8 until the fix commit 9cfde4d. The same root commit also introduced the store call sites and tests that exercised the weaker fallback path, so it is the repository-level bug-introducing commit.",
+                "reasoning": "The fix commit 9cfde4d7e096 replaces lib/HTTP/Session2/Random.pm’s entire generator, removing the fallback `substr(Digest::SHA::sha1_hex(rand() . $$ . {} . Time::HiRes::time()),int(rand(4)),31)` and the `/dev/urandom` conditional. File history and blame show Random.pm first appears at f8a08a8 and already contains that weak fallback, and lib/HTTP/Session2/ServerStore.pm at the same commit already calls `HTTP::Session2::Random::generate_session_id()` in `create_session` and `regenerate_id`. No intervening commit changed the generator before the fix, so this is the introducer in the available git history.",
                 "confidence": 0.95,
-                "tool_calls_made": 73,
+                "tool_calls_made": 70,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -8036,7 +9867,219 @@
         "https://metacpan.org/release/TOKUHIROM/HTTP-Session2-1.01/source/lib/HTTP/Session2/ServerStore.pm#L68",
         "https://metacpan.org/release/TOKUHIROM/HTTP-Session2-1.11/source/lib/HTTP/Session2/Random.pm#L35"
       ],
-      "ai_contribution": "Yes. The AI-coauthored root commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3 added lib/HTTP/Session2/Random.pm with the exact weak fallback later removed by the fix: a SHA-1 of rand(), PID, and time, used when /dev/urandom was unavailable. The later AI-tagged screened commits only changed version strings, documentation, or client-store packaging and did not introduce or enable the weak session-id generation."
+      "ai_contribution": "Yes. AI co-authored commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3, which is the first commit in this repo to add lib/HTTP/Session2/Random.pm with the weak rand()-based fallback and the session-store modules that call it. The later AI-flagged candidate commits were false positives: they changed docs/versioning or restored callers only after Random.pm had already been fixed."
+    },
+    {
+      "id": "CVE-2026-33010",
+      "description": "mcp-memory-service is an open-source memory backend for multi-agent systems. Prior to version 10.25.1, when the HTTP server is enabled (MCP_HTTP_ENABLED=true), the application configures FastAPI's CORSMiddleware with allow_origins=['*'], allow_credentials=True, allow_methods=[\"*\"], and allow_headers=[\"*\"]. The wildcard Access-Control-Allow-Origin: * header permits any website to read API responses cross-origin. When combined with anonymous access (MCP_ALLOW_ANONYMOUS_ACCESS=true) - the simplest ",
+      "severity": "HIGH",
+      "cvss": 8.1,
+      "cwes": [
+        "CWE-942"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-06T06:24:45+01:00",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [
+        "Shell"
+      ],
+      "confidence": 0.57,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [
+        {
+          "sha": "9bff59a333342c6cba9e179a627f7b5e1e669e0e",
+          "author": "doobidoo",
+          "date": "2026-01-03T10:02:49+01:00",
+          "message": "fix(scripts): Support HTTPS in update script health checks",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "scripts/update_and_restart.sh",
+          "blame_confidence": 0.6,
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "425e84e1d75b83efb2be05b61001f7f6f4eb7ece",
+          "screening_verification": null
+        },
+        {
+          "sha": "2297fdd7b7f86c15a992c230f0d3ca50bbc3c647",
+          "author": "Henry",
+          "date": "2026-01-03T06:52:53+01:00",
+          "message": "chore: release v8.68.0",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "scripts/update_and_restart.sh",
+          "blame_confidence": 0.6,
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "425e84e1d75b83efb2be05b61001f7f6f4eb7ece",
+          "screening_verification": null
+        },
+        {
+          "sha": "f61e58cafcfedc98997de58acc08ac8e7f18f3e6",
+          "author": "Henry",
+          "date": "2026-01-03T09:09:36+01:00",
+          "message": "fix: Handle Python 3.14 incompatibility in update script",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "scripts/update_and_restart.sh",
+          "blame_confidence": 0.6,
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "425e84e1d75b83efb2be05b61001f7f6f4eb7ece",
+          "screening_verification": null
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "91ab4e5ee99d593d9b4400aac1f5e28232d4ab54",
+          "repo_url": "https://github.com/doobidoo/mcp-memory-service",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "7adacec8021938cbf58fb96e451abdda2857a760",
+          "repo_url": "https://github.com/doobidoo/mcp-memory-service",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8db4c23e4d164e5c95a053eb144673dc94618def",
+          "repo_url": "https://github.com/doobidoo/mcp-memory-service",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3836a04fb6e185104765d0fd73ccb2a2c0e9d33f",
+          "repo_url": "https://github.com/doobidoo/mcp-memory-service",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f17ae5ffa31b17ffb44fb71daa46ef498ab4e7a3",
+          "repo_url": "https://github.com/doobidoo/mcp-memory-service",
+          "source": "advisory_version"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "GHSA-4cm8-xpfv-jv6f",
+      "description": "ZeptoClaw: Email Sender Spoofing to bypass Header-Only From Allowlist Validation",
+      "severity": "MEDIUM",
+      "cvss": 6.5,
+      "cwes": [
+        "CWE-306",
+        "CWE-345"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T16:38:22Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.57,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+          "author": "qhkmdev90",
+          "date": "2026-02-21T20:32:58+08:00",
+          "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/channels/email_channel.rs",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This atomic feature-branch commit is the culprit sub-commit inside the squash and independently contains the vulnerable implementation. Its diff adds `EmailChannel`, extracts `from` via `parsed.from().and_then(...address())`, gates inbound mail with `is_sender_allowed(&from)`, and then uses that same header-derived value as sender identity. That is the exact design the later fix warns about, so this sub-commit is also a real introduction point for the vulnerable code.",
+                "confidence": 0.95,
+                "tool_calls_made": 94,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a27236766a07dfcfb278877d075820ba2f91df9a",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ec2743309478a52339d627a21849637a5836bb3f",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
+          "repo_url": "https://github.com/qhkm/zeptoclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-4cm8-xpfv-jv6f",
+        "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
+      ],
+      "ai_contribution": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain."
     },
     {
       "id": "GHSA-gfxf-w4cg-c54j",
@@ -8433,6 +10476,94 @@
       ]
     },
     {
+      "id": "GHSA-2f24-mg4x-534q",
+      "description": "TinaCMS Vulnerable to Path Traversal Leading to Arbitrary File Read, Write and Delete",
+      "severity": "HIGH",
+      "cvss": 8.4,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T20:32:26Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.405,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "c2517c295fb7b1d2b05923e5176be7f3131b4381",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2b04d1df1117139811d03b089f6e39abaec86da1",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d7cbe224aca17069c338f22f9b19dfedd81dee08",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d782ca209ff98ee2143c7fd83f0b793563b6de60",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f23c2a6742373271531bee46ca3cca8b208c3476",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "77cf3f5aed13a903445fade1118d59935787d344",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "60510bbf8d1b78cad901722d4f9003665412d71e",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2738749bac08c02214fdf208f96bbcc4906ef442",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "dfb4ce8da7b82b638337109cc7859125e112a0a9",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "661102db1e8f9c99e53d8dddd05d23bc96e429c1",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "56d533e610a520ba66b3e58f3a0dc03487d5d5d7",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/tinacms/tinacms/security/advisories/GHSA-2f24-mg4x-534q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-28793"
+      ]
+    },
+    {
       "id": "GHSA-38r7-794h-5758",
       "description": "webpack buildHttp HttpUriPlugin allowedUris bypass via HTTP redirects → SSRF + cache persistence",
       "severity": "LOW",
@@ -8567,6 +10698,223 @@
       ]
     },
     {
+      "id": "GHSA-m48g-4wr2-j2h6",
+      "description": "TinaCMS CLI has Arbitrary File Read via Disabled Vite Filesystem Restriction",
+      "severity": "MEDIUM",
+      "cvss": 6.2,
+      "cwes": [
+        "CWE-200",
+        "CWE-552"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T20:32:43Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.405,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "661102db1e8f9c99e53d8dddd05d23bc96e429c1",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "56d533e610a520ba66b3e58f3a0dc03487d5d5d7",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d7cbe224aca17069c338f22f9b19dfedd81dee08",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d782ca209ff98ee2143c7fd83f0b793563b6de60",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f23c2a6742373271531bee46ca3cca8b208c3476",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "77cf3f5aed13a903445fade1118d59935787d344",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "60510bbf8d1b78cad901722d4f9003665412d71e",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2738749bac08c02214fdf208f96bbcc4906ef442",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "dfb4ce8da7b82b638337109cc7859125e112a0a9",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "c2517c295fb7b1d2b05923e5176be7f3131b4381",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2b04d1df1117139811d03b089f6e39abaec86da1",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/tinacms/tinacms/security/advisories/GHSA-m48g-4wr2-j2h6",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-29066"
+      ]
+    },
+    {
+      "id": "GHSA-vrqm-gvq7-rrwh",
+      "description": "PDFME Affected by Decompression Bomb in FlateDecode Stream Parsing Causes Memory Exhaustion DoS",
+      "severity": "MEDIUM",
+      "cvss": 6.5,
+      "cwes": [
+        "CWE-409"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-20T20:44:52Z",
+      "ai_tools": [
+        "devin"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.3515,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "8c3b6a713b3de767e1bdcc37ce831ecbce0212f3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "41dffae848399e309531d557dc1310f678a5f765",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f838f252ded53c52b2fcfd072c12f3c6ff68782c",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a1b09761b3d44dc8e0ac4109778c3591c2593e10",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e5ec86fc81aa24b22fc1cf39d81da0125e6346b8",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "eb6e76d59a51d900dafe22c752ebc523c46f1c17",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "97042e827d25c61fee9caf45f15c268f5bf7a58a",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3130c92c8003041c0bb8b875f2414adf5dcd0f4c",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "17ac3baee5ebb25b2bb6247640ac4173f22275d7",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2f828c289148ee6ca4e9610d58febff429ccbd76",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "15e14a89cbef152d00a2e3d5e959f1d50dbee43a",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b14c45e41036f72e0debcd25ddd8ebd5aa1424a3",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "798a88a2278a54cd450eff70783557929366bcf4",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "060be0024acc27efe9f1b38fd0dc7f88f6976844",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "883b7dc9598aa1646be95d852ae831bf4860312a",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e6829aa1fb37f90e53d80f44076ff08a6f23e085",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "378515eb16e1565b147e5be8b832cee6d8a66a3d",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "921f3abb937488837f2b3d587789fa37e5acb929",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "838f6871d6ddc422c520734bfc808090df0a51e6",
+          "repo_url": "https://github.com/pdfme/pdfme",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/pdfme/pdfme/security/advisories/GHSA-vrqm-gvq7-rrwh"
+      ],
+      "ai_contribution": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed."
+    },
+    {
       "id": "CVE-2025-53112",
       "description": "GLPI's incomprehensive permission checks can lead to data removal from allowed users",
       "severity": "MEDIUM",
@@ -8608,24 +10956,21 @@
       ]
     },
     {
-      "id": "CVE-2025-54590",
-      "description": "webfinger.js is vulnerable to Blind SSRF attacks through localhost",
-      "severity": "MEDIUM",
-      "cvss": 6.9,
+      "id": "CVE-2026-22869",
+      "description": "Eigent Allows Arbitrary Code Execution via pull_request_target CI Workflow",
+      "severity": "HIGH",
+      "cvss": 8.9,
       "cwes": [
-        "CWE-918"
+        "CWE-94"
       ],
       "ecosystem": "",
-      "published": "2025-08-01T18:15:55.577",
+      "published": "2026-01-13T21:15:54.917",
       "ai_tools": [
         "claude_code"
       ],
       "ai_involved": null,
       "signal_source": "pr_body",
-      "languages": [
-        "JavaScript",
-        "TypeScript"
-      ],
+      "languages": [],
       "confidence": 0.27,
       "verified_by": "",
       "how_introduced": "",
@@ -8636,21 +10981,20 @@
       "bug_commits": [],
       "fix_commits": [
         {
-          "sha": "b5f2f2c957297d25f4d76072963fccaee2e3095a",
-          "repo_url": "https://github.com/silverbucket/webfinger.js",
+          "sha": "a96c08802542ad9dade1102dac276f3255ebe77a",
+          "repo_url": "https://github.com/eigent-ai/eigent",
           "source": "osv"
         },
         {
-          "sha": "c01379e671123d03732a5b5568b34256c79aad02",
-          "repo_url": "https://github.com/silverbucket/webfinger.js",
+          "sha": "bf02500bbbab0f01cd0ed8e6dc21fe5683d6bfb5",
+          "repo_url": "https://github.com/eigent-ai/eigent",
           "source": "osv"
         }
       ],
       "references": [
-        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/54xxx/CVE-2025-54590.json",
-        "https://github.com/silverbucket/webfinger.js/releases/tag/v2.8.1",
-        "https://github.com/silverbucket/webfinger.js/security/advisories/GHSA-8xq3-w9fx-74rv",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-54590"
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/22xxx/CVE-2026-22869.json",
+        "https://github.com/eigent-ai/eigent/security/advisories/GHSA-gvh4-93cq-5xxp",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-22869"
       ]
     },
     {
@@ -8691,6 +11035,222 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-26331",
         "https://github.com/yt-dlp/yt-dlp/commit/1fbbe29b99dc61375bf6d786f824d9fcf6ea9c1a",
         "https://github.com/yt-dlp/yt-dlp/releases/tag/2026.02.21"
+      ]
+    },
+    {
+      "id": "CVE-2026-23515",
+      "description": "RCE - Command Injection in Signal K set-system-time plugin",
+      "severity": "CRITICAL",
+      "cvss": 10.0,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-02T23:16:07.190",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.2565,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. Claude-authored commits c4672527da2c97322a3f8af96182d9d3b9bf07d5 and 7008d7fa0ba625b2a423746dcfb5299f93fe234c rewrote the time-setting path while continuing to interpolate user-controlled `datetime` data into shell commands run via `sh -c` without validation. The flaw originally predates AI, but those AI commits reimplemented and modified the vulnerable sink in the released code, so AI was part of the causal chain.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "f4bdeea61261185993d68a87f96996e7790bef22",
+          "repo_url": "https://github.com/signalk/set-system-time",
+          "source": "osv"
+        },
+        {
+          "sha": "83016dc0c56c19670e0f9d202a293964fcfcd972",
+          "repo_url": "https://github.com/signalk/signalk-server",
+          "source": "osv"
+        },
+        {
+          "sha": "75b11eae2de528bf89ede3fb1f7ed057ddbb4d24",
+          "repo_url": "https://github.com/SignalK/set-system-time",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/23xxx/CVE-2026-23515.json",
+        "https://github.com/SignalK/signalk-server/security/advisories/GHSA-p8gp-2w28-mhwg",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-23515"
+      ],
+      "ai_contribution": "Yes. Claude-authored commits c4672527da2c97322a3f8af96182d9d3b9bf07d5 and 7008d7fa0ba625b2a423746dcfb5299f93fe234c rewrote the time-setting path while continuing to interpolate user-controlled `datetime` data into shell commands run via `sh -c` without validation. The flaw originally predates AI, but those AI commits reimplemented and modified the vulnerable sink in the released code, so AI was part of the causal chain."
+    },
+    {
+      "id": "CVE-2026-28509",
+      "description": "LangBot has a Cross Site Scripting(XSS) Vulnerability",
+      "severity": "MEDIUM",
+      "cvss": 6.3,
+      "cwes": [
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-06T05:16:35.590",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Python"
+      ],
+      "confidence": 0.2565,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code did contribute: Copilot-authored commit b634aa48dc27a8df7e7e853914071451db00a04c changed DebugDialog from plain-text rendering to ReactMarkdown with `rehypeRaw` but no sanitization, making chat message content render attacker-controlled raw HTML. The other two vulnerable `rehypeRaw` renderers were introduced by human-authored commits, so AI was part of the causal chain but not the sole source of the CVE.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "b34ebf85a6445060bbe6770713717624cdd6c03d",
+          "repo_url": "https://github.com/langbot-app/langbot",
+          "source": "osv"
+        },
+        {
+          "sha": "614621ab7b84fe50da3c6137705cde5a99429866",
+          "repo_url": "https://github.com/langbot-app/LangBot",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/28xxx/CVE-2026-28509.json",
+        "https://github.com/langbot-app/LangBot/security/advisories/GHSA-w8gq-g4pc-xh3h",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
+      ],
+      "ai_contribution": "AI-authored code did contribute: Copilot-authored commit b634aa48dc27a8df7e7e853914071451db00a04c changed DebugDialog from plain-text rendering to ReactMarkdown with `rehypeRaw` but no sanitization, making chat message content render attacker-controlled raw HTML. The other two vulnerable `rehypeRaw` renderers were introduced by human-authored commits, so AI was part of the causal chain but not the sole source of the CVE."
+    },
+    {
+      "id": "CVE-2026-33241",
+      "description": "Salvo is a Rust web framework. Prior to version 0.89.3, Salvo's form data parsing implementations (`form_data()` method and `Extractible` macro) do not enforce payload size limits before reading request bodies into memory. This allows attackers to cause Out-of-Memory (OOM) conditions by sending extremely large payloads, leading to service crashes and denial of service. Version 0.89.3 contains a patch.",
+      "severity": "HIGH",
+      "cvss": 8.7,
+      "cwes": [
+        "CWE-770"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-05T13:42:47+08:00",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "commit",
+      "languages": [
+        "Rust"
+      ],
+      "confidence": 0.2565,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "f8fb007c4c765dd0a4961f81846e6f27629dcd28",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d76a3a58c29453891beb9d1d38e431bdfd5d181d",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ae15ab9b5945b06088d489f6cfc9a25e9f0b1297",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8cd6a7fe26a526a3547154f122a1901ae3b90d94",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2988d09a874fafed9e8f3c3a17a252863378e971",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "1b7869dbe2e5925a6036bd109719bce7178ed450",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "a95edaa1f2383eb16af89cbb2844e32c7b6059f3",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d078d1130c74052799856fe5b243bec7f5264b16",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4f16e79700073e35a34adaf332fc6ebc4fce8bb0",
+          "repo_url": "https://github.com/salvo-rs/salvo",
+          "source": "advisory_version"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "CVE-2025-54590",
+      "description": "webfinger.js is vulnerable to Blind SSRF attacks through localhost",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2025-08-01T18:15:55.577",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "pr_body",
+      "languages": [
+        "JavaScript",
+        "TypeScript"
+      ],
+      "confidence": 0.225,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "c01379e671123d03732a5b5568b34256c79aad02",
+          "repo_url": "https://github.com/silverbucket/webfinger.js",
+          "source": "osv"
+        },
+        {
+          "sha": "b5f2f2c957297d25f4d76072963fccaee2e3095a",
+          "repo_url": "https://github.com/silverbucket/webfinger.js",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/54xxx/CVE-2025-54590.json",
+        "https://github.com/silverbucket/webfinger.js/releases/tag/v2.8.1",
+        "https://github.com/silverbucket/webfinger.js/security/advisories/GHSA-8xq3-w9fx-74rv",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-54590"
       ]
     },
     {
@@ -8904,6 +11464,151 @@
       ]
     },
     {
+      "id": "CVE-2026-26321",
+      "description": "OpenClaw has a local file disclosure via sendMediaFeishu in Feishu extension",
+      "severity": "HIGH",
+      "cvss": 7.5,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-19T23:16:25.180",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.1425,
+      "verified_by": "",
+      "how_introduced": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d directly introduced the vulnerable Feishu media pipeline: it added `sendMediaFeishu` that trusted attacker-controlled `mediaUrl` values as local paths and read them with `fs.readFileSync`, and it wired that function into the outbound adapter/media capability so the flaw was reachable immediately.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "UNLIKELY",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "b5ab92eef4e4f6099c98817e0917c99ec9e03045",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        },
+        {
+          "sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/26xxx/CVE-2026-26321.json",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14",
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-8jpq-5h99-ff5r",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-26321"
+      ],
+      "ai_contribution": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d directly introduced the vulnerable Feishu media pipeline: it added `sendMediaFeishu` that trusted attacker-controlled `mediaUrl` values as local paths and read them with `fs.readFileSync`, and it wired that function into the outbound adapter/media capability so the flaw was reachable immediately."
+    },
+    {
+      "id": "CVE-2026-24131",
+      "description": "pnpm has Path Traversal via arbitrary file permission modification",
+      "severity": "MEDIUM",
+      "cvss": 6.7,
+      "cwes": [
+        "CWE-22",
+        "CWE-732"
+      ],
+      "ecosystem": "",
+      "published": "2026-01-26T22:15:56.830",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.135,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "89a2c4ec38735945ccc7a208221e696fae655e3f",
+          "repo_url": "https://github.com/pnpm/pnpm",
+          "source": "osv"
+        },
+        {
+          "sha": "17432ad5bbed5c2e77255ca6d56a1449bbcfd943",
+          "repo_url": "https://github.com/pnpm/pnpm",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/24xxx/CVE-2026-24131.json",
+        "https://github.com/pnpm/pnpm/releases/tag/v10.28.2",
+        "https://github.com/pnpm/pnpm/security/advisories/GHSA-v253-rj99-jwpq",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-24131"
+      ]
+    },
+    {
+      "id": "GHSA-5hxf-c7j4-279c",
+      "description": "Tina: Path Traversal in Media Upload Handle",
+      "severity": "HIGH",
+      "cvss": 7.4,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-12T18:32:38Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": null,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.1215,
+      "verified_by": "",
+      "how_introduced": "",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "c2517c295fb7b1d2b05923e5176be7f3131b4381",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2b04d1df1117139811d03b089f6e39abaec86da1",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2738749bac08c02214fdf208f96bbcc4906ef442",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "dfb4ce8da7b82b638337109cc7859125e112a0a9",
+          "repo_url": "https://github.com/tinacms/tinacms",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/tinacms/tinacms/security/advisories/GHSA-5hxf-c7j4-279c",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-28791"
+      ]
+    },
+    {
       "id": "CVE-2025-11445",
       "description": "A vulnerability was detected in Kilo Code up to 4.86.0. Affected is the function ClineProvider of the file src/core/webview/ClineProvider.ts of the component Prompt Handler. Performing manipulation results in injection. The attack can be initiated remotely. The exploit is now public and may be used. Applying a patch is the recommended action to fix this issue.",
       "severity": "MEDIUM",
@@ -8987,6 +11692,143 @@
         "https://github.com/Zie619/n8n-workflows/issues/48"
       ],
       "ai_contribution": "Yes. The AI-authored commit ff958e486e1f8de4f7fd43c70ef357b8d6eaf433 created api_server.py and introduced `download_workflow` using attacker-controlled `filename` in `os.path.join(\"workflows\", filename)` with no validation or canonicalization. A later human refactor preserved that unsafe path construction, but the vulnerable design originated in the Claude Code-generated commit."
+    },
+    {
+      "id": "CVE-2026-24762",
+      "description": "RustFS Logs Sensitive Credentials in Plaintext",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-532"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-03T16:16:14.057",
+      "ai_tools": [
+        "github_copilot"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "signal_note": "Detected github_copilot (author_email signal on sub-commit b27bff3b268b), but that sub-commit did not modify the vulnerable file. Tool inferred from the same PR — see ai_contribution for the investigator's causal analysis.",
+      "languages": [
+        "Rust",
+        "Shell"
+      ],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The confirmed introducer, eb33e82b56ed11fd12bb39416359d8d60737dc7a, was AI-assisted (Copilot co-author) and directly added the vulnerable startup error logging plus the new rustfs_credentials::Credentials type with an unsafe derived Debug implementation; commit 2108c4ad later replaced that with masked formatting and a non-credential error type.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "2ee81496b06f02b94c5e06f58a5beab592e60a91",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e377c7e7f9900da57757cc8d73b2ccdbc4496979",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2108c4ad2810418ba418ea67e75615fe6048ed46",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "16160b7b84f757392b173986188872f3a9cf412a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "1c085590cac220764d010615f933153ff941d444",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "022e3dfc21d9bcae45598859fbad735e24f6d978",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ab84da24ef4f2d66852b480a88da960799e94d42",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "26c0230e8fdc4a6ae6fa004ffe1a1f89d64b9400",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8edb1affc0af265064b2e220330b7bc861ae25d3",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "74759b6e99b528fd4d849601ecf5c63141cba8a1",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "db29c0cae284c70216cba391c3b9db3ec0c1ed50",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "d251b9fb357e668b8537de350593e0c5b28427e5",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "173dad27d1ea5f98774aac2abe7e62085688287a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "461ba3aeba19d7ab740fbb7c64087a27107f6264",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "43bf8466334e716d05f003c493e18bb830c75fa9",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "51e8a4820f9f38433c9e2728a05c064f81e24d0d",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4890fb25c12b774b67afb2eba1bdc21da8c8034d",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "65de487eba3c9e2d57c2541087060fe08c30dc9a",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e5284a85ed9ffa4ee83105d6ac318cf87fc5d34b",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "db5e72e475b6a86361f1f625224cf64ed4985a95",
+          "repo_url": "https://github.com/rustfs/rustfs",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/24xxx/CVE-2026-24762.json",
+        "https://github.com/rustfs/rustfs/security/advisories/GHSA-r54g-49rx-98cr",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-24762"
+      ],
+      "ai_contribution": "Yes. The confirmed introducer, eb33e82b56ed11fd12bb39416359d8d60737dc7a, was AI-assisted (Copilot co-author) and directly added the vulnerable startup error logging plus the new rustfs_credentials::Credentials type with an unsafe derived Debug implementation; commit 2108c4ad later replaced that with masked formatting and a non-credential error type."
     },
     {
       "id": "CVE-2026-27002",
@@ -9157,6 +11999,82 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32247"
       ],
       "ai_contribution": "Yes. The original node-search flaw was introduced earlier by a human-authored commit, but AI-assisted commit 5fe2f588a6df75a779b426b664c3cf7e3fbe6b1c (co-authored by ellipsis-dev[bot]) extended the same unsafe node_label interpolation into edge-search filters and kept the flawed design of concatenating label filters into Cypher instead of validating them. That made AI-assisted code part of the causal chain for this CVE."
+    },
+    {
+      "id": "CVE-2026-4269",
+      "description": "A missing S3 ownership verification in the Bedrock AgentCore Starter Toolkit before version v0.1.13 may allow a remote actor to inject code during the build process, leading to code execution in the AgentCore Runtime. This issue only affects users of the Bedrock AgentCore Starter Toolkit before version v0.1.13 who build or have built the Toolkit after September 24, 2025. Any users on a version >=v0.1.13, and any users on previous versions who built the toolkit before September 24, 2025 are not a",
+      "severity": "MEDIUM",
+      "cvss": 5.8,
+      "cwes": [
+        "CWE-340",
+        "CWE-283"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-16T18:16:11.007",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "signal_note": "Detected claude_code (co_author_trailer signal on sub-commit 31367f817e90), but that commit was ruled unrelated to the vulnerability. Tool inferred from the same PR — see ai_contribution for the investigator's causal analysis.",
+      "languages": [],
+      "confidence": 0.0,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-assisted code did contribute: commit a471b116a232d6566e240b8aba565b68bb53956a (marked \"Assisted by Amazon Q Developer\") introduced the current CodeBuild S3 IAM policy without the ownership guard that the fix later added (`s3:ResourceAccount`). Non-AI commits also introduced missing `ExpectedBucketOwner` checks in the S3 client paths, but AI-assisted code was part of the causal chain for the CVE.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [],
+      "fix_commits": [
+        {
+          "sha": "225dd86f756953fded4f2a13e7e13980b7830fab",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "64656b6cfe84ff53d891e65144545877dbe86d20",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba337db31d0fc91731157547946ec7e6e62608a4",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "32853774ba2f37ba00a5c3390bf9be8d09845584",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "7a7c65f8f6fcb7650509752667e9ebe5f88f21ff",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ef22d20c7c6c5bea091f86551042cfd906fcd632",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e0673862459ed0de467148bbdb5e0bbb72ce782c",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "887e23b8c729705fea47d03695fd4fe5a877573d",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3e9b930a3540564003739715de33352b4725c95b",
+          "repo_url": "https://github.com/aws/bedrock-agentcore-starter-toolkit",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "AI-assisted code did contribute: commit a471b116a232d6566e240b8aba565b68bb53956a (marked \"Assisted by Amazon Q Developer\") introduced the current CodeBuild S3 IAM policy without the ownership guard that the fix later added (`s3:ResourceAccount`). Non-AI commits also introduced missing `ExpectedBucketOwner` checks in the S3 client paths, but AI-assisted code was part of the causal chain for the CVE."
     }
   ]
 }
