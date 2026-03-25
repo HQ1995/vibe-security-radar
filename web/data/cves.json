@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-25T08:59:04.772322+00:00",
-  "total": 73,
+  "generated_at": "2026-03-25T09:14:18.497964+00:00",
+  "total": 74,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -26024,6 +26024,234 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-28509"
       ],
       "ai_contribution": "AI-authored code did contribute: Copilot-authored commit b634aa48dc27a8df7e7e853914071451db00a04c changed DebugDialog from plain-text rendering to ReactMarkdown with `rehypeRaw` but no sanitization, making chat message content render attacker-controlled raw HTML. The other two vulnerable `rehypeRaw` renderers were introduced by human-authored commits, so AI was part of the causal chain but not the sole source of the CVE."
+    },
+    {
+      "id": "CVE-2025-64443",
+      "description": "DNS Rebinding vulnerability present when running MCP Gateway in sse or streaming mode",
+      "severity": "HIGH",
+      "cvss": 7.3,
+      "cwes": [
+        "CWE-749"
+      ],
+      "ecosystem": "",
+      "published": "2025-12-03T18:15:46.670",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "Go"
+      ],
+      "confidence": 0.1425,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commit fe073985c8eb6e0c9317d2f198c07686f70ea06d added an auth-only design for SSE/streaming and unhid/documented `--transport` as protection against DNS rebinding, but it omitted the Origin-header validation that the later fix actually added. The original missing-Origin bug predated AI code, but the AI-generated change helped expose and normalize the vulnerable HTTP modes while leaving the flawed security model in place.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2b758ad53a4219524680dec7b0862d3192050650",
+          "author": "Sundeep Gottipati",
+          "date": "2025-09-17T19:09:31-07:00",
+          "message": "Add Dynamic Client Registration (DCR) OAuth support for MCP servers",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "pkg/gateway/config.go",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "Blame on `pkg/gateway/config.go` is drift from struct layout, not causation. This commit only added the `McpOAuthDcrEnabled bool` option in `Options`; it did not add or modify SSE/streaming listeners, authentication, or any Origin validation logic. The vulnerable code fixed in `pkg/gateway/transport.go` was introduced elsewhere.",
+                "confidence": 0.95,
+                "tool_calls_made": 109,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "d76f5b1833a1799b34949e171b35025edde23d33",
+          "author": "Jim Clark",
+          "date": "2025-10-20T12:18:00-07:00",
+          "message": "Add authentication for SSE and streaming gateway modes",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "pkg/gateway/transport.go",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNLIKELY",
+                "reasoning": "This AI-authored commit added bearer-token authentication and unhid/documented `--transport`, but it did not introduce the missing-Origin-check pattern that the later fix changed in `pkg/gateway/transport.go`; the insecure SSE/streaming handlers already existed long before it. Its auth middleware remained in place after the fix, which added `originSecurityHandler` on top. So it is relevant to AI contribution and exposure, but not the original BIC for the missing Origin validation itself.",
+                "confidence": 0.95,
+                "tool_calls_made": 109,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "f45f6c4011995545ff76eff3299b8c833ad6a91e",
+              "author_name": "Jim Clark",
+              "message": "Add tool-name-prefix feature flag and Server.Prefix field",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d76f5b1833a1799b34949e171b35025edde23d33",
+              "author_name": "Jim Clark",
+              "message": "Add authentication for SSE and streaming gateway modes",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7eb1932e5d35bbdd0c3cd8f775ab47fa01380c55",
+              "author_name": "Jim Clark",
+              "message": "Fix linter issues in authentication code",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "47647827cdcf972539a54b3e2375babb180dc3c8",
+              "author_name": "Jim Clark",
+              "message": "Refactor: Extract addRemoteOAuthServer method",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "07e8d5884a8577baa9e6544ec0cebcc91d357128",
+              "author_name": "Jim Clark",
+              "message": "remove extra files",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "299716e1e9beecc56b648881b15368e2c78232f7",
+              "author_name": "Jim Clark",
+              "message": "Switch authentication from Basic Auth to Bearer token",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4f4488a7393ceb5b08739737fe936a42018b55d8",
+              "author_name": "Jim Clark",
+              "message": "Remove query parameter authentication, use Bearer token only",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "8e22a10032368bcd7907a5b99c1da9a4f3f652b6",
+              "author_name": "Jim Clark",
+              "message": "update docs",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "55f34cf062fd204d2a32a0b1d2ee1794981d9ee9",
+          "repo_url": "https://github.com/docker/mcp-gateway",
+          "source": "osv"
+        },
+        {
+          "sha": "6b076b2479d8d1345c50c112119c62978d46858e",
+          "repo_url": "https://github.com/docker/mcp-gateway",
+          "source": "osv"
+        },
+        {
+          "sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d",
+          "repo_url": "https://github.com/docker/mcp-gateway",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2025/64xxx/CVE-2025-64443.json",
+        "https://github.com/docker/mcp-gateway/security/advisories/GHSA-46gc-mwh4-cc5r",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-64443"
+      ],
+      "ai_contribution": "Yes. AI-authored commit fe073985c8eb6e0c9317d2f198c07686f70ea06d added an auth-only design for SSE/streaming and unhid/documented `--transport` as protection against DNS rebinding, but it omitted the Origin-header validation that the later fix actually added. The original missing-Origin bug predated AI code, but the AI-generated change helped expose and normalize the vulnerable HTTP modes while leaving the flawed security model in place."
     },
     {
       "id": "CVE-2026-26321",
