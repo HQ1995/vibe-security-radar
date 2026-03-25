@@ -10,12 +10,14 @@ We scan public advisory databases (OSV, GitHub Advisory Database, NVD), trace ea
 
 ## Quick Start
 
+A full `--all` run clones ~10k repos and requires **2TB+ disk space**. For a quick test, use `--ecosystem` or `--cve-list` to analyze a smaller set.
+
 ```bash
 # 1. Set up
 cd cve-analyzer && uv sync
 export GITHUB_TOKEN="ghp_..."
 
-# 2. Run batch analysis
+# 2. Run batch analysis (full run needs ~2TB disk)
 uv run cve-analyzer batch --all --since 2025-05-01 --llm-verify
 
 # 3. Generate web data and preview
