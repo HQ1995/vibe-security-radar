@@ -164,7 +164,7 @@ def _build_bug_commit(
         "author": commit.author_name,
         "date": commit.authored_date,
         "message": _first_line(commit.message),
-        "ai_signals": [_build_signal_entry(sig) for sig in commit.ai_signals],
+        "ai_signals": [_build_signal_entry(sig) for sig in (bic.effective_signals() or bic.all_ai_signals() or commit.ai_signals)],
         "blamed_file": bic.blamed_file or "",
         "blame_confidence": bic.blame_confidence,
     }
@@ -429,8 +429,8 @@ def build_entry(
             fix_commit_source=fix_source_by_sha.get(bic.fix_commit_sha, ""),
         )
         for bic in result.bug_introducing_commits
-        if bic.commit.ai_signals
-        and (is_override or _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY"))
+        if (bic.effective_signals() or bic.all_ai_signals() or bic.commit.ai_signals)
+        and (is_override or result.ai_involved is True or _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY"))
     ]
 
     # Deduplicate by SHA (merge blamed_file strings)
@@ -462,10 +462,11 @@ def build_entry(
     bug_commits = deduped
 
     # ------------------------------------------------------------------
-    # 4. Filter lost signals
+    # 4. Filter lost signals (skip when ai_involved=True — investigator
+    #    confirmed AI involvement at CVE level, keep BICs for display)
     # ------------------------------------------------------------------
     pre_filter_count = len(bug_commits)
-    if not is_override:
+    if not is_override and result.ai_involved is not True:
         bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
     if pre_filter_count > 0 and not bug_commits:
         return None
