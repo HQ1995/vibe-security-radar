@@ -569,16 +569,19 @@ def build_entry(
         vulnerable_pattern = screening_vulnerable_pattern
 
     # ------------------------------------------------------------------
-    # Best verdict across all BICs
+    # Best verdict across all BICs (ai_involved=True overrides per-BIC)
     # ------------------------------------------------------------------
     best_verdict = ""
-    for bic in result.bug_introducing_commits:
-        v = _effective_verdict(bic)
-        if v == "CONFIRMED":
-            best_verdict = "CONFIRMED"
-            break
-        if v == "UNLIKELY" and best_verdict != "CONFIRMED":
-            best_verdict = "UNLIKELY"
+    if result.ai_involved is True:
+        best_verdict = "CONFIRMED"
+    else:
+        for bic in result.bug_introducing_commits:
+            v = _effective_verdict(bic)
+            if v == "CONFIRMED":
+                best_verdict = "CONFIRMED"
+                break
+            if v == "UNLIKELY" and best_verdict != "CONFIRMED":
+                best_verdict = "UNLIKELY"
 
     # ------------------------------------------------------------------
     # 11. Audit override
@@ -616,6 +619,31 @@ def build_entry(
                             "evidence": [],
                         }],
                     }
+
+    # ------------------------------------------------------------------
+    # 11b. ai_involved=True override: replace contradictory per-BIC verdicts
+    # ------------------------------------------------------------------
+    # When investigator says ai_involved=True but per-BIC verdicts are
+    # UNRELATED/UNLIKELY (cross-file reasoning bug), override the display
+    # verdict to match the CVE-level conclusion.
+    if result.ai_involved is True and result.ai_contribution:
+        for bc in bug_commits:
+            v = bc.get("verification", {})
+            if v and (v.get("verdict") or "").upper() in ("UNLIKELY", "UNRELATED"):
+                bc["verification"] = {
+                    "verdict": "CONFIRMED",
+                    "confidence": 0.8,
+                    "models": ["investigator-override"],
+                    "agent_verdicts": [{
+                        "model": "investigator-override",
+                        "verdict": "CONFIRMED",
+                        "reasoning": result.ai_contribution,
+                        "confidence": 0.8,
+                        "tool_calls_made": 0,
+                        "steps_completed": ["ai_involved_override"],
+                        "evidence": [],
+                    }],
+                }
 
     # ------------------------------------------------------------------
     # 12. Output dict

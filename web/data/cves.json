@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-25T09:14:18.497964+00:00",
+  "generated_at": "2026-03-25T19:04:19.643607+00:00",
   "total": 74,
   "cves": [
     {
@@ -86,19 +86,21 @@
           "fix_commit_sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "613ce9c4 touched auth.js, but its diff only changed logging from stdout to stderr inside openBrowser() and nearby OAuth functions. Blame on the pre-fix file shows the dangerous lines remained attributed to e08547bc: the function definition, command selection, and `exec(`${command} \"${url}\"`, ...)` line all come from e08547bc, while 613ce9c4 only owns log-message lines such as `console.error('📋 Please manually open this URL...')`. It preserved the vulnerability but did not introduce the command-injection primitive or the attacker-controlled data flow.",
-                "confidence": 0.95,
-                "tool_calls_made": 41,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code directly introduced the vulnerable command-execution path. Commit e08547bcdb42aaa86190c6e2dfc64159fcd3a146, generated with Claude Code, created auth.js with openBrowser() using child_process.exec(`${command} \"${url}\"`) and the OAuth flow that passed a network-derived oauth_token into that URL; later AI-authored commit 613ce9c4e952edc98b57e7d9be53df70bf07e65d only changed logging and did not introduce the weakness.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -202,19 +204,21 @@
           "fix_commit_sha": "eb398971bfb43c38db3e04528b68ac9a7ce509bc",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "Its `src/array.c` diff only changes `mrb_ary_to_s` from `mrb_inspect_recursive_p()` to `MRB_RECURSIVE_UNARY_P(...)`. It does not touch `sort_cmp`, `heapify`, `insertion_sort`, or `mrb_ary_sort_bang`, so it has no causal connection to the use-after-free in sorting.",
-                "confidence": 0.95,
-                "tool_calls_made": 43,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code in cf8faed585e14ab57cc390173d1b571aee438390 rewrote sort_cmp and left only a pointer-equality modification check (`RARRAY_PTR(ary) != p`), removing the earlier size-based guard and directly writing the lines later fixed by eb398971. The original stale-pointer design came from an earlier human commit, but the AI-assisted reimplementation/regression materially contributed to the vulnerable state that shipped.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -324,19 +328,21 @@
           "fix_commit_sha": "e50f15c1c6e131fa7934355eb02b8173b13df415",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit did add another way for `fail_pos` to come from a 3-byte `OP_JMP` (`tmp = genjmp(s, OP_JMP, *fail_pos)` in the known-array-length mismatch fast path), so it broadened exposure to the same bad assumption. But it did not introduce the unsafe optimization itself, and the project was already vulnerable after 2b72 because the earlier pin-operator code from 1de634 could already produce the same non-`OP_JMPNOT` fail link. So bbd5 is connected contextually, but it is not the commit that introduced the CVE fixed by e50f15.",
-                "confidence": 0.95,
-                "tool_calls_made": 57,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-coauthored commit 2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70 directly introduced the unsafe JMPNOT-to-JMPIF optimization by writing `s->iseq[fail_pos - 2] = OP_JMPIF` without verifying that the preceding instruction was actually `OP_JMPNOT`. AI-coauthored commit 1de6340f1bc81564274890660f66444e48d660b0 also helped create the exploit path by making undefined pinned variables compile to a 3-byte unconditional `OP_JMP`, the exact non-JMPNOT case called out by the fix message.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -2568,19 +2574,21 @@
           "fix_commit_sha": "aab0bda75ea9dd27aa37d0d8524d7cf41b3c4a9a",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This earlier refactor migrated token management to `.env`-only configuration, but it did not add any code that wrote untrusted values back into `.env`; `setUserTokens()` remained memory-only and refresh logic merely instructed the user to update `.env` manually. The security fix did not reverse the `.env`-based design, only the unsafe write implementation added later. So this commit is architectural background, not the commit that introduced the injection sink.",
-                "confidence": 0.95,
-                "tool_calls_made": 54,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Claude-authored commit 4c9c826c6fc8b64a20e948cb46fefdda42d5244d introduced the unsafe `updateEnvFile()` helper and wired it into token-setting paths, causing caller-controlled token strings to be written directly into `.env` via string interpolation. Claude also co-authored 8c1989e36ad2950fcf4c8f9f95027ebf487e0f61, which rewrote the same sink to add quotes but still left values unescaped, so AI-authored/AI-assisted code was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -2800,19 +2808,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Screening flagged this commit because it edits the core sharding logic, but the exact changes here are mitigation work: random shard selection, shard retry, and `bump_shard_count()` after the system already moved toward pre-sharded buckets. The hot-partition vulnerability already existed in the older entity-key bucket design. Although later follow-up commit `e67d011...` refines this logic, this commit does not introduce the original single-partition weakness described by the CVE.",
-                "confidence": 0.7,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -2838,19 +2848,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit is a docs/docstring update. In code, it only expands comments and docstrings around pre-shard helpers; it does not change bucket keys, sharding behavior, or DynamoDB write distribution. The blame hits are from documentation churn in the same files, not from vulnerability-introducing logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -2914,19 +2926,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This PR-level commit is a rename/refactor from `FailureMode` to `OnUnavailable`. It predates the sharding work entirely and does not touch bucket partitioning, `wcu`, shard counts, or any hot-partition mitigation logic. Its presence in blame is coincidental file overlap.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -2989,19 +3003,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit adds speculative `UpdateItem` fast-path writes, but it predates sharding and still operates on the pre-existing bucket layout. There is no per-shard bucket PK, no `wcu` infrastructure limit, and no shard-doubling logic here; the hot-partition risk already existed because buckets were still keyed by entity. It changed performance characteristics, not the vulnerable partitioning design.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3027,19 +3043,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This is the main architectural mitigation commit, not the introducer. It replaces entity-key bucket access with per-`(entity, resource, shard)` bucket PKs, adds `shard_count`, GSI3 bucket discovery, and auto-injected `wcu` tracking explicitly for hot-partition mitigation. Later review fixes adjusted the implementation details, but this commit moves the code away from the vulnerable single-partition design rather than toward it.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3065,19 +3083,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Screening flagged this because it adds proactive sharding and shard propagation in the aggregator, but those are follow-on mitigation mechanisms after pre-sharded buckets already exist. The CVE’s root cause is older: storing all of an entity’s buckets under one DynamoDB partition key. Even though `481ce44...` later fixes review issues in this logic, this commit is still part of the remediation path, not the original vulnerability introduction.",
-                "confidence": 0.7,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3103,19 +3123,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only adds `WCU_*` schema constants used by the sharding mitigation. It does not change how bucket items are keyed or cause multiple resources for an entity to land on a single DynamoDB partition. The vulnerable design predates these constants.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3147,19 +3169,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit implements composite LIMIT config items, not bucket partitioning. Its schema changes concern stored configuration records (`l_*` attributes), whereas the CVE is about bucket item placement and write hot spots in DynamoDB. There is no causal connection to the hot-partition DoS issue.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3185,19 +3209,21 @@
           "fix_commit_sha": "481ce44d818d66e31d8837bc48519660ce4c267f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit adds helper builders such as `pk_bucket()`, `sk_state()`, and GSI3 helpers for the new pre-sharded bucket schema. Those helpers are part of the fix architecture that removes the entity-key hot spot; by themselves they do not introduce the vulnerable one-partition-per-entity design. The actual vulnerable pattern existed before these helpers were created.",
-                "confidence": 0.95,
-                "tool_calls_made": 145,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted commits authored the original bucket schema that stored all of an entity’s buckets on a single DynamoDB partition key, and later reimplemented that same design in the composite-bucket rewrite. Those AI-authored commits are the root cause of the hot-partition DoS condition; the later Feb. 21 sharding commits were mitigation work, not the original introducers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -3754,19 +3780,21 @@
           "fix_commit_sha": "3cbcba10cf30c2ffb898f0d8c7dfb929f15f8930",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced the community Feishu plugin, but `extensions/feishu/src/monitor.ts` only supported WebSocket mode and explicitly logged `webhook mode not implemented in monitor, use HTTP server directly`. It did not create an HTTP server, did not call `Lark.adaptDefault`, and did not add any webhook body parsing path. The screening hypothesis does not hold for this commit because the vulnerable webhook handler simply did not exist yet.",
-                "confidence": 0.95,
-                "tool_calls_made": 89,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code contributed via commit 5c2cb6c591e4b63c2df0549ad2202403256e2a96, which added Feishu webhook mode and bound `Lark.adaptDefault(...)` directly to an HTTP server with no request-body size or upload-time guard. That AI-authored change was part of the vulnerable webhook surface, even though several other non-AI commits independently introduced similar boundedness flaws in other webhook handlers.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -4883,19 +4911,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "In `src/security/path.rs`, this commit adds path-security helpers such as `revalidate_path`, `check_hardlink_write`, and stronger symlink handling. Those changes concern workspace filesystem escapes, not webhook authentication or trust of caller-supplied identities. There is no causal connection between this path-validation hardening and the webhook allowlist trusting `payload.sender`.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -4966,19 +4996,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit created `src/tools/filesystem.rs` and the shell tool. Its added code is limited to read/write/list/edit filesystem operations and contains no webhook channel, sender identity, chat identity, or allowlist logic for inbound webhooks. The blame linkage comes from unrelated filesystem changes bundled into the fix release, not from the introduction of CVE-2026-32231.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -5004,19 +5036,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "In `src/tools/filesystem.rs`, this commit mainly renamed `PicoError` to `ZeptoError` and touched unrelated platform/container/channel code. It did not add or modify `src/channels/webhook.rs`, and repo searches at this commit show no webhook-identity patterns relevant to the CVE. Its file overlap is incidental to the multi-issue fix commit.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -5042,19 +5076,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced `src/config/validate.rs`, a config-check command with unknown-field detection and generic security warnings such as empty allowlists. It did not create or wire the webhook channel, did not define `sender`/`chat_id` handling, and did not cause the allowlist to trust payload-supplied identity. The March 12 fix’s `config/validate.rs` changes are about email and Telegram warnings, not the webhook identity bug.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -5346,19 +5382,21 @@
           "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit created Android `device_shell()` in `src/tools/android/actions.rs`, and the fix commit touched that file only for a different advisory (GHSA-hhjv-jq77-cmvx, the Android `rm` flag-permutation bypass). GHSA-5wp8-q9mx-8jx8 is about `src/security/shell.rs` allowlist/blocklist behavior, and 8f1c1db neither added nor modified that code. The screening hypothesis does not hold for this candidate because it belongs to a separate vulnerability bundled into the same fix commit.",
-                "confidence": 0.95,
-                "tool_calls_made": 60,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -5690,19 +5728,21 @@
           "fix_commit_sha": "539689a2f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit changed gateway audit behavior for trusted-proxy auth (`if (bind !== \"loopback\" && !hasSharedSecret && auth.mode !== \"trusted-proxy\")`) and other auth findings. The `gateway.tools.allow` warning added for this CVE was introduced later by 539689a2f, and blame on the relevant `audit.ts` lines points to 539689a2f rather than 1fb52b4d7bce. It did not introduce either the HTTP `/tools/invoke` escalation or the ACP auto-approval logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad reimplemented ACP permission handling with a name-based dangerous-tool check that still auto-approved all other identified tools; later fixes (bb1c3dfe1 and 153a7644e) had to tighten that logic because it remained vulnerable. The original gateway exposure and the original ACP auto-approval bug were human-authored, but AI code was part of the causal chain for the ACP portion of this CVE.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -6379,19 +6419,21 @@
           "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit is a Docker/stdin usability fix, not an OAuth-security change. Its `src/ha_mcp/__main__.py` diff only normalizes log strings around already-existing `OAuthProxyClient` code and adds stdin checks; it does not introduce `claims[\"ha_url\"]`, `base_url=ha_url`, the consent-form `ha_url` field, or `_validate_ha_credentials()`. The screening hypothesis is therefore incorrect for this commit.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -6480,19 +6522,21 @@
           "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit rewrote token storage from Fernet encryption to base64 JSON and did add fresh lines such as `\"ha_url\": ha_url` in `_encode_credentials()`, but it did not introduce the CVE's error oracle. The exploitable path was already present since 39806871c: the consent form already accepted attacker-controlled `ha_url`, `_validate_ha_credentials()` already performed the server-side request, and `OAuthProxyClient` already trusted `ha_url` from claims. It preserved the flawed design, but it did not newly introduce the reconnaissance behavior described in GHSA-fmfg-9g7c-3vq7.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -6570,19 +6614,21 @@
           "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit added auto-detection of `MCP_BASE_URL` and OAuth encryption-key persistence. In `src/ha_mcp/auth/provider.py` the changed lines are about `_get_base_url(request)` and redirect URL construction; it does not add the attacker-controlled `ha_url` input, the `_validate_ha_credentials()` network probe, or any new trust boundary around Home Assistant URLs. Any blame on nearby redirect lines is just file-overlap, not causal responsibility for the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 61,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -6846,19 +6892,21 @@
           "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit added extra regexes to `src/security/shell.rs`, including patterns like `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, and related host-shell blocklist entries. Those lines are part of the separate GHSA-5wp8-q9mx-8jx8 fixes in `shell.rs`; they are not in the Android `device_shell()` path, which uses its own independent blocklist in `src/tools/android/actions.rs`. Even if the screening hypothesis is valid for that other advisory, it did not introduce the `rm` argument-permutation bypass described by GHSA-hhjv-jq77-cmvx.",
-                "confidence": 0.95,
-                "tool_calls_made": 34,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -6884,19 +6932,21 @@
           "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit modified `src/security/shell.rs` to add `ShellAllowlistMode` and first-token allowlist enforcement in `ShellSecurityConfig`. The Android CVE is in `src/tools/android/actions.rs::device_shell()`, and repository search shows the Android tool does not call `ShellSecurityConfig` or `validate_command`. The fix commit bundled multiple advisories, but this commit is tied to the separate shell allowlist/blocklist bypass advisory, not the Android `rm` flag-permutation bug.",
-                "confidence": 0.95,
-                "tool_calls_made": 34,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -7168,19 +7218,21 @@
           "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only refactored PayPal SDK usage and order creation code. Its diff does not touch the /get-patch token-consumption logic, and blame on the vulnerable pre-fix lines attributes that hunk to earlier commits (mostly 5e5a80b5, plus older ancestry), not to 45b69f6. It was blamed because it touched the file, not because it introduced the race.",
-                "confidence": 0.95,
-                "tool_calls_made": 35,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 57b7634391959dbbdb39b387ac4dc68157cd58a1 introduced the single-use token logic as a non-atomic SELECT/check/UPDATE sequence in /get-patch, creating the TOCTOU race that the fix replaced with one atomic UPDATE ... AND token_used_at IS NULL. A later human commit (5e5a80b5ffd0b6fccf7bdc2d8793e8b01cb83844) refactored the route but preserved the same vulnerable flow.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -7206,19 +7258,21 @@
           "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This initial commit created /get-patch, but its implementation only did SELECT * FROM purchases ... and then returned the decrypted patch; it had no token_used_at column, no already-used check, and no UPDATE to consume the token. That means the screening hypothesis is incorrect: c139 did not introduce the non-atomic check-then-act flow fixed in fdf67a6. It introduced a more permissive reusable-token design, but not the specific race condition this CVE fix addresses.",
-                "confidence": 0.95,
-                "tool_calls_made": 35,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 57b7634391959dbbdb39b387ac4dc68157cd58a1 introduced the single-use token logic as a non-atomic SELECT/check/UPDATE sequence in /get-patch, creating the TOCTOU race that the fix replaced with one atomic UPDATE ... AND token_used_at IS NULL. A later human commit (5e5a80b5ffd0b6fccf7bdc2d8793e8b01cb83844) refactored the route but preserved the same vulnerable flow.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8621,19 +8675,21 @@
           "fix_commit_sha": "c9246559994f5006390c7665825e3bbd60370bb6",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit only added a null-check guard for the server property (`if (! $this->server)`) to prevent TypeErrors. The fix adds `isPasswordHiddenForMember` logic to hide passwords from members, which is added AFTER the mount() method's existing code. The password properties (`$clickhouseAdminPassword`) were introduced earlier by commit 7fb1a1fc75 (non-AI, 2024). This commit didn't introduce or modify any code related to password visibility or member access control; it only dealt with null safety.",
-                "confidence": 0.95,
-                "tool_calls_made": 45,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code (Claude Code) directly contributed to the vulnerability in multiple ways: (1) f8146f5a59 added a debug toggle feature to deployment views that exposed debug logs (potentially containing private keys) to all team members without any role-based access check; (2) f152ec00ad deliberately weakened an authorization check from 'update' to 'view' permission for loadStorageOnServer(), allowing read-only members to access server file contents; (3) b878dc8102 introduced an API middleware authorization check with a flawed `(int)` cast on team_id that could be bypassed when team_id was null/0; (4) f77ad4cbd9 migrated Storage/Form.php to use explicit public properties for `$key` and `$secret` without adding member access controls.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8747,19 +8803,21 @@
           "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit created CloudInitScriptForm.php WITH proper authorization checks already in place ($this->authorize('update', $cloudInitScript) and $this->authorize('create', CloudInitScript::class)). The fix only wraps the existing code in try-catch for better error handling. This commit actually implemented security correctly; it did not introduce the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8791,19 +8849,21 @@
           "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit added cloud-init script support to ByHetzner.php. The mount() method already contained $this->authorize('viewAny', CloudProviderToken::class) from the original file. The fix only adds try-catch wrapping around the existing authorize call. The commit also includes $this->authorize('create', CloudInitScript::class) in the submit method. This commit did not remove or omit any authorization checks.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8835,19 +8895,21 @@
           "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit only fixed the redirect behavior for the Hetzner server creation in the onboarding flow (adding from_onboarding flag and wire:navigate redirect). It did not modify any authorization logic, remove security checks, or create any new endpoints. The authorize call in mount() was untouched. Completely unrelated to the authorization vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8879,19 +8941,21 @@
           "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit actually ADDED authorization to Storage/Show.php ($this->authorize('view', $this->storage)) that was previously missing. The fix commit only wraps this in a try-catch with a redirect on AuthorizationException. This commit improved security rather than introducing the vulnerability. The S3 storage policy authorization was a security enhancement.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -8961,19 +9025,21 @@
           "fix_commit_sha": "86b05b902aedbbb074e73bfe233b3ed006f19b39",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "claude-opus-4-6"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "claude-opus-4-6",
-                "verdict": "UNLIKELY",
-                "reasoning": "This AI-authored commit only refactored the CloudProviderTokensController to extract token validation into a reusable method (validateProviderToken). It did not introduce new endpoints or remove any existing authorization checks. The missing authorize() calls were already absent from commit 62c394d3a1db. This was a pure code cleanup refactor.",
-                "confidence": 0.95,
-                "tool_calls_made": 55,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored commit 62c394d3a1db (Claude Code) created CloudProviderTokensController and HetznerController API endpoints without including `$this->authorize()` calls for CRUD operations (show, store, update, destroy, createServer). The fix adds these missing authorization checks. While the policies were also separately disabled (by non-AI commits), the AI-authored controllers contributed to the vulnerability by omitting authorization enforcement as a defense-in-depth layer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -9285,19 +9351,21 @@
           "fix_commit_sha": "592df056abd59064f59b38ac86d6ba7f90ac39c5",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "The blamed `src/index.ts` lines are startup wrapper and exception-handling scaffolding plus the `main()` guard. They do not author the sensitive logging itself; the actual leakage comes from explicit logging statements in `src/server.ts` and the API implementation. The fix's `index.ts` changes are mainly about lifecycle/await behavior, so this blame hit is incidental.",
-                "confidence": 0.95,
-                "tool_calls_made": 81,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commits first added unconditional server/API debug logging, then added a dedicated `saveRequestLog()` routine that serialized prompts and request payloads into `jimeng-request-log-*.json`, and finally wired that logging client into the live API path. Those AI-generated commits are directly in the causal chain for the CWE-532 information exposure.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -9633,19 +9701,21 @@
           "fix_commit_sha": "4147ce21277b3566d02d3be789e5f7a490089db2",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This later AI-associated commit is a SOCKS5 proxy feature change that only adds `Socks5ProxyError` to `lib/core/errors.js` and `types/errors.d.ts`. The deduplication DoS fix does not modify those files at all; the relevant error used by the fix is `RequestAbortedError`, which predates this commit by years (`git log -S` traces it to `09059fb491b4158a25981eb5598262b43a18c6ae`). It neither wrote nor enabled the vulnerable response-buffering behavior in the deduplication handler, so the blame here is just overlap from unrelated advisory-version fixes.",
-                "confidence": 0.95,
-                "tool_calls_made": 74,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-attributed deduplicate feature commit `b902551e2a154fac2b3923d948c074a5640c01b0` (screening links it to Claude Code subcommit `92cef77edb4c`) introduced the `DeduplicationHandler`/`deduplicate` implementation that copied every response chunk into an in-memory array and replayed the full body with `Buffer.concat`, which is exactly the design reversed by the fix. The other AI-tagged candidate, `b12081c340b69716c75a9f73687748b46858fbda`, was unrelated SOCKS5 error-type work and did not contribute.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -10004,19 +10074,21 @@
           "fix_commit_sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This later AI-coauthored sync touched the same files, but its changes were limited to multi-account plumbing (adding accountId handling, switching doc-tool config lookup to the first configured account, and nearby lint/comment updates). It did not introduce the raw fetch(...) calls or the missing SSRF checks; pickaxe on the vulnerable strings still traces those back to 2267d58a. The few lines blamed to 5f6e1c19 are adjacent parameters/comments, not the vulnerable network-fetch logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 91,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The confirmed introducer is AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d, which rewrote the Feishu integration and directly added the unsafe raw URL fetches in both sendMediaFeishu and docx markdown-image handling, bypassing the project’s pre-existing shared media loaders that already enforced SSRF protections.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -10176,19 +10248,21 @@
           "fix_commit_sha": "4ed87a667263ed2d422b9d5d5a5d326e099f92c7",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Although this AI-tagged commit touched `extensions/feishu/src/bot.ts`, its diff does not add or change any allowlist logic; the only nearby change is a cosmetic rewrite of `if (senderResult.name)` to a one-line form, plus unrelated dedup/dynamic-agent work. Blame on the actual vulnerable authorization lines points to 2267d58 for the group sender check and to later non-AI commits for DM/command paths. So the screening hypothesis is not supported by the code: 5c2cb6 did not introduce the vulnerable matching behavior.",
-                "confidence": 0.95,
-                "tool_calls_made": 63,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d introduced the Feishu regression by replacing the prior ID-only Feishu allowlist logic with code that accepts `senderName` and by feeding mutable profile display names into sender allowlist checks. A later AI-tagged commit (5c2cb6c591e4b63c2df0549ad2202403256e2a96) only reformatted nearby code and did not materially affect authorization; later non-AI commits expanded the same flaw to command and DM authorization paths.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -10307,19 +10381,21 @@
           "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit created the initial `validate_path_in_workspace` module, but it only performed path normalization and workspace-prefix checks. The symlink logic that f50 fixes (`check_symlink_escape` with `current.exists()`) did not exist yet, and the write-side TOCTOU/hardlink issues were introduced by later tool integrations. So this foundational commit is adjacent to the bug, but it did not author the vulnerable patterns fixed for this CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -10345,19 +10421,21 @@
           "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The diff for this commit only adds audit logging around existing path-security failures; it does not change the symlink-validation algorithm itself. Blame on the vulnerable `current.exists()` path drifts here only because 46aa wrapped the old error path with `log_audit_event`; pickaxe shows `current.exists()` was introduced earlier in 7a2db595. This directly rebuts the screening suspicion that 46aa introduced the path bug.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -10414,19 +10492,21 @@
           "fix_commit_sha": "f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "In both `src/security/path.rs` and `src/tools/filesystem.rs`, this commit mainly renames `PicoError` to `ZeptoError` and preserves the existing logic. The blamed `tokio::fs::write` and symlink-check code already existed before this change, and pickaxe traces them to older commits. This is line-blame drift, not bug introduction.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11169,19 +11249,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit is a Telegram allowlist/type-collision fix and does not touch workspace path validation or filesystem boundary enforcement. Its blame association comes from unrelated Telegram hardening that was bundled into bf004, not from the path-boundary vulnerability described in this CVE. There is no causal connection to symlink, TOCTOU, or hardlink bypasses.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11238,19 +11320,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds `deny_by_default` sender allowlist behavior for channels. It does not affect `src/security/path.rs`, filesystem write semantics, or any workspace path-boundary checks. Its appearance in blame is due to unrelated channel-auth changes that share the same advisory fix commit.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11276,19 +11360,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced hooks/plugins and the initial webhook channel/factory plumbing, but not the filesystem or path-boundary logic at issue here. bf004's changes in `webhook.rs` and `factory.rs` are about webhook authentication/identity hardening, not workspace escape prevention. There is no evidence this commit introduced symlink, TOCTOU, or hardlink boundary bypasses.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11320,19 +11406,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit added the WhatsApp Cloud channel. The bf004 changes touching `whatsapp_cloud.rs` are signature-verification/authentication hardening, unrelated to filesystem path validation or workspace-boundary bypasses. It has no causal role in this CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11358,19 +11446,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit replaces the WhatsApp bridge with WhatsApp Web support and updates CLI/channel plumbing. The lines later changed in bf004's `src/cli/channel.rs` are setup prompts for Telegram/webhook/WhatsApp auth, not path-validation logic. It is not part of the filesystem-boundary vulnerability chain.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11581,19 +11671,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This is the initial configuration-system commit. The bf004 edits in `src/config/types.rs`/`src/config/mod.rs` add channel-auth/signature settings and warnings, which are unrelated to workspace path checks and filesystem writes. No path-boundary bypass logic originates here.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11619,19 +11711,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds channel `deny_by_default` configuration. It does not touch `src/security/path.rs`, filesystem tools, or any write/read path validation flow involved in the CVE. Its blame association is incidental to unrelated config changes bundled in bf004.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11707,19 +11801,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds `zeptoclaw config check` diagnostics. The later changes in `src/config/validate.rs` are warnings about Telegram/email trust models, not filesystem path boundaries. It has no meaningful connection to the symlink/TOCTOU/hardlink vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 107,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Multiple AI-authored commits created and expanded the vulnerable path-boundary model: AI-assisted code added the raw filesystem write/edit sinks, then made them rely on one-shot workspace validation without revalidation/no-follow/hardlink protections, and later repeated the same validate-then-use pattern in PDF/DOCX/transcribe and diff-mode edit paths. Although the dangling-symlink bug itself traces to a non-AI commit, AI-authored code was a substantial part of the causal chain that made the CVE real and broad.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -11950,19 +12046,21 @@
           "fix_commit_sha": "325aa5d092f0a833aacb0137d66149d29ddd17fe",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only changed sponsor/documentation assets in `apps/content/.vitepress/theme/components/FullSponsors.vue`, specifically renaming sponsor image/link references. It never touched `packages/openapi/src/plugins/openapi-reference.ts` or any OpenAPI docs rendering logic, so it has no causal connection to the stored XSS in the OpenAPI Reference Plugin.",
-                "confidence": 0.95,
-                "tool_calls_made": 64,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 4f28b69506c28889c9a0a870875cc8055980ab89 added Swagger UI support and embedded `stringifyJSON(swaggerConfig)` directly into an inline `<script>` without HTML-safe escaping, which is the exact stored-XSS sink removed by the fix. Because that commit was authored by Copilot and directly introduced the unsafe rendering path, AI code materially contributed to the vulnerability.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -12915,19 +13013,21 @@
           "fix_commit_sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only changed `unsafe_imports()` to handle `ast.Import` nodes separately; the `ast.ImportFrom` logic and the `UNSAFE_IMPORTS` contents were unchanged. The bypass covered by the fix uses stdlib network-protocol constructors like `Global.create(\"smtplib\", \"SMTP\")`, and both `Global.run()` and `StackGlobal.run()` emit `ast.ImportFrom`, not `ast.Import`. So these modules were already unflagged before this commit and remained unflagged after it.",
-                "confidence": 0.95,
-                "tool_calls_made": 69,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code in 19e828d26b248a4a39fcee2643306a6cd78dbb76 materially contributed to the CVE: it expanded `UNSAFE_IMPORTS` with a new network-module section, but still omitted `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib`, the exact gap closed by the fix. The broader incomplete-blocklist design predates AI involvement, but this Claude-coauthored commit rewrote the relevant network coverage and left the stdlib network-protocol constructor bypass in place.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13049,19 +13149,21 @@
           "fix_commit_sha": "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This later AI-coauthored sync commit touched `stripBotMention()`, but its diff only reformats the guard from a multi-line `if (!mentions || mentions.length === 0) { return text; }` to a one-line equivalent. It does not introduce or change the unsafe `new RegExp(`@${mention.name}\\\\s*`, \"g\")` or `new RegExp(mention.key, \"g\")` expressions, which were already present from `2267d58`. So it is blame noise around the function, not the introducer of the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 42,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d introduced the vulnerable `stripBotMention()` implementation and immediately wired it into Feishu message parsing, passing attacker-controlled mention metadata directly into `new RegExp()` without escaping.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13104,19 +13206,21 @@
           "fix_commit_sha": "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only added targeted eslint/formatting adjustments in `extensions/feishu/src/bot.ts`, such as expanding one-line conditionals to block form and removing an unused import. The vulnerable regex construction remained unchanged across this commit, so it neither created nor enabled the regex injection/ReDoS issue. The unsafe pattern already existed in the earlier file introduced by `2267d58`.",
-                "confidence": 0.95,
-                "tool_calls_made": 42,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d introduced the vulnerable `stripBotMention()` implementation and immediately wired it into Feishu message parsing, passing attacker-controlled mention metadata directly into `new RegExp()` without escaping.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13281,19 +13385,21 @@
           "fix_commit_sha": "3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This AI-authored commit created `getMessageFeishu`/`FeishuMessageInfo` without preserving `chat_type`, but at that point there was no reaction-event path that used the helper for authorization-sensitive routing. The actual bypass was introduced later, when reaction support started synthesizing inbound events and explicitly treated missing reaction chat type as direct-message (`p2p`) context. The `types.ts` blame is also partly a move artifact from the fix, which relocated `FeishuMessageInfo` there.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13417,19 +13523,21 @@
           "fix_commit_sha": "da00ead65218f847f762dc998b125f28144f7624",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit replaced the Feishu SDK/plugin and added extensions/feishu/src/bot.ts, but that file contains Feishu message parsing and dispatch only; repository searches show no sessions_spawn, spawnSubagentDirect, or subagent-spawn logic in the Feishu extension. The vulnerable code fixed for this CVE lives in src/agents/tools/sessions-spawn-tool.ts / src/agents/subagent-spawn.ts, so this blame candidate is unrelated overlap from other fixes in the advisory release.",
-                "confidence": 0.95,
-                "tool_calls_made": 98,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13589,19 +13697,21 @@
           "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only added _frozen_importlib, _frozen_importlib_external, and _imp to the import-manipulation section. The parent state already lacked gc, and this commit did not create the file-reading section where linecache/difflib were later added. It is adjacent blame on the same list, but not the origin of the missing-module weakness.",
-                "confidence": 0.95,
-                "tool_calls_made": 98,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13710,19 +13820,21 @@
           "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit added inspect as an attribute-access bypass to UNSAFE_IMPORTS. gc was already absent before this change, and the file-reading gap for linecache/difflib lives in a different later section. So the screening hypothesis does not hold here: this was incremental hardening, not the introduction of the missing-module bug.",
-                "confidence": 0.95,
-                "tool_calls_made": 98,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13748,19 +13860,21 @@
           "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit expanded UNSAFE_IMPORTS with operator, asyncio, network, profiler, and package-management modules, but the three modules fixed in GHSA-r48f-3986-4f9c were already absent before it. It also did not create the later file-reading/enumeration subsection where linecache and difflib were inserted. It is related to blocklist growth generally, but not the specific introduction of this omission.",
-                "confidence": 0.95,
-                "tool_calls_made": 98,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -13935,19 +14049,21 @@
           "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only added platform to the file-reading/enumeration subsection. linecache and difflib were already missing from that subsection as created by 0c4558d950daf70e134090573450ddcedaf10400, so this is another nearby hardening change rather than the origin of the hole. It is relevant context, but not the BIC.",
-                "confidence": 0.95,
-                "tool_calls_made": 98,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -14445,19 +14561,21 @@
           "fix_commit_sha": "6b7c6ef5c3875c766893b881b40773cd5605bde3",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit authored the final blamed `prek run --show-diff-on-failure --color=always ${{ inputs.extra_args || inputs.extra-args }}` line, but it did not originate the vulnerability. The immediately earlier file state already contained the same unsafe shell interpolation as `... ${{ inputs.extra_args }}`, and `git log -S '${{ inputs.extra_args }}'` traces that pattern back to the initial commit. This commit mostly renamed the input to `extra-args` and preserved/backward-compatibly expanded an existing injection sink rather than introducing it.",
-                "confidence": 0.95,
-                "tool_calls_made": 34,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code did contribute: Copilot commit a7c5a005 directly introduced a new shell-injection path by interpolating `${{ inputs.prek-version }}` into bash. A later AI commit (346373c1) also preserved and expanded the already-existing unsafe `extra_args` sink, although that specific sink originated earlier in a non-AI commit.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -16745,19 +16863,21 @@
           "fix_commit_sha": "0ecaa191db150bbc1ce120b00821517a4404990f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only changed service/environment-variable parsing in bootstrap/helpers/parsers.php and related service files. Its diff contains no database-import logic, no shell-command construction, and no use of customLocation, s3Path, bucket, or restore commands. The parsers.php hunk in the rollup release is unrelated blame drift, not the source of the command-injection flaw.",
-                "confidence": 0.95,
-                "tool_calls_made": 62,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commits were part of the causal chain: 94560ea6c7a841840638e7c73a4b5d6da2afe713 (Claude Code) reimplemented S3-based database restore with unsafe shell interpolation of unvalidated bucket/path values, and fbdd8e5f03c75e3d899b82c48c6a88bf463e52da (Claude Code) re-authored the unsafe local server-file import branch using raw customLocation in a docker command. Another AI-authored commit, 56f32d0f87609d48c4f9f8d766c96c183bcd60f9, was unrelated.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -16916,19 +17036,21 @@
           "fix_commit_sha": "0b1c424b9271da54f2255738a6a8883a39fc01c5",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored commit added BuildDefinitionExtractors, including reading `secret_value` into `BuildDefinitionVariableValues`, but the same feature's formatter already masked build-definition secrets with `(before.IsSecret || after.IsSecret)`. The later fix `0b1c424` explicitly describes `SecretValue` as dead code and a latent risk, and there is no rendering/template path that uses it. So this commit did not introduce the generated-report disclosure covered by the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 122,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Copilot-authored commits directly introduced several report-leak paths: they created the azapi_resource / azapi_update_resource rendering templates, added the CompareJsonProperties helper that returned raw sensitive values, and wrote Variable Group diff logic that masked only one side of secret transitions. Human-authored mapper/helper commits also contributed, but AI code was part of the causal chain for the shipped vulnerability.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -20081,19 +20203,21 @@
           "fix_commit_sha": "0b1c424b9271da54f2255738a6a8883a39fc01c5",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This AI-authored commit was a security fix for issue 093: it replaced the prior exact-match sensitivity check with hierarchical checking and clearly reduced exposure for array/nested attributes. The later `5c94218` fix only closed remaining edge cases (root boolean sensitivity and single-segment array parents) that this mitigation did not cover. Because the underlying vulnerability already existed before this commit and this change was an incomplete improvement rather than the original introduction, it is unlikely to be the correct BIC for this CVE.",
-                "confidence": 0.7,
-                "tool_calls_made": 122,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. Copilot-authored commits directly introduced several report-leak paths: they created the azapi_resource / azapi_update_resource rendering templates, added the CompareJsonProperties helper that returned raw sensitive values, and wrote Variable Group diff logic that masked only one side of secret transitions. Human-authored mapper/helper commits also contributed, but AI code was part of the causal chain for the shipped vulnerability.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -20372,19 +20496,21 @@
           "fix_commit_sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds `spawnSubagentDirect()` and related session-spawn plumbing in `src/agents/subagent-spawn.ts`. It does not touch `web_search`, Gemini citations, redirect resolution, `fetchWithSsrFGuard`, or SSRF policy handling at all. The screening hypothesis does not hold up in the code: this is subagent/session orchestration, not outbound HTTP or citation URL processing.",
-                "confidence": 0.95,
-                "tool_calls_made": 97,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The initial Gemini grounding feature that introduced `resolveRedirectUrl()` and sent HEAD requests to citation URLs was commit `3a3c2da9168f93397eeb3109d521819e10dc44fd`, which is explicitly co-authored by Claude Opus 4.6. A later human-only commit (`5eb72ab769517e31d96140f1aa66bd1a47a40c2a`) kept that code path exploitable by moving it onto the SSRF guard while explicitly opting into `dangerouslyAllowPrivateNetwork` for attacker-controlled redirect targets.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -20427,19 +20553,21 @@
           "fix_commit_sha": "53d10f8688b467a9290990e86c496063158affa3",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "The `src/gateway/server.impl.ts` changes only add pre-restart deferral bookkeeping (`getActiveEmbeddedRunCount`, `getTotalPendingReplies`, `getTotalQueueSize`, `setPreRestartDeferralCheck`). There is no change to web search, redirect fetching, SSRF policies, or any URL-fetch path. Despite the screening note, this commit is about delaying SIGUSR1 restarts until queued work drains, not about network request authorization.",
-                "confidence": 0.95,
-                "tool_calls_made": 97,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The initial Gemini grounding feature that introduced `resolveRedirectUrl()` and sent HEAD requests to citation URLs was commit `3a3c2da9168f93397eeb3109d521819e10dc44fd`, which is explicitly co-authored by Claude Opus 4.6. A later human-only commit (`5eb72ab769517e31d96140f1aa66bd1a47a40c2a`) kept that code path exploitable by moving it onto the SSRF guard while explicitly opting into `dangerouslyAllowPrivateNetwork` for attacker-controlled redirect targets.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -20489,19 +20617,21 @@
           "fix_commit_sha": "f5c2be19105d2dd2429ce073dfb07c1a8806e03c",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit fixes a path traversal bug in `src/media/server.ts` by resolving the media path and enforcing that it stays under the media root. It does not touch `web_search`, Gemini grounding citations, redirect following, or SSRF guard policy. The overlap is purely incidental file ownership/blame noise, not causal responsibility for the citation-redirect SSRF.",
-                "confidence": 0.95,
-                "tool_calls_made": 97,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The initial Gemini grounding feature that introduced `resolveRedirectUrl()` and sent HEAD requests to citation URLs was commit `3a3c2da9168f93397eeb3109d521819e10dc44fd`, which is explicitly co-authored by Claude Opus 4.6. A later human-only commit (`5eb72ab769517e31d96140f1aa66bd1a47a40c2a`) kept that code path exploitable by moving it onto the SSRF guard while explicitly opting into `dangerouslyAllowPrivateNetwork` for attacker-controlled redirect targets.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -20793,19 +20923,21 @@
           "fix_commit_sha": "412fdb17b9b0138023eae0b32d2519ee6c547661",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "`977a1fb16944` created `src/php/var/var_export.ts`, but that code only renders functions as a `create_function(...)` string; it does not execute untrusted input or invoke `create_function` itself. The fix changes this file only as a follow-on to removing `create_function` and aligning with PHP 8.3 parity. So this file overlap is related context, not the RCE introduction itself.",
-                "confidence": 0.95,
-                "tool_calls_made": 110,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-coauthored TypeScript migration commits reimplemented and re-exported `create_function` without any sanitization, preserving the arbitrary-code-execution behavior in the modern TS codepath; the flagged AI typing commit `8fe98955814e` was not the direct introducer, but earlier AI-assisted migration commit `d1c3f9f64f23` and the squashed mainline commit `977a1fb16944` were part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -21691,19 +21823,21 @@
           "fix_commit_sha": "7baa6f0ef8a1e7ca602d7751fb3956e16e165f30",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit only bumps `our $VERSION` from 1.10 to 1.11 in lib/HTTP/Session2.pm and lib/HTTP/Session2/ServerStore.pm and adds a changelog entry. lib/HTTP/Session2.pm contains no session-id generation logic at all, and ServerStore’s calls to `HTTP::Session2::Random::generate_session_id()` were already present in f8a08a8. Blame flagged it because later fixes touched version/changelog lines, not because 1db812 wrote the weak RNG.",
-                "confidence": 0.95,
-                "tool_calls_made": 70,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI co-authored commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3, which is the first commit in this repo to add lib/HTTP/Session2/Random.pm with the weak rand()-based fallback and the session-store modules that call it. The later AI-flagged candidate commits were false positives: they changed docs/versioning or restored callers only after Random.pm had already been fixed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -21729,19 +21863,21 @@
           "fix_commit_sha": "7baa6f0ef8a1e7ca602d7751fb3956e16e165f30",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit restores ClientStore2 and related docs/tests after aa5b9a removed it. By this point, lib/HTTP/Session2/Random.pm already contains the fixed `Crypt::SysRandom::random_bytes(24)` implementation from 9cfde4d7e096, so the restored ClientStore2 calls a secure generator rather than reintroducing the rand()-based fallback. Its changes to lib/HTTP/Session2.pm are documentation/example text only, so it did not introduce or reintroduce the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 70,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI co-authored commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3, which is the first commit in this repo to add lib/HTTP/Session2/Random.pm with the weak rand()-based fallback and the session-store modules that call it. The later AI-flagged candidate commits were false positives: they changed docs/versioning or restored callers only after Random.pm had already been fixed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -21773,19 +21909,21 @@
           "fix_commit_sha": "7baa6f0ef8a1e7ca602d7751fb3956e16e165f30",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This commit edits lib/HTTP/Session2.pm documentation/examples and removes ClientStore/ClientStore2 files; it does not modify lib/HTTP/Session2/Random.pm, and there is no ServerStore logic change. The vulnerable rand()-based fallback remained unchanged from f8a08a8, and this commit actually removed some callers of `generate_session_id()` rather than introducing the weak generator. It is therefore adjacent to the affected package but not a bug-introducing commit for this CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 70,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI co-authored commit f8a08a8ca77a5ed61af1e2d24078ff62cc2685b3, which is the first commit in this repo to add lib/HTTP/Session2/Random.pm with the weak rand()-based fallback and the session-store modules that call it. The later AI-flagged candidate commits were false positives: they changed docs/versioning or restored callers only after Random.pm had already been fixed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -21903,19 +22041,21 @@
           "fix_commit_sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds Claude CLI credential import fallback in `src/providers/registry.rs` and related auth files. It postdates the Email feature and does not touch `src/channels/email_channel.rs`, email sender validation, or any inbound email identity handling. The screening hypothesis does not match the actual diff here.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22028,19 +22168,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This was a CLI refactor that split `main.rs` into `src/cli/*` modules and explicitly claimed no behavior change. It predates the Email channel and does not add or modify any email parsing, `allowed_senders`, or sender-authentication logic. Its appearance in blame is file-structure drift, not causal responsibility for the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22072,19 +22214,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only changes `src/cli/agent.rs` to improve provider failure messages. It has no connection to the Email channel, header parsing, or `allowed_senders` enforcement. There is no code path here that could introduce or enable header-only email sender spoofing.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22110,19 +22254,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced the generic `AgentLoop` framework, well before the Email channel existed. It does not add email ingestion, parse `From` headers, or define any sender allowlist behavior for email. The vulnerability comes from later email-specific trust decisions, not from this generic loop infrastructure.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22148,19 +22294,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This is a formatting-only `cargo fmt` commit. It does not introduce new logic and does not touch the Email channel implementation or sender validation semantics. Any blame attribution to this SHA is purely cosmetic drift.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22186,19 +22334,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds an OpenAI-compatible API endpoint and a `serve` CLI command. The touched `src/cli/mod.rs` lines are about command wiring for the API server, not email sender validation or email channel security. It neither created nor changed the vulnerable header-only allowlist logic.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22290,19 +22440,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit is primarily documentation-site work and assorted CLI/docs changes. Although it touched `src/cli/mod.rs` and `src/config/validate.rs`, it did not add Email channel code or any header-only sender checks. The vulnerable Email logic had already been introduced earlier in 51bc07.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22334,19 +22486,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds CLI commands for tool discovery. It changes `src/cli/mod.rs` for command registration only and does not involve email parsing, `allowed_senders`, or channel authentication. It is unrelated to this CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22372,19 +22526,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds the control-panel web UI, REST API, and related event wiring. Its `src/agent/loop.rs` changes are about panel events, not Email channel sender trust. It does not create or modify the header-only `From` allowlist behavior.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22462,19 +22618,21 @@
           "fix_commit_sha": "ec2743309478a52339d627a21849637a5836bb3f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This is the earlier panel/UI implementation of the same feature area as 2fe7f549. The modified `src/agent/loop.rs` lines are panel/event related and have no bearing on inbound email identity validation. It is not part of the causal chain for the Email spoofing issue.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22734,19 +22892,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit fixes a Telegram allowlist bug by introducing Telegram-specific newtypes and optional username matching. It concerns `src/channels/telegram.rs`, not the Email channel, and is a security improvement in a different channel. It does not introduce or enable header-only email sender trust.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22803,19 +22963,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds `deny_by_default` handling for existing channels, including Telegram, before the Email channel existed. It does not touch `src/channels/email_channel.rs` and does not create the design of matching email senders against the parsed `From` header. The CVE is about header trust, not empty-allowlist strict mode.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22841,19 +23003,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced webhook/discord support and factory wiring for those channels, not Email. It predates the Email channel entirely, and its `src/channels/factory.rs` diff only registers Discord and Webhook with their own configs. There is no email sender parsing or `allowed_senders` logic here.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22885,19 +23049,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds the WhatsApp Cloud channel implementation. That code handles Meta webhook payloads and phone-number allowlists, not IMAP/SMTP email headers. It is a different channel and not part of this Email sender-spoofing flaw.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -22923,19 +23089,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit replaces the old WhatsApp bridge with a WhatsApp Web implementation and updates CLI channel management accordingly. The touched `src/cli/channel.rs` lines are channel-list/setup UX for WhatsApp variants, not Email channel security. It does not introduce or modify the vulnerable email trust model.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23146,19 +23314,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This is the initial configuration-system commit, and its `src/config/types.rs` content only defined the original non-email channel configs. It predates Email support, so it could not have introduced `EmailConfig.allowed_senders` or the header-only Email trust model. The later vulnerable Email fields were added in 51bc07 instead.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23184,19 +23354,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds `deny_by_default` fields to pre-existing channel configs in `src/config/types.rs`; the diff covers Webhook, Telegram, Discord, Slack, WhatsApp, Feishu, MaixCam, QQ, and DingTalk, but not Email. Because Email support had not yet been added, this commit did not create the `allowed_senders` behavior or the `From`-header trust problem. At most it provided unrelated allowlist strict-mode scaffolding for other channels.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23222,19 +23394,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit hardens filesystem/path validation against symlink, TOCTOU, and hardlink issues. Its changes are confined to `src/security/*` and file tools, not email ingestion or sender validation. It has no connection to the Email spoofing vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23305,19 +23479,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit introduced filesystem and shell tools. It does not touch channel authentication, email parsing, or the Email channel at all. Its blamed-file overlap is incidental and unrelated to the CVE.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23343,19 +23519,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit adds containerized gateway support, Slack, and error-type renames. While it touched some shared infrastructure files, it did not introduce Email support or any `From`-header-based email allowlist logic. The vulnerability was introduced later with the dedicated Email feature commit.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -23696,19 +23874,21 @@
           "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit created `src/config/validate.rs` with generic unknown-field checks and a broad warning for empty `allow_from` lists. It predates Email support and does not mention `channels.email.allowed_senders` or the fact that Email sender checks trust only the parsed `From` header. The email-specific warning was added later in bf004a20.",
-                "confidence": 0.95,
-                "tool_calls_made": 94,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -24087,19 +24267,21 @@
           "fix_commit_sha": "0ae3560ba11846375812377299fe078d45cc3d48",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This Copilot-authored commit added `sseHandlerWithHeadSupport`, including an explicit `Access-Control-Allow-Origin: *` response for `HEAD /sse`, and switched serving to a custom `http.Server`. However, the underlying SSE transport was already present before this commit: 5a5a9518 had already introduced `NewMcpServerWithSseTransport` and exposed `server.NewSSEServer(...).Start(config.SseServerAddr)` with no host or origin validation at all. I therefore do not treat cd7caff as the original introducer of the CVE, though it did broaden the insecure surface by adding an extra unguarded HEAD path.",
-                "confidence": 0.7,
-                "tool_calls_made": 36,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Copilot-authored commit cd7caffb4aa568d07edc0d21bbd7dabd38ef7e2c did not originate the unguarded SSE transport, but it added a new `/sse` HEAD handler that explicitly returned `Access-Control-Allow-Origin: *` and continued serving the transport through an unguarded HTTP handler. So AI-authored code widened the browser-reachable attack surface, even though the core vulnerable SSE design was first introduced earlier by 5a5a9518c6776eeafa50d15797fd36a9703f0a57.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -24428,19 +24610,21 @@
           "fix_commit_sha": "424f7a0de089dce881e8bbecd220163a78e0295f",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.7,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "The blamed hunk in `cmd/qui/main.go` is just startup validation/logging for the new auth-disabled feature; the fix's new `NormalizeCORSAllowedOrigins()` call landed nearby, so blame drifted onto this commit. The actual arbitrary-origin CORS logic already existed earlier in `internal/api/server.go`, and the fix does not alter the auth-disabled code added here. That said, this commit did broaden CVE impact by adding a reverse-proxy/auth-disabled mode on top of the already-permissive CORS policy, which is why it still matters for the CVE-level AI-contribution question.",
-                "confidence": 0.7,
-                "tool_calls_made": 75,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-assisted commit f01101d6f24b0c5f4a15b858d87ecd1d7c4ab5e8 did not author the unsafe `AllowOriginFunc(...){ return true }` CORS policy, but it added the auth-disabled / reverse-proxy deployment mode without any accompanying CORS restriction, expanding the impact of the pre-existing arbitrary-origin trust for proxy-authenticated deployments. The original CORS bug itself was introduced earlier by human-authored commits.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -24953,19 +25137,21 @@
           "fix_commit_sha": "f662eac4863560e6171fcd212345e3fb724af685",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.4,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "I could not resolve this short SHA in the reachable repository history, and I found no separate security-relevant change beyond the verified service-account commits above. The only reachable edits around the blamed type files are 7eec/c1ea/f662, and the actual vulnerable behavior is in the service-account creation/auth/context changes rather than a standalone type-definition commit. Based on the available repository evidence, this candidate is not needed to explain the vulnerability.",
-                "confidence": 0.4,
-                "tool_calls_made": 149,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code directly contributed via commit 73b256487d74bbf36f7bef8e5a14f867c42844bf, which implemented service accounts as ordinary Grist users with API keys and no websocket/document-scope restriction. That design was later squashed into 7eec4e8d20c95e1feef0f4c6049607ef7f36b8f0, and a later human commit (f662eac4863560e6171fcd212345e3fb724af685) made the feature easier to use against docs/orgs by exposing service-account logins through the public API.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -25031,19 +25217,21 @@
           "fix_commit_sha": "43254e25c2bf551eb2d135398a07dfce25a95f8b",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit added the new confirm-email page and confirm-email API used for registration tokens. The page only fetches `/api/auth/confirm-email?token=...` and renders status messages, and the API it introduced merely activates `active=1` for a user referenced by `email_confirmation_token`; it does not perform profile email changes or decide whether a new email can be assigned to an account. Its blame is incidental because the supplied fix touched nearby auth UI code.",
-                "confidence": 0.95,
-                "tool_calls_made": 92,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-assisted commit 142f468495451755fa54f461aad01106ca281e1e reimplemented profile email changes as a direct database update with no ownership proof and, in the same change set, added email-based account lookup (`WHERE email = ? OR username = ?`) that selects the first duplicate row. Although the same design flaw originally existed in legacy Flask code, the AI-authored Next.js code recreated and materially contributed to the lower-ID/higher-ID email-takeover lockout path.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -25363,19 +25551,21 @@
           "fix_commit_sha": "8c3b6a713b3de767e1bdcc37ce831ecbce0212f3",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "In `packages/schemas/src/multiVariableText/propPanel.ts`, `2eff1734` rearranges DOM-string construction and type checks in the schema prop panel. Those edits are about the separate XSS-prone `innerHTML` area fixed in the same omnibus security patch, not about FlateDecode stream parsing or decoded-buffer growth. There is no connection from this file to `DecodeStream.ensureBuffer()` or memory exhaustion in PDF parsing.",
-                "confidence": 0.95,
-                "tool_calls_made": 68,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -25495,19 +25685,21 @@
           "fix_commit_sha": "8c3b6a713b3de767e1bdcc37ce831ecbce0212f3",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "The screening hypothesis is correct that `c51ee07d` added/kept an unsafe `para.innerHTML = ...` pattern in `packages/schemas/src/multiVariableText/propPanel.ts`, but that is the separate XSS issue fixed alongside this CVE, not the decompression-bomb flaw. This commit does not touch `packages/pdf-lib`, any stream decoder, or any `PDFDocument.load` call site. For GHSA-vrqm-gvq7-rrwh specifically, it is unrelated.",
-                "confidence": 0.95,
-                "tool_calls_made": 68,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -26071,19 +26263,21 @@
           "fix_commit_sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "Blame on `pkg/gateway/config.go` is drift from struct layout, not causation. This commit only added the `McpOAuthDcrEnabled bool` option in `Options`; it did not add or modify SSE/streaming listeners, authentication, or any Origin validation logic. The vulnerable code fixed in `pkg/gateway/transport.go` was introduced elsewhere.",
-                "confidence": 0.95,
-                "tool_calls_made": 109,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit fe073985c8eb6e0c9317d2f198c07686f70ea06d added an auth-only design for SSE/streaming and unhid/documented `--transport` as protection against DNS rebinding, but it omitted the Origin-header validation that the later fix actually added. The original missing-Origin bug predated AI code, but the AI-generated change helped expose and normalize the vulnerable HTTP modes while leaving the flawed security model in place.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -26109,19 +26303,21 @@
           "fix_commit_sha": "fe073985c8eb6e0c9317d2f198c07686f70ea06d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This AI-authored commit added bearer-token authentication and unhid/documented `--transport`, but it did not introduce the missing-Origin-check pattern that the later fix changed in `pkg/gateway/transport.go`; the insecure SSE/streaming handlers already existed long before it. Its auth middleware remained in place after the fix, which added `originSecurityHandler` on top. So it is relevant to AI contribution and exposure, but not the original BIC for the missing Origin validation itself.",
-                "confidence": 0.95,
-                "tool_calls_made": 109,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit fe073985c8eb6e0c9317d2f198c07686f70ea06d added an auth-only design for SSE/streaming and unhid/documented `--transport` as protection against DNS rebinding, but it omitted the Origin-header validation that the later fix actually added. The original missing-Origin bug predated AI code, but the AI-generated change helped expose and normalize the vulnerable HTTP modes while leaving the flawed security model in place.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -26277,7 +26473,7 @@
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
-      "verdict": "UNLIKELY",
+      "verdict": "CONFIRMED",
       "bug_commits": [
         {
           "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
@@ -26299,19 +26495,21 @@
           "fix_commit_sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit also created `extensions/feishu/src/docx.ts` with `downloadImage()` using raw `fetch(url)`, and the fix later replaced that fetch with a hardened runtime helper. However, the same file’s `extractImageUrls()` only forwards URLs starting with `http://` or `https://`, so this path is not the `sendMediaFeishu` local-file disclosure described by CVE-2026-26321 and does not match the CWE-22 local path handling fixed in `media.ts`. It is bundled hardening for a different remote-fetch issue, not the CVE’s vulnerable code path.",
-                "confidence": 0.95,
-                "tool_calls_made": 77,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d directly introduced the vulnerable Feishu media pipeline: it added `sendMediaFeishu` that trusted attacker-controlled `mediaUrl` values as local paths and read them with `fs.readFileSync`, and it wired that function into the outbound adapter/media capability so the flaw was reachable immediately.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -26337,19 +26535,21 @@
           "fix_commit_sha": "5b4121d6011a48c71e747e3c18197f180b872c5d",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "This later Feishu sync commit touched `sendMediaFeishu` only to add multi-account plumbing (`accountId`) and pass it through to other helpers. It did not introduce or materially change the unsafe `isLocalPath` logic, the `fs.readFileSync(filePath)` local-file read, or the raw `fetch(mediaUrl)` branch; pickaxe shows those behaviors were already present in 2267. So 5f6e modified surrounding context, but it was not the vulnerability introducer.",
-                "confidence": 0.95,
-                "tool_calls_made": 77,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d directly introduced the vulnerable Feishu media pipeline: it added `sendMediaFeishu` that trusted attacker-controlled `mediaUrl` values as local paths and read them with `fs.readFileSync`, and it wired that function into the outbound adapter/media capability so the flaw was reachable immediately.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -27241,7 +27441,7 @@
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
-      "verdict": "",
+      "verdict": "CONFIRMED",
       "bug_commits": [
         {
           "sha": "ff958e486e1f8de4f7fd43c70ef357b8d6eaf433",
@@ -27263,19 +27463,21 @@
           "fix_commit_sha": "64f9f86f87c23705fda6faa9947a947bf48b12c2",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "In `workflow_db.py`, ff958e486 introduced `glob.glob(os.path.join(self.workflows_dir, \"*.json\"))`, and the fix later changed that to recursive `Path.rglob(\"*.json\")` to discover nested workflow files. This code does not consume attacker-controlled path input and is not part of `download_workflow`'s path construction or file serving. Its inclusion in the fix is for indexing/resolution behavior, not for the traversal flaw.",
-                "confidence": 0.95,
-                "tool_calls_made": 32,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored commit ff958e486e1f8de4f7fd43c70ef357b8d6eaf433 created api_server.py and introduced `download_workflow` using attacker-controlled `filename` in `os.path.join(\"workflows\", filename)` with no validation or canonicalization. A later human refactor preserved that unsafe path construction, but the vulnerable design originated in the Claude Code-generated commit.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -27805,19 +28007,21 @@
           "fix_commit_sha": "e377c7e7f9900da57757cc8d73b2ccdbc4496979",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This AI-authored candidate only changed rustfs/src/storage/mod.rs by adding module declarations for the concurrency feature and a test module. The CVE fix changes rustfs/src/main.rs and crates/credentials/src/credentials.rs, and no credential or logging code appears in fdcdb30d’s diff. The screening hypothesis about cache/buffer work causing credential logging does not match the actual patch content in the blamed file.",
-                "confidence": 0.95,
-                "tool_calls_made": 118,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The confirmed introducer, eb33e82b56ed11fd12bb39416359d8d60737dc7a, was AI-assisted (Copilot co-author) and directly added the vulnerable startup error logging plus the new rustfs_credentials::Credentials type with an unsafe derived Debug implementation; commit 2108c4ad later replaced that with masked formatting and a non-credential error type.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -28864,19 +29068,21 @@
           "fix_commit_sha": "887b209db47f1f9322fead241a1c0b043fd38339",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only changed security-audit wiring for gateway trusted-proxy auth: it added `collectGatewayHttpSessionKeyOverrideFindings(cfg)` and adjusted `collectHooksHardeningFindings(cfg, env)`. It did not touch sandbox Docker schema, bind handling, Docker arg construction, or any validation logic around `sandbox.docker.binds`. The blame hit is incidental because the later fix inserted a new sandbox-audit call adjacent to lines this commit last touched.",
-                "confidence": 0.95,
-                "tool_calls_made": 71,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The original unsafe bind-mount feature was introduced by a human commit, but AI-authored code contributed later by re-enabling `docker.binds` in the validated config schema inside candidate commit `eaace34233fdf454c526d23cd2fd49de3be8eb32` (screened culprit sub-commit `3452b61ff25f...`). That change made the existing unvalidated `-v` bind-mount path reachable again from user config, which is part of the causal chain for this container-escape CVE.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -29247,19 +29453,21 @@
           "fix_commit_sha": "7d65d5e77e89a199a62d737634eaa26dbb04d037",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "The `falkordb_driver.py` hunk in 99923c added/refactored Falkor fulltext-query building around `group_ids`; it did not add or modify the vulnerable `SearchFilters.node_labels` interpolation that the fix hardened with `validate_node_labels`. The node_labels bug lived in shared search-filter construction code before this refactor and remained there afterward. So this blame hit is drift from an unrelated hardening change included in the same patch.",
-                "confidence": 0.95,
-                "tool_calls_made": 74,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The original node-search flaw was introduced earlier by a human-authored commit, but AI-assisted commit 5fe2f588a6df75a779b426b664c3cf7e3fbe6b1c (co-authored by ellipsis-dev[bot]) extended the same unsafe node_label interpolation into edge-search filters and kept the flawed design of concatenating label filters into Cypher instead of validating them. That made AI-assisted code part of the causal chain for this CVE.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
@@ -29825,19 +30033,21 @@
           "fix_commit_sha": "32853774ba2f37ba00a5c3390bf9be8d09845584",
           "screening_verification": null,
           "verification": {
-            "verdict": "UNRELATED",
-            "confidence": 0.95,
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
             "models": [
-              "gpt-5.4"
+              "investigator-override"
             ],
             "agent_verdicts": [
               {
-                "model": "gpt-5.4",
-                "verdict": "UNRELATED",
-                "reasoning": "This commit only changed `src/bedrock_agentcore_starter_toolkit/utils/runtime/templates/Dockerfile.j2` to optimize container builds. The CVE fix touched `services/codebuild.py`, `operations/runtime/create_role.py`, and `cli/import_agent/agent_info.py`, and there is no S3 ownership-check or IAM bucket-ownership logic in this Dockerfile change. Its blame appearance is drift, not causal introduction of the vulnerability.",
-                "confidence": 0.95,
-                "tool_calls_made": 50,
-                "steps_completed": [],
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted code did contribute: commit a471b116a232d6566e240b8aba565b68bb53956a (marked \"Assisted by Amazon Q Developer\") introduced the current CodeBuild S3 IAM policy without the ownership guard that the fix later added (`s3:ResourceAccount`). Non-AI commits also introduced missing `ExpectedBucketOwner` checks in the S3 client paths, but AI-assisted code was part of the causal chain for the CVE.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
                 "evidence": []
               }
             ]
