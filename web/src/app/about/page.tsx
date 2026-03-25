@@ -128,11 +128,11 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Phase F",
-    title: "Conflict resolution",
+    title: "Fallback verification",
     summary:
-      "When screening and deep investigation disagree on a BIC, a Claude Agent SDK resolver with git MCP tools adjudicates.",
+      "When the primary deep investigator fails (timeout, model error), a Claude Agent SDK subprocess with git MCP tools retries the investigation independently.",
     details:
-      "For each bug-introducing commit, screening (Phase D) and deep investigation (Phase E) produce independent verdicts. When these disagree — for example, screening says CONFIRMED but the deep investigator says UNLIKELY — the conflict resolver steps in for that individual BIC. It runs as a Claude Agent SDK subprocess with MCP-based git tools (log, blame, diff, file read) so it can independently inspect the repository. It sees both verdicts and their evidence, then makes the final call. Conflicts are batched per-CVE to minimize subprocess overhead. The resolver's verdict is final and overwrites earlier decisions.",
+      "The deep investigator (Phase E) uses a model fallback chain. If the primary model exhausts its tool-call budget or errors out, the pipeline falls back to a Claude Agent SDK subprocess that has its own git tools (log, blame, diff, file read) via MCP. This is a fundamentally different execution path — a full CLI subprocess rather than API calls — so it often succeeds where the primary model failed. If the SDK fallback also fails, remaining models in the fallback chain are tried. The fallback's verdict replaces the failed investigation.",
   },
 ] as const;
 
@@ -251,9 +251,9 @@ export default function AboutPage() {
               things that per-commit analysis misses — an AI commit that
               changed how a function gets called, making old code newly
               exploitable, or a squash-merge where the AI sub-commit never
-              touched the vulnerable file. When screening and deep investigation disagree
-              on a blame candidate, a conflict resolver with independent
-              repository access adjudicates. The result is conservative: we
+              touched the vulnerable file. If the primary model fails, a
+              Claude Agent SDK fallback with independent repository access
+              retries the investigation. The result is conservative: we
               drop attribution when causality is uncertain.
             </p>
           </div>
