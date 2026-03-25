@@ -32,25 +32,27 @@ export default function HomePage() {
             methodology &amp; limitations
           </a>.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <a
             href="https://github.com/HQ1995/vibe-security-radar"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted hover:text-primary"
+            className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
           >
-            <Star className="h-3.5 w-3.5" />
+            <Star className="h-4 w-4" />
             Star on GitHub
           </a>
           <a
             href="https://github.com/HQ1995/vibe-security-radar/issues"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted hover:text-primary"
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-foreground/20 px-4 py-2 text-sm font-semibold transition-colors hover:border-foreground/40 hover:text-primary"
           >
-            <GitPullRequest className="h-3.5 w-3.5" />
+            <GitPullRequest className="h-4 w-4" />
             Contribute
           </a>
+        </div>
+        <div className="mt-3">
           <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
         </div>
       </section>
