@@ -23,6 +23,17 @@ export default function HomePage() {
         <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
           Real CVEs where AI-generated code introduced the vulnerability.
         </p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          A research project from{" "}
+          <a
+            href="https://gts3.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
+          >
+            Georgia Tech SSLab
+          </a>
+        </p>
         <p className="mt-2 max-w-2xl text-xs leading-relaxed text-muted-foreground/70">
           Detection is based on git co-author trailers, bot emails, and commit
           message markers — not all AI-assisted code leaves these traces. This
