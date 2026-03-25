@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-25T07:25:00.410922+00:00",
-  "total": 99,
+  "generated_at": "2026-03-25T07:56:24.303088+00:00",
+  "total": 98,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -30571,91 +30571,6 @@
       "references": [
         "https://github.com/BeehiveInnovations/zen-mcp-server/issues/293"
       ]
-    },
-    {
-      "id": "CVE-2025-59829",
-      "description": "Claude Code permission deny bypass through symlink",
-      "severity": "LOW",
-      "cvss": 2.3,
-      "cwes": [
-        "CWE-61"
-      ],
-      "ecosystem": "",
-      "published": "2025-10-03T20:15:33.653",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "ai_involved": true,
-      "signal_source": "both",
-      "languages": [
-        "Python"
-      ],
-      "confidence": 0.2137,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "AI-authored code in the hookify plugin directly introduced one of the vulnerable paths: commit 59372c0921b0170e81f9c63777962d02347411d5 created RuleEngine file-path checks that compared raw user-supplied path strings instead of canonicalized real paths, enabling symlink-based deny bypasses. A separate human-authored plugin (security-guidance) introduced the same class of flaw, but AI code was still part of the causal chain for the CVE because it wrote vulnerable permission-checking logic that the fix later reversed.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "59372c0921b0170e81f9c63777962d02347411d5",
-          "author": "Daisy S. Hollman",
-          "date": "2025-11-17T03:18:43-08:00",
-          "message": "feat: Add hookify plugin for custom hook rules via markdown",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
-              "confidence": 0.95
-            },
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "plugins/hookify/core/rule_engine.py, plugins/hookify/hooks/pretooluse.py",
-          "blame_confidence": 0.9,
-          "fix_commit_source": "description_search",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "ff0fdc06760d9d8d94cf45549908e06e2ffe36d6",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "UNLIKELY",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "UNLIKELY",
-                "reasoning": "Although the fix adds Read to plugins/hookify/hooks/pretooluse.py, this file was not the root cause of the bypass. Hookify's PreToolUse hook already ran for all tools because plugins/hookify/hooks/hooks.json had no matcher, and config_loader.load_rules(event=None) does not filter events, so event:file rules were still loaded on Read. Combined with RuleEngine's generic if field in tool_input path extraction, file_path-based deny rules were already being evaluated; the actual bypass came from rule_engine.py comparing unresolved symlink paths, not from pretooluse.py's Read omission.",
-                "confidence": 0.95,
-                "tool_calls_made": 53,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "ff0fdc06760d9d8d94cf45549908e06e2ffe36d6",
-          "repo_url": "https://github.com/anthropics/claude-code",
-          "source": "description_search",
-          "blame_confidence": 0.8
-        }
-      ],
-      "references": [
-        "https://github.com/anthropics/claude-code/security/advisories/GHSA-66m2-gx93-v996",
-        "https://nvd.nist.gov/vuln/detail/CVE-2025-59829"
-      ],
-      "ai_contribution": "AI-authored code in the hookify plugin directly introduced one of the vulnerable paths: commit 59372c0921b0170e81f9c63777962d02347411d5 created RuleEngine file-path checks that compared raw user-supplied path strings instead of canonicalized real paths, enabling symlink-based deny bypasses. A separate human-authored plugin (security-guidance) introduced the same class of flaw, but AI code was still part of the causal chain for the CVE because it wrote vulnerable permission-checking logic that the fix later reversed."
     },
     {
       "id": "CVE-2024-21635",
