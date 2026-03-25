@@ -25,7 +25,7 @@ python scripts/generate_web_data.py
 cd web && npm install && npm run dev
 ```
 
-See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference.
+Run `uv run cve-analyzer --help` for full CLI reference.
 
 ## How It Works
 
