@@ -1,7 +1,122 @@
 {
-  "generated_at": "2026-03-25T08:04:15.925920+00:00",
-  "total": 60,
+  "generated_at": "2026-03-25T08:59:04.772322+00:00",
+  "total": 73,
   "cves": [
+    {
+      "id": "CVE-2025-12489",
+      "description": "evernote-mcp-server openBrowser Command Injection Privilege Escalation Vulnerability. This vulnerability allows local attackers to escalate privileges on affected installations of evernote-mcp-server. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability.\n\nThe specific flaw exists within the openBrowser function. The issue results from the lack of proper validation of a user-supplied string before using it to execute ",
+      "severity": "HIGH",
+      "cvss": 7.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2025-11-06T21:15:39.800",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code directly introduced the vulnerable command-execution path. Commit e08547bcdb42aaa86190c6e2dfc64159fcd3a146, generated with Claude Code, created auth.js with openBrowser() using child_process.exec(`${command} \"${url}\"`) and the OAuth flow that passed a network-derived oauth_token into that URL; later AI-authored commit 613ce9c4e952edc98b57e7d9be53df70bf07e65d only changed logging and did not introduce the weakness.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "e08547bcdb42aaa86190c6e2dfc64159fcd3a146",
+          "author": "brentmid",
+          "date": "2025-06-16T15:42:34-04:00",
+          "message": "Add comprehensive OAuth 1.0a authentication and testing suite",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "auth.js",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix replaces child_process.exec with spawn in openBrowser(), and pickaxe searches show the exact vulnerable patterns (`const { exec } = require('child_process');`, `function openBrowser(url) {`, and `exec(`${command} \"${url}\"`, ...)`) were first added in e08547bc when auth.js was created. That same commit also introduced the full taint flow: getRequestToken() returns `response.oauth_token`, redirectToAuthorization() builds `const authUrl = `${EVERNOTE_CONFIG.authorizeUrl}?oauth_token=${requestToken}``, and openBrowser(authUrl) executes it via the shell. This matches the screening hypothesis: e08547 wrote the vulnerable shell-interpolation design, not just a refactor of earlier code.",
+                "confidence": 0.95,
+                "tool_calls_made": 41,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "613ce9c4e952edc98b57e7d9be53df70bf07e65d",
+          "author": "brentmid",
+          "date": "2025-06-17T10:03:53-04:00",
+          "message": "Fix JSON-RPC logging conflicts and update documentation",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "auth.js",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNLIKELY",
+                "reasoning": "613ce9c4 touched auth.js, but its diff only changed logging from stdout to stderr inside openBrowser() and nearby OAuth functions. Blame on the pre-fix file shows the dangerous lines remained attributed to e08547bc: the function definition, command selection, and `exec(`${command} \"${url}\"`, ...)` line all come from e08547bc, while 613ce9c4 only owns log-message lines such as `console.error('📋 Please manually open this URL...')`. It preserved the vulnerability but did not introduce the command-injection primitive or the attacker-controlled data flow.",
+                "confidence": 0.95,
+                "tool_calls_made": 41,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
+          "repo_url": "https://github.com/brentmid/evernote-mcp-server",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://www.zerodayinitiative.com/advisories/ZDI-25-983/"
+      ],
+      "ai_contribution": "AI-authored code directly introduced the vulnerable command-execution path. Commit e08547bcdb42aaa86190c6e2dfc64159fcd3a146, generated with Claude Code, created auth.js with openBrowser() using child_process.exec(`${command} \"${url}\"`) and the OAuth flow that passed a network-derived oauth_token into that URL; later AI-authored commit 613ce9c4e952edc98b57e7d9be53df70bf07e65d only changed logging and did not introduce the weakness."
+    },
     {
       "id": "CVE-2025-13120",
       "description": "A vulnerability has been found in mruby up to 3.4.0. This vulnerability affects the function sort_cmp of the file src/array.c. Such manipulation leads to use after free. An attack has to be approached locally. The exploit has been disclosed to the public and may be used. The name of the patch is eb398971bfb43c38db3e04528b68ac9a7ce509bc. It is advisable to implement a patch to correct this issue.",
@@ -676,6 +791,91 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-21695"
       ],
       "ai_contribution": "Yes. The original unsafe `customfields` design in task/timecard methods was human-authored, but the AI-authored Copilot commit `7a4aa852650b69d40e89fca09c7ad9fb0ad4ce7b` added the `/project/task/create/` API endpoint that directly merged `...json.customfields` after trusted task fields, creating an additional exploitable mass-assignment path. AI therefore materially contributed to the CVE even though it was not the sole or earliest source of the flaw."
+    },
+    {
+      "id": "CVE-2026-22171",
+      "description": "OpenClaw versions prior to 2026.2.19 contain a path traversal vulnerability in the Feishu media download flow where untrusted media keys are interpolated directly into temporary file paths in extensions/feishu/src/media.ts. An attacker who can control Feishu media key values returned to the client can use traversal segments to escape os.tmpdir() and write arbitrary files within the OpenClaw process permissions.",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-18T02:16:21.310",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created extensions/feishu/src/media.ts and introduced the unsafe `path.join(os.tmpdir(), ... imageKey/fileKey)` temp-file construction that the fixes later removed. A later human refactor rewrote the same bug, but AI-authored code was the original vulnerable implementation and part of the causal chain.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/media.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "c821099157a9767d4df208c6b12f214946507871",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-coauthored commit added the new Feishu plugin and created extensions/feishu/src/media.ts with the vulnerable branches `const tmpPath = path.join(os.tmpdir(), `feishu_img_${Date.now()}_${imageKey}`)` and `const tmpPath = path.join(os.tmpdir(), `feishu_${Date.now()}_${fileKey}`)` before calling `responseAny.writeFile(tmpPath)`. In the same plugin version, bot.ts parses inbound message JSON and passes attacker-controlled `image_key`/`file_key` values into `downloadMessageResourceFeishu`, so untrusted keys reached filesystem path construction immediately. The pre-replacement built-in code at 4fc4c5256ad527e14beade2b872984fe0dd3f057 streamed media via `getReadableStream()` and did not interpolate keys into temp paths, so this was a real introduction, not just a file move.",
+                "confidence": 0.95,
+                "tool_calls_made": 53,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "c821099157a9767d4df208c6b12f214946507871",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "cdb00fe2428000e7a08f9b7848784a0049176705",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ec232a9e2dff60f0e3d7e827a7c868db5254473f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created extensions/feishu/src/media.ts and introduced the unsafe `path.join(os.tmpdir(), ... imageKey/fileKey)` temp-file construction that the fixes later removed. A later human refactor rewrote the same bug, but AI-authored code was the original vulnerable implementation and part of the causal chain."
     },
     {
       "id": "CVE-2026-22804",
@@ -4488,6 +4688,117 @@
       "ai_contribution": "AI-assisted code contributed via commit 5c2cb6c591e4b63c2df0549ad2202403256e2a96, which added Feishu webhook mode and bound `Lark.adaptDefault(...)` directly to an HTTP server with no request-body size or upload-time guard. That AI-authored change was part of the vulnerable webhook surface, even though several other non-AI commits independently introduced similar boundedness flaws in other webhook handlers."
     },
     {
+      "id": "CVE-2026-31998",
+      "description": "OpenClaw versions 2026.2.22 and 2026.2.23 contain an authorization bypass vulnerability in the synology-chat channel plugin where dmPolicy set to allowlist with empty allowedUserIds fails open. Attackers with Synology sender access can bypass authorization checks and trigger unauthorized agent dispatch and downstream tool actions.",
+      "severity": "HIGH",
+      "cvss": 8.3,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T02:16:05.347",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The Claude Opus 4.6 co-authored Synology Chat introduction commit `03586e3d0057b5975090d50dadcc5bc95b51f977` created the fail-open authorization behavior by making `checkUserAllowed(..., [])` return true, then wiring that result into the inbound webhook path that calls `deliver()` and can trigger downstream agent/tool actions. The same commit also made the unsafe state easy to hit by resolving accounts to `dmPolicy: \"allowlist\"` while empty `allowedUserIds` parse to `[]`.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "cc048a295e7e70684ca24654257e0ecf38e49153",
+          "author": "druide67",
+          "date": "2026-02-22T00:09:58+01:00",
+          "message": "feat(channels): add Synology Chat native channel",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/synology-chat/src/security.ts, extensions/synology-chat/src/webhook-handler.ts, extensions/synology-chat/src/channel.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Fix `0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5` directly removes `if (allowedUserIds.length === 0) return true;` from `extensions/synology-chat/src/security.ts` and changes the comment/test from \"empty allowlist = allow all users\" to reject-empty behavior. `git_log_search` for that exact removed line and for the original test text (`allows any user when allowlist is empty`) both point to `03586e3d0057b5975090d50dadcc5bc95b51f977`, and blame on the pre-fix lines also attributes them to that commit. This is the core fail-open authorization bug the CVE describes.",
+                "confidence": 0.95,
+                "tool_calls_made": 62,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "cc048a295e7e70684ca24654257e0ecf38e49153",
+              "author_name": "druide67",
+              "message": "feat(channels): add Synology Chat native channel",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "75c56100d4efbb307ceb476f78f48017f5db9466",
+              "author_name": "druide67",
+              "message": "feat(synology-chat): add pairing, warnings, messaging, agent hints",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "03586e3d0057b5975090d50dadcc5bc95b51f977"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "7655c0cb3a47d0647cbbf5284e177f90b4b82ddb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Yes. The Claude Opus 4.6 co-authored Synology Chat introduction commit `03586e3d0057b5975090d50dadcc5bc95b51f977` created the fail-open authorization behavior by making `checkUserAllowed(..., [])` return true, then wiring that result into the inbound webhook path that calls `deliver()` and can trigger downstream agent/tool actions. The same commit also made the unsafe state easy to hit by resolving accounts to `dmPolicy: \"allowlist\"` while empty `allowedUserIds` parse to `[]`."
+    },
+    {
       "id": "CVE-2026-32231",
       "description": "ZeptoClaw: Generic webhook channel trusts caller-supplied identity fields; allowlist is checked against untrusted payload data",
       "severity": "HIGH",
@@ -5131,6 +5442,128 @@
       "ai_contribution": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions."
     },
     {
+      "id": "GHSA-7jx5-9fjg-hp4m",
+      "description": "OpenClaw ACP client has permission auto-approval bypass via untrusted tool metadata",
+      "severity": "HIGH",
+      "cvss": 8.0,
+      "cwes": [
+        "CWE-639",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-02-27T22:08:36Z",
+      "ai_tools": [
+        "aether"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced denylist-based ACP auto-approval driven by server-supplied tool metadata (`toolCall.name`), making untrusted metadata an authorization source. The later human follow-up ee31cd47b49f4b2f128a69a2a3745ca9db68b3be expanded that same flawed model to `_meta`, `rawInput`, and title parsing, and bb1c3dfe10766fd996ef220ff9d3f967eb717faa added spoofable `toolCall.kind`-based safe classification.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+          "author": "aether-ai-agent",
+          "date": "2026-02-13T14:28:50+01:00",
+          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "author_name",
+              "matched_text": "aether-ai-agent",
+              "confidence": 0.95
+            },
+            {
+              "tool": "aether",
+              "signal_type": "author_email",
+              "matched_text": "@tryaether.ai",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/acp/client.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced `resolveToolNameForPermission`, which reads tool identity from untrusted `toolCall._meta`, `rawInput`, and `title`, plus the permissive `normalizeToolName` later hardened by 63dcd28. The final fixes directly modify these lines and stop using heuristic metadata as an authorization source. This is the exact code path behind the advisory’s 'untrusted tool metadata' bypass, so the screening hypothesis for ee31 is supported.",
+                "confidence": 0.95,
+                "tool_calls_made": 53,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+              "author_name": "aether-ai-agent",
+              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+              "ai_signals": [
+                {
+                  "tool": "aether",
+                  "signal_type": "author_name",
+                  "matched_text": "aether-ai-agent",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "aether",
+                  "signal_type": "author_email",
+                  "matched_text": "@tryaether.ai",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
+              "author_name": "Peter Steinberger",
+              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "12cc754332f9a7c92e158ce7644aa22df79c0904",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "63dcd28ae0be2de1c75af09cc81841cebeec068f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-7jx5-9fjg-hp4m",
+        "https://github.com/openclaw/openclaw/commit/12cc754332f9a7c92e158ce7644aa22df79c0904",
+        "https://github.com/openclaw/openclaw/commit/63dcd28ae0be2de1c75af09cc81841cebeec068f",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.2.23"
+      ],
+      "ai_contribution": "Yes. The AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad introduced denylist-based ACP auto-approval driven by server-supplied tool metadata (`toolCall.name`), making untrusted metadata an authorization source. The later human follow-up ee31cd47b49f4b2f128a69a2a3745ca9db68b3be expanded that same flawed model to `_meta`, `rawInput`, and title parsing, and bb1c3dfe10766fd996ef220ff9d3f967eb717faa added spoofable `toolCall.kind`-based safe classification."
+    },
+    {
       "id": "GHSA-8g98-m4j9-qww5",
       "description": "Taylored webhook validation vulnerabilities",
       "severity": "CRITICAL",
@@ -5210,6 +5643,474 @@
         "https://github.com/tailot/taylored/commit/57b7634391959dbbdb39b387ac4dc68157cd58a1"
       ],
       "ai_contribution": "Yes. AI-authored commit c139c021f68a09d22c2af88641b61c00f67f2af4 created the Taysell backend and crypto utilities with the core weaknesses: it trusted unsigned PayPal webhook bodies, allowed purchase-token reuse, used unsanitized patchId values in filesystem paths, and set PBKDF2 to 100000; the same AI release also omitted PAYPAL_WEBHOOK_ID from the setup flow, making secure webhook verification unavailable by default."
+    },
+    {
+      "id": "GHSA-943q-mwmv-hhvh",
+      "description": "OpenClaw: Gateway /tools/invoke tool escalation + ACP permission auto-approval",
+      "severity": "HIGH",
+      "cvss": 8.8,
+      "cwes": [
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T23:32:22Z",
+      "ai_tools": [
+        "aether"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad reimplemented ACP permission handling with a name-based dangerous-tool check that still auto-approved all other identified tools; later fixes (bb1c3dfe1 and 153a7644e) had to tighten that logic because it remained vulnerable. The original gateway exposure and the original ACP auto-approval bug were human-authored, but AI code was part of the causal chain for the ACP portion of this CVE.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "47de0ce1dba2c7d03281ebfd7fef348b76d74a7c",
+          "author": "Nick Taylor",
+          "date": "2026-02-14T06:32:17-05:00",
+          "message": "feat(security): add audit findings for trusted-proxy mode",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/security/audit.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "539689a2f",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "This commit changed gateway audit behavior for trusted-proxy auth (`if (bind !== \"loopback\" && !hasSharedSecret && auth.mode !== \"trusted-proxy\")`) and other auth findings. The `gateway.tools.allow` warning added for this CVE was introduced later by 539689a2f, and blame on the relevant `audit.ts` lines points to 539689a2f rather than 1fb52b4d7bce. It did not introduce either the HTTP `/tools/invoke` escalation or the ACP auto-approval logic.",
+                "confidence": 0.95,
+                "tool_calls_made": 61,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "f3ec9134898914a13a82f745504d7141bb8456a0",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): add trusted-proxy auth mode types and schema",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "711fb49a989f287bb27e1b3e7fb1e0cf36ce5907",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): update runtime config guard for trusted-proxy",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "47de0ce1dba2c7d03281ebfd7fef348b76d74a7c",
+              "author_name": "Nick Taylor",
+              "message": "feat(security): add audit findings for trusted-proxy mode",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b4f6e26ae99b6a2316bd85ab906f8e691c225303",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add trusted-proxy auth tests",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "097a2f5bd18ab08c0d751e03bf02926066fc5653",
+              "author_name": "Nick Taylor",
+              "message": "test(security): add trusted-proxy audit tests",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "164c2053eecce315c5d516ccddac704e2834ffc2",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): add trusted-proxy auth documentation",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "e1ce11c4b7d89d98595582a9c7c474aed655fcb0",
+              "author_name": "Nick Taylor",
+              "message": "feat(cli): add trusted-proxy auth mode to gateway configuration",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "1fc97ebe23ffdaa449d5166df8b0d543f20cea73",
+              "author_name": "Nick Taylor",
+              "message": "test(cli): add tests for trusted-proxy auth configuration",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "d23d26e0b5a5cb097754a58957c8043407d35133",
+              "author_name": "Nick Taylor",
+              "message": "feat(ui): hide token/password fields when gateway is in trusted-proxy mode",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "25ed7828f497ed4f9d943ec192f9092674951ab0",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): make trusted-proxy callout more concise and mobile-friendly",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "702cf6545b38836b5707b64e75216987a84c7687",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway): allow lan binding with trusted-proxy auth mode",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "befb4d59a8e5754e8abbf03f4e9189af4ad59d42",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add tests for trusted-proxy lan binding validation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "267ff35e570f9178ae28d58c57cae44db4ed150f",
+              "author_name": "Nick Taylor",
+              "message": "fix(browser): prevent auto-token generation from overwriting trusted-proxy auth",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a9f706906001347b7bf5873e1facf09ff9e3b0ec",
+              "author_name": "Nick Taylor",
+              "message": "test(browser): add tests for trusted-proxy auto-token prevention",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "57ae179bbc2f6ce407cc758384a41528528c2fdf",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway-cli): allow lan binding with trusted-proxy in CLI startup",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c7871813a7a0cc65af999bc48549adebfbc6ac89",
+              "author_name": "Nick Taylor",
+              "message": "docs(test): document that runtime config tests cover both validation layers",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "0ccce67e9f2a71959c71d452c170231c08a59a72",
+              "author_name": "Nick Taylor",
+              "message": "fix(gateway): add CIDR subnet matching for trusted proxies",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f09023cc6314cd8c0277507afa962c383b531b4e",
+              "author_name": "Nick Taylor",
+              "message": "test(gateway): add explicit backward compatibility tests for trusted proxy matching",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "b45330f4c269435884d6db3416104156bf9f44f9",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): simplify trusted-proxy mode display",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "86e56a29e8a325fe2d4343ab15c71e5ae77b0623",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): simplify trusted-proxy text to just 'Trusted Proxy'",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "f691ffcd216cacd55ca8668407f8823a2a1c0595",
+              "author_name": "Nick Taylor",
+              "message": "refactor(ui): change to 'Trusted Proxy mode' for clarity",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "4aaae739b3903540a2983a4c16f27b093857d638",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): update trusted-proxy-auth docs to use OpenClaw name",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "cd77ee076f9b9d1ac066cc486ec24b753a03ffbc",
+              "author_name": "Nick Taylor",
+              "message": "docs(gateway): remove misleading Tailscale safety comparison",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c37081e612e3384efe5dc512c709e96a671ead96",
+              "author_name": "Nick Taylor",
+              "message": "feat(gateway): implement trusted-proxy auth logic",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "63c1268b2b29c55660030ed37e6dfa00faddb451",
+              "author_name": "Nick Taylor",
+              "message": "fix(docker): fix trustedProxies JSON generation and permissions in entrypoint",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "83014d9d09a51e3e2f70662ab4cb73ec891e1762",
+              "author_name": "Nick Taylor",
+              "message": "chore: removed unused code",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "7a5404a4b63ffe8b88304deadccd6de45b75689b",
+              "author_name": "Nick Taylor",
+              "message": "chore: formatting",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "c9bdce95f639a35a3830829e56127951ea906755",
+              "author_name": "Nick Taylor",
+              "message": "chore: fixed lint errors",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8d16861eecee9d7a25f8807d352b33f6dfbd3148",
+              "author_name": "Nick Taylor",
+              "message": "chore: removed unnecessary comments",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8a0a1a3e6671094a67a695ae7cff4a71196ec48e",
+              "author_name": "Nick Taylor",
+              "message": "chore(protocol): regenerate Swift models for authMode",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "eae1f28d0c3e03994a57b3a7b918ce1ee09be162",
+              "author_name": "Nick Taylor",
+              "message": "test: updated audit tests",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "51c4a0a9e9e62f763410e09447374afa80da964e",
+              "author_name": "Nick Taylor",
+              "message": "refactor: gateway token only shown in overview if auth mode is not trusted-proxy",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "9228ef0856ced31e50c84c7112d46b28dd49b5f4",
+              "author_name": "Nick Taylor",
+              "message": "fix: enhance connectGateway to handle stale clients on reconnect",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "a7ba8cc553426050f93bfe7829abdcc70756d895",
+              "author_name": "Nick Taylor",
+              "message": "fix: use unsigned right shift for subnet mask calculation",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "279d4b304f83186fda44dfe63a729406a835dafa",
+              "author_name": "Peter Steinberger",
+              "message": "fix: harden trusted-proxy auth follow-ups",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "1fb52b4d7bceae8f42d47c2a2027f01e802dffbb"
+        },
+        {
+          "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+          "author": "aether-ai-agent",
+          "date": "2026-02-13T22:28:43+11:00",
+          "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+          "ai_signals": [
+            {
+              "tool": "aether",
+              "signal_type": "author_name",
+              "matched_text": "aether-ai-agent",
+              "confidence": 0.95
+            },
+            {
+              "tool": "aether",
+              "signal_type": "author_email",
+              "matched_text": "@tryaether.ai",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/acp/client.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Although framed as a security fix, this AI-authored commit reimplemented ACP permission handling with `if (!DANGEROUS_ACP_TOOLS.has(toolName))` auto-approval and selected `allow_once`/fallback for every non-dangerous named tool. The later fix bb1c3dfe1 changes that exact design to require prompting for anything outside safe read/search kinds, and 153a7644e further tightens the safe-kind inference. So 749e28 is a confirmed BIC for the residual ACP auto-approval weakness, even though the older/original bug predated it.",
+                "confidence": 0.95,
+                "tool_calls_made": 61,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+              "author_name": "aether-ai-agent",
+              "message": "fix(security): block dangerous tools from HTTP gateway and fix ACP auto-approval (OC-02)",
+              "ai_signals": [
+                {
+                  "tool": "aether",
+                  "signal_type": "author_name",
+                  "matched_text": "aether-ai-agent",
+                  "confidence": 0.95
+                },
+                {
+                  "tool": "aether",
+                  "signal_type": "author_email",
+                  "matched_text": "@tryaether.ai",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "045cdbceedad685bc01cba8c0d5bb79fe943c692",
+              "author_name": "Peter Steinberger",
+              "message": "fix: close OC-02 gaps in ACP permission + gateway HTTP deny config (#15390) (thanks @aether-ai-agent)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "749e28dec796f77697398acbfc7a64d4439d7cad"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "153a7644e",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "539689a2f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "bb1c3dfe1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        },
+        {
+          "sha": "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-943q-mwmv-hhvh",
+        "https://github.com/openclaw/openclaw/pull/15390",
+        "https://github.com/openclaw/openclaw/commit/153a7644e",
+        "https://github.com/openclaw/openclaw/commit/539689a2f",
+        "https://github.com/openclaw/openclaw/commit/bb1c3dfe1",
+        "https://github.com/openclaw/openclaw/commit/ee31cd47b49f4b2f128a69a2a3745ca9db68b3be"
+      ],
+      "ai_contribution": "Yes. AI-authored commit 749e28dec796f77697398acbfc7a64d4439d7cad reimplemented ACP permission handling with a name-based dangerous-tool check that still auto-approved all other identified tools; later fixes (bb1c3dfe1 and 153a7644e) had to tighten that logic because it remained vulnerable. The original gateway exposure and the original ACP auto-approval bug were human-authored, but AI code was part of the causal chain for the ACP portion of this CVE."
     },
     {
       "id": "GHSA-fmfg-9g7c-3vq7",
@@ -5743,6 +6644,161 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2026-32111"
       ],
       "ai_contribution": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c."
+    },
+    {
+      "id": "GHSA-g353-mgv3-8pcj",
+      "description": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+      "severity": "HIGH",
+      "cvss": 8.6,
+      "cwes": [
+        "CWE-347"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:55:34Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-coauthored commits 2267d58afcc70fe19408b8f0dce108c340f3426d, 5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6, and 5c2cb6c591e4b63c2df0549ad2202403256e2a96 introduced the webhook configuration/dispatcher model with optional `encryptKey` and then enabled the built-in HTTP webhook server without enforcing that key, which made forged Feishu events acceptable. A later human-authored hardening commit required `verificationToken`, but it only narrowed the exposure and did not remove the AI-authored missing-`encryptKey` flaw.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/channel.ts, extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "screening_verification": null
+        },
+        {
+          "sha": "5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T19:18:25+08:00",
+          "message": "feat(feishu): sync with clawdbot-feishu #137 (multi-account support)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/config-schema.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-coauthored multi-account sync copied the same flaw into per-account configuration: it added account-level `encryptKey: z.string().optional()` / `encryptKey: { type: \"string\" }` and carried optional `encryptKey`/`verificationToken` into `ResolvedFeishuAccount` and `createEventDispatcher(account)`. The final fix tightens exactly these account-level definitions and checks. This commit did not create exploitability by itself, but it introduced the vulnerable design for multi-account Feishu webhook mode.",
+                "confidence": 0.95,
+                "tool_calls_made": 93,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+          "author": "Yifeng Wang",
+          "date": "2026-02-10T08:19:44+08:00",
+          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/monitor.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-coauthored commit is the exploit-enabling change: it removed the prior 'webhook mode not implemented' behavior and routed `connectionMode === \"webhook\"` into a real `monitorWebhook()` that starts an HTTP server and hands requests directly to `Lark.adaptDefault(path, eventDispatcher, { autoChallenge: true })`. Because the dispatcher still accepted missing `encryptKey` and there was no startup/schema enforcement yet, the previously latent optional-credential design became reachable and forged events could be accepted. Under the calling-context rule, this commit is a confirmed BIC.",
+                "confidence": 0.95,
+                "tool_calls_made": 93,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+              "author_name": "Yifeng Wang",
+              "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+        "https://github.com/openclaw/openclaw/pull/44087",
+        "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+      ],
+      "ai_contribution": "Yes. AI-coauthored commits 2267d58afcc70fe19408b8f0dce108c340f3426d, 5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6, and 5c2cb6c591e4b63c2df0549ad2202403256e2a96 introduced the webhook configuration/dispatcher model with optional `encryptKey` and then enabled the built-in HTTP webhook server without enforcing that key, which made forged Feishu events acceptable. A later human-authored hardening commit required `verificationToken`, but it only narrowed the exposure and did not remove the AI-authored missing-`encryptKey` flaw."
     },
     {
       "id": "GHSA-hhjv-jq77-cmvx",
@@ -9075,6 +10131,136 @@
       "ai_contribution": "Yes. The AI-coauthored commit 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 first replaced the strict missing-device rejection with a mere auth.token presence check, letting the handshake skip device identity before shared credentials were actually validated. Later human commits refactored and expanded the same flaw, but the initial vulnerable design came from AI-assisted code."
     },
     {
+      "id": "CVE-2026-32021",
+      "description": "OpenClaw versions prior to 2026.2.22 contain an authorization bypass vulnerability in the Feishu allowFrom allowlist implementation that accepts mutable sender display names instead of enforcing ID-only matching. An attacker can set a display name equal to an allowlisted ID string to bypass authorization checks and gain unauthorized access.",
+      "severity": "MEDIUM",
+      "cvss": 6.3,
+      "cwes": [
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T22:16:36.103",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d introduced the Feishu regression by replacing the prior ID-only Feishu allowlist logic with code that accepts `senderName` and by feeding mutable profile display names into sender allowlist checks. A later AI-tagged commit (5c2cb6c591e4b63c2df0549ad2202403256e2a96) only reformatted nearby code and did not materially affect authorization; later non-AI commits expanded the same flaw to command and DM authorization paths.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+          "author": "Yifeng Wang",
+          "date": "2026-02-10T08:19:44+08:00",
+          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/bot.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "4ed87a667263ed2d422b9d5d5a5d326e099f92c7",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNLIKELY",
+                "reasoning": "Although this AI-tagged commit touched `extensions/feishu/src/bot.ts`, its diff does not add or change any allowlist logic; the only nearby change is a cosmetic rewrite of `if (senderResult.name)` to a one-line form, plus unrelated dedup/dynamic-agent work. Blame on the actual vulnerable authorization lines points to 2267d58 for the group sender check and to later non-AI commits for DM/command paths. So the screening hypothesis is not supported by the code: 5c2cb6 did not introduce the vulnerable matching behavior.",
+                "confidence": 0.95,
+                "tool_calls_made": 63,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+              "author_name": "Yifeng Wang",
+              "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+        },
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/bot.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "4ed87a667263ed2d422b9d5d5a5d326e099f92c7",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created `extensions/feishu/src/policy.ts` with a matcher that explicitly falls back from `senderId` to `senderName` and returns `matchSource: \"name\"` when the allowlist contains the display name. The same commit also resolved mutable sender profile names from the Feishu API and passed `ctx.senderName` into the group sender `allowFrom` check in `bot.ts`. The code it replaced (`src/feishu/access.ts`) was explicitly ID-only for Feishu (\"open_id ... or union_id ..., no usernames\"), so this commit is the original regression and directly introduced the bypass. It is also AI-coauthored.",
+                "confidence": 0.95,
+                "tool_calls_made": 63,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4ed87a667263ed2d422b9d5d5a5d326e099f92c7",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Yes. The AI-coauthored commit 2267d58afcc70fe19408b8f0dce108c340f3426d introduced the Feishu regression by replacing the prior ID-only Feishu allowlist logic with code that accepts `senderName` and by feeding mutable profile display names into sender allowlist checks. A later AI-tagged commit (5c2cb6c591e4b63c2df0549ad2202403256e2a96) only reformatted nearby code and did not materially affect authorization; later non-AI commits expanded the same flaw to command and DM authorization paths."
+    },
+    {
       "id": "CVE-2026-32232",
       "description": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
       "severity": "HIGH",
@@ -12049,6 +13235,315 @@
       "ai_contribution": "Yes. AI-authored commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 added the unauthenticated `debug_simulate_print_complete` printer route that `a82f9278d2d587b7042a0858aab79fd8b6e3add9` later secured. When `f8857ba66643eb3ce97116dd90c0e75a9474f924` introduced optional authentication without a default-deny layer for existing API routes, that AI-authored endpoint became one of the exposed endpoints covered by the CVE; I found no evidence AI authored the hardcoded JWT secret."
     },
     {
+      "id": "GHSA-m69h-jm2f-2pv8",
+      "description": "OpenClaw: Feishu reaction events could bypass group authorization and mention gating",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-285",
+        "CWE-863"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-13T20:54:30Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/send.ts, extensions/feishu/src/types.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNLIKELY",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNLIKELY",
+                "reasoning": "This AI-authored commit created `getMessageFeishu`/`FeishuMessageInfo` without preserving `chat_type`, but at that point there was no reaction-event path that used the helper for authorization-sensitive routing. The actual bypass was introduced later, when reaction support started synthesizing inbound events and explicitly treated missing reaction chat type as direct-message (`p2p`) context. The `types.ts` blame is also partly a move artifact from the fix, which relocated `FeishuMessageInfo` there.",
+                "confidence": 0.95,
+                "tool_calls_made": 94,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-m69h-jm2f-2pv8",
+        "https://github.com/openclaw/openclaw/pull/44088",
+        "https://github.com/openclaw/openclaw/commit/3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
+        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+      ],
+      "ai_contribution": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass."
+    },
+    {
+      "id": "GHSA-p7gr-f84w-hqg5",
+      "description": "OpenClaw's sandboxed sessions_spawn now enforces sandbox inheritance for cross-agent spawns",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-269",
+        "CWE-284"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-02T21:53:45Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "both",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+          "author": "Joshua Mitchell",
+          "date": "2026-02-16T10:07:22-06:00",
+          "message": "feat(commands): add /subagents spawn command",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/subagent-spawn.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit created src/agents/subagent-spawn.ts, the exact file later fixed by b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1, and its new spawnSubagentDirect() function preserved the vulnerable cross-agent flow: normalize requested agentId, check only the allowlist, then create childSessionKey for targetAgentId with no sandbox inheritance guard. It was not the original source of the flaw, but it reimplemented the vulnerable behavior in new shared code and added the /subagents spawn command to call it, which counts as bug introduction under the reimplementation rule. The commit is AI-assisted (Claude/claude_code), so it is part of the causal chain.",
+                "confidence": 0.95,
+                "tool_calls_made": 98,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+              "author_name": "Joshua Mitchell",
+              "message": "feat(commands): add /subagents spawn command",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5a3a448bc48dc9e72530b46195476a48845bb8da"
+        },
+        {
+          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+          "author": "Yifeng Wang",
+          "date": "2026-02-05T18:26:05+08:00",
+          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "extensions/feishu/src/bot.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "da00ead65218f847f762dc998b125f28144f7624",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "This commit replaced the Feishu SDK/plugin and added extensions/feishu/src/bot.ts, but that file contains Feishu message parsing and dispatch only; repository searches show no sessions_spawn, spawnSubagentDirect, or subagent-spawn logic in the Feishu extension. The vulnerable code fixed for this CVE lives in src/agents/tools/sessions-spawn-tool.ts / src/agents/subagent-spawn.ts, so this blame candidate is unrelated overlap from other fixes in the advisory release.",
+                "confidence": 0.95,
+                "tool_calls_made": 98,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "085c23ce5a26ecfc6d2bf9d439ecb41f53173f81",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3a93a7bb1e47070a010cc190d005daa2ada8f0e5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4ba0a4d4fb852e010c53d2e011b961f7337633e4",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fa9148400e53caa81f13e65dee02ab200c3eebbb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6210d2e238e16629c79840192da1a592ac44fa15",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "2dcd2f909449d55324e2305836df2058d4c0599d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "aaa7de45fa3c64524740c6d24aee68e18ef56355",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "757e09fe43502bbcea3faac2fc0e49e067f5a22f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "002539c01e04411453994ab369f4444824472f23",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "134296276a66510570df580df49e167556990077",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "11d34700c0fe828c91e393ea5a9e877d96619e98",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "53d6e07a601b83fe2ed03ebcf667ca68f315cb4f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6f63fc288af9960d08bd45d093d90e1f643ef343",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "348a7dd5b3d5a9e19e518e9ea35a59143251eb4a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba430cc65b2823a08a1fca1c9bfca593d71c4e69",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "930841cd7c2b2d5d6ef29ff170a188dd8a06b169",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "98e30dc2a3b673a053fa2f2638c5508405f2dfb0",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3f056a72949541bdb44a94383887bd25434964ab",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "da00ead65218f847f762dc998b125f28144f7624",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-p7gr-f84w-hqg5"
+      ],
+      "ai_contribution": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach."
+    },
+    {
       "id": "GHSA-r48f-3986-4f9c",
       "description": "fickling modules linecache, difflib and gc are missing from the unsafe modules blocklist",
       "severity": "LOW",
@@ -12472,6 +13967,108 @@
         "https://github.com/trailofbits/fickling/releases/tag/v0.1.10"
       ],
       "ai_contribution": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions."
+    },
+    {
+      "id": "GHSA-vvgp-4c28-m3jm",
+      "description": "OpenClaw has a Trusted-proxy Control UI pairing bypass which allows unpaired node sessions",
+      "severity": "MEDIUM",
+      "cvss": 5.5,
+      "cwes": [
+        "CWE-807"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:52:16Z",
+      "ai_tools": [
+        "cursor"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-assisted code in commit 20523b918adff4feae378ac9965e204c56b6e3d8 (co-authored by Cursor) directly introduced the vulnerable trusted-proxy pairing-bypass logic. That commit added a new `trustedProxyAuthOk` fast path for Control UI connections without preserving the existing operator-only role gate, which enabled unpaired node-role sessions.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+          "author": "SidQin-cyber",
+          "date": "2026-02-24T21:15:57+08:00",
+          "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+          "ai_signals": [
+            {
+              "tool": "cursor",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ec45c317f5d0631a3d333b236da58c4749ede2a3",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "The fix commit only adds `role === \"operator\"` to the new `trustedProxyAuthOk` condition in two places, and blame at the fix parent attributes those vulnerable lines to 20523b918. Pickaxe searches for `trustedProxyAuthOk`, `params.isControlUi && params.trustedProxyAuthOk`, and `resolvedAuth.mode === \"trusted-proxy\"` in this pairing-bypass context all identify 20523b918 as the first introduction. In that commit, `evaluateMissingDeviceIdentity()` gained `if (params.isControlUi && params.trustedProxyAuthOk) return { kind: \"allow\" }` and `shouldSkipControlUiPairing()` gained `if (trustedProxyAuthOk) return true`, while `message-handler.ts` computed `trustedProxyAuthOk` without any role check. Before this commit, the relevant logic only allowed bypass through `roleCanSkipDeviceIdentity(role, sharedAuthOk)`, which is explicitly operator-only; 20523b918 bypassed that restriction and made node-role Control UI sessions unpaired/authenticated under trusted-proxy mode.",
+                "confidence": 0.95,
+                "tool_calls_made": 57,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+              "author_name": "SidQin-cyber",
+              "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+              "ai_signals": [
+                {
+                  "tool": "cursor",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "e66483fe5c6f07199cb63741e1ee13ddb0fdbe96",
+              "author_name": "Peter Steinberger",
+              "message": "fix: add changelog for trusted-proxy pairing bypass (#25428) (thanks @SidQin-cyber)",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "20523b918adff4feae378ac9965e204c56b6e3d8"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "ec45c317f5d0631a3d333b236da58c4749ede2a3",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-vvgp-4c28-m3jm",
+        "https://github.com/openclaw/openclaw/commit/ec45c317f5d0631a3d333b236da58c4749ede2a3"
+      ],
+      "ai_contribution": "AI-assisted code in commit 20523b918adff4feae378ac9965e204c56b6e3d8 (co-authored by Cursor) directly introduced the vulnerable trusted-proxy pairing-bypass logic. That commit added a new `trustedProxyAuthOk` fast path for Control UI connections without preserving the existing operator-only role gate, which enabled unpaired node-role sessions."
     },
     {
       "id": "CVE-2026-25481",
@@ -18730,6 +20327,428 @@
       "ai_contribution": "Yes. Copilot-authored commits directly introduced several report-leak paths: they created the azapi_resource / azapi_update_resource rendering templates, added the CompareJsonProperties helper that returned raw sensitive values, and wrote Variable Group diff logic that masked only one side of secret transitions. Human-authored mapper/helper commits also contributed, but AI code was part of the causal chain for the shipped vulnerability."
     },
     {
+      "id": "CVE-2026-31989",
+      "description": "OpenClaw versions prior to 2026.3.1 contain a server-side request forgery vulnerability in web_search citation redirect resolution that uses a private-network-allowing SSRF policy. An attacker who can influence citation redirect targets can trigger internal-network requests from the OpenClaw host to loopback, private, or internal destinations.",
+      "severity": "MEDIUM",
+      "cvss": 5.3,
+      "cwes": [
+        "CWE-918"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T02:16:03.430",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.57,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The initial Gemini grounding feature that introduced `resolveRedirectUrl()` and sent HEAD requests to citation URLs was commit `3a3c2da9168f93397eeb3109d521819e10dc44fd`, which is explicitly co-authored by Claude Opus 4.6. A later human-only commit (`5eb72ab769517e31d96140f1aa66bd1a47a40c2a`) kept that code path exploitable by moving it onto the SSRF guard while explicitly opting into `dangerouslyAllowPrivateNetwork` for attacker-controlled redirect targets.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+          "author": "Joshua Mitchell",
+          "date": "2026-02-16T10:07:22-06:00",
+          "message": "feat(commands): add /subagents spawn command",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/subagent-spawn.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "This commit adds `spawnSubagentDirect()` and related session-spawn plumbing in `src/agents/subagent-spawn.ts`. It does not touch `web_search`, Gemini citations, redirect resolution, `fetchWithSsrFGuard`, or SSRF policy handling at all. The screening hypothesis does not hold up in the code: this is subagent/session orchestration, not outbound HTTP or citation URL processing.",
+                "confidence": 0.95,
+                "tool_calls_made": 97,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+              "author_name": "Joshua Mitchell",
+              "message": "feat(commands): add /subagents spawn command",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "5a3a448bc48dc9e72530b46195476a48845bb8da"
+        },
+        {
+          "sha": "6b2ad692c18dc3f7266b0eec612439bb900aebc5",
+          "author": "Bridgerz",
+          "date": "2026-02-13T15:29:29-08:00",
+          "message": "fix: defer gateway restart until all replies are sent",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/gateway/server.impl.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "53d10f8688b467a9290990e86c496063158affa3",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "The `src/gateway/server.impl.ts` changes only add pre-restart deferral bookkeeping (`getActiveEmbeddedRunCount`, `getTotalPendingReplies`, `getTotalQueueSize`, `setPreRestartDeferralCheck`). There is no change to web search, redirect fetching, SSRF policies, or any URL-fetch path. Despite the screening note, this commit is about delaying SIGUSR1 restarts until queued work drains, not about network request authorization.",
+                "confidence": 0.95,
+                "tool_calls_made": 97,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "6b2ad692c18dc3f7266b0eec612439bb900aebc5",
+              "author_name": "Bridgerz",
+              "message": "fix: defer gateway restart until all replies are sent",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7c4abdd4cd02bf8bdafe9f60d740b541b6bf2956",
+              "author_name": "Peter Steinberger",
+              "message": "fix: single-source gateway restart authorization",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            }
+          ],
+          "squash_merge_sha": "ab4a08a82accc36ca8cb223c6f9a31eb8e6f72d5"
+        },
+        {
+          "sha": "985ee402322a57705de38b9f00122e63d942f12f",
+          "author": "Joao Lisboa",
+          "date": "2025-12-02T10:52:37-03:00",
+          "message": "Fix path traversal vulnerability in media server",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/media/server.ts",
+          "blame_confidence": 0.8,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "f5c2be19105d2dd2429ce073dfb07c1a8806e03c",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "UNRELATED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "UNRELATED",
+                "reasoning": "This commit fixes a path traversal bug in `src/media/server.ts` by resolving the media path and enforcing that it stays under the media root. It does not touch `web_search`, Gemini grounding citations, redirect following, or SSRF guard policy. The overlap is purely incidental file ownership/blame noise, not causal responsibility for the citation-redirect SSRF.",
+                "confidence": 0.95,
+                "tool_calls_made": 97,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "985ee402322a57705de38b9f00122e63d942f12f",
+              "author_name": "Joao Lisboa",
+              "message": "Fix path traversal vulnerability in media server",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "b94b22015639571b326742b9cf84d5cf544a2fdc"
+        },
+        {
+          "sha": "7f1a4c787aed4091a0e46ae27ecc7415c3b0e9b1",
+          "author": "AkosCz",
+          "date": "2026-02-23T08:30:51-06:00",
+          "message": "fix: use structured readResponseText result in Gemini error path",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "src/agents/tools/web-search.ts",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "advisory_version",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the Gemini web_search provider and the vulnerable redirect-resolution feature. It takes citation URLs from `groundingMetadata.groundingChunks[*].web.uri`, calls `resolveRedirectUrl(citation.url)`, and `resolveRedirectUrl()` performs `fetch(url, { method: \"HEAD\", redirect: \"follow\" })` on that untrusted URL with no SSRF guard at all. That is the first introduction of the SSRF-capable behavior, and the commit is explicitly co-authored by Claude Opus 4.6.",
+                "confidence": 0.95,
+                "tool_calls_made": 97,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          },
+          "decomposed_commits": [
+            {
+              "sha": "a4c68d890ce6115e6ce320737d3afbfaedf9990b",
+              "author_name": "AkosCz",
+              "message": "feat: add Gemini (Google Search grounding) as web_search provider",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "b588760db574775d210132cf2ac4bb340028a326",
+              "author_name": "AkosCz",
+              "message": "feat: auto-detect search provider from available API keys",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8e3d6cf1c62cd63a3b57cc1acd4d2e4e0fa7afe2",
+              "author_name": "AkosCz",
+              "message": "fix: merge __testing exports, downgrade auto-detect log to debug",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7088759dc3479427e331f6835563a358c311e7ea",
+              "author_name": "AkosCz",
+              "message": "fix: use defaultRuntime.log instead of .debug (not in RuntimeEnv type)",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "843a42dea65d8782ca7c9d3d4087dc68b90ab587",
+              "author_name": "AkosCz",
+              "message": "fix: mark gemini apiKey as sensitive in zod schema",
+              "ai_signals": [],
+              "touched_blamed_file": false
+            },
+            {
+              "sha": "293e52577ec4a5e265bdadc69b1476aca8cfef15",
+              "author_name": "AkosCz",
+              "message": "fix: address Greptile review — add externalContent to Gemini payload, add Gemini/Grok entries to schema labels/help, remove dead schema-fields.ts",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "ac8c22eb0cd9f71681148d113ef8309dfc40b88c",
+              "author_name": "AkosCz",
+              "message": "fix(web-search): add JSON parse guard for Gemini API responses",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "7f1a4c787aed4091a0e46ae27ecc7415c3b0e9b1",
+              "author_name": "AkosCz",
+              "message": "fix: use structured readResponseText result in Gemini error path",
+              "ai_signals": [
+                {
+                  "tool": "claude_code",
+                  "signal_type": "co_author_trailer",
+                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+                  "confidence": 0.95
+                }
+              ],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "8575bcdc8489de7c14c2b40812c24d64a7fb5f28",
+              "author_name": "AkosCz",
+              "message": "style: fix import order and formatting after rebase onto main",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            },
+            {
+              "sha": "93d861de93c6e9d6ec9d151954e79ce72d4df626",
+              "author_name": "Vincent Koc",
+              "message": "Web search: send Gemini API key via header",
+              "ai_signals": [],
+              "touched_blamed_file": true
+            }
+          ],
+          "squash_merge_sha": "3a3c2da9168f93397eeb3109d521819e10dc44fd"
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "085c23ce5a26ecfc6d2bf9d439ecb41f53173f81",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "5b62d5603d7f35541a15378a909e41a16415a447",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "3a93a7bb1e47070a010cc190d005daa2ada8f0e5",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "fa9148400e53caa81f13e65dee02ab200c3eebbb",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "8247c25a32a34be30b9e25d064ec85976d5df09d",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "aaa7de45fa3c64524740c6d24aee68e18ef56355",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "757e09fe43502bbcea3faac2fc0e49e067f5a22f",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "710004e011fd587d0f79426a6c8224d023d3bc50",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "53d10f8688b467a9290990e86c496063158affa3",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "002539c01e04411453994ab369f4444824472f23",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "e4d22fb07a2b865ba5c1e89704a5c212a4736b27",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "134296276a66510570df580df49e167556990077",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "eddaf19478839e140895f767a54a4d9bb2e99792",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "4ba0a4d4fb852e010c53d2e011b961f7337633e4",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "6f63fc288af9960d08bd45d093d90e1f643ef343",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "348a7dd5b3d5a9e19e518e9ea35a59143251eb4a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "ba430cc65b2823a08a1fca1c9bfca593d71c4e69",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "930841cd7c2b2d5d6ef29ff170a188dd8a06b169",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        },
+        {
+          "sha": "f5c2be19105d2dd2429ce073dfb07c1a8806e03c",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "advisory_version"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "Yes. The initial Gemini grounding feature that introduced `resolveRedirectUrl()` and sent HEAD requests to citation URLs was commit `3a3c2da9168f93397eeb3109d521819e10dc44fd`, which is explicitly co-authored by Claude Opus 4.6. A later human-only commit (`5eb72ab769517e31d96140f1aa66bd1a47a40c2a`) kept that code path exploitable by moving it onto the SSRF guard while explicitly opting into `dangerouslyAllowPrivateNetwork` for attacker-controlled redirect targets."
+    },
+    {
       "id": "CVE-2026-32304",
       "description": "Locutus: RCE via unsanitized input in create_function()",
       "severity": "CRITICAL",
@@ -22208,6 +24227,160 @@
         "https://nvd.nist.gov/vuln/detail/CVE-2025-59163"
       ],
       "ai_contribution": "Copilot-authored commit cd7caffb4aa568d07edc0d21bbd7dabd38ef7e2c did not originate the unguarded SSE transport, but it added a new `/sse` HEAD handler that explicitly returned `Access-Control-Allow-Origin: *` and continued serving the transport through an unguarded HTTP handler. So AI-authored code widened the browser-reachable attack surface, even though the core vulnerable SSE design was first introduced earlier by 5a5a9518c6776eeafa50d15797fd36a9703f0a57."
+    },
+    {
+      "id": "CVE-2026-31990",
+      "description": "OpenClaw versions prior to 2026.3.2 contain a vulnerability in the stageSandboxMedia function in which it fails to validate destination symlinks during media staging, allowing writes to follow symlinks outside the sandbox workspace. Attackers can exploit this by placing symlinks in the media/inbound directory to overwrite arbitrary files on the host system outside sandbox boundaries.",
+      "severity": "MEDIUM",
+      "cvss": 6.9,
+      "cwes": [
+        "CWE-59"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-19T02:16:03.647",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.45,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code contributed via commit 7a9ff182608b0c083ed57e3f199495ac93f4a079, which added remote attachment staging that writes directly to the chosen destination path with `scpFile(..., dest)` and preserved the same unsafe destination-write design for local copies, all without symlink-safe destination validation. The original sandbox overwrite flaw was introduced earlier by human-authored commit ea018a68ccb92dbc735bc1df9880d5c95c63ca35, but the AI commit extended and reaffirmed the vulnerable staging logic, so AI was part of the causal chain.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit added the remote-media branch in `stageSandboxMedia`, including `await scpFile(ctx.MediaRemoteHost, source, dest);`, where `dest` is the sandbox staging path and no destination symlink checks are performed. Its diff also rewrote the local staging block into the new conditional while retaining the same direct write-to-`dest` behavior, so it preserved the unsafe design and introduced a second vulnerable write path that the fix later replaced with temp-file staging plus `writeFileWithinRoot`. The screening note was directionally correct: this commit does directly touch the vulnerable function and meaningfully contributes to the flaw, even though it is not the earliest origin.",
+                "confidence": 0.95,
+                "tool_calls_made": 43,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "17ede52a4be3034f6ec4b883ac6b81ad0101558a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [],
+      "ai_contribution": "AI-authored code contributed via commit 7a9ff182608b0c083ed57e3f199495ac93f4a079, which added remote attachment staging that writes directly to the chosen destination path with `scpFile(..., dest)` and preserved the same unsafe destination-write design for local copies, all without symlink-safe destination validation. The original sandbox overwrite flaw was introduced earlier by human-authored commit ea018a68ccb92dbc735bc1df9880d5c95c63ca35, but the AI commit extended and reaffirmed the vulnerable staging logic, so AI was part of the causal chain."
+    },
+    {
+      "id": "GHSA-2mc2-g238-722j",
+      "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
+      "severity": "LOW",
+      "cvss": 2.5,
+      "cwes": [
+        "CWE-295",
+        "CWE-78"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-03T21:35:21Z",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "pr_body",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.45,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-attributed commit 7a9ff182608b0c083ed57e3f199495ac93f4a079 introduced the entire iMessage remote-attachment path: it added `remoteHost` as an unrestricted config/input, auto-detected it from SSH wrapper scripts, and passed it into a new `scp` invocation using `StrictHostKeyChecking=accept-new` and no `--` separator. Those are the exact behaviors the security fix later hardened, so AI-authored code directly contributed to the vulnerability.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+          "author": "Tyler Yust",
+          "date": "2026-01-16T15:51:42-08:00",
+          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "pr_body_keyword",
+              "matched_text": "Generated with [Claude Code]",
+              "confidence": 0.9
+            }
+          ],
+          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/imessage/monitor/monitor-provider.ts",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "github_advisory",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the vulnerable feature end-to-end. In `src/auto-reply/reply/stage-sandbox-media.ts` it created `scpFile()` with `StrictHostKeyChecking=accept-new` and passed `${remoteHost}:${remotePath}` directly to `scp` without a `--` end-of-options separator; in `src/imessage/monitor/monitor-provider.ts` it added `remoteHost` resolution from config and from `detectRemoteHostFromCliPath()`, then propagated that value as `MediaRemoteHost`. Pickaxe searches for `StrictHostKeyChecking=accept-new`, ```${remoteHost}:${remotePath}```, `let remoteHost = imessageCfg.remoteHost;`, `remoteHost?: string;`, and `remoteHost: z.string().optional(),` all trace back to this commit as the first introduction, and the pre-7a9 file versions had no remote-attachment/SCP logic at all.",
+                "confidence": 0.95,
+                "tool_calls_made": 72,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+          "repo_url": "https://github.com/openclaw/openclaw",
+          "source": "github_advisory"
+        }
+      ],
+      "references": [
+        "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
+        "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+      ],
+      "ai_contribution": "Yes. The AI-attributed commit 7a9ff182608b0c083ed57e3f199495ac93f4a079 introduced the entire iMessage remote-attachment path: it added `remoteHost` as an unrestricted config/input, auto-detected it from SSH wrapper scripts, and passed it into a new `scp` invocation using `StrictHostKeyChecking=accept-new` and no `--` separator. Those are the exact behaviors the security fix later hardened, so AI-authored code directly contributed to the vulnerability."
     },
     {
       "id": "CVE-2026-30924",
