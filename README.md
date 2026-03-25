@@ -36,7 +36,11 @@ See [cve-analyzer/README.md](cve-analyzer/README.md) for full CLI reference.
 
 ## Contributing
 
-Found a false positive? Think we missed something? [Open an issue](https://github.com/HQ1995/vibe-security-radar/issues) or email hanqing@gatech.edu.
+Found a false positive? Think we missed something? Want to add a new AI tool signature or improve detection?
+
+- [Open an issue](https://github.com/HQ1995/vibe-security-radar/issues) to report bugs or suggest improvements
+- [Submit a PR](https://github.com/HQ1995/vibe-security-radar/pulls) — new signal patterns, pipeline fixes, and web UI improvements are all welcome
+- Email hanqing@gatech.edu for research collaboration
 
 ## License
 
