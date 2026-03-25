@@ -114,9 +114,9 @@ const PIPELINE_STEPS = [
     tier: "Phase D",
     title: "Screening verification",
     summary:
-      "A quick LLM check compares the fix commit diff against the bug-introducing commit diff to verify the causal link.",
+      "A per-CVE LLM triage decides whether the AI-signaled commits are plausibly related to the vulnerability, gating the expensive deep investigation.",
     details:
-      "For each bug-introducing commit with AI signals, an LLM receives both diffs plus the vulnerability description and assesses whether the blamed commit actually introduced the security issue. This is a lightweight single-pass check. Verdicts are CONFIRMED, UNLIKELY, or UNRELATED. When a squash-merge has a culprit sub-commit identified, the LLM analyzes that sub-commit's diff instead of the full squash merge. Results are cached per (BIC SHA, fix SHA, blamed file) tuple.",
+      "Instead of sending every AI-signaled CVE to the deep investigator, a lightweight LLM screen runs first at the CVE level. It receives the vulnerability description, the fix commit diff, and a summary of all AI-signaled bug-introducing commits (including their decomposed sub-commits and blamed files). The screener asks one question: could any of these AI commits have contributed to this vulnerability? If the answer is no — for example, the AI commits touched frontend auth code but the vulnerability is a backend SSRF — the CVE is excluded without incurring the cost of a full investigation. CVEs that pass screening proceed to Phase E. This filter has ~80% precision (validated by independent audit of rejected cases) and catches cases where blame cast a wide net across a large repo and happened to land on unrelated AI-authored code.",
   },
   {
     tier: "Phase E",
