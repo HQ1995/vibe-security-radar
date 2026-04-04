@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-25T19:04:19.643607+00:00",
-  "total": 74,
+  "generated_at": "2026-04-04T00:27:52.921584+00:00",
+  "total": 78,
   "cves": [
     {
       "id": "CVE-2025-12489",
@@ -5118,6 +5118,518 @@
       "ai_contribution": "Yes. AI-assisted code in commit 2c9deefbf744089c3041885717b92c6f2fc0bf8c (co-authored by Claude / flagged as claude_code) introduced the generic webhook feature with payload-driven identity: it accepted caller-supplied `sender` and `chat_id`, checked the allowlist against `payload.sender`, and published those untrusted values as the inbound identity. The fix reverses that design by adding server-controlled `sender_id`/`chat_id`, defaulting `trust_payload_identity` to false, and only using payload identity as an explicit legacy opt-in."
     },
     {
+      "id": "CVE-2026-33632",
+      "description": "ClearanceKit: opfilter policy bypass via exchangedata and clone operations",
+      "severity": "HIGH",
+      "cvss": 8.4,
+      "cwes": [
+        "CWE-862"
+      ],
+      "ecosystem": "",
+      "published": "2026",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Swift"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commits 9074ce8f2a46d63a3b470e480192454796f60d98 and especially a3d1733d2691a0d40209c48b01bf9291bf645207 wrote the adapter/interactor authorization code that left AUTH_EXCHANGEDATA and AUTH_CLONE unhandled, first by reimplementing the original open-only design and later by expanding coverage incompletely. Although the earliest access-control flaw began in human-authored 78e1266d63d9530063c8ea17bbf053458b808a05, AI-authored code was part of the causal chain and directly authored the vulnerable code the fix changed.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "a3d1733d2691a0d40209c48b01bf9291bf645207",
+          "author": "Craig Bass",
+          "date": "2026-03-19T21:40:57+00:00",
+          "message": "feat: intercept AUTH_RENAME, UNLINK, LINK, CREATE, TRUNCATE, COPYFILE, READDIR",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/FilterInteractor.swift, opfilter/ESInboundAdapter.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "6181c4a22eccbeca973c77f4bd023eb795c13786",
+          "screening_verification": null
+        },
+        {
+          "sha": "9074ce8f2a46d63a3b470e480192454796f60d98",
+          "author": "Craig Bass",
+          "date": "2026-03-07T10:26:19+00:00",
+          "message": "Introduce hexagonal architecture in opfilter",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/ESInboundAdapter.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "6181c4a22eccbeca973c77f4bd023eb795c13786",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-assisted refactor created ESInboundAdapter.swift with an AUTH_OPEN-only eventTypes list and AUTH_OPEN-only filterEvent() dispatch, reimplementing the earlier open-only access-control model inside the new hexagonal architecture. The vulnerability already existed before this refactor, but the commit rewrote the vulnerable design into the files later fixed, which counts as bug introduction under the reimplementation guidance. It is not the first origin, but it is a real BIC for the current architecture.",
+                "confidence": 0.95,
+                "tool_calls_made": 56,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "56cf8aabd3d6f33e39749e27b135106878cbb7fc",
+          "author": "Craig Bass",
+          "date": "2026-03-17T09:56:28+00:00",
+          "message": "Structured logging: pipe-separated audit log and levelled os_log",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/ESInboundAdapter.swift",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "osv",
+          "blame_strategy": "pattern_search",
+          "fix_commit_sha": "6181c4a22eccbeca973c77f4bd023eb795c13786",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commits 9074ce8f2a46d63a3b470e480192454796f60d98 and especially a3d1733d2691a0d40209c48b01bf9291bf645207 wrote the adapter/interactor authorization code that left AUTH_EXCHANGEDATA and AUTH_CLONE unhandled, first by reimplementing the original open-only design and later by expanding coverage incompletely. Although the earliest access-control flaw began in human-authored 78e1266d63d9530063c8ea17bbf053458b808a05, AI-authored code was part of the causal chain and directly authored the vulnerable code the fix changed.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "6181c4a22eccbeca973c77f4bd023eb795c13786",
+          "repo_url": "https://github.com/craigjbass/clearancekit",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/33xxx/CVE-2026-33632.json",
+        "https://github.com/craigjbass/clearancekit/security/advisories/GHSA-wpxj-vhfp-hhvm",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-33632"
+      ],
+      "ai_contribution": "Yes. AI-authored commits 9074ce8f2a46d63a3b470e480192454796f60d98 and especially a3d1733d2691a0d40209c48b01bf9291bf645207 wrote the adapter/interactor authorization code that left AUTH_EXCHANGEDATA and AUTH_CLONE unhandled, first by reimplementing the original open-only design and later by expanding coverage incompletely. Although the earliest access-control flaw began in human-authored 78e1266d63d9530063c8ea17bbf053458b808a05, AI-authored code was part of the causal chain and directly authored the vulnerable code the fix changed."
+    },
+    {
+      "id": "CVE-2026-34218",
+      "description": "ClearanceKit: Managed and user-defined policy rules not enforced between opfilter start and first policy modification",
+      "severity": "MEDIUM",
+      "cvss": 6.3,
+      "cwes": [
+        "CWE-269"
+      ],
+      "ecosystem": "",
+      "published": "2026",
+      "ai_tools": [
+        "claude_code",
+        "github_copilot"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "Swift"
+      ],
+      "confidence": 0.95,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "79bfd443664161af0dc91000e17854c5de053d87",
+          "author": "Craig Bass",
+          "date": "2026-03-22T21:29:11+00:00",
+          "message": "refactor: remove jail evaluation from handleFileAuth",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "ca9a8f3c882cccc139c97eaca82c92db1033c208",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2026-03-23T10:27:57+00:00",
+          "message": "Make jail feature opt-in: add stop/start lifecycle, XPC toggle, setup checkbox, disabled banner",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "83ff88c734f9ad0ac37fe116cfbbbc38a326e58a",
+          "author": "Craig Bass",
+          "date": "2026-03-26T21:11:47+00:00",
+          "message": "Move startSweepTimer call to main.swift",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "eeb0ebcc4d0d3590d074a3358863c8c158e108fd",
+          "author": "Craig Bass",
+          "date": "2026-03-24T20:21:14+00:00",
+          "message": "Add dedicated postRespondQueue for post-respond work",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "fdd146d0bd184a736cc3971626b87bf31fcd8129",
+          "author": "Craig Bass",
+          "date": "2026-03-24T20:45:57+00:00",
+          "message": "Set all dispatch queues to .never autorelease; add cleanup timer",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "614a7946aecf2456893498f24ac18be5ed57f196",
+          "author": "Craig Bass",
+          "date": "2026-03-24T16:31:39+00:00",
+          "message": "Move FileAuthPipeline and PolicyRepository construction to main.swift",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit removed the initial `applyPolicyToFilter()/applyAllowlistToFilter()/applyJailRulesToFilter()` calls from `XPCServer.init` and reintroduced them explicitly in `main.swift` before `adapter.start(...)`. Those are the exact pre-start calls moved by fix commit `56d617b7`. Because `ESInboundAdapter.updatePolicy()` returns immediately when `client` is nil, this commit wrote the no-op startup application sequence that left `FilterInteractor` on baseline rules until a later resync/policy change.",
+                "confidence": 0.95,
+                "tool_calls_made": 102,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "31c617c8286a0707e1c7e65ec6469013d40b3ff1",
+          "author": "Craig Bass",
+          "date": "2026-03-07T21:39:19+00:00",
+          "message": "Deliver FAA policy dynamically from GUI to opfilter via daemon XPC",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This commit introduced the original flawed design for dynamic policy loading: `FilterInteractor` starts with `faaPolicy`, `main.swift` starts the adapter with only `faaPolicy`, and `ESInboundAdapter.updatePolicy()` became the path for loading non-baseline rules. In the same commit, `updatePolicy()` was written with `guard let client else { return }`, so interactor rule updates are silently skipped before ES client creation. That introduced the startup gap for user-defined policy and the underlying assumption later exposed again by the merged single-process startup path.",
+                "confidence": 0.95,
+                "tool_calls_made": 102,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "5a887953c45551879797fd9e11a2055cf9386d7e",
+          "author": "Craig Bass",
+          "date": "2026-03-16T14:38:30+00:00",
+          "message": "Merge daemon into opfilter as single privileged process",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/XPCServer.swift",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "osv",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-assisted merge-to-single-process rewrite reimplemented the vulnerability in the architecture that the fix actually repairs. `XPCServer.init` now loads persisted managed/user policy and immediately calls `applyPolicyToFilter()`, but `main.swift` does not create the ES client until later with `adapter.start(initialRules: server.mergedRules())`; because `adapter.updatePolicy()` early-returns before a client exists, the merged rules never reach `FilterInteractor` at startup. That made the startup mismatch deterministic for managed and user rules until GUI-triggered resync or another policy mutation.",
+                "confidence": 0.95,
+                "tool_calls_made": 102,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "repo_url": "https://github.com/craigjbass/clearancekit",
+          "source": "osv"
+        },
+        {
+          "sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "repo_url": "https://github.com/craigjbass/clearancekit",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/34xxx/CVE-2026-34218.json",
+        "https://github.com/craigjbass/clearancekit/security/advisories/GHSA-fpmv-5wgw-qhhr",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-34218"
+      ],
+      "ai_contribution": "AI-assisted commits materially contributed to the CVE. Claude/Copilot helped introduce the original startup design in which non-baseline policy state is applied only through `ESInboundAdapter.updatePolicy()` after the ES client exists, and later AI-assisted commits (`5a887953`, `614a7946`) reimplemented the same flawed ordering so managed and user rules stayed unapplied until a later resync or policy change."
+    },
+    {
       "id": "GHSA-5wp8-q9mx-8jx8",
       "description": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
       "severity": "CRITICAL",
@@ -6692,69 +7204,50 @@
       "ai_contribution": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c."
     },
     {
-      "id": "GHSA-g353-mgv3-8pcj",
-      "description": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
-      "severity": "HIGH",
-      "cvss": 8.6,
+      "id": "GHSA-fpmv-5wgw-qhhr",
+      "description": "ClearanceKit: Managed and user-defined policy rules not enforced between opfilter start and first policy modification",
+      "severity": "MEDIUM",
+      "cvss": 5.5,
       "cwes": [
-        "CWE-347"
+        "CWE-269"
       ],
       "ecosystem": "",
-      "published": "2026-03-13T20:55:34Z",
+      "published": "",
       "ai_tools": [
-        "claude_code"
+        "claude_code",
+        "github_copilot"
       ],
       "ai_involved": true,
-      "signal_source": "both",
+      "signal_source": "commit",
       "languages": [
-        "TypeScript"
+        "Swift"
       ],
       "confidence": 0.95,
       "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. AI-coauthored commits 2267d58afcc70fe19408b8f0dce108c340f3426d, 5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6, and 5c2cb6c591e4b63c2df0549ad2202403256e2a96 introduced the webhook configuration/dispatcher model with optional `encryptKey` and then enabled the built-in HTTP webhook server without enforcing that key, which made forged Feishu events acceptable. A later human-authored hardening commit required `verificationToken`, but it only narrowed the exposure and did not remove the AI-authored missing-`encryptKey` flaw.",
+      "how_introduced": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
       "root_cause": "",
       "vuln_type": "",
       "vulnerable_pattern": "",
       "verdict": "CONFIRMED",
       "bug_commits": [
         {
-          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
-          "author": "Yifeng Wang",
-          "date": "2026-02-05T18:26:05+08:00",
-          "message": "feat(feishu): replace built-in SDK with community plugin",
+          "sha": "614a7946aecf2456893498f24ac18be5ed57f196",
+          "author": "Craig Bass",
+          "date": "2026-03-24T16:31:39+00:00",
+          "message": "Move FileAuthPipeline and PolicyRepository construction to main.swift",
           "ai_signals": [
             {
               "tool": "claude_code",
               "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
               "confidence": 0.95
             }
           ],
-          "blamed_file": "extensions/feishu/src/channel.ts, extensions/feishu/src/config-schema.ts",
+          "blamed_file": "opfilter/main.swift",
           "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
+          "fix_commit_source": "osv",
           "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
-          "screening_verification": null
-        },
-        {
-          "sha": "5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6",
-          "author": "Yifeng Wang",
-          "date": "2026-02-05T19:18:25+08:00",
-          "message": "feat(feishu): sync with clawdbot-feishu #137 (multi-account support)",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "extensions/feishu/src/config-schema.ts",
-          "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
           "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
@@ -6766,9 +7259,9 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This AI-coauthored multi-account sync copied the same flaw into per-account configuration: it added account-level `encryptKey: z.string().optional()` / `encryptKey: { type: \"string\" }` and carried optional `encryptKey`/`verificationToken` into `ResolvedFeishuAccount` and `createEventDispatcher(account)`. The final fix tightens exactly these account-level definitions and checks. This commit did not create exploitability by itself, but it introduced the vulnerable design for multi-account Feishu webhook mode.",
+                "reasoning": "This commit moved initial policy application out of XPCServer.init and reimplemented it in main.swift as three explicit startup calls: server.applyPolicyToFilter(), server.applyAllowlistToFilter(), and server.applyJailRulesToFilter() before adapter.start(...). ESInboundAdapter.updatePolicy still had guard let client else { return }, so the startup policy apply became a no-op for policy state and interactor.updatePolicy(rules) never ran. That is exactly the broken initialization ordering fixed by 56d617.",
                 "confidence": 0.95,
-                "tool_calls_made": 93,
+                "tool_calls_made": 92,
                 "steps_completed": [],
                 "evidence": []
               }
@@ -6776,10 +7269,262 @@
           }
         },
         {
-          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
-          "author": "Yifeng Wang",
-          "date": "2026-02-10T08:19:44+08:00",
-          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "sha": "31c617c8286a0707e1c7e65ec6469013d40b3ff1",
+          "author": "Craig Bass",
+          "date": "2026-03-07T21:39:19+00:00",
+          "message": "Deliver FAA policy dynamically from GUI to opfilter via daemon XPC",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 1.0,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "79bfd443664161af0dc91000e17854c5de053d87",
+          "author": "Craig Bass",
+          "date": "2026-03-22T21:29:11+00:00",
+          "message": "refactor: remove jail evaluation from handleFileAuth",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "ca9a8f3c882cccc139c97eaca82c92db1033c208",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2026-03-23T10:27:57+00:00",
+          "message": "Make jail feature opt-in: add stop/start lifecycle, XPC toggle, setup checkbox, disabled banner",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "83ff88c734f9ad0ac37fe116cfbbbc38a326e58a",
+          "author": "Craig Bass",
+          "date": "2026-03-26T21:11:47+00:00",
+          "message": "Move startSweepTimer call to main.swift",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "eeb0ebcc4d0d3590d074a3358863c8c158e108fd",
+          "author": "Craig Bass",
+          "date": "2026-03-24T20:21:14+00:00",
+          "message": "Add dedicated postRespondQueue for post-respond work",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "fdd146d0bd184a736cc3971626b87bf31fcd8129",
+          "author": "Craig Bass",
+          "date": "2026-03-24T20:45:57+00:00",
+          "message": "Set all dispatch queues to .never autorelease; add cleanup timer",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/main.swift",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "5a887953c45551879797fd9e11a2055cf9386d7e",
+          "author": "Craig Bass",
+          "date": "2026-03-16T14:38:30+00:00",
+          "message": "Merge daemon into opfilter as single privileged process",
           "ai_signals": [
             {
               "tool": "claude_code",
@@ -6788,11 +7533,11 @@
               "confidence": 0.95
             }
           ],
-          "blamed_file": "extensions/feishu/src/monitor.ts",
+          "blamed_file": "opfilter/XPCServer.swift",
           "blame_confidence": 0.6,
-          "fix_commit_source": "github_advisory",
+          "fix_commit_source": "osv",
           "blame_strategy": "verifier_discovered",
-          "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
           "screening_verification": null,
           "verification": {
             "verdict": "CONFIRMED",
@@ -6804,47 +7549,138 @@
               {
                 "model": "gpt-5.4",
                 "verdict": "CONFIRMED",
-                "reasoning": "This AI-coauthored commit is the exploit-enabling change: it removed the prior 'webhook mode not implemented' behavior and routed `connectionMode === \"webhook\"` into a real `monitorWebhook()` that starts an HTTP server and hands requests directly to `Lark.adaptDefault(path, eventDispatcher, { autoChallenge: true })`. Because the dispatcher still accepted missing `encryptKey` and there was no startup/schema enforcement yet, the previously latent optional-credential design became reachable and forged events could be accepted. Under the calling-context rule, this commit is a confirmed BIC.",
+                "reasoning": "This is the earliest commit that introduced the vulnerable startup design. It created XPCServer, had XPCServer.init load managed/user policy and immediately call applyPolicyToFilter(), and main instantiated XPCServer before calling adapter.start(initialRules: server.mergedRules()). Because ESInboundAdapter.updatePolicy returns early when client is nil, startup never reached interactor.updatePolicy(rules), so opfilter stayed on baseline faaPolicy until a later resync or policy modification.",
                 "confidence": 0.95,
-                "tool_calls_made": 93,
+                "tool_calls_made": 92,
                 "steps_completed": [],
                 "evidence": []
               }
             ]
-          },
-          "decomposed_commits": [
+          }
+        },
+        {
+          "sha": "281fddacd00581256669c36f9ad9e8c5b71c2f6b",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2026-03-21T12:42:24+00:00",
+          "message": "Organize opfilter into subdirectories by adapter role",
+          "ai_signals": [
             {
-              "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
-              "author_name": "Yifeng Wang",
-              "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
-              "ai_signals": [
-                {
-                  "tool": "claude_code",
-                  "signal_type": "co_author_trailer",
-                  "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-                  "confidence": 0.95
-                }
-              ],
-              "touched_blamed_file": true
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
             }
           ],
-          "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+          "blamed_file": "opfilter/XPC/XPCServer.swift",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "osv",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "fe044c05104fad49e083ec0e37fd42f2670eafdd",
+          "author": "copilot-swe-agent[bot]",
+          "date": "2026-03-21T10:01:28+00:00",
+          "message": "Refactor XPCServer: extract PolicyRepository + EventBroadcaster, fix NSLock-in-Task",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "opfilter/XPCServer.swift",
+          "blame_confidence": 0.6,
+          "fix_commit_source": "osv",
+          "blame_strategy": "verifier_discovered",
+          "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
         }
       ],
       "fix_commits": [
         {
-          "sha": "7844bc89a1612800810617c823eb0c76ef945804",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
+          "sha": "56d617b778c571e3c29b803636d9807940992daa",
+          "repo_url": "https://github.com/craigjbass/clearancekit",
+          "source": "osv"
+        },
+        {
+          "sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+          "repo_url": "https://github.com/craigjbass/clearancekit",
+          "source": "osv"
         }
       ],
       "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
-        "https://github.com/openclaw/openclaw/pull/44087",
-        "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
-        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/34xxx/CVE-2026-34218.json",
+        "https://github.com/craigjbass/clearancekit/security/advisories/GHSA-fpmv-5wgw-qhhr",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-34218"
       ],
-      "ai_contribution": "Yes. AI-coauthored commits 2267d58afcc70fe19408b8f0dce108c340f3426d, 5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6, and 5c2cb6c591e4b63c2df0549ad2202403256e2a96 introduced the webhook configuration/dispatcher model with optional `encryptKey` and then enabled the built-in HTTP webhook server without enforcing that key, which made forged Feishu events acceptable. A later human-authored hardening commit required `verificationToken`, but it only narrowed the exposure and did not remove the AI-authored missing-`encryptKey` flaw."
+      "ai_contribution": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer."
     },
     {
       "id": "GHSA-hhjv-jq77-cmvx",
@@ -12325,6 +13161,90 @@
       "ai_contribution": "Yes. AI-authored commit 4f28b69506c28889c9a0a870875cc8055980ab89 added Swagger UI support and embedded `stringifyJSON(swaggerConfig)` directly into an inline `<script>` without HTML-safe escaping, which is the exact stored-XSS sink removed by the fix. Because that commit was authored by Copilot and directly introduced the unsafe rendering path, AI code materially contributed to the vulnerability."
     },
     {
+      "id": "CVE-2026-33890",
+      "description": "MyTube has an Unauthenticated Admin Privilege Escalation via Passkey Registration",
+      "severity": "HIGH",
+      "cvss": 8.9,
+      "cwes": [
+        "CWE-284"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-24T14:51:50-04:00",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.855,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored code contributed via b7bf9b7960958c6c51f85fe50a2fc041a086c466, which rewrote both authorization middlewares and explicitly kept passkey registration on the unauthenticated public-path allowlists. The original flaw began in earlier human-authored commits, but the AI co-authored refactor reimplemented the vulnerable authorization exemption that the fix later removed.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "b7bf9b7960958c6c51f85fe50a2fc041a086c466",
+          "author": "Peifan Li",
+          "date": "2026-03-23T16:47:53-04:00",
+          "message": "fix: Prevent authorization bypass via query parameter injection (GHSA-63cf-662x-crp2)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "backend/src/middleware/roleBasedAuthMiddleware.ts, backend/src/middleware/roleBasedSettingsMiddleware.ts",
+          "blame_confidence": 0.9,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "d6c1275a7ff7ffd3d51b53c333237f4d572580ac",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Blame on the pre-fix files points the removed lines in both roleBasedAuthMiddleware.ts and roleBasedSettingsMiddleware.ts to this commit: it introduced PUBLIC_PREFIX_PATHS entries for \"/settings/passkeys/register\" and \"/passkeys/register\". Those exact entries are what d6c1275 removes, and matchesPathOrSubpath made them cover both /register and /register/verify. Although the same flawed public-registration policy already existed earlier, this AI co-authored commit rewrote the middleware logic and reimplemented the vulnerable allowlist in newly authored code, so it is a confirmed reimplementation BIC rather than a mere move/rename.",
+                "confidence": 0.95,
+                "tool_calls_made": 119,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "941035909ee3f96a6f80f38acf70cbc3e66b5098",
+          "repo_url": "https://github.com/franklioxygen/mytube",
+          "source": "osv"
+        },
+        {
+          "sha": "d6c1275a7ff7ffd3d51b53c333237f4d572580ac",
+          "repo_url": "https://github.com/franklioxygen/MyTube",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/33xxx/CVE-2026-33890.json",
+        "https://github.com/franklioxygen/MyTube/security/advisories/GHSA-378w-xh68-qrc8",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-33890"
+      ],
+      "ai_contribution": "AI-authored code contributed via b7bf9b7960958c6c51f85fe50a2fc041a086c466, which rewrote both authorization middlewares and explicitly kept passkey registration on the unauthenticated public-path allowlists. The original flaw began in earlier human-authored commits, but the AI co-authored refactor reimplemented the vulnerable authorization exemption that the fix later removed."
+    },
+    {
       "id": "CVE-2026-3503",
       "description": "Protection mechanism failure in wolfCrypt post-quantum implementations (ML-KEM and ML-DSA) in wolfSSL on ARM Cortex-M microcontrollers allows a physical attacker to compromise key material and/or cryptographic outcomes via induced transient faults that corrupt or redirect seed/pointer values during Keccak-based expansion.\n\n\n\n\nThis issue affects wolfSSL (wolfCrypt): commit hash d86575c766e6e67ef93545fa69c04d6eb49400c6.",
       "severity": "MEDIUM",
@@ -13337,89 +14257,6 @@
         "https://github.com/maziggy/bambuddy/releases/tag/v0.1.7"
       ],
       "ai_contribution": "Yes. AI-authored commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 added the unauthenticated `debug_simulate_print_complete` printer route that `a82f9278d2d587b7042a0858aab79fd8b6e3add9` later secured. When `f8857ba66643eb3ce97116dd90c0e75a9474f924` introduced optional authentication without a default-deny layer for existing API routes, that AI-authored endpoint became one of the exposed endpoints covered by the CVE; I found no evidence AI authored the hardcoded JWT secret."
-    },
-    {
-      "id": "GHSA-m69h-jm2f-2pv8",
-      "description": "OpenClaw: Feishu reaction events could bypass group authorization and mention gating",
-      "severity": "LOW",
-      "cvss": 2.5,
-      "cwes": [
-        "CWE-285",
-        "CWE-863"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-13T20:54:30Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "ai_involved": true,
-      "signal_source": "commit",
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.855,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
-          "author": "Yifeng Wang",
-          "date": "2026-02-05T18:26:05+08:00",
-          "message": "feat(feishu): replace built-in SDK with community plugin",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "co_author_trailer",
-              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-              "confidence": 0.95
-            }
-          ],
-          "blamed_file": "extensions/feishu/src/send.ts, extensions/feishu/src/types.ts",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.8,
-            "models": [
-              "investigator-override"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "investigator-override",
-                "verdict": "CONFIRMED",
-                "reasoning": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass.",
-                "confidence": 0.8,
-                "tool_calls_made": 0,
-                "steps_completed": [
-                  "ai_involved_override"
-                ],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-m69h-jm2f-2pv8",
-        "https://github.com/openclaw/openclaw/pull/44088",
-        "https://github.com/openclaw/openclaw/commit/3e730c0332eb0a3dc9e1e8c29a5f95e933317b41",
-        "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
-      ],
-      "ai_contribution": "Yes. AI-authored commit 2267d58afcc70fe19408b8f0dce108c340f3426d created the Feishu message-lookup abstraction used by later reaction code and discarded `chat_type` from fetched messages. Human-authored reaction support in 8241145ada402f1e4914a38dab19bb3c397a991e then defaulted missing reaction chat types to `p2p`, so the AI-authored omission was part of the causal chain that left the feature unable to recover real group context and enabled the bypass."
     },
     {
       "id": "GHSA-p7gr-f84w-hqg5",
@@ -24486,85 +25323,6 @@
       "ai_contribution": "AI-authored code contributed via commit 7a9ff182608b0c083ed57e3f199495ac93f4a079, which added remote attachment staging that writes directly to the chosen destination path with `scpFile(..., dest)` and preserved the same unsafe destination-write design for local copies, all without symlink-safe destination validation. The original sandbox overwrite flaw was introduced earlier by human-authored commit ea018a68ccb92dbc735bc1df9880d5c95c63ca35, but the AI commit extended and reaffirmed the vulnerable staging logic, so AI was part of the causal chain."
     },
     {
-      "id": "GHSA-2mc2-g238-722j",
-      "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
-      "severity": "LOW",
-      "cvss": 2.5,
-      "cwes": [
-        "CWE-295",
-        "CWE-78"
-      ],
-      "ecosystem": "",
-      "published": "2026-03-03T21:35:21Z",
-      "ai_tools": [
-        "claude_code"
-      ],
-      "ai_involved": true,
-      "signal_source": "pr_body",
-      "languages": [
-        "TypeScript"
-      ],
-      "confidence": 0.45,
-      "verified_by": "gpt-5.4-high",
-      "how_introduced": "Yes. The AI-attributed commit 7a9ff182608b0c083ed57e3f199495ac93f4a079 introduced the entire iMessage remote-attachment path: it added `remoteHost` as an unrestricted config/input, auto-detected it from SSH wrapper scripts, and passed it into a new `scp` invocation using `StrictHostKeyChecking=accept-new` and no `--` separator. Those are the exact behaviors the security fix later hardened, so AI-authored code directly contributed to the vulnerability.",
-      "root_cause": "",
-      "vuln_type": "",
-      "vulnerable_pattern": "",
-      "verdict": "CONFIRMED",
-      "bug_commits": [
-        {
-          "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
-          "author": "Tyler Yust",
-          "date": "2026-01-16T15:51:42-08:00",
-          "message": "iMessage: Add remote attachment support for VM/SSH deployments",
-          "ai_signals": [
-            {
-              "tool": "claude_code",
-              "signal_type": "pr_body_keyword",
-              "matched_text": "Generated with [Claude Code]",
-              "confidence": 0.9
-            }
-          ],
-          "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts, src/imessage/monitor/monitor-provider.ts",
-          "blame_confidence": 1.0,
-          "fix_commit_source": "github_advisory",
-          "blame_strategy": "blame_deleted",
-          "fix_commit_sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
-          "screening_verification": null,
-          "verification": {
-            "verdict": "CONFIRMED",
-            "confidence": 0.95,
-            "models": [
-              "gpt-5.4"
-            ],
-            "agent_verdicts": [
-              {
-                "model": "gpt-5.4",
-                "verdict": "CONFIRMED",
-                "reasoning": "This commit introduced the vulnerable feature end-to-end. In `src/auto-reply/reply/stage-sandbox-media.ts` it created `scpFile()` with `StrictHostKeyChecking=accept-new` and passed `${remoteHost}:${remotePath}` directly to `scp` without a `--` end-of-options separator; in `src/imessage/monitor/monitor-provider.ts` it added `remoteHost` resolution from config and from `detectRemoteHostFromCliPath()`, then propagated that value as `MediaRemoteHost`. Pickaxe searches for `StrictHostKeyChecking=accept-new`, ```${remoteHost}:${remotePath}```, `let remoteHost = imessageCfg.remoteHost;`, `remoteHost?: string;`, and `remoteHost: z.string().optional(),` all trace back to this commit as the first introduction, and the pre-7a9 file versions had no remote-attachment/SCP logic at all.",
-                "confidence": 0.95,
-                "tool_calls_made": 72,
-                "steps_completed": [],
-                "evidence": []
-              }
-            ]
-          }
-        }
-      ],
-      "fix_commits": [
-        {
-          "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
-          "repo_url": "https://github.com/openclaw/openclaw",
-          "source": "github_advisory"
-        }
-      ],
-      "references": [
-        "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
-        "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
-      ],
-      "ai_contribution": "Yes. The AI-attributed commit 7a9ff182608b0c083ed57e3f199495ac93f4a079 introduced the entire iMessage remote-attachment path: it added `remoteHost` as an unrestricted config/input, auto-detected it from SSH wrapper scripts, and passed it into a new `scp` invocation using `StrictHostKeyChecking=accept-new` and no `--` separator. Those are the exact behaviors the security fix later hardened, so AI-authored code directly contributed to the vulnerability."
-    },
-    {
       "id": "CVE-2026-30924",
       "description": "qui CORS Misconfiguration: Arbitrary Origins Trusted",
       "severity": "CRITICAL",
@@ -25288,6 +26046,354 @@
         "https://github.com/openml"
       ],
       "ai_contribution": "Yes. The AI-assisted commit 142f468495451755fa54f461aad01106ca281e1e reimplemented profile email changes as a direct database update with no ownership proof and, in the same change set, added email-based account lookup (`WHERE email = ? OR username = ?`) that selects the first duplicate row. Although the same design flaw originally existed in legacy Flask code, the AI-authored Next.js code recreated and materially contributed to the lower-ID/higher-ID email-takeover lockout path."
+    },
+    {
+      "id": "CVE-2026-23482",
+      "description": "Blinko: Unauthorized Arbitrary File Read - /api/file/temp",
+      "severity": "HIGH",
+      "cvss": 8.2,
+      "cwes": [
+        "CWE-22"
+      ],
+      "ecosystem": "",
+      "published": "2026",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "TypeScript"
+      ],
+      "confidence": 0.38,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "AI-authored commit b1bb1c85e519 placed S3 temporary copies under UPLOAD_FILE_PATH/temp, a namespace the file endpoint treated as unauthenticated before the fix. That did not create the original traversal bug, but it expanded the vulnerable surface and made additional temporary files reachable through /api/file/temp without the security controls later added in the fix.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "b1bb1c85e5194e7710c3db66fe81f5c8c9f1248c",
+          "author": "Blinko",
+          "date": "2025-09-18T10:32:01+08:00",
+          "message": "🐛fix: eliminate duplicate file storage for S3 configurations",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "server/lib/files.ts",
+          "blame_confidence": 0.4,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "c48851090767feba431418630c495d90a7da1781",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit rewrote FileService.getFile() to create S3 temp files at path.join(UPLOAD_FILE_PATH, 'temp', `${Date.now()}_${path.basename(fileName)}`). Before this change, S3 temporary copies were written at path.join(UPLOAD_FILE_PATH, path.basename(fileName)), which was not in the auth-exempt temp/ namespace after 9b22496 tightened non-temp access. By moving server-side temporary copies into /api/file/temp, b1bb made those files reachable through the vulnerable unauthenticated temp path; the screening note about saveAdditionalDevFile is incorrect, as that function does not exist in server/lib/files.ts in either the candidate or fix state.",
+                "confidence": 0.95,
+                "tool_calls_made": 91,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "4533af9df6b876fbba5128fb71b9dcdc118abab9",
+          "repo_url": "https://github.com/blinkospace/blinko",
+          "source": "osv"
+        },
+        {
+          "sha": "c48851090767feba431418630c495d90a7da1781",
+          "repo_url": "https://github.com/blinkospace/blinko",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/23xxx/CVE-2026-23482.json",
+        "https://github.com/blinkospace/blinko/releases/tag/1.8.4",
+        "https://github.com/blinkospace/blinko/security/advisories/GHSA-hrwx-rhrx-f9mm",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-23482"
+      ],
+      "ai_contribution": "AI-authored commit b1bb1c85e519 placed S3 temporary copies under UPLOAD_FILE_PATH/temp, a namespace the file endpoint treated as unauthenticated before the fix. That did not create the original traversal bug, but it expanded the vulnerable surface and made additional temporary files reachable through /api/file/temp without the security controls later added in the fix."
+    },
+    {
+      "id": "CVE-2026-32890",
+      "description": "Anchorr: Stored XSS in User Mapping dropdown allows unprivileged Discord users to exfiltrate all secrets via /api/config",
+      "severity": "CRITICAL",
+      "cvss": 9.7,
+      "cwes": [
+        "CWE-200",
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "2026-03-20T03:16:00.060",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.3515,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. AI-authored commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f (Claude Code) directly introduced the vulnerable Discord user-mapping dropdown by rendering Discord-controlled member fields with `innerHTML` in `web/script.js`. A separate earlier non-AI dashboard commit exposed raw configuration secrets to browser-side JavaScript, which made that AI-authored XSS sink capable of exfiltrating secrets via `/api/config`.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "8690a9f89e69f250d14614a4876f63c465177fce",
+          "author": "nairdahh",
+          "date": "2025-11-23T11:37:02+02:00",
+          "message": "Implement Jellyfin API Polling System with per-library channel routing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "jellyfinWebhook.js, web/script.js",
+          "blame_confidence": 0.6,
+          "blame_strategy": "context_blame",
+          "fix_commit_sha": "4ff16764ddc3403a50ca3e7a3f06a086af7d8362",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. AI-authored commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f (Claude Code) directly introduced the vulnerable Discord user-mapping dropdown by rendering Discord-controlled member fields with `innerHTML` in `web/script.js`. A separate earlier non-AI dashboard commit exposed raw configuration secrets to browser-side JavaScript, which made that AI-authored XSS sink capable of exfiltrating secrets via `/api/config`.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "403ccf079be0ee5e6660f0ed2fa64174d76eff2f",
+          "author": "nairdahh",
+          "date": "2025-11-21T16:49:18+02:00",
+          "message": "Add Logs viewer page with connection status indicators",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "web/script.js",
+          "blame_confidence": 0.37,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "This AI-authored commit first introduced the Discord user-mapping custom select in `web/script.js`, including `option.innerHTML`, `display.innerHTML`, and `trigger.innerHTML` that interpolate `member.displayName` and `member.username` directly from `/api/discord-members`. The previous file revision has no `discord-user-select`/dropdown code at all, and pickaxe searches for the vulnerable strings trace back to this commit as the first origin. The later fix rewrites exactly these rendering paths to DOM APIs/textContent, so this commit is the primary XSS introducer.",
+                "confidence": 0.95,
+                "tool_calls_made": 94,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "repo_url": "https://github.com/openvessl/anchorr",
+          "source": "osv"
+        },
+        {
+          "sha": "64bc627c8e596a6d10b2125a21bec55bbcb4e382",
+          "repo_url": "https://github.com/openvessl/anchorr",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/openVESSL/Anchorr/releases/tag/v1.4.2",
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32890.json",
+        "https://github.com/openVESSL/Anchorr/security/advisories/GHSA-qpmq-6wjc-w28q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-32890"
+      ],
+      "ai_contribution": "Yes. AI-authored commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f (Claude Code) directly introduced the vulnerable Discord user-mapping dropdown by rendering Discord-controlled member fields with `innerHTML` in `web/script.js`. A separate earlier non-AI dashboard commit exposed raw configuration secrets to browser-side JavaScript, which made that AI-authored XSS sink capable of exfiltrating secrets via `/api/config`."
+    },
+    {
+      "id": "GHSA-qpmq-6wjc-w28q",
+      "description": "Anchorr: Stored XSS in User Mapping dropdown allows unprivileged Discord users to exfiltrate all secrets via /api/config",
+      "severity": "CRITICAL",
+      "cvss": 9.6,
+      "cwes": [
+        "CWE-200",
+        "CWE-79"
+      ],
+      "ecosystem": "",
+      "published": "",
+      "ai_tools": [
+        "claude_code"
+      ],
+      "ai_involved": true,
+      "signal_source": "commit",
+      "languages": [
+        "JavaScript"
+      ],
+      "confidence": 0.3515,
+      "verified_by": "gpt-5.4-high",
+      "how_introduced": "Yes. The AI-authored Claude Code commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f directly introduced the user-mapping dropdown and rendered Discord-controlled member data with unsafe `innerHTML`, creating the stored XSS sink. A later AI commit (8690a9f89e69f250d14614a4876f63c465177fce) touched related code, but the confirmed AI contribution is 403’s introduction of the vulnerable DOM construction path.",
+      "root_cause": "",
+      "vuln_type": "",
+      "vulnerable_pattern": "",
+      "verdict": "CONFIRMED",
+      "bug_commits": [
+        {
+          "sha": "403ccf079be0ee5e6660f0ed2fa64174d76eff2f",
+          "author": "nairdahh",
+          "date": "2025-11-21T16:49:18+02:00",
+          "message": "Add Logs viewer page with connection status indicators",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "web/script.js",
+          "blame_confidence": 0.37,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.95,
+            "models": [
+              "gpt-5.4"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "gpt-5.4",
+                "verdict": "CONFIRMED",
+                "reasoning": "Pickaxe shows this is the first commit that added the Discord user-mapping UI (`discord-user-select` / `populateDiscordMemberSelect`) and the exact unsafe sinks later rewritten in `d5ae67`: `option.innerHTML`, `display.innerHTML`, and `trigger.innerHTML` with interpolated `member.displayName`, `member.username`, and `member.avatar`. It also added the `/api/discord-members` and user-mapping plumbing that supplied attacker-controlled Discord member data to those sinks. This commit is explicitly AI-authored (Claude Code), so AI directly introduced the stored XSS surface.",
+                "confidence": 0.95,
+                "tool_calls_made": 145,
+                "steps_completed": [],
+                "evidence": []
+              }
+            ]
+          }
+        },
+        {
+          "sha": "8690a9f89e69f250d14614a4876f63c465177fce",
+          "author": "nairdahh",
+          "date": "2025-11-23T11:37:02+02:00",
+          "message": "Implement Jellyfin API Polling System with per-library channel routing",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "blamed_file": "web/script.js, jellyfinWebhook.js",
+          "blame_confidence": 0.37,
+          "fix_commit_source": "osv",
+          "blame_strategy": "blame_deleted",
+          "fix_commit_sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "screening_verification": null,
+          "verification": {
+            "verdict": "CONFIRMED",
+            "confidence": 0.8,
+            "models": [
+              "investigator-override"
+            ],
+            "agent_verdicts": [
+              {
+                "model": "investigator-override",
+                "verdict": "CONFIRMED",
+                "reasoning": "Yes. The AI-authored Claude Code commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f directly introduced the user-mapping dropdown and rendered Discord-controlled member data with unsafe `innerHTML`, creating the stored XSS sink. A later AI commit (8690a9f89e69f250d14614a4876f63c465177fce) touched related code, but the confirmed AI contribution is 403’s introduction of the vulnerable DOM construction path.",
+                "confidence": 0.8,
+                "tool_calls_made": 0,
+                "steps_completed": [
+                  "ai_involved_override"
+                ],
+                "evidence": []
+              }
+            ]
+          }
+        }
+      ],
+      "fix_commits": [
+        {
+          "sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+          "repo_url": "https://github.com/openvessl/anchorr",
+          "source": "osv"
+        },
+        {
+          "sha": "64bc627c8e596a6d10b2125a21bec55bbcb4e382",
+          "repo_url": "https://github.com/openvessl/anchorr",
+          "source": "osv"
+        }
+      ],
+      "references": [
+        "https://github.com/openVESSL/Anchorr/releases/tag/v1.4.2",
+        "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32890.json",
+        "https://github.com/openVESSL/Anchorr/security/advisories/GHSA-qpmq-6wjc-w28q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-32890"
+      ],
+      "ai_contribution": "Yes. The AI-authored Claude Code commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f directly introduced the user-mapping dropdown and rendered Discord-controlled member data with unsafe `innerHTML`, creating the stored XSS sink. A later AI commit (8690a9f89e69f250d14614a4876f63c465177fce) touched related code, but the confirmed AI contribution is 403’s introduction of the vulnerable DOM construction path."
     },
     {
       "id": "GHSA-vrqm-gvq7-rrwh",
