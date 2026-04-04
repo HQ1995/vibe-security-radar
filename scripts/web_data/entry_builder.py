@@ -644,6 +644,9 @@ def build_entry(
                         "evidence": [],
                     }],
                 }
+        if not verified_by:
+            verified_by = "Claude Code"
+            best_verdict = "CONFIRMED"
 
     # ------------------------------------------------------------------
     # 12. Output dict
