@@ -7,6 +7,7 @@ import { ToolDistributionChart } from "@/components/tool-distribution-chart";
 import { LanguageCard } from "@/components/language-card";
 import { LanguageDistributionChart } from "@/components/language-distribution-chart";
 import { RepoCard } from "@/components/repo-card";
+import { Section } from "@/components/ui/section";
 
 export const metadata = {
   title: "Analytics - Vibe Security Radar",
@@ -54,7 +55,7 @@ export default function AnalyticsPage() {
       {/* Language distribution */}
       {languageData.length > 0 && (
         <>
-          <LanguageDistributionChart data={stats.by_language} />
+          <LanguageDistributionChart data={stats.by_language} totalCves={stats.total_cves} />
 
           <section>
             <h2 className="mb-4 text-xl font-semibold">Languages Overview</h2>
@@ -92,12 +93,12 @@ export default function AnalyticsPage() {
             ))}
           </div>
           {hiddenRepos.length > 0 && (
-            <details className="mt-4 group">
-              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
-                <span className="group-open:hidden">Show {hiddenRepos.length} more repositories ▸</span>
-                <span className="hidden group-open:inline">Show less ▾</span>
-              </summary>
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Section
+              size="sm"
+              title={`Show ${hiddenRepos.length} more repositories`}
+              className="mt-4"
+            >
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {hiddenRepos.map((rd) => (
                   <RepoCard
                     key={rd.repo}
@@ -107,7 +108,7 @@ export default function AnalyticsPage() {
                   />
                 ))}
               </div>
-            </details>
+            </Section>
           )}
         </section>
       )}

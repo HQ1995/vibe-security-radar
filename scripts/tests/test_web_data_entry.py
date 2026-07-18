@@ -9,9 +9,12 @@ from cve_analyzer.models import (
     BugIntroducingCommit,
     CommitInfo,
     CveAnalysisResult,
+    CveScreeningResult,
     DecomposedCommit,
     FixCommit,
     LlmVerdict,
+    investigation_scope_hash,
+    relevant_investigation_bics,
 )
 from web_data.entry_builder import (
     _first_line,
@@ -70,11 +73,12 @@ def make_bic(
     decomposed_commits: list[DecomposedCommit] | None = None,
     culprit_sha: str = "",
     pr_signals: list[AiSignal] | None = None,
+    fix_commit_sha: str = "fix111",
 ) -> BugIntroducingCommit:
     sigs = ai_signals if ai_signals is not None else [make_signal()]
     return BugIntroducingCommit(
         commit=make_commit(sha=sha, ai_signals=sigs),
-        fix_commit_sha="fix111",
+        fix_commit_sha=fix_commit_sha,
         blamed_file=blamed_file,
         blamed_lines=[10, 11, 12],
         screening_verification=screening_verification,
@@ -96,7 +100,7 @@ def make_result(
         bics = [make_bic()]
     if fix_commits is None:
         fix_commits = [FixCommit(sha="fix111", repo_url="https://github.com/org/repo", source="osv")]
-    return CveAnalysisResult(
+    result = CveAnalysisResult(
         cve_id=cve_id,
         description=kwargs.get("description", "A test vulnerability"),
         severity=kwargs.get("severity", "HIGH"),
@@ -107,7 +111,14 @@ def make_result(
         cwes=kwargs.get("cwes", []),
         references=kwargs.get("references", []),
         ai_contribution=kwargs.get("ai_contribution", ""),
+        investigation_scope_hash=kwargs.get("investigation_scope_hash", ""),
+        screening=kwargs.get("screening"),
     )
+    if ai_involved is not None and "investigation_scope_hash" not in kwargs:
+        result.investigation_scope_hash = investigation_scope_hash(
+            relevant_investigation_bics(result)
+        )
+    return result
 
 
 def make_screening(
@@ -238,8 +249,24 @@ class TestAiInvolvedFallback:
 
     def test_fallback_to_ai_assisted(self):
         # BIC with no AI signals at all
-        bic = make_bic(ai_signals=[])
-        result = make_result(bics=[bic], ai_involved=True)
+        bic = make_bic(
+            ai_signals=[],
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "The screened subject supports the CVE conclusion.",
+                "model": "gpt-5.4",
+            },
+        )
+        result = make_result(
+            bics=[bic],
+            ai_involved=True,
+            screening=CveScreeningResult(
+                worth_investigating=True,
+                reasoning="The commit is relevant.",
+                relevant_commits=[bic.commit.sha],
+                model="screening-test",
+            ),
+        )
         entry = build_entry(result)
         # No BICs pass the commit.ai_signals filter, so bug_commits is empty.
         # But ai_involved=True still triggers ai_tools fallback.
@@ -587,20 +614,256 @@ class TestAuditOverride:
         assert entry is not None
         assert entry["verdict"] == "CONFIRMED"
         assert entry["verified_by"] == "independent-audit"
+        verification = entry["bug_commits"][0]["verification"]
+        assert verification["verdict"] == "UNLIKELY"
+        assert verification["models"] == ["gpt-4o"]
+
+
+class TestCveLevelConclusionIsolation:
+    """A CVE-level conclusion must not manufacture per-BIC verification."""
+
+    def test_ai_involved_does_not_rewrite_bic_verification(self):
+        bic = make_bic(
+            deep_verification={
+                "verdict": "UNLIKELY",
+                "reasoning": "The vulnerable branch predates this commit.",
+                "model": "gpt-5.4",
+                "confidence": "high",
+            },
+        )
+        result = make_result(
+            bics=[bic],
+            ai_involved=True,
+            ai_contribution="A different commit in the causal chain used AI.",
+        )
+
+        entry = build_entry(result)
+
+        assert entry is not None
+        assert entry["verdict"] == "CONFIRMED"
+        verification = entry["bug_commits"][0]["verification"]
+        assert verification["verdict"] == "UNLIKELY"
+        assert verification["models"] == ["gpt-5.4"]
+        assert all(
+            verdict["model"] != "investigator-override"
+            for verdict in verification["agent_verdicts"]
+        )
+
+    def test_stale_nonempty_scope_does_not_override_subject_verdict(self):
+        bic = make_bic(
+            deep_verification={
+                "verdict": "UNRELATED",
+                "reasoning": "The subject evidence rejects causality.",
+                "model": "gpt-5.4",
+                "confidence": "high",
+            },
+        )
+        result = make_result(
+            bics=[bic],
+            ai_involved=True,
+            investigation_scope_hash="stale-nonempty",
+        )
+
+        assert build_entry(result) is None
+
+    def test_legacy_global_agent_fallback_is_quarantined(self):
+        bic = make_bic(
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "[agent-fallback] global conclusion",
+                "model": "claude-code",
+                "confidence": "high",
+                "steps_completed": ["agent_fallback_verification"],
+            },
+        )
+        result = make_result(
+            bics=[bic],
+            ai_involved=True,
+            ai_contribution="Legacy CVE-level result copied to this BIC.",
+        )
+
+        assert build_entry(result) is None
+
+    def test_legacy_unscoped_false_defers_to_confirmed_subject(self):
+        bic = make_bic(
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "The subject-level evidence confirms AI authorship.",
+                "model": "gpt-5.4",
+                "confidence": "high",
+            },
+        )
+        result = make_result(
+            bics=[bic],
+            ai_involved=False,
+            investigation_scope_hash="",
+        )
+
+        entry = build_entry(result)
+
+        assert entry is not None
+        assert entry["ai_involved"] is None
+        assert entry["verdict"] == "CONFIRMED"
+        assert entry["bug_commits"][0]["verification"]["verdict"] == "CONFIRMED"
 
 
 class TestDeduplication:
-    """BICs with the same SHA are merged (blamed_file concatenated)."""
+    """Publication preserves every distinct fix/BIC/file subject."""
 
-    def test_sha_dedup_merges_blamed_files(self):
+    def test_same_sha_different_files_remain_distinct(self):
         bic1 = make_bic(sha="same_sha", blamed_file="file_a.py")
         bic2 = make_bic(sha="same_sha", blamed_file="file_b.py")
         result = make_result(bics=[bic1, bic2])
         entry = build_entry(result)
         assert entry is not None
+        assert [
+            (commit["fix_commit_sha"], commit["sha"], commit["blamed_file"])
+            for commit in entry["bug_commits"]
+        ] == [
+            ("fix111", "same_sha", "file_a.py"),
+            ("fix111", "same_sha", "file_b.py"),
+        ]
+
+    def test_same_sha_and_file_across_fixes_remain_distinct(self):
+        bic1 = make_bic(
+            sha="same_sha",
+            blamed_file="shared.py",
+            fix_commit_sha="fix222",
+        )
+        bic2 = make_bic(
+            sha="same_sha",
+            blamed_file="shared.py",
+            fix_commit_sha="fix111",
+        )
+
+        entry = build_entry(make_result(
+            bics=[bic1, bic2],
+            fix_commits=[
+                FixCommit(
+                    sha="fix111",
+                    repo_url="https://github.com/org/repo",
+                    source="osv",
+                ),
+                FixCommit(
+                    sha="fix222",
+                    repo_url="https://github.com/org/repo.git/",
+                    source="derived_fix",
+                ),
+            ],
+        ))
+
+        assert entry is not None
+        assert [
+            (commit["fix_commit_sha"], commit["sha"], commit["blamed_file"])
+            for commit in entry["bug_commits"]
+        ] == [
+            ("fix111", "same_sha", "shared.py"),
+            ("fix222", "same_sha", "shared.py"),
+        ]
+
+    def test_identical_reasoning_does_not_collapse_distinct_subjects(self):
+        verification = {
+            "verdict": "CONFIRMED",
+            "reasoning": "Shared evidence applies to each blamed path.",
+            "model": "gpt-5.4",
+            "confidence": "high",
+        }
+        bic1 = make_bic(
+            sha="sha-a",
+            blamed_file="file_a.py",
+            deep_verification=verification,
+        )
+        bic2 = make_bic(
+            sha="sha-b",
+            blamed_file="file_b.py",
+            deep_verification=verification,
+        )
+
+        entry = build_entry(make_result(bics=[bic1, bic2]))
+
+        assert entry is not None
+        assert len(entry["bug_commits"]) == 2
+
+    def test_output_order_is_independent_of_input_order(self):
+        bics = [
+            make_bic(
+                sha="sha-b",
+                blamed_file="z.py",
+                fix_commit_sha="fix222",
+            ),
+            make_bic(
+                sha="sha-a",
+                blamed_file="a.py",
+                fix_commit_sha="fix111",
+            ),
+            make_bic(
+                sha="sha-a",
+                blamed_file="b.py",
+                fix_commit_sha="fix111",
+            ),
+        ]
+
+        fixes = [
+            FixCommit(
+                sha="fix111",
+                repo_url="https://github.com/org/repo",
+                source="osv",
+            ),
+            FixCommit(
+                sha="fix222",
+                repo_url="https://github.com/org/repo",
+                source="derived_fix",
+            ),
+        ]
+        forward = build_entry(make_result(bics=bics, fix_commits=fixes))
+        reverse = build_entry(make_result(
+            bics=list(reversed(bics)),
+            fix_commits=fixes,
+        ))
+
+        assert forward is not None
+        assert reverse is not None
+        assert forward["bug_commits"] == reverse["bug_commits"]
+
+    def test_identical_duplicate_subjects_coalesce(self):
+        bics = [
+            make_bic(sha="same", blamed_file="same.py"),
+            make_bic(sha="same", blamed_file="same.py"),
+        ]
+
+        entry = build_entry(make_result(bics=bics))
+
+        assert entry is not None
         assert len(entry["bug_commits"]) == 1
-        assert "file_a.py" in entry["bug_commits"][0]["blamed_file"]
-        assert "file_b.py" in entry["bug_commits"][0]["blamed_file"]
+
+    def test_conflicting_duplicate_subjects_are_quarantined(self):
+        first = make_bic(
+            sha="same",
+            blamed_file="same.py",
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "first",
+                "model": "gpt-5.4",
+            },
+        )
+        second = make_bic(
+            sha="same",
+            blamed_file="same.py",
+            deep_verification={
+                "verdict": "UNRELATED",
+                "reasoning": "second",
+                "model": "gpt-5.4",
+            },
+        )
+
+        assert build_entry(make_result(bics=[first, second])) is None
+
+    def test_unknown_or_placeholder_subject_identity_is_quarantined(self):
+        unknown_fix = make_bic(fix_commit_sha="")
+        placeholder = make_bic(blamed_file="(from OSV introduced)")
+
+        assert build_entry(make_result(bics=[unknown_fix])) is None
+        assert build_entry(make_result(bics=[placeholder])) is None
 
 
 class TestFixCommitsOutput:
@@ -614,6 +877,66 @@ class TestFixCommitsOutput:
         fc = entry["fix_commits"][0]
         assert fc["sha"] == "fix111"
         assert fc["repo_url"] == "https://github.com/org/repo"
+
+
+class TestRepositoryIdentityBoundary:
+    """A repository-ambiguous CVE cannot be projected to web subjects."""
+
+    def test_multiple_canonical_repositories_fail_closed(self):
+        fixes = [
+            FixCommit(
+                sha="fix111",
+                repo_url="https://github.com/org/repo",
+                source="osv",
+            ),
+            FixCommit(
+                sha="fix222",
+                repo_url="https://gitlab.com/org/other-repo",
+                source="osv",
+            ),
+        ]
+        result = make_result(fix_commits=fixes)
+
+        assert build_entry(result) is None
+
+    def test_case_and_dot_git_variants_are_one_repository(self):
+        fixes = [
+            FixCommit(
+                sha="fix111",
+                repo_url="https://github.com/Org/Repo",
+                source="osv",
+            ),
+            FixCommit(
+                sha="fix222",
+                repo_url="HTTPS://GITHUB.COM/org/repo.git/",
+                source="osv",
+            ),
+        ]
+        result = make_result(fix_commits=fixes)
+
+        entry = build_entry(result)
+
+        assert entry is not None
+        assert len(entry["fix_commits"]) == 2
+
+    def test_missing_repository_identity_fails_closed(self):
+        result = make_result(
+            fix_commits=[FixCommit(sha="fix111", repo_url="", source="osv")]
+        )
+
+        assert build_entry(result) is None
+
+    def test_malformed_repository_identity_fails_closed(self):
+        fixes = [
+            FixCommit(
+                sha="fix111",
+                repo_url="https://github.com/org/repo",
+                source="osv",
+            ),
+            FixCommit(sha="fix222", repo_url="not a repository", source="osv"),
+        ]
+
+        assert build_entry(make_result(fix_commits=fixes)) is None
 
 
 class TestScreeningVerification:

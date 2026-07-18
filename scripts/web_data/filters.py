@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from cve_analyzer.models import CveAnalysisResult
+from cve_analyzer.models import CveAnalysisResult, investigation_scope_is_current
 
 
 def is_fallback_verdict(dv: dict) -> bool:
@@ -33,8 +33,8 @@ def should_include(
     1. Exclude if result.error is set.
     2. Exclude rejected/withdrawn CVEs (description contains rejection marker).
     3. Include if CVE ID is in audit_overrides (independently verified true positive).
-    4. Include if result.ai_involved is True (authoritative CVE-level verdict).
-    5. Exclude if result.ai_involved is False (authoritative CVE-level verdict).
+    4. Honor result.ai_involved only when investigation_scope_hash proves that
+       the CVE-level verdict covers the current subject set.
     6. Fallback per-BIC logic:
        - Skip BICs with no effective signals and no screening_verification.
        - If deep_verification exists and is NOT a fallback:
@@ -65,10 +65,11 @@ def _should_include_with_reason(
     if audit_overrides and result.cve_id in audit_overrides:
         return True, ""
 
-    if result.ai_involved is True:
-        return True, ""
-    if result.ai_involved is False:
-        return False, "ai_not_involved"
+    if investigation_scope_is_current(result):
+        if result.ai_involved is True:
+            return True, ""
+        if result.ai_involved is False:
+            return False, "ai_not_involved"
 
     # Screening said "not worth investigating" → no deep verify ran → exclude
     if result.screening is not None and not result.screening.worth_investigating:

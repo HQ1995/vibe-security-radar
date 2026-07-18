@@ -1,6 +1,8 @@
 import type { BugCommit, FixCommit } from "@/lib/types";
 import { getFixSourceLabel } from "@/lib/constants";
 import { buildCommitUrl, extractRepoName } from "@/lib/commit-utils";
+import { bugCommitSubjectKey } from "@/components/commit-timeline";
+import { Section } from "@/components/ui/section";
 
 interface ChainStep {
   readonly label: string;
@@ -211,29 +213,30 @@ export function AttributionChain({
     <div className="space-y-6">
       {visibleCommits.map((bc) => (
         <SingleChain
-          key={bc.sha}
+          key={bugCommitSubjectKey(bc)}
           bugCommit={bc}
           fixCommits={fixCommits}
           repoUrl={repoUrl}
         />
       ))}
       {hiddenCommits.length > 0 && (
-        <details className="group">
-          <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
-            +{hiddenCommits.length} more attribution{" "}
-            {hiddenCommits.length === 1 ? "chain" : "chains"}
-          </summary>
-          <div className="mt-4 space-y-6">
+        <Section
+          size="sm"
+          title={`+${hiddenCommits.length} more attribution ${
+            hiddenCommits.length === 1 ? "chain" : "chains"
+          }`}
+        >
+          <div className="space-y-6">
             {hiddenCommits.map((bc) => (
               <SingleChain
-                key={bc.sha}
+                key={bugCommitSubjectKey(bc)}
                 bugCommit={bc}
                 fixCommits={fixCommits}
                 repoUrl={repoUrl}
               />
             ))}
           </div>
-        </details>
+        </Section>
       )}
     </div>
   );

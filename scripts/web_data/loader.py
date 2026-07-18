@@ -10,10 +10,10 @@ from __future__ import annotations
 import glob
 import gzip
 import json
+import logging
 import os
 import re
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -29,6 +29,8 @@ from web_data.constants import (
     DEFAULT_REVIEWS_DIR,
 )
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # GHSA severity normalisation map
 # ---------------------------------------------------------------------------
@@ -41,10 +43,28 @@ _GHSA_SEV_MAP = {
     "LOW": "LOW",
 }
 
+_FULL_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+_YEAR_ONLY_RE = re.compile(r"^\d{4}$")
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def normalize_published(value: str) -> str:
+    """Normalize a published date to "YYYY-MM-DD", "YYYY" (year-only), or "".
+
+    Sources disagree on precision (NVD uses millisecond ISO, GHSA/git use
+    offset ISO, CVE-ID fallback is year-only); the web contract admits only
+    the three shapes above.  Anything else is treated as unknown ("").
+    """
+    value = (value or "").strip()
+    if _FULL_DATE_RE.match(value):
+        return value[:10]
+    if _YEAR_ONLY_RE.match(value):
+        return value
+    return ""
 
 
 def _parse_github_owner_repo(repo_url: str) -> tuple[str, str] | None:
@@ -71,7 +91,7 @@ def load_cached_results(cache_dir: str = DEFAULT_CACHE_DIR) -> list[CveAnalysisR
     """Read all JSON files from the cache directory.
 
     Returns a list of CveAnalysisResult objects (one per file). Skips
-    non-JSON files and files that fail to parse (with a warning to stderr).
+    non-JSON files and files that fail to parse (with a logged warning).
     Calls rebuild_signals() on each result after deserialisation.
     """
     results: list[CveAnalysisResult] = []
@@ -83,7 +103,7 @@ def load_cached_results(cache_dir: str = DEFAULT_CACHE_DIR) -> list[CveAnalysisR
             result.rebuild_signals()
             results.append(result)
         except Exception as exc:
-            print(f"Warning: skipping {filepath}: {exc}", file=sys.stderr)
+            logger.warning("Skipping cached result %s: %s", filepath, exc)
     return results
 
 
@@ -104,7 +124,7 @@ def load_reviews(reviews_dir: str = DEFAULT_REVIEWS_DIR) -> dict[str, dict]:
             if cve_id:
                 reviews[cve_id] = data
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"Warning: skipping review {filepath}: {exc}", file=sys.stderr)
+            logger.warning("Skipping review %s: %s", filepath, exc)
     return reviews
 
 
@@ -113,7 +133,7 @@ def load_nvd_published_dates(
 ) -> dict[str, str]:
     """Build a {cve_id: published_date} index from NVD feed .json.gz files.
 
-    The published_date is an ISO 8601 string like "2025-10-03T19:15:43.490".
+    Values are normalized via normalize_published() to "YYYY-MM-DD".
     Returns an empty dict if the feeds directory does not exist.
     """
     index: dict[str, str] = {}
@@ -127,11 +147,11 @@ def load_nvd_published_dates(
             for vuln in feed.get("vulnerabilities", []):
                 cve = vuln.get("cve", {})
                 cve_id = cve.get("id", "")
-                published = cve.get("published", "")
+                published = normalize_published(cve.get("published", ""))
                 if cve_id and published:
                     index[cve_id] = published
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"Warning: skipping NVD feed {filepath}: {exc}", file=sys.stderr)
+            logger.warning("Skipping NVD feed %s: %s", filepath, exc)
     return index
 
 
@@ -153,11 +173,11 @@ def load_ghsa_published_dates(
                 with open(filepath, "r", encoding="utf-8") as fh:
                     data = json.load(fh)
                 ghsa_id = data.get("id", "")
-                published = data.get("published", "")
+                published = normalize_published(data.get("published", ""))
                 if ghsa_id and published:
                     index[ghsa_id] = published
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping GHSA advisory %s: %s", filepath, exc)
     return index
 
 
@@ -187,8 +207,8 @@ def load_ghsa_severities(
                 for vid in [ghsa_id] + aliases:
                     if vid:
                         index[vid] = normalized
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping GHSA advisory %s: %s", filepath, exc)
     return index
 
 
@@ -239,11 +259,14 @@ def load_fix_commit_dates(
                     if earliest_dt is None or dt < earliest_dt:
                         earliest_dt = dt
                         earliest_str = date_str
-            except (subprocess.TimeoutExpired, OSError, ValueError):
-                pass
+            except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
+                logger.warning(
+                    "Fix commit date lookup failed for %s in %s: %s",
+                    sha, repo_path, exc,
+                )
 
         if earliest_str:
-            index[cve_id] = earliest_str
+            index[cve_id] = normalize_published(earliest_str)
 
     return index
 
@@ -253,8 +276,9 @@ def fetch_ghsa_published_dates_api(
 ) -> dict[str, str]:
     """Fetch published dates for GHSA IDs via the GitHub REST API.
 
-    Requires GITHUB_TOKEN in the environment. Returns {ghsa_id: published_iso}
-    for successfully resolved entries; silently skips failures.
+    Requires GITHUB_TOKEN in the environment. Returns {ghsa_id: published}
+    (normalized to "YYYY-MM-DD") for successfully resolved entries; logs a
+    warning and skips failures.
     """
     token = os.environ.get("GITHUB_TOKEN", "")
     index: dict[str, str] = {}
@@ -269,11 +293,11 @@ def fetch_ghsa_published_dates_api(
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
-            published = data.get("published_at", "")
+            published = normalize_published(data.get("published_at", ""))
             if published:
                 index[ghsa_id] = published
-        except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError):
-            pass
+        except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError) as exc:
+            logger.warning("GHSA API lookup failed for %s: %s", ghsa_id, exc)
     return index
 
 
@@ -299,9 +323,34 @@ def build_alias_map(ghsa_db_dir: str = DEFAULT_GHSA_DB_DIR) -> dict[str, set[str
                 merged |= all_ids
                 for aid in merged:
                     alias_groups[aid] = merged
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning("Skipping GHSA advisory %s: %s", filepath, exc)
     return alias_groups
+
+
+def _read_audit_override_file() -> list[dict]:
+    """Read scripts/audit_overrides.json, returning the raw entry list.
+
+    Returns [] when the file is missing, malformed, or not a list — with a
+    logged warning in the latter cases, since silently ignoring it would
+    un-force-include audited true positives.
+    """
+    override_path = os.path.join(os.path.dirname(__file__), "..", "audit_overrides.json")
+    if not os.path.exists(override_path):
+        return []
+    try:
+        with open(override_path, "r", encoding="utf-8") as fh:
+            entries = json.load(fh)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to load audit overrides from %s: %s", override_path, exc)
+        return []
+    if not isinstance(entries, list):
+        logger.warning(
+            "Audit overrides %s is not a list (got %s); ignoring",
+            override_path, type(entries).__name__,
+        )
+        return []
+    return [e for e in entries if isinstance(e, dict) and e.get("cve_id")]
 
 
 def load_audit_overrides() -> set[str]:
@@ -311,26 +360,12 @@ def load_audit_overrides() -> set[str]:
     AI involvement that the pipeline missed (blame gap, verifier error, etc.).
     File: scripts/audit_overrides.json — list of {cve_id, reason} dicts.
     """
-    override_path = os.path.join(os.path.dirname(__file__), "..", "audit_overrides.json")
-    if not os.path.exists(override_path):
-        return set()
-    try:
-        entries = json.load(open(override_path))
-        ids = {e["cve_id"] for e in entries if isinstance(e, dict)}
-        if ids:
-            print(f"  Audit overrides: {len(ids)} CVEs force-included.")
-        return ids
-    except Exception:
-        return set()
+    ids = {e["cve_id"] for e in _read_audit_override_file()}
+    if ids:
+        print(f"  Audit overrides: {len(ids)} CVEs force-included.")
+    return ids
 
 
 def load_audit_override_details() -> dict[str, dict]:
     """Load full audit override entries keyed by CVE ID."""
-    override_path = os.path.join(os.path.dirname(__file__), "..", "audit_overrides.json")
-    if not os.path.exists(override_path):
-        return {}
-    try:
-        entries = json.load(open(override_path))
-        return {e["cve_id"]: e for e in entries if isinstance(e, dict)}
-    except Exception:
-        return {}
+    return {e["cve_id"]: e for e in _read_audit_override_file()}

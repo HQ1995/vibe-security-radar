@@ -41,7 +41,8 @@ from web_data.loader import (  # noqa: E402
     load_audit_override_details,
 )
 from web_data.filters import should_include  # noqa: E402
-from web_data.entry_builder import build_entry  # noqa: E402
+from web_data.entry_builder import QuarantineLog, build_entry  # noqa: E402
+from web_data.schema import validate_cves_payload, validate_stats_payload  # noqa: E402
 from web_data.stats import build_stats  # noqa: E402
 
 
@@ -143,11 +144,15 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  Resolved {len(commit_dates)} of {len(still_missing)} from git history.")
 
     # ------------------------------------------------------------------
-    # 8. Build entries
+    # 8. Build entries (quarantined drops are recorded with reasons)
     # ------------------------------------------------------------------
+    quarantine = QuarantineLog()
     entries = [
         e for e in (
-            build_entry(r, nvd_dates, ghsa_severities, reviews, audit_override_ids)
+            build_entry(
+                r, nvd_dates, ghsa_severities, reviews, audit_override_ids,
+                quarantine=quarantine,
+            )
             for r in filtered
         )
         if e is not None
@@ -206,7 +211,7 @@ def main(argv: list[str] | None = None) -> None:
         entries,
         key=lambda e: (
             any(
-                (bc.get("screening_verification") or bc.get("llm_verdict") or {}).get("verdict") == "CONFIRMED"
+                (bc.get("screening_verification") or {}).get("verdict") == "CONFIRMED"
                 for bc in e.get("bug_commits", [])
             ),
             e.get("confidence", 0),
@@ -257,13 +262,16 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     # ------------------------------------------------------------------
-    # 15. Write output
+    # 15. Validate against the published schema, then write output
     # ------------------------------------------------------------------
     cves_output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "total": len(entries),
         "cves": entries,
     }
+
+    validate_cves_payload(cves_output)
+    validate_stats_payload(stats_output)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -282,6 +290,10 @@ def main(argv: list[str] | None = None) -> None:
     # 16. Summary
     # ------------------------------------------------------------------
     print("\nDone!")
+    if quarantine:
+        print(f"\nQuarantined {len(quarantine)} CVE(s):")
+        for record in quarantine:
+            print(f"  {record.cve_id}: {record.reason}")
     for entry in entries:
         tools = ", ".join(entry["ai_tools"]) or "(none)"
         print(f"  {entry['id']}: confidence={entry['confidence']} tools=[{tools}] severity={entry['severity']}")

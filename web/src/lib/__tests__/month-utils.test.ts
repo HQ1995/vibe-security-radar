@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   formatMonthLabel,
+  formatMonthShort,
+  isValidMonthKey,
   computeSeverityBreakdown,
   computeToolBreakdown,
   sortCvesByPriority,
@@ -17,6 +19,7 @@ function makeCve(overrides: Partial<CveEntry> = {}): CveEntry {
     ecosystem: "",
     published: "2026-01-15",
     ai_tools: ["cursor"],
+    ai_involved: null,
     signal_source: "commit",
     languages: [],
     confidence: 0.85,
@@ -53,6 +56,45 @@ describe("formatMonthLabel", () => {
   it("falls back to raw month number for invalid month", () => {
     expect(formatMonthLabel("2025-00")).toBe("00 2025");
     expect(formatMonthLabel("2025-13")).toBe("13 2025");
+  });
+});
+
+// --- formatMonthShort ---
+
+describe("formatMonthShort", () => {
+  it("formats YYYY-MM to short month name and year", () => {
+    expect(formatMonthShort("2025-09")).toBe("Sep 2025");
+    expect(formatMonthShort("2025-05")).toBe("May 2025");
+    expect(formatMonthShort("2026-03")).toBe("Mar 2026");
+    expect(formatMonthShort("2025-12")).toBe("Dec 2025");
+  });
+
+  it("falls back to raw month number for invalid month", () => {
+    expect(formatMonthShort("2025-00")).toBe("00 2025");
+    expect(formatMonthShort("2025-13")).toBe("13 2025");
+  });
+});
+
+// --- isValidMonthKey ---
+
+describe("isValidMonthKey", () => {
+  it("accepts real YYYY-MM keys", () => {
+    expect(isValidMonthKey("2025-01")).toBe(true);
+    expect(isValidMonthKey("2025-05")).toBe(true);
+    expect(isValidMonthKey("2026-12")).toBe(true);
+  });
+
+  it("rejects year-only buckets", () => {
+    expect(isValidMonthKey("2026")).toBe(false);
+    expect(isValidMonthKey("2025")).toBe(false);
+  });
+
+  it("rejects malformed and out-of-range keys", () => {
+    expect(isValidMonthKey("2025-00")).toBe(false);
+    expect(isValidMonthKey("2025-13")).toBe(false);
+    expect(isValidMonthKey("2025-5")).toBe(false);
+    expect(isValidMonthKey("2025-05-01")).toBe(false);
+    expect(isValidMonthKey("")).toBe(false);
   });
 });
 

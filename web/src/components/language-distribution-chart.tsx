@@ -30,18 +30,22 @@ function getLangIconKey(lang: string): string {
 
 interface LanguageDistributionChartProps {
   readonly data: Readonly<Record<string, number>>;
+  readonly totalCves?: number;
 }
 
 export function LanguageDistributionChart({
   data,
+  totalCves,
 }: LanguageDistributionChartProps) {
   return (
     <DistributionPieChart
       title="Language Distribution"
       data={data}
       getColor={getLanguageColor}
+      getHref={(key) => `/cves?language=${encodeURIComponent(key)}`}
       iconDir="/icons/languages"
       getIconKey={getLangIconKey}
+      totalOverride={totalCves}
     />
   );
 }

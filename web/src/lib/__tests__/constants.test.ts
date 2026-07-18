@@ -146,10 +146,10 @@ describe("verifiedBadgeColor", () => {
 });
 
 describe("getModelDisplayName", () => {
-  it("returns abbreviated name for known models", () => {
-    expect(getModelDisplayName("claude-opus-4-6")).toBe("Claude");
-    expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe("Gemini");
-    expect(getModelDisplayName("gpt-5.4")).toBe("GPT");
+  it("returns detailed name for known models", () => {
+    expect(getModelDisplayName("claude-opus-4-6")).toBe("Claude Opus 4.6");
+    expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe("Gemini 3.1 Pro");
+    expect(getModelDisplayName("gpt-5.4")).toBe("GPT-5.4");
   });
 
   it("returns raw string for unknown models", () => {

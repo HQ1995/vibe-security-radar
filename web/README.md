@@ -1,10 +1,10 @@
 # Vibe Security Radar — Web Dashboard
 
-Next.js static site that visualizes vulnerability data produced by [cve-analyzer](../cve-analyzer/).
+Next.js site that visualizes vulnerability data produced by [cve-analyzer](../cve-analyzer/).
 
 ## Stack
 
-- **Next.js 16** (App Router, static export)
+- **Next.js 16** (App Router, React Server Components)
 - **React 19** + **TailwindCSS 4**
 - **Recharts** for charts (pie, bar)
 - **Radix UI** primitives (dialog, tooltip, badge, etc.)
@@ -35,19 +35,28 @@ python scripts/generate_web_data.py
 
 ```bash
 npm run dev          # Dev server at http://localhost:3000
-npm run build        # Production build (static pages)
+npm run build        # Production build
 npm run start        # Serve production build
 npm run lint         # ESLint
 npm run test         # Vitest
 npm run test:watch   # Vitest watch mode
 ```
 
+## Deployment
+
+Hosted on Vercel as a standard Next.js build (`next build`) — **not** a static
+export (`next.config.ts` has no `output: "export"`). Pages are rendered from
+the bundled JSON data at build time, and `next.config.ts` sets
+`Cache-Control: public, s-maxage=600, stale-while-revalidate=60` on HTML
+responses, so Vercel's CDN revalidates pages every 10 minutes.
+
 ## Pages
 
 | Route | Description |
 |-------|-------------|
-| `/` | Dashboard — stats cards, severity chart, monthly trend, recent vulnerabilities |
+| `/` | Dashboard — headline stats, monthly trend chart with month archive, recent vulnerabilities |
 | `/cves` | Vulnerability table — filterable by severity, tool, search |
 | `/cves/[id]` | Detail page — fix commits, bug-introducing commits, AI signals, LLM verdict |
-| `/tools` | Tool distribution chart + per-tool breakdown cards |
+| `/cves/month/[month]` | Vulnerabilities published in a given month (e.g. `/cves/month/2026-03`) |
+| `/analytics` | Distribution charts + per-tool, per-language, and per-repo breakdowns |
 | `/about` | Methodology, data sources, pipeline description, limitations |

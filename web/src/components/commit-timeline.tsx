@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Section } from "@/components/ui/section";
 import {
   buildCommitUrl,
   extractRepoName,
@@ -15,6 +15,7 @@ import {
   truncate,
 } from "@/lib/constants";
 import { CollapsibleNonAiCommits } from "@/components/collapsible-commits";
+import { cn } from "@/lib/utils";
 import type { BugCommit, DecomposedCommit, FixCommit } from "@/lib/types";
 
 // --- Bug commits timeline ---
@@ -22,6 +23,12 @@ import type { BugCommit, DecomposedCommit, FixCommit } from "@/lib/types";
 interface BugCommitTimelineProps {
   readonly commits: readonly BugCommit[];
   readonly repoUrl?: string;
+}
+
+export function bugCommitSubjectKey(
+  commit: Pick<BugCommit, "fix_commit_sha" | "sha" | "blamed_file">,
+): string {
+  return `${commit.fix_commit_sha ?? ""}:${commit.sha}:${commit.blamed_file}`;
 }
 
 function hasAiSignals(commit: BugCommit): boolean {
@@ -42,11 +49,10 @@ function SubCommitRow({
   const culprit = isCulprit(dc);
   return (
     <div
-      className={`rounded-md border px-3 py-2 text-sm ${
-        culprit
-          ? "border-primary/50 bg-primary/5"
-          : "border-border bg-card"
-      }`}
+      className={cn(
+        "rounded-md px-3 py-2 text-sm",
+        culprit && "bg-primary/5",
+      )}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {repoUrl ? (
@@ -92,34 +98,26 @@ function SubCommitRow({
 function DecomposedCommitsSection({
   commits,
   repoUrl,
-  culpritSha,
 }: {
   readonly commits: readonly DecomposedCommit[];
   readonly repoUrl?: string;
-  readonly culpritSha?: string;
 }) {
-  // Culprit is already shown as the card header — only show other sub-commits here
-  const others = commits.filter((dc) => dc.sha !== culpritSha);
-  if (others.length === 0) return null;
-
   return (
-    <div className="mt-3">
-      <details className="group/sub">
-        <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-          <span className="group-open/sub:rotate-90 transition-transform">&#9654;</span>
-          {others.length} other sub-commit{others.length > 1 ? "s" : ""} in this PR
-        </summary>
-        <div className="mt-2 space-y-1.5 border-l-2 border-muted pl-3">
-          {others.map((dc) => (
-            <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
-          ))}
-        </div>
-      </details>
-    </div>
+    <Section
+      size="sm"
+      title={`${commits.length} sub-commit${commits.length > 1 ? "s" : ""} in this PR`}
+      className="mt-2"
+    >
+      <div className="space-y-1.5 border-l-2 border-muted pl-3">
+        {commits.map((dc) => (
+          <SubCommitRow key={dc.sha} dc={dc} repoUrl={repoUrl} />
+        ))}
+      </div>
+    </Section>
   );
 }
 
-function BugCommitCard({
+function BugCommitRow({
   commit,
   repoUrl,
 }: {
@@ -127,81 +125,79 @@ function BugCommitCard({
   readonly repoUrl?: string;
 }) {
   return (
-    <Card className={hasAiSignals(commit) ? "border-primary/40" : ""}>
-      <CardContent className="pt-4">
-        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-          <div className="flex items-center gap-2">
-            {repoUrl ? (
-              <a
-                href={buildCommitUrl(repoUrl, commit.sha)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline"
-              >
-                {commit.sha.slice(0, 7)}
-              </a>
-            ) : (
-              <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm">
-                {commit.sha.slice(0, 7)}
-              </code>
-            )}
-            {hasAiSignals(commit) && (
-              <Badge className="bg-purple-600 text-white hover:bg-purple-600">
-                AI
-              </Badge>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">
-              {firstLine(commit.message)}
-            </p>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>{commit.author}</span>
-              <span>{formatDate(commit.date)}</span>
-              <span className="font-mono" title="Blamed file">
-                {commit.blamed_file}
-              </span>
-              <span title="Blame confidence">
-                Blame: {formatConfidence(commit.blame_confidence)}
-              </span>
-              {(commit.fix_commit_source === "ai_inferred" || commit.fix_commit_source === "ai_tag_search") && (
-                <Badge
-                  variant="outline"
-                  className={fixSourceBadgeClass(commit.fix_commit_source)}
-                  title="Fix commit was discovered by AI inference, not from an advisory database"
-                >
-                  {getFixSourceLabel(commit.fix_commit_source)}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-        {commit.squash_merge_sha && (
-          <p className="mt-1 text-xs text-muted-foreground/70">
-            Extracted from squash merge{" "}
-            {repoUrl ? (
-              <a
-                href={buildCommitUrl(repoUrl, commit.squash_merge_sha)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono underline-offset-4 hover:underline"
-              >
-                {commit.squash_merge_sha.slice(0, 7)}
-              </a>
-            ) : (
-              <code className="font-mono">{commit.squash_merge_sha.slice(0, 7)}</code>
-            )}
-          </p>
+    <div className="py-3">
+      <div className="flex items-center gap-2">
+        {repoUrl ? (
+          <a
+            href={buildCommitUrl(repoUrl, commit.sha)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded bg-muted px-2 py-0.5 font-mono text-sm text-primary underline-offset-4 hover:underline shrink-0"
+          >
+            {commit.sha.slice(0, 7)}
+          </a>
+        ) : (
+          <code className="rounded bg-muted px-2 py-0.5 font-mono text-sm shrink-0">
+            {commit.sha.slice(0, 7)}
+          </code>
         )}
-        {commit.decomposed_commits && commit.decomposed_commits.length > 0 && (
-          <DecomposedCommitsSection
-            commits={commit.decomposed_commits}
-            repoUrl={repoUrl}
-            culpritSha={commit.squash_merge_sha ? commit.sha : undefined}
-          />
+        {hasAiSignals(commit) && (
+          <Badge className="bg-purple-600 text-white hover:bg-purple-600">
+            AI
+          </Badge>
         )}
-      </CardContent>
-    </Card>
+        <p className="min-w-0 flex-1 truncate text-sm font-medium">
+          {firstLine(commit.message)}
+        </p>
+      </div>
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>{commit.author}</span>
+        <span>{formatDate(commit.date)}</span>
+        <span className="font-mono" title="Blamed file">
+          {commit.blamed_file}
+        </span>
+        {commit.fix_commit_sha && (
+          <span className="font-mono" title="Fix commit">
+            Fix: {commit.fix_commit_sha.slice(0, 7)}
+          </span>
+        )}
+        <span title="Blame confidence">
+          Blame: {formatConfidence(commit.blame_confidence)}
+        </span>
+        {(commit.fix_commit_source === "ai_inferred" || commit.fix_commit_source === "ai_tag_search") && (
+          <Badge
+            variant="outline"
+            className={fixSourceBadgeClass(commit.fix_commit_source)}
+            title="Fix commit was discovered by AI inference, not from an advisory database"
+          >
+            {getFixSourceLabel(commit.fix_commit_source)}
+          </Badge>
+        )}
+      </div>
+      {commit.squash_merge_sha && (
+        <p className="mt-1 text-xs text-muted-foreground/70">
+          Extracted from squash merge{" "}
+          {repoUrl ? (
+            <a
+              href={buildCommitUrl(repoUrl, commit.squash_merge_sha)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono underline-offset-4 hover:underline"
+            >
+              {commit.squash_merge_sha.slice(0, 7)}
+            </a>
+          ) : (
+            <code className="font-mono">{commit.squash_merge_sha.slice(0, 7)}</code>
+          )}
+        </p>
+      )}
+      {commit.decomposed_commits && commit.decomposed_commits.length > 0 && (
+        <DecomposedCommitsSection
+          commits={commit.decomposed_commits}
+          repoUrl={repoUrl}
+        />
+      )}
+    </div>
   );
 }
 
@@ -223,26 +219,32 @@ export function BugCommitTimeline({
   const nonAiCommits = commits.filter((c) => !hasAiSignals(c));
   const shouldCollapse = commits.length > COLLAPSE_THRESHOLD && nonAiCommits.length > 0;
 
-  if (!shouldCollapse) {
-    return (
-      <div className="space-y-3">
-        {commits.map((commit) => (
-          <BugCommitCard key={commit.sha} commit={commit} repoUrl={repoUrl} />
-        ))}
-      </div>
-    );
-  }
+  const visibleCommits = shouldCollapse ? aiCommits : commits;
 
   return (
-    <div className="space-y-3">
-      {aiCommits.map((commit) => (
-        <BugCommitCard key={commit.sha} commit={commit} repoUrl={repoUrl} />
-      ))}
-      <CollapsibleNonAiCommits count={nonAiCommits.length}>
-        {nonAiCommits.map((commit) => (
-          <BugCommitCard key={commit.sha} commit={commit} repoUrl={repoUrl} />
+    <div>
+      <div className="divide-y divide-border">
+        {visibleCommits.map((commit) => (
+          <BugCommitRow
+            key={bugCommitSubjectKey(commit)}
+            commit={commit}
+            repoUrl={repoUrl}
+          />
         ))}
-      </CollapsibleNonAiCommits>
+      </div>
+      {shouldCollapse && (
+        <CollapsibleNonAiCommits count={nonAiCommits.length}>
+          <div className="divide-y divide-border">
+            {nonAiCommits.map((commit) => (
+              <BugCommitRow
+                key={bugCommitSubjectKey(commit)}
+                commit={commit}
+                repoUrl={repoUrl}
+              />
+            ))}
+          </div>
+        </CollapsibleNonAiCommits>
+      )}
     </div>
   );
 }

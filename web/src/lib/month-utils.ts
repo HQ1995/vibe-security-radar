@@ -6,10 +6,26 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+const MONTH_NAMES_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export function formatMonthLabel(month: string): string {
   // "2025-05" -> "May 2025"
   const [year, m] = month.split("-");
   return `${MONTH_NAMES[Number(m) - 1] ?? m} ${year}`;
+}
+
+export function formatMonthShort(month: string): string {
+  // "2025-09" -> "Sep 2025"
+  const [year, m] = month.split("-");
+  return `${MONTH_NAMES_SHORT[Number(m) - 1] ?? m} ${year}`;
+}
+
+/** True only for real YYYY-MM keys (excludes year-only buckets like "2026"). */
+export function isValidMonthKey(month: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
 }
 
 export function computeSeverityBreakdown(

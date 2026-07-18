@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Cell, Label, Pie, PieChart } from "recharts";
 
 import {
@@ -19,6 +20,8 @@ interface DistributionPieChartProps {
   readonly data: Readonly<Record<string, number>>;
   readonly getColor: (key: string) => string;
   readonly getName?: (key: string) => string;
+  /** Builds the filtered-list URL for a legend row (e.g. /cves?tool=<id>). */
+  readonly getHref: (key: string) => string;
   readonly iconDir?: string;
   readonly getIconKey?: (key: string) => string;
   readonly themedIcons?: ReadonlySet<string>;
@@ -42,6 +45,7 @@ export function DistributionPieChart({
   data,
   getColor,
   getName = (k) => k,
+  getHref,
   iconDir,
   getIconKey = (k) => k,
   themedIcons = new Set(),
@@ -80,15 +84,31 @@ export function DistributionPieChart({
     return cfg;
   }, [chartData]);
 
+  // Screen-reader summary, e.g. "Tool Distribution: Claude Code 46 (71%), …"
+  const ariaLabel = React.useMemo(
+    () =>
+      `${title}: ` +
+      chartData
+        .map((entry) => {
+          const pct =
+            total > 0 ? Math.round((entry.value / total) * 100) : 0;
+          return `${entry.name} ${entry.value} (${pct}%)`;
+        })
+        .join(", "),
+    [title, chartData, total],
+  );
+
   return (
     <section>
       <h2 className="mb-4 text-xl font-semibold">{title}</h2>
-      <div className="rounded-xl border border-border bg-card p-6 [&_*]:outline-none">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center">
           {/* ---- Donut ---- */}
           <ChartContainer
             config={chartConfig}
             className="aspect-square h-[280px] shrink-0"
+            role="img"
+            aria-label={ariaLabel}
           >
             <PieChart>
               <ChartTooltip
@@ -155,7 +175,7 @@ export function DistributionPieChart({
             </PieChart>
           </ChartContainer>
 
-          {/* ---- Legend ---- */}
+          {/* ---- Legend (links to the filtered CVE list) ---- */}
           <div className="grid w-full max-w-lg grid-cols-2 gap-x-6 gap-y-2.5">
             {chartData.map((entry, i) => {
               const pct =
@@ -163,16 +183,20 @@ export function DistributionPieChart({
               const isActive = activeIndex === i;
 
               return (
-                <div
+                <Link
                   key={entry.key}
-                  className={`flex cursor-default items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors ${
+                  href={getHref(entry.key)}
+                  className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
                     isActive ? "bg-accent" : "hover:bg-accent/50"
                   }`}
                   onMouseEnter={() => setActiveIndex(i)}
                   onMouseLeave={() => setActiveIndex(undefined)}
+                  onFocus={() => setActiveIndex(i)}
+                  onBlur={() => setActiveIndex(undefined)}
                 >
                   {/* Color dot */}
                   <span
+                    aria-hidden="true"
                     className="h-3 w-3 shrink-0 rounded-full"
                     style={{ backgroundColor: entry.fill }}
                   />
@@ -194,11 +218,36 @@ export function DistributionPieChart({
                     {entry.value}
                     <span className="ml-0.5 text-xs">({pct}%)</span>
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>
         </div>
+
+        {/* ---- Full distribution data for screen readers ---- */}
+        <table className="sr-only">
+          <caption>{title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">CVEs</th>
+              <th scope="col">Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartData.map((entry) => {
+              const pct =
+                total > 0 ? ((entry.value / total) * 100).toFixed(0) : "0";
+              return (
+                <tr key={entry.key}>
+                  <th scope="row">{entry.name}</th>
+                  <td>{entry.value}</td>
+                  <td>{pct}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </section>
   );
@@ -226,7 +275,7 @@ function IconImg({
           width={18}
           height={18}
           className="shrink-0 dark:hidden"
-          loading="eager"
+          loading="lazy"
         />
         <img
           src={`${iconDir}/${iconKey}_dark.svg`}
@@ -234,7 +283,7 @@ function IconImg({
           width={18}
           height={18}
           className="hidden shrink-0 dark:inline-block"
-          loading="eager"
+          loading="lazy"
         />
       </>
     );
@@ -247,7 +296,7 @@ function IconImg({
       width={18}
       height={18}
       className="shrink-0"
-      loading="eager"
+      loading="lazy"
     />
   );
 }

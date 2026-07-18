@@ -128,11 +128,11 @@ const PIPELINE_STEPS = [
   },
   {
     tier: "Phase F",
-    title: "Fallback verification",
+    title: "Failure diagnostics",
     summary:
-      "When the primary deep investigator fails (timeout, model error), a Claude Agent SDK subprocess with git MCP tools retries the investigation independently.",
+      "After every deep-investigation model fails, an optional external coding agent can review a bounded evidence bundle without changing the published verdict.",
     details:
-      "The deep investigator (Phase E) uses a model fallback chain. When the primary model exhausts its tool-call budget or errors out, the pipeline falls back to a Claude Agent SDK subprocess with its own git tools (log, blame, diff, file read) via MCP. This is a fundamentally different execution path (a full CLI subprocess rather than API calls), so it often succeeds where the primary model failed. If the SDK fallback also fails, remaining models in the chain are tried. The fallback verdict replaces the failed investigation.",
+      "The deep investigator (Phase E) exhausts its configured API-model chain first. An explicitly enabled Codex, Claude Code, or Kimi Code CLI can then review evidence extracted by the pipeline's constrained git tools. The provider receives no repository checkout, runs with its own tools disabled, and must return strict per-subject JSON with local evidence references. The result is retained as a diagnostic artifact and cannot create or replace a bug-introducing-commit verdict.",
   },
 ] as const;
 
@@ -254,10 +254,10 @@ export default function AboutPage() {
               per-commit analysis misses: an AI commit that altered a
               calling convention, making previously safe code exploitable,
               or a squash-merge where the AI-tagged sub-commit never
-              touched the vulnerable file. If the primary model fails, a
-              Claude Agent SDK fallback with independent repository access
-              retries the investigation. The pipeline is conservative:
-              attribution is dropped when causality is uncertain.
+              touched the vulnerable file. If every configured model fails,
+              an optional external coding agent can inspect a bounded evidence
+              bundle. Its output is diagnostic-only, so failed investigation
+              never turns into a negative or confirmed attribution.
             </p>
           </div>
         </div>

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cve_analyzer.models import (
     AiSignal,
     AiTool,
@@ -13,6 +11,8 @@ from cve_analyzer.models import (
     FilteringLog,
     LlmVerdict,
     BlameVerdict,
+    investigation_scope_hash as compute_investigation_scope_hash,
+    relevant_investigation_bics,
 )
 from web_data.filters import is_fallback_verdict, should_include
 
@@ -66,14 +66,37 @@ def make_result(
     error: str = "",
     ai_involved: bool | None = None,
     bics: list[BugIntroducingCommit] | None = None,
+    investigation_scope_hash: str | None = None,
 ) -> CveAnalysisResult:
-    return CveAnalysisResult(
+    resolved_bics = bics
+    if (
+        resolved_bics is None
+        and ai_involved is not None
+        and investigation_scope_hash is None
+    ):
+        resolved_bics = [
+            make_bic(
+                ai_signals=[make_signal()],
+                deep_verification={
+                    "verdict": "CONFIRMED" if ai_involved else "UNRELATED",
+                    "reasoning": "Scoped test conclusion.",
+                    "model": "gpt-5.4",
+                },
+            )
+        ]
+    result = CveAnalysisResult(
         cve_id=cve_id,
         description=description,
         error=error,
         ai_involved=ai_involved,
-        bug_introducing_commits=bics or [],
+        investigation_scope_hash=investigation_scope_hash or "",
+        bug_introducing_commits=resolved_bics or [],
     )
+    if investigation_scope_hash is None and ai_involved is not None:
+        result.investigation_scope_hash = compute_investigation_scope_hash(
+            relevant_investigation_bics(result)
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +201,46 @@ class TestShouldIncludeAiInvolved:
     def test_ai_involved_none_falls_through_to_bic_logic(self):
         # No BICs, no ai_involved → no passing BICs → excluded
         result = make_result(ai_involved=None)
+        assert not should_include(result)
+
+    def test_legacy_unscoped_false_falls_through_to_confirmed_bic(self):
+        bic = make_bic(
+            ai_signals=[make_signal()],
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "The subject-level evidence confirms AI authorship.",
+            },
+        )
+        result = make_result(
+            ai_involved=False,
+            bics=[bic],
+            investigation_scope_hash="",
+        )
+
+        assert should_include(result)
+
+    def test_legacy_unscoped_true_does_not_bypass_subject_evidence(self):
+        result = make_result(
+            ai_involved=True,
+            investigation_scope_hash="",
+        )
+
+        assert not should_include(result)
+
+    def test_stale_nonempty_scope_does_not_bypass_subject_evidence(self):
+        bic = make_bic(
+            ai_signals=[make_signal()],
+            deep_verification={
+                "verdict": "UNRELATED",
+                "reasoning": "The subject evidence rejects causality.",
+            },
+        )
+        result = make_result(
+            ai_involved=True,
+            bics=[bic],
+            investigation_scope_hash="stale-nonempty",
+        )
+
         assert not should_include(result)
 
 

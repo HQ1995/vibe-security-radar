@@ -24,15 +24,14 @@ def _repo_url_to_display_name(repo_url: str) -> str | None:
     return f"{parts[0]}/{parts[1]}".lower() if parts else None
 
 
-def _extract_month(entry: dict, published: str) -> str:
-    """Extract a YYYY-MM string from the entry's published date.
+def _extract_month(published: str) -> str:
+    """Extract a YYYY-MM string from a published date for by_month bucketing.
 
-    Uses the CVE publication date (from NVD or CVE ID year).
+    Ignores values that are not at least month-precise (year-only "YYYY"
+    or unknown "") — those are not bucketed.
     """
     if published and len(published) >= 7:
         return published[:7]
-    if published and len(published) == 4:
-        return published
     return ""
 
 
@@ -77,9 +76,9 @@ def build_stats(
         sev = entry.get("severity", "UNKNOWN")
         by_severity[sev] = by_severity.get(sev, 0) + 1
 
-        # Monthly (use published year + first bug commit month, or just year-month)
+        # Monthly bucketing (only month-precise published dates)
         published = entry.get("published", "")
-        month_key = _extract_month(entry, published)
+        month_key = _extract_month(published)
         if month_key:
             month_counts[month_key] = month_counts.get(month_key, 0) + 1
             if month_key not in month_tool_counts:

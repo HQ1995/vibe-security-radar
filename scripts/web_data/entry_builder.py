@@ -10,18 +10,23 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass, field
 
+from cve_analyzer.git_url import parse_repo_url
 from cve_analyzer.models import (
     AiSignal,
     BugIntroducingCommit,
     CveAnalysisResult,
     WORKFLOW_SIGNAL_TYPES,
+    investigation_scope_is_current,
+    is_legacy_unscoped_verification,
 )
 from cve_analyzer.scoring import compute_ai_confidence
 
 from web_data.constants import CONFIDENCE_STR_TO_NUMERIC, STRONG_SIGNAL_TYPES
 from web_data.filters import is_fallback_verdict
 from web_data.languages import determine_languages
+from web_data.loader import normalize_published
 from web_data.severity import extract_cvss_score, parse_severity
 
 # ---------------------------------------------------------------------------
@@ -29,6 +34,44 @@ from web_data.severity import extract_cvss_score, parse_severity
 # ---------------------------------------------------------------------------
 
 DEFAULT_API_RESPONSES_DIR = os.path.expanduser("~/.cache/cve-analyzer/api-responses")
+
+
+# ---------------------------------------------------------------------------
+# Quarantine log — records which CVEs were dropped by build_entry() and why
+# ---------------------------------------------------------------------------
+
+@dataclass
+class QuarantineRecord:
+    """One quarantined CVE: its id and the reason it was dropped."""
+    cve_id: str
+    reason: str
+
+
+@dataclass
+class QuarantineLog:
+    """Collects QuarantineRecords across build_entry() calls for reporting."""
+    records: list[QuarantineRecord] = field(default_factory=list)
+
+    def add(self, cve_id: str, reason: str) -> None:
+        """Record that ``cve_id`` was quarantined for ``reason``."""
+        self.records.append(QuarantineRecord(cve_id, reason))
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def __iter__(self):
+        return iter(self.records)
+
+
+def _quarantine_drop(
+    quarantine: QuarantineLog | None,
+    cve_id: str,
+    reason: str,
+) -> None:
+    """Record ``reason`` in ``quarantine`` (if given) and return None."""
+    if quarantine is not None:
+        quarantine.add(cve_id, reason)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +102,14 @@ def _parse_github_owner_repo(repo_url: str) -> tuple[str, str] | None:
         repo_url.rstrip("/"),
     )
     return (m.group(1), m.group(2)) if m else None
+
+
+def _canonical_repository_identity(repo_url: str) -> tuple[str, str, str] | None:
+    """Return a case-insensitive canonical identity for a supported repo URL."""
+    parsed = parse_repo_url((repo_url or "").strip().lower())
+    if parsed is None:
+        return None
+    return tuple(part.lower() for part in parsed)
 
 
 def _lookup_pr_for_commit(
@@ -98,11 +149,34 @@ def _extract_published_year(result: CveAnalysisResult) -> str:
     return ""
 
 
+def _numeric_confidence(value: object) -> float | None:
+    """Coerce a verifier confidence to a number, or None if not numeric.
+
+    Legacy caches may carry strings ("high") or nothing; the web contract is
+    ``number | null``.
+    """
+    mapped = CONFIDENCE_STR_TO_NUMERIC.get(str(value).lower(), value)
+    if isinstance(mapped, bool):
+        return None
+    return float(mapped) if isinstance(mapped, (int, float)) else None
+
+
+def _as_count(value: object) -> int:
+    """Coerce a verifier counter to int (legacy caches store step lists)."""
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, list):
+        return len(value)
+    return 0
+
+
 def _model_with_reasoning_tag(model: str) -> str:
     """Append a reasoning-mode suffix to the model name.
 
-    claude-code is the SDK-based conflict resolver -- no suffix needed
-    since the SDK controls its own model version internally.
+    Historical ``claude-code`` records already identify their execution mode,
+    so they retain their existing label.
     """
     m = model.lower()
     if m in ("claude-code", "claude"):
@@ -123,7 +197,7 @@ def _get_deep_verdict(bic: BugIntroducingCommit) -> dict | None:
     """
     vv = bic.deep_verification
     if vv:
-        if is_fallback_verdict(vv):
+        if is_fallback_verdict(vv) or is_legacy_unscoped_verification(vv):
             return None
         if "final_verdict" not in vv and "verdict" in vv:
             return {**vv, "final_verdict": vv["verdict"]}
@@ -202,7 +276,7 @@ def _build_bug_commit(
             # Old format: multi-model with agent_verdicts list
             entry["verification"] = {
                 "verdict": dv.get("final_verdict", ""),
-                "confidence": dv.get("confidence", ""),
+                "confidence": _numeric_confidence(dv.get("confidence", "")),
                 "models": [
                     av.get("model", "") for av in dv.get("agent_verdicts", [])
                 ],
@@ -211,9 +285,9 @@ def _build_bug_commit(
                         "model": av.get("model", ""),
                         "verdict": av.get("verdict", ""),
                         "reasoning": av.get("reasoning", ""),
-                        "confidence": av.get("confidence", 0),
-                        "tool_calls_made": av.get("tool_calls_made", 0),
-                        "steps_completed": av.get("steps_completed", 0),
+                        "confidence": _numeric_confidence(av.get("confidence", 0)) or 0.0,
+                        "tool_calls_made": _as_count(av.get("tool_calls_made", 0)),
+                        "steps_completed": _as_count(av.get("steps_completed", 0)),
                         "evidence": av.get("evidence", []),
                     }
                     for av in dv["agent_verdicts"]
@@ -221,10 +295,7 @@ def _build_bug_commit(
             }
         else:
             # New verifier format: single-model flat structure.
-            raw_conf = dv.get("confidence", "")
-            numeric_conf = CONFIDENCE_STR_TO_NUMERIC.get(
-                str(raw_conf).lower(), raw_conf,
-            )
+            numeric_conf = _numeric_confidence(dv.get("confidence", ""))
             entry["verification"] = {
                 "verdict": dv.get("final_verdict", ""),
                 "confidence": numeric_conf,
@@ -234,9 +305,9 @@ def _build_bug_commit(
                         "model": dv.get("model", ""),
                         "verdict": dv.get("final_verdict", ""),
                         "reasoning": dv.get("reasoning", ""),
-                        "confidence": numeric_conf,
-                        "tool_calls_made": dv.get("tool_calls_made", 0),
-                        "steps_completed": dv.get("steps_completed", 0),
+                        "confidence": numeric_conf or 0.0,
+                        "tool_calls_made": _as_count(dv.get("tool_calls_made", 0)),
+                        "steps_completed": _as_count(dv.get("steps_completed", 0)),
                         "evidence": dv.get("evidence", []),
                     }
                 ],
@@ -302,14 +373,80 @@ def build_entry(
     ghsa_severities: dict[str, str] | None = None,
     reviews: dict[str, dict] | None = None,
     audit_overrides: set[str] | None = None,
+    quarantine: QuarantineLog | None = None,
 ) -> dict | None:
     """Transform a CveAnalysisResult into a web-friendly CVE entry.
 
-    Returns None if all AI signals are lost during squash decomposition
-    (trailer pollution -- AI co-author on merge commits, not on vuln code).
+    Returns None when the entry cannot be published faithfully (ambiguous
+    repository projection, conflicting evidence, or all AI signals lost
+    during squash decomposition).  Each drop is recorded in ``quarantine``
+    (when given) with the CVE id and a human-readable reason.
     """
     cve_id = result.cve_id
     is_override = cve_id in (audit_overrides or set())
+    trusted_ai_involved = (
+        result.ai_involved if investigation_scope_is_current(result) else None
+    )
+
+    # BIC subjects do not yet carry repository identity.  Publishing a CVE
+    # with fixes from multiple repositories would therefore attach every BIC
+    # to an arbitrary repository.  Quarantine that ambiguous projection.
+    repository_identities: set[tuple[str, str, str]] = set()
+    for fix in result.fix_commits:
+        identity = _canonical_repository_identity(fix.repo_url)
+        if identity is None:
+            return _quarantine_drop(
+                quarantine, cve_id,
+                f"unparseable fix commit repo URL: {fix.repo_url!r}",
+            )
+        repository_identities.add(identity)
+    if len(repository_identities) != 1:
+        return _quarantine_drop(
+            quarantine, cve_id,
+            f"fix commits span {len(repository_identities)} repositories",
+        )
+
+    known_fix_shas = {fix.sha for fix in result.fix_commits if fix.sha}
+    publishable_bics = [
+        bic
+        for bic in result.bug_introducing_commits
+        if bic.fix_commit_sha in known_fix_shas
+        and bool(bic.blamed_file)
+        and not bic.blamed_file.startswith("(")
+    ]
+    if not publishable_bics:
+        return _quarantine_drop(
+            quarantine, cve_id, "no publishable bug-introducing commits",
+        )
+
+    unique_bics: dict[tuple[str, str, str], BugIntroducingCommit] = {}
+    for bic in publishable_bics:
+        subject = (bic.fix_commit_sha, bic.commit.sha, bic.blamed_file)
+        existing = unique_bics.get(subject)
+        if existing is not None and json.dumps(
+            existing.to_dict(), sort_keys=True, ensure_ascii=False,
+        ) != json.dumps(bic.to_dict(), sort_keys=True, ensure_ascii=False):
+            return _quarantine_drop(
+                quarantine, cve_id,
+                f"conflicting BIC evidence for subject {subject}",
+            )
+        unique_bics[subject] = bic
+    publishable_bics = [unique_bics[key] for key in sorted(unique_bics)]
+
+    has_legacy_unscoped = any(
+        is_legacy_unscoped_verification(bic.deep_verification)
+        for bic in publishable_bics
+    )
+    has_scoped_confirmation = any(
+        (verdict := _get_deep_verdict(bic))
+        and (verdict.get("final_verdict") or "").upper() == "CONFIRMED"
+        for bic in publishable_bics
+    )
+    if has_legacy_unscoped and not (has_scoped_confirmation or is_override):
+        return _quarantine_drop(
+            quarantine, cve_id,
+            "legacy unscoped verification without scoped confirmation",
+        )
 
     # ------------------------------------------------------------------
     # 1. AI tools extraction
@@ -318,7 +455,7 @@ def build_entry(
     has_commit_signal = False
     has_pr_body_signal = False
 
-    for bic in result.bug_introducing_commits:
+    for bic in publishable_bics:
         signals = bic.effective_signals()
         if not signals:
             continue
@@ -353,7 +490,7 @@ def build_entry(
     # 2. ai_involved fallback — infer potential tool from ALL BICs
     # ------------------------------------------------------------------
     signal_note = ""
-    if result.ai_involved is True and not ai_tools:
+    if trusted_ai_involved is True and not ai_tools:
         # Scan ALL signals across all BICs — effective_signals, commit signals,
         # decomposed sub-commit signals (even touched=False), and PR signals.
         # This catches tools like roo_code/copilot on non-culprit sub-commits
@@ -364,7 +501,7 @@ def build_entry(
         best_sig_type = ""
         best_verdict = ""
         best_source = ""  # "commit", "sub-commit", "pr_body"
-        for bic in result.bug_introducing_commits:
+        for bic in publishable_bics:
             verdict = _effective_verdict(bic)
             # Collect (signal, source_description) pairs from every source
             sig_sources: list[tuple] = []
@@ -412,10 +549,9 @@ def build_entry(
     # 3. Bug commits list
     # ------------------------------------------------------------------
     fix_repo_url = ""
-    for fc in result.fix_commits:
-        if fc.repo_url:
-            fix_repo_url = fc.repo_url
-            break
+    if repository_identities:
+        host, owner, repo = next(iter(repository_identities))
+        fix_repo_url = f"https://{host}/{owner}/{repo}"
 
     fix_source_by_sha: dict[str, str] = {}
     for fc in result.fix_commits:
@@ -428,55 +564,63 @@ def build_entry(
             repo_url=fix_repo_url,
             fix_commit_source=fix_source_by_sha.get(bic.fix_commit_sha, ""),
         )
-        for bic in result.bug_introducing_commits
+        for bic in publishable_bics
         if (bic.effective_signals() or bic.all_ai_signals() or bic.commit.ai_signals)
-        and (is_override or result.ai_involved is True or _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY"))
+        and (is_override or trusted_ai_involved is True or _effective_verdict(bic) not in ("UNRELATED", "UNLIKELY"))
     ]
 
-    # Deduplicate by SHA (merge blamed_file strings)
-    seen_shas: dict[str, dict] = {}
-    bug_commits: list[dict] = []
-    for bc in bug_commits_raw:
-        sha = bc["sha"]
-        if sha in seen_shas:
-            existing = seen_shas[sha]
-            if bc["blamed_file"] and bc["blamed_file"] != existing["blamed_file"]:
-                existing["blamed_file"] += f", {bc['blamed_file']}"
-        else:
-            seen_shas[sha] = bc
-            bug_commits.append(bc)
+    # Preserve every fix/BIC/file subject. Legacy caches may still contain
+    # exact duplicates. Identical projections coalesce; conflicting evidence
+    # for one subject quarantines the CVE instead of selecting first-wins.
+    commits_by_subject: dict[tuple[str, str, str], dict] = {}
+    for commit in bug_commits_raw:
+        subject = (
+            commit.get("fix_commit_sha", ""),
+            commit["sha"],
+            commit.get("blamed_file", ""),
+        )
+        existing = commits_by_subject.get(subject)
+        if existing is not None and json.dumps(
+            existing, sort_keys=True, ensure_ascii=False,
+        ) != json.dumps(commit, sort_keys=True, ensure_ascii=False):
+            return _quarantine_drop(
+                quarantine, cve_id,
+                f"conflicting commit projections for subject {subject}",
+            )
+        commits_by_subject[subject] = commit
 
-    # Deduplicate by identical verification reasoning
-    seen_reasonings: set[str] = set()
-    deduped: list[dict] = []
-    for bc in bug_commits:
-        reasoning = ""
-        for av in bc.get("verification", {}).get("agent_verdicts", []):
-            reasoning = av.get("reasoning", "")
-            break
-        if reasoning and reasoning in seen_reasonings:
-            continue
-        if reasoning:
-            seen_reasonings.add(reasoning)
-        deduped.append(bc)
-    bug_commits = deduped
+    bug_commits = sorted(
+        commits_by_subject.values(),
+        key=lambda commit: (
+            commit.get("fix_commit_sha", ""),
+            commit["sha"],
+            commit.get("blamed_file", ""),
+        ),
+    )
 
     # ------------------------------------------------------------------
     # 4. Filter lost signals (skip when ai_involved=True — investigator
     #    confirmed AI involvement at CVE level, keep BICs for display)
     # ------------------------------------------------------------------
     pre_filter_count = len(bug_commits)
-    if not is_override and result.ai_involved is not True:
+    if not is_override and trusted_ai_involved is not True:
         bug_commits = [bc for bc in bug_commits if bc.get("ai_signals")]
     if pre_filter_count > 0 and not bug_commits:
-        return None
+        return _quarantine_drop(
+            quarantine, cve_id,
+            "all AI signals lost after filtering (squash decomposition pollution)",
+        )
+    if not bug_commits and trusted_ai_involved is not True and not is_override:
+        return _quarantine_drop(
+            quarantine, cve_id, "no displayable bug commits",
+        )
 
     # ------------------------------------------------------------------
     # 8. Severity
     # ------------------------------------------------------------------
     # Extract vuln_type early for severity inference
     first_vuln_type = ""
-    for bic in result.bug_introducing_commits:
+    for bic in publishable_bics:
         sv = bic.screening_verification
         if sv and sv.verdict.value == "CONFIRMED":
             first_vuln_type = sv.vuln_type
@@ -494,11 +638,11 @@ def build_entry(
     cvss = extract_cvss_score(result.severity, pre_score=result.cvss_score)
 
     # ------------------------------------------------------------------
-    # Published date
+    # Published date — contract: "YYYY-MM-DD", "YYYY" (year-only), or ""
     # ------------------------------------------------------------------
     published = ""
     if nvd_dates and cve_id in nvd_dates:
-        published = nvd_dates[cve_id]
+        published = normalize_published(nvd_dates[cve_id])
     if not published:
         published = _extract_published_year(result)
 
@@ -510,7 +654,7 @@ def build_entry(
     if review and review.get("verdict") in ("confirmed", "uncertain"):
         verified_by = "Manual"
     else:
-        for bic in result.bug_introducing_commits:
+        for bic in publishable_bics:
             dv = _get_deep_verdict(bic)
             if dv and (dv.get("final_verdict") or "").upper() == "CONFIRMED":
                 if dv.get("model"):
@@ -529,7 +673,7 @@ def build_entry(
     screening_vuln_type = ""
     screening_vulnerable_pattern = ""
 
-    for bic in result.bug_introducing_commits:
+    for bic in publishable_bics:
         dv = _get_deep_verdict(bic)
         dv_verdict = ""
         if dv:
@@ -572,10 +716,10 @@ def build_entry(
     # Best verdict across all BICs (ai_involved=True overrides per-BIC)
     # ------------------------------------------------------------------
     best_verdict = ""
-    if result.ai_involved is True:
+    if trusted_ai_involved is True:
         best_verdict = "CONFIRMED"
     else:
-        for bic in result.bug_introducing_commits:
+        for bic in publishable_bics:
             v = _effective_verdict(bic)
             if v == "CONFIRMED":
                 best_verdict = "CONFIRMED"
@@ -590,7 +734,7 @@ def build_entry(
         best_verdict = "CONFIRMED"
         verified_by = "independent-audit"
         if not how_introduced:
-            for bic in result.bug_introducing_commits:
+            for bic in publishable_bics:
                 sv = bic.screening_verification
                 if sv and sv.verdict.value == "CONFIRMED":
                     how_introduced = sv.causal_chain
@@ -599,54 +743,8 @@ def build_entry(
                     vulnerable_pattern = sv.vulnerable_pattern
                     if how_introduced:
                         break
-        # Replace incorrect deep-verify verdicts with screening data
-        for bc in bug_commits:
-            v = bc.get("verification", {})
-            if v and (v.get("verdict") or "").upper() in ("UNLIKELY", "UNRELATED"):
-                sv_dict = bc.get("screening_verification", {})
-                if sv_dict and sv_dict.get("verdict") == "CONFIRMED":
-                    bc["verification"] = {
-                        "verdict": "CONFIRMED",
-                        "confidence": sv_dict.get("confidence", 0.8),
-                        "models": ["independent-audit"],
-                        "agent_verdicts": [{
-                            "model": "independent-audit",
-                            "verdict": "CONFIRMED",
-                            "reasoning": sv_dict.get("reasoning", ""),
-                            "confidence": sv_dict.get("confidence", 0.8),
-                            "tool_calls_made": 0,
-                            "steps_completed": ["audit_override"],
-                            "evidence": [],
-                        }],
-                    }
-
-    # ------------------------------------------------------------------
-    # 11b. ai_involved=True override: replace contradictory per-BIC verdicts
-    # ------------------------------------------------------------------
-    # When investigator says ai_involved=True but per-BIC verdicts are
-    # UNRELATED/UNLIKELY (cross-file reasoning bug), override the display
-    # verdict to match the CVE-level conclusion.
-    if result.ai_involved is True and result.ai_contribution:
-        for bc in bug_commits:
-            v = bc.get("verification", {})
-            if v and (v.get("verdict") or "").upper() in ("UNLIKELY", "UNRELATED"):
-                bc["verification"] = {
-                    "verdict": "CONFIRMED",
-                    "confidence": 0.8,
-                    "models": ["investigator-override"],
-                    "agent_verdicts": [{
-                        "model": "investigator-override",
-                        "verdict": "CONFIRMED",
-                        "reasoning": result.ai_contribution,
-                        "confidence": 0.8,
-                        "tool_calls_made": 0,
-                        "steps_completed": ["ai_involved_override"],
-                        "evidence": [],
-                    }],
-                }
-        if not verified_by:
-            verified_by = "Claude Code"
-            best_verdict = "CONFIRMED"
+        # The override is a CVE-level adjudication. Per-BIC model assessments
+        # remain immutable evidence and retain their original verdicts.
 
     # ------------------------------------------------------------------
     # 12. Output dict
@@ -665,7 +763,7 @@ def build_entry(
         "ecosystem": "",
         "published": published,
         "ai_tools": ai_tools,
-        "ai_involved": result.ai_involved,
+        "ai_involved": trusted_ai_involved,
         "signal_source": signal_source,
         **({"signal_note": signal_note} if signal_note else {}),
         "languages": determine_languages(bug_commits, fix_commits_dicts),

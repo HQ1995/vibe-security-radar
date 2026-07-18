@@ -15,6 +15,7 @@ import {
   getToolDisplayName,
   getToolColor,
 } from "@/lib/constants";
+import { formatMonthShort, isValidMonthKey } from "@/lib/month-utils";
 
 const VISIBLE_MONTHS = 8;
 const COUNT_KEY = "__count__";
@@ -49,7 +50,9 @@ function CustomTooltip({
 
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
-      <p className="mb-1 text-sm font-semibold text-card-foreground">{label}</p>
+      <p className="mb-1 text-sm font-semibold text-card-foreground">
+        {label && isValidMonthKey(label) ? formatMonthShort(label) : label}
+      </p>
       {entries.map((entry) => (
         <div
           key={entry.dataKey}
@@ -73,26 +76,40 @@ function CustomTooltip({
 export function TrendChart({ data }: TrendChartProps) {
   const router = useRouter();
 
+  // Exclude non-YYYY-MM buckets (e.g. "2026" from year-only published dates)
+  const months = useMemo(
+    () => data.filter((entry) => isValidMonthKey(entry.month)),
+    [data],
+  );
+  const unknownMonthCount = useMemo(
+    () =>
+      data.reduce(
+        (sum, entry) => (isValidMonthKey(entry.month) ? sum : sum + entry.count),
+        0,
+      ),
+    [data],
+  );
+
   // Collect all unique tool names across all months
   const allTools = useMemo(() => {
     const toolSet = new Set<string>();
-    for (const entry of data) {
+    for (const entry of months) {
       for (const tool of Object.keys(entry.by_tool)) {
         toolSet.add(tool);
       }
     }
     return Array.from(toolSet).sort();
-  }, [data]);
+  }, [months]);
 
   // Default: show most recent months
-  const maxStart = Math.max(0, data.length - VISIBLE_MONTHS);
+  const maxStart = Math.max(0, months.length - VISIBLE_MONTHS);
   const [startIndex, setStartIndex] = useState(maxStart);
 
   const canScrollLeft = startIndex > 0;
   const canScrollRight = startIndex < maxStart;
 
   const visibleData = useMemo(() => {
-    const sliced = data.slice(startIndex, startIndex + VISIBLE_MONTHS);
+    const sliced = months.slice(startIndex, startIndex + VISIBLE_MONTHS);
     // Flatten by_tool into top-level keys for recharts; include real count
     return sliced.map((entry) => {
       const flat: Record<string, string | number> = {
@@ -104,7 +121,7 @@ export function TrendChart({ data }: TrendChartProps) {
       }
       return flat;
     });
-  }, [data, startIndex, allTools]);
+  }, [months, startIndex, allTools]);
 
   // Legend: only tools present in visible data
   const visibleTools = useMemo(() => {
@@ -126,9 +143,14 @@ export function TrendChart({ data }: TrendChartProps) {
 
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Vulnerabilities by Month</h2>
-        {data.length > VISIBLE_MONTHS && (
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Vulnerabilities by Month</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Click a bar to browse that month
+          </p>
+        </div>
+        {months.length > VISIBLE_MONTHS && (
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -167,6 +189,7 @@ export function TrendChart({ data }: TrendChartProps) {
             />
             <XAxis
               dataKey="month"
+              tickFormatter={(value: string) => formatMonthShort(value)}
               tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
@@ -214,6 +237,13 @@ export function TrendChart({ data }: TrendChartProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {unknownMonthCount > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground/70">
+          {unknownMonthCount} CVE{unknownMonthCount === 1 ? "" : "s"} with
+          unknown month not shown
+        </p>
       )}
     </section>
   );
