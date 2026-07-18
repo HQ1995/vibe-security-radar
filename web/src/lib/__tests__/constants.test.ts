@@ -10,6 +10,7 @@ import {
   truncate,
   getLanguageColor,
   getModelDisplayName,
+  getModelDetailName,
   deduplicateModels,
   SEVERITY_COLORS,
   LANGUAGE_COLORS,
@@ -150,6 +151,18 @@ describe("getModelDisplayName", () => {
     expect(getModelDisplayName("claude-opus-4-6")).toBe("Claude Opus 4.6");
     expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe("Gemini 3.1 Pro");
     expect(getModelDisplayName("gpt-5.4")).toBe("GPT-5.4");
+  });
+
+  it("keeps short suffix for short names but drops it for long ones", () => {
+    expect(getModelDisplayName("gpt-5.4-high")).toBe("GPT-5.4 High");
+    expect(getModelDisplayName("claude-opus-4-6-thinking")).toBe("Claude Opus 4.6");
+  });
+
+  it("keeps reasoning suffix in detail names", () => {
+    expect(getModelDetailName("claude-opus-4-6-thinking")).toBe(
+      "Claude Opus 4.6 Thinking",
+    );
+    expect(getModelDetailName("gpt-5.4-high")).toBe("GPT-5.4 High");
   });
 
   it("returns raw string for unknown models", () => {

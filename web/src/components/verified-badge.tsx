@@ -18,7 +18,7 @@ export function VerifiedBadge({
 
   return (
     <span
-      className="text-sm text-muted-foreground whitespace-nowrap"
+      className="block truncate text-sm text-muted-foreground"
       title={models.map((model) => verifiedByTooltip(model)).join("; ")}
     >
       {models.map((model) => getModelDisplayName(model)).join(", ")}

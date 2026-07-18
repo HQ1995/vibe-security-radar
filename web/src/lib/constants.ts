@@ -304,14 +304,19 @@ export function getModelDisplayName(model: string): string {
   if (!meta) return model;
   const suffix = model.slice(base.length); // e.g. "-high", "-thinking", or ""
   const label = REASONING_SUFFIX_LABELS[suffix];
-  // Gemini model names are already long enough — skip the suffix
-  if (meta.provider === "google") return meta.detailName;
+  // Gemini/Claude model names are already long enough for a table cell — skip the suffix
+  if (meta.provider === "google" || meta.provider === "anthropic") return meta.detailName;
   return label ? `${meta.detailName} ${label}` : meta.detailName;
 }
 
 /** Get full display name for a verification model (used in detail pages). */
 export function getModelDetailName(model: string): string {
-  return getModelDisplayName(model);
+  const base = stripReasoningSuffix(model);
+  const meta = MODEL_METADATA[base];
+  if (!meta) return model;
+  const suffix = model.slice(base.length);
+  const label = REASONING_SUFFIX_LABELS[suffix];
+  return label ? `${meta.detailName} ${label}` : meta.detailName;
 }
 
 /** Model strength rank (lower = stronger). Unknown models default to 99. */
