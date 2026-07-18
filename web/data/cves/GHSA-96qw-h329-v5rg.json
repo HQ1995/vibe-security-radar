@@ -1,0 +1,734 @@
+{
+  "id": "GHSA-96qw-h329-v5rg",
+  "description": "Shakapacker has environment variable leak via EnvironmentPlugin that exposes secrets to client-side bundles",
+  "severity": "HIGH",
+  "cvss": 7.5,
+  "cwes": [
+    "CWE-200"
+  ],
+  "ecosystem": "",
+  "published": "2026-01-08",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "JavaScript"
+  ],
+  "confidence": 0.7268,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The dual-bundler PR that landed as 591e3de introduced the new Rspack code path with `new rspack.EnvironmentPlugin(process.env)` and, per the supplied screening metadata, included an AI-authored sub-commit (7dd51d559b93) touching `package/plugins/rspack.js`. Even though the webpack-side flaw predates AI by years, AI-assisted code contributed to extending the vulnerability into the new Rspack architecture without the allowlist that the fix later added.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "591e3de9f1113a7d2f131315622b41588682d08a",
+      "author": "Justin Gordon",
+      "date": "2025-09-25T17:13:00-10:00",
+      "message": "Implement dual webpack/rspack architecture with conditional dependencies (#590)",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "package/plugins/webpack.js",
+      "blame_confidence": 0.765,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit introduced `package/plugins/rspack.js` for the first time and populated it with `new rspack.EnvironmentPlugin(process.env)`. That created the Rspack half of the vulnerability directly: a new bundler feature was enabled without filtering or allowlisting environment variables. This matches the fix exactly, which later replaced that call with `getFilteredEnv()`.",
+            "confidence": 0.95,
+            "tool_calls_made": 84,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "a7188041c0fff9f7b85e4c29e6e1600ec14a4008",
+          "author_name": "Judah Meek",
+          "message": "Add RSPack support into Shakapacker",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "a1d20b7a55d99fcb922a9bf6dcc18f5c083f146f",
+          "author_name": "Judah Meek",
+          "message": "simplify dummy",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "67e7c48abfcd348b6bdf3178f006cc0ee157b3e4",
+          "author_name": "Justin Gordon",
+          "message": "Release 9.0.0-beta.0",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "cc38c942ec99e4444d10e1b05b9e1fc88be7a496",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "d0c27f38d31f4934486088db3ce3af23e3a177f7",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b95ed09b690e998e6ca3ba7c5f5ff7bfd9de028d",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "78500ea8b5a042ad7325c8965903c262fbf3df9f",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e5ac73b4d144ede233359fbd0cf6968701496d68",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "aa9c4a60c26a33249245ab8198220b20237695b1",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "5bee0fa2db45f30481e579dffe6a36d7596819ea",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ab2fe22d2a3e213912f3ec29b3788bdaf99dba11",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "da56b8b5539e0cf34c8d1dd1c5003416a03eaaaa",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1f55bb2c1ddf77a439a53bd8b6728bd8796e049f",
+          "author_name": "Justin Gordon",
+          "message": "add dummy-rspack",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f465a39d85f3e61d3a6d972df08a798be54600f5",
+          "author_name": "Justin Gordon",
+          "message": "⏺ Fixed! The key issue was that rspack-manifest-plugin's entrypointFiles parameter contains relative paths like",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "81a4a09c9725e36c6b16cd4a760fe3e01029ebfc",
+          "author_name": "Justin Gordon",
+          "message": "⏺ Commit it. The change from \\Afile:/// to \\Afile: is necessary to handle yalc's file:.yalc/shakapacker format,",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "4797a8c0c49dad1a4c70f25282d8e88e039be631",
+          "author_name": "Justin Gordon",
+          "message": "hmr",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2361cf22c9c198e7310cf8265ffc2f11e2aef4e9",
+          "author_name": "Justin Gordon",
+          "message": "test app",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e9101c5ca51f89aba6412e01b2b3a08d0e98be33",
+          "author_name": "Justin Gordon",
+          "message": "⏺ The hot-update files are still in the manifest (lines 16, 27, 32) even though writeToDisk should exclude them.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "4dbe03932443915b9e069ed41c223dd47f281919",
+          "author_name": "Justin Gordon",
+          "message": "remove unnecessary",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1ccd14186b861d3ae4c0c19219a7853c07d47720",
+          "author_name": "Justin Gordon",
+          "message": "fixed hmr",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2b4bf732abbcc75294fb7b6757d5458bfde148fc",
+          "author_name": "Justin Gordon",
+          "message": "minor stuff hmr working at this point",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+          "author_name": "Justin Gordon",
+          "message": "Fix CI failures and add Rspack install support",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ec4da16b05da71be6895174bd821bf76d2e9b1ad",
+          "author_name": "Justin Gordon",
+          "message": "Exclude spec/dummy-rspack from root RuboCop scan",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "a982d685ca47415f6fdef20c9cd383e33469ce3d",
+          "author_name": "Justin Gordon",
+          "message": "Rename 'bundler' config to 'assets_bundler' to avoid confusion",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "08561be400aa69d37b1c0e49b9f3230687d89755",
+          "author_name": "Justin Gordon",
+          "message": "Fix Prettier formatting in base.js",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ec7d0f09116c278d74b4cd730527340b4d24a6f1",
+          "author_name": "Justin Gordon",
+          "message": "Fix test compilation issues",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2f5fa74a2a34abcd3c27983ebc05cd2e35cfd0ff",
+          "author_name": "Justin Gordon",
+          "message": "Add ENV override for assets_bundler configuration",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ecd490bc2dc8d55913d6f06b2d85dd4b9e176af9",
+          "author_name": "Justin Gordon",
+          "message": "Remove rspack-test directory (was accidentally added as submodule)",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e0492b8ddca68b7140037cea841ad567c755ac46",
+          "author_name": "Justin Gordon",
+          "message": "Fix generator tests by compiling assets before running RSpec",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e07e52500b8c054551dcbcd6ab3b854097b31a6f",
+          "author_name": "Justin Gordon",
+          "message": "Improve generator tests and documentation",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "af34c41971f35bbe79023ca6325098deb5e95621",
+          "author_name": "Justin Gordon",
+          "message": "Address PR review comments for dual bundler architecture",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f22b0af88edb3dd08a9bd24cb0d24eb03d93e8f9",
+          "author_name": "Justin Gordon",
+          "message": "Fix ESLint formatting issues",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3b5294ed1029a0a61870fd06bfbbdece663bac52",
+          "author_name": "Justin Gordon",
+          "message": "Fix RuboCop indentation issue in configuration.rb",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2668ab598565f5334ddd2a52a3e3eb88847e1b7e",
+          "author_name": "Justin Gordon",
+          "message": "Fix critical issues with environment variable names and test specs",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1d1d71a8cc14d6f60a23cf6c6715683d9a92183e",
+          "author_name": "Justin Gordon",
+          "message": "Fix remaining test failures",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "fb2b345a623c63443d4daf452297c873ad1a0caa",
+          "author_name": "Justin Gordon",
+          "message": "Fix final configuration spec test",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f8dd3ab21ae4985d45d45cc497d6b7e82e5f88ac",
+          "author_name": "Justin Gordon",
+          "message": "fix: Generator test failures by supporting ENV APP_ROOT",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ]
+    },
+    {
+      "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+      "author": "Justin Gordon",
+      "date": "2025-09-25T17:13:00-10:00",
+      "message": "Fix CI failures and add Rspack install support",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "package/plugins/rspack.js",
+      "blame_confidence": 0.765,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit introduced `package/plugins/rspack.js` for the first time and populated it with `new rspack.EnvironmentPlugin(process.env)`. That created the Rspack half of the vulnerability directly: a new bundler feature was enabled without filtering or allowlisting environment variables. This matches the fix exactly, which later replaced that call with `getFilteredEnv()`.",
+            "confidence": 0.95,
+            "tool_calls_made": 84,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "a7188041c0fff9f7b85e4c29e6e1600ec14a4008",
+          "author_name": "Judah Meek",
+          "message": "Add RSPack support into Shakapacker",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "a1d20b7a55d99fcb922a9bf6dcc18f5c083f146f",
+          "author_name": "Judah Meek",
+          "message": "simplify dummy",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "67e7c48abfcd348b6bdf3178f006cc0ee157b3e4",
+          "author_name": "Justin Gordon",
+          "message": "Release 9.0.0-beta.0",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "cc38c942ec99e4444d10e1b05b9e1fc88be7a496",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "d0c27f38d31f4934486088db3ce3af23e3a177f7",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b95ed09b690e998e6ca3ba7c5f5ff7bfd9de028d",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "78500ea8b5a042ad7325c8965903c262fbf3df9f",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e5ac73b4d144ede233359fbd0cf6968701496d68",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "aa9c4a60c26a33249245ab8198220b20237695b1",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "5bee0fa2db45f30481e579dffe6a36d7596819ea",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ab2fe22d2a3e213912f3ec29b3788bdaf99dba11",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "da56b8b5539e0cf34c8d1dd1c5003416a03eaaaa",
+          "author_name": "Justin Gordon",
+          "message": "Per review.",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1f55bb2c1ddf77a439a53bd8b6728bd8796e049f",
+          "author_name": "Justin Gordon",
+          "message": "add dummy-rspack",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f465a39d85f3e61d3a6d972df08a798be54600f5",
+          "author_name": "Justin Gordon",
+          "message": "⏺ Fixed! The key issue was that rspack-manifest-plugin's entrypointFiles parameter contains relative paths like",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "81a4a09c9725e36c6b16cd4a760fe3e01029ebfc",
+          "author_name": "Justin Gordon",
+          "message": "⏺ Commit it. The change from \\Afile:/// to \\Afile: is necessary to handle yalc's file:.yalc/shakapacker format,",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "4797a8c0c49dad1a4c70f25282d8e88e039be631",
+          "author_name": "Justin Gordon",
+          "message": "hmr",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2361cf22c9c198e7310cf8265ffc2f11e2aef4e9",
+          "author_name": "Justin Gordon",
+          "message": "test app",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e9101c5ca51f89aba6412e01b2b3a08d0e98be33",
+          "author_name": "Justin Gordon",
+          "message": "⏺ The hot-update files are still in the manifest (lines 16, 27, 32) even though writeToDisk should exclude them.",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "4dbe03932443915b9e069ed41c223dd47f281919",
+          "author_name": "Justin Gordon",
+          "message": "remove unnecessary",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1ccd14186b861d3ae4c0c19219a7853c07d47720",
+          "author_name": "Justin Gordon",
+          "message": "fixed hmr",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2b4bf732abbcc75294fb7b6757d5458bfde148fc",
+          "author_name": "Justin Gordon",
+          "message": "minor stuff hmr working at this point",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "7dd51d559b9355cee0cedd85394d1e8d8cf1decd",
+          "author_name": "Justin Gordon",
+          "message": "Fix CI failures and add Rspack install support",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ec4da16b05da71be6895174bd821bf76d2e9b1ad",
+          "author_name": "Justin Gordon",
+          "message": "Exclude spec/dummy-rspack from root RuboCop scan",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "a982d685ca47415f6fdef20c9cd383e33469ce3d",
+          "author_name": "Justin Gordon",
+          "message": "Rename 'bundler' config to 'assets_bundler' to avoid confusion",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "08561be400aa69d37b1c0e49b9f3230687d89755",
+          "author_name": "Justin Gordon",
+          "message": "Fix Prettier formatting in base.js",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ec7d0f09116c278d74b4cd730527340b4d24a6f1",
+          "author_name": "Justin Gordon",
+          "message": "Fix test compilation issues",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2f5fa74a2a34abcd3c27983ebc05cd2e35cfd0ff",
+          "author_name": "Justin Gordon",
+          "message": "Add ENV override for assets_bundler configuration",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ecd490bc2dc8d55913d6f06b2d85dd4b9e176af9",
+          "author_name": "Justin Gordon",
+          "message": "Remove rspack-test directory (was accidentally added as submodule)",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e0492b8ddca68b7140037cea841ad567c755ac46",
+          "author_name": "Justin Gordon",
+          "message": "Fix generator tests by compiling assets before running RSpec",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e07e52500b8c054551dcbcd6ab3b854097b31a6f",
+          "author_name": "Justin Gordon",
+          "message": "Improve generator tests and documentation",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "af34c41971f35bbe79023ca6325098deb5e95621",
+          "author_name": "Justin Gordon",
+          "message": "Address PR review comments for dual bundler architecture",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f22b0af88edb3dd08a9bd24cb0d24eb03d93e8f9",
+          "author_name": "Justin Gordon",
+          "message": "Fix ESLint formatting issues",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3b5294ed1029a0a61870fd06bfbbdece663bac52",
+          "author_name": "Justin Gordon",
+          "message": "Fix RuboCop indentation issue in configuration.rb",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2668ab598565f5334ddd2a52a3e3eb88847e1b7e",
+          "author_name": "Justin Gordon",
+          "message": "Fix critical issues with environment variable names and test specs",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1d1d71a8cc14d6f60a23cf6c6715683d9a92183e",
+          "author_name": "Justin Gordon",
+          "message": "Fix remaining test failures",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "fb2b345a623c63443d4daf452297c873ad1a0caa",
+          "author_name": "Justin Gordon",
+          "message": "Fix final configuration spec test",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f8dd3ab21ae4985d45d45cc497d6b7e82e5f88ac",
+          "author_name": "Justin Gordon",
+          "message": "fix: Generator test failures by supporting ENV APP_ROOT",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "591e3de9f1113a7d2f131315622b41588682d08a"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "3e06781b18383c5c2857ed3a722f7b91bdc1bc0e",
+      "repo_url": "https://github.com/shakacode/shakapacker",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/shakacode/shakapacker/security/advisories/GHSA-96qw-h329-v5rg",
+    "https://github.com/shakacode/shakapacker/pull/857",
+    "https://github.com/shakacode/shakapacker/commit/3e06781b18383c5c2857ed3a722f7b91bdc1bc0e"
+  ],
+  "ai_contribution": "Yes. The dual-bundler PR that landed as 591e3de introduced the new Rspack code path with `new rspack.EnvironmentPlugin(process.env)` and, per the supplied screening metadata, included an AI-authored sub-commit (7dd51d559b93) touching `package/plugins/rspack.js`. Even though the webpack-side flaw predates AI by years, AI-assisted code contributed to extending the vulnerability into the new Rspack architecture without the allowlist that the fix later added."
+}

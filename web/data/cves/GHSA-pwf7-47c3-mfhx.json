@@ -1,0 +1,171 @@
+{
+  "id": "GHSA-pwf7-47c3-mfhx",
+  "description": "j178/prek-action vulnerable to arbitrary code injection in composite action",
+  "severity": "CRITICAL",
+  "cvss": 9.9,
+  "cwes": [
+    "CWE-94"
+  ],
+  "ecosystem": "",
+  "published": "2025-09-29",
+  "ai_tools": [
+    "github_copilot"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "GitHub Actions"
+  ],
+  "confidence": 0.76,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-authored code did contribute: Copilot commit a7c5a005 directly introduced a new shell-injection path by interpolating `${{ inputs.prek-version }}` into bash. A later AI commit (346373c1) also preserved and expanded the already-existing unsafe `extra_args` sink, although that specific sink originated earlier in a non-AI commit.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "070aae8e5398e8a01806912ed2833f8b0fc8197a",
+      "author": "copilot-swe-agent[bot]",
+      "date": "2025-09-19T11:03:07+08:00",
+      "message": "Add support for specifying prek-version input",
+      "ai_signals": [
+        {
+          "tool": "github_copilot",
+          "signal_type": "author_email",
+          "matched_text": "Copilot@users.noreply.github.com",
+          "confidence": 0.95
+        },
+        {
+          "tool": "github_copilot",
+          "signal_type": "committer_email",
+          "matched_text": "Copilot@users.noreply.github.com",
+          "confidence": 0.95
+        },
+        {
+          "tool": "github_copilot",
+          "signal_type": "author_name",
+          "matched_text": "copilot-swe-agent[bot]",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "action.yaml",
+      "blame_confidence": 0.8,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "6b7c6ef5c3875c766893b881b40773cd5605bde3",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit did not originate the `extra_args` sink from the screening hypothesis, but it did introduce a separate injection sink that the fix later hardens. It added the `prek-version` input and inlined `${{ inputs.prek-version }}` directly into a bash `if` test and a `python -m pip install prek==...` command, which is the exact unsafe composite-action pattern the fix replaces with env-based handling. `git log -S` for `${{ inputs.prek-version }}` and the affected strings points back to this commit as the first introduction of that vulnerable pattern.",
+            "confidence": 0.95,
+            "tool_calls_made": 34,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "aa1aa3537bd5d7db7b20d2bcf88c0320f7dee2dd",
+          "author_name": "copilot-swe-agent[bot]",
+          "message": "Initial plan",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "070aae8e5398e8a01806912ed2833f8b0fc8197a",
+          "author_name": "copilot-swe-agent[bot]",
+          "message": "Add support for specifying prek-version input",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "40542ebe37b00b18cbf71aec936bd3f474d952db",
+          "author_name": "copilot-swe-agent[bot]",
+          "message": "Remove prek-version from cache key for better cache reuse",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "committer_email",
+              "matched_text": "Copilot@users.noreply.github.com",
+              "confidence": 0.95
+            },
+            {
+              "tool": "github_copilot",
+              "signal_type": "author_name",
+              "matched_text": "copilot-swe-agent[bot]",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "a7c5a0054bcdf34c9ec0f1c20d1356ce54f069b3"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "6b7c6ef5c3875c766893b881b40773cd5605bde3",
+      "repo_url": "https://github.com/j178/prek-action",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/j178/prek-action/security/advisories/GHSA-pwf7-47c3-mfhx",
+    "https://github.com/j178/prek-action/commit/6b7c6ef5c3875c766893b881b40773cd5605bde3"
+  ],
+  "ai_contribution": "AI-authored code did contribute: Copilot commit a7c5a005 directly introduced a new shell-injection path by interpolating `${{ inputs.prek-version }}` into bash. A later AI commit (346373c1) also preserved and expanded the already-existing unsafe `extra_args` sink, although that specific sink originated earlier in a non-AI commit."
+}

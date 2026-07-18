@@ -1,0 +1,576 @@
+{
+  "id": "GHSA-fmfg-9g7c-3vq7",
+  "description": "ha-mcp OAuth 2.1 DCR mode enables network reconnaissance via an error oracle",
+  "severity": "MEDIUM",
+  "cvss": 5.3,
+  "cwes": [
+    "CWE-918"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-12",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "Python"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+      "author": "Julien",
+      "date": "2026-01-17T05:06:22-05:00",
+      "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/ha_mcp/__main__.py",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This initial OAuth/DCR feature commit introduced the entire attacker-controlled URL flow. In `src/ha_mcp/auth/consent_form.py` it added the `ha_url` form field; in `src/ha_mcp/auth/provider.py` it read `ha_url` from the form, called `httpx.AsyncClient().get(f\"{ha_url}/api/config\", ...)` in `_validate_ha_credentials()`, and surfaced differentiated validation failures back to the user via the `error` query parameter and `create_consent_html(error_message=...)`, creating the reconnaissance oracle fixed by dc8eaa16. The same commit also added `OAuthProxyClient` in `src/ha_mcp/__main__.py` that trusted `claims[\"ha_url\"]` and used `base_url=ha_url`, so the screening's XSS explanation is incomplete, but the commit is still a confirmed SSRF introducer for this CVE.",
+            "confidence": 0.95,
+            "tool_calls_made": 61,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+          "author_name": "Julien",
+          "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ace38e50b0b3e7f7b0f99f4964a8c9c1f0abdbf7",
+          "author_name": "Julien",
+          "message": "fix(oauth): enhance OAuth metadata for Claude.ai compatibility",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2af133dac6392ae4d63a443d79ce1a650d19aae4",
+          "author_name": "Julien",
+          "message": "fix(oauth): enable full toolset in OAuth mode",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ce8593b5513b164a949615b1d8a24d522f94a166",
+          "author_name": "Julien",
+          "message": "fix(oauth): implement claims-based stateless auth with proxy client pattern",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "293e6180eb222deda53c214076b12b13562eb8c3",
+          "author_name": "Julien",
+          "message": "fix(oauth): use FastMCP AccessToken with claims and correct client init",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ff28281fd4a48a6f21a3ef3f36bf655883ec0586",
+          "author_name": "Julien",
+          "message": "feat(oauth): implement stateless encrypted tokens for persistence",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "69f4e053419746e330a86cece2cf74ab22c77cf9",
+          "author_name": "Julien",
+          "message": "test(oauth): add comprehensive test coverage for routes and proxy client",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "08be59268f346877b92019daebd32904d275a109",
+          "author_name": "Julien Larocque-Dupont",
+          "message": "Merge branch 'master' into review-oauth",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f"
+    },
+    {
+      "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+      "author": "Julien",
+      "date": "2026-01-17T05:06:22-05:00",
+      "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/ha_mcp/auth/consent_form.py",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This initial OAuth/DCR feature commit introduced the entire attacker-controlled URL flow. In `src/ha_mcp/auth/consent_form.py` it added the `ha_url` form field; in `src/ha_mcp/auth/provider.py` it read `ha_url` from the form, called `httpx.AsyncClient().get(f\"{ha_url}/api/config\", ...)` in `_validate_ha_credentials()`, and surfaced differentiated validation failures back to the user via the `error` query parameter and `create_consent_html(error_message=...)`, creating the reconnaissance oracle fixed by dc8eaa16. The same commit also added `OAuthProxyClient` in `src/ha_mcp/__main__.py` that trusted `claims[\"ha_url\"]` and used `base_url=ha_url`, so the screening's XSS explanation is incomplete, but the commit is still a confirmed SSRF introducer for this CVE.",
+            "confidence": 0.95,
+            "tool_calls_made": 61,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+          "author_name": "Julien",
+          "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ace38e50b0b3e7f7b0f99f4964a8c9c1f0abdbf7",
+          "author_name": "Julien",
+          "message": "fix(oauth): enhance OAuth metadata for Claude.ai compatibility",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2af133dac6392ae4d63a443d79ce1a650d19aae4",
+          "author_name": "Julien",
+          "message": "fix(oauth): enable full toolset in OAuth mode",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ce8593b5513b164a949615b1d8a24d522f94a166",
+          "author_name": "Julien",
+          "message": "fix(oauth): implement claims-based stateless auth with proxy client pattern",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "293e6180eb222deda53c214076b12b13562eb8c3",
+          "author_name": "Julien",
+          "message": "fix(oauth): use FastMCP AccessToken with claims and correct client init",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ff28281fd4a48a6f21a3ef3f36bf655883ec0586",
+          "author_name": "Julien",
+          "message": "feat(oauth): implement stateless encrypted tokens for persistence",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "69f4e053419746e330a86cece2cf74ab22c77cf9",
+          "author_name": "Julien",
+          "message": "test(oauth): add comprehensive test coverage for routes and proxy client",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "08be59268f346877b92019daebd32904d275a109",
+          "author_name": "Julien Larocque-Dupont",
+          "message": "Merge branch 'master' into review-oauth",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f"
+    },
+    {
+      "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+      "author": "Julien",
+      "date": "2026-01-17T05:06:22-05:00",
+      "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/ha_mcp/auth/provider.py",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This initial OAuth/DCR feature commit introduced the entire attacker-controlled URL flow. In `src/ha_mcp/auth/consent_form.py` it added the `ha_url` form field; in `src/ha_mcp/auth/provider.py` it read `ha_url` from the form, called `httpx.AsyncClient().get(f\"{ha_url}/api/config\", ...)` in `_validate_ha_credentials()`, and surfaced differentiated validation failures back to the user via the `error` query parameter and `create_consent_html(error_message=...)`, creating the reconnaissance oracle fixed by dc8eaa16. The same commit also added `OAuthProxyClient` in `src/ha_mcp/__main__.py` that trusted `claims[\"ha_url\"]` and used `base_url=ha_url`, so the screening's XSS explanation is incomplete, but the commit is still a confirmed SSRF introducer for this CVE.",
+            "confidence": 0.95,
+            "tool_calls_made": 61,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+          "author_name": "Julien",
+          "message": "feat: add OAuth 2.1 authentication with DCR and consent form",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ace38e50b0b3e7f7b0f99f4964a8c9c1f0abdbf7",
+          "author_name": "Julien",
+          "message": "fix(oauth): enhance OAuth metadata for Claude.ai compatibility",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "2af133dac6392ae4d63a443d79ce1a650d19aae4",
+          "author_name": "Julien",
+          "message": "fix(oauth): enable full toolset in OAuth mode",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ce8593b5513b164a949615b1d8a24d522f94a166",
+          "author_name": "Julien",
+          "message": "fix(oauth): implement claims-based stateless auth with proxy client pattern",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "293e6180eb222deda53c214076b12b13562eb8c3",
+          "author_name": "Julien",
+          "message": "fix(oauth): use FastMCP AccessToken with claims and correct client init",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            },
+            {
+              "tool": "claude_code",
+              "signal_type": "message_keyword",
+              "matched_text": "Generated with Claude Code",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ff28281fd4a48a6f21a3ef3f36bf655883ec0586",
+          "author_name": "Julien",
+          "message": "feat(oauth): implement stateless encrypted tokens for persistence",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "69f4e053419746e330a86cece2cf74ab22c77cf9",
+          "author_name": "Julien",
+          "message": "test(oauth): add comprehensive test coverage for routes and proxy client",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "08be59268f346877b92019daebd32904d275a109",
+          "author_name": "Julien Larocque-Dupont",
+          "message": "Merge branch 'master' into review-oauth",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f"
+    },
+    {
+      "sha": "eb6676078d90928d9f46dc4d109850e28476d908",
+      "author": "sergeykad",
+      "date": "2026-03-10T23:31:22+02:00",
+      "message": "fix(types): add mypy type checking and fix 47 type errors (#716)",
+      "ai_signals": [
+        {
+          "tool": "google_gemini",
+          "signal_type": "co_author_trailer_generic",
+          "matched_text": "Co-authored-by: gemini-code-assist[bot] <176961590+gemini",
+          "confidence": 0.7
+        }
+      ],
+      "blamed_file": "src/ha_mcp/__main__.py",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "screening_verification": null,
+      "decomposed_commits": [
+        {
+          "sha": "393f0657af5e8e7298d14942533b685d3bf7d2c7",
+          "author_name": "Sergey",
+          "message": "fix(types): add mypy type checking and fix 47 type errors",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "d70506d05784d1d7d7fe5417d4eea34158147b67",
+          "author_name": "sergeykad",
+          "message": "Update src/ha_mcp/tools/tools_mcp_component.py",
+          "ai_signals": [
+            {
+              "tool": "google_gemini",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: gemini-code-assist[bot] <176961590+gemini",
+              "confidence": 0.7
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "bef9e15e5cc10f6bd3a25c32a2e959916a97ee02",
+          "author_name": "Sergey",
+          "message": "fix: resolve mypy errors introduced by master merge",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b5d8cb02f2abff5019f81c80ba1d774fcdaf7033",
+          "author_name": "Sergey",
+          "message": "fix(types): address PR review feedback on type annotations",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        }
+      ]
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "repo_url": "https://github.com/homeassistant-ai/ha-mcp",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "1f2bbbc74e81933a39e9c63998d1408f0c198309",
+      "repo_url": "https://github.com/homeassistant-ai/ha-mcp",
+      "source": "advisory_version"
+    }
+  ],
+  "references": [
+    "https://github.com/homeassistant-ai/ha-mcp/security/advisories/GHSA-fmfg-9g7c-3vq7",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-32111"
+  ],
+  "ai_contribution": "Yes. AI-authored commit 39806871c9720bf8afdcf3e061095c0dd63dea7f created the vulnerable OAuth DCR flow: the consent form accepted an attacker-controlled `ha_url`, `_validate_ha_credentials()` made server-side requests to that URL and returned distinct error messages, and the same URL was propagated into token claims / proxy clients. A later AI-assisted commit 1399f5a30354c1e0bf79f882fb7e0769e7c84431 preserved that design in rewritten token-serialization code, but the original introduction was already in 39806871c."
+}

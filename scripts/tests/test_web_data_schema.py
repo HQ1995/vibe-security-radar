@@ -2,8 +2,8 @@
 
 Covers: the hand-rolled schema validator, published-date normalization,
 month bucketing, and quarantine reason recording.  The TestCommittedArtifacts
-class is a release gate: the tracked web/data/*.json files must validate
-against the published schema.
+class is a release gate: the tracked web/data artifacts (index.json,
+cves/*.json, stats.json) must validate against the published schema.
 """
 
 from __future__ import annotations
@@ -24,7 +24,9 @@ from cve_analyzer.models import (
 from web_data.entry_builder import QuarantineLog, build_entry
 from web_data.loader import normalize_published
 from web_data.schema import (
+    CVE_ENTRY_SCHEMA,
     CVES_SCHEMA,
+    INDEX_SCHEMA,
     STATS_SCHEMA,
     SchemaValidationError,
     validate,
@@ -115,10 +117,19 @@ def make_entry(**overrides) -> dict:
 # ---------------------------------------------------------------------------
 
 class TestCommittedArtifacts:
-    def test_cves_json_validates(self) -> None:
-        payload = json.loads((_WEB_DATA_DIR / "cves.json").read_text(encoding="utf-8"))
-        errors = validate(payload, CVES_SCHEMA)
+    def test_index_json_validates(self) -> None:
+        payload = json.loads((_WEB_DATA_DIR / "index.json").read_text(encoding="utf-8"))
+        errors = validate(payload, INDEX_SCHEMA)
         assert errors == [], "\n".join(errors)
+
+    def test_every_per_cve_file_validates(self) -> None:
+        index = json.loads((_WEB_DATA_DIR / "index.json").read_text(encoding="utf-8"))
+        for cve_id in index["ids"]:
+            entry = json.loads(
+                (_WEB_DATA_DIR / "cves" / f"{cve_id}.json").read_text(encoding="utf-8")
+            )
+            errors = validate(entry, CVE_ENTRY_SCHEMA)
+            assert errors == [], f"{cve_id}:\n" + "\n".join(errors)
 
     def test_stats_json_validates(self) -> None:
         payload = json.loads((_WEB_DATA_DIR / "stats.json").read_text(encoding="utf-8"))

@@ -102,6 +102,12 @@ export interface CvesData {
   readonly cves: readonly CveEntry[];
 }
 
+export interface CvesIndex {
+  readonly generated_at: string;
+  readonly total: number;
+  readonly ids: readonly string[];
+}
+
 export interface StatsData {
   readonly generated_at: string;
   readonly total_cves: number;

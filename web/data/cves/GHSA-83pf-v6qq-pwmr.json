@@ -1,0 +1,173 @@
+{
+  "id": "GHSA-83pf-v6qq-pwmr",
+  "description": "Fickling has a detection bypass via stdlib network-protocol constructors",
+  "severity": "LOW",
+  "cvss": 2.5,
+  "cwes": [
+    "CWE-184"
+  ],
+  "ecosystem": "",
+  "published": "2026-02-20",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "Python"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-assisted code in 19e828d26b248a4a39fcee2643306a6cd78dbb76 materially contributed to the CVE: it expanded `UNSAFE_IMPORTS` with a new network-module section, but still omitted `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib`, the exact gap closed by the fix. The broader incomplete-blocklist design predates AI involvement, but this Claude-coauthored commit rewrote the relevant network coverage and left the stdlib network-protocol constructor bypass in place.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+      "author": "Dan Guido",
+      "date": "2026-01-22T18:14:12-05:00",
+      "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "fickling/fickle.py",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This Claude-coauthored commit added the `UNSAFE_IMPORTS` network section (`webbrowser`, `aiohttp`, `httplib`, `http`, `ssl`, `requests`, `urllib`, `urllib2`) in `fickling/fickle.py`, and the fix later appends the missing stdlib protocol modules directly into that section. Because `Global`/`StackGlobal` create `ast.ImportFrom(module=...)` nodes and `analysis.py` treats stdlib constructors as likely safe unless their module is in `UNSAFE_IMPORTS`, leaving out `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib` preserved a detection bypass. The screening hypothesis is directionally right about the omission, but slightly imprecise: this commit did not create `UNSAFE_IMPORTS` from scratch; it incompletely expanded the existing blocklist in the exact area the fix changes.",
+            "confidence": 0.95,
+            "tool_calls_made": 69,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "fc09b58ba866daa5e2c7ba23bf8dd6208e64e87b",
+          "author_name": "Dan Guido",
+          "message": "Integrate recent PickleScan bypasses into unsafe imports detection",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "421182286c4034279298b7b1608fde8d0f95ec31",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Remove CVE/GHSA references from unsafe imports comments",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "7dba01a213623c22f6460bc914ba41f5d8556f3b",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Remove non-ML modules from UnsafeImportsML.UNSAFE_MODULES",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "8dd78e7753ea2048d5ee312f9ae3404f91c08ce3",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Update bypass tests with real PickleScan advisory payloads",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8740de0c4eca73799bb23e86a5d287165bd5a09a",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Fix STACK_GLOBAL validation to allow dotted attribute names",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "f7598584dc2527b273eb3f4e2b9296e6a1c01430",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Remove duplicate entries from UnsafeImportsML.UNSAFE_IMPORTS",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "8bf4ae3fa663bf18152ff099e17f2e93fff00bf1",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Merge branch 'master' into integrate-picklescan-bypasses",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "19e828d26b248a4a39fcee2643306a6cd78dbb76"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "6d20564d23acf14b42ec883908aed159be7b9ade",
+      "repo_url": "https://github.com/trailofbits/fickling",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/trailofbits/fickling/security/advisories/GHSA-83pf-v6qq-pwmr",
+    "https://github.com/trailofbits/fickling/pull/233",
+    "https://github.com/trailofbits/fickling/commit/6d20564d23acf14b42ec883908aed159be7b9ade"
+  ],
+  "ai_contribution": "AI-assisted code in 19e828d26b248a4a39fcee2643306a6cd78dbb76 materially contributed to the CVE: it expanded `UNSAFE_IMPORTS` with a new network-module section, but still omitted `smtplib`, `imaplib`, `ftplib`, `poplib`, `telnetlib`, and `nntplib`, the exact gap closed by the fix. The broader incomplete-blocklist design predates AI involvement, but this Claude-coauthored commit rewrote the relevant network coverage and left the stdlib network-protocol constructor bypass in place."
+}

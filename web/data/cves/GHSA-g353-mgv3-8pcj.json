@@ -1,0 +1,172 @@
+{
+  "id": "GHSA-g353-mgv3-8pcj",
+  "description": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+  "severity": "HIGH",
+  "cvss": 8.6,
+  "cwes": [
+    "CWE-347"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-13",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "This AI-coauthored commit replaced the Feishu implementation and first introduced webhook-oriented config fields (`connectionMode`, `webhookPath`, `webhookPort`) while leaving `encryptKey` optional in both `extensions/feishu/src/channel.ts` and `extensions/feishu/src/config-schema.ts`. It also created `createEventDispatcher()` with optional `encryptKey`/`verificationToken`, establishing the security model that the fix later reverses by requiring `encryptKey`. Although built-in webhook serving was not yet wired up in `monitor.ts`, the commit authored the latent flawed design, so the screening hypothesis was directionally correct.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+      "author": "Yifeng Wang",
+      "date": "2026-02-05T18:26:05+08:00",
+      "message": "feat(feishu): replace built-in SDK with community plugin",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "extensions/feishu/src/config-schema.ts",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This AI-coauthored commit replaced the Feishu implementation and first introduced webhook-oriented config fields (`connectionMode`, `webhookPath`, `webhookPort`) while leaving `encryptKey` optional in both `extensions/feishu/src/channel.ts` and `extensions/feishu/src/config-schema.ts`. It also created `createEventDispatcher()` with optional `encryptKey`/`verificationToken`, establishing the security model that the fix later reverses by requiring `encryptKey`. Although built-in webhook serving was not yet wired up in `monitor.ts`, the commit authored the latent flawed design, so the screening hypothesis was directionally correct.",
+            "confidence": 0.95,
+            "tool_calls_made": 93,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "5f6e1c19bd18ea45addd3afedf2f88cc3064f3f6",
+      "author": "Yifeng Wang",
+      "date": "2026-02-05T19:18:25+08:00",
+      "message": "feat(feishu): sync with clawdbot-feishu #137 (multi-account support)",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "extensions/feishu/src/config-schema.ts",
+      "blame_confidence": 0.6,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "verifier_discovered",
+      "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This AI-coauthored multi-account sync copied the same flaw into per-account configuration: it added account-level `encryptKey: z.string().optional()` / `encryptKey: { type: \"string\" }` and carried optional `encryptKey`/`verificationToken` into `ResolvedFeishuAccount` and `createEventDispatcher(account)`. The final fix tightens exactly these account-level definitions and checks. This commit did not create exploitability by itself, but it introduced the vulnerable design for multi-account Feishu webhook mode.",
+            "confidence": 0.95,
+            "tool_calls_made": 93,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+      "author": "Yifeng Wang",
+      "date": "2026-02-10T08:19:44+08:00",
+      "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "extensions/feishu/src/monitor.ts",
+      "blame_confidence": 0.6,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "verifier_discovered",
+      "fix_commit_sha": "7844bc89a1612800810617c823eb0c76ef945804",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This AI-coauthored commit is the exploit-enabling change: it removed the prior 'webhook mode not implemented' behavior and routed `connectionMode === \"webhook\"` into a real `monitorWebhook()` that starts an HTTP server and hands requests directly to `Lark.adaptDefault(path, eventDispatcher, { autoChallenge: true })`. Because the dispatcher still accepted missing `encryptKey` and there was no startup/schema enforcement yet, the previously latent optional-credential design became reachable and forged events could be accepted. Under the calling-context rule, this commit is a confirmed BIC.",
+            "confidence": 0.95,
+            "tool_calls_made": 93,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+          "author_name": "Yifeng Wang",
+          "message": "feat(feishu): sync upstream changes from clawdbot-feishu",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "7844bc89a1612800810617c823eb0c76ef945804",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+    "https://github.com/openclaw/openclaw/pull/44087",
+    "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
+    "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12"
+  ]
+}

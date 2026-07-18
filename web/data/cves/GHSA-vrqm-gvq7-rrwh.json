@@ -1,0 +1,345 @@
+{
+  "id": "GHSA-vrqm-gvq7-rrwh",
+  "description": "PDFME Affected by Decompression Bomb in FlateDecode Stream Parsing Causes Memory Exhaustion DoS",
+  "severity": "MEDIUM",
+  "cvss": 6.5,
+  "cwes": [
+    "CWE-409"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-20",
+  "ai_tools": [
+    "devin"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.3515,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "430f68266653c0f54ca9bbb30f6982c9373855f5",
+      "author": "Devin AI",
+      "date": "2025-06-26T18:30:05+09:00",
+      "message": "Migrate pdf-lib into pdfme monorepo",
+      "ai_signals": [
+        {
+          "tool": "devin",
+          "signal_type": "author_name",
+          "matched_text": "Devin AI",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "packages/pdf-lib/src/core/streams/DecodeStream.ts",
+      "blame_confidence": 0.37,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "41dffae848399e309531d557dc1310f678a5f765",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "`e4a4c300` added `packages/pdf-lib/src/core/streams/DecodeStream.ts` to the monorepo, including the vulnerable `ensureBuffer(requested)` implementation with unbounded growth: `while (size < requested) { size *= 2; }` followed by `new Uint8Array(size)`, with no decoded-size cap. The fix commit `8c3b6a713b3de767e1bdcc37ce831ecbce0212f3` directly modifies those lines to add `MAX_DECODED_SIZE` checks, and blame on the fixed file attributes the pre-fix vulnerable lines to `e4a4c300`. Even though this was a migration/import of existing logic, reintroducing that vulnerable implementation into repo code is bug introduction under the stated criteria.",
+            "confidence": 0.95,
+            "tool_calls_made": 68,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "430f68266653c0f54ca9bbb30f6982c9373855f5",
+          "author_name": "Devin AI",
+          "message": "Migrate pdf-lib into pdfme monorepo",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "9dc625ba7c29ccba0e2d22df1f7d8950998a1608",
+          "author_name": "Devin AI",
+          "message": "Fix TypeScript module resolution for workspace dependencies",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "cef0f45eb091cf13e09b7f992b4d970f869c9f82",
+          "author_name": "Devin AI",
+          "message": "Fix pdf-lib package.json exports paths",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1f5a67ab0a55422f4bb0eed544321e7e9331db82",
+          "author_name": "Devin AI",
+          "message": "Fix CodeQL security alerts in svg.ts",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9873b6a6ca320a8965ee3624f90379308cfc0023",
+          "author_name": "Devin AI",
+          "message": "Implement comprehensive security fixes for CodeQL alerts in svg.ts",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1a32c169a07f02b1adbc8a33d887e179caa95505",
+          "author_name": "Devin AI",
+          "message": "Add additional security fixes for CodeQL alerts in svg.ts",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "482e76a59cbf873d3256b92d8bae5ed2d066bbdc",
+          "author_name": "Devin AI",
+          "message": "Implement comprehensive security hardening for CodeQL alerts in svg.ts",
+          "ai_signals": [
+            {
+              "tool": "devin",
+              "signal_type": "author_name",
+              "matched_text": "Devin AI",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "45737bb158299a13c5ac4bdef06a26912a96c80f",
+          "author_name": "Kyohei Fukuda",
+          "message": "Potential fix for code scanning alert no. 32: Incomplete multi-character sanitization",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3cb34ffc0f7a1959530194563b9e1222971fd7a8",
+          "author_name": "Kyohei Fukuda",
+          "message": "Potential fix for code scanning alert no. 39: Incomplete multi-character sanitization",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e0d80a0a445bef5d2927e3860db030f041ec7f83",
+          "author_name": "Kyohei Fukuda",
+          "message": "Fix inefficient regular expression in svg.ts to pass CodeQL",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9c31688d1d854f48bb3ba150823f30d4bdd4d988",
+          "author_name": "Kyohei Fukuda",
+          "message": "remove sanitize-html",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "4a2c0511cd9f6a3856c346292bbb8fb91049490d",
+          "author_name": "Kyohei Fukuda",
+          "message": "move tests",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3e16c0befdb0448bbd18cc78e2225fa563398a2a",
+          "author_name": "Kyohei Fukuda",
+          "message": "fix for security",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8bcdab645fd8028a8459a6be60a984ab2aec6c93",
+          "author_name": "Kyohei Fukuda",
+          "message": "update dependabot.yml",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8f1e59552b4b381b7141308df9d63feef6effeca",
+          "author_name": "Kyohei Fukuda",
+          "message": "organize",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "e4a4c300cd20dc34166e25565908d0a9afdb58f5"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "8c3b6a713b3de767e1bdcc37ce831ecbce0212f3",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "41dffae848399e309531d557dc1310f678a5f765",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "f838f252ded53c52b2fcfd072c12f3c6ff68782c",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "a1b09761b3d44dc8e0ac4109778c3591c2593e10",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "e5ec86fc81aa24b22fc1cf39d81da0125e6346b8",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "eb6e76d59a51d900dafe22c752ebc523c46f1c17",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "97042e827d25c61fee9caf45f15c268f5bf7a58a",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "3130c92c8003041c0bb8b875f2414adf5dcd0f4c",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "17ac3baee5ebb25b2bb6247640ac4173f22275d7",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "2f828c289148ee6ca4e9610d58febff429ccbd76",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "15e14a89cbef152d00a2e3d5e959f1d50dbee43a",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "b14c45e41036f72e0debcd25ddd8ebd5aa1424a3",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "798a88a2278a54cd450eff70783557929366bcf4",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "060be0024acc27efe9f1b38fd0dc7f88f6976844",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "883b7dc9598aa1646be95d852ae831bf4860312a",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "e6829aa1fb37f90e53d80f44076ff08a6f23e085",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "378515eb16e1565b147e5be8b832cee6d8a66a3d",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "921f3abb937488837f2b3d587789fa37e5acb929",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "838f6871d6ddc422c520734bfc808090df0a51e6",
+      "repo_url": "https://github.com/pdfme/pdfme",
+      "source": "advisory_version"
+    }
+  ],
+  "references": [
+    "https://github.com/pdfme/pdfme/security/advisories/GHSA-vrqm-gvq7-rrwh"
+  ],
+  "ai_contribution": "Yes. AI-authored code directly introduced the vulnerable unbounded `DecodeStream.ensureBuffer()` implementation into the monorepo in `e4a4c300cd20dc34166e25565908d0a9afdb58f5`, and Devin also co-authored `3aacf2a9b1883b160db068863310f59940681d82`, which exposed the same parser through additional user-supplied PDF manipulation APIs. The original product-level exposure started earlier in a human commit, but AI code was still part of the causal chain and wrote code the fix later changed."
+}

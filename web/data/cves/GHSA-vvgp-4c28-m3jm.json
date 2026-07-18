@@ -1,0 +1,102 @@
+{
+  "id": "GHSA-vvgp-4c28-m3jm",
+  "description": "OpenClaw has a Trusted-proxy Control UI pairing bypass which allows unpaired node sessions",
+  "severity": "MEDIUM",
+  "cvss": 5.5,
+  "cwes": [
+    "CWE-807"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-03",
+  "ai_tools": [
+    "cursor"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-assisted code in commit 20523b918adff4feae378ac9965e204c56b6e3d8 (co-authored by Cursor) directly introduced the vulnerable trusted-proxy pairing-bypass logic. That commit added a new `trustedProxyAuthOk` fast path for Control UI connections without preserving the existing operator-only role gate, which enabled unpaired node-role sessions.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+      "author": "SidQin-cyber",
+      "date": "2026-02-24T21:15:57+08:00",
+      "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+      "ai_signals": [
+        {
+          "tool": "cursor",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/gateway/server/ws-connection/message-handler.ts",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "ec45c317f5d0631a3d333b236da58c4749ede2a3",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "The fix commit only adds `role === \"operator\"` to the new `trustedProxyAuthOk` condition in two places, and blame at the fix parent attributes those vulnerable lines to 20523b918. Pickaxe searches for `trustedProxyAuthOk`, `params.isControlUi && params.trustedProxyAuthOk`, and `resolvedAuth.mode === \"trusted-proxy\"` in this pairing-bypass context all identify 20523b918 as the first introduction. In that commit, `evaluateMissingDeviceIdentity()` gained `if (params.isControlUi && params.trustedProxyAuthOk) return { kind: \"allow\" }` and `shouldSkipControlUiPairing()` gained `if (trustedProxyAuthOk) return true`, while `message-handler.ts` computed `trustedProxyAuthOk` without any role check. Before this commit, the relevant logic only allowed bypass through `roleCanSkipDeviceIdentity(role, sharedAuthOk)`, which is explicitly operator-only; 20523b918 bypassed that restriction and made node-role Control UI sessions unpaired/authenticated under trusted-proxy mode.",
+            "confidence": 0.95,
+            "tool_calls_made": 57,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "4a7b813a4f70946aa2b9401a3fd6865f32c5f9b9",
+          "author_name": "SidQin-cyber",
+          "message": "fix(gateway): allow trusted-proxy control-ui auth to skip device pairing",
+          "ai_signals": [
+            {
+              "tool": "cursor",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "e66483fe5c6f07199cb63741e1ee13ddb0fdbe96",
+          "author_name": "Peter Steinberger",
+          "message": "fix: add changelog for trusted-proxy pairing bypass (#25428) (thanks @SidQin-cyber)",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "20523b918adff4feae378ac9965e204c56b6e3d8"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "ec45c317f5d0631a3d333b236da58c4749ede2a3",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/openclaw/openclaw/security/advisories/GHSA-vvgp-4c28-m3jm",
+    "https://github.com/openclaw/openclaw/commit/ec45c317f5d0631a3d333b236da58c4749ede2a3"
+  ],
+  "ai_contribution": "AI-assisted code in commit 20523b918adff4feae378ac9965e204c56b6e3d8 (co-authored by Cursor) directly introduced the vulnerable trusted-proxy pairing-bypass logic. That commit added a new `trustedProxyAuthOk` fast path for Control UI connections without preserving the existing operator-only role gate, which enabled unpaired node-role sessions."
+}

@@ -1,0 +1,78 @@
+{
+  "id": "GHSA-2mc2-g238-722j",
+  "description": "OpenClaw affected by iMessage remote attachment SCP hardening (strict host-key checks and remoteHost validation)",
+  "severity": "LOW",
+  "cvss": 2.5,
+  "cwes": [
+    "CWE-295",
+    "CWE-78"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-03",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "pr_body",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.45,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "This commit introduced the vulnerable feature end-to-end. In `src/auto-reply/reply/stage-sandbox-media.ts` it created `scpFile()` with `StrictHostKeyChecking=accept-new` and passed `${remoteHost}:${remotePath}` directly to `scp` without a `--` end-of-options separator; in `src/imessage/monitor/monitor-provider.ts` it added `remoteHost` resolution from config and from `detectRemoteHostFromCliPath()`, then propagated that value as `MediaRemoteHost`. Pickaxe searches for `StrictHostKeyChecking=accept-new`, ```${remoteHost}:${remotePath}```, `let remoteHost = imessageCfg.remoteHost;`, `remoteHost?: string;`, and `remoteHost: z.string().optional(),` all trace back to this commit as the first introduction, and the pre-7a9 file versions had no remote-attachment/SCP logic at all.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "7a9ff182608b0c083ed57e3f199495ac93f4a079",
+      "author": "Tyler Yust",
+      "date": "2026-01-16T15:51:42-08:00",
+      "message": "iMessage: Add remote attachment support for VM/SSH deployments",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "pr_body_keyword",
+          "matched_text": "Generated with [Claude Code]",
+          "confidence": 0.9
+        }
+      ],
+      "blamed_file": "src/auto-reply/reply/stage-sandbox-media.ts",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit introduced the vulnerable feature end-to-end. In `src/auto-reply/reply/stage-sandbox-media.ts` it created `scpFile()` with `StrictHostKeyChecking=accept-new` and passed `${remoteHost}:${remotePath}` directly to `scp` without a `--` end-of-options separator; in `src/imessage/monitor/monitor-provider.ts` it added `remoteHost` resolution from config and from `detectRemoteHostFromCliPath()`, then propagated that value as `MediaRemoteHost`. Pickaxe searches for `StrictHostKeyChecking=accept-new`, ```${remoteHost}:${remotePath}```, `let remoteHost = imessageCfg.remoteHost;`, `remoteHost?: string;`, and `remoteHost: z.string().optional(),` all trace back to this commit as the first introduction, and the pre-7a9 file versions had no remote-attachment/SCP logic at all.",
+            "confidence": 0.95,
+            "tool_calls_made": 72,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "49d0def6d1e88f002026b1d2a35aa615d48a751a",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/openclaw/openclaw/security/advisories/GHSA-2mc2-g238-722j",
+    "https://github.com/openclaw/openclaw/commit/49d0def6d1e88f002026b1d2a35aa615d48a751a"
+  ]
+}

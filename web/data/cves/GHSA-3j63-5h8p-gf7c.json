@@ -1,0 +1,436 @@
+{
+  "id": "GHSA-3j63-5h8p-gf7c",
+  "description": "x402 SDK vulnerable in outdated versions in resource servers for builders",
+  "severity": "HIGH",
+  "cvss": 0.0,
+  "cwes": [],
+  "ecosystem": "",
+  "published": "2025-08-20",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The AI-assisted commit fe42994900a445155be7a697de060c5a34f36a2d created the SIWX settle hook and directly wrote the unsafe assumption that `paymentPayload.resource` is always present, then dereferenced `ctx.paymentPayload.resource.url` without a guard. That is the exact behavior fixed in 1ab1c86f016161f27593bf17c9a2333c2201ab10.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "8c15e97cb72caea7fe85e966c0f415b61afe4032",
+      "author": "sragss",
+      "date": "2026-02-02T18:39:02-05:00",
+      "message": "refactor(extensions/siwx): Migrate to supportedChains[] architecture",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "typescript/packages/extensions/src/sign-in-with-x/hooks.ts",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "description_search",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "1ab1c86f016161f27593bf17c9a2333c2201ab10",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "The fix changes `createSIWxSettleHook` from `paymentPayload: { payload: unknown; resource: { url: string } }` to `resource?: { url: string }` and adds an early return before using `ctx.paymentPayload.resource.url`. Blame on the pre-fix file attributes those exact lines to fe429949, and pickaxe searches for both `ctx.paymentPayload.resource.url` and `createSIWxSettleHook` show that fe429949 first introduced this code. The screening hypothesis is only partially right: this commit did introduce the optional-resource bug, but there is no evidence in the fix or pickaxe results that missing protocol-version validation is part of this CVE.",
+            "confidence": 0.95,
+            "tool_calls_made": 52,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "bf03da70ec2f750ce6721f7f8dee41a8d505073d",
+          "author_name": "sragss",
+          "message": "feat(extensions): add Sign-In-With-X (SIWX) extension",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "88bcdb6bc58e4c1d51d2589468a109d77ec3acf1",
+          "author_name": "sragss",
+          "message": "simplify; remove future looking code",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "64f2af257172bd1b91aec5c4037841dc8fba68ee",
+          "author_name": "sragss",
+          "message": "add integration test",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "792f1b1127a10135dbe8e46edf8d0004eb90738e",
+          "author_name": "sragss",
+          "message": "address own comments",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8341789f50221d77150f2b4f1a187b5407a4adf1",
+          "author_name": "sragss",
+          "message": "update readme, rm TODO.md",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "11e73e171b4d20989075ffe050f4f1f77d1cd985",
+          "author_name": "sragss",
+          "message": "add SIWS",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f3d8ab912f1dae7ce5fad5edb7beff0b3cd3fb0a",
+          "author_name": "sragss",
+          "message": "cleanup",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "6123e9c26f32e2ceca4a9a903159fde5bb553b2b",
+          "author_name": "sragss",
+          "message": "further cleanup",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "81b77a1026584c964050d39cf4690b1e567d6f76",
+          "author_name": "sragss",
+          "message": "split code path btwn evm and solana",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e42ed9cf63e1aac75e3ae6bcede604a098441da0",
+          "author_name": "sragss",
+          "message": "mv solana constants",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "977e73f8f848385235e291fdb6671ef31634a76e",
+          "author_name": "sragss",
+          "message": "fmt",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e4f7e9c84475012d55ff2254c7a65caae6e8ce4e",
+          "author_name": "sragss",
+          "message": "lint",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "dfb9464be5ba9cf1fd052ba7641e117a9a22c2d7",
+          "author_name": "sragss",
+          "message": "rm .claude",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "13559004e3e57d6553254a664f2a2da508ad0be0",
+          "author_name": "sragss",
+          "message": "smart wallet verifier",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1348f36427aa6ec46a15cd51cfaf583cd318a47b",
+          "author_name": "sragss",
+          "message": "add domain param; support outside EVM verifier for contract wallets; Solana CAIP-2 compliant; rm clockskew slop",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b9812f12c8bb25d10961be8f7d8ea158fc09955e",
+          "author_name": "sragss",
+          "message": "fix missing type field; update lock file",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "159b6fce794431347d6fcfe7c3c0a61b5a430559",
+          "author_name": "sragss",
+          "message": "Add Sign-In-With-X extension spec",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "56cb90562477d7740b2389aa281cb75cfd7019b1",
+          "author_name": "sragss",
+          "message": "server & client siwx examples",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "dc6b2d3391dd2090fe1d6d1f387ffebd7909bef6",
+          "author_name": "sragss",
+          "message": "chore: update pnpm-lock.yaml for sign-in-with-x examples",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3a05c20fb3ccad7edc7b8212af111747cdd7e38f",
+          "author_name": "sragss",
+          "message": "Add wrapFetchWithSIWx helper to @x402/extensions",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "03199d960398b739255966cb21ee9f7b7dec87ae",
+          "author_name": "sragss",
+          "message": "feat(extensions/siwx): Add lifecycle hooks for simplified DevX",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "7e0379b351647e0d0899f5a20c5472c9a904990a",
+          "author_name": "sragss",
+          "message": "fix(extensions/siwx): Improve hooks robustness and add tests",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ad3a6cb0ae20a1be1a9a9d4ebd6c6b3006219cdd",
+          "author_name": "sragss",
+          "message": "fix(extensions/siwx): Only record payment if settlement succeeded",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "da4db9e2186070f72f1b8ba4594fe3723216526b",
+          "author_name": "sragss",
+          "message": "style: Fix JSDoc and lint errors",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "bb2472ccdf0d90112fe8f78116560940b4521c63",
+          "author_name": "sragss",
+          "message": "style: Fix formatting and JSDoc in examples",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8c15e97cb72caea7fe85e966c0f415b61afe4032",
+          "author_name": "sragss",
+          "message": "refactor(extensions/siwx): Migrate to supportedChains[] architecture",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "9a0a600eb78e9fb0d718480c847d8aa5e934d71d",
+          "author_name": "sragss",
+          "message": "fix(examples): Add getChainId() to signer for proper SIWX chain matching",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "6f548b7badbd2bf72e38f240b1a8a071e283974b",
+          "author_name": "sragss",
+          "message": "refactor(extensions/siwx): Extract duplicated getSignerChainId helper",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "215c477087f34a1e015899c3be9958a485e5f946",
+          "author_name": "sragss",
+          "message": "feat(examples/siwx): Add payment header logging to client",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "26b9c2e3f9741e4294df0e74e42ce588a4ff1ec6",
+          "author_name": "sragss",
+          "message": "fix(examples/siwx): Improve payment flow logging",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "818a93d12109392bef73e44a2a2bab5f6e61220d",
+          "author_name": "sragss",
+          "message": "fix(examples/siwx): Add 300ms delay to avoid facilitator race condition",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "415c13c62a82f1c014a1527513ebb9590319a162",
+          "author_name": "sragss",
+          "message": "refactor(extensions/siwx): Use payment network instead of signer chain detection",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "4c79c3bd8265a64d4538c7c7ec1b44127499b1c2",
+          "author_name": "sragss",
+          "message": "refactor(extensions/siwx): Auto-derive network/domain/uri from context",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "52cf4c3c53cc20cdedf142612b5ab30589e8174d",
+          "author_name": "sragss",
+          "message": "refactor(extensions/siwx): Remove time-based fields from declareSIWxExtension",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f7eb5a857e22dde5b4526d57005c7d2400643377",
+          "author_name": "sragss",
+          "message": "docs(extensions/siwx): Add smart wallet docs, align signature schemes",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "239d395e51f517ee1123076f4a6c870fb933bf4d",
+          "author_name": "sragss",
+          "message": "chore: regenerate pnpm lockfile",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "7cd74f12872da79d7341de3fff49ee152a36a23e",
+          "author_name": "sragss",
+          "message": "fix(examples/siwx): Add missing JSDoc to onEvent function",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "a2812995876b80c429fc0a17b30dc227f5ab4aad",
+          "author_name": "sragss",
+          "message": "fix(extensions/siwx): Use result.payer instead of extracting from payload",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "145c163966a7779ad9b4b21cb08f76abe552d468",
+          "author_name": "sragss",
+          "message": "feat(extensions/siwx): Add optional nonce tracking to prevent replay attacks",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "b5dcf99f18720fbb453d8109d1ac3b40b462e127",
+          "author_name": "sragss",
+          "message": "chore: Add changeset for SIWX extension",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "646031b86e7484299e865cf6cf0870ab6830316c",
+          "author_name": "sragss",
+          "message": "fix(examples/siwx): Add missing JSDoc params for onEvent function",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "bd161bed3ed9842aea3145f5824c5b4db4f8617c",
+          "author_name": "Sam Ragsdale",
+          "message": "Merge pull request #8 from sragss/siwx-solana-fix",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "63445e9dc2ddcbc7683a9fc5bdf3d4cf399aad9e",
+          "author_name": "sragss",
+          "message": "fix(extensions/siwx): Require both nonce methods or neither",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "fe42994900a445155be7a697de060c5a34f36a2d"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "1ab1c86f016161f27593bf17c9a2333c2201ab10",
+      "repo_url": "https://github.com/coinbase/x402",
+      "source": "description_search",
+      "blame_confidence": 0.8
+    }
+  ],
+  "references": [
+    "https://github.com/coinbase/x402/security/advisories/GHSA-3j63-5h8p-gf7c"
+  ],
+  "ai_contribution": "Yes. The AI-assisted commit fe42994900a445155be7a697de060c5a34f36a2d created the SIWX settle hook and directly wrote the unsafe assumption that `paymentPayload.resource` is always present, then dereferenced `ctx.paymentPayload.resource.url` without a guard. That is the exact behavior fixed in 1ab1c86f016161f27593bf17c9a2333c2201ab10."
+}

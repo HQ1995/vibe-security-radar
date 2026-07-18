@@ -1,0 +1,179 @@
+{
+  "id": "GHSA-r48f-3986-4f9c",
+  "description": "fickling modules linecache, difflib and gc are missing from the unsafe modules blocklist",
+  "severity": "LOW",
+  "cvss": 2.5,
+  "cwes": [
+    "CWE-184"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-13",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "Python"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "3084847c930298b547d575faaa228cc8b2daa930",
+      "author": "Dan Guido",
+      "date": "2026-02-19T16:16:17-07:00",
+      "message": "Expand dangerous imports blocklist for better coverage",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "fickling/fickle.py",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit substantially rewrote and expanded UNSAFE_IMPORTS, including authoring the current import-manipulation subsection with importlib/pkgutil/zipimport. The fix later inserts gc directly into that subsection, and this commit is not a pure move: it added new related dangerous-import coverage while leaving gc unblocked. That makes it a confirmed introducer for the gc portion of the advisory.",
+            "confidence": 0.95,
+            "tool_calls_made": 98,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "3084847c930298b547d575faaa228cc8b2daa930",
+          "author_name": "Dan Guido",
+          "message": "Expand dangerous imports blocklist for better coverage",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "d508736107f5855817e234345aa2ceb1c98f50ed",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Remove redundant dotted entries from UNSAFE_IMPORTS",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "6a7656a684a71b58d64677a36a148d53316c911b",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Move numpy/torch dotted imports to UnsafeImportsML.UNSAFE_MODULES",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "93cb67974f3e826a2433339bab92f94b138de645"
+    },
+    {
+      "sha": "3e7bdbf4b35621feafb35eb51d767f713d06fb9f",
+      "author": "Thomas Chauchefoin",
+      "date": "2026-02-21T01:22:47+01:00",
+      "message": "Expand UNSAFE_IMPORTS blocklist (GHSA-mhc9-48gj-9gp3)",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "fickling/fickle.py",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit added the file-reading/enumeration subsection of UNSAFE_IMPORTS, including fileinput and glob, which is the exact region later patched to add linecache and difflib. That was a substantive new blocklist expansion for file-reading capabilities, but it remained incomplete. It therefore confirmedly introduced the linecache/difflib portion of the vulnerability.",
+            "confidence": 0.95,
+            "tool_calls_made": 98,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "3e7bdbf4b35621feafb35eb51d767f713d06fb9f",
+          "author_name": "Thomas Chauchefoin",
+          "message": "Expand UNSAFE_IMPORTS blocklist (GHSA-mhc9-48gj-9gp3)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "0c4558d950daf70e134090573450ddcedaf10400"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+      "repo_url": "https://github.com/trailofbits/fickling",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/trailofbits/fickling/security/advisories/GHSA-r48f-3986-4f9c",
+    "https://github.com/trailofbits/fickling/commit/7f39d97258217ee2c21a1f5031d4a6d7343eb30d",
+    "https://github.com/trailofbits/fickling/releases/tag/v0.1.10"
+  ],
+  "ai_contribution": "Yes. The root incomplete denylist started in older human-authored code, but AI co-authored commits 93cb67974f3e826a2433339bab92f94b138de645 and 0c4558d950daf70e134090573450ddcedaf10400 materially reworked/expanded the exact UNSAFE_IMPORTS sections later patched, while still omitting gc, linecache, and difflib. Those AI-authored changes were part of the causal chain and directly authored vulnerable blocklist regions."
+}

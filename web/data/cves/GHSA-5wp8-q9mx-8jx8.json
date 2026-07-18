@@ -1,0 +1,298 @@
+{
+  "id": "GHSA-5wp8-q9mx-8jx8",
+  "description": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
+  "severity": "CRITICAL",
+  "cvss": 10.0,
+  "cwes": [
+    "CWE-77"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-05",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "Rust"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "3c4368da0ab48c1091858d3f9503c378a209997f",
+      "author": "qhkmdev90",
+      "date": "2026-02-23T12:36:14+08:00",
+      "message": "feat: add ShellAllowlistMode allowlist to shell security",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/security/shell.rs",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "Blame and pickaxe show 1712debb introduced the entire allowlist feature, including `if self.allowlist_mode != ShellAllowlistMode::Off && !self.allowlist.is_empty()`, first-token extraction, and path-prefix stripping. Its own tests explicitly codified the flawed behavior (`test_allowlist_strict_empty_blocks_nothing` and first-token-only matching), which is exactly what the fix reverses by blocking shell metacharacters and making empty strict allowlists deny all. Because shell/custom tools execute commands through the shell (`sh -c`), this design allowed payloads like `git status; python -c ...` to pass when the first token was allowlisted; this matches the screened atomic sub-commit 3c4368.",
+            "confidence": 0.95,
+            "tool_calls_made": 60,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "c838bf7448183daafddf5d5cf546c664a1cf5e5e",
+          "author_name": "qhkmdev90",
+          "message": "chore: add sandbox-landlock/firejail/bubblewrap Cargo features",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8bd557a734d8f448c7182a276d852c2883ba62c9",
+          "author_name": "qhkmdev90",
+          "message": "feat: add LandlockConfig, FirejailConfig, BubblewrapConfig to RuntimeConfig",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "d3d2dde54d912c3e4ab285b7d40e871cfdd3893c",
+          "author_name": "qhkmdev90",
+          "message": "feat: add LandlockRuntime (Linux kernel LSM sandbox)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9d2ab6de26621db94f4aeae461cc2f642e24f5bf",
+          "author_name": "qhkmdev90",
+          "message": "feat: add FirejailRuntime (Linux firejail binary sandbox)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "5059bea80259f6f4d28c3cfb7973ae84f4dba967",
+          "author_name": "qhkmdev90",
+          "message": "feat: add BubblewrapRuntime (Linux bwrap OCI sandbox)",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b4e53371343eb8b9a529b98ec0e2b23f447e3388",
+          "author_name": "qhkmdev90",
+          "message": "fix: declare bubblewrap module in runtime/mod.rs",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "182b7c83ebb8053651a743736af29cf3ecaf7209",
+          "author_name": "qhkmdev90",
+          "message": "feat: wire Landlock/Firejail/Bubblewrap into runtime factory",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3c4368da0ab48c1091858d3f9503c378a209997f",
+          "author_name": "qhkmdev90",
+          "message": "feat: add ShellAllowlistMode allowlist to shell security",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "a80eda7a8881babec1bbc73637d66641b38be7d6",
+          "author_name": "qhkmdev90",
+          "message": "refactor: avoid heap alloc in allowlist check + add path-prefix test",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "22349154e8728b58e350e0f06941e9b33a8ed090",
+          "author_name": "qhkmdev90",
+          "message": "feat: export ShellAllowlistMode + update CLAUDE.md for sandbox runtimes",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "d60cce38ab84de61b3d5cbb794236cb51e5b8ad6",
+          "author_name": "qhkmdev90",
+          "message": "fix: use .err() instead of .unwrap_err() in factory tests",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "1712debbea60af6adf4a8a5939a43f7ef9a1ac16"
+    },
+    {
+      "sha": "91f6c2bf98e40238ad4d175513f0ee400fd62068",
+      "author": "qhkmdev90",
+      "date": "2026-02-13T01:02:27+08:00",
+      "message": "feat(security): add shell command security configuration",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/security/shell.rs",
+      "blame_confidence": 0.6,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "verifier_discovered",
+      "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit created `ShellSecurityConfig` and initially blocked sensitive paths using plain substring matching over `blocked_patterns`, via `command_lower.contains(&pattern_lower)`. Pickaxe on sensitive literals like `\"/etc/passwd\"`, `\"/etc/shadow\"`, and `\"~/.ssh/\"` traces their first introduction to 91f6c2bf, and that design was already bypassable with shell glob/bracket expansions because it required the exact literal text to appear. So the wildcard filename bypass predates 7a2db595; 7a2 later rewrote the file but did not remove the original flaw.",
+            "confidence": 0.95,
+            "tool_calls_made": 60,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "d3480ca94087b74f110bb5b80fc8219b32c8b8b5",
+      "author": "qhkmdev90",
+      "date": "2026-02-14T11:30:23+08:00",
+      "message": "security: fix 6 findings from code security review + pre-launch prep",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/security/shell.rs",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "The fix widens the exact regexes this commit added: `python[23]?\\s+-c\\s+`, `perl\\s+-e\\s+`, `ruby\\s+-e\\s+`, and `node\\s+-e\\s+`. Pickaxe shows those strings first appear in d3480ca, and the advisory explicitly notes they were bypassed by extra/intervening flags like `python3 -P -c` and `perl -w -e`. This commit therefore directly introduced the argument-injection/blocklist-bypass pattern fixed in 68916c3.",
+            "confidence": 0.95,
+            "tool_calls_made": 60,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-5wp8-q9mx-8jx8",
+    "https://github.com/qhkm/zeptoclaw/commit/68916c3e4f3af107f11940b27854fc7ef517058b",
+    "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/security/shell.rs#L218-L243"
+  ],
+  "ai_contribution": "Yes. AI-coauthored shell-security commits introduced multiple parts of the vulnerable policy: 91f6c2bf added naive substring-based sensitive-path blocking, d3480ca added bypassable `python/perl/ruby/node -c/-e` regexes, and 1712debb (from screened sub-commit 3c4368) introduced an allowlist that only inspected the first token and skipped strict enforcement when the allowlist was empty. The fix had to harden or reverse each of those AI-authored security decisions."
+}

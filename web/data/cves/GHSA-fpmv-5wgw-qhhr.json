@@ -1,0 +1,123 @@
+{
+  "id": "GHSA-fpmv-5wgw-qhhr",
+  "description": "ClearanceKit: Managed and user-defined policy rules not enforced between opfilter start and first policy modification",
+  "severity": "MEDIUM",
+  "cvss": 5.5,
+  "cwes": [
+    "CWE-269"
+  ],
+  "ecosystem": "",
+  "published": "",
+  "ai_tools": [
+    "claude_code",
+    "github_copilot"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "Swift"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "5a887953c45551879797fd9e11a2055cf9386d7e",
+      "author": "Craig Bass",
+      "date": "2026-03-16T14:38:30+00:00",
+      "message": "Merge daemon into opfilter as single privileged process",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "opfilter/XPCServer.swift",
+      "blame_confidence": 0.6,
+      "fix_commit_source": "osv",
+      "blame_strategy": "verifier_discovered",
+      "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This is the earliest commit that introduced the vulnerable startup design. It created XPCServer, had XPCServer.init load managed/user policy and immediately call applyPolicyToFilter(), and main instantiated XPCServer before calling adapter.start(initialRules: server.mergedRules()). Because ESInboundAdapter.updatePolicy returns early when client is nil, startup never reached interactor.updatePolicy(rules), so opfilter stayed on baseline faaPolicy until a later resync or policy modification.",
+            "confidence": 0.95,
+            "tool_calls_made": 92,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "614a7946aecf2456893498f24ac18be5ed57f196",
+      "author": "Craig Bass",
+      "date": "2026-03-24T16:31:39+00:00",
+      "message": "Move FileAuthPipeline and PolicyRepository construction to main.swift",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "opfilter/main.swift",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "osv",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "56d617b778c571e3c29b803636d9807940992daa",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit moved initial policy application out of XPCServer.init and reimplemented it in main.swift as three explicit startup calls: server.applyPolicyToFilter(), server.applyAllowlistToFilter(), and server.applyJailRulesToFilter() before adapter.start(...). ESInboundAdapter.updatePolicy still had guard let client else { return }, so the startup policy apply became a no-op for policy state and interactor.updatePolicy(rules) never ran. That is exactly the broken initialization ordering fixed by 56d617.",
+            "confidence": 0.95,
+            "tool_calls_made": 92,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "56d617b778c571e3c29b803636d9807940992daa",
+      "repo_url": "https://github.com/craigjbass/clearancekit",
+      "source": "osv"
+    },
+    {
+      "sha": "ddfdacb2633681bbd9c2f41dbd536ea039386628",
+      "repo_url": "https://github.com/craigjbass/clearancekit",
+      "source": "osv"
+    }
+  ],
+  "references": [
+    "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/34xxx/CVE-2026-34218.json",
+    "https://github.com/craigjbass/clearancekit/security/advisories/GHSA-fpmv-5wgw-qhhr",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-34218"
+  ],
+  "ai_contribution": "AI-authored code contributed to this CVE. The original startup-order flaw was introduced in AI-coauthored commit 5a887953, which created XPCServer code that called applyPolicyToFilter() before the ES client existed, and AI-coauthored commit 614a7946 later reimplemented the same broken ordering in main.swift when initialization side effects were moved out of XPCServer."
+}

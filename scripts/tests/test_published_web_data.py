@@ -15,12 +15,20 @@ def _load(name: str) -> dict:
     return json.loads((_WEB_DATA_DIR / name).read_text(encoding="utf-8"))
 
 
+def _load_entries() -> list[dict]:
+    """All published CVE entries in manifest order (per-CVE layout)."""
+    index = _load("index.json")
+    return [
+        json.loads((_WEB_DATA_DIR / "cves" / f"{cve_id}.json").read_text(encoding="utf-8"))
+        for cve_id in index["ids"]
+    ]
+
+
 def test_published_verifications_exclude_legacy_unscoped_models() -> None:
     """Synthetic CVE-level fallbacks must never reappear as per-BIC evidence."""
-    payload = _load("cves.json")
     violations: list[str] = []
 
-    for entry in payload["cves"]:
+    for entry in _load_entries():
         for bug_commit in entry.get("bug_commits", []):
             verification = bug_commit.get("verification") or {}
             models = verification.get("models") or []
@@ -43,19 +51,21 @@ def test_published_verifications_exclude_legacy_unscoped_models() -> None:
 
 
 def test_published_totals_are_internally_consistent() -> None:
-    cves = _load("cves.json")
+    index = _load("index.json")
     stats = _load("stats.json")
+    on_disk = sorted(p.stem for p in (_WEB_DATA_DIR / "cves").glob("*.json"))
 
-    assert cves["total"] == len(cves["cves"])
-    assert stats["total_cves"] == cves["total"]
+    assert index["total"] == len(index["ids"])
+    assert stats["total_cves"] == index["total"]
+    # No stale or missing per-CVE files: disk matches the manifest exactly.
+    assert sorted(index["ids"]) == on_disk
 
 
 def test_published_bug_commits_have_complete_unique_subject_identity() -> None:
     """Every public BIC is a unique concrete fix/BIC/file subject."""
-    payload = _load("cves.json")
     violations: list[str] = []
 
-    for entry in payload["cves"]:
+    for entry in _load_entries():
         subjects: set[tuple[str, str, str]] = set()
         for bug_commit in entry.get("bug_commits", []):
             subject = (

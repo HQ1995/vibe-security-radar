@@ -1,0 +1,90 @@
+{
+  "id": "GHSA-gc24-px2r-5qmf",
+  "description": "Bambuddy Uses Hardcoded Secret Key + Many API Endpoints do not Require Authentication",
+  "severity": "CRITICAL",
+  "cvss": 9.8,
+  "cwes": [
+    "CWE-306",
+    "CWE-321"
+  ],
+  "ecosystem": "",
+  "published": "2026-02-02",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "Python"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. AI-authored commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 added the unauthenticated `debug_simulate_print_complete` printer route that `a82f9278d2d587b7042a0858aab79fd8b6e3add9` later secured. When `f8857ba66643eb3ce97116dd90c0e75a9474f924` introduced optional authentication without a default-deny layer for existing API routes, that AI-authored endpoint became one of the exposed endpoints covered by the CVE; I found no evidence AI authored the hardcoded JWT secret.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "a7319f0e7087cee59f1aa658c52c6408f1fb71e8",
+      "author": "maziggy",
+      "date": "2025-12-16T18:45:03+01:00",
+      "message": "Fix browser freeze on print completion with camera stream open",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "backend/app/api/routes/printers.py",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "a82f9278d2d587b7042a0858aab79fd8b6e3add9",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "`a82f9278d2d587b7042a0858aab79fd8b6e3add9` adds `_=RequirePermissionIfAuthEnabled(Permission.PRINTERS_CONTROL)` to `debug_simulate_print_complete`, and blame on the vulnerable pre-fix file attributes that route definition and signature (lines 1402-1418 in `backend/app/api/routes/printers.py`) to `a7319f0e7087...`. The commit diff for `a7319...` shows it introduced the debug endpoint with only `db: AsyncSession = Depends(get_db)` and no auth/permission dependency. The screening hypothesis is directionally right, but this commit predates the auth feature; it authored one of the exact later-fixed unauthenticated endpoints, while `f8857...` later made that omission exploitable when auth was enabled.",
+            "confidence": 0.95,
+            "tool_calls_made": 58,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "a82f9278d2d587b7042a0858aab79fd8b6e3add9",
+      "repo_url": "https://github.com/maziggy/bambuddy",
+      "source": "github_advisory"
+    },
+    {
+      "sha": "c31f2968889c855f1ffacb700c2c9970deb2a6fb",
+      "repo_url": "https://github.com/maziggy/bambuddy",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/maziggy/bambuddy/security/advisories/GHSA-gc24-px2r-5qmf",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-25505",
+    "https://github.com/maziggy/bambuddy/pull/225",
+    "https://github.com/maziggy/bambuddy/commit/a82f9278d2d587b7042a0858aab79fd8b6e3add9",
+    "https://github.com/maziggy/bambuddy/commit/c31f2968889c855f1ffacb700c2c9970deb2a6fb",
+    "https://github.com/maziggy/bambuddy/blob/a9bb8ed8239602bf08a9914f85a09eeb2bf13d15/backend/app/core/auth.py#L28",
+    "https://github.com/maziggy/bambuddy/blob/main/CHANGELOG.md",
+    "https://github.com/maziggy/bambuddy/releases/tag/v0.1.7"
+  ],
+  "ai_contribution": "Yes. AI-authored commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 added the unauthenticated `debug_simulate_print_complete` printer route that `a82f9278d2d587b7042a0858aab79fd8b6e3add9` later secured. When `f8857ba66643eb3ce97116dd90c0e75a9474f924` introduced optional authentication without a default-deny layer for existing API routes, that AI-authored endpoint became one of the exposed endpoints covered by the CVE; I found no evidence AI authored the hardcoded JWT secret."
+}

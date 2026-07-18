@@ -1,0 +1,92 @@
+{
+  "id": "GHSA-qpmq-6wjc-w28q",
+  "description": "Anchorr: Stored XSS in User Mapping dropdown allows unprivileged Discord users to exfiltrate all secrets via /api/config",
+  "severity": "CRITICAL",
+  "cvss": 9.6,
+  "cwes": [
+    "CWE-200",
+    "CWE-79"
+  ],
+  "ecosystem": "",
+  "published": "",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "JavaScript"
+  ],
+  "confidence": 0.3515,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The AI-authored Claude Code commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f directly introduced the user-mapping dropdown and rendered Discord-controlled member data with unsafe `innerHTML`, creating the stored XSS sink. A later AI commit (8690a9f89e69f250d14614a4876f63c465177fce) touched related code, but the confirmed AI contribution is 403’s introduction of the vulnerable DOM construction path.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "403ccf079be0ee5e6660f0ed2fa64174d76eff2f",
+      "author": "nairdahh",
+      "date": "2025-11-21T16:49:18+02:00",
+      "message": "Add Logs viewer page with connection status indicators",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "message_keyword",
+          "matched_text": "Generated with Claude Code",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "web/script.js",
+      "blame_confidence": 0.37,
+      "fix_commit_source": "osv",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "Pickaxe shows this is the first commit that added the Discord user-mapping UI (`discord-user-select` / `populateDiscordMemberSelect`) and the exact unsafe sinks later rewritten in `d5ae67`: `option.innerHTML`, `display.innerHTML`, and `trigger.innerHTML` with interpolated `member.displayName`, `member.username`, and `member.avatar`. It also added the `/api/discord-members` and user-mapping plumbing that supplied attacker-controlled Discord member data to those sinks. This commit is explicitly AI-authored (Claude Code), so AI directly introduced the stored XSS surface.",
+            "confidence": 0.95,
+            "tool_calls_made": 145,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "d5ae67e5b455241274ed0072cf2db43a6eb3f0b2",
+      "repo_url": "https://github.com/openvessl/anchorr",
+      "source": "osv"
+    },
+    {
+      "sha": "64bc627c8e596a6d10b2125a21bec55bbcb4e382",
+      "repo_url": "https://github.com/openvessl/anchorr",
+      "source": "osv"
+    }
+  ],
+  "references": [
+    "https://github.com/openVESSL/Anchorr/releases/tag/v1.4.2",
+    "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/32xxx/CVE-2026-32890.json",
+    "https://github.com/openVESSL/Anchorr/security/advisories/GHSA-qpmq-6wjc-w28q",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-32890"
+  ],
+  "ai_contribution": "Yes. The AI-authored Claude Code commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f directly introduced the user-mapping dropdown and rendered Discord-controlled member data with unsafe `innerHTML`, creating the stored XSS sink. A later AI commit (8690a9f89e69f250d14614a4876f63c465177fce) touched related code, but the confirmed AI contribution is 403’s introduction of the vulnerable DOM construction path."
+}

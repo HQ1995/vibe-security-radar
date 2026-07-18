@@ -1,0 +1,190 @@
+{
+  "id": "GHSA-p7gr-f84w-hqg5",
+  "description": "OpenClaw's sandboxed sessions_spawn now enforces sandbox inheritance for cross-agent spawns",
+  "severity": "LOW",
+  "cvss": 2.5,
+  "cwes": [
+    "CWE-269",
+    "CWE-284"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-02",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "TypeScript"
+  ],
+  "confidence": 0.855,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+      "author": "Joshua Mitchell",
+      "date": "2026-02-16T10:07:22-06:00",
+      "message": "feat(commands): add /subagents spawn command",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/agents/subagent-spawn.ts",
+      "blame_confidence": 0.9,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit created src/agents/subagent-spawn.ts, the exact file later fixed by b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1, and its new spawnSubagentDirect() function preserved the vulnerable cross-agent flow: normalize requested agentId, check only the allowlist, then create childSessionKey for targetAgentId with no sandbox inheritance guard. It was not the original source of the flaw, but it reimplemented the vulnerable behavior in new shared code and added the /subagents spawn command to call it, which counts as bug introduction under the reimplementation rule. The commit is AI-assisted (Claude/claude_code), so it is part of the causal chain.",
+            "confidence": 0.95,
+            "tool_calls_made": 98,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "49dffa405a7cb12946d333aa48473fe429e522c6",
+          "author_name": "Joshua Mitchell",
+          "message": "feat(commands): add /subagents spawn command",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "5a3a448bc48dc9e72530b46195476a48845bb8da"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "085c23ce5a26ecfc6d2bf9d439ecb41f53173f81",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "3a93a7bb1e47070a010cc190d005daa2ada8f0e5",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "4ba0a4d4fb852e010c53d2e011b961f7337633e4",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "fa9148400e53caa81f13e65dee02ab200c3eebbb",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "6210d2e238e16629c79840192da1a592ac44fa15",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "2dcd2f909449d55324e2305836df2058d4c0599d",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "aaa7de45fa3c64524740c6d24aee68e18ef56355",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "757e09fe43502bbcea3faac2fc0e49e067f5a22f",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "002539c01e04411453994ab369f4444824472f23",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "134296276a66510570df580df49e167556990077",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "11d34700c0fe828c91e393ea5a9e877d96619e98",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "53d6e07a601b83fe2ed03ebcf667ca68f315cb4f",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "6f63fc288af9960d08bd45d093d90e1f643ef343",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "348a7dd5b3d5a9e19e518e9ea35a59143251eb4a",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "ba430cc65b2823a08a1fca1c9bfca593d71c4e69",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "930841cd7c2b2d5d6ef29ff170a188dd8a06b169",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "98e30dc2a3b673a053fa2f2638c5508405f2dfb0",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "3f056a72949541bdb44a94383887bd25434964ab",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "da00ead65218f847f762dc998b125f28144f7624",
+      "repo_url": "https://github.com/openclaw/openclaw",
+      "source": "advisory_version"
+    }
+  ],
+  "references": [
+    "https://github.com/openclaw/openclaw/security/advisories/GHSA-p7gr-f84w-hqg5"
+  ],
+  "ai_contribution": "AI-assisted code in 5a3a448bc48dc9e72530b46195476a48845bb8da reimplemented the already-insecure cross-agent spawn logic into the new shared src/agents/subagent-spawn.ts module and added a new /subagents spawn entrypoint, but still omitted the sandbox-inheritance check added by the fix. The original design flaw was introduced earlier by a human-authored commit, but AI code materially carried it forward into the fixed codepath and broadened its reach."
+}

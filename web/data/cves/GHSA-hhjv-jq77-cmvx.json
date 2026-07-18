@@ -1,0 +1,103 @@
+{
+  "id": "GHSA-hhjv-jq77-cmvx",
+  "description": "zeptoclaw has Android device shell blocklist bypass via argument permutation",
+  "severity": "HIGH",
+  "cvss": 7.5,
+  "cwes": [
+    "CWE-78"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-05",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "Rust"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "e7c1a68d5e7cd99ba0edc32f7d376f00246b6c76",
+      "author": "qhkm",
+      "date": "2026-02-22T19:29:42+08:00",
+      "message": "fix: harden Android tool correctness and security (#92)",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/tools/android/actions.rs",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This commit added `src/tools/android/actions.rs` and introduced `device_shell()`, which normalized the user-supplied command and then blocked only literal substrings like `\"rm -rf\"` and `\"rm -r\"` via `lower.contains(pattern)`. That is exactly the vulnerable design the fix replaced with flag-aware parsing, because semantically equivalent forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force` do not contain either literal substring. `git log` for `src/tools/android/actions.rs` shows only this introduction commit and the fix, and pickaxe searches for `\"rm -rf\"` and `pub async fn device_shell` both trace the origin to 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc.",
+            "confidence": 0.95,
+            "tool_calls_made": 34,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "92396b576d1ec8a39600ad510930d3e1a21484e7",
+          "author_name": "qhkmdev90",
+          "message": "feat: add Android device control tool (feature-gated)",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "e7c1a68d5e7cd99ba0edc32f7d376f00246b6c76",
+          "author_name": "qhkm",
+          "message": "fix: harden Android tool correctness and security (#92)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "68916c3e4f3af107f11940b27854fc7ef517058b",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-hhjv-jq77-cmvx",
+    "https://github.com/qhkm/zeptoclaw/commit/68916c3e4f3af107f11940b27854fc7ef517058b",
+    "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/tools/android/actions.rs#L413-L424"
+  ],
+  "ai_contribution": "AI-authored code contributed directly: commit 8f1c1db4f3e6d9e0beb16dc69bf07b10f12276cc, generated with Claude Code and co-authored by Claude Opus 4.6, introduced the Android `device_shell()` feature and its vulnerable substring-based blocklist. That code accepted arbitrary `shell` commands and only looked for literal `\"rm -rf\"` / `\"rm -r\"`, missing equivalent recursive-delete forms such as `rm -fr`, `rm -f -r`, and `rm --recursive --force`."
+}

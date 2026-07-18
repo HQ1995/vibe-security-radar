@@ -1,0 +1,420 @@
+{
+  "id": "GHSA-4cm8-xpfv-jv6f",
+  "description": "ZeptoClaw: Email Sender Spoofing to bypass Header-Only From Allowlist Validation",
+  "severity": "MEDIUM",
+  "cvss": 6.5,
+  "cwes": [
+    "CWE-306",
+    "CWE-345"
+  ],
+  "ecosystem": "",
+  "published": "2026-03-12",
+  "ai_tools": [
+    "claude_code"
+  ],
+  "ai_involved": null,
+  "signal_source": "both",
+  "languages": [
+    "Rust"
+  ],
+  "confidence": 0.57,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+      "author": "qhkmdev90",
+      "date": "2026-02-21T20:32:58+08:00",
+      "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        },
+        {
+          "tool": "claude_code",
+          "signal_type": "pr_body_keyword",
+          "matched_text": "Generated with [Claude Code]",
+          "confidence": 0.9
+        }
+      ],
+      "blamed_file": "src/channels/email_channel.rs",
+      "blame_confidence": 0.6,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "verifier_discovered",
+      "fix_commit_sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This atomic feature-branch commit is the culprit sub-commit inside the squash and independently contains the vulnerable implementation. Its diff adds `EmailChannel`, extracts `from` via `parsed.from().and_then(...address())`, gates inbound mail with `is_sender_allowed(&from)`, and then uses that same header-derived value as sender identity. That is the exact design the later fix warns about, so this sub-commit is also a real introduction point for the vulnerable code.",
+            "confidence": 0.95,
+            "tool_calls_made": 94,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "3ae2add445cdcc5e0d77a2f7bf1cb4abf043dd71",
+      "author": "qhkm",
+      "date": "2026-03-06T17:41:22+08:00",
+      "message": "fix: harden spawned task crash isolation (#265)",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/channels/email_channel.rs",
+      "blame_confidence": 0.27,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+      "screening_verification": null,
+      "decomposed_commits": [
+        {
+          "sha": "dcfcff6543d4c92d08d3e5333e68fffd5a6d971d",
+          "author_name": "qhkmdev90",
+          "message": "fix: harden spawned task crash isolation",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "8230c12a999e58fb278a9bf68a8f17aa0a94c7b1",
+          "author_name": "qhkmdev90",
+          "message": "feat(agent): add provider_arc builder support",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "642407722d466f7faceef42e221519cbf94d97dc",
+          "author_name": "qhkmdev90",
+          "message": "fix: add dedicated tool_timeout_secs config and split serial read/write",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        }
+      ]
+    },
+    {
+      "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+      "author": "qhkmdev90",
+      "date": "2026-02-22T16:09:36+08:00",
+      "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+      "ai_signals": [
+        {
+          "tool": "claude_code",
+          "signal_type": "co_author_trailer",
+          "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "src/channels/email_channel.rs",
+      "blame_confidence": 0.27,
+      "fix_commit_source": "advisory_version",
+      "blame_strategy": "context_blame",
+      "fix_commit_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This is the mainline commit that introduced the Email channel and the exact vulnerable logic. Pickaxe shows the first appearance of `is_sender_allowed`, `let from = parsed.from()...`, `InboundMessage::new(\"email\", &from, &from, &content)`, and `EmailChannel::new(email_cfg.clone(), bus.clone())` in this commit, and blame on the vulnerable lines in `src/channels/email_channel.rs` resolves to 51bc07. The code matches `allowed_senders` against the parsed `From` header only, which is exactly the trust-model limitation later surfaced by the fix in bf004a20.",
+            "confidence": 0.95,
+            "tool_calls_made": 94,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "b12a489c3a577fee6d0f7acff68f8ca4ebff8a5d",
+          "author_name": "qhkmdev90",
+          "message": "fix(retry): add auth/context-window/model-not-found as non-retryable",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3e26899399e73251382f6196ed823c743ae292ea",
+          "author_name": "qhkmdev90",
+          "message": "fix(retry): fix dead code, case-sensitivity, and false-positive patterns",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "5ee6f716c5bcdbee59c35e5b769c856a0cb5d00d",
+          "author_name": "qhkmdev90",
+          "message": "feat(tools): add http_request tool with domain allowlist and SSRF protection",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "7b0c5133413f2143124373d5b5a0ecd8023c8ca7",
+          "author_name": "qhkmdev90",
+          "message": "fix(tools/http_request): pin DNS address, cap redirects, fix method fallback",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "fe70dcd422adbd1e95c90b097489380bf84c4c55",
+          "author_name": "qhkmdev90",
+          "message": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "051d651036465a8353beaa02de1b647e287f17ac",
+          "author_name": "qhkmdev90",
+          "message": "fix(tools/pdf_read): char-safe truncation, remove as_path round-trip",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f4b4a891646e777214683afbc6561bf1ec4e69bc",
+          "author_name": "qhkmdev90",
+          "message": "feat(providers): add native Gemini provider with OAuth and thinking model support",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "27f348ca951a49b2dcd43bddeb8c772c5b1e9032",
+          "author_name": "qhkmdev90",
+          "message": "fix(providers/gemini): route API-key users through native provider, validate token expiry",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e2c2100a307cd7b40ef907e1df68f67d574d2b1d",
+          "author_name": "qhkmdev90",
+          "message": "fix(providers/gemini): use selection.model, add Debug with redaction, fix dead from_config",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9dd9dc22c18fababd757b209d93107e9a0786c85",
+          "author_name": "qhkmdev90",
+          "message": "feat(channels): add Lark/Feishu channel (zeroclaw2 adoption)",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "d516ffafd30609e69adad53f77c86cb7da79b108",
+          "author_name": "qhkmdev90",
+          "message": "fix(channels/lark): add emoji reaction ack per spec",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "41869fdb1c69ef4f69856062ccfa048598882a8c",
+          "author_name": "qhkmdev90",
+          "message": "fix(channels/lark): correct doubled /open-apis in reaction URL",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "c3ec05f7ed5dc812dd4becf864f156ed2879585a",
+          "author_name": "qhkmdev90",
+          "message": "fix(channels/lark): add request timeouts, fix strip_at off-by-one, deduplicate token fetch",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f972f8617445474bd12d2b93a1e8f0e537d77b3d",
+          "author_name": "qhkmdev90",
+          "message": "feat(channels): add Email channel (IMAP IDLE + SMTP), feature-gated",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "ae045fbeeba8f86fa8bf481cb704eb7feb5fc1c1",
+          "author_name": "qhkmdev90",
+          "message": "fix(channels/email): async SMTP, redact password in debug, fix ordering/dedup/enabled",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "34a95c839e23e3e8de57a8c3365347ead947f6ed",
+          "author_name": "qhkmdev90",
+          "message": "style: run cargo fmt to fix CI formatting",
+          "ai_signals": [
+            {
+              "tool": "claude_code",
+              "signal_type": "co_author_trailer",
+              "matched_text": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+              "confidence": 0.95
+            }
+          ],
+          "touched_blamed_file": true
+        }
+      ],
+      "squash_merge_sha": "51bc07a02484ddfd2ec9c7f382dc43f829a9df86"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "a546160e28b1d1c00ccc03fd44c5f2203dbb6485",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "a27236766a07dfcfb278877d075820ba2f91df9a",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "ec2743309478a52339d627a21849637a5836bb3f",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "advisory_version"
+    },
+    {
+      "sha": "b64cb54d013af1bb2a3be5a3b629e86f7bf25079",
+      "repo_url": "https://github.com/qhkm/zeptoclaw",
+      "source": "advisory_version"
+    }
+  ],
+  "references": [
+    "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-4cm8-xpfv-jv6f",
+    "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
+  ],
+  "ai_contribution": "Yes. The AI-authored Email channel feature introduced the flawed trust model: `allowed_senders` was checked against `parsed.from()` from the message headers and that same header value was used as the inbound sender/chat identity. The later fix for this CVE did not replace that logic; it only added warnings and docs acknowledging that the check trusts the `From` header only, so the original AI-assisted feature commit was part of the causal chain."
+}

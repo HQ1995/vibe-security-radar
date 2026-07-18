@@ -2,15 +2,16 @@
 """Generate web-friendly seed data from cached CVE analysis results.
 
 Thin orchestrator that imports from the web_data package and cve_analyzer.
-Reads cached results, filters, transforms, and writes:
-  - web/data/cves.json   (individual CVE entries)
-  - web/data/stats.json  (aggregate statistics)
+Reads cached results, filters, transforms, and writes the published
+artifacts (see web_data.writer for the layout rationale):
+  - web/data/index.json    (manifest: generated_at, total, ordered ids)
+  - web/data/cves/<ID>.json (one file per CVE entry)
+  - web/data/stats.json    (aggregate statistics)
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -42,8 +43,8 @@ from web_data.loader import (  # noqa: E402
 )
 from web_data.filters import should_include  # noqa: E402
 from web_data.entry_builder import QuarantineLog, build_entry  # noqa: E402
-from web_data.schema import validate_cves_payload, validate_stats_payload  # noqa: E402
 from web_data.stats import build_stats  # noqa: E402
+from web_data.writer import write_web_data  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -263,28 +264,25 @@ def main(argv: list[str] | None = None) -> None:
 
     # ------------------------------------------------------------------
     # 15. Validate against the published schema, then write output
+    #     (per-CVE layout: index.json + cves/<ID>.json + stats.json;
+    #     write_web_data validates every file before writing)
     # ------------------------------------------------------------------
-    cves_output = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "total": len(entries),
-        "cves": entries,
-    }
-
-    validate_cves_payload(cves_output)
-    validate_stats_payload(stats_output)
-
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cves_path = output_dir / "cves.json"
-    with open(cves_path, "w", encoding="utf-8") as fh:
-        json.dump(cves_output, fh, indent=2, ensure_ascii=False)
-    print(f"  Wrote {cves_path} ({len(entries)} CVEs)")
-
-    stats_path = output_dir / "stats.json"
-    with open(stats_path, "w", encoding="utf-8") as fh:
-        json.dump(stats_output, fh, indent=2, ensure_ascii=False)
-    print(f"  Wrote {stats_path}")
+    result = write_web_data(
+        entries,
+        stats_output,
+        output_dir,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    print(f"  Wrote {result.written} per-CVE files to {result.cves_dir}/")
+    if result.removed_stale:
+        print(f"  Removed {result.removed_stale} stale per-CVE file(s)")
+    if result.removed_legacy:
+        print(f"  Removed legacy monolithic {output_dir / 'cves.json'}")
+    print(f"  Wrote {result.index_path}")
+    print(f"  Wrote {result.stats_path}")
 
     # ------------------------------------------------------------------
     # 16. Summary

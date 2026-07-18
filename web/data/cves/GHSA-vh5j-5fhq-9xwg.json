@@ -1,0 +1,78 @@
+{
+  "id": "GHSA-vh5j-5fhq-9xwg",
+  "description": "Taylor has race condition in /get-patch that allows purchase token replay",
+  "severity": "LOW",
+  "cvss": 0.0,
+  "cwes": [
+    "CWE-362"
+  ],
+  "ecosystem": "",
+  "published": "2025-06-27",
+  "ai_tools": [
+    "google_jules"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "JavaScript"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. AI-authored commit 57b7634391959dbbdb39b387ac4dc68157cd58a1 introduced the single-use token logic as a non-atomic SELECT/check/UPDATE sequence in /get-patch, creating the TOCTOU race that the fix replaced with one atomic UPDATE ... AND token_used_at IS NULL. A later human commit (5e5a80b5ffd0b6fccf7bdc2d8793e8b01cb83844) refactored the route but preserved the same vulnerable flow.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "57b7634391959dbbdb39b387ac4dc68157cd58a1",
+      "author": "google-labs-jules[bot]",
+      "date": "2025-06-18T06:37:58+00:00",
+      "message": "Enhance Taysell security and usability",
+      "ai_signals": [
+        {
+          "tool": "google_jules",
+          "signal_type": "author_name",
+          "matched_text": "jules[bot]",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "templates/backend-in-a-box/index.js",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This AI-authored commit first introduced token_used_at, the \"Purchase token has already been used.\" check, and the separate UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ? after the earlier SELECT. Pickaxe search shows the token_used_at strings and the update statement originate here. That is exactly the non-atomic check-then-act pattern the fix replaced with a single conditional UPDATE, so this commit introduced the race.",
+            "confidence": 0.95,
+            "tool_calls_made": 35,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "repo_url": "https://github.com/tailot/taylored",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/tailot/taylored/security/advisories/GHSA-vh5j-5fhq-9xwg",
+    "https://github.com/tailot/taylored/commit/fdf67a6fba0deae30912905a79fb5a9e83751a79"
+  ],
+  "ai_contribution": "Yes. AI-authored commit 57b7634391959dbbdb39b387ac4dc68157cd58a1 introduced the single-use token logic as a non-atomic SELECT/check/UPDATE sequence in /get-patch, creating the TOCTOU race that the fix replaced with one atomic UPDATE ... AND token_used_at IS NULL. A later human commit (5e5a80b5ffd0b6fccf7bdc2d8793e8b01cb83844) refactored the route but preserved the same vulnerable flow."
+}

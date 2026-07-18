@@ -1,0 +1,438 @@
+{
+  "id": "GHSA-4rmq-mc2c-r495",
+  "description": "Babylon Incorrect FP inactive accounting in costaking creates “phantom stake” that earns rewards after BTC unbond",
+  "severity": "LOW",
+  "cvss": 2.5,
+  "cwes": [
+    "CWE-459"
+  ],
+  "ecosystem": "",
+  "published": "2025-12-09",
+  "ai_tools": [
+    "github_copilot"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "Go"
+  ],
+  "confidence": 0.7,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "Yes. The first commit that introduced the buggy costaking unbonding logic is 2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36, an AI-attributed backport commit with a Copilot co-author trailer, and that commit directly added the flawed `if !isFpActiveInPrevSet || !isFpActiveInCurrSet` guard that leaves phantom stake behind when a finality provider becomes inactive during BTC unbonding.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "b2d307ae423546bedfbde116e025f55f60f2b643",
+      "author": "RafilxTenfen",
+      "date": "2025-09-26T03:08:10-03:00",
+      "message": "feat: costaking (#1707)",
+      "ai_signals": [
+        {
+          "tool": "github_copilot",
+          "signal_type": "co_author_trailer_generic",
+          "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+          "confidence": 0.7
+        }
+      ],
+      "blamed_file": "x/costaking/keeper/hooks_finality.go",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "e65c3a55a398a403103f1b089cf76f0d4befc7a0",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "The fix changes `x/costaking/keeper/hooks_finality.go` so `AfterBtcDelegationUnbonded` returns early only when the FP was not active in the previous set; before the fix it returned early whenever the FP was inactive in the current set too. Pickaxe shows 2bd95856 is the first commit to add both `AfterBtcDelegationUnbonded` and the exact vulnerable conditional `if !isFpActiveInPrevSet || !isFpActiveInCurrSet`, and blame on the vulnerable lines points to this same commit. The same commit also had the now-reverted rationale about avoiding 'double subtraction', but `x/finality/keeper/power_dist_change.go` already processed BTC-delegation hooks before FP-removal hooks and `x/incentive/keeper/reward_tracker_store.go` already made `IterateBTCDelegationSatsUpdated` account for pending events, so the FP-removal hook would subtract only the updated remaining active sats. As a result, when an unbond causes an FP to leave the active set, the unbonded sats are never subtracted from the costaker tracker, creating the phantom stake fixed later.",
+            "confidence": 0.95,
+            "tool_calls_made": 47,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      },
+      "decomposed_commits": [
+        {
+          "sha": "b2d307ae423546bedfbde116e025f55f60f2b643",
+          "author_name": "RafilxTenfen",
+          "message": "feat: costaking (#1707)",
+          "ai_signals": [
+            {
+              "tool": "github_copilot",
+              "signal_type": "co_author_trailer_generic",
+              "matched_text": "Co-authored-by: Copilot <175728472+Copilot",
+              "confidence": 0.7
+            }
+          ],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "bfd428a25a4f946e1840f37efb49c707f7d79eaa",
+          "author_name": "RafilxTenfen",
+          "message": "chore: proto all",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "0eaede4f78640fa9244e704eb634993bb6f15eaa",
+          "author_name": "RafilxTenfen",
+          "message": "chore: costaking bckp",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "772d55df3cb3c0785fc434bcaedcb67f9c828ed7",
+          "author_name": "RafilxTenfen",
+          "message": "chore: migrate v3rc4 to v4",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8e0fa26affb8983d46f66f857fb64aa76d79e29d",
+          "author_name": "RafilxTenfen",
+          "message": "chore: proto all",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2d6bd94ddf23cb0ace06d16696ee6889463a2b03",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "0295cc1191edfc4adf4694b4bf931d8c33ee7174",
+          "author_name": "RafilxTenfen",
+          "message": "Merge branch 'main' of github.com:babylonlabs-io/babylon into rafilx/backport-1707",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "56b97877bfed10a202f2c5f2595e96f9a618289b",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3555e0b8c967be42246a65390b664ad4ed58952f",
+          "author_name": "RafilxTenfen",
+          "message": "chore: update ci to same as legacy_main",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "ca36d08fa2a87facb42beaa0bdae4f6de37dc6b0",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "6d76ca5a27b32a01ed03f01e99113defab5b6f1b",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "6b21d75f7eb21cd90372854e798b02dec9a34c6e",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "7573b90cda32c4148cb2f34766e7128704e0320d",
+          "author_name": "RafilxTenfen",
+          "message": "chore: add more funding",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2f39cc65b13281e5c1450a1fe7fe24cf94adcd38",
+          "author_name": "RafilxTenfen",
+          "message": "fix: testing params",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "29fa3a14e051e8d5e870c8c9a07ad648280ec02e",
+          "author_name": "RafilxTenfen",
+          "message": "Merge branch 'main' of github.com:babylonlabs-io/babylon into rafilx/backport-1707",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9d0f8cd7ca5d6f81ff15e6b5199d5236654826f8",
+          "author_name": "RafilxTenfen",
+          "message": "chore: backport e2e test from legacy main",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "16dc18a1b096d9ffcc5c7e5b9cbab078f9f24525",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "86f3de4d57031843eaffeab12df84d1d8d779bbc",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: dockerignore",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "64bb34babb02a75a254e9ced3acbb15485c1dda8",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: expected err",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "b51cdf8006dc48028e8551b04f2addf7f0eadb32",
+          "author_name": "RafilxTenfen",
+          "message": "chore: tryfix e2e ci dockerignore test files",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "15ebcc71dc4b47e5ebba384cd518d155dd937920",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: e2e testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "2d8e16b7851c10cb54dceefbbfc40051f65955f5",
+          "author_name": "RafilxTenfen",
+          "message": "chore: split testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "99e7fe1389147108b873146b0c7734d9a2228466",
+          "author_name": "RafilxTenfen",
+          "message": "chore: tryfix e2e pre approval",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "17ed94cfef62d1b382861596a409a5a53c082d06",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: e2e testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "a99aacd816ea779c3db8ed4bff01cb28369f296c",
+          "author_name": "RafilxTenfen",
+          "message": "fix: err logging",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "db145190a597614e95f9c0de37521a3924bd4aae",
+          "author_name": "RafilxTenfen",
+          "message": "Merge branch 'main' of github.com:babylonlabs-io/babylon into rafilx/backport-1707",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1b0693ef663a28137e11a2fb915e60aef3691ade",
+          "author_name": "RafilxTenfen",
+          "message": "fix: removing parallel from unnecessary test",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "757e26d37e8a415b9dfe2e1bdefdc067a254e132",
+          "author_name": "RafilxTenfen",
+          "message": "Merge branch 'main' of github.com:babylonlabs-io/babylon into rafilx/backport-1707",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "9df4981f9722b049eddea53cfb0a24729c63b0ae",
+          "author_name": "RafilxTenfen",
+          "message": "chore: fix starting tag",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "3dbc167607bbcc541d306a4b6e7e6b2a742bc210",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: e2e upgrade testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "26264b1d05591c3a77b03108c548246e05586bba",
+          "author_name": "RafilxTenfen",
+          "message": "chore: address lint pr comments",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "bdabc79f1279754b9eddc1ed55e64b3e9ddff665",
+          "author_name": "RafilxTenfen",
+          "message": "chore: address lint pr comments",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "bc86887ec0e7f95c422e12c97da7a2c15d0e5adc",
+          "author_name": "RafilxTenfen",
+          "message": "chore: remove parallel from driver testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "13f74b8e8a7603baace637aaa73ae6cbe10f1553",
+          "author_name": "RafilxTenfen",
+          "message": "feat: withdraw costaker rewards if the type is btc staker",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "da0c28615869a5bba94b28bb94628fb102d3cf4c",
+          "author_name": "RafilxTenfen",
+          "message": "chore: remove parallel from driver testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "55c0e842cd0b286cb57b7dbfc4480c8932a7e018",
+          "author_name": "RafilxTenfen",
+          "message": "chore: remove parallel from driver testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "8d9e523a4bc2bcaa80f917f5db6f5953b5a0e009",
+          "author_name": "RafilxTenfen",
+          "message": "chore: remove parallel from driver testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "4c6bf6cfa01a7277618d6acfcf1a03fd029cfe8b",
+          "author_name": "RafilxTenfen",
+          "message": "chore: address PR comments",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "77bc5024877cd116aec55e4aecce760f632111d9",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing, missing call to module addr",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f71a5a967435e993ecb3aabeb5c4426158bc061a",
+          "author_name": "RafilxTenfen",
+          "message": "chore: add fp direct gauge to genesis",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "dfd35065547ba9a096a77ad886890cb08dd71455",
+          "author_name": "RafilxTenfen",
+          "message": "chore: update upgrade of costaking",
+          "ai_signals": [],
+          "touched_blamed_file": true
+        },
+        {
+          "sha": "a34d3564caa37e4b7e92719f22b8f26e58fa59de",
+          "author_name": "RafilxTenfen",
+          "message": "chore: add basic doc for costaking",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "34c720eae80298090fa7f6943165c412e1539b71",
+          "author_name": "RafilxTenfen",
+          "message": "chore: add docstring for fee collector interception",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "cd4e81c2d3fb5f5bdfb60c1bf7eb33bb29c9f597",
+          "author_name": "RafilxTenfen",
+          "message": "chore: update baby btc score ratio to 20k baby by BTC",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "76cfb75e19d92e895e335eb1822717bac34b0a9c",
+          "author_name": "RafilxTenfen",
+          "message": "chore: update inflation",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "03b75c53e1b4d54b8905aa46cd2c9d4512b883cd",
+          "author_name": "RafilxTenfen",
+          "message": "feat: update inflation accordingly to post on next mainnet",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "f533f02d5e86a2e95e6e48464101cefbbdce7a5d",
+          "author_name": "RafilxTenfen",
+          "message": "Merge branch 'main' of github.com:babylonlabs-io/babylon into rafilx/backport-1707",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "1a0eff3bde7cd865a78369e810d765b23df3de32",
+          "author_name": "RafilxTenfen",
+          "message": "fix: unit testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "0770fe170861f0f218826758d553dfec63fa227e",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: e2e testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        },
+        {
+          "sha": "e8d25f3b0237a4fefa60073e42632ce2a47152e8",
+          "author_name": "RafilxTenfen",
+          "message": "tryfix: e2e testing",
+          "ai_signals": [],
+          "touched_blamed_file": false
+        }
+      ],
+      "squash_merge_sha": "2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36"
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "e65c3a55a398a403103f1b089cf76f0d4befc7a0",
+      "repo_url": "https://github.com/babylonlabs-io/babylon",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/babylonlabs-io/babylon/security/advisories/GHSA-4rmq-mc2c-r495",
+    "https://github.com/babylonlabs-io/babylon/commit/e65c3a55a398a403103f1b089cf76f0d4befc7a0"
+  ],
+  "ai_contribution": "Yes. The first commit that introduced the buggy costaking unbonding logic is 2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36, an AI-attributed backport commit with a Copilot co-author trailer, and that commit directly added the flawed `if !isFpActiveInPrevSet || !isFpActiveInCurrSet` guard that leaves phantom stake behind when a finality provider becomes inactive during BTC unbonding."
+}

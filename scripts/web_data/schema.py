@@ -1,4 +1,4 @@
-"""Published schema for the web data artifacts (cves.json / stats.json).
+"""Published schema for the web data artifacts (index.json / cves/*.json / stats.json).
 
 Single source of truth for the Python -> JSON -> TypeScript boundary:
 
@@ -189,6 +189,18 @@ DEFS: dict[str, dict] = {
         "required": ["generated_at", "total", "cves"],
         "additionalProperties": False,
     },
+    # Manifest for the on-disk per-CVE layout: index.json carries the
+    # metadata and the ordered id list; each id maps to cves/<ID>.json.
+    "CvesIndex": {
+        "type": "object",
+        "properties": {
+            "generated_at": {"type": "string"},
+            "total": {"type": "integer"},
+            "ids": _STRING_LIST,
+        },
+        "required": ["generated_at", "total", "ids"],
+        "additionalProperties": False,
+    },
     "StatsData": {
         "type": "object",
         "properties": {
@@ -225,8 +237,10 @@ DEFS: dict[str, dict] = {
     },
 }
 
-#: Root schemas for the two published artifacts.
+#: Root schemas for the published artifacts.
 CVES_SCHEMA: dict = {"$ref": "#/$defs/CvesData"}
+CVE_ENTRY_SCHEMA: dict = {"$ref": "#/$defs/CveEntry"}
+INDEX_SCHEMA: dict = {"$ref": "#/$defs/CvesIndex"}
 STATS_SCHEMA: dict = {"$ref": "#/$defs/StatsData"}
 
 #: Cap on collected errors so a badly-drifting payload stays readable.
@@ -361,8 +375,19 @@ def validate_or_raise(instance: object, schema: dict, label: str = "payload") ->
 
 
 def validate_cves_payload(payload: dict) -> None:
-    """Validate a cves.json payload, raising SchemaValidationError on drift."""
-    validate_or_raise(payload, CVES_SCHEMA, label="cves.json")
+    """Validate an assembled CvesData payload, raising SchemaValidationError on drift."""
+    validate_or_raise(payload, CVES_SCHEMA, label="cves payload")
+
+
+def validate_cve_entry(entry: dict) -> None:
+    """Validate a single per-CVE artifact (cves/<ID>.json)."""
+    cve_id = entry.get("id", "<unknown>") if isinstance(entry, dict) else "<unknown>"
+    validate_or_raise(entry, CVE_ENTRY_SCHEMA, label=f"cves/{cve_id}.json")
+
+
+def validate_index_payload(payload: dict) -> None:
+    """Validate an index.json manifest, raising SchemaValidationError on drift."""
+    validate_or_raise(payload, INDEX_SCHEMA, label="index.json")
 
 
 def validate_stats_payload(payload: dict) -> None:

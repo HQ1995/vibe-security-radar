@@ -12,7 +12,7 @@ from pathlib import Path
 
 CACHE_DIR = Path(os.path.expanduser("~/.cache/cve-analyzer"))
 RESULTS_DIR = CACHE_DIR / "results"
-WEB_DATA = Path(__file__).resolve().parent.parent / "web" / "data" / "cves.json"
+WEB_DATA_DIR = Path(__file__).resolve().parent.parent / "web" / "data"
 VERIFIER_AUDIT = CACHE_DIR / "verifier-audit.jsonl"
 DESC_SEARCH_DIR = CACHE_DIR / "desc-search"
 FIX_INFERENCE_DIR = CACHE_DIR / "fix-inference"
@@ -43,11 +43,22 @@ def load_results() -> list[dict]:
 
 
 def load_web_cves() -> dict[str, dict]:
-    if not WEB_DATA.exists():
+    """Load published entries from the per-CVE layout (index.json + cves/*.json)."""
+    index_path = WEB_DATA_DIR / "index.json"
+    if not index_path.exists():
         return {}
-    with open(WEB_DATA) as f:
-        data = json.load(f)
-    return {c["id"]: c for c in data.get("cves", [])}
+    with open(index_path) as f:
+        index = json.load(f)
+    entries: dict[str, dict] = {}
+    for cve_id in index.get("ids", []):
+        entry_path = WEB_DATA_DIR / "cves" / f"{cve_id}.json"
+        try:
+            with open(entry_path) as f:
+                entry = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        entries[entry["id"]] = entry
+    return entries
 
 
 def load_verifier_audit() -> dict[str, dict]:
