@@ -1,9 +1,8 @@
 "use client";
 
 import { DistributionPieChart } from "@/components/distribution-pie-chart";
+import { THEMED_ICONS } from "@/components/tool-icon";
 import { getToolDisplayName, getToolColor } from "@/lib/constants";
-
-const THEMED_ICONS = new Set(["github_copilot", "cursor", "unknown_ai"]);
 
 interface ToolDistributionChartProps {
   readonly data: Readonly<Record<string, number>>;
@@ -17,6 +16,7 @@ export function ToolDistributionChart({ data, totalCves }: ToolDistributionChart
       data={data}
       getColor={getToolColor}
       getName={getToolDisplayName}
+      getHref={(key) => `/cves?tool=${encodeURIComponent(key)}`}
       iconDir="/icons/tools"
       themedIcons={THEMED_ICONS}
       totalOverride={totalCves}

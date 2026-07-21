@@ -17,26 +17,30 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
   return (
     <section>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
         <div className="bg-card px-5 py-5">
           <p className="text-3xl font-bold tabular-nums">{totalCves}</p>
-          <p className="mt-1 text-xs text-muted-foreground">AI-linked CVEs</p>
-        </div>
-        <div className="bg-card px-5 py-5">
-          <p className="text-3xl font-bold tabular-nums">{aiToolsDetected}</p>
-          <p className="mt-1 text-xs text-muted-foreground">AI tools</p>
+          <p className="mt-1 text-xs text-muted-foreground">Verified AI-causal lower bound</p>
         </div>
         <div className="bg-card px-5 py-5">
           <p className="text-3xl font-bold tabular-nums">{criticalHigh}</p>
           <p className="mt-1 text-xs text-muted-foreground">Critical / High</p>
         </div>
-        <div className="bg-card px-5 py-5">
-          <p className="text-3xl font-bold tabular-nums">{totalAnalyzed.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Advisories scanned ({fixPct}% with fix)
-          </p>
-        </div>
       </div>
+      <p className="mt-3 text-xs tabular-nums text-muted-foreground">
+        {aiToolsDetected} AI tools &middot;{" "}
+        {totalAnalyzed.toLocaleString()} advisories scanned ({fixPct}% with
+        fix)
+      </p>
+      {stats.inventory ? (
+        <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+          {stats.inventory.detector_candidate_count.toLocaleString()} detector candidates
+          {" · "}
+          {stats.inventory.pending_adjudication_count.toLocaleString()} awaiting independent review
+          {" · "}
+          inventory through {stats.inventory.coverage_to || "unknown cutoff"}
+        </p>
+      ) : null}
     </section>
   );
 }

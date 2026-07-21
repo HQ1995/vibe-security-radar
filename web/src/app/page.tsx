@@ -4,6 +4,7 @@ import { RecentCvesTable } from "@/components/recent-cves-table";
 import { DataFreshness } from "@/components/data-freshness";
 import { compareCves } from "@/lib/sort";
 import { TrendChart } from "@/components/trend-chart";
+import { MonthArchive } from "@/components/month-archive";
 import { Star, GitPullRequest } from "lucide-react";
 
 export default function HomePage() {
@@ -16,14 +17,14 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6">
-      <section className="pb-10 pt-16">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+      <section className="pb-8 pt-10 sm:pt-12">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Vibe Security Radar
         </h1>
-        <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
+        <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
           Real CVEs where AI-generated code introduced the vulnerability.
         </p>
-        <p className="mt-1.5 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           by{" "}
           <a
             href="https://gts3.org"
@@ -40,7 +41,7 @@ export default function HomePage() {
             How it works
           </a>
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <a
             href="https://github.com/HQ1995/vibe-security-radar"
             target="_blank"
@@ -67,7 +68,10 @@ export default function HomePage() {
 
       <div className="space-y-12 pb-16">
         <StatsCards stats={stats} />
-        <TrendChart data={stats.by_month} />
+        <div className="space-y-3">
+          <TrendChart data={stats.by_month} />
+          <MonthArchive data={stats.by_month} />
+        </div>
         <RecentCvesTable cves={recentCves} />
       </div>
     </main>

@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        // GitHub owner avatars used by RepoCard
+        protocol: "https",
+        hostname: "github.com",
+        pathname: "/*.png",
+      },
+    ],
+  },
+  // Per-CVE artifacts are read through fs during static generation and ISR.
+  outputFileTracingIncludes: {
+    "/*": [
+      "./data/index.json",
+      "./data/stats.json",
+      "./data/release-receipt.json",
+      "./data/cves/**/*.json",
+    ],
+  },
   headers: async () => [
     {
       // HTML pages: revalidate every 10 minutes, serve stale while revalidating

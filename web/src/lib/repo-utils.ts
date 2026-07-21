@@ -35,15 +35,3 @@ export function buildRepoData(
     severities: e.severities,
   }));
 }
-
-/**
- * Filter to top N entries, including all ties at the Nth position.
- */
-export function topNWithTies(
-  data: readonly RepoData[],
-  n: number,
-): readonly RepoData[] {
-  if (n <= 0 || data.length <= n) return data;
-  const nthCount = data[n - 1].count;
-  return data.filter((r) => r.count >= nthCount);
-}

@@ -1,5 +1,4 @@
 import {
-  verifiedBadgeColor,
   verifiedByTooltip,
   getModelDisplayName,
   deduplicateModels,
@@ -18,19 +17,11 @@ export function VerifiedBadge({
   }
 
   return (
-    <div className="flex items-center justify-center gap-1">
-      {models.map((model) => {
-        const color = verifiedBadgeColor(model);
-        return (
-          <span
-            key={model}
-            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ${color}`}
-            title={verifiedByTooltip(model)}
-          >
-            {getModelDisplayName(model)}
-          </span>
-        );
-      })}
-    </div>
+    <span
+      className="block truncate text-sm text-muted-foreground"
+      title={models.map((model) => verifiedByTooltip(model)).join("; ")}
+    >
+      {models.map((model) => getModelDisplayName(model)).join(", ")}
+    </span>
   );
 }

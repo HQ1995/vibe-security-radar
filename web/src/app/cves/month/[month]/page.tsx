@@ -16,6 +16,8 @@ import {
 
 // --- Static generation ---
 
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   const stats = getStats();
   return stats.by_month.map((entry) => ({ month: entry.month }));

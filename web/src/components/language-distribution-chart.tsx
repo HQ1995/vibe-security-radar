@@ -24,24 +24,28 @@ const LANG_ICON_KEY: Readonly<Record<string, string>> = {
   Perl: "perl",
 };
 
-function getLangIconKey(lang: string): string {
-  return LANG_ICON_KEY[lang] ?? lang.toLowerCase();
+export function getLangIconKey(lang: string): string | null {
+  return LANG_ICON_KEY[lang] ?? null;
 }
 
 interface LanguageDistributionChartProps {
   readonly data: Readonly<Record<string, number>>;
+  readonly totalCves?: number;
 }
 
 export function LanguageDistributionChart({
   data,
+  totalCves,
 }: LanguageDistributionChartProps) {
   return (
     <DistributionPieChart
       title="Language Distribution"
       data={data}
       getColor={getLanguageColor}
+      getHref={(key) => `/cves?language=${encodeURIComponent(key)}`}
       iconDir="/icons/languages"
       getIconKey={getLangIconKey}
+      totalOverride={totalCves}
     />
   );
 }

@@ -47,7 +47,7 @@ const LIMITATION_CATEGORIES = [
     items: [
       "Our detection relies entirely on metadata signals: co-author trailers, bot emails, commit message markers. Code written with AI assistance but committed without these markers is invisible to us. This is the single biggest limitation: many developers use AI tools in ways that leave no trace (copy-pasting from ChatGPT, using tools that don't add co-author trailers, or stripping markers before pushing). Our numbers represent a strict lower bound on AI-linked vulnerabilities.",
       "Different AI tools leave varying amounts of metadata. Claude Code and GitHub Copilot have well-established co-author conventions; others are harder to detect. This creates uneven coverage across tools.",
-      "We are developing LLM-based code fingerprinting to identify AI-generated code from its stylistic and structural patterns, independent of commit metadata. This would catch cases where AI involvement is evident from the code itself but leaves no trace in the git history.",
+      "The current quality study measures recall only after an advisory reaches the discovered AI-signal candidate population. Advisory-discovery and signature-discovery recall remain separate, unmeasured boundaries.",
     ],
   },
   {
@@ -55,13 +55,13 @@ const LIMITATION_CATEGORIES = [
     items: [
       "Git blame tracks line authorship, not semantic causality. A line may be blamed on commit X even when the real root cause is a design decision in commit Y. The deep investigator's CVE-level analysis catches most of these cases, but not all.",
       "Squash-merge decomposition depends on the GitHub API returning sub-commits. Force-pushed PRs or rebased branches may lose the original commit history, making per-commit attribution impossible.",
-      "The investigator is a single LLM with tool access. Borderline cases where causality is genuinely ambiguous can go either way. We do not claim 100% accuracy on any individual case.",
+      "The investigator is a single LLM with constrained, receipt-backed git tools. Borderline cases where causality is genuinely ambiguous can go either way. We do not claim 100% accuracy on any individual case.",
     ],
   },
   {
     title: "Coverage scope",
     items: [
-      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) in public repositories, including CI/CD configuration issues like GitHub Actions injection. When advisory databases lack a fix commit, the pipeline uses LLM-assisted search (version-tag ranking and description-based git log matching) to discover one. Roughly 10% of our confirmed cases rely on these LLM-inferred fix commits. Closed-source bugs and unpatched vulnerabilities remain out of scope.",
+      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) in public repositories, including CI/CD configuration issues like GitHub Actions injection. When advisory databases lack a fix commit, the pipeline uses LLM-assisted search (version-tag ranking and description-based git log matching) to discover one. Closed-source bugs and unpatched vulnerabilities remain out of scope.",
       "Our analysis starts from May 2025. Vulnerabilities disclosed or fixed before that date are not covered, even if AI tools were involved.",
       "We do not analyze whether AI tools are more or less likely to introduce vulnerabilities than human developers. This project measures incidence, not relative risk.",
     ],
@@ -71,8 +71,8 @@ const LIMITATION_CATEGORIES = [
     items: [
       "Our approach is inherently retrospective: we find AI-authored vulnerabilities after they are reported and fixed. We cannot predict which AI-generated code will become vulnerable.",
       "The pipeline is conservative by design: we would rather miss a true positive than report a false positive. This means our count underestimates the real number of AI-linked vulnerabilities.",
-      "We use LLMs to judge whether AI-authored code caused a vulnerability, which creates an inherent circularity. The investigator may have systematic blind spots when evaluating AI-generated code patterns. We mitigate this with multi-model verification and conflict resolution, but cannot fully eliminate the risk.",
-      "We can audit for false positives (cases we flagged incorrectly), but have no systematic way to measure our false negative rate: how many AI-caused vulnerabilities we miss entirely. The true count is unknowable with metadata-only detection.",
+      "We use LLMs to judge whether AI-authored code caused a vulnerability, which creates an inherent circularity. Exact-model provenance, per-subject evidence receipts, independent held-out labels, and fail-closed publication reduce this risk.",
+      "The independent quality gate measures precision and conditional recall inside the discovered AI-signal candidate population. Metadata-only detection still leaves total population recall unknown.",
     ],
   },
 ] as const;
@@ -116,23 +116,23 @@ const PIPELINE_STEPS = [
     summary:
       "A lightweight LLM screen decides whether AI-signaled commits are plausibly related to the vulnerability, gating the expensive deep investigation.",
     details:
-      "Rather than sending every AI-signaled CVE to the deep investigator, a lightweight LLM screen runs first. It receives the vulnerability description, the fix diff, and a summary of all AI-signaled bug-introducing commits (including decomposed sub-commits and blamed files). The screener asks one question: could any of these AI commits have contributed to this vulnerability? If not (say the AI commits touched frontend auth code but the vulnerability is a backend SSRF), the CVE is filtered out without incurring a full investigation. CVEs that pass proceed to Phase E. This filter achieves ~80% precision (validated by independent audit of rejected cases) and catches cases where blame cast a wide net and happened to land on unrelated AI-authored code.",
+      "Rather than sending every AI-signaled CVE to the deep investigator, a lightweight LLM screen runs first. It receives the vulnerability description, the fix diff, and a summary of all AI-signaled bug-introducing commits (including decomposed sub-commits and blamed files). The screener asks one question: could any of these AI commits have contributed to this vulnerability? If not (say the AI commits touched frontend auth code but the vulnerability is a backend SSRF), the CVE is filtered out without incurring a full investigation. CVEs that pass proceed to Phase E. Final detector quality is measured only by the precommitted independent held-out gate.",
   },
   {
     tier: "Phase E",
     title: "Deep investigation",
     summary:
-      "A single LLM investigator sees the entire vulnerability at once, runs a multi-step investigation with tool access, and answers a CVE-level question: did AI-authored code contribute to introducing this vulnerability?",
+      "A single LLM investigator sees the entire vulnerability at once, runs a multi-step investigation with constrained git tools, and answers a CVE-level question: did AI-authored code contribute to introducing this vulnerability?",
     details:
-      "The investigator receives all fix commits, all blame candidates, and the CVE description. It has access to git log, file read, blame, diff, and pickaxe search, running up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. Rather than rating individual commits, it answers a vulnerability-level question: was AI-authored code part of the causal chain? This verdict determines what appears on the site. Per-commit assessments are retained as supporting evidence but do not drive the final call.",
+      "The investigator receives all fix commits, all blame candidates, and the CVE description. Its receipt-backed tools provide bounded git log, file read, blame, exact diff, and pickaxe evidence, with up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. Rather than rating individual commits, it answers a vulnerability-level question: was AI-authored code part of the causal chain? This verdict determines what appears on the site. Per-commit assessments are retained as supporting evidence but do not drive the final call.",
   },
   {
     tier: "Phase F",
-    title: "Fallback verification",
+    title: "Failure diagnostics",
     summary:
-      "When the primary deep investigator fails (timeout, model error), a Claude Agent SDK subprocess with git MCP tools retries the investigation independently.",
+      "After every deep-investigation model fails, an optional external coding agent can review a bounded evidence bundle without changing the published verdict.",
     details:
-      "The deep investigator (Phase E) uses a model fallback chain. When the primary model exhausts its tool-call budget or errors out, the pipeline falls back to a Claude Agent SDK subprocess with its own git tools (log, blame, diff, file read) via MCP. This is a fundamentally different execution path (a full CLI subprocess rather than API calls), so it often succeeds where the primary model failed. If the SDK fallback also fails, remaining models in the chain are tried. The fallback verdict replaces the failed investigation.",
+      "The deep investigator (Phase E) exhausts its configured API-model chain first. An explicitly enabled Codex, Claude Code, or Kimi Code CLI can then review evidence extracted by the pipeline's constrained git tools. The provider receives no repository checkout, runs with its own tools disabled, and must return strict per-subject JSON with local evidence references. The result is retained as a diagnostic artifact and cannot create or replace a bug-introducing-commit verdict.",
   },
 ] as const;
 
@@ -203,7 +203,10 @@ export default function AboutPage() {
           fixed in the wild.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-          <span>{stats.total_cves} AI-linked vulnerabilities tracked</span>
+          <span>{stats.total_cves} independently verified AI-causal vulnerabilities</span>
+          {stats.inventory ? (
+            <span>{stats.inventory.detector_candidate_count.toLocaleString()} detector candidates</span>
+          ) : null}
           <span>{stats.total_analyzed.toLocaleString()} advisories analyzed</span>
           <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
         </div>
@@ -223,8 +226,8 @@ export default function AboutPage() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               We aggregate vulnerability data from four advisory databases
               (OSV, GitHub Advisory Database, Gemnasium, NVD) and extract
-              the commit that fixed each vulnerability. Over 95% of lookups
-              use local bulk data, with no API calls required.
+              the commit that fixed each vulnerability. Reproducible refreshes
+              use content-addressed local snapshots of every campaign source.
             </p>
           </div>
           <div className="space-y-1">
@@ -246,7 +249,7 @@ export default function AboutPage() {
               An AI signature in a commit is not enough. First, a
               screening pass checks whether the blamed commit is plausibly
               related to the security issue. Then a deep investigator with
-              full git tool access examines the entire vulnerability (all
+              constrained, receipt-backed git tools examine the entire vulnerability (all
               fix commits, all blame candidates), running up to 50 tool
               calls per case. Rather than rating each commit in isolation,
               it answers one question: did AI-authored code contribute to
@@ -254,10 +257,10 @@ export default function AboutPage() {
               per-commit analysis misses: an AI commit that altered a
               calling convention, making previously safe code exploitable,
               or a squash-merge where the AI-tagged sub-commit never
-              touched the vulnerable file. If the primary model fails, a
-              Claude Agent SDK fallback with independent repository access
-              retries the investigation. The pipeline is conservative:
-              attribution is dropped when causality is uncertain.
+              touched the vulnerable file. If every configured model fails,
+              an optional external coding agent can inspect a bounded evidence
+              bundle. Its output is diagnostic-only, so failed investigation
+              never turns into a negative or confirmed attribution.
             </p>
           </div>
         </div>

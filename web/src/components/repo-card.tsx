@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { EntityCard } from "@/components/entity-card";
 
 interface RepoCardProps {
@@ -13,12 +14,12 @@ export function RepoCard({ repo, count, severities }: RepoCardProps) {
       href={`/cves?repo=${encodeURIComponent(repo)}`}
       label={repo}
       icon={
-        <img
+        <Image
           src={`https://github.com/${owner}.png?size=40`}
           alt={owner}
           width={22}
           height={22}
-          className="h-[22px] w-[22px] shrink-0 rounded-full"
+          className="shrink-0 rounded-full"
         />
       }
       count={count}

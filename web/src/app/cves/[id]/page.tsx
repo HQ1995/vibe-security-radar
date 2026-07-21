@@ -3,17 +3,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCves, getCveById } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
+import { Section } from "@/components/ui/section";
 import { AiSignalsDisplay } from "@/components/ai-signals-display";
 import {
   BugCommitTimeline,
   FixCommitTimeline,
+  bugCommitSubjectKey,
 } from "@/components/commit-timeline";
 import { AttributionChain } from "@/components/attribution-chain";
+import { SectionNav, type SectionNavItem } from "@/components/section-nav";
 import { ToolIcon } from "@/components/tool-icon";
 import {
   severityBadgeClass,
   getToolDisplayName,
-  getSignalTypeLabel,
   formatVerifiedBy,
   formatConfidence,
   getModelDetailName,
@@ -21,13 +23,11 @@ import {
 } from "@/lib/constants";
 import { LanguageBadge } from "@/components/language-badge";
 import { formatPublished, buildCommitUrl, extractRepoName } from "@/lib/commit-utils";
-import type { CveEntry, BugCommit, Verification } from "@/lib/types";
+import type { AiSignalEntry, CveEntry, BugCommit } from "@/lib/types";
 import {
-  ShieldAlert,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Bot,
   GitCommit,
   Wrench,
   ExternalLink,
@@ -36,9 +36,12 @@ import {
   Code2,
   MessageSquareWarning,
   ArrowLeft,
+  SearchCheck,
 } from "lucide-react";
 
 // --- Static generation ---
+
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   const data = getCves();
@@ -63,20 +66,48 @@ export async function generateMetadata({
 
 // --- Helpers ---
 
-/** Single pass over bug_commits to extract all needed subsets, counts, and signal types. */
+interface CommitSignalAccumulator {
+  readonly commit: BugCommit;
+  readonly signals: AiSignalEntry[];
+  readonly signalKeys: Set<string>;
+}
+
+function commitSignalKey(signal: AiSignalEntry): string {
+  return JSON.stringify([
+    signal.tool,
+    signal.signal_type,
+    signal.matched_text,
+    signal.confidence,
+  ]);
+}
+
+/**
+ * Preserve verification subjects while projecting commit-level signals by SHA.
+ * A BIC can be independently assessed for multiple fix/file subjects, but its
+ * commit metadata and signal count should appear only once.
+ */
 function analyzeBugCommits(commits: readonly BugCommit[]) {
-  const aiCommits: BugCommit[] = [];
+  const signalCommitsBySha = new Map<string, CommitSignalAccumulator>();
   const deepVerifiedCommits: BugCommit[] = [];
   const causalityCommits: BugCommit[] = [];
-  const signalTypeSet = new Set<string>();
-  let totalSignals = 0;
 
   for (const c of commits) {
     if (c.ai_signals.length > 0) {
-      aiCommits.push(c);
-      totalSignals += c.ai_signals.length;
+      let accumulator = signalCommitsBySha.get(c.sha);
+      if (!accumulator) {
+        accumulator = {
+          commit: c,
+          signals: [],
+          signalKeys: new Set<string>(),
+        };
+        signalCommitsBySha.set(c.sha, accumulator);
+      }
       for (const s of c.ai_signals) {
-        signalTypeSet.add(getSignalTypeLabel(s.signal_type));
+        const key = commitSignalKey(s);
+        if (!accumulator.signalKeys.has(key)) {
+          accumulator.signalKeys.add(key);
+          accumulator.signals.push(s);
+        }
       }
     }
     if (c.verification?.agent_verdicts?.length) {
@@ -87,7 +118,47 @@ function analyzeBugCommits(commits: readonly BugCommit[]) {
     }
   }
 
-  return { aiCommits, deepVerifiedCommits, causalityCommits, totalSignals, signalTypes: Array.from(signalTypeSet) };
+  const aiCommits = Array.from(signalCommitsBySha.values(), (entry) => ({
+    ...entry.commit,
+    ai_signals: entry.signals,
+  }));
+  const totalSignals = aiCommits.reduce(
+    (total, commit) => total + commit.ai_signals.length,
+    0,
+  );
+
+  return {
+    aiCommits,
+    deepVerifiedCommits,
+    causalityCommits,
+    totalSignals,
+  };
+}
+
+/**
+ * Best deep-verified commit: strongest model (lowest rank) wins, confidence
+ * breaks ties — the same model-rank logic used for causality commits.
+ */
+function pickBestDeepVerified(
+  commits: readonly BugCommit[],
+): BugCommit | null {
+  let best: BugCommit | null = null;
+  let bestRank = Infinity;
+  let bestConfidence = -1;
+  for (const commit of commits) {
+    const agent = commit.verification?.agent_verdicts?.[0];
+    if (!agent) continue;
+    const rank = getModelRank(agent.model);
+    if (
+      rank < bestRank ||
+      (rank === bestRank && agent.confidence > bestConfidence)
+    ) {
+      best = commit;
+      bestRank = rank;
+      bestConfidence = agent.confidence;
+    }
+  }
+  return best;
 }
 
 // --- Verdict visual helpers ---
@@ -117,19 +188,6 @@ function SmallVerdictBadge({ verdict }: { readonly verdict: string }) {
       {verdict}
     </span>
   );
-}
-
-function severityCardBg(severity: string): string {
-  if (severity === "CRITICAL") return "bg-red-500/10 border-red-500/30";
-  if (severity === "HIGH") return "bg-orange-500/10 border-orange-500/30";
-  if (severity === "MEDIUM") return "bg-yellow-500/10 border-yellow-500/30";
-  return "bg-green-500/10 border-green-500/30";
-}
-
-function verdictCardBg(verdict: string): string {
-  if (verdict === "CONFIRMED") return "bg-green-500/10 border-green-500/30";
-  if (verdict === "UNLIKELY") return "bg-amber-500/10 border-amber-500/30";
-  return "bg-red-500/10 border-red-500/30";
 }
 
 // --- Section components ---
@@ -197,102 +255,89 @@ function PageHeader({ cve }: { readonly cve: CveEntry }) {
   );
 }
 
-function SummaryCards({
+function MetaSeparator() {
+  return (
+    <span aria-hidden="true" className="select-none text-muted-foreground/40">
+      &middot;
+    </span>
+  );
+}
+
+/** Borderless at-a-glance strip replacing the old tinted summary cards. */
+function MetaStrip({
   cve,
   primaryVerdict,
   primaryConfidence,
 }: {
   readonly cve: CveEntry;
   readonly primaryVerdict?: string;
-  readonly primaryConfidence?: string | null;
+  readonly primaryConfidence?: number | null;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
       {/* Severity + CVSS */}
-      <div className={`rounded-xl border p-4 ${severityCardBg(cve.severity)}`}>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <ShieldAlert className="h-3.5 w-3.5" />
-          Severity
-        </div>
-        <div className="flex items-baseline gap-2">
-          <Badge className={severityBadgeClass(cve.severity)}>
-            {cve.severity}
-          </Badge>
-          {cve.cvss !== null && cve.cvss > 0 && (
-            <span className="font-mono text-xl font-bold tabular-nums">{cve.cvss.toFixed(1)}</span>
-          )}
-        </div>
-      </div>
+      <span className="flex items-center gap-2">
+        <Badge className={severityBadgeClass(cve.severity)}>
+          {cve.severity}
+        </Badge>
+        {cve.cvss !== null && cve.cvss > 0 && (
+          <span className="font-mono font-semibold tabular-nums">{cve.cvss.toFixed(1)}</span>
+        )}
+      </span>
+
+      <MetaSeparator />
 
       {/* Verdict */}
-      <div className={`rounded-xl border p-4 ${primaryVerdict ? verdictCardBg(primaryVerdict) : "bg-card"}`}>
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <Scale className="h-3.5 w-3.5" />
-          Verdict
-        </div>
-        {primaryVerdict ? (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <VerdictIcon verdict={primaryVerdict} className="h-4.5 w-4.5" />
-              <span className="font-semibold text-sm">{primaryVerdict}</span>
-            </div>
-            {primaryConfidence && (
-              <span className="text-xs text-muted-foreground">{primaryConfidence} confidence</span>
+      {primaryVerdict ? (
+        <span className="flex items-center gap-1.5">
+          <VerdictIcon verdict={primaryVerdict} className="h-4 w-4" />
+          <span className="font-medium">{primaryVerdict}</span>
+          {primaryConfidence != null && (
+            <span className="text-xs text-muted-foreground">
+              {formatConfidence(primaryConfidence)} confidence
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">Pending</span>
+      )}
+
+      {/* AI tools */}
+      {cve.ai_tools.length > 0 && (
+        <>
+          <MetaSeparator />
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {cve.ai_tools.map((tool) => (
+              <span key={tool} className="flex items-center gap-1.5">
+                <ToolIcon tool={tool} size={14} />
+                <span>{getToolDisplayName(tool)}</span>
+              </span>
+            ))}
+            {cve.signal_source === "pr_body" && (
+              <span className="text-xs text-muted-foreground">
+                Signal from PR description only — not from commit metadata
+              </span>
             )}
-          </div>
-        ) : (
-          <span className="text-sm text-muted-foreground">Pending</span>
-        )}
-      </div>
+          </span>
+        </>
+      )}
 
-      {/* AI Tool */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <Bot className="h-3.5 w-3.5" />
-          AI Tool
-        </div>
-        <div className="space-y-1.5">
-          {cve.ai_tools.map((tool) => (
-            <div key={tool} className="flex items-center gap-1.5">
-              <ToolIcon tool={tool} size={16} />
-              <span className="font-semibold text-sm">{getToolDisplayName(tool)}</span>
-            </div>
-          ))}
-          {cve.signal_source === "pr_body" && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Signal from PR description only — not from commit metadata
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Language */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-          <Code2 className="h-3.5 w-3.5" />
-          Language
-        </div>
-        <div className="space-y-1.5">
-          {cve.languages.length > 0 ? (
-            cve.languages.map((lang) => (
-              <span key={lang} className="font-semibold text-sm">{lang}</span>
-            ))
-          ) : (
-            <span className="text-sm text-muted-foreground">Unknown</span>
-          )}
-        </div>
-      </div>
+      {/* Languages */}
+      {cve.languages.length > 0 && (
+        <>
+          <MetaSeparator />
+          <span className="flex items-center gap-1">
+            {cve.languages.map((lang) => (
+              <LanguageBadge key={lang} language={lang} />
+            ))}
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
-function HowIntroducedCallout({
-  cve,
-  signalTypes,
-}: {
-  readonly cve: CveEntry;
-  readonly signalTypes: readonly string[];
-}) {
+function HowIntroducedCallout({ cve }: { readonly cve: CveEntry }) {
   const hasSummary = cve.how_introduced.length > 0;
   const hasRootCause = (cve.root_cause ?? "").length > 0;
   const hasPattern = (cve.vulnerable_pattern ?? "").length > 0;
@@ -329,6 +374,33 @@ function HowIntroducedCallout({
   );
 }
 
+function SubjectLabel({
+  commit,
+  repoUrl,
+}: {
+  readonly commit: BugCommit;
+  readonly repoUrl?: string;
+}) {
+  return (
+    <>
+      {commit.fix_commit_sha && <>Fix {commit.fix_commit_sha.slice(0, 7)} &rarr; </>}
+      {repoUrl ? (
+        <a
+          href={buildCommitUrl(repoUrl, commit.sha)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-4 hover:underline"
+        >
+          BIC {commit.sha.slice(0, 7)}
+        </a>
+      ) : (
+        <>BIC {commit.sha.slice(0, 7)}</>
+      )}
+      <> &middot; {commit.blamed_file}</>
+    </>
+  );
+}
+
 function CausalityDetails({
   commit,
   repoUrl,
@@ -338,171 +410,189 @@ function CausalityDetails({
 }) {
   const v = commit.screening_verification!;
   return (
-    <div className="rounded-lg border overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border-b">
-        <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Causality Analysis
+    <div>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        Causality Analysis
+        <span className="normal-case tracking-normal">
+          {" "}&middot; by {getModelDetailName(v.model)}
         </span>
-        <span className="text-xs text-muted-foreground ml-auto">
-          by {getModelDetailName(v.model)}
-        </span>
-      </div>
-      <div className="grid gap-px bg-border">
+      </p>
+      <div className="mt-2 divide-y divide-border border-y border-border">
+        <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            Subject
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            <SubjectLabel commit={commit} repoUrl={repoUrl} />
+          </span>
+        </div>
         {v.vuln_type && (
-          <div className="grid grid-cols-[120px_1fr] bg-card">
-            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Vulnerability</span>
-            <span className="px-4 py-2.5 text-sm capitalize">{v.vuln_type}</span>
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Vulnerability</span>
+            <span className="text-sm capitalize">{v.vuln_type}</span>
           </div>
         )}
         {v.vuln_description && (
-          <div className="grid grid-cols-[120px_1fr] bg-card">
-            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Root Cause</span>
-            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.vuln_description}</span>
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Root Cause</span>
+            <span className="text-sm text-muted-foreground">{v.vuln_description}</span>
           </div>
         )}
         {v.vulnerable_pattern && (
-          <div className="grid grid-cols-[120px_1fr] bg-card">
-            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Pattern</span>
-            <div className="px-4 py-2.5">
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Pattern</span>
+            <div>
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{v.vulnerable_pattern}</code>
             </div>
           </div>
         )}
         {v.causal_chain && (
-          <div className="grid grid-cols-[120px_1fr] bg-card">
-            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Causal Chain</span>
-            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.causal_chain}</span>
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Causal Chain</span>
+            <span className="text-sm text-muted-foreground">{v.causal_chain}</span>
           </div>
         )}
         {v.reasoning && !v.vuln_description && (
-          <div className="grid grid-cols-[120px_1fr] bg-card">
-            <span className="px-4 py-2.5 text-xs font-medium text-muted-foreground bg-muted/30">Reasoning</span>
-            <span className="px-4 py-2.5 text-sm text-muted-foreground">{v.reasoning}</span>
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Reasoning</span>
+            <span className="text-sm text-muted-foreground">{v.reasoning}</span>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function DeepVerificationEntry({
+  commit,
+  repoUrl,
+  defaultOpen,
+}: {
+  readonly commit: BugCommit;
+  readonly repoUrl?: string;
+  readonly defaultOpen: boolean;
+}) {
+  const verification = commit.verification!;
+  const agent = verification.agent_verdicts?.[0];
+  if (!agent) return null;
+
+  return (
+    <Section
+      size="sm"
+      title={`${commit.sha.slice(0, 7)} · ${verification.verdict} · ${getModelDetailName(agent.model)}`}
+      defaultOpen={defaultOpen}
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <SmallVerdictBadge verdict={verification.verdict} />
+          {verification.confidence !== null && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {formatConfidence(verification.confidence)}
+            </span>
+          )}
+          <span className="font-mono text-xs text-muted-foreground">
+            <SubjectLabel commit={commit} repoUrl={repoUrl} />
+          </span>
+        </div>
+        {/* Investigation stats */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="font-medium tabular-nums">{agent.tool_calls_made}</span> tool calls
+          </span>
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-20 rounded-full bg-muted">
+              <div
+                className={`h-1.5 rounded-full ${verdictBarColor(agent.verdict)}`}
+                style={{ width: `${Math.round(agent.confidence * 100)}%` }}
+              />
+            </div>
+            <span className="tabular-nums">{formatConfidence(agent.confidence)}</span>
+          </div>
+        </div>
+        {/* Reasoning */}
+        <p className="text-sm leading-relaxed text-muted-foreground">{agent.reasoning}</p>
+        {/* Evidence */}
+        {agent.evidence.length > 0 && (
+          <div className="rounded-lg bg-muted/30 px-4 py-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Evidence</p>
+            <ul className="space-y-1.5">
+              {agent.evidence.map((e, i) => (
+                <li key={`${i}-${e.slice(0, 32)}`} className="flex gap-2 text-sm text-muted-foreground">
+                  <span className="text-primary/60 shrink-0 mt-1">&#x2022;</span>
+                  <span className="leading-relaxed">{e}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {commit.screening_verification && (
+          <CausalityDetails commit={commit} repoUrl={repoUrl} />
+        )}
+      </div>
+    </Section>
   );
 }
 
 function DeepVerificationSection({
-  bestVerification,
-  bestCausality,
+  deepVerifiedCommits,
   causalityCommits,
   repoUrl,
 }: {
-  readonly bestVerification: Verification | null;
-  readonly bestCausality: BugCommit | null;
+  readonly deepVerifiedCommits: readonly BugCommit[];
   readonly causalityCommits: readonly BugCommit[];
   readonly repoUrl?: string;
 }) {
-  if (!bestVerification && !bestCausality) return null;
+  if (deepVerifiedCommits.length === 0 && causalityCommits.length === 0) {
+    return null;
+  }
 
-  const agent = bestVerification?.agent_verdicts?.[0];
-
-  return (
-    <div className="space-y-4">
-      {/* Deep Verification */}
-      {bestVerification && agent && (
-        <div className="rounded-xl border overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b">
-            <Scale className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Deep Verification</h2>
-            <span className="text-xs text-muted-foreground ml-1">
-              by {getModelDetailName(agent.model)}
-            </span>
-            <div className="ml-auto flex items-center gap-2">
-              <SmallVerdictBadge verdict={bestVerification.verdict} />
-              <span className="text-xs text-muted-foreground">{bestVerification.confidence}</span>
-            </div>
-          </div>
-          <div className="px-4 py-4 space-y-3">
-            {/* Investigation stats */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="font-medium tabular-nums">{agent.tool_calls_made}</span> tool calls
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-20 rounded-full bg-muted">
-                  <div
-                    className={`h-1.5 rounded-full ${verdictBarColor(agent.verdict)}`}
-                    style={{ width: `${Math.round(agent.confidence * 100)}%` }}
-                  />
-                </div>
-                <span className="tabular-nums">{formatConfidence(agent.confidence)}</span>
-              </div>
-            </div>
-            {/* Reasoning */}
-            <p className="text-sm leading-relaxed text-muted-foreground">{agent.reasoning}</p>
-            {/* Evidence */}
-            {agent.evidence.length > 0 && (
-              <div className="rounded-lg bg-muted/30 px-4 py-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Evidence</p>
-                <ul className="space-y-1.5">
-                  {agent.evidence.map((e, i) => (
-                    <li key={`${i}-${e.slice(0, 32)}`} className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary/60 shrink-0 mt-1">&#x2022;</span>
-                      <span className="leading-relaxed">{e}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Causality analysis */}
-      {bestCausality && (
-        <CausalityDetails commit={bestCausality} repoUrl={repoUrl} />
-      )}
-
-      {/* Additional causality commits beyond the first */}
-      {causalityCommits.length > 1 && (
-        <details className="group">
-          <summary className="flex items-center gap-2 text-sm font-medium cursor-pointer hover:text-foreground text-muted-foreground transition-colors">
-            <span className="text-muted-foreground group-open:rotate-90 transition-transform text-xs">&#9654;</span>
-            {causalityCommits.length - 1} more causality analysis{causalityCommits.length > 2 ? "es" : ""}
-          </summary>
-          <div className="mt-3 space-y-3">
-            {causalityCommits.slice(1).map((commit) => (
-              <CausalityDetails key={commit.sha} commit={commit} repoUrl={repoUrl} />
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
+  const bestDeepVerified = pickBestDeepVerified(deepVerifiedCommits);
+  // Commits covered by a deep-verification entry render their causality
+  // analysis inside it; the rest get their own nested section.
+  const deepKeys = new Set(deepVerifiedCommits.map(bugCommitSubjectKey));
+  const causalityOnlyCommits = causalityCommits.filter(
+    (commit) => !deepKeys.has(bugCommitSubjectKey(commit)),
   );
-}
+  // With no deep-verified commits, the best causality analysis (already sorted
+  // first by model rank) is the expanded entry instead.
+  const openCausalityKey =
+    deepVerifiedCommits.length === 0 && causalityOnlyCommits.length > 0
+      ? bugCommitSubjectKey(causalityOnlyCommits[0])
+      : null;
 
-function CollapsibleSection({
-  title,
-  count,
-  defaultOpen,
-  icon,
-  children,
-}: {
-  readonly title: string;
-  readonly count?: number;
-  readonly defaultOpen?: boolean;
-  readonly icon?: React.ReactNode;
-  readonly children: React.ReactNode;
-}) {
   return (
-    <details open={defaultOpen} className="group">
-      <summary className="flex items-center gap-2 cursor-pointer text-base font-semibold tracking-tight hover:text-foreground transition-colors">
-        <span className="text-muted-foreground group-open:rotate-90 transition-transform text-xs">&#9654;</span>
-        {icon}
-        {title}
-        {count !== undefined && (
-          <span className="text-sm font-normal text-muted-foreground">({count})</span>
-        )}
-      </summary>
-      <div className="mt-3">
-        {children}
+    <Section
+      id="verification"
+      title="Deep Verification"
+      icon={<SearchCheck />}
+      aside={`(${deepVerifiedCommits.length + causalityOnlyCommits.length})`}
+      defaultOpen
+    >
+      <div className="space-y-2">
+        {deepVerifiedCommits.map((commit) => (
+          <DeepVerificationEntry
+            key={bugCommitSubjectKey(commit)}
+            commit={commit}
+            repoUrl={repoUrl}
+            defaultOpen={commit === bestDeepVerified}
+          />
+        ))}
+        {causalityOnlyCommits.map((commit) => {
+          const v = commit.screening_verification!;
+          const key = bugCommitSubjectKey(commit);
+          return (
+            <Section
+              key={key}
+              size="sm"
+              title={`${commit.sha.slice(0, 7)} · ${v.verdict} · ${getModelDetailName(v.model)}`}
+              defaultOpen={key === openCausalityKey}
+            >
+              <CausalityDetails commit={commit} repoUrl={repoUrl} />
+            </Section>
+          );
+        })}
       </div>
-    </details>
+    </Section>
   );
 }
 
@@ -521,7 +611,7 @@ export default async function CveDetailPage({
   }
 
   const repoUrl = cve.fix_commits[0]?.repo_url;
-  const { aiCommits, deepVerifiedCommits, causalityCommits, totalSignals, signalTypes } =
+  const { aiCommits, deepVerifiedCommits, causalityCommits, totalSignals } =
     analyzeBugCommits(cve.bug_commits);
 
   // Sort causality commits by model strength (strongest first) so the best analysis is expanded
@@ -531,67 +621,95 @@ export default async function CveDetailPage({
 
   const bestVerification = deepVerifiedCommits.length > 0 ? deepVerifiedCommits[0].verification! : null;
   const bestCausalityCommit = sortedCausalityCommits.length > 0 ? sortedCausalityCommits[0] : null;
-  const primaryVerdict = bestVerification?.verdict ?? bestCausalityCommit?.screening_verification?.verdict;
-  const primaryConfidence = bestVerification?.confidence ?? null;
+  const primaryVerdict =
+    cve.verdict ||
+    bestVerification?.verdict ||
+    bestCausalityCommit?.screening_verification?.verdict;
+  const primaryConfidence =
+    deepVerifiedCommits.length === 1 ? (bestVerification?.confidence ?? null) : null;
+
+  const hasVerification =
+    deepVerifiedCommits.length > 0 || sortedCausalityCommits.length > 0;
+
+  const navItems: SectionNavItem[] = [
+    { id: "attribution", label: "Attribution" },
+    { id: "commits", label: "Commits" },
+    ...(hasVerification
+      ? [{ id: "verification", label: "Verification" }]
+      : []),
+    ...(aiCommits.length > 0 ? [{ id: "signals", label: "Signals" }] : []),
+    { id: "fixes", label: "Fixes" },
+    ...(cve.references.length > 0
+      ? [{ id: "references", label: "References" }]
+      : []),
+  ];
 
   return (
-    <main className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
+    <main className="mx-auto max-w-4xl space-y-6 px-4 py-10 sm:px-6">
       {/* Header */}
       <PageHeader cve={cve} />
 
-      {/* Summary Cards — at-a-glance metrics */}
-      <SummaryCards
+      {/* At-a-glance meta strip */}
+      <MetaStrip
         cve={cve}
         primaryVerdict={primaryVerdict}
         primaryConfidence={primaryConfidence}
       />
 
+      {/* In-page navigation */}
+      <SectionNav items={navItems} />
+
       {/* Description */}
       <p className="text-sm leading-relaxed text-muted-foreground">{cve.description}</p>
 
       {/* How AI Introduced This — the star of the page */}
-      <HowIntroducedCallout cve={cve} signalTypes={signalTypes} />
+      <HowIntroducedCallout cve={cve} />
 
       {/* Attribution Chain — how we traced the vulnerability */}
-      <CollapsibleSection
+      <Section
+        id="attribution"
         title="Attribution Chain"
-        icon={<Scale className="h-4 w-4 text-muted-foreground" />}
+        icon={<Scale />}
       >
         <AttributionChain
           bugCommits={cve.bug_commits}
           fixCommits={cve.fix_commits}
           repoUrl={repoUrl}
         />
-      </CollapsibleSection>
+      </Section>
 
       {/* Bug-Introducing Commits */}
-      <CollapsibleSection
+      <Section
+        id="commits"
         title="Bug-Introducing Commits"
-        count={cve.bug_commits.length}
-        icon={<GitCommit className="h-4 w-4 text-muted-foreground" />}
+        icon={<GitCommit />}
+        aside={`(${cve.bug_commits.length})`}
         defaultOpen
       >
         <BugCommitTimeline commits={cve.bug_commits} repoUrl={repoUrl} />
-      </CollapsibleSection>
+      </Section>
 
       {/* Deep Verification + Causality Analysis */}
-      <DeepVerificationSection
-        bestVerification={bestVerification}
-        bestCausality={bestCausalityCommit}
-        causalityCommits={sortedCausalityCommits}
-        repoUrl={repoUrl}
-      />
+      {hasVerification && (
+        <DeepVerificationSection
+          deepVerifiedCommits={deepVerifiedCommits}
+          causalityCommits={sortedCausalityCommits}
+          repoUrl={repoUrl}
+        />
+      )}
 
       {/* AI Signals */}
       {aiCommits.length > 0 && (
-        <CollapsibleSection
+        <Section
+          id="signals"
           title="AI Signals"
-          count={totalSignals}
-          icon={<Fingerprint className="h-4 w-4 text-muted-foreground" />}
+          icon={<Fingerprint />}
+          aside={`(${totalSignals})`}
         >
           <div className="space-y-3">
             {aiCommits.map((commit) => (
               <AiSignalsDisplay
+                // analyzeBugCommits coalesces this commit-level view by SHA.
                 key={commit.sha}
                 signals={commit.ai_signals}
                 commitSha={commit.sha}
@@ -601,38 +719,46 @@ export default async function CveDetailPage({
               />
             ))}
           </div>
-        </CollapsibleSection>
+        </Section>
       )}
 
-      <CollapsibleSection
+      <Section
+        id="fixes"
         title="Fix Commits"
-        count={cve.fix_commits.length}
-        icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
+        icon={<Wrench />}
+        aside={`(${cve.fix_commits.length})`}
       >
         <FixCommitTimeline commits={cve.fix_commits} />
-      </CollapsibleSection>
+      </Section>
 
       {cve.references.length > 0 && (
-        <CollapsibleSection
+        <Section
+          id="references"
           title="References"
-          count={cve.references.length}
-          icon={<ExternalLink className="h-4 w-4 text-muted-foreground" />}
+          icon={<ExternalLink />}
+          aside={`(${cve.references.length})`}
         >
           <ul className="space-y-1.5">
             {cve.references.map((ref) => (
               <li key={ref}>
-                <a
-                  href={/^https?:\/\//i.test(ref) ? ref : "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary underline-offset-4 hover:underline break-all"
-                >
-                  {ref}
-                </a>
+                {/^https?:\/\//i.test(ref) ? (
+                  <a
+                    href={ref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline-offset-4 hover:underline break-all"
+                  >
+                    {ref}
+                  </a>
+                ) : (
+                  <span className="text-sm text-muted-foreground break-all">
+                    {ref}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
-        </CollapsibleSection>
+        </Section>
       )}
     </main>
   );

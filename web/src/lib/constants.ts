@@ -18,6 +18,7 @@ export const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
   kiro: "#FF6B2B",
   jetbrains_junie: "#FE315D",
   roo_code: "#FFA500",
+  roomote: "#7C3AED",
   cline: "#5A67D8",
   openhands: "#EF4444",
   lovable: "#E11D48",
@@ -29,6 +30,13 @@ export const TOOL_BRAND_COLORS: Readonly<Record<string, string>> = {
   trae: "#6366F1",
   gitlab_duo: "#FC6D26",
   kimi_code: "#5046E5",
+  mistral_vibe: "#FF7000",
+  qwen_code: "#615CED",
+  openwork: "#FF6A00",
+  qoder: "#6D5CF6",
+  coderabbit: "#FF570A",
+  ellipsis: "#111827",
+  pi: "#F59E0B",
   bolt_new: "#F97316",
   zencoder: "#0EA5E9",
   codegpt: "#10A37F",
@@ -98,6 +106,7 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   kiro: "Kiro",
   jetbrains_junie: "JetBrains Junie",
   roo_code: "Roo Code",
+  roomote: "Roomote",
   cline: "Cline",
   openhands: "OpenHands",
   lovable: "Lovable",
@@ -109,6 +118,13 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   trae: "Trae",
   gitlab_duo: "GitLab Duo",
   kimi_code: "Kimi Code",
+  mistral_vibe: "Mistral Vibe",
+  qwen_code: "Qwen Code",
+  openwork: "OpenWork",
+  qoder: "Qoder",
+  coderabbit: "CodeRabbit",
+  ellipsis: "Ellipsis",
+  pi: "Pi Coding Agent",
   google_antigravity: "Google Antigravity",
   kilo_code: "Kilo Code",
   codegeex: "CodeGeeX",
@@ -117,7 +133,7 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   codegpt: "CodeGPT",
   amp: "Amp Code",
   v0: "v0",
-  same_dev: "Same.dev",
+  same_dev: "Same",
   leap_new: "Leap.new",
   traycer: "Traycer",
   atlassian_rovo: "Atlassian Rovo",
@@ -138,57 +154,65 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
 };
 
 export const TOOL_URLS: Readonly<Record<string, string>> = {
-  claude_code: "https://docs.anthropic.com/en/docs/claude-code",
-  cursor: "https://www.cursor.com",
+  claude_code: "https://code.claude.com/docs",
+  cursor: "https://cursor.com",
   aider: "https://aider.chat",
   github_copilot: "https://github.com/features/copilot",
   devin: "https://devin.ai",
-  windsurf: "https://windsurf.com",
-  codeium: "https://codeium.com",
+  windsurf: "https://devin.ai/desktop",
+  codeium: "https://devin.ai/desktop",
   amazon_q: "https://aws.amazon.com/q/developer",
   sweep: "https://sweep.dev",
-  openai_codex: "https://openai.com/index/openai-codex",
-  google_gemini: "https://gemini.google.com",
+  openai_codex: "https://openai.com/codex/",
+  google_gemini: "https://codeassist.google",
   google_jules: "https://jules.google",
   tabnine: "https://www.tabnine.com",
-  sourcegraph_cody: "https://sourcegraph.com/cody",
+  sourcegraph_cody: "https://sourcegraph.com/docs/cody",
   opencode: "https://opencode.ai",
   kiro: "https://kiro.dev",
   jetbrains_junie: "https://www.jetbrains.com/junie",
-  roo_code: "https://roocode.com",
+  roo_code: "https://github.com/RooCodeInc/Roo-Code",
+  roomote: "https://roomote.dev",
   cline: "https://cline.bot",
-  openhands: "https://www.all-hands.dev",
+  openhands: "https://openhands.dev",
   lovable: "https://lovable.dev",
   fine_dev: "https://fine.dev",
   replit_agent: "https://replit.com",
   qodo: "https://www.qodo.ai",
-  continue_dev: "https://continue.dev",
+  continue_dev: "https://www.continue.dev",
   augment_code: "https://www.augmentcode.com",
-  trae: "https://trae.ai",
-  gitlab_duo: "https://about.gitlab.com/gitlab-duo",
-  kimi_code: "https://kimi.ai",
-  google_antigravity: "https://antigravity.dev",
-  kilo_code: "https://kilocode.ai",
+  trae: "https://www.trae.ai",
+  gitlab_duo: "https://about.gitlab.com/gitlab-duo-agent-platform",
+  kimi_code: "https://moonshotai.github.io/kimi-code/en/",
+  mistral_vibe: "https://github.com/mistralai/mistral-vibe",
+  qwen_code: "https://github.com/QwenLM/qwen-code",
+  openwork: "https://github.com/modelstudioai/openwork",
+  qoder: "https://qoder.com",
+  coderabbit: "https://www.coderabbit.ai",
+  ellipsis: "https://www.ellipsis.dev",
+  pi: "https://pi.dev",
+  google_antigravity: "https://antigravity.google/docs/cli-overview",
+  kilo_code: "https://kilo.ai",
   codegeex: "https://codegeex.cn",
   bolt_new: "https://bolt.new",
   zencoder: "https://zencoder.ai",
   codegpt: "https://codegpt.co",
   amp: "https://ampcode.com",
-  v0: "https://v0.dev",
-  same_dev: "https://same.dev",
+  v0: "https://v0.app",
+  same_dev: "https://same.new",
   leap_new: "https://leap.new",
   traycer: "https://traycer.ai",
-  atlassian_rovo: "https://www.atlassian.com/rovo",
-  aether: "https://aether.engineer",
+  atlassian_rovo: "https://www.atlassian.com/software/rovo",
+  aether: "https://tryaether.ai",
   factory_droid: "https://factory.ai",
   goose: "https://block.github.io/goose",
   cosine_genie: "https://cosine.sh",
-  grok_build: "https://grokai.build",
+  grok_build: "https://docs.x.ai/build/overview",
   blackbox_ai: "https://www.blackbox.ai",
-  plandex: "https://plandex.ai",
-  mentat: "https://mentat.ai",
+  plandex: "https://github.com/plandex-ai/plandex",
+  mentat: "https://marketplace.visualstudio.com/items?itemName=AbanteAI.mentat",
   forgecode: "https://forgecode.dev",
-  mux: "https://coder.com/products/mux",
+  mux: "https://coder.com/solutions/agents",
   letta_code: "https://www.letta.com",
   warp: "https://www.warp.dev",
   abacus_ai: "https://abacus.ai",
@@ -205,6 +229,7 @@ export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   committer_email: "Committer email",
   commit_message: "Commit message",
   message_keyword: "Commit message keyword",
+  generated_by_trailer: "Generated-by trailer",
   branch_name: "Branch name",
   co_author_trailer_generic: "Co-author trailer (generic)",
   pr_body_keyword: "PR body keyword",
@@ -216,6 +241,7 @@ export const SIGNAL_TYPE_LABELS: Readonly<Record<string, string>> = {
   squash_decomposed_commit_message: "Squash PR commit message",
   squash_decomposed_message_keyword: "Squash PR message keyword",
   squash_decomposed_branch_name: "Squash PR branch name",
+  agent_logs_url_trailer: "Agent logs URL trailer",
 };
 
 /** Brand colors for programming languages. */
@@ -270,18 +296,66 @@ export function formatConfidence(confidence: number): string {
 
 /** Model metadata: display name, provider, and strength rank (lower = stronger). */
 const MODEL_METADATA: Readonly<
-  Record<string, { displayName: string; detailName: string; provider: string; rank: number }>
+  Record<
+    string,
+    { displayName: string; detailName: string; provider: string; rank: number }
+  >
 > = {
-  "claude-code": { displayName: "Claude Code", detailName: "Claude Code", provider: "anthropic-sdk", rank: 0 },
-  "claude-opus-4-6": { displayName: "Claude", detailName: "Claude Opus 4.6", provider: "anthropic", rank: 0 },
-  "gemini-3.1-pro-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Pro", provider: "google", rank: 0 },
-  "gemini-3.1-flash-lite-preview": { displayName: "Gemini", detailName: "Gemini 3.1 Flash Lite", provider: "google", rank: 2 },
-  "gemini-3-flash-preview": { displayName: "Gemini", detailName: "Gemini 3 Flash", provider: "google", rank: 1 },
-  "gpt-5.4": { displayName: "GPT", detailName: "GPT-5.4", provider: "openai", rank: 0 },
+  "claude-code": {
+    displayName: "Claude Code",
+    detailName: "Claude Code",
+    provider: "anthropic-cli",
+    rank: 0,
+  },
+  "claude-opus-4-6": {
+    displayName: "Claude",
+    detailName: "Claude Opus 4.6",
+    provider: "anthropic",
+    rank: 0,
+  },
+  "gemini-3.1-pro-preview": {
+    displayName: "Gemini",
+    detailName: "Gemini 3.1 Pro",
+    provider: "google",
+    rank: 0,
+  },
+  "gemini-3.1-flash-lite-preview": {
+    displayName: "Gemini",
+    detailName: "Gemini 3.1 Flash Lite",
+    provider: "google",
+    rank: 2,
+  },
+  "gemini-3-flash-preview": {
+    displayName: "Gemini",
+    detailName: "Gemini 3 Flash",
+    provider: "google",
+    rank: 1,
+  },
+  "gpt-5.6-luna": {
+    displayName: "GPT",
+    detailName: "GPT-5.6 Luna",
+    provider: "openai",
+    rank: 0,
+  },
+  "gpt-5.4": {
+    displayName: "GPT",
+    detailName: "GPT-5.4",
+    provider: "openai",
+    rank: 1,
+  },
 };
 
 /** Reasoning mode suffixes appended to model names in verified_by fields. */
-const REASONING_SUFFIXES = ["-high", "-thinking"] as const;
+const REASONING_SUFFIXES = [
+  "-thinking",
+  "-minimal",
+  "-medium",
+  "-xhigh",
+  "-high",
+  "-none",
+  "-low",
+  "-max",
+] as const;
 
 /** Strip reasoning suffix (e.g. "-high", "-thinking") to get the base model name. */
 function stripReasoningSuffix(model: string): string {
@@ -294,7 +368,13 @@ function stripReasoningSuffix(model: string): string {
 /** Readable suffix labels for reasoning modes. */
 const REASONING_SUFFIX_LABELS: Readonly<Record<string, string>> = {
   "-high": "High",
+  "-low": "Low",
+  "-max": "Max",
+  "-medium": "Medium",
+  "-minimal": "Minimal",
+  "-none": "None",
   "-thinking": "Thinking",
+  "-xhigh": "Extra High",
 };
 
 /** Get short display name for a verification model (used in table badges). */
@@ -304,14 +384,20 @@ export function getModelDisplayName(model: string): string {
   if (!meta) return model;
   const suffix = model.slice(base.length); // e.g. "-high", "-thinking", or ""
   const label = REASONING_SUFFIX_LABELS[suffix];
-  // Gemini model names are already long enough — skip the suffix
-  if (meta.provider === "google") return meta.detailName;
+  // Gemini/Claude model names are already long enough for a table cell — skip the suffix
+  if (meta.provider === "google" || meta.provider === "anthropic")
+    return meta.detailName;
   return label ? `${meta.detailName} ${label}` : meta.detailName;
 }
 
 /** Get full display name for a verification model (used in detail pages). */
 export function getModelDetailName(model: string): string {
-  return getModelDisplayName(model);
+  const base = stripReasoningSuffix(model);
+  const meta = MODEL_METADATA[base];
+  if (!meta) return model;
+  const suffix = model.slice(base.length);
+  const label = REASONING_SUFFIX_LABELS[suffix];
+  return label ? `${meta.detailName} ${label}` : meta.detailName;
 }
 
 /** Model strength rank (lower = stronger). Unknown models default to 99. */

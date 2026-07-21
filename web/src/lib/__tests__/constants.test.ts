@@ -10,10 +10,14 @@ import {
   truncate,
   getLanguageColor,
   getModelDisplayName,
+  getModelDetailName,
   deduplicateModels,
   SEVERITY_COLORS,
   LANGUAGE_COLORS,
   LANGUAGE_FALLBACK_COLOR,
+  TOOL_BRAND_COLORS,
+  TOOL_DISPLAY_NAMES,
+  TOOL_URLS,
 } from "../constants";
 
 describe("severityBadgeClass", () => {
@@ -31,10 +35,77 @@ describe("severityBadgeClass", () => {
 });
 
 describe("getToolDisplayName", () => {
+  it("keeps the monitored-tool catalog complete", () => {
+    const monitored = Object.keys(TOOL_DISPLAY_NAMES)
+      .filter((tool) => tool !== "unknown_ai")
+      .sort();
+
+    expect(monitored).toHaveLength(62);
+    expect(Object.keys(TOOL_URLS).sort()).toEqual(monitored);
+    expect(
+      Object.keys(TOOL_BRAND_COLORS)
+        .filter((tool) => tool !== "unknown_ai")
+        .sort(),
+    ).toEqual(monitored);
+  });
+
   it("returns display name for known tools", () => {
     expect(getToolDisplayName("claude_code")).toBe("Claude Code");
     expect(getToolDisplayName("cursor")).toBe("Cursor");
     expect(getToolDisplayName("github_copilot")).toBe("GitHub Copilot");
+  });
+
+  it("publishes the complete Qwen Code catalog entry", () => {
+    expect(TOOL_DISPLAY_NAMES.qwen_code).toBe("Qwen Code");
+    expect(TOOL_BRAND_COLORS.qwen_code).toMatch(/^#[0-9A-F]{6}$/i);
+    expect(TOOL_URLS.qwen_code).toBe("https://github.com/QwenLM/qwen-code");
+  });
+
+  it.each([
+    ["qoder", "Qoder", "https://qoder.com"],
+    ["coderabbit", "CodeRabbit", "https://www.coderabbit.ai"],
+    ["ellipsis", "Ellipsis", "https://www.ellipsis.dev"],
+    ["pi", "Pi Coding Agent", "https://pi.dev"],
+    [
+      "mistral_vibe",
+      "Mistral Vibe",
+      "https://github.com/mistralai/mistral-vibe",
+    ],
+    ["kimi_code", "Kimi Code", "https://moonshotai.github.io/kimi-code/en/"],
+    ["openwork", "OpenWork", "https://github.com/modelstudioai/openwork"],
+    [
+      "google_antigravity",
+      "Google Antigravity",
+      "https://antigravity.google/docs/cli-overview",
+    ],
+    ["roomote", "Roomote", "https://roomote.dev"],
+    ["grok_build", "Grok Build", "https://docs.x.ai/build/overview"],
+    ["same_dev", "Same", "https://same.new"],
+  ])("publishes the complete %s catalog entry", (tool, name, url) => {
+    expect(TOOL_DISPLAY_NAMES[tool]).toBe(name);
+    expect(TOOL_BRAND_COLORS[tool]).toMatch(/^#[0-9A-F]{6}$/i);
+    expect(TOOL_URLS[tool]).toBe(url);
+  });
+
+  it.each([
+    ["claude_code", "https://code.claude.com/docs"],
+    ["openai_codex", "https://openai.com/codex/"],
+    ["windsurf", "https://devin.ai/desktop"],
+    ["codeium", "https://devin.ai/desktop"],
+    ["google_gemini", "https://codeassist.google"],
+    ["roo_code", "https://github.com/RooCodeInc/Roo-Code"],
+    ["openhands", "https://openhands.dev"],
+    ["kilo_code", "https://kilo.ai"],
+    ["v0", "https://v0.app"],
+    ["aether", "https://tryaether.ai"],
+    ["plandex", "https://github.com/plandex-ai/plandex"],
+    [
+      "mentat",
+      "https://marketplace.visualstudio.com/items?itemName=AbanteAI.mentat",
+    ],
+    ["mux", "https://coder.com/solutions/agents"],
+  ])("uses the current %s destination", (tool, url) => {
+    expect(TOOL_URLS[tool]).toBe(url);
   });
 
   it("returns raw key for unknown tools", () => {
@@ -48,10 +119,19 @@ describe("getSignalTypeLabel", () => {
     expect(getSignalTypeLabel("author_email")).toBe("Author email");
     expect(getSignalTypeLabel("author_name")).toBe("Author name");
     expect(getSignalTypeLabel("committer_email")).toBe("Committer email");
-    expect(getSignalTypeLabel("message_keyword")).toBe("Commit message keyword");
+    expect(getSignalTypeLabel("message_keyword")).toBe(
+      "Commit message keyword",
+    );
     expect(getSignalTypeLabel("pr_body_keyword")).toBe("PR body keyword");
-    expect(getSignalTypeLabel("squash_decomposed_co_author_trailer")).toBe("Squash PR co-author");
-    expect(getSignalTypeLabel("squash_decomposed_author_email")).toBe("Squash PR author email");
+    expect(getSignalTypeLabel("squash_decomposed_co_author_trailer")).toBe(
+      "Squash PR co-author",
+    );
+    expect(getSignalTypeLabel("squash_decomposed_author_email")).toBe(
+      "Squash PR author email",
+    );
+    expect(getSignalTypeLabel("agent_logs_url_trailer")).toBe(
+      "Agent logs URL trailer",
+    );
   });
 
   it("replaces underscores for unknown types", () => {
@@ -110,7 +190,9 @@ describe("verifiedByTooltip", () => {
   });
 
   it("returns model name for other values", () => {
-    expect(verifiedByTooltip("claude-opus-4-6")).toBe("Verified by claude-opus-4-6");
+    expect(verifiedByTooltip("claude-opus-4-6")).toBe(
+      "Verified by claude-opus-4-6",
+    );
   });
 });
 
@@ -137,7 +219,9 @@ describe("verifiedBadgeColor", () => {
   });
 
   it("returns indigo for gemini pro models", () => {
-    expect(verifiedBadgeColor("gemini-3.1-pro-preview")).toContain("bg-indigo-500");
+    expect(verifiedBadgeColor("gemini-3.1-pro-preview")).toContain(
+      "bg-indigo-500",
+    );
   });
 
   it("returns zinc fallback for unknown models", () => {
@@ -146,10 +230,28 @@ describe("verifiedBadgeColor", () => {
 });
 
 describe("getModelDisplayName", () => {
-  it("returns abbreviated name for known models", () => {
-    expect(getModelDisplayName("claude-opus-4-6")).toBe("Claude");
-    expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe("Gemini");
-    expect(getModelDisplayName("gpt-5.4")).toBe("GPT");
+  it("returns detailed name for known models", () => {
+    expect(getModelDisplayName("claude-opus-4-6")).toBe("Claude Opus 4.6");
+    expect(getModelDisplayName("gemini-3.1-pro-preview")).toBe(
+      "Gemini 3.1 Pro",
+    );
+    expect(getModelDisplayName("gpt-5.4")).toBe("GPT-5.4");
+    expect(getModelDisplayName("gpt-5.6-luna-max")).toBe("GPT-5.6 Luna Max");
+  });
+
+  it("keeps short suffixes and trims long table labels", () => {
+    expect(getModelDisplayName("gpt-5.4-high")).toBe("GPT-5.4 High");
+    expect(getModelDisplayName("claude-opus-4-6-thinking")).toBe(
+      "Claude Opus 4.6",
+    );
+  });
+
+  it("keeps reasoning suffixes in detail labels", () => {
+    expect(getModelDetailName("claude-opus-4-6-thinking")).toBe(
+      "Claude Opus 4.6 Thinking",
+    );
+    expect(getModelDetailName("gpt-5.4-high")).toBe("GPT-5.4 High");
+    expect(getModelDetailName("gpt-5.6-luna-max")).toBe("GPT-5.6 Luna Max");
   });
 
   it("returns raw string for unknown models", () => {
@@ -165,11 +267,13 @@ describe("deduplicateModels", () => {
       "gemini-3.1-flash-lite-preview",
       "gemini-3-flash-preview",
       "gpt-5.4",
+      "gpt-5.6-luna-max",
     ];
     const result = deduplicateModels(models);
     expect(result).toContain("claude-opus-4-6");
     expect(result).toContain("gemini-3.1-pro-preview");
-    expect(result).toContain("gpt-5.4");
+    expect(result).toContain("gpt-5.6-luna-max");
+    expect(result).not.toContain("gpt-5.4");
     expect(result).not.toContain("gemini-3.1-flash-lite-preview");
     expect(result).not.toContain("gemini-3-flash-preview");
     expect(result).toHaveLength(3);

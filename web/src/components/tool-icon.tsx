@@ -1,7 +1,20 @@
+import Image from "next/image";
 import { getToolDisplayName } from "@/lib/constants";
 
 /** Tools that have separate light/dark SVGs (e.g. foo.svg + foo_dark.svg). */
-const THEMED_ICONS = new Set(["github_copilot", "cursor", "unknown_ai"]);
+export const THEMED_ICONS = new Set(["github_copilot", "cursor", "unknown_ai"]);
+
+/** Intrinsic SVG width/height ratios for the non-square tool marks. */
+const ICON_ASPECT_RATIOS: Readonly<Record<string, number>> = {
+  cursor: 466.73 / 532.09,
+  github_copilot: 256 / 208,
+  replit_agent: 20 / 24,
+};
+
+export function getIconDimensions(iconKey: string, width: number) {
+  const ratio = ICON_ASPECT_RATIOS[iconKey] ?? 1;
+  return { width, height: Math.round(width / ratio) };
+}
 
 /** Map of tool keys that have dedicated SVG icon files in /icons/tools/. */
 const TOOLS_WITH_ICONS = new Set([
@@ -57,6 +70,7 @@ interface ToolIconProps {
 
 export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
   const displayName = getToolDisplayName(tool);
+  const dimensions = getIconDimensions(tool, size);
 
   if (!TOOLS_WITH_ICONS.has(tool)) {
     return (
@@ -72,20 +86,18 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
   if (THEMED_ICONS.has(tool)) {
     return (
       <>
-        <img
+        <Image
           src={`/icons/tools/${tool}.svg`}
           alt={displayName}
           title={displayName}
-          width={size}
-          height={size}
+          {...dimensions}
           className="inline-block shrink-0 dark:hidden"
         />
-        <img
+        <Image
           src={`/icons/tools/${tool}_dark.svg`}
           alt={displayName}
           title={displayName}
-          width={size}
-          height={size}
+          {...dimensions}
           className="hidden shrink-0 dark:inline-block"
         />
       </>
@@ -93,12 +105,11 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
   }
 
   return (
-    <img
+    <Image
       src={`/icons/tools/${tool}.svg`}
       alt={displayName}
       title={displayName}
-      width={size}
-      height={size}
+      {...dimensions}
       className="inline-block shrink-0"
     />
   );

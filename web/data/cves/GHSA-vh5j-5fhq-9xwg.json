@@ -1,0 +1,154 @@
+{
+  "generation_id": "6595dc7515539bda1e9bfaef5872a00e685afaa819b6a89d0294d96cf0d0d995",
+  "id": "GHSA-vh5j-5fhq-9xwg",
+  "description": "Taylor has race condition in /get-patch that allows purchase token replay",
+  "severity": "LOW",
+  "cvss": 0.0,
+  "cwes": [
+    "CWE-362"
+  ],
+  "ecosystem": "",
+  "published": "2025-06-27",
+  "ai_tools": [
+    "google_jules"
+  ],
+  "ai_involved": null,
+  "signal_source": "commit",
+  "languages": [
+    "JavaScript"
+  ],
+  "confidence": 0.95,
+  "verified_by": "gpt-5.4-high",
+  "how_introduced": "This AI-authored commit first introduced token_used_at, the \"Purchase token has already been used.\" check, and the separate UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ? after the earlier SELECT. Pickaxe search shows the token_used_at strings and the update statement originate here. That is exactly the non-atomic check-then-act pattern the fix replaced with a single conditional UPDATE, so this commit introduced the race.",
+  "root_cause": "",
+  "vuln_type": "",
+  "vulnerable_pattern": "",
+  "verdict": "CONFIRMED",
+  "bug_commits": [
+    {
+      "sha": "45b69f6becd298e7bb7a15b5c57a7de007771d7b",
+      "author": "google-labs-jules[bot]",
+      "date": "2025-06-22T12:39:13+00:00",
+      "message": "Update PayPal SDK in Backend-in-a-Box and attempt dependency audit",
+      "ai_signals": [
+        {
+          "tool": "google_jules",
+          "signal_type": "author_name",
+          "matched_text": "jules[bot]",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "templates/backend-in-a-box/index.js",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "UNRELATED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "UNRELATED",
+            "reasoning": "This commit only refactored PayPal SDK usage and order creation code. Its diff does not touch the /get-patch token-consumption logic, and blame on the vulnerable pre-fix lines attributes that hunk to earlier commits (mostly 5e5a80b5, plus older ancestry), not to 45b69f6. It was blamed because it touched the file, not because it introduced the race.",
+            "confidence": 0.95,
+            "tool_calls_made": 35,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "57b7634391959dbbdb39b387ac4dc68157cd58a1",
+      "author": "google-labs-jules[bot]",
+      "date": "2025-06-18T06:37:58+00:00",
+      "message": "Enhance Taysell security and usability",
+      "ai_signals": [
+        {
+          "tool": "google_jules",
+          "signal_type": "author_name",
+          "matched_text": "jules[bot]",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "templates/backend-in-a-box/index.js",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "CONFIRMED",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "CONFIRMED",
+            "reasoning": "This AI-authored commit first introduced token_used_at, the \"Purchase token has already been used.\" check, and the separate UPDATE purchases SET token_used_at = CURRENT_TIMESTAMP WHERE id = ? after the earlier SELECT. Pickaxe search shows the token_used_at strings and the update statement originate here. That is exactly the non-atomic check-then-act pattern the fix replaced with a single conditional UPDATE, so this commit introduced the race.",
+            "confidence": 0.95,
+            "tool_calls_made": 35,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    },
+    {
+      "sha": "c139c021f68a09d22c2af88641b61c00f67f2af4",
+      "author": "google-labs-jules[bot]",
+      "date": "2025-06-16T08:08:04+00:00",
+      "message": "7.0.5",
+      "ai_signals": [
+        {
+          "tool": "google_jules",
+          "signal_type": "author_name",
+          "matched_text": "jules[bot]",
+          "confidence": 0.95
+        }
+      ],
+      "blamed_file": "templates/backend-in-a-box/index.js",
+      "blame_confidence": 1.0,
+      "fix_commit_source": "github_advisory",
+      "blame_strategy": "blame_deleted",
+      "fix_commit_sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "screening_verification": null,
+      "verification": {
+        "verdict": "UNLIKELY",
+        "confidence": 0.95,
+        "models": [
+          "gpt-5.4"
+        ],
+        "agent_verdicts": [
+          {
+            "model": "gpt-5.4",
+            "verdict": "UNLIKELY",
+            "reasoning": "This initial commit created /get-patch, but its implementation only did SELECT * FROM purchases ... and then returned the decrypted patch; it had no token_used_at column, no already-used check, and no UPDATE to consume the token. That means the screening hypothesis is incorrect: c139 did not introduce the non-atomic check-then-act flow fixed in fdf67a6. It introduced a more permissive reusable-token design, but not the specific race condition this CVE fix addresses.",
+            "confidence": 0.95,
+            "tool_calls_made": 35,
+            "steps_completed": 0,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  ],
+  "fix_commits": [
+    {
+      "sha": "fdf67a6fba0deae30912905a79fb5a9e83751a79",
+      "repo_url": "https://github.com/tailot/taylored",
+      "source": "github_advisory"
+    }
+  ],
+  "references": [
+    "https://github.com/tailot/taylored/security/advisories/GHSA-vh5j-5fhq-9xwg",
+    "https://github.com/tailot/taylored/commit/fdf67a6fba0deae30912905a79fb5a9e83751a79"
+  ]
+}
