@@ -1814,7 +1814,7 @@ def _openclaw_checkout_base_contract(
         "full_clone": True,
         "head_matches_remote_tracking": details["head"] == tracking_head,
         "git_integrity": "fsck_full_strict",
-        "tracked_symlink_policy": "relative_target_to_tracked_regular_file",
+        "tracked_symlink_policy": "in_repo_target_to_tracked_file_or_directory",
     }
 
 

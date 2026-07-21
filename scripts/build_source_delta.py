@@ -1304,6 +1304,121 @@ def _dirty_git_worktree_error(label: str, detail: str) -> SourceDeltaError:
     )
 
 
+def _tracked_symlink_target(
+    relative: str,
+    target: str,
+    *,
+    expected_files: Mapping[str, tuple[str, int]],
+    expected_directories: set[str],
+    expected_symlink_targets: Mapping[str, str],
+    label: str,
+) -> str:
+    """Resolve a tracked symlink lexically and keep it inside the HEAD tree."""
+
+    def resolve_parts(base: Sequence[str], raw_target: str) -> list[str]:
+        target_path = PurePosixPath(raw_target)
+        if (
+            not raw_target
+            or target_path.is_absolute()
+            or ".git" in target_path.parts
+        ):
+            raise SourceDeltaError(
+                f"{label} worktree contains an unsafe tracked symlink: "
+                f"{relative!r} -> {target!r}"
+            )
+        parts = list(base)
+        for part in target_path.parts:
+            if part == "..":
+                if not parts:
+                    raise SourceDeltaError(
+                        f"{label} worktree contains an unsafe tracked symlink: "
+                        f"{relative!r} -> {target!r}"
+                    )
+                parts.pop()
+            else:
+                parts.append(part)
+        if ".git" in parts:
+            raise SourceDeltaError(
+                f"{label} worktree contains an unsafe tracked symlink: "
+                f"{relative!r} -> {target!r}"
+            )
+        return parts
+
+    resolved_parts = resolve_parts(PurePosixPath(relative).parent.parts, target)
+    seen: set[tuple[str, ...]] = set()
+    while True:
+        state = tuple(resolved_parts)
+        if state in seen or len(seen) > len(expected_symlink_targets):
+            raise SourceDeltaError(
+                f"{label} worktree contains a cyclic tracked symlink: "
+                f"{relative!r} -> {target!r}"
+            )
+        seen.add(state)
+        expanded = False
+        for index in range(1, len(resolved_parts) + 1):
+            prefix = PurePosixPath(*resolved_parts[:index]).as_posix()
+            nested_target = expected_symlink_targets.get(prefix)
+            if nested_target is None:
+                continue
+            expanded_prefix = resolve_parts(resolved_parts[: index - 1], nested_target)
+            resolved_parts = expanded_prefix + resolved_parts[index:]
+            expanded = True
+            break
+        if not expanded:
+            break
+
+    resolved_target = (
+        PurePosixPath(*resolved_parts).as_posix() if resolved_parts else "."
+    )
+    if (
+        resolved_target not in expected_files
+        and resolved_target not in expected_directories
+        and resolved_target != "."
+    ):
+        raise SourceDeltaError(
+            f"{label} tracked symlink target is not a tracked regular file or "
+            f"directory: {relative!r} -> {target!r}"
+        )
+    return resolved_target
+
+
+def _validate_tracked_symlink(
+    *,
+    name: str,
+    root_fd: int,
+    relative: str,
+    before: os.stat_result,
+    expected_symlink_oid: str,
+    expected_files: Mapping[str, tuple[str, int]],
+    expected_directories: set[str],
+    expected_symlink_targets: Mapping[str, str],
+    label: str,
+) -> None:
+    if not stat.S_ISLNK(before.st_mode):
+        raise SourceDeltaError(
+            f"{label} worktree symlink differs from HEAD for {relative!r}"
+        )
+    target = os.readlink(name, dir_fd=root_fd)
+    _tracked_symlink_target(
+        relative,
+        target,
+        expected_files=expected_files,
+        expected_directories=expected_directories,
+        expected_symlink_targets=expected_symlink_targets,
+        label=label,
+    )
+    after = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    if _git_metadata_signature_from_stat(after) != (
+        _git_metadata_signature_from_stat(before)
+    ):
+        raise SourceDeltaError(
+            f"{label} worktree changed while reading symlink {relative!r}"
+        )
+    actual_oid = _git_blob_bytes_oid(os.fsencode(target), len(expected_symlink_oid))
+    if actual_oid != expected_symlink_oid:
+        raise _dirty_git_worktree_error(label, repr(relative))
+
+
 def _validate_head_worktree_snapshot(
     directory: Path,
     label: str,
@@ -1316,6 +1431,7 @@ def _validate_head_worktree_snapshot(
     raw_tree = git_output(["ls-tree", "-r", "-z", "--full-tree", "HEAD"])
     expected_files: dict[str, tuple[str, int]] = {}
     expected_symlinks: dict[str, str] = {}
+    expected_symlink_targets: dict[str, str] = {}
     expected_directories: set[str] = set()
     oid_length: int | None = None
     for raw_entry in raw_tree.split("\0"):
@@ -1363,6 +1479,15 @@ def _validate_head_worktree_snapshot(
             expected_directories.add(parent.as_posix())
             parent = parent.parent
 
+    for path, oid in expected_symlinks.items():
+        target = git_output(["cat-file", "blob", oid])
+        if _git_blob_bytes_oid(os.fsencode(target), len(oid)) != oid:
+            raise SourceDeltaError(
+                f"{label} tracked symlink target has an unsupported encoding: "
+                f"{path!r}"
+            )
+        expected_symlink_targets[path] = target
+
     actual_files: set[str] = set()
     directory_signatures: dict[Path, tuple[int, int, int, int, int, int]] = {}
     try:
@@ -1387,9 +1512,24 @@ def _validate_head_worktree_snapshot(
                 metadata = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
                 relative = f"{root_prefix}/{name}" if root_prefix else name
                 if stat.S_ISLNK(metadata.st_mode):
-                    raise SourceDeltaError(
-                        f"{label} worktree contains a symlink: {relative!r}"
+                    expected_symlink_oid = expected_symlinks.get(relative)
+                    if expected_symlink_oid is None:
+                        raise SourceDeltaError(
+                            f"{label} worktree contains a symlink: {relative!r}"
+                        )
+                    _validate_tracked_symlink(
+                        name=name,
+                        root_fd=root_fd,
+                        relative=relative,
+                        before=metadata,
+                        expected_symlink_oid=expected_symlink_oid,
+                        expected_files=expected_files,
+                        expected_directories=expected_directories,
+                        expected_symlink_targets=expected_symlink_targets,
+                        label=label,
                     )
+                    actual_files.add(relative)
+                    continue
                 if not stat.S_ISDIR(metadata.st_mode):
                     raise SourceDeltaError(
                         f"{label} worktree contains a non-directory entry: {relative!r}"
@@ -1417,42 +1557,17 @@ def _validate_head_worktree_snapshot(
                     )
                 before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
                 if expected_symlink_oid is not None:
-                    if not stat.S_ISLNK(before.st_mode):
-                        raise SourceDeltaError(
-                            f"{label} worktree symlink differs from HEAD for "
-                            f"{relative!r}"
-                        )
-                    target = os.readlink(name, dir_fd=root_fd)
-                    target_path = PurePosixPath(target)
-                    if (
-                        not target
-                        or target_path.is_absolute()
-                        or ".." in target_path.parts
-                        or ".git" in target_path.parts
-                    ):
-                        raise SourceDeltaError(
-                            f"{label} worktree contains an unsafe tracked symlink: "
-                            f"{relative!r} -> {target!r}"
-                        )
-                    resolved_target = (PurePosixPath(relative).parent / target_path).as_posix()
-                    if resolved_target not in expected_files:
-                        raise SourceDeltaError(
-                            f"{label} tracked symlink target is not a tracked regular "
-                            f"file: {relative!r} -> {target!r}"
-                        )
-                    after = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
-                    if _git_metadata_signature_from_stat(after) != (
-                        _git_metadata_signature_from_stat(before)
-                    ):
-                        raise SourceDeltaError(
-                            f"{label} worktree changed while reading symlink "
-                            f"{relative!r}"
-                        )
-                    actual_oid = _git_blob_bytes_oid(
-                        os.fsencode(target), len(expected_symlink_oid)
+                    _validate_tracked_symlink(
+                        name=name,
+                        root_fd=root_fd,
+                        relative=relative,
+                        before=before,
+                        expected_symlink_oid=expected_symlink_oid,
+                        expected_files=expected_files,
+                        expected_directories=expected_directories,
+                        expected_symlink_targets=expected_symlink_targets,
+                        label=label,
                     )
-                    if actual_oid != expected_symlink_oid:
-                        raise _dirty_git_worktree_error(label, repr(relative))
                     actual_files.add(relative)
                     continue
                 if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):

@@ -1784,8 +1784,52 @@ def test_openclaw_checkout_contract_binds_clean_current_full_clone(
         "full_clone": True,
         "head_matches_remote_tracking": True,
         "git_integrity": "fsck_full_strict",
-        "tracked_symlink_policy": "relative_target_to_tracked_regular_file",
+        "tracked_symlink_policy": "in_repo_target_to_tracked_file_or_directory",
     }
+
+
+def test_openclaw_checkout_contract_accepts_tracked_directory_symlink(
+    tmp_path: Path,
+) -> None:
+    checkout = tmp_path / "openclaw"
+    _init_current_openclaw_checkout(checkout)
+    target = checkout / "packages" / "media-core"
+    target.mkdir(parents=True)
+    (target / "index.ts").write_text("export {}\n", encoding="utf-8")
+    link_parent = checkout / "ui" / "node_modules" / "@openclaw"
+    link_parent.mkdir(parents=True)
+    (link_parent / "media-core").symlink_to("../../../packages/media-core")
+    root_link_parent = checkout / "packages" / "speech-core" / "node_modules"
+    root_link_parent.mkdir(parents=True)
+    (root_link_parent / "openclaw").symlink_to("../../..")
+    bin_parent = root_link_parent / ".bin"
+    bin_parent.mkdir()
+    (bin_parent / "openclaw").symlink_to("../openclaw/source.json")
+    subprocess.run(
+        ["git", "-C", str(checkout), "add", "-f", "packages", "ui/node_modules"],
+        check=True,
+    )
+    _commit_fixture(checkout, "add safe tracked directory symlink")
+    head = subprocess.check_output(
+        ["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True
+    ).strip()
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(checkout),
+            "update-ref",
+            runner._OPENCLAW_REMOTE_TRACKING_REF,
+            head,
+        ],
+        check=True,
+    )
+
+    contract = runner._openclaw_checkout_contract(lambda _url: checkout)
+
+    assert contract["tracked_symlink_policy"] == (
+        "in_repo_target_to_tracked_file_or_directory"
+    )
 
 
 def test_openclaw_checkout_contract_rejects_escaping_tracked_symlink(
