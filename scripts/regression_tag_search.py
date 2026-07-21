@@ -314,7 +314,7 @@ def _print_diagnosis(diag_results: list[tuple[str, str, dict]]) -> None:
 
     if score_gaps:
         score_gaps.sort()
-        print(f"\nScore gap (top vs expected) for outscored cases:")
+        print("\nScore gap (top vs expected) for outscored cases:")
         print(f"  median: {score_gaps[len(score_gaps)//2]:.1f}")
         print(f"  p25:    {score_gaps[len(score_gaps)//4]:.1f}")
         print(f"  p75:    {score_gaps[3*len(score_gaps)//4]:.1f}")
@@ -330,7 +330,7 @@ def _print_diagnosis(diag_results: list[tuple[str, str, dict]]) -> None:
                 buckets["3-5 (large)"] += 1
             else:
                 buckets[">5 (huge)"] += 1
-        print(f"  gap distribution:")
+        print("  gap distribution:")
         for label in ["≤1 (close)", "1-3 (moderate)", "3-5 (large)", ">5 (huge)"]:
             if label in buckets:
                 print(f"    {label}: {buckets[label]}")

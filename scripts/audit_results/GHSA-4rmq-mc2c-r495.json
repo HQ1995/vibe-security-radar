@@ -1,0 +1,24 @@
+{
+  "cve_id": "GHSA-4rmq-mc2c-r495",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "audited": "2026-07-18",
+  "vulnerability_summary": "Babylon skipped costaker reward-tracker subtraction when a BTC unbond made a finality provider leave the active set, leaving phantom active stake eligible for rewards.",
+  "causality": "Human atomic commit f0f7d0d7448945f0384a6e0884090994ae0ad04d in focused PR #1731 introduced the exact vulnerable condition `!isFpActiveInPrevSet || !isFpActiveInCurrSet` to avoid a perceived double subtraction. Its message and commit contain no AI authorship signal. Human follow-up 933b6b2e33b8c1660d10b8fcabf8a2f55372a6e8 retained the condition, and squash a7c9a2828f213e8157ba60501dfcc0e43233f77e merged it without an AI trailer. Later 188-file costaking squash 77c301cc72b9851bd0ff9054370781028cf5a6c9 and backport commits b2d307ae423546bedfbde116e025f55f60f2b643 / 2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36 aggregate many contributors and carry a generic Copilot coauthor among numerous trailers; they cannot transfer Copilot authorship to the already-existing human vulnerable line. Fix e65c3a55a398a403103f1b089cf76f0d4befc7a0 removes the current-set test, directly reversing f0f7d0d.",
+  "evidence": {
+    "repo": "https://github.com/babylonlabs-io/babylon",
+    "path": "x/costaking/keeper/hooks_finality.go",
+    "human_atomic_origin": "f0f7d0d7448945f0384a6e0884090994ae0ad04d",
+    "focused_pr": 1731,
+    "human_retaining_commit": "933b6b2e33b8c1660d10b8fcabf8a2f55372a6e8",
+    "focused_pr_squash": "a7c9a2828f213e8157ba60501dfcc0e43233f77e",
+    "broad_squash_with_non_atomic_ai_trailer": "77c301cc72b9851bd0ff9054370781028cf5a6c9",
+    "broad_backport_atomic_copy": "b2d307ae423546bedfbde116e025f55f60f2b643",
+    "broad_backport_squash": "2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36",
+    "fix_commit": "e65c3a55a398a403103f1b089cf76f0d4befc7a0",
+    "fix_binding": "Changes the early return from previous-or-current inactive to previous inactive only.",
+    "rejected_fix_ai_signal": "b833baeda1b4748a392aef0ab3b48c9fd367708e carries Copilot on a later fix merge and supplies no origin authorship."
+  },
+  "auditor": "independent-publication-audit-round7"
+}

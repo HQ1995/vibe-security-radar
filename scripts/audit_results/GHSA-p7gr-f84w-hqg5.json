@@ -1,0 +1,21 @@
+{
+  "cve_id": "GHSA-p7gr-f84w-hqg5",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "vulnerability_summary": "OpenClaw allowed a sandboxed session to cross-spawn into an agent configured with sandbox.mode=off.",
+  "causality": "Human atomic commit 0ba72477 introduced cross-agent sessions_spawn: it selected targetAgentId from agentId, applied only allowAgents, and created the child under that target without comparing requester and child sandbox runtimes. The vulnerable cross-agent behavior therefore existed from 2026-01-08. Claude-coauthored commit 49dffa40 later extracted the existing sessions_spawn implementation into src/agents/subagent-spawn.ts and added a /subagents command caller; the sessions_spawn tool continued to delegate to behavior copied from its pre-existing implementation. That refactor did not create the sandbox downgrade fixed by b9aa2d43, whose guard rejects a sandboxed requester when the resolved child runtime is unsandboxed.",
+  "evidence": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "advisory": "https://github.com/openclaw/openclaw/security/advisories/GHSA-p7gr-f84w-hqg5",
+    "human_atomic_origin": "0ba72477de799b03da4f27aa98be69cc29a8cd1d",
+    "noncausal_ai_extraction": "49dffa405a7cb12946d333aa48473fe429e522c6",
+    "mainline_squash_of_extraction": "5a3a448bc48dc9e72530b46195476a48845bb8da",
+    "fix_commit": "b9aa2d436b757d2bd96c8bbaec35dbc1edf4dfb1",
+    "vulnerable_path_before_extraction": "src/agents/tools/sessions-spawn-tool.ts",
+    "vulnerable_path_after_extraction": "src/agents/subagent-spawn.ts",
+    "atomic_binding": "git blame at the parent of 49dffa40 maps targetAgentId, allowAgents, and childSessionKey cross-agent logic to human commit 0ba72477; the AI commit relocates that logic."
+  },
+  "audited": "2026-07-18",
+  "auditor": "independent-publication-audit-round8"
+}

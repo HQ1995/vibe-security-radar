@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import threading
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from cve_analyzer.commit_scoring import (
@@ -304,9 +306,6 @@ def _get_patch_id(repo_path: str, sha: str) -> str | None:
 
 # -- Shared regression stats --
 
-import threading
-from dataclasses import dataclass, field
-
 
 @dataclass
 class RegressionStats:
@@ -358,7 +357,7 @@ class RegressionStats:
             print(f"  CORRECT:      {self.correct:3d} ({self.correct*100//self.found}% precision)")
             print(f"  CORRECT@1:    {self.correct_at_1:3d} ({self.correct_at_1*100//self.found}% first-pos accuracy)")
         else:
-            print(f"  CORRECT:        0")
+            print("  CORRECT:        0")
         print(f"  WRONG_COMMIT: {self.wrong_commit:3d}")
         print(f"  NOT_FOUND:    {self.not_found:3d}")
         print(f"  ERRORS:       {self.errors:3d}")

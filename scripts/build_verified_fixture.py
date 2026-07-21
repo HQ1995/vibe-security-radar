@@ -28,12 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cve-analyzer" /
 
 from regression_ground_truth import (
     CLONE_DIR,
-    build_candidates,
     repo_url_to_path,
     load_backup_results,
     TAG_BASED_SOURCES,
     PR_BASED_SOURCES,
 )
+from cve_analyzer.model_config import STRONG_MODEL
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 LLM_CACHE_DIR = Path.home() / ".cache" / "cve-analyzer" / "ground-truth-llm"
@@ -272,7 +272,7 @@ def llm_verify_ground_truth(
     sha: str,
     repo_path: Path,
     subject: str,
-    model: str = "gpt-5.4",
+    model: str = STRONG_MODEL,
 ) -> dict:
     """Ask a strong LLM whether this commit actually fixes the CVE.
 
@@ -325,7 +325,7 @@ def main():
                         help="Output fixture filename")
     parser.add_argument("--llm-verify", action="store_true",
                         help="Run LLM verification pass on accepted/verified entries")
-    parser.add_argument("--llm-model", type=str, default="gpt-5.4",
+    parser.add_argument("--llm-model", type=str, default=STRONG_MODEL,
                         help="Model for LLM verification")
     args = parser.parse_args()
 
@@ -476,7 +476,7 @@ def main():
         print(f"  Errors:     {llm_errors}")
 
         if llm_rejected:
-            print(f"\nLLM-rejected examples:")
+            print("\nLLM-rejected examples:")
             for item in llm_rejected[:10]:
                 cached = _read_llm_cache(item["cve_id"])
                 reasoning = cached.get("reasoning", "") if cached else ""

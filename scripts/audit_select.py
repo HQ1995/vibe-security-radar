@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import json
-import os
 import random
 from pathlib import Path
 
@@ -52,7 +51,7 @@ def main():
     for f in sorted(cache.glob('*.json')):
         try:
             data = json.loads(f.read_text())
-        except:
+        except (OSError, json.JSONDecodeError):
             continue
         cve_id = data.get('cve_id', f.stem)
         if cve_id in audited:

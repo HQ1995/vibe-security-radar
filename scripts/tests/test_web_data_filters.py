@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cve_analyzer.models import (
     AiSignal,
     AiTool,
     BugIntroducingCommit,
     CommitInfo,
     CveAnalysisResult,
+    CveScreeningResult,
     FilteringLog,
     LlmVerdict,
     BlameVerdict,
+    investigation_scope_hash as compute_investigation_scope_hash,
+    relevant_investigation_bics,
 )
 from web_data.filters import is_fallback_verdict, should_include
 
@@ -66,14 +67,37 @@ def make_result(
     error: str = "",
     ai_involved: bool | None = None,
     bics: list[BugIntroducingCommit] | None = None,
+    investigation_scope_hash: str | None = None,
 ) -> CveAnalysisResult:
-    return CveAnalysisResult(
+    resolved_bics = bics
+    if (
+        resolved_bics is None
+        and ai_involved is not None
+        and investigation_scope_hash is None
+    ):
+        resolved_bics = [
+            make_bic(
+                ai_signals=[make_signal()],
+                deep_verification={
+                    "verdict": "CONFIRMED" if ai_involved else "UNRELATED",
+                    "reasoning": "Scoped test conclusion.",
+                    "model": "gpt-5.4",
+                },
+            )
+        ]
+    result = CveAnalysisResult(
         cve_id=cve_id,
         description=description,
         error=error,
         ai_involved=ai_involved,
-        bug_introducing_commits=bics or [],
+        investigation_scope_hash=investigation_scope_hash or "",
+        bug_introducing_commits=resolved_bics or [],
     )
+    if investigation_scope_hash is None and ai_involved is not None:
+        result.investigation_scope_hash = compute_investigation_scope_hash(
+            relevant_investigation_bics(result)
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +185,15 @@ class TestShouldIncludeAuditOverrides:
         result = make_result(cve_id="CVE-2025-1234", ai_involved=True)
         assert should_include(result, audit_overrides=None)
 
+    def test_independent_negative_excludes_pipeline_positive(self):
+        result = make_result(cve_id="CVE-2025-1234", ai_involved=True)
+
+        assert not should_include(
+            result,
+            audit_overrides={"CVE-2025-1234"},
+            audit_exclusions={"CVE-2025-1234"},
+        )
+
 
 # ---------------------------------------------------------------------------
 # should_include — ai_involved flag
@@ -180,6 +213,71 @@ class TestShouldIncludeAiInvolved:
         result = make_result(ai_involved=None)
         assert not should_include(result)
 
+    def test_legacy_unscoped_false_remains_excluded(self):
+        bic = make_bic(
+            ai_signals=[make_signal()],
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "The subject-level evidence confirms AI authorship.",
+            },
+        )
+        result = make_result(
+            ai_involved=False,
+            bics=[bic],
+            investigation_scope_hash="",
+        )
+
+        assert not should_include(result)
+
+    def test_legacy_unscoped_true_does_not_bypass_subject_evidence(self):
+        result = make_result(
+            ai_involved=True,
+            investigation_scope_hash="",
+        )
+
+        assert not should_include(result)
+
+    def test_stale_nonempty_scope_does_not_bypass_subject_evidence(self):
+        bic = make_bic(
+            ai_signals=[make_signal()],
+            deep_verification={
+                "verdict": "UNRELATED",
+                "reasoning": "The subject evidence rejects causality.",
+            },
+        )
+        result = make_result(
+            ai_involved=True,
+            bics=[bic],
+            investigation_scope_hash="stale-nonempty",
+        )
+
+        assert not should_include(result)
+
+    def test_cve_2025_11445_cached_ellipsis_positive_fails_closed(self):
+        """A current-scope legacy positive cannot promote review-bot attribution."""
+        ellipsis = AiSignal(
+            tool=AiTool.ELLIPSIS,
+            signal_type="co_author_trailer",
+            matched_text="Co-authored-by: ellipsis-dev[bot]",
+            confidence=0.99,
+        )
+        bic = make_bic(
+            ai_signals=[ellipsis],
+            deep_verification={
+                "verdict": "CONFIRMED",
+                "reasoning": "Legacy cached conclusion.",
+                "ai_signal_attested": True,
+                "ai_signal_source": "ellipsis",
+            },
+        )
+        result = make_result(
+            cve_id="CVE-2025-11445",
+            ai_involved=True,
+            bics=[bic],
+        )
+
+        assert not should_include(result)
+
 
 # ---------------------------------------------------------------------------
 # should_include — BIC-level logic (no ai_involved)
@@ -191,12 +289,12 @@ class TestShouldIncludeBicLogic:
         result = make_result(bics=[bic])
         assert not should_include(result)
 
-    def test_bic_with_signals_no_deep_verify_benefit_of_doubt(self):
+    def test_bic_with_signals_no_deep_verify_is_a_candidate_only(self):
         bic = make_bic(ai_signals=[make_signal()])
         result = make_result(bics=[bic])
-        assert should_include(result)
+        assert not should_include(result)
 
-    def test_bic_with_screening_only_benefit_of_doubt(self):
+    def test_bic_with_screening_only_is_a_candidate_only(self):
         sv = LlmVerdict(
             verdict=BlameVerdict.CONFIRMED,
             reasoning="Looks AI-generated",
@@ -204,7 +302,7 @@ class TestShouldIncludeBicLogic:
         )
         bic = make_bic(screening_verification=sv)
         result = make_result(bics=[bic])
-        assert should_include(result)
+        assert not should_include(result)
 
     def test_confirmed_deep_verdict_included(self):
         dv = {"verdict": "CONFIRMED", "final_verdict": "CONFIRMED", "reasoning": "AI wrote this"}
@@ -225,17 +323,43 @@ class TestShouldIncludeBicLogic:
         assert not should_include(result)
 
     def test_fallback_verdict_treated_as_unverified(self):
-        # Fallback verdict → benefit of the doubt (treated as no deep verify)
         dv = {"is_fallback": True, "verdict": "UNLIKELY", "reasoning": "Timeout fallback"}
         bic = make_bic(ai_signals=[make_signal()], deep_verification=dv)
         result = make_result(bics=[bic])
-        assert should_include(result)
+        assert not should_include(result)
 
     def test_fallback_reasoning_no_evidence_treated_as_unverified(self):
         dv = {"reasoning": "Fallback verdict due to tool budget exhaustion", "evidence": []}
         bic = make_bic(ai_signals=[make_signal()], deep_verification=dv)
         result = make_result(bics=[bic])
+        assert not should_include(result)
+
+    def test_screening_false_cannot_suppress_attested_confirmed_bic(self):
+        bic = make_bic(
+            ai_signals=[make_signal()],
+            deep_verification={"verdict": "CONFIRMED", "reasoning": "causal"},
+        )
+        result = make_result(bics=[bic])
+        result.screening = CveScreeningResult(
+            worth_investigating=False,
+            reasoning="screening miss",
+        )
+
         assert should_include(result)
+
+    def test_workflow_only_confirmed_bic_remains_candidate_only(self):
+        workflow = AiSignal(
+            tool=AiTool.CLAUDE_CODE,
+            signal_type="merge_workflow",
+            matched_text="/merge-pr",
+            confidence=0.9,
+        )
+        bic = make_bic(
+            ai_signals=[workflow],
+            deep_verification={"verdict": "CONFIRMED", "reasoning": "causal"},
+        )
+
+        assert not should_include(make_result(bics=[bic]))
 
     def test_multiple_bics_one_confirmed(self):
         # One UNRELATED BIC, one CONFIRMED BIC — should include

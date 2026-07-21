@@ -7,13 +7,14 @@ import argparse
 import json
 import os
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
+
+from web_data.writer import load_published_web_data
 
 CACHE_DIR = Path(os.path.expanduser("~/.cache/cve-analyzer"))
 RESULTS_DIR = CACHE_DIR / "results"
-WEB_DATA = Path(__file__).resolve().parent.parent / "web" / "data" / "cves.json"
-VERIFIER_AUDIT = CACHE_DIR / "verifier-audit.jsonl"
+WEB_DATA_DIR = Path(__file__).resolve().parent.parent / "web" / "data"
 DESC_SEARCH_DIR = CACHE_DIR / "desc-search"
 FIX_INFERENCE_DIR = CACHE_DIR / "fix-inference"
 
@@ -42,27 +43,15 @@ def load_results() -> list[dict]:
     return results
 
 
-def load_web_cves() -> dict[str, dict]:
-    if not WEB_DATA.exists():
-        return {}
-    with open(WEB_DATA) as f:
-        data = json.load(f)
-    return {c["id"]: c for c in data.get("cves", [])}
+def load_web_cves(data_dir: Path = WEB_DATA_DIR) -> dict[str, dict]:
+    """Load one validated publication generation.
 
-
-def load_verifier_audit() -> dict[str, dict]:
-    """Load verifier audit keyed by cve_id → latest entry."""
-    entries: dict[str, dict] = {}
-    if not VERIFIER_AUDIT.exists():
-        return entries
-    with open(VERIFIER_AUDIT) as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-                entries[d["cve_id"]] = d
-            except Exception:
-                continue
-    return entries
+    A missing or inconsistent manifest is a diagnostic failure. Silently
+    treating partial publication as an empty site would under-report funnel
+    losses.
+    """
+    published = load_published_web_data(data_dir)
+    return {entry["id"]: entry for entry in published.entries}
 
 
 def analyze_funnel(results: list[dict]) -> None:
@@ -164,7 +153,6 @@ def analyze_funnel(results: list[dict]) -> None:
     # Website
     web_cves = load_web_cves()
     web_ids = set(web_cves.keys())
-    cache_ids = {r["cve_id"] for r in results}
 
     # ── Print funnel ────────────────────────────────────────────────
     print("=" * 70)
@@ -190,7 +178,6 @@ def analyze_funnel(results: list[dict]) -> None:
     print(f"\n{'=' * 70}")
     print("DROP-OFF ANALYSIS (where CVEs get lost)")
     print("=" * 70)
-    no_fix = total - len(has_fix) - sum(error_cats.values())
     fix_no_bic = len(has_fix) - len(has_bic)
     bic_no_signal = len(has_bic) - len(has_signals)
     signal_no_confidence = len(has_signals) - len(has_confidence)
@@ -319,10 +306,10 @@ def analyze_funnel(results: list[dict]) -> None:
             web_verdicts[cve.get("verdict", "unknown")] += 1
             web_conf.append(cve.get("confidence", 0))
 
-        print(f"  Verdicts:")
+        print("  Verdicts:")
         for v, cnt in web_verdicts.most_common():
             print(f"    {v:<38} {cnt:>7,}")
-        print(f"  AI tools:")
+        print("  AI tools:")
         for t, cnt in web_tools.most_common():
             print(f"    {t:<38} {cnt:>7,}")
         if web_conf:

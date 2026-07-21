@@ -1,0 +1,18 @@
+{
+  "cve_id": "GHSA-3j63-5h8p-gf7c",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "audited": "2026-07-18",
+  "vulnerability_summary": "x402 SIWX settlement hooks assumed paymentPayload.resource was always present and dereferenced resource.url, despite the v2 protocol making resource optional.",
+  "causality": "Human atomic commit 03199d960398b739255966cb21ee9f7b7dec87ae creates hooks.ts, declares resource as required, and introduces the exact `new URL(ctx.paymentPayload.resource.url)` dereference with no AI signal. Claude-coauthored commit 8c15e97cb72caea7fe85e966c0f415b61afe4032 later edits the same file but leaves that vulnerable type and dereference unchanged. Squash fe42994900a445155be7a697de060c5a34f36a2d has broad Claude trailers spanning many decomposed commits; those trailers cannot transfer authorship to the human atomic origin. Fix 1ab1c86f016161f27593bf17c9a2333c2201ab10 makes resource optional and returns when the URL is absent.",
+  "evidence": {
+    "repo": "https://github.com/coinbase/x402",
+    "path": "typescript/packages/extensions/src/sign-in-with-x/hooks.ts",
+    "human_atomic_origin": "03199d960398b739255966cb21ee9f7b7dec87ae",
+    "unrelated_ai_refactor": "8c15e97cb72caea7fe85e966c0f415b61afe4032",
+    "squash_with_non_atomic_ai_trailer": "fe42994900a445155be7a697de060c5a34f36a2d",
+    "fix_commit": "1ab1c86f016161f27593bf17c9a2333c2201ab10"
+  },
+  "auditor": "independent-publication-audit-round6"
+}

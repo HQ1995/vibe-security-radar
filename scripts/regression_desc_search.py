@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cve-analyzer" / "src"))
 
 from cve_analyzer.commit_scoring import score_candidates
+from cve_analyzer.model_config import FAST_MODEL
 from cve_analyzer.description_search import (
     compute_confidence_signals,
     discover_fix_commit,
@@ -76,7 +77,6 @@ def _save_fixture(candidates: list[dict], path: Path) -> None:
 def _load_fixture(path: Path) -> list[dict]:
     """Load a test fixture and resolve against current ground truth."""
     fixture = json.loads(path.read_text())
-    fixture_ids = {f["cve_id"] for f in fixture}
 
     # Rebuild full candidates from ground truth, filtered to fixture IDs
     all_candidates, _ = build_candidates()
@@ -227,7 +227,7 @@ def main() -> None:
     parser.add_argument("--dry-run-signals", action="store_true", help="Compute scoring signals without LLM calls")
     parser.add_argument("--verbose", action="store_true", help="Show per-CVE details")
     parser.add_argument("--workers", type=int, default=16, help="Parallel workers")
-    parser.add_argument("--model", default="gemini-3.1-flash-lite-preview", help="LLM model")
+    parser.add_argument("--model", default=FAST_MODEL, help="LLM model")
     args = parser.parse_args()
 
     if args.verbose:

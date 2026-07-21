@@ -1,0 +1,17 @@
+{
+  "cve_id": "GHSA-vh5j-5fhq-9xwg",
+  "audit_verdict": "TRUE_POSITIVE",
+  "ai_authored_vulnerability": true,
+  "confidence": 0.99,
+  "vulnerability_summary": "Taylored consumed purchase tokens with a non-atomic SELECT-then-UPDATE sequence, allowing concurrent replay.",
+  "causality": "Google Jules bot commit 57b76343 introduced token_used_at, checked it after a SELECT, decrypted the patch, and only then issued a separate unconditional UPDATE by row id. Human fix fdf67a6f replaced the check-then-act sequence with one conditional UPDATE ... AND token_used_at IS NULL and gated delivery on this.changes. The AI-authored atomic commit directly created the race fixed by the advisory.",
+  "evidence": {
+    "repo": "https://github.com/tailot/taylored",
+    "path": "templates/backend-in-a-box/index.js",
+    "atomic_ai_origin": "57b7634391959dbbdb39b387ac4dc68157cd58a1",
+    "ai_binding": "The atomic commit author is google-labs-jules[bot] and it adds both sides of the non-atomic token-consumption sequence.",
+    "fix_commit": "fdf67a6fba0deae30912905a79fb5a9e83751a79"
+  },
+  "audited": "2026-07-18",
+  "auditor": "independent-publication-audit-round4"
+}

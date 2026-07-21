@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from web_data.severity import (
     extract_cvss_score,
     parse_severity,

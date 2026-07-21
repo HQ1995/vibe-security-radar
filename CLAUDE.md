@@ -16,7 +16,7 @@ Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 
 ```
 cd cve-analyzer && uv run cve-analyzer batch --all --since 2025-05-01
-python scripts/generate_web_data.py   # → web/data/cves.json + stats.json
+python scripts/generate_web_data.py   # → web/data/index.json + cves/<ID>.json + stats.json
 cd web && npm run build
 ```
 
@@ -37,8 +37,8 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 ## Quality Assurance
 
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
-- **Deep verifier**: Single-model investigator with tool access (git log, file read, etc.) to filter false positives. Replaced the old 3-model tribunal voting.
-- **Conflict resolver**: Claude Agent SDK with MCP git tools resolves divergent BIC verdicts. Batched execution to minimize subprocess overhead.
+- **Deep verifier**: Single investigation loop with an ordered API-model fallback chain and constrained git tools. Replaced the old 3-model tribunal voting.
+- **Coding-agent diagnostics**: optional Codex, Claude Code, or Kimi Code CLI review over bounded evidence. Every CLI uses the shared LiteLLM gateway, provider tools are disabled, and diagnostic output stays separate from BIC verdicts.
 - **`/audit`**: Independent deep verification of individual CVEs
 - **Audit queue**: `python scripts/audit_queue.py` — picks the next audit target by priority. Use this instead of the default Phase 0 selection when running `/audit` without a specific CVE ID.
 - **Audit scripts**: `scripts/audit_select.py` (stratified sampling), `audit_actionable.py` (worth-investigating filter), `audit_patterns.py` (cross-audit patterns), `audit_recurring.py` (repeat findings)
@@ -46,7 +46,7 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 
 ## Code Conventions
 
-- Dataclasses (no pydantic), httpx sync (no async), subprocess.run (no GitPython)
+- Dataclasses (no pydantic), httpx sync (no async), argv-only subprocesses (no GitPython)
 - JSON file cache in `~/.cache/cve-analyzer/`
 - Tests use JSON fixtures in `tests/fixtures/`, no real API calls
 

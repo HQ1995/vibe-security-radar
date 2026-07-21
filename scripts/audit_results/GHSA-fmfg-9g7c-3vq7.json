@@ -1,0 +1,22 @@
+{
+  "cve_id": "GHSA-fmfg-9g7c-3vq7",
+  "audit_verdict": "TRUE_POSITIVE",
+  "ai_authored_vulnerability": true,
+  "confidence": 0.99,
+  "vulnerability_summary": "ha-mcp OAuth DCR accepted an attacker-controlled Home Assistant URL, fetched /api/config, and exposed differentiated failures as a network-reconnaissance oracle.",
+  "causality": "Claude-coauthored atomic commit aae7acba introduced the ha_url consent field, _validate_ha_credentials(), the outbound GET to {ha_url}/api/config, and user-visible differentiated errors in one new OAuth feature. Mainline squash 39806871 preserves that change and its Claude provenance. Fix dc8eaa16 removes the user-supplied URL and pins HOMEASSISTANT_URL server-side, directly reversing the vulnerable flow.",
+  "evidence": {
+    "repo": "https://github.com/homeassistant-ai/ha-mcp",
+    "paths": [
+      "src/ha_mcp/auth/consent_form.py",
+      "src/ha_mcp/auth/provider.py",
+      "src/ha_mcp/__main__.py"
+    ],
+    "atomic_ai_origin": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+    "mainline_squash": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+    "ai_binding": "The atomic origin contains both Generated with Claude Code and Claude Co-Authored-By markers and directly creates every edge of the SSRF/error-oracle flow.",
+    "fix_commit": "dc8eaa16a8550f885614655f14b6fd9fe429b278"
+  },
+  "audited": "2026-07-18",
+  "auditor": "independent-publication-audit-round4"
+}

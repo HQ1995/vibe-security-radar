@@ -1,0 +1,42 @@
+{
+  "cve_id": "RUSTSEC-2026-0207",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "audited": "2026-07-18",
+  "vulnerability_summary": "libcrux-sha3 portable incremental SHAKE dropped the unread suffix of a partially squeezed RATE block before the next squeeze call, producing incorrect output when a non-final call requested a non-RATE-aligned length.",
+  "causality": "Human commit f34493bb7bb2359d83e6d8f45bcaa3fcf8a12400 first introduced the underlying no-output-buffer design: a partial squeeze returned only the requested prefix, set sponge=true, and the next call permuted before preserving the unread suffix. Human commit 470fc6004f48be9a64a32b7f09e1eb557f6c83e0 made that XOF implementation working and public, and human commit bf2b9009a05138d363549fa73628254f6e6a59ad introduced the exact affected Shake128Xof/Shake256Xof API names. Human commits 3ccdc1d0af4560c2ba5f3b27484fc595b41c04c3 and 276794b8f11c49b6b3f5425093c5dd06be99ae24 retained that behavior. Claude-coauthored commit 5ad079d4e4a7b8ec9902f0b860ae53d56c27368a fixes the distinct RUSTSEC-2026-0074 single-call >RATE first-block skip. For the RUSTSEC-2026-0207 sub-RATE path it only changes the guard from out_len <= RATE to the semantically equivalent blocks == 0; the prefix extraction, next-call permutation, sponge transition, and lack of an output buffer remain unchanged. Its added multi-call test uses three exactly RATE-sized chunks and is test-only evidence for the prior fix. The commit therefore supplies fix-only and test-only AI evidence, with no material vulnerable reimplementation of the partial-chunk path. Human commit aab63a96c51ef70f7a13303b67658cdf70665ebe is the first real fix: it adds squeeze_buf/squeeze_pos, drains unread bytes before permuting, and adds partial-chunk regressions. That commit is an ancestor of final merge e9ecdd274ea36e40c90acb21ccea6b5f6955a6b8 (PR #1389), released in libcrux-sha3 0.0.10.",
+  "evidence": {
+    "repo": "https://github.com/celabshq/libcrux",
+    "affected_path": "crates/algorithms/sha3/src/generic_keccak/xof.rs",
+    "affected_functions": [
+      "libcrux_sha3::portable::incremental::Shake128Xof::squeeze",
+      "libcrux_sha3::portable::incremental::Shake256Xof::squeeze"
+    ],
+    "advisory": "https://rustsec.org/advisories/RUSTSEC-2026-0207.html",
+    "earliest_human_origin": "f34493bb7bb2359d83e6d8f45bcaa3fcf8a12400",
+    "first_working_public_xof_origin": "470fc6004f48be9a64a32b7f09e1eb557f6c83e0",
+    "affected_named_api_origin": "bf2b9009a05138d363549fa73628254f6e6a59ad",
+    "human_reimplementation": "3ccdc1d0af4560c2ba5f3b27484fc595b41c04c3",
+    "human_file_split": "276794b8f11c49b6b3f5425093c5dd06be99ae24",
+    "noncausal_ai_fix_commit": "5ad079d4e4a7b8ec9902f0b860ae53d56c27368a",
+    "ai_signal": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+    "distinct_advisory_fixed_by_ai_commit": "RUSTSEC-2026-0074",
+    "test_only_change": "bug1_xof_squeeze_multi_call_consistency compares one 504-byte squeeze with three 168-byte RATE-aligned calls; it never exercises a partial chunk.",
+    "first_partial_chunk_fix": "aab63a96c51ef70f7a13303b67658cdf70665ebe",
+    "landed_fix_merge": "e9ecdd274ea36e40c90acb21ccea6b5f6955a6b8",
+    "fixed_release": "libcrux-sha3-v0.0.10",
+    "behavioral_reproduction": {
+      "test": "SHAKE128 one-shot 200 bytes versus incremental squeeze calls of 100 + 100 bytes",
+      "pre_ai_parent": "2d2ad879b287d0c9f3364fa863d105c057805a1b: FAIL",
+      "ai_fix_commit": "5ad079d4e4a7b8ec9902f0b860ae53d56c27368a: FAIL",
+      "first_partial_chunk_fix": "aab63a96c51ef70f7a13303b67658cdf70665ebe: PASS",
+      "landed_merge": "e9ecdd274ea36e40c90acb21ccea6b5f6955a6b8: PASS",
+      "first_mismatch_offset": 100,
+      "pre_ai_and_ai_output_identical": true,
+      "pre_ai_and_ai_actual_sha256": "773c05b69c57cae8d23d158ce66306a59feeb5d32db48ec3d5ab6e47a51df670",
+      "expected_sha256": "cff1fd32dd84cda5121625aeda9c3ca62b95797b05a17420e2688f5904ecd454"
+    }
+  },
+  "auditor": "independent-publication-audit-rustsec-0207"
+}

@@ -74,11 +74,7 @@ def _all_ai_signals(bic):
 
 def _get_ai_bics(data):
     """Extract BICs that have effective AI signals (authoritative source)."""
-    return [
-        b
-        for b in data.get("bug_introducing_commits", [])
-        if _effective_signals(b)
-    ]
+    return [b for b in data.get("bug_introducing_commits", []) if _effective_signals(b)]
 
 
 def _get_deep_verdict(bic):
@@ -138,13 +134,11 @@ def score_fp_candidate(data, ai_bics):
         return None, []
 
     has_verified_confirmed = any(
-        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper()
-        == "CONFIRMED"
+        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper() == "CONFIRMED"
         for b in ai_bics
     )
     has_verified_unlikely = any(
-        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper()
-        == "UNLIKELY"
+        (_get_deep_verdict(b) or {}).get("final_verdict", "").upper() == "UNLIKELY"
         for b in ai_bics
     )
 
@@ -179,7 +173,8 @@ def score_fp_candidate(data, ai_bics):
 
     # Signals from decomposed sub-commit (inherited through squash)
     has_decomp_signal = any(
-        b.get("culprit_sha") and b.get("decomposed_commits")
+        b.get("culprit_sha")
+        and b.get("decomposed_commits")
         and any(dc.get("ai_signals") for dc in b.get("decomposed_commits", []))
         for b in ai_bics
     )
@@ -289,9 +284,21 @@ def score_fn_candidate(data, tp_repos, tp_authors):
 
     # Repo has known AI tool usage (git log patterns, config files)
     repo_activity = data.get("repo_ai_activity", [])
-    if repo_activity:
+    if not isinstance(repo_activity, list):
+        repo_activity = []
+    actionable_repo_activity = [
+        activity
+        for activity in repo_activity
+        if isinstance(activity, str)
+        and activity
+        and not activity.startswith("incomplete:")
+    ]
+    if actionable_repo_activity:
         score += 10
-        tools = {a.split(":")[1] if ":" in a else a for a in repo_activity}
+        tools = {
+            activity.split(":", 1)[1] if ":" in activity else activity
+            for activity in actionable_repo_activity
+        }
         reasons.append(f"repo-ai({','.join(sorted(tools)[:3])})")
 
     return score, reasons
@@ -383,7 +390,7 @@ def print_stats(fp_queue, fn_queue, results, audited):
     total = len(results)
     with_bics = sum(1 for d in results if d.get("bug_introducing_commits"))
     with_signals = sum(1 for d in results if _get_ai_bics(d))
-    print(f"=== Queue Health ===")
+    print("=== Queue Health ===")
     print(f"Total results:     {total}")
     print(f"With BICs:         {with_bics}")
     print(f"With AI signals:   {with_signals} (effective_signals)")
@@ -393,10 +400,14 @@ def print_stats(fp_queue, fn_queue, results, audited):
     print()
     if fp_queue:
         scores = [s for s, _, _ in fp_queue]
-        print(f"FP score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores)//2]})")
+        print(
+            f"FP score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores) // 2]})"
+        )
     if fn_queue:
         scores = [s for s, _, _ in fn_queue]
-        print(f"FN score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores)//2]})")
+        print(
+            f"FN score range:    {min(scores)}–{max(scores)} (median {sorted(scores)[len(scores) // 2]})"
+        )
 
     # Reason distribution for top candidates
     if fn_queue:

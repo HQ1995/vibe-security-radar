@@ -6,21 +6,25 @@ The verifier launches an agentic investigation loop — one strong model with to
 
 ## Prerequisites
 
-At least one LLM backend must be configured:
+Configure the LiteLLM gateway:
 ```bash
-# Option 1: LiteLLM proxy (preferred)
 export LITELLM_API_BASE="http://localhost:8000/v1"
-export LITELLM_API_KEY="sk-..."
-
-# Option 2: Gemini direct
-export GEMINI_API_KEY="AIza..."
+export LITELLM_KEY="sk-..."
+export CVE_LLM_MODEL_OVERRIDE="gpt-5.6-luna"
+export CVE_LLM_STRICT_MODEL=1
+export CVE_REASONING_EFFORT=max
 ```
 
 Verify with:
 ```bash
-env | grep -E 'LITELLM|GEMINI_API_KEY'
+uv run python scripts/e2e_litellm_smoke.py \
+  --model gpt-5.6-luna --reasoning-effort max
 ```
-If neither is set, stop and tell the user — verification will silently skip without API keys.
+The gateway base and key aliases must resolve to one value. Missing or
+conflicting settings stop verification before any model call.
+The Luna/max smoke uses the production Responses path and the verifier tool-call
+path. Chat/max is recorded as an unsupported compatibility boundary and strict
+campaigns never downgrade a failed Responses call to Chat Completions.
 
 ## Phase 1: Identify Unverified TPs
 
@@ -45,7 +49,7 @@ for f in sorted(cache.glob('*.json')):
     if not ai_bics:
         continue
     cve_id = data.get('cve_id', f.stem)
-    has_verified = any(b.get('verification_verdict') or b.get('tribunal_verdict') for b in ai_bics)
+    has_verified = any(b.get('deep_verification') for b in ai_bics)
     if has_verified:
         verified.append(cve_id)
     else:
@@ -67,14 +71,23 @@ Run deep verification on each unverified TP. Use background tasks for parallelis
 
 **Important**: Global flags go BEFORE the subcommand:
 ```bash
-cd cve-analyzer && uv run cve-analyzer --verbose analyze <CVE-ID> --llm-verify --force-verify
+cd cve-analyzer && \
+  CVE_LLM_MODEL_OVERRIDE=gpt-5.6-luna \
+  CVE_LLM_STRICT_MODEL=1 \
+  CVE_REASONING_EFFORT=max \
+  uv run cve-analyzer --verbose analyze <CVE-ID> \
+    --llm-verify --force-verify --verify-model gpt-5.6-luna
 ```
 
 Do NOT use `--no-cache` — the pipeline cache saves time by reusing fix commits and blame results. The verifier has its own API cache (`~/.cache/cve-analyzer/api-responses/verifier/`), so previously-verified BICs won't re-call LLMs.
 
-The `--force-verify` flag forces re-verification even on BICs that already have a verdict. Without it, only unverified BICs are processed.
+The `--force-verify` flag marks existing verdicts stale before re-verification,
+so a failed forced pass cannot publish an earlier verdict. Without it, only
+unverified BICs are processed.
 
-Optionally specify `--verify-model <model>` to override the default model.
+The command pins the requested and verifier model to `gpt-5.6-luna`. Strict
+mode rejects proxy prefix remapping, model fallback, missing actual-model
+metadata, and any observed model that differs from the requested ID.
 
 ### Execution strategy
 

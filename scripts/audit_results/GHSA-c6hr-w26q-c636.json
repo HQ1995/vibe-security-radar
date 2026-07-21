@@ -1,0 +1,20 @@
+{
+  "cve_id": "GHSA-c6hr-w26q-c636",
+  "audit_verdict": "TRUE_POSITIVE",
+  "ai_authored_vulnerability": true,
+  "confidence": 0.99,
+  "audited": "2026-07-18",
+  "vulnerability_summary": "OpenClaw constructed regular expressions directly from attacker-controlled Feishu mention names and keys, enabling regex injection and ReDoS.",
+  "causality": "The exact vulnerable stripBotMention implementation originates in m1heng/clawdbot-feishu initial commit 4286755f26bcfdd5c704cc4eb0cabfdc1b314e68, which is Claude-coauthored and adds both `new RegExp(`@${mention.name}\\s*`)` and `new RegExp(mention.key)`. OpenClaw import commit 2267d58afcc70fe19408b8f0dce108c340f3426d is also Claude-coauthored and lands those same expressions and their reachable call site. Fix 7e67ab75cc2f0e93569d12fecd1411c2961fcc8c escapes both values before RegExp construction; 74268489137510b6f6349919d1e197b17290d92c only adds regression tests. Both the upstream atomic origin and the target import carry direct AI evidence, so the migration remains positively bound.",
+  "evidence": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "upstream_repo": "https://github.com/m1heng/clawdbot-feishu",
+    "path": "extensions/feishu/src/bot.ts",
+    "upstream_atomic_ai_origin": "4286755f26bcfdd5c704cc4eb0cabfdc1b314e68",
+    "landed_ai_import": "2267d58afcc70fe19408b8f0dce108c340f3426d",
+    "atomic_ai_signal": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "fix_commit": "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
+    "test_commit": "74268489137510b6f6349919d1e197b17290d92c"
+  },
+  "auditor": "independent-publication-audit-round6"
+}

@@ -1,0 +1,29 @@
+{
+  "cve_id": "GHSA-g353-mgv3-8pcj",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "vulnerability_summary": "OpenClaw Feishu webhook mode accepted forged events when verificationToken was configured without encryptKey.",
+  "causality": "The imported community plugin's human initial release 4286755f made encryptKey optional. Human atomic PR commit 7958fbb1 then created monitorWebhook and the exact Lark.adaptDefault(..., { autoChallenge: true }) request path that made the optional-key design reachable. Claude-coauthored follow-up 1173e7ea only refactored dispatcher ownership and left that request line byte-for-byte unchanged. OpenClaw commits 2267d58a and b0c67ea0/5c2cb6c5 were upstream synchronization copies; the imported files differ from upstream only by formatting. The AI signals are bound to refactoring/synchronization, while the vulnerable atomic source contribution is human.",
+  "evidence": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "upstream_repo": "https://github.com/m1heng/clawdbot-feishu",
+    "paths": [
+      "extensions/feishu/src/config-schema.ts",
+      "extensions/feishu/src/monitor.ts"
+    ],
+    "human_upstream_origins": {
+      "optional_encrypt_key": "4286755f26bcfdd5c704cc4eb0cabfdc1b314e68",
+      "webhook_server": "7958fbb123570318101924db9a4a1220611745fb"
+    },
+    "noncausal_ai_refactor": "1173e7ea7ec70a7bd0a85009609ea50b4ea14849",
+    "migration_commits": [
+      "2267d58afcc70fe19408b8f0dce108c340f3426d",
+      "b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
+      "5c2cb6c591e4b63c2df0549ad2202403256e2a96"
+    ],
+    "fix_commit": "7844bc89a1612800810617c823eb0c76ef945804"
+  },
+  "audited": "2026-07-18",
+  "auditor": "independent-publication-audit-round4"
+}

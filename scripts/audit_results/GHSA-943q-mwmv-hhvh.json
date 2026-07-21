@@ -1,0 +1,28 @@
+{
+  "cve_id": "GHSA-943q-mwmv-hhvh",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "vulnerability_summary": "OpenClaw exposed unrestricted HTTP tool invocation and auto-approved ACP permission requests too broadly.",
+  "causality": "Human commit f1083cd5 introduced /tools/invoke without a dangerous-tool deny boundary, and human commit 9809b47d introduced ACP's unconditional allow_once selection. Aether commit 0af37a09 was a hardening patch: it added a deny list and changed blanket ACP approval to approval of names outside a dangerous-name set. Later human commits tightened this still-incomplete mitigation. The AI patch reduced an already-existing exposure and did not atomically introduce either vulnerable surface.",
+  "evidence": {
+    "repo": "https://github.com/openclaw/openclaw",
+    "paths": [
+      "src/gateway/tools-invoke-http.ts",
+      "src/acp/client.ts"
+    ],
+    "human_origins": {
+      "http_endpoint": "f1083cd52cf43c7312ae09cf0aa696ba9c95282c",
+      "blind_acp_approval": "9809b47d4545b394a5e49624796297147a8253cb"
+    },
+    "noncausal_ai_hardening": "0af37a092611d1bceb99b14a6502c7a8a724dbbf",
+    "hardening_squash": "749e28dec796f77697398acbfc7a64d4439d7cad",
+    "followup_fixes": [
+      "ee31cd47b49f4b2f128a69a2a3745ca9db68b3be",
+      "bb1c3dfe10766fd996ef220ff9d3f967eb717faa",
+      "153a7644eabc5f0214c9e51dd42cba5276e9bc3e"
+    ]
+  },
+  "audited": "2026-07-18",
+  "auditor": "independent-publication-audit-round4"
+}

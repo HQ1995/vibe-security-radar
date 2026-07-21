@@ -1,0 +1,25 @@
+{
+  "cve_id": "GHSA-83pf-v6qq-pwmr",
+  "audit_verdict": "FALSE_POSITIVE",
+  "ai_authored_vulnerability": false,
+  "confidence": 0.99,
+  "audited": "2026-07-18",
+  "vulnerability_summary": "Fickling failed to flag dangerous stdlib network-protocol constructors because six modules were absent from its unsafe-import blocklist.",
+  "causality": "The blocklist architecture and its omission predate the AI-signaled PickleScan hardening. Human commit 3e52ae65f5438515868f1b73bf1ca2930b952d3f creates the shared UNSAFE_IMPORTS list without smtplib, imaplib, ftplib, poplib, telnetlib, or nntplib. Claude-coauthored squash 19e828d26b248a4a39fcee2643306a6cd78dbb76 adds other network modules such as http, ssl, requests, and urllib but neither removes protection for the six affected modules nor makes their constructors newly reachable. They are absent both before and after that change. Fix 6d20564d23acf14b42ec883908aed159be7b9ade simply appends the six long-missing modules. Incomplete AI-assisted hardening did not introduce the pre-existing bypass.",
+  "evidence": {
+    "repo": "https://github.com/trailofbits/fickling",
+    "path": "fickling/fickle.py",
+    "human_blocklist_origin": "3e52ae65f5438515868f1b73bf1ca2930b952d3f",
+    "rejected_ai_hardening_squash": "19e828d26b248a4a39fcee2643306a6cd78dbb76",
+    "missing_modules": [
+      "smtplib",
+      "imaplib",
+      "ftplib",
+      "poplib",
+      "telnetlib",
+      "nntplib"
+    ],
+    "fix_commit": "6d20564d23acf14b42ec883908aed159be7b9ade"
+  },
+  "auditor": "independent-publication-audit-round6"
+}

@@ -5,9 +5,9 @@ Operates on web entry dicts (output of entry_builder), not model objects.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from web_data.loader import _parse_github_owner_repo
+from web_data.loader import _parse_github_owner_repo, normalize_published
 
 
 # ---------------------------------------------------------------------------
@@ -24,16 +24,31 @@ def _repo_url_to_display_name(repo_url: str) -> str | None:
     return f"{parts[0]}/{parts[1]}".lower() if parts else None
 
 
-def _extract_month(entry: dict, published: str) -> str:
-    """Extract a YYYY-MM string from the entry's published date.
+def _extract_month(published: str) -> str:
+    """Extract a YYYY-MM bucket from a canonical day-precise date.
 
-    Uses the CVE publication date (from NVD or CVE ID year).
+    Year-only and unknown dates stay outside monthly aggregates.
     """
-    if published and len(published) >= 7:
-        return published[:7]
-    if published and len(published) == 4:
-        return published
+    normalized = normalize_published(published)
+    if len(normalized) == 10:
+        return normalized[:7]
     return ""
+
+
+def _coverage_start(value: str) -> str:
+    """Convert a YYYY-MM or published-date value to a canonical start date."""
+    value = value.strip()
+    if not value:
+        return ""
+    if len(value) == 7:
+        try:
+            return date.fromisoformat(f"{value}-01").isoformat()
+        except ValueError as exc:
+            raise ValueError(f"invalid coverage month: {value!r}") from exc
+    normalized = normalize_published(value)
+    if not normalized:
+        raise ValueError(f"invalid coverage date: {value!r}")
+    return f"{normalized}-01-01" if len(normalized) == 4 else normalized
 
 
 # ---------------------------------------------------------------------------
@@ -77,9 +92,9 @@ def build_stats(
         sev = entry.get("severity", "UNKNOWN")
         by_severity[sev] = by_severity.get(sev, 0) + 1
 
-        # Monthly (use published year + first bug commit month, or just year-month)
+        # Monthly bucketing only uses month-precise publication dates.
         published = entry.get("published", "")
-        month_key = _extract_month(entry, published)
+        month_key = _extract_month(published)
         if month_key:
             month_counts[month_key] = month_counts.get(month_key, 0) + 1
             if month_key not in month_tool_counts:
@@ -97,14 +112,14 @@ def build_stats(
     sorted_months = sorted(month_counts.keys())
     # Use day-level precision for coverage range
     if coverage_since:
-        # Expand "2025-05" to "2025-05-01"
-        coverage_from = coverage_since if len(coverage_since) > 7 else f"{coverage_since}-01"
+        coverage_from = _coverage_start(coverage_since)
     else:
         coverage_from = f"{sorted_months[0]}-01" if sorted_months else ""
     # Find the latest published date across all entries
     latest_date = ""
     for e in entries:
-        pub = e.get("published", "")[:10]  # "YYYY-MM-DD" prefix
+        normalized = normalize_published(e.get("published", ""))
+        pub = f"{normalized}-01-01" if len(normalized) == 4 else normalized
         if pub > latest_date:
             latest_date = pub
     coverage_to = latest_date or (f"{sorted_months[-1]}-01" if sorted_months else "")

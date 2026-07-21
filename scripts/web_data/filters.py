@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from cve_analyzer.models import CveAnalysisResult
+from cve_analyzer.models import CveAnalysisResult, investigation_scope_is_current
 
 
 def is_fallback_verdict(dv: dict) -> bool:
@@ -26,6 +26,7 @@ def is_fallback_verdict(dv: dict) -> bool:
 def should_include(
     result: CveAnalysisResult,
     audit_overrides: set[str] | None = None,
+    audit_exclusions: set[str] | None = None,
 ) -> bool:
     """Determine if a CVE result should appear on the website.
 
@@ -33,17 +34,18 @@ def should_include(
     1. Exclude if result.error is set.
     2. Exclude rejected/withdrawn CVEs (description contains rejection marker).
     3. Include if CVE ID is in audit_overrides (independently verified true positive).
-    4. Include if result.ai_involved is True (authoritative CVE-level verdict).
-    5. Exclude if result.ai_involved is False (authoritative CVE-level verdict).
-    6. Fallback per-BIC logic:
-       - Skip BICs with no effective signals and no screening_verification.
-       - If deep_verification exists and is NOT a fallback:
-           CONFIRMED → include.
-           Other verdicts → skip this BIC (UNLIKELY/UNRELATED excluded).
-       - No deep verification or fallback → benefit of the doubt (has_passing = True).
-    7. Return has_passing.
+    4. Honor result.ai_involved only when investigation_scope_hash proves that
+       the CVE-level verdict covers the current subject set.
+    5. Per-BIC fallback includes only a non-fallback CONFIRMED verdict whose
+       effective signal set contains trusted authorship evidence.
+    6. Screening, workflow-only signals, and unverified candidates remain
+       diagnostics for the detector inventory.
     """
-    included, reason = _should_include_with_reason(result, audit_overrides)
+    included, reason = _should_include_with_reason(
+        result,
+        audit_overrides,
+        audit_exclusions,
+    )
     if result.filtering_log is not None:
         result.filtering_log.final_included = included
         result.filtering_log.exclusion_reason = reason
@@ -53,6 +55,7 @@ def should_include(
 def _should_include_with_reason(
     result: CveAnalysisResult,
     audit_overrides: set[str] | None = None,
+    audit_exclusions: set[str] | None = None,
 ) -> tuple[bool, str]:
     """Core inclusion logic returning (included, exclusion_reason)."""
     if result.error:
@@ -62,22 +65,23 @@ def _should_include_with_reason(
     if "rejected reason:" in desc or "this cve id has been rejected" in desc:
         return False, "rejected_cve"
 
+    if audit_exclusions and result.cve_id in audit_exclusions:
+        return False, "audit_not_ai"
+
     if audit_overrides and result.cve_id in audit_overrides:
         return True, ""
 
-    if result.ai_involved is True:
-        return True, ""
+    # A recorded negative is always safe to exclude.  A recorded positive is
+    # promotable only when its scope hash covers the current repo/BIC set.
     if result.ai_involved is False:
         return False, "ai_not_involved"
+    if investigation_scope_is_current(result) and result.ai_involved is True:
+        return True, ""
 
-    # Screening said "not worth investigating" → no deep verify ran → exclude
-    if result.screening is not None and not result.screening.worth_investigating:
-        return False, "screening_rejected"
-
-    # Fallback: per-BIC verdict logic
-    has_passing = False
+    # Per-BIC fallback remains strict: screening is diagnostic, and a positive
+    # needs both causal confirmation and an authorship-bearing signal.
     for bic in result.bug_introducing_commits:
-        has_signals = bool(bic.effective_signals())
+        has_signals = bool(bic.all_ai_signals())
         has_screening = bic.screening_verification is not None
         if not has_signals and not has_screening:
             continue
@@ -85,14 +89,8 @@ def _should_include_with_reason(
         dv = bic.deep_verification
         if dv and not is_fallback_verdict(dv):
             verdict = (dv.get("final_verdict") or dv.get("verdict") or "").upper()
-            if verdict == "CONFIRMED":
+            source = str(dv.get("ai_signal_source") or "")
+            if verdict == "CONFIRMED" and bic.has_authorship_attestation(source):
                 return True, ""
-            # UNLIKELY or UNRELATED — skip this BIC
             continue
-
-        # No deep verification or fallback verdict → benefit of the doubt
-        has_passing = True
-
-    if has_passing:
-        return True, ""
     return False, "no_confirmed_verdict"
