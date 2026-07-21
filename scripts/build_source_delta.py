@@ -1188,6 +1188,8 @@ def _validate_git_index_and_worktree(
     directory: Path,
     label: str,
     git_output: Callable[[Sequence[str]], str],
+    *,
+    allow_safe_symlinks: bool = False,
 ) -> None:
     """Bind HEAD, index, and every visible or ignored worktree entry."""
 
@@ -1212,12 +1214,15 @@ def _validate_git_index_and_worktree(
             raise SourceDeltaError(
                 f"{label} has forbidden Git index flags for {path!r}"
             )
-        if match.group("mode") not in {"100644", "100755"}:
+        mode = match.group("mode")
+        if mode not in {"100644", "100755"} and not (
+            allow_safe_symlinks and mode == "120000"
+        ):
             entry_kind = {
                 "040000": "sparse directory",
                 "120000": "symlink",
                 "160000": "gitlink",
-            }.get(match.group("mode"), "unsupported mode")
+            }.get(mode, "unsupported mode")
             raise SourceDeltaError(
                 f"{label} has forbidden {entry_kind} index entry for {path!r}"
             )
@@ -1260,7 +1265,12 @@ def _validate_git_index_and_worktree(
     )
     if cached_changes:
         raise SourceDeltaError(f"{label} Git index differs from the HEAD tree")
-    _validate_head_worktree_snapshot(directory, label, git_output)
+    _validate_head_worktree_snapshot(
+        directory,
+        label,
+        git_output,
+        allow_safe_symlinks=allow_safe_symlinks,
+    )
 
 
 def _git_blob_oid(file_descriptor: int, size: int, oid_length: int) -> str:
@@ -1277,6 +1287,16 @@ def _git_blob_oid(file_descriptor: int, size: int, oid_length: int) -> str:
     return digest.hexdigest()
 
 
+def _git_blob_bytes_oid(data: bytes, oid_length: int) -> str:
+    algorithm = {40: "sha1", 64: "sha256"}.get(oid_length)
+    if algorithm is None:
+        raise SourceDeltaError(f"unsupported Git object ID length: {oid_length}")
+    digest = hashlib.new(algorithm)
+    digest.update(f"blob {len(data)}\0".encode("ascii"))
+    digest.update(data)
+    return digest.hexdigest()
+
+
 def _dirty_git_worktree_error(label: str, detail: str) -> SourceDeltaError:
     subject = "Git source" if "Git source" in label else "Git mirror"
     return SourceDeltaError(
@@ -1288,11 +1308,14 @@ def _validate_head_worktree_snapshot(
     directory: Path,
     label: str,
     git_output: Callable[[Sequence[str]], str],
+    *,
+    allow_safe_symlinks: bool = False,
 ) -> None:
-    """Prove the analyzer-visible filesystem is the exact regular-file HEAD tree."""
+    """Prove the analyzer-visible filesystem is the exact allowed HEAD tree."""
 
     raw_tree = git_output(["ls-tree", "-r", "-z", "--full-tree", "HEAD"])
     expected_files: dict[str, tuple[str, int]] = {}
+    expected_symlinks: dict[str, str] = {}
     expected_directories: set[str] = set()
     oid_length: int | None = None
     for raw_entry in raw_tree.split("\0"):
@@ -1312,7 +1335,10 @@ def _validate_head_worktree_snapshot(
             raise SourceDeltaError(f"unsafe HEAD tree path in {label}: {path!r}")
         mode = match.group("mode")
         object_type = match.group("type")
-        if mode not in {"100644", "100755"} or object_type != "blob":
+        if object_type != "blob" or (
+            mode not in {"100644", "100755"}
+            and not (allow_safe_symlinks and mode == "120000")
+        ):
             entry_kind = {
                 "040000": "sparse directory",
                 "120000": "symlink",
@@ -1328,7 +1354,10 @@ def _validate_head_worktree_snapshot(
             raise SourceDeltaError(f"mixed Git object ID formats in {label}")
         if path in expected_files:
             raise SourceDeltaError(f"duplicate HEAD tree path in {label}: {path!r}")
-        expected_files[path] = (oid, int(mode, 8))
+        if mode == "120000":
+            expected_symlinks[path] = oid
+        else:
+            expected_files[path] = (oid, int(mode, 8))
         parent = parsed_path.parent
         while parent != PurePosixPath("."):
             expected_directories.add(parent.as_posix())
@@ -1380,12 +1409,52 @@ def _validate_head_worktree_snapshot(
                         f"{label} worktree contains nested Git metadata: {relative!r}"
                     )
                 expected = expected_files.get(relative)
-                if expected is None:
+                expected_symlink_oid = expected_symlinks.get(relative)
+                if expected is None and expected_symlink_oid is None:
                     raise _dirty_git_worktree_error(
                         label,
                         f"unexpected file {relative!r}",
                     )
                 before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+                if expected_symlink_oid is not None:
+                    if not stat.S_ISLNK(before.st_mode):
+                        raise SourceDeltaError(
+                            f"{label} worktree symlink differs from HEAD for "
+                            f"{relative!r}"
+                        )
+                    target = os.readlink(name, dir_fd=root_fd)
+                    target_path = PurePosixPath(target)
+                    if (
+                        not target
+                        or target_path.is_absolute()
+                        or ".." in target_path.parts
+                        or ".git" in target_path.parts
+                    ):
+                        raise SourceDeltaError(
+                            f"{label} worktree contains an unsafe tracked symlink: "
+                            f"{relative!r} -> {target!r}"
+                        )
+                    resolved_target = (PurePosixPath(relative).parent / target_path).as_posix()
+                    if resolved_target not in expected_files:
+                        raise SourceDeltaError(
+                            f"{label} tracked symlink target is not a tracked regular "
+                            f"file: {relative!r} -> {target!r}"
+                        )
+                    after = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+                    if _git_metadata_signature_from_stat(after) != (
+                        _git_metadata_signature_from_stat(before)
+                    ):
+                        raise SourceDeltaError(
+                            f"{label} worktree changed while reading symlink "
+                            f"{relative!r}"
+                        )
+                    actual_oid = _git_blob_bytes_oid(
+                        os.fsencode(target), len(expected_symlink_oid)
+                    )
+                    if actual_oid != expected_symlink_oid:
+                        raise _dirty_git_worktree_error(label, repr(relative))
+                    actual_files.add(relative)
+                    continue
                 if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
                     raise SourceDeltaError(
                         f"{label} worktree contains a non-regular file: {relative!r}"
@@ -1428,7 +1497,9 @@ def _validate_head_worktree_snapshot(
     except OSError as exc:
         raise SourceDeltaError(f"cannot inspect {label} worktree: {exc}") from exc
 
-    missing_files = sorted(set(expected_files) - actual_files)
+    missing_files = sorted(
+        (set(expected_files) | set(expected_symlinks)) - actual_files
+    )
     if missing_files:
         raise _dirty_git_worktree_error(
             label,
@@ -1466,6 +1537,7 @@ def validate_git_repository_safety(
     git_output: Callable[[Sequence[str]], str],
     *,
     allow_incomplete_storage: bool = False,
+    allow_safe_symlinks: bool = False,
     fsck_cache: SuccessfulGitFsckCache | None = None,
 ) -> Path:
     """Reject Git layouts/configuration that can redirect evidence or run code."""
@@ -1640,7 +1712,12 @@ def validate_git_repository_safety(
     if not _GIT_OID.fullmatch(head_before) or not _GIT_OID.fullmatch(tree_before):
         raise SourceDeltaError(f"invalid Git HEAD or tree object ID in {label}")
     if not allow_incomplete_storage:
-        _validate_git_index_and_worktree(directory, label, git_output)
+        _validate_git_index_and_worktree(
+            directory,
+            label,
+            git_output,
+            allow_safe_symlinks=allow_safe_symlinks,
+        )
         # The exact worktree proof binds bytes to HEAD OIDs, while fsck proves
         # that every object reachable from HEAD/history is actually present
         # and internally valid.  Partial legacy caches skip this only in the

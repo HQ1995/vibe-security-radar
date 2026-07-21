@@ -1720,6 +1720,7 @@ def _git_source_details(
     *,
     label: str,
     expected_origin: str,
+    allow_safe_symlinks: bool = False,
     fsck_cache: source_delta_builder.SuccessfulGitFsckCache | None = None,
 ) -> dict[str, Any]:
     source_dir = _safe_source_directory(source_dir, f"{label} Git")
@@ -1728,6 +1729,7 @@ def _git_source_details(
             source_dir,
             f"{label} Git source",
             lambda arguments: _git_output(source_dir, *arguments),
+            allow_safe_symlinks=allow_safe_symlinks,
             fsck_cache=fsck_cache,
         )
     except source_delta_builder.SourceDeltaError as exc:
@@ -1782,6 +1784,7 @@ def _openclaw_checkout_base_contract(
         checkout,
         label="OpenClaw analysis checkout",
         expected_origin=_OPENCLAW_ORIGIN,
+        allow_safe_symlinks=True,
     )
     checkout = Path(details["path"])
     top_level = _git_output(checkout, "rev-parse", "--show-toplevel")
@@ -1811,6 +1814,7 @@ def _openclaw_checkout_base_contract(
         "full_clone": True,
         "head_matches_remote_tracking": details["head"] == tracking_head,
         "git_integrity": "fsck_full_strict",
+        "tracked_symlink_policy": "relative_target_to_tracked_regular_file",
     }
 
 

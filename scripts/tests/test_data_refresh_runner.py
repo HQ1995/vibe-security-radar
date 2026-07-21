@@ -87,8 +87,36 @@ def _init_git_source(path: Path, origin: str) -> None:
     )
 
 
+def _commit_fixture(path: Path, message: str) -> None:
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(path),
+            "-c",
+            "user.name=Refresh Test",
+            "-c",
+            "user.email=refresh@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            message,
+        ],
+        check=True,
+    )
+
+
 def _init_current_openclaw_checkout(path: Path) -> str:
     _init_git_source(path, runner._OPENCLAW_ORIGIN)
+    (path / "AGENTS.md").write_text("OpenClaw fixture\n", encoding="utf-8")
+    (path / "CLAUDE.md").symlink_to("AGENTS.md")
+    subprocess.run(
+        ["git", "-C", str(path), "add", "AGENTS.md", "CLAUDE.md"],
+        check=True,
+    )
+    _commit_fixture(path, "add safe tracked symlink")
     subprocess.run(
         ["git", "-C", str(path), "branch", "-M", runner._OPENCLAW_BRANCH],
         check=True,
@@ -1756,7 +1784,39 @@ def test_openclaw_checkout_contract_binds_clean_current_full_clone(
         "full_clone": True,
         "head_matches_remote_tracking": True,
         "git_integrity": "fsck_full_strict",
+        "tracked_symlink_policy": "relative_target_to_tracked_regular_file",
     }
+
+
+def test_openclaw_checkout_contract_rejects_escaping_tracked_symlink(
+    tmp_path: Path,
+) -> None:
+    checkout = tmp_path / "openclaw"
+    _init_current_openclaw_checkout(checkout)
+    (checkout / "CLAUDE.md").unlink()
+    (checkout / "CLAUDE.md").symlink_to("../outside")
+    subprocess.run(
+        ["git", "-C", str(checkout), "add", "CLAUDE.md"],
+        check=True,
+    )
+    _commit_fixture(checkout, "unsafe tracked symlink")
+    head = subprocess.check_output(
+        ["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True
+    ).strip()
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(checkout),
+            "update-ref",
+            runner._OPENCLAW_REMOTE_TRACKING_REF,
+            head,
+        ],
+        check=True,
+    )
+
+    with pytest.raises(runner.RunnerError, match="unsafe tracked symlink"):
+        runner._openclaw_checkout_contract(lambda _url: checkout)
 
 
 def test_openclaw_checkout_contract_rejects_stale_head(tmp_path: Path) -> None:
