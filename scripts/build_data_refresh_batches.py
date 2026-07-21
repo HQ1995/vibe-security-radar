@@ -281,11 +281,15 @@ def _load_delta_metadata(
     delta_ids = [item.strip() for item in raw_ids]
     if len(delta_ids) != len(set(delta_ids)):
         raise BatchBuildError("source delta all_ids contains duplicate subject IDs")
-    missing = sorted(set(delta_ids) - candidate_ids)
-    if missing:
-        raise BatchBuildError(
-            f"candidate file omits {len(missing)} source-delta IDs: {missing[:10]}"
-        )
+    population_policy = payload.get("population_policy", "incremental")
+    if population_policy not in {"formal_full", "incremental"}:
+        raise BatchBuildError("source delta population policy is invalid")
+    if population_policy == "incremental":
+        missing = sorted(set(delta_ids) - candidate_ids)
+        if missing:
+            raise BatchBuildError(
+                f"candidate file omits {len(missing)} source-delta IDs: {missing[:10]}"
+            )
     input_snapshot = payload.get("input_snapshot")
     if not isinstance(input_snapshot, dict):
         raise BatchBuildError("source delta input_snapshot must be an object")
@@ -324,9 +328,6 @@ def _load_delta_metadata(
         ):
             raise BatchBuildError(f"source delta OSV snapshot is malformed: {name}")
         expected_archives[name] = {"size_bytes": size, "sha256": sha256}
-    population_policy = payload.get("population_policy", "incremental")
-    if population_policy not in {"formal_full", "incremental"}:
-        raise BatchBuildError("source delta population policy is invalid")
     formal_contract: dict[str, Any] = {"population_policy": population_policy}
     if population_policy == "formal_full":
         production = payload.get("production_discovery")
@@ -351,12 +352,14 @@ def _load_delta_metadata(
             raise BatchBuildError("formal alias-class manifest digest is invalid")
         scheduled_subjects: list[str] = []
         class_ids: list[str] = []
+        covered_member_ids: set[str] = set()
         for class_record in classes:
             if not isinstance(class_record, dict):
                 raise BatchBuildError("formal alias-class record is malformed")
             class_id = class_record.get("class_id")
             subject = class_record.get("analysis_subject")
             scheduled = class_record.get("scheduled_seed_ids")
+            all_member_ids = class_record.get("all_member_ids")
             if (
                 not isinstance(class_id, str)
                 or not class_id
@@ -364,9 +367,17 @@ def _load_delta_metadata(
                 or not subject
                 or not isinstance(scheduled, list)
                 or any(not isinstance(item, str) for item in scheduled)
+                or not isinstance(all_member_ids, list)
+                or not all_member_ids
+                or any(
+                    not isinstance(item, str) or not item.strip()
+                    for item in all_member_ids
+                )
+                or subject not in all_member_ids
             ):
                 raise BatchBuildError("formal alias-class record is malformed")
             class_ids.append(class_id)
+            covered_member_ids.update(item.strip() for item in all_member_ids)
             if scheduled:
                 scheduled_subjects.append(subject)
         if len(class_ids) != len(set(class_ids)):
@@ -376,6 +387,13 @@ def _load_delta_metadata(
         if set(scheduled_subjects) != candidate_ids:
             raise BatchBuildError(
                 "formal candidate file is not the exact scheduled alias-class population"
+            )
+        uncovered_delta_ids = sorted(set(delta_ids) - covered_member_ids)
+        if uncovered_delta_ids:
+            raise BatchBuildError(
+                "formal alias-class manifest omits "
+                f"{len(uncovered_delta_ids)} source-delta IDs: "
+                f"{uncovered_delta_ids[:10]}"
             )
         if (
             alias_manifest.get("scheduled_classes_exactly_once") is not True

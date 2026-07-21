@@ -248,10 +248,13 @@ def test_formal_batches_consume_alias_manifest_and_cover_classes_exactly_once(
             {
                 "class_id": f"class-{index}",
                 "analysis_subject": subject,
+                "all_member_ids": [subject],
                 "scheduled_seed_ids": [subject],
                 "analysis_input": {"git_ranges": git_ranges},
             }
         )
+    classes[0]["all_member_ids"].append("ALIAS-DELTA-MEMBER")
+    payload["all_ids"].append("ALIAS-DELTA-MEMBER")
     classes_sha256 = hashlib.sha256(
         json.dumps(classes, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -292,6 +295,52 @@ def test_formal_batches_consume_alias_manifest_and_cover_classes_exactly_once(
     assert sorted(
         class_id for batch in manifest["batches"] for class_id in batch["class_ids"]
     ) == sorted(item["class_id"] for item in classes)
+
+
+def test_formal_batches_reject_delta_id_not_covered_by_an_alias_class(
+    tmp_path: Path,
+) -> None:
+    paths = _fixture_paths(tmp_path)
+    candidate_ids = list(
+        dict.fromkeys(paths.candidate_file.read_text(encoding="utf-8").splitlines())
+    )
+    payload = json.loads(paths.delta_file.read_text(encoding="utf-8"))
+    classes = [
+        {
+            "class_id": f"class-{index}",
+            "analysis_subject": subject,
+            "all_member_ids": [subject],
+            "scheduled_seed_ids": [subject],
+            "analysis_input": {"git_ranges": []},
+        }
+        for index, subject in enumerate(candidate_ids)
+    ]
+    payload.update(
+        {
+            "all_ids": [*payload["all_ids"], "UNMAPPED-DELTA-MEMBER"],
+            "population_policy": "formal_full",
+            "analyzer_contract": {
+                "sha256": "a" * 64,
+                "signature_sha256": "b" * 64,
+            },
+            "production_discovery": {
+                "alias_class_manifest": {
+                    "classes": classes,
+                    "classes_sha256": hashlib.sha256(
+                        json.dumps(
+                            classes, sort_keys=True, separators=(",", ":")
+                        ).encode()
+                    ).hexdigest(),
+                    "scheduled_classes_exactly_once": True,
+                    "scheduled_analysis_subject_count": len(candidate_ids),
+                }
+            },
+        }
+    )
+    paths.delta_file.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(builder.BatchBuildError, match="manifest omits 1"):
+        builder.build_batches(paths, generated_at_utc=_GENERATED_AT)
 
 
 def test_output_is_reproducible_and_failed_rebuild_preserves_previous_tree(
