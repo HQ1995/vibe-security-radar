@@ -6,6 +6,8 @@ Rebuild the source delta and candidate union from the immutable
 ```bash
 uv run --project cve-analyzer python scripts/build_source_delta.py
 uv run --project cve-analyzer python scripts/build_data_refresh_batches.py
+uv run --project cve-analyzer python scripts/build_legacy_collision_inventory.py
+uv run --project cve-analyzer python scripts/migrate_legacy_collision_caches.py
 ```
 
 `build_source_delta.py` defaults to `formal_full`. It schedules every current
@@ -155,25 +157,155 @@ component and lock file is checked with pre-open `stat`, post-open `fstat` and
 post-open identity/link-count comparison, so intermediate-directory or final
 lock-file replacement races fail closed.
 
-- `gpt-5.6-luna` for discovery and verification
-- `CVE_REASONING_EFFORT=max`
-- `CVE_LLM_MODEL_OVERRIDE=gpt-5.6-luna` and `CVE_LLM_STRICT_MODEL=1`, which
-  pin every central LiteLLM call to the campaign model and reject fallback drift
+- no-token elimination first, with no model transport admitted
+- distribution/advisory repositories (for example `ubuntu-cve-tracker`) are
+  metadata-only lead sources: they may contribute package, version, alias, and
+  patch-reference evidence, but they are never cloned or blamed as vulnerable
+  code targets; the pipeline resolves their records to an upstream source
+  repository before code analysis
+- repository role and execution cost are independent classifications: large
+  upstream code repositories such as Linux or Chromium remain valid code
+  targets, but each execution wave admits at most one heavyweight batch while
+  filling the remaining CPU budget with ordinary repositories
+- exact `Co-authored-by` repo indexing before blame; reachable AI ancestors
+  and squash-PR members become stable causal edge IDs, while blame is ranking
+  support and never a candidate veto; repo/ref-generation-bound singleflight
+  ensures all CVEs sharing a large repository reuse one exact ref scan instead
+  of concurrently repeating `git for-each-ref`
+- large shallow/promisor repositories use one recent parent-topology scan per
+  repository instead of one `rev-list` per fix; fix SHAs outside local refs
+  enter a separately cached, blobless root-fetch/topology pass, and missing
+  objects, shallow boundaries, or fetch failures remain explicit incomplete
+  evidence rather than a no-match result
+- `gemini-3.5-flash-lite` at `low` reasoning for screening only
+- `gpt-5.6-luna` at `max` reasoning for causal verification only
+- separate content-addressed approvals for Flash and Luna; approving Flash
+  cannot admit a Luna request, and the Flash result manifest must be sealed
+  before the exact Luna request plan exists
 - `CVE_ANALYZER_FROZEN_LOCAL_SOURCES=1`, which disables advisory-source
   downloads, clones, and pulls inside every analyzer child process
-- 32 workers, `--recheck`, `--no-deep-discovery`, and `--llm-verify`
-- at most 4 concurrent LiteLLM requests, a 180-second request timeout, and a
+- stage-specific API/cache/result directories and process-locked budget ledgers;
+  every physical HTTP retry records its exact canonical request-body SHA-256,
+  subject, repository, logical turn, and retry index before transport
+- Git clones and repository-level analysis results use the durable
+  project-local `.ai-slop/cache/cve-analyzer/` root shared across compatible
+  campaign epochs; campaign-specific derived data remains isolated under its
+  content-addressed campaign directory
+- repo-component-aware no-token shards sharing a host-sized local worker budget
+  (logical CPUs minus a bounded OS/coordinator reserve, capped at 112); the
+  current 128-CPU host runs up to 16 analyzer children with 7 workers each,
+  while known repositories remain disjoint across concurrent children and
+  Flash/Luna remain single-child so model concurrency is not multiplied
+- a shared SQLite-WAL GitHub governor under the campaign directory, targeting
+  60% of the observed quota, preserving at least 20%, and allowing at most 16
+  requests in flight across child processes
+- configured model concurrency and rate governors, a 180-second request timeout, and a
   16,384-token output floor for `max` reasoning; one incomplete response may
   retry at up to 32,768 tokens
-- result-cache reads disabled with the root `--no-cache` flag
-- every LLM cache namespace bypassed with `CVE_LLM_DISABLE_CACHE=1`
-- `--force-verify` for every AI-signaled candidate
-- explicit `--cve-list` batches produce exactly their requested inventory;
-  post-batch repository discovery is disabled
+- v4 stage-owned artifacts: exact no-token results, evidence-availability and
+  screening-route projections, screening deltas,
+  repository-granular verification deltas, and subject-level verification
+  aggregates; unchanged stage contracts reuse exact hits and execute only misses
 - a 120 GiB free-space floor before and after every executed batch
 - a content-addressed local-source snapshot covering the cvelistV5, GitHub
   Advisory Database, and Gemnasium Git mirrors, the 2025/2026 NVD gzip feeds,
   the OSV ecosystem manifest, and every manifest-derived OSV bulk zip
+- a versioned durable Git-fsck receipt at
+  `.ai-slop/state/data-refresh/git-fsck-receipts-v1.json`; reuse still
+  revalidates repository layout/config, index and worktree bytes, HEAD/tree,
+  and the full object/ref metadata digest, while any object/ref mutation or
+  malformed/old receipt forces a new `git fsck --full --strict`
+
+Before scanning the full population, build the prediction-blind no-token pilot:
+
+```bash
+cve-analyzer/.venv/bin/python scripts/build_no_token_pilot.py select
+```
+
+This writes 1,000 subjects under
+`.ai-slop/state/data-refresh/no-token-pilot-v1/<pilot-id>/`: 100 mapped and
+100 unmapped classes in each of `<=2023`, `2024`, `2025`, `2026`, and
+GHSA-only. The companion Source v3 ground-truth report is stage-scoped: it
+must show zero false positives and zero false negatives across exact author
+pairs, known-AI co-author trailers, and complete known-tool attribution lines.
+It makes no Flash, Luna, causality, or population-accuracy claim. Preflight or
+execute the two frozen 500-subject sampling lanes as deterministic,
+repo-component-aware execution shards through the no-token-only runner with:
+
+```bash
+scripts/run_data_refresh.sh --run-no-token-pilot \
+  <pilot-dir>/selection.json --dry-run --execute-after-dry-run
+```
+
+The runner uses up to 16 repo-disjoint child processes with a campaign-bound
+host-sized worker budget (7 workers each, 112 total on the current 128-CPU
+host), seals only terminal subjects, and writes the evaluation beside the
+immutable selection. Batch exit code 1 is treated as a request for per-subject
+validation, not as a transport crash; only validated terminal siblings are
+sealed and retryable subjects remain explicit. It never enters the Flash or
+Luna phases. The standalone `evaluate` subcommand remains available for
+auditing an already sealed result directory. The combined preflight mode reuses
+strict source validation in one process; a separate dry-run followed by a
+second command intentionally repeats fail-closed Git validation.
+
+Every result is projected into exactly one no-token route:
+
+- `screenable`: explicit AI authorship evidence exists and the subject belongs
+  in the cheap-model queue
+- `no_screening_value`: the current frozen source/fix/BIC/attribution contract
+  has a complete exhaustion proof, so a paid call has no useful input
+- `deferred_retryable`: evidence is missing, stale, transiently unavailable, or
+  otherwise incomplete; it must not be mistaken for a negative
+
+Paid planning remains blocked if any subject is missing, contains model output,
+has deferred or incomplete coverage, lacks a complete no-value proof, or loses
+an old blame-derived candidate. A weighted candidate estimate below 200 is a
+manual-audit warning rather than a semantic reason to discard upstream source
+repositories.
+
+Population-quality claims require a separate real-data audit. Build a blind,
+repo-disjoint packet from a frozen Source v3 row manifest with
+`scripts/build_source_audit_packet.py select`; score it only after two distinct
+adjudicators provide complete, agreeing labels. Disagreement or an
+`inconclusive` label keeps `quality_claim_ready=false`.
+
+After rebuilding the formal delta and batches, seal the no-token results and
+the exact Flash-only plan. All prices, request bounds, retry/call bounds, and
+the hard ceiling are explicit operator inputs; inspect current provider and
+gateway metadata immediately before supplying them:
+
+```bash
+scripts/run_data_refresh.sh --prepare-screening-plan \
+  --screening-input-usd-per-million-tokens <price> \
+  --screening-output-usd-per-million-tokens <price> \
+  --screening-max-input-tokens <bound> \
+  --screening-max-output-tokens <bound> \
+  --screening-max-calls-per-candidate <bound> \
+  --verification-input-usd-per-million-tokens <price> \
+  --verification-output-usd-per-million-tokens <price> \
+  --verification-max-input-tokens <bound> \
+  --verification-max-output-tokens <bound> \
+  --verification-max-calls-per-candidate <bound> \
+  --llm-cost-ceiling-usd <ceiling>
+```
+
+The screening plan reserves and reports only Flash calls and Flash cost. Luna
+pricing and bounds are carried forward as provisional inputs, but Luna has zero
+calls and zero reserved cost in this plan. Only after Flash results are sealed
+does the runner apply those bounds to the exact screening-positive repository
+requests and produce the separately approvable Luna cost plan. The same hard
+ceiling is enforced independently at both boundaries.
+
+The command stops after writing `screening-plan-v1.json`. Approve only that
+reported digest to run Flash. Flash execution seals both
+`screening-result-manifest-v1.json` and `verification-plan-v1.json`, then stops
+again. Luna remains impossible until its separately reported digest is
+approved:
+
+```bash
+scripts/run_data_refresh.sh --approve-screening-plan <screening-plan-sha256>
+scripts/run_data_refresh.sh --approve-verification-plan <verification-plan-sha256>
+```
 
 Campaign construction semantically replays source-delta generation once from
 the frozen inputs, including discovery, aliases, cache partitioning, and the
@@ -181,28 +313,39 @@ candidate union. It compares the replayed delta and candidate bytes with the
 committed artifacts. Coordinated edits to counts, hashes, and both artifacts
 therefore still fail closed.
 
-Every formal invocation, including `--dry-run`, requires a current completed
-OpenClaw smoke gate. Establish the gate with a release-ineligible 24-class
-pilot followed by the exact full-OpenClaw smoke. Pilot prices and token bounds
-are explicit inputs. Query the configured gateway's model metadata immediately
-before the pilot and record those values in the command. For the
-`gpt-5.6-luna` gateway contract checked on 2026-07-19 (USD 1/M input tokens and
-USD 6/M output tokens), the bounded pilot commands are:
+OpenClaw is an independent, release-ineligible regression population. It is not
+a formal campaign prerequisite and cannot block the all-repository scan. Run
+its bounded 24-class pilot and exact full-population smoke through the separate
+entry point. Pilot prices and token bounds are explicit inputs. Query the
+configured gateway's model metadata immediately before the pilot and record
+those values in the command:
 
 ```bash
-scripts/run_data_refresh.sh --openclaw-pilot --dry-run \
-  --pilot-input-usd-per-million-tokens 1 \
-  --pilot-output-usd-per-million-tokens 6 \
-  --pilot-max-input-tokens 128000 \
-  --pilot-max-output-tokens 32768 \
+uv run --project cve-analyzer python scripts/run_openclaw_regression.py pilot --dry-run \
+  --screening-input-usd-per-million-tokens <price> \
+  --screening-output-usd-per-million-tokens <price> \
+  --verification-input-usd-per-million-tokens <price> \
+  --verification-output-usd-per-million-tokens <price> \
+  --screening-max-input-tokens <bound> \
+  --screening-max-output-tokens <bound> \
+  --verification-max-input-tokens <bound> \
+  --verification-max-output-tokens <bound> \
+  --screening-max-calls-per-candidate <bound> \
+  --verification-max-calls-per-candidate <bound> \
   --pilot-cost-ceiling-usd 25 \
   --pilot-max-attempts 72
 
-scripts/run_data_refresh.sh --openclaw-pilot \
-  --pilot-input-usd-per-million-tokens 1 \
-  --pilot-output-usd-per-million-tokens 6 \
-  --pilot-max-input-tokens 128000 \
-  --pilot-max-output-tokens 32768 \
+uv run --project cve-analyzer python scripts/run_openclaw_regression.py pilot \
+  --screening-input-usd-per-million-tokens <price> \
+  --screening-output-usd-per-million-tokens <price> \
+  --verification-input-usd-per-million-tokens <price> \
+  --verification-output-usd-per-million-tokens <price> \
+  --screening-max-input-tokens <bound> \
+  --screening-max-output-tokens <bound> \
+  --verification-max-input-tokens <bound> \
+  --verification-max-output-tokens <bound> \
+  --screening-max-calls-per-candidate <bound> \
+  --verification-max-calls-per-candidate <bound> \
   --pilot-cost-ceiling-usd 25 \
   --pilot-max-attempts 72
 ```
@@ -222,12 +365,12 @@ Copy the completed command's `pilot_id` into the smoke command. The operator
 must record both hard smoke budgets explicitly:
 
 ```bash
-scripts/run_data_refresh.sh --openclaw-smoke --dry-run \
+uv run --project cve-analyzer python scripts/run_openclaw_regression.py smoke --dry-run \
   --pilot-id <pilot-id> \
   --smoke-cost-ceiling-usd 25 \
   --smoke-max-attempts 72
 
-scripts/run_data_refresh.sh --openclaw-smoke \
+uv run --project cve-analyzer python scripts/run_openclaw_regression.py smoke \
   --pilot-id <pilot-id> \
   --smoke-cost-ceiling-usd 25 \
   --smoke-max-attempts 72
@@ -252,17 +395,18 @@ command resumes the same bounded artifact and deadline. A changed pilot,
 manifest, checkout, contract, pricing proof, or operator budget produces a new
 smoke identity.
 
-After `current.json` points to a completion that replays against current inputs,
-inspect the first pending formal batch without writing logs or state:
+The regression completion remains under its own state root and can be compared
+across analyzer revisions. It is evidence about that focused population only;
+formal scan readiness does not consume its `current.json` pointer.
+
+Inspect the first pending formal batch without writing logs or state:
 
 ```bash
 scripts/run_data_refresh.sh --dry-run --limit 1
 ```
 
-The dry-run JSON begins with `batch=openclaw-smoke-gate` and
-`status=gate_ready`, followed by the selected formal batches. A missing, stale,
-or incomplete smoke fails closed before any formal batch is reported or
-executed.
+The formal dry-run reports only the selected formal batches. A missing, stale,
+or incomplete OpenClaw regression never blocks this path.
 
 Resume the partially processed legacy batch:
 
