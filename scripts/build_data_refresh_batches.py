@@ -416,6 +416,8 @@ def _load_quality_corpus_metadata(
     path: Path | None,
     candidate_ids: set[str],
     repo_root: Path,
+    *,
+    alias_class_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if path is None:
         return {}
@@ -423,16 +425,73 @@ def _load_quality_corpus_metadata(
     subject_ids = _read_nonempty_lines(data, path, "quality corpus file")
     if len(subject_ids) != len(set(subject_ids)):
         raise BatchBuildError("quality corpus contains duplicate subject IDs")
-    missing = sorted(set(subject_ids) - candidate_ids)
+    subject_to_analysis_subject: dict[str, str] = {}
+    if alias_class_manifest is not None:
+        member_to_analysis_subject: dict[str, str] = {}
+        for item in alias_class_manifest.get("classes", []):
+            analysis_subject = item.get("analysis_subject")
+            members = item.get("all_member_ids")
+            if not isinstance(analysis_subject, str) or not isinstance(members, list):
+                raise BatchBuildError(
+                    "formal alias-class manifest has invalid quality-corpus mapping data"
+                )
+            for member in members:
+                if not isinstance(member, str):
+                    raise BatchBuildError(
+                        "formal alias-class manifest has a non-string member ID"
+                    )
+                previous = member_to_analysis_subject.setdefault(
+                    member, analysis_subject
+                )
+                if previous != analysis_subject:
+                    raise BatchBuildError(
+                        f"alias member {member!r} maps to multiple analysis subjects"
+                    )
+        subject_to_analysis_subject = {
+            subject: member_to_analysis_subject.get(subject, subject)
+            for subject in subject_ids
+        }
+    else:
+        subject_to_analysis_subject = {subject: subject for subject in subject_ids}
+
+    missing = sorted(
+        subject
+        for subject, analysis_subject in subject_to_analysis_subject.items()
+        if analysis_subject not in candidate_ids
+    )
     if missing:
         raise BatchBuildError(
             f"candidate file omits {len(missing)} quality-corpus IDs: {missing[:10]}"
         )
-    return {
+    metadata: dict[str, Any] = {
         "quality_corpus_file": _manifest_path(path, repo_root),
         "quality_corpus_subject_id_count": len(subject_ids),
         "quality_corpus_sha256": _sha256_bytes(data),
     }
+    if alias_class_manifest is not None:
+        mapping_json = json.dumps(
+            subject_to_analysis_subject,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        metadata.update(
+            {
+                "quality_corpus_analysis_subject_id_count": len(
+                    set(subject_to_analysis_subject.values())
+                ),
+                "quality_corpus_alias_mapped_subject_id_count": sum(
+                    subject != analysis_subject
+                    for subject, analysis_subject in subject_to_analysis_subject.items()
+                ),
+                "quality_corpus_subject_to_analysis_subject": (
+                    subject_to_analysis_subject
+                ),
+                "quality_corpus_subject_mapping_sha256": hashlib.sha256(
+                    mapping_json
+                ).hexdigest(),
+            }
+        )
+    return metadata
 
 
 def _archive_content_mtime(infos: Sequence[zipfile.ZipInfo]) -> str | None:
@@ -1223,6 +1282,9 @@ def build_manifest(
         paths.quality_corpus_file,
         candidate_set,
         paths.repo_root,
+        alias_class_manifest=delta_contract.get("alias_class_manifest")
+        if formal_full
+        else None,
     )
 
     union_find = UnionFind(remaining_order)

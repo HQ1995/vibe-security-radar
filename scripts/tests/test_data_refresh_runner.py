@@ -15,6 +15,7 @@ import threading
 import time
 import zipfile
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -24,9 +25,6 @@ import pytest
 import build_data_refresh_batches as batch_builder
 import run_data_refresh as runner
 import web_data.writer as web_writer
-
-
-_REAL_CURRENT_OPENCLAW_SMOKE_GATE_STATUS = runner._current_openclaw_smoke_gate_status
 
 
 @pytest.fixture(autouse=True)
@@ -42,22 +40,10 @@ def _fixed_litellm_transport(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("LITELLM_API_BASE", "https://litellm.example.invalid/v1")
     monkeypatch.setenv("LITELLM_API_KEY", "fixture-proxy-key")
-
-
-@pytest.fixture(autouse=True)
-def _completed_openclaw_smoke_gate(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep legacy runner tests focused on their original execution boundary."""
-
-    monkeypatch.setattr(
-        runner,
-        "_current_openclaw_smoke_gate_status",
-        lambda _paths: {
-            "status": "ready",
-            "smoke_id": "a" * 64,
-            "class_count": 30,
-        },
-    )
-
+    monkeypatch.setenv("CVE_LLM_SCREENING_RPM", "60")
+    monkeypatch.setenv("CVE_LLM_SCREENING_TPM", "100000")
+    monkeypatch.setenv("CVE_LLM_VERIFY_RPM", "30")
+    monkeypatch.setenv("CVE_LLM_VERIFY_TPM", "50000")
 
 def _init_git_source(path: Path, origin: str) -> None:
     path.mkdir(parents=True)
@@ -224,6 +210,10 @@ def _write_campaign(tmp_path: Path) -> runner.RunnerPaths:
         "BATCH_BUILDER_CONTRACT = 1\n",
         encoding="utf-8",
     )
+    (repo_root / "scripts/build_legacy_collision_inventory.py").write_text(
+        "COLLISION_INVENTORY_CONTRACT = 1\n",
+        encoding="utf-8",
+    )
     (repo_root / "scripts/build_source_delta.py").write_text(
         "SOURCE_DELTA_CONTRACT = 1\n",
         encoding="utf-8",
@@ -289,6 +279,8 @@ def _write_campaign(tmp_path: Path) -> runner.RunnerPaths:
             "user.name=Refresh Test",
             "-c",
             "user.email=refresh@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
             "commit",
             "-q",
             "-m",
@@ -642,17 +634,39 @@ def _receipt_fixture(
             "adjudication": {"outcome": "not_applicable"},
         },
         "campaign_receipt": {
-            "schema_version": 1,
+            "schema_version": 3,
             "campaign_id": campaign.campaign_id,
+            "pipeline_phase": "verification",
             "batch": batch.key,
             "started_at": started_at,
             "completed_at": receipt_completed_at,
             "source_snapshot_sha256": campaign.source_snapshot_sha256,
             "contract_sha256": campaign.contract_sha256,
             "litellm_transport_sha256": campaign.litellm_transport_sha256,
-            "requested_model": runner.MODEL,
-            "reasoning_effort": runner.REASONING_EFFORT,
+            "requested_models": {
+                "phase_c_screening": runner.SCREENING_MODEL,
+                "phase_d_deep_verification": runner.VERIFY_MODEL,
+            },
+            "reasoning_efforts": {
+                "phase_c_screening": runner.SCREENING_REASONING_EFFORT,
+                "phase_d_deep_verification": runner.REASONING_EFFORT,
+            },
             "llm_cache_disabled": True,
+            "resource_governance": {
+                "llm_global_max": str(runner.LLM_MAX_CONCURRENCY),
+                "llm_screening_max": str(runner.LLM_SCREENING_MAX_CONCURRENCY),
+                "llm_verification_max": str(runner.LLM_VERIFY_MAX_CONCURRENCY),
+                "llm_screening_rpm": os.environ.get(runner.LLM_SCREENING_RPM_ENV, ""),
+                "llm_screening_tpm": os.environ.get(runner.LLM_SCREENING_TPM_ENV, ""),
+                "llm_verification_rpm": os.environ.get(runner.LLM_VERIFY_RPM_ENV, ""),
+                "llm_verification_tpm": os.environ.get(runner.LLM_VERIFY_TPM_ENV, ""),
+                "github_max_in_flight": str(runner.GITHUB_MAX_IN_FLIGHT),
+                "github_reserve_fraction": str(runner.GITHUB_RESERVE_FRACTION),
+                "github_target_utilization": str(
+                    runner.GITHUB_TARGET_UTILIZATION
+                ),
+                "github_governor_backend": "sqlite_wal_v1",
+            },
             "status": "success",
             "failed_stages": [],
             "stages": {
@@ -807,12 +821,6 @@ def test_dry_run_reuses_the_initial_semantic_replay(
     refresh = runner.RefreshRunner(paths)
 
     assert refresh.run(dry_run=True, batch_key="legacy-001") == [
-        {
-            "batch": "openclaw-smoke-gate",
-            "status": "gate_ready",
-            "smoke_id": "a" * 64,
-            "class_count": 30,
-        },
         {"batch": "legacy-001", "status": "dry_run"},
     ]
     assert replay_calls == 1
@@ -969,10 +977,19 @@ def test_command_locks_luna_max_refresh_contract(tmp_path: Path) -> None:
         source,
         runner.contract_sha256(paths),
     )
+    next_campaign = runner.campaign_execution(
+        paths,
+        runner.SourceSnapshot(sha256="f" * 64, details={}),
+        runner.contract_sha256(paths),
+    )
     campaign_environment = runner.build_environment(
         {
             "LITELLM_API_BASE": "https://litellm.example.invalid/v1",
             "LITELLM_API_KEY": "fixture-proxy-key",
+            "CVE_LLM_SCREENING_RPM": "60",
+            "CVE_LLM_SCREENING_TPM": "100000",
+            "CVE_LLM_VERIFY_RPM": "30",
+            "CVE_LLM_VERIFY_TPM": "50000",
         },
         campaign=campaign,
         batch_key=batch.key,
@@ -988,25 +1005,33 @@ def test_command_locks_luna_max_refresh_contract(tmp_path: Path) -> None:
         "--cve-list",
         str(batch.path),
         "--recheck",
-        "--force-verify",
         "--workers",
-        "32",
+        str(runner.WORKERS),
         "--no-deep-discovery",
         "--llm-verify",
         "--llm-model",
-        "gpt-5.6-luna",
+        "gemini-3.5-flash-lite",
         "--verify-model",
         "gpt-5.6-luna",
         "--coding-agent",
         "off",
     ]
-    assert command.count("--force-verify") == 1
+    assert campaign.campaign_id != next_campaign.campaign_id
+    assert runner._campaign_artifact_root(campaign) == (
+        paths.state_dir.parent / "artifacts-v1"
+    )
+    assert runner._campaign_artifact_root(campaign) == runner._campaign_artifact_root(
+        next_campaign
+    )
+    assert command.count("--force-verify") == 0
     assert environment["CVE_REASONING_EFFORT"] == "max"
     assert environment["CVE_ANALYZER_FROZEN_LOCAL_SOURCES"] == "1"
-    assert environment["CVE_LLM_MODEL_OVERRIDE"] == "gpt-5.6-luna"
+    assert "CVE_LLM_MODEL_OVERRIDE" not in environment
+    assert environment["CVE_LLM_SCREENING_MODEL"] == "gemini-3.5-flash-lite"
+    assert environment["CVE_LLM_VERIFY_MODEL_OVERRIDE"] == "gpt-5.6-luna"
     assert environment["CVE_LLM_STRICT_MODEL"] == "1"
     assert environment["CVE_LLM_DISABLE_CACHE"] == "1"
-    assert environment["CVE_LLM_CONCURRENCY"] == "4"
+    assert environment["CVE_LLM_CONCURRENCY"] == "16"
     assert environment["PYTHONNOUSERSITE"] == "1"
     assert "PYTHONHOME" not in environment
     assert "PYTHONPATH" not in environment
@@ -1017,6 +1042,9 @@ def test_command_locks_luna_max_refresh_contract(tmp_path: Path) -> None:
     )
     assert campaign_environment["CVE_ANALYZER_DERIVED_CACHE_ROOT"] == str(
         campaign.derived_cache_root
+    )
+    assert campaign_environment["CVE_ANALYZER_REPOSITORY_CACHE_ROOT"] == str(
+        runner.data_refresh_paths.shared_analyzer_cache_root(paths.repo_root)
     )
     assert campaign_environment["CVE_ANALYZER_CAMPAIGN_ID"] == campaign.campaign_id
     assert campaign_environment["CVE_ANALYZER_CAMPAIGN_BATCH"] == batch.key
@@ -1032,9 +1060,539 @@ def test_command_locks_luna_max_refresh_contract(tmp_path: Path) -> None:
     )
     assert campaign.litellm_transport["api_key_configured"] is True
     assert campaign.litellm_transport["api_modes"] == ["responses"]
-    assert campaign.litellm_transport["max_concurrent_requests"] == 4
+    assert campaign.litellm_transport["max_concurrent_requests"] == 16
+    assert campaign.litellm_transport["adaptive_concurrency"] == {
+        "initial_utilization": 0.50,
+        "target_utilization": 0.75,
+        "hard_utilization": 0.85,
+        "screening_max": 16,
+        "verification_max": 8,
+    }
     assert campaign.litellm_transport["request_timeout_seconds"] == 180
     assert campaign.litellm_transport["max_reasoning_output_tokens_floor"] == 16_384
+
+
+def test_no_token_waves_allow_two_children_without_repo_collision(
+    tmp_path: Path,
+) -> None:
+    batches = [
+        runner.BatchSpec(
+            key=f"batch-{index}",
+            path=tmp_path / f"batch-{index}.txt",
+            kind="fixture",
+            ids=(f"CVE-2026-{index:04d}",),
+            repos=frozenset(repositories),
+        )
+        for index, repositories in enumerate(
+            (
+                {"github.com/acme/a"},
+                {"github.com/acme/b"},
+                {"github.com/acme/a"},
+                set(),
+            ),
+            start=1,
+        )
+    ]
+
+    waves = runner.RefreshRunner._repo_disjoint_batch_waves(
+        batches,
+        max_children=2,
+    )
+
+    assert [[batch.key for batch in wave] for wave in waves] == [
+        ["batch-1", "batch-2"],
+        ["batch-3", "batch-4"],
+    ]
+    assert all(len(wave) <= 2 for wave in waves)
+    assert all(
+        not (wave[0].repos & wave[1].repos)
+        for wave in waves
+        if len(wave) == 2
+    )
+    assert runner.HOST_LOGICAL_CPUS >= 1
+    assert runner.LOCAL_CPU_RESERVE >= 1
+    assert runner.WORKERS >= 1
+    assert runner.NO_TOKEN_TOTAL_WORKERS == (
+        runner.NO_TOKEN_CHILD_PROCESSES * runner.WORKERS
+    )
+    assert runner.NO_TOKEN_TOTAL_WORKERS <= 112
+    assert (
+        runner.NO_TOKEN_TOTAL_WORKERS + runner.LOCAL_CPU_RESERVE
+        <= runner.HOST_LOGICAL_CPUS + runner.NO_TOKEN_CHILD_PROCESSES - 1
+    )
+
+
+def test_no_token_waves_cap_heavyweight_batches_to_one(tmp_path: Path) -> None:
+    batches = [
+        runner.BatchSpec(
+            key="linux",
+            path=tmp_path / "linux.txt",
+            kind="fixture",
+            ids=("CVE-LINUX",),
+            repos=frozenset({"github.com/torvalds/linux"}),
+        ),
+        runner.BatchSpec(
+            key="chromium",
+            path=tmp_path / "chromium.txt",
+            kind="fixture",
+            ids=("CVE-CHROMIUM",),
+            repos=frozenset({"github.com/chromium/chromium"}),
+        ),
+        runner.BatchSpec(
+            key="ordinary",
+            path=tmp_path / "ordinary.txt",
+            kind="fixture",
+            ids=("CVE-ORDINARY",),
+            repos=frozenset({"github.com/acme/project"}),
+        ),
+    ]
+
+    waves = runner.RefreshRunner._repo_disjoint_batch_waves(
+        batches,
+        max_children=3,
+    )
+
+    assert [[batch.key for batch in wave] for wave in waves] == [
+        ["linux"],
+        ["chromium", "ordinary"],
+    ]
+
+
+def test_no_token_repo_component_shards_are_balanced_and_disjoint() -> None:
+    rows = [
+        {"analysis_subject": "CVE-A", "repositories": ["repo/shared"]},
+        {"analysis_subject": "CVE-B", "repositories": ["repo/shared", "repo/b"]},
+        {"analysis_subject": "CVE-C", "repositories": ["repo/c"]},
+        {"analysis_subject": "CVE-D", "repositories": []},
+        {"analysis_subject": "CVE-E", "repositories": []},
+        {"analysis_subject": "CVE-F", "repositories": ["repo/f"]},
+    ]
+
+    shards = runner._balanced_repo_component_shards(rows, shard_count=3)
+
+    subject_shards = [
+        {str(row["analysis_subject"]) for row in shard} for shard in shards
+    ]
+    assert {"CVE-A", "CVE-B"} in subject_shards
+    assert set().union(*subject_shards) == {
+        "CVE-A",
+        "CVE-B",
+        "CVE-C",
+        "CVE-D",
+        "CVE-E",
+        "CVE-F",
+    }
+    assert max(map(len, shards)) - min(map(len, shards)) <= 1
+    repository_shards = [
+        {
+            repository
+            for row in shard
+            for repository in row["repositories"]
+        }
+        for shard in shards
+    ]
+    assert all(
+        not (left & right)
+        for index, left in enumerate(repository_shards)
+        for right in repository_shards[index + 1 :]
+    )
+
+
+def test_intermediate_exit_one_is_reserved_for_subject_level_validation() -> None:
+    assert runner.INTERMEDIATE_ANALYZABLE_EXIT_CODES == {0, 1}
+
+
+def test_wave_binding_gate_runs_one_validator_after_all_arrivals() -> None:
+    gate = runner._WaveBindingGate(4)
+    validations: list[str] = []
+    arrivals: list[str] = []
+
+    def participant(name: str) -> None:
+        arrivals.append(name)
+        gate.arrive_and_validate(lambda: validations.append(name))
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(participant, f"worker-{index}") for index in range(4)
+        ]
+        for future in futures:
+            future.result()
+
+    assert sorted(arrivals) == [f"worker-{index}" for index in range(4)]
+    assert len(validations) == 1
+
+
+def test_wave_binding_gate_abort_releases_waiters() -> None:
+    gate = runner._WaveBindingGate(2)
+    expected = runner.RunnerError("wave failed")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        waiting = executor.submit(gate.arrive_and_validate, lambda: None)
+        gate.abort(expected)
+        with pytest.raises(runner.RunnerError, match="wave failed"):
+            waiting.result()
+
+
+def test_wave_binding_gate_counts_cache_hits_without_duplicate_validation() -> None:
+    gate = runner._WaveBindingGate(4)
+    validations: list[str] = []
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(gate.arrive_without_execution),
+            executor.submit(gate.arrive_without_execution),
+            executor.submit(
+                gate.arrive_and_validate,
+                lambda: validations.append("validated"),
+            ),
+            executor.submit(gate.arrive_without_execution),
+        ]
+        for future in futures:
+            future.result()
+
+    assert validations == ["validated"]
+
+
+def test_wave_binding_gate_all_cache_hits_need_no_post_execution_binding() -> None:
+    gate = runner._WaveBindingGate(3)
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [
+            executor.submit(gate.arrive_without_execution) for _ in range(3)
+        ]
+        for future in futures:
+            future.result()
+
+
+def test_staged_commands_enforce_no_token_screening_verification_barriers(
+    tmp_path: Path,
+) -> None:
+    paths = _write_campaign(tmp_path)
+    batch = runner.load_plan(paths)[0]
+
+    no_token = runner.build_command(
+        batch, analyzer_dir=paths.analyzer_dir, phase="no_token"
+    )
+    screening = runner.build_command(
+        batch, analyzer_dir=paths.analyzer_dir, phase="screening"
+    )
+    verification = runner.build_command(
+        batch, analyzer_dir=paths.analyzer_dir, phase="verification"
+    )
+
+    assert "--no-cache" in no_token
+    assert "--recheck" in no_token
+    assert "--no-verify" in no_token
+    assert "--llm-verify" not in no_token
+    for command, phase in ((screening, "screening"), (verification, "verification")):
+        assert "--no-cache" not in command
+        assert "--recheck" not in command
+        assert command[command.index("--llm-phase") + 1] == phase
+        assert command[command.index("--llm-model") + 1] == runner.SCREENING_MODEL
+        assert command[command.index("--verify-model") + 1] == runner.VERIFY_MODEL
+
+
+def test_llm_plan_cost_uses_explicit_call_and_token_upper_bounds() -> None:
+    cost = runner.RefreshRunner._stage_cost_microusd(
+        candidates=2,
+        calls_per_candidate=3,
+        max_input_tokens=1000,
+        max_output_tokens=200,
+        input_price="0.5",
+        output_price="2",
+    )
+
+    assert cost == 5_400
+
+
+def test_screening_plan_does_not_precharge_conditional_luna_work() -> None:
+    pricing = runner.LlmPlanPricing(
+        screening_input_usd_per_million_tokens="0.3",
+        screening_output_usd_per_million_tokens="2.5",
+        verification_input_usd_per_million_tokens="1",
+        verification_output_usd_per_million_tokens="6",
+        screening_max_input_tokens=1_000,
+        screening_max_output_tokens=100,
+        verification_max_input_tokens=1_050_000,
+        verification_max_output_tokens=32_768,
+        screening_max_calls_per_candidate=2,
+        verification_max_calls_per_candidate=300,
+        max_cost_microusd=100_000,
+    )
+
+    contract = runner.RefreshRunner._screening_plan_cost_contract(
+        candidate_count=100,
+        screening_cache_hits=10,
+        pricing=pricing,
+    )
+
+    assert contract["upper_bounds"] == {
+        "screening_candidates": 90,
+        "screening_calls": 180,
+        "verification_calls": 0,
+    }
+    assert contract["cost"] == {
+        "screening_microusd": 99_000,
+        "verification_microusd": 0,
+        "worst_case_microusd": 99_000,
+        "hard_ceiling_microusd": 100_000,
+    }
+    assert contract["deferred_verification"] == {
+        "status": "unpriced_until_screening_results_are_sealed",
+        "candidate_upper_bound": 100,
+        "calls_per_request_bound": 300,
+    }
+
+
+def test_cross_repo_pilot_selection_is_deterministic_and_repository_distinct() -> None:
+    candidates = {
+        f"CVE-TEST-{index:04d}": [f"https://github.com/example/repo-{index}"]
+        for index in range(55)
+    }
+
+    first = runner._deterministic_cross_repo_pilot_selection(
+        candidates,
+        seed_sha256="a" * 64,
+    )
+    second = runner._deterministic_cross_repo_pilot_selection(
+        dict(reversed(list(candidates.items()))),
+        seed_sha256="a" * 64,
+    )
+
+    assert first == second
+    assert len(first) == runner.CROSS_REPO_PILOT_CLASS_COUNT
+    assert len({item["subject_id"] for item in first}) == len(first)
+    assert len({item["repository_identity"] for item in first}) == len(first)
+
+
+def test_formal_llm_budget_ledger_reserves_each_http_attempt_before_execution(
+    tmp_path: Path,
+) -> None:
+    refresh = object.__new__(runner.RefreshRunner)
+    refresh.plan = (object(), object())
+    campaign = runner.CampaignExecution(
+        campaign_id="a" * 64,
+        root=tmp_path / "campaign",
+        result_dir=tmp_path / "campaign" / "results",
+        api_cache_dir=tmp_path / "campaign" / "api-responses",
+        derived_cache_root=tmp_path / "campaign" / "derived-cache",
+        source_snapshot_sha256="b" * 64,
+        contract_sha256="c" * 64,
+        litellm_transport_sha256="d" * 64,
+        litellm_transport={"schema_version": 1},
+    )
+    plan = {
+        "models": {
+            "screening": runner.SCREENING_MODEL,
+            "verification": runner.VERIFY_MODEL,
+        },
+        "upper_bounds": {"screening_calls": 6, "verification_calls": 2},
+        "pricing": {
+            "screening_input_usd_per_million_tokens": "0.5",
+            "screening_output_usd_per_million_tokens": "2",
+            "screening_max_input_tokens": 1000,
+            "screening_max_output_tokens": 200,
+            "verification_input_usd_per_million_tokens": "1",
+            "verification_output_usd_per_million_tokens": "4",
+            "verification_max_input_tokens": 2000,
+            "verification_max_output_tokens": 500,
+        },
+        "cost": {
+            "screening_microusd": 5_400,
+            "verification_microusd": 8_000,
+            "worst_case_microusd": 13_400,
+        },
+    }
+
+    environment = refresh._formal_llm_budget_environment(
+        campaign=campaign,
+        plan_digest="e" * 64,
+        plan=plan,
+    )
+    ledger_path = Path(environment[runner.PILOT_BUDGET_LEDGER_ENV])
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+    assert ledger["artifact_kind"] == "llm_plan"
+    assert ledger["max_attempts"] == 8
+    assert ledger["pricing_contract"]["stages"]["screening"][
+        "reservation_microusd"
+    ] == 900
+    assert ledger["pricing_contract"]["stages"]["verification"][
+        "reservation_microusd"
+    ] == 4_000
+    assert ledger["max_cost_microusd"] == 13_400
+    assert ledger["attempts_reserved"] == 0
+    assert environment[runner.PILOT_ID_ENV] == ledger["pilot_id"]
+    assert refresh._formal_llm_budget_environment(
+        campaign=campaign,
+        plan_digest="e" * 64,
+        plan=plan,
+    ) == environment
+
+
+def test_phase_scoped_budget_ledger_cannot_admit_the_other_model(
+    tmp_path: Path,
+) -> None:
+    refresh = object.__new__(runner.RefreshRunner)
+    refresh.plan = (object(),)
+    campaign = runner.CampaignExecution(
+        campaign_id="a" * 64,
+        root=tmp_path / "campaign",
+        result_dir=tmp_path / "campaign/results",
+        api_cache_dir=tmp_path / "campaign/api",
+        derived_cache_root=tmp_path / "campaign/derived",
+        source_snapshot_sha256="b" * 64,
+        contract_sha256="c" * 64,
+        litellm_transport_sha256="d" * 64,
+        litellm_transport={"schema_version": 1},
+    )
+    plan = {
+        "models": {
+            "screening": runner.SCREENING_MODEL,
+            "verification": runner.VERIFY_MODEL,
+        },
+        "upper_bounds": {"screening_calls": 2, "verification_calls": 5},
+        "pricing": {
+            "screening_input_usd_per_million_tokens": "0.5",
+            "screening_output_usd_per_million_tokens": "2",
+            "screening_max_input_tokens": 1000,
+            "screening_max_output_tokens": 200,
+            "verification_input_usd_per_million_tokens": "1",
+            "verification_output_usd_per_million_tokens": "4",
+            "verification_max_input_tokens": 2000,
+            "verification_max_output_tokens": 500,
+        },
+        "cost": {
+            "screening_microusd": 1_800,
+            "verification_microusd": 20_000,
+            "worst_case_microusd": 21_800,
+        },
+    }
+
+    environment = refresh._formal_llm_budget_environment(
+        campaign=campaign,
+        plan_digest="e" * 64,
+        plan=plan,
+        active_phase="screening",
+    )
+    ledger = json.loads(
+        Path(environment[runner.PILOT_BUDGET_LEDGER_ENV]).read_text(encoding="utf-8")
+    )
+
+    assert ledger["schema_version"] == 3
+    assert ledger["max_attempts"] == 2
+    assert ledger["max_cost_microusd"] == 1_800
+    assert ledger["pricing_contract"]["stages"]["verification"]["max_calls"] == 0
+
+
+def test_screening_delta_merge_preserves_newer_unowned_fields(tmp_path: Path) -> None:
+    campaign = runner.CampaignExecution(
+        campaign_id="a" * 64,
+        root=tmp_path,
+        result_dir=tmp_path,
+        api_cache_dir=tmp_path,
+        derived_cache_root=tmp_path,
+        source_snapshot_sha256="b" * 64,
+        contract_sha256="c" * 64,
+        litellm_transport_sha256="d" * 64,
+        litellm_transport={},
+    )
+    current = {
+        "cve_id": "CVE-2026-0001",
+        "description": "newer no-token description",
+        "ai_involved": True,
+        "bug_introducing_commits": [{"deep_verification": {"verdict": "CONFIRMED"}}],
+        "filtering_log": {
+            "screening_result": {"old": True},
+            "deep_verify_verdicts": [{"verdict": "CONFIRMED"}],
+            "final_included": True,
+        },
+        "campaign_receipt": {
+            "stages": {"phase_d_deep_verification": {"status": "success"}}
+        },
+    }
+    delta = {
+        "schema_version": 3,
+        "artifact_kind": "formal_screening_delta",
+        "subject_id": "CVE-2026-0001",
+        "screening": {"worth_investigating": False, "model": runner.SCREENING_MODEL},
+        "candidate_match": {"eligible": True},
+        "filtering_log": {"screening_result": {"worth_investigating": False}},
+        "campaign_stage": {"status": "success"},
+    }
+
+    runner.RefreshRunner._merge_screening_delta(
+        current,
+        delta,
+        subject_id="CVE-2026-0001",
+        campaign=campaign,
+        artifact_id="artifact-v3",
+    )
+
+    assert current["description"] == "newer no-token description"
+    assert current["ai_involved"] is True
+    assert current["bug_introducing_commits"][0]["deep_verification"] == {
+        "verdict": "CONFIRMED"
+    }
+    assert current["filtering_log"]["deep_verify_verdicts"] == [
+        {"verdict": "CONFIRMED"}
+    ]
+    assert current["filtering_log"]["screening_result"] == {
+        "worth_investigating": False
+    }
+
+
+def test_screening_delta_merge_rejects_pre_edge_protocol_artifact(
+    tmp_path: Path,
+) -> None:
+    campaign = runner.CampaignExecution(
+        campaign_id="a" * 64,
+        root=tmp_path,
+        result_dir=tmp_path,
+        api_cache_dir=tmp_path,
+        derived_cache_root=tmp_path,
+        source_snapshot_sha256="b" * 64,
+        contract_sha256="c" * 64,
+        litellm_transport_sha256="d" * 64,
+        litellm_transport={},
+    )
+
+    with pytest.raises(runner.RunnerError, match="payload identity"):
+        runner.RefreshRunner._merge_screening_delta(
+            {"cve_id": "CVE-2026-0001"},
+            {
+                "schema_version": 2,
+                "artifact_kind": "formal_screening_delta",
+                "subject_id": "CVE-2026-0001",
+            },
+            subject_id="CVE-2026-0001",
+            campaign=campaign,
+            artifact_id="artifact-v2",
+        )
+
+
+def test_legacy_combined_approval_methods_fail_closed() -> None:
+    refresh = object.__new__(runner.RefreshRunner)
+
+    with pytest.raises(runner.RunnerError, match="retired"):
+        refresh.run_approved_llm_plan("a" * 64)
+    with pytest.raises(runner.RunnerError, match="retired"):
+        refresh.prepare_llm_plan(object())  # type: ignore[arg-type]
+
+
+def test_parser_exposes_two_separate_approval_boundaries() -> None:
+    parser = runner.build_parser()
+
+    assert parser.parse_args(["--prepare-screening-plan"]).prepare_screening_plan
+    assert parser.parse_args([
+        "--approve-screening-plan", "a" * 64
+    ]).approve_screening_plan == "a" * 64
+    assert parser.parse_args([
+        "--approve-verification-plan", "b" * 64
+    ]).approve_verification_plan == "b" * 64
+    assert parser.parse_args([
+        "--run-no-token-pilot", "selection.json"
+    ]).run_no_token_pilot == Path("selection.json")
 
 
 def test_litellm_execution_limits_are_part_of_campaign_identity(
@@ -1334,7 +1892,7 @@ def test_success_writes_atomic_marker_and_rerun_resumes_without_execution(
     assert marker["campaign_api_cache_dir"].endswith(
         f"/{marker['campaign_id']}/api-responses"
     )
-    assert marker["litellm_transport"]["max_concurrent_requests"] == 4
+    assert marker["litellm_transport"]["max_concurrent_requests"] == 16
     assert marker["litellm_transport"]["request_timeout_seconds"] == 180
     assert marker["litellm_transport"]["max_reasoning_output_tokens_floor"] == 16_384
     assert marker["free_bytes_before"] == runner.MIN_FREE_BYTES + 10
@@ -1683,32 +2241,54 @@ def test_source_snapshot_validator_requires_exact_source_inventory_schema(
         runner.validate_source_snapshot_details(details)
 
 
-def test_refresh_runner_caches_successful_fsck_per_instance_only(
+def test_refresh_runner_reuses_durable_successful_fsck_across_instances(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paths = _write_campaign(tmp_path)
-    original = runner._git_output
+    original_load_plan = runner.load_plan
+    original_record_success = (
+        runner.source_delta_builder.SuccessfulGitFsckCache.record_success
+    )
     fsck_calls = 0
+    plan_fsck_caches: list[object | None] = []
 
-    def counted_git_output(source_dir: Path, *arguments: str) -> str:
+    def counted_record_success(
+        cache: runner.source_delta_builder.SuccessfulGitFsckCache,
+        key: runner.source_delta_builder.GitFsckCacheKey,
+    ) -> None:
         nonlocal fsck_calls
-        if arguments and arguments[0] == "fsck":
-            fsck_calls += 1
-        return original(source_dir, *arguments)
+        fsck_calls += 1
+        original_record_success(cache, key)
 
-    monkeypatch.setattr(runner, "_git_output", counted_git_output)
+    monkeypatch.setattr(
+        runner.source_delta_builder.SuccessfulGitFsckCache,
+        "record_success",
+        counted_record_success,
+    )
+
+    def recorded_load_plan(*args: Any, **kwargs: Any) -> tuple[runner.BatchSpec, ...]:
+        plan_fsck_caches.append(kwargs.get("fsck_cache"))
+        return original_load_plan(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "load_plan", recorded_load_plan)
     first_runner = runner.RefreshRunner(paths)
 
     first = first_runner._capture_source_snapshot()
     second = first_runner._capture_source_snapshot()
 
     assert first == second
-    assert fsck_calls == 3
+    # The fixture's source-delta build already persisted all three proofs.
+    assert fsck_calls == 0
+    assert plan_fsck_caches
+    assert all(cache is first_runner._source_fsck_cache for cache in plan_fsck_caches)
 
+    plan_fsck_caches.clear()
     second_runner = runner.RefreshRunner(paths)
     assert second_runner._capture_source_snapshot() == first
-    assert fsck_calls == 6
+    assert fsck_calls == 0
+    assert plan_fsck_caches
+    assert all(cache is second_runner._source_fsck_cache for cache in plan_fsck_caches)
 
 
 def test_git_source_capture_ignores_ambient_repository_redirects(
@@ -1731,6 +2311,8 @@ def test_git_source_capture_ignores_ambient_repository_redirects(
             "user.name=Refresh Test",
             "-c",
             "user.email=refresh@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
             "commit",
             "--amend",
             "-q",
@@ -2319,7 +2901,7 @@ def test_captured_schema3_remote_cutoff_is_accepted_by_release_receipt_writer(
     )
     publication = web_writer.load_published_web_data(staged.staging_dir)
     receipt = {
-        "schema_version": 4,
+        "schema_version": 5,
         "generation_id": publication.index["generation_id"],
         "generated_at": publication.index["generated_at"],
         "campaign_id": "a" * 64,
@@ -2368,6 +2950,9 @@ def test_captured_schema3_remote_cutoff_is_accepted_by_release_receipt_writer(
         "detector_inventory_source_snapshot_sha256": "c" * 64,
         "detector_inventory_alias_class_manifest_sha256": "f" * 64,
         "detector_inventory_alias_class_count": 0,
+        "detector_stage_metrics_sha256": "5" * 64,
+        "detector_stage_quality_gate_sha256": "6" * 64,
+        "detector_stage_quality_gate_passed": True,
         "targets": {"precision": 0.95, "recall": 0.95},
         "curation_consistency_point_estimates": {
             "precision": 1.0,
@@ -4047,31 +4632,50 @@ def test_formal_alias_manifest_rejects_inconsistent_full_schedule_counts(
         )
 
 
-def test_pilot_pricing_enforces_all_three_hard_caps() -> None:
-    contract, reservation = runner._pilot_pricing_contract(
-        runner.PilotPricing(
-            input_usd_per_million_tokens="1",
-            output_usd_per_million_tokens="2",
-            max_input_tokens=100_000,
-            max_output_tokens=runner.MAX_REASONING_OUTPUT_TOKENS_CEILING,
-            max_cost_microusd=25_000_000,
-            max_attempts=72,
-        )
+def _staged_pilot_pricing(
+    input_price: str = "1",
+    output_price: str = "2",
+    max_input: int = 100_000,
+    max_output: int = runner.MAX_REASONING_OUTPUT_TOKENS_CEILING,
+    max_cost: int = 25_000_000,
+    max_attempts: int = 72,
+) -> runner.PilotPricing:
+    return runner.PilotPricing(
+        input_price,
+        output_price,
+        input_price,
+        output_price,
+        max_input,
+        max_output,
+        max_input,
+        max_output,
+        24,
+        48,
+        max_cost,
+        max_attempts,
     )
-    assert contract["model"] == runner.MODEL
-    assert reservation == 165_536
+
+
+def test_pilot_pricing_enforces_all_three_hard_caps() -> None:
+
+    contract, reservation = runner._pilot_pricing_contract(
+        _staged_pilot_pricing()
+    )
+    assert contract["stages"]["screening"]["model"] == runner.SCREENING_MODEL
+    assert contract["stages"]["verification"]["model"] == runner.VERIFY_MODEL
+    assert reservation == 72 * 165_536
 
     with pytest.raises(runner.RunnerError, match="between 1 and 72"):
         runner._pilot_pricing_contract(
-            runner.PilotPricing("1", "2", 100_000, 32_768, 25_000_000, 73)
+            _staged_pilot_pricing(max_attempts=73)
         )
     with pytest.raises(runner.RunnerError, match="no greater than USD 25"):
         runner._pilot_pricing_contract(
-            runner.PilotPricing("1", "2", 100_000, 32_768, 25_000_001, 72)
+            _staged_pilot_pricing(max_cost=25_000_001)
         )
-    with pytest.raises(runner.RunnerError, match="maximum reasoning output"):
+    with pytest.raises(runner.RunnerError, match="token/call bounds"):
         runner._pilot_pricing_contract(
-            runner.PilotPricing("1", "2", 100_000, 16_384, 25_000_000, 72)
+            _staged_pilot_pricing(max_output=16_384)
         )
 
 
@@ -4081,8 +4685,8 @@ def test_pilot_pricing_attestation_binds_live_model_info(
     response_payload = {
         "data": [
             {
-                "model_name": runner.MODEL,
-                "litellm_params": {"model": runner.MODEL},
+                "model_name": model,
+                "litellm_params": {"model": model},
                 "model_info": {
                     "input_cost_per_token": 0.000001,
                     "output_cost_per_token": 0.000006,
@@ -4090,6 +4694,7 @@ def test_pilot_pricing_attestation_binds_live_model_info(
                     "max_output_tokens": 128_000,
                 },
             }
+            for model in (runner.SCREENING_MODEL, runner.VERIFY_MODEL)
         ]
     }
     monkeypatch.setattr(
@@ -4102,15 +4707,19 @@ def test_pilot_pricing_attestation_binds_live_model_info(
     )
 
     attestation = runner._pilot_pricing_attestation(
-        runner.PilotPricing("1", "6", 128_000, 32_768, 25_000_000, 72)
+        _staged_pilot_pricing(
+            input_price="1", output_price="6", max_input=128_000
+        )
     )
 
-    assert attestation["provider_input_usd_per_million_tokens"] == "1"
-    assert attestation["provider_output_usd_per_million_tokens"] == "6"
-    assert attestation["provider_max_input_tokens"] == 1_050_000
-    assert attestation["provider_max_output_tokens"] == 128_000
-    assert attestation["configured_prices_at_or_above_provider"] is True
-    assert attestation["configured_token_bounds_within_provider"] is True
+    for stage in ("screening", "verification"):
+        stage_attestation = attestation["stages"][stage]
+        assert stage_attestation["provider_input_usd_per_million_tokens"] == "1"
+        assert stage_attestation["provider_output_usd_per_million_tokens"] == "6"
+        assert stage_attestation["provider_max_input_tokens"] == 1_050_000
+        assert stage_attestation["provider_max_output_tokens"] == 128_000
+        assert stage_attestation["configured_prices_at_or_above_provider"] is True
+        assert stage_attestation["configured_token_bounds_within_provider"] is True
 
 
 def test_pilot_pricing_attestation_rejects_underpriced_or_oversized_bounds(
@@ -4119,8 +4728,8 @@ def test_pilot_pricing_attestation_rejects_underpriced_or_oversized_bounds(
     response_payload = {
         "data": [
             {
-                "model_name": runner.MODEL,
-                "litellm_params": {"model": runner.MODEL},
+                "model_name": model,
+                "litellm_params": {"model": model},
                 "model_info": {
                     "input_cost_per_token": "0.000001",
                     "output_cost_per_token": "0.000006",
@@ -4128,6 +4737,7 @@ def test_pilot_pricing_attestation_rejects_underpriced_or_oversized_bounds(
                     "max_output_tokens": 32_768,
                 },
             }
+            for model in (runner.SCREENING_MODEL, runner.VERIFY_MODEL)
         ]
     }
     monkeypatch.setattr(
@@ -4141,11 +4751,15 @@ def test_pilot_pricing_attestation_rejects_underpriced_or_oversized_bounds(
 
     with pytest.raises(runner.RunnerError, match="below the live"):
         runner._pilot_pricing_attestation(
-            runner.PilotPricing("0.99", "6", 128_000, 32_768, 25_000_000, 72)
+            _staged_pilot_pricing(
+                input_price="0.99", output_price="6", max_input=128_000
+            )
         )
     with pytest.raises(runner.RunnerError, match="exceed the live"):
         runner._pilot_pricing_attestation(
-            runner.PilotPricing("1", "6", 128_001, 32_768, 25_000_000, 72)
+            _staged_pilot_pricing(
+                input_price="1", output_price="6", max_input=128_001
+            )
         )
 
 
@@ -4176,7 +4790,9 @@ def test_pilot_pricing_attestation_rejects_backend_alias_without_exact_route(
 
     with pytest.raises(runner.RunnerError, match="no exact"):
         runner._pilot_pricing_attestation(
-            runner.PilotPricing("1", "6", 128_000, 32_768, 25_000_000, 72)
+            _staged_pilot_pricing(
+                input_price="1", output_price="6", max_input=128_000
+            )
         )
 
 
@@ -4185,15 +4801,12 @@ def test_pilot_artifact_resume_preserves_deadline_and_reserved_budget(
 ) -> None:
     pilots_root = tmp_path / "pilots-v1"
     pilot_id = "a" * 64
-    pricing = {
-        "model": runner.MODEL,
-        "input_usd_per_million_tokens": "1",
-        "output_usd_per_million_tokens": "2",
-        "max_input_tokens": 100_000,
-        "max_output_tokens": 32_768,
-    }
+    pricing, _reservation_total = runner._pilot_pricing_contract(
+        _staged_pilot_pricing()
+    )
+    reservation = pricing["stages"]["screening"]["reservation_microusd"]
     immutable = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "pilot_id": pilot_id,
         "selection_sha256": "b" * 64,
@@ -4203,7 +4816,6 @@ def test_pilot_artifact_resume_preserves_deadline_and_reserved_budget(
         "pricing_contract": pricing,
         "max_attempts": 72,
         "max_cost_microusd": 25_000_000,
-        "reservation_microusd": 165_536,
     }
     deadline = time.time() + 3600
     initial = {
@@ -4235,10 +4847,13 @@ def test_pilot_artifact_resume_preserves_deadline_and_reserved_budget(
     mutated.update(
         {
             "attempts_reserved": 1,
-            "reserved_cost_microusd": 165_536,
+            "reserved_cost_microusd": reservation,
             "attempt_receipts": [
                 {
                     "sequence": 1,
+                    "stage": "screening",
+                    "model": runner.SCREENING_MODEL,
+                    "reservation_microusd": reservation,
                     "admitted_at_epoch_seconds": time.time(),
                     "completed_at_epoch_seconds": None,
                     "status": "reserved",
@@ -4263,21 +4878,18 @@ def test_pilot_artifact_resume_preserves_deadline_and_reserved_budget(
 
     assert resumed["deadline_epoch_seconds"] == deadline
     assert resumed["attempts_reserved"] == 1
-    assert resumed["reserved_cost_microusd"] == 165_536
+    assert resumed["reserved_cost_microusd"] == reservation
 
 
 def test_pilot_budget_snapshot_rejects_incoherent_completed_attempt(
     tmp_path: Path,
 ) -> None:
-    pricing = {
-        "model": runner.MODEL,
-        "input_usd_per_million_tokens": "1",
-        "output_usd_per_million_tokens": "2",
-        "max_input_tokens": 100_000,
-        "max_output_tokens": 32_768,
-    }
+    pricing, _reservation_total = runner._pilot_pricing_contract(
+        _staged_pilot_pricing()
+    )
+    reservation = pricing["stages"]["screening"]["reservation_microusd"]
     immutable = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "pilot_id": "a" * 64,
         "selection_sha256": "b" * 64,
@@ -4287,18 +4899,20 @@ def test_pilot_budget_snapshot_rejects_incoherent_completed_attempt(
         "pricing_contract": pricing,
         "max_attempts": 72,
         "max_cost_microusd": 25_000_000,
-        "reservation_microusd": 165_536,
     }
     ledger = {
         **immutable,
         "deadline_epoch_seconds": time.time() + 3600,
         "attempts_reserved": 1,
         "attempts_completed": 1,
-        "reserved_cost_microusd": 165_536,
+        "reserved_cost_microusd": reservation,
         "spent_cost_microusd": 100,
         "attempt_receipts": [
             {
                 "sequence": 1,
+                "stage": "screening",
+                "model": runner.SCREENING_MODEL,
+                "reservation_microusd": reservation,
                 "admitted_at_epoch_seconds": time.time(),
                 "completed_at_epoch_seconds": time.time(),
                 "status": "success",
@@ -4404,7 +5018,9 @@ def test_current_pilot_gate_rejects_pre_projection_identity(
         encoding="utf-8",
     )
 
-    with pytest.raises(runner.RunnerError, match="pilot identity is malformed"):
+    with pytest.raises(
+        runner.RunnerError, match="pilot selection document is malformed"
+    ):
         runner._validated_openclaw_pilot_completion(paths, pilot_id)
 
 
@@ -4475,10 +5091,10 @@ def test_openclaw_smoke_status_records_every_class_and_blocks_incomplete(
     assert "missing result" in incomplete["problem"]
 
 
-def test_missing_current_openclaw_smoke_pointer_blocks_formal_gate(
+def test_missing_current_openclaw_smoke_pointer_blocks_regression_completion(
     tmp_path: Path,
 ) -> None:
-    status = _REAL_CURRENT_OPENCLAW_SMOKE_GATE_STATUS(
+    status = runner._current_openclaw_smoke_gate_status(
         runner.RunnerPaths.defaults(tmp_path)
     )
 
@@ -4486,50 +5102,28 @@ def test_missing_current_openclaw_smoke_pointer_blocks_formal_gate(
     assert "current OpenClaw smoke pointer" in status["reason"]
 
 
-def test_formal_dry_run_cannot_bypass_blocked_openclaw_smoke_gate(
+def test_formal_dry_run_does_not_consult_openclaw_regression(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paths = _write_campaign(tmp_path)
     refresh = runner.RefreshRunner(paths)
-    monkeypatch.setattr(
-        runner,
-        "_current_openclaw_smoke_gate_status",
-        lambda _paths: {"status": "blocked", "reason": "missing current smoke"},
+    regression_status = MagicMock(
+        side_effect=AssertionError("formal scan consulted OpenClaw regression")
     )
-
-    with pytest.raises(runner.RunnerError, match="OpenClaw smoke gate.*blocked"):
-        refresh.run(dry_run=True, batch_key="legacy-001")
-
-
-def test_formal_dry_run_reports_ready_openclaw_smoke_gate(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    paths = _write_campaign(tmp_path)
-    refresh = runner.RefreshRunner(paths)
     monkeypatch.setattr(
         runner,
         "_current_openclaw_smoke_gate_status",
-        lambda _paths: {
-            "status": "ready",
-            "smoke_id": "a" * 64,
-            "class_count": 30,
-        },
+        regression_status,
     )
 
     report = refresh.run(dry_run=True, batch_key="legacy-001")
 
-    assert report[0] == {
-        "batch": "openclaw-smoke-gate",
-        "status": "gate_ready",
-        "smoke_id": "a" * 64,
-        "class_count": 30,
-    }
-    assert report[1] == {"batch": "legacy-001", "status": "dry_run"}
+    assert report == [{"batch": "legacy-001", "status": "dry_run"}]
+    regression_status.assert_not_called()
 
 
-def test_parser_exposes_openclaw_smoke_budget_surface() -> None:
+def test_legacy_parser_keeps_openclaw_flags_for_migration_error() -> None:
     args = runner.build_parser().parse_args(
         [
             "--openclaw-smoke",
@@ -4548,7 +5142,22 @@ def test_parser_exposes_openclaw_smoke_budget_surface() -> None:
     assert args.smoke_max_attempts == 40
 
 
-def test_main_requires_explicit_openclaw_smoke_budget(
+def test_parser_exposes_same_process_no_token_preflight_execution() -> None:
+    args = runner.build_parser().parse_args(
+        [
+            "--run-no-token-pilot",
+            "selection.json",
+            "--dry-run",
+            "--execute-after-dry-run",
+        ]
+    )
+
+    assert args.run_no_token_pilot == Path("selection.json")
+    assert args.dry_run is True
+    assert args.execute_after_dry_run is True
+
+
+def test_main_redirects_openclaw_smoke_to_regression_entry_point(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -4562,7 +5171,4 @@ def test_main_requires_explicit_openclaw_smoke_budget(
     )
 
     assert exit_code == 2
-    assert (
-        "OpenClaw smoke requires explicit pilot and budget inputs"
-        in capsys.readouterr().err
-    )
+    assert "OpenClaw is an independent regression" in capsys.readouterr().err

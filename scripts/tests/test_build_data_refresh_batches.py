@@ -253,8 +253,13 @@ def test_formal_batches_consume_alias_manifest_and_cover_classes_exactly_once(
                 "analysis_input": {"git_ranges": git_ranges},
             }
         )
-    classes[0]["all_member_ids"].append("ALIAS-DELTA-MEMBER")
+    classes[0]["all_member_ids"].extend(
+        ["ALIAS-DELTA-MEMBER", "QUALITY-ALIAS-NOT-A-CANDIDATE"]
+    )
     payload["all_ids"].append("ALIAS-DELTA-MEMBER")
+    paths.quality_corpus_file.write_text(
+        "QUALITY-ALIAS-NOT-A-CANDIDATE\nOSV-UNMAPPED\n", encoding="utf-8"
+    )
     classes_sha256 = hashlib.sha256(
         json.dumps(classes, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
@@ -287,6 +292,14 @@ def test_formal_batches_consume_alias_manifest_and_cover_classes_exactly_once(
     assert manifest["purpose"] == "formal full alias-class analysis batches"
     assert manifest["inputs"]["formal_release_eligible"] is True
     assert manifest["inputs"]["remaining_unique_id_count"] == len(candidate_ids)
+    assert manifest["inputs"]["quality_corpus_subject_id_count"] == 2
+    assert manifest["inputs"]["quality_corpus_analysis_subject_id_count"] == 2
+    assert manifest["inputs"]["quality_corpus_alias_mapped_subject_id_count"] == 1
+    assert manifest["inputs"]["quality_corpus_subject_to_analysis_subject"] == {
+        "OSV-UNMAPPED": "OSV-UNMAPPED",
+        "QUALITY-ALIAS-NOT-A-CANDIDATE": candidate_ids[0],
+    }
+    assert len(manifest["inputs"]["quality_corpus_subject_mapping_sha256"]) == 64
     assert manifest["verification"]["alias_classes_exactly_once"] is True
     assert manifest["verification"]["shared_repositories_are_scheduling_affinity"] is True
     assert "CVE-EXCLUDED" in {

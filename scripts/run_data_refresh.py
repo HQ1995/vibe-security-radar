@@ -2,9 +2,9 @@
 """Run the incremental CVE refresh campaign safely and resumably.
 
 The campaign contract is intentionally fixed: Luna with maximum reasoning,
-32 analyzer workers, frozen local-source rechecks, and forced LLM verification.
-Successful batches receive content-addressed completion markers. Failed or
-interrupted batches remain pending and can be rerun.
+a host-sized local worker budget, frozen local-source rechecks, and forced LLM
+verification. Successful batches receive content-addressed completion markers.
+Failed or interrupted batches remain pending and can be rerun.
 """
 
 from __future__ import annotations
@@ -24,11 +24,13 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from functools import lru_cache
@@ -42,6 +44,10 @@ import analysis_contract
 import build_source_delta as source_delta_builder
 import data_refresh_paths
 from cve_analyzer.git_ops import _run_argv_bounded
+from cve_analyzer.campaign_contracts import (
+    FormalStageContractError,
+    formal_stage_contract,
+)
 from cve_analyzer.llm_client import (
     DEFAULT_LLM_REQUEST_TIMEOUT_SECONDS as REQUEST_TIMEOUT_SECONDS,
 )
@@ -59,16 +65,38 @@ from cve_analyzer.models import (
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
 
-MODEL = "gpt-5.6-luna"
+SCREENING_MODEL = "gemini-3.5-flash-lite"
+VERIFY_MODEL = "gpt-5.6-luna"
+# Backward-compatible name for release surfaces that still describe only the
+# authoritative deep-verification model. New contracts must name both stages.
+MODEL = VERIFY_MODEL
+SCREENING_REASONING_EFFORT = "low"
 REASONING_EFFORT = "max"
 FROZEN_LOCAL_SOURCES_ENV = "CVE_ANALYZER_FROZEN_LOCAL_SOURCES"
 LLM_MODEL_OVERRIDE_ENV = "CVE_LLM_MODEL_OVERRIDE"
+LLM_SCREENING_MODEL_ENV = "CVE_LLM_SCREENING_MODEL"
+LLM_SCREENING_REASONING_EFFORT_ENV = "CVE_LLM_SCREENING_REASONING_EFFORT"
+LLM_VERIFY_MODEL_OVERRIDE_ENV = "CVE_LLM_VERIFY_MODEL_OVERRIDE"
 LLM_STRICT_MODEL_ENV = "CVE_LLM_STRICT_MODEL"
 LLM_DISABLE_CACHE_ENV = "CVE_LLM_DISABLE_CACHE"
+PIPELINE_PHASE_ENV = "CVE_ANALYZER_PIPELINE_PHASE"
 LLM_CONCURRENCY_ENV = "CVE_LLM_CONCURRENCY"
+LLM_MAX_CONCURRENCY_ENV = "CVE_LLM_MAX_CONCURRENCY"
+LLM_SCREENING_MAX_CONCURRENCY_ENV = "CVE_LLM_SCREENING_MAX_CONCURRENCY"
+LLM_VERIFY_MAX_CONCURRENCY_ENV = "CVE_LLM_VERIFY_MAX_CONCURRENCY"
+LLM_SCREENING_RPM_ENV = "CVE_LLM_SCREENING_RPM"
+LLM_SCREENING_TPM_ENV = "CVE_LLM_SCREENING_TPM"
+LLM_VERIFY_RPM_ENV = "CVE_LLM_VERIFY_RPM"
+LLM_VERIFY_TPM_ENV = "CVE_LLM_VERIFY_TPM"
+GITHUB_MAX_IN_FLIGHT_ENV = "CVE_GITHUB_MAX_IN_FLIGHT"
+GITHUB_RESERVE_FRACTION_ENV = "CVE_GITHUB_RESERVE_FRACTION"
+GITHUB_TARGET_UTILIZATION_ENV = "CVE_GITHUB_TARGET_UTILIZATION"
+GITHUB_GOVERNOR_DB_ENV = "CVE_GITHUB_GOVERNOR_DB"
+ARTIFACT_ROOT_ENV = "CVE_ANALYZER_ARTIFACT_ROOT"
 RESULT_DIR_ENV = "CVE_ANALYZER_RESULT_DIR"
 API_CACHE_DIR_ENV = "CVE_ANALYZER_API_CACHE_DIR"
 DERIVED_CACHE_ROOT_ENV = "CVE_ANALYZER_DERIVED_CACHE_ROOT"
+REPOSITORY_CACHE_ROOT_ENV = "CVE_ANALYZER_REPOSITORY_CACHE_ROOT"
 CAMPAIGN_ID_ENV = "CVE_ANALYZER_CAMPAIGN_ID"
 CAMPAIGN_BATCH_ENV = "CVE_ANALYZER_CAMPAIGN_BATCH"
 CAMPAIGN_STARTED_AT_ENV = "CVE_ANALYZER_CAMPAIGN_STARTED_AT"
@@ -84,8 +112,34 @@ PINNED_REPOSITORY_PATH_ENV = "CVE_ANALYZER_PINNED_REPOSITORY_PATH"
 PINNED_REPOSITORY_ORIGIN_ENV = "CVE_ANALYZER_PINNED_REPOSITORY_ORIGIN"
 PINNED_REPOSITORY_HEAD_ENV = "CVE_ANALYZER_PINNED_REPOSITORY_HEAD"
 PINNED_REPOSITORY_TREE_ENV = "CVE_ANALYZER_PINNED_REPOSITORY_TREE"
-WORKERS = 32
-LLM_CONCURRENCY = 4
+HOST_LOGICAL_CPUS = os.cpu_count() or 4
+LOCAL_CPU_RESERVE = (
+    16 if HOST_LOGICAL_CPUS >= 64 else max(1, HOST_LOGICAL_CPUS // 8)
+)
+_LOCAL_WORKER_BUDGET = min(
+    112,
+    max(1, HOST_LOGICAL_CPUS - LOCAL_CPU_RESERVE),
+)
+# Python coordination, repository locks, and long-running Git subprocesses can
+# leave most cores idle when all work lives in only one or two interpreters.
+# Use several repo-disjoint processes with a modest worker pool in each.  This
+# host profile resolves to 16 x 7 = 112 local workers on a 128-thread machine.
+NO_TOKEN_CHILD_PROCESSES = min(
+    16,
+    max(1, _LOCAL_WORKER_BUDGET // 7),
+)
+WORKERS = max(1, _LOCAL_WORKER_BUDGET // NO_TOKEN_CHILD_PROCESSES)
+NO_TOKEN_TOTAL_WORKERS = NO_TOKEN_CHILD_PROCESSES * WORKERS
+INTERMEDIATE_ANALYZABLE_EXIT_CODES = frozenset({0, 1})
+LLM_MAX_CONCURRENCY = 16
+LLM_SCREENING_MAX_CONCURRENCY = 16
+LLM_VERIFY_MAX_CONCURRENCY = 8
+# Backward-compatible fallback for callers that do not enable the adaptive
+# governor. Formal campaigns always set both this and the adaptive limits.
+LLM_CONCURRENCY = LLM_MAX_CONCURRENCY
+GITHUB_MAX_IN_FLIGHT = 16
+GITHUB_RESERVE_FRACTION = 0.20
+GITHUB_TARGET_UTILIZATION = 0.60
 MIN_FREE_BYTES = 120 * 1024**3
 BATCH_TIMEOUT_SECONDS = 12 * 60 * 60
 BATCH_TERMINATION_GRACE_SECONDS = 10
@@ -94,13 +148,14 @@ MAX_RESULT_JSON_BYTES = 32 * 1024 * 1024
 # Source acquisition imports this campaign limit to reject oversized NVD
 # metadata before download. Keep one numeric definition in the source builder.
 MAX_NVD_JSON_BYTES = source_delta_builder.MAX_NVD_JSON_BYTES
-MARKER_SCHEMA_VERSION = 7
+MARKER_SCHEMA_VERSION = 8
 SOURCE_DELTA_SCHEMA_VERSION = 3
 BATCH_MANIFEST_SCHEMA_VERSION = 3
 SOURCE_SNAPSHOT_SCHEMA_VERSION = 2
 CAMPAIGN_LOCK_KEY = "campaign-global"
 SOURCE_GIT_QUERY_TIMEOUT_SECONDS = source_delta_builder.GIT_COMMAND_TIMEOUT_SECONDS
 OPENCLAW_PILOT_CLASS_COUNT = 24
+CROSS_REPO_PILOT_CLASS_COUNT = 50
 OPENCLAW_PILOT_GATE_CONTRACT_VERSION = 1
 OPENCLAW_PILOT_TIMEOUT_SECONDS = 60 * 60
 OPENCLAW_PILOT_MAX_ATTEMPTS = 72
@@ -129,6 +184,7 @@ _REQUIRED_NVD_FEEDS = frozenset(
 _SUBJECT_ID = re.compile(
     r"[A-Za-z][A-Za-z0-9._:+-]{0,198}-[A-Za-z0-9][A-Za-z0-9._:+-]{0,198}"
 )
+_HEX_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class RunnerError(RuntimeError):
@@ -224,6 +280,160 @@ class BatchSpec:
     class_ids: tuple[str, ...] = ()
 
 
+class _WaveBindingGate:
+    """Run one post-execution binding after every child in a wave exits."""
+
+    def __init__(self, participants: int) -> None:
+        if participants <= 1:
+            raise ValueError("wave binding gate requires at least two participants")
+        self._remaining = participants
+        self._condition = threading.Condition()
+        self._completed = False
+        self._error: BaseException | None = None
+        self._validator: Callable[[], None] | None = None
+
+    def abort(self, error: BaseException) -> None:
+        with self._condition:
+            if self._error is None:
+                self._error = error
+            self._condition.notify_all()
+
+    def _arrive(self, validator: Callable[[], None] | None) -> None:
+        leader = False
+        selected_validator: Callable[[], None] | None = None
+        with self._condition:
+            if self._error is not None:
+                raise self._error
+            if validator is not None and self._validator is None:
+                self._validator = validator
+            self._remaining -= 1
+            if self._remaining == 0:
+                leader = True
+                selected_validator = self._validator
+            else:
+                self._condition.wait_for(
+                    lambda: self._completed or self._error is not None
+                )
+                if self._error is not None:
+                    raise self._error
+                return
+
+        if leader:
+            try:
+                if selected_validator is not None:
+                    selected_validator()
+            except BaseException as exc:
+                self.abort(exc)
+                raise
+            with self._condition:
+                self._completed = True
+                self._condition.notify_all()
+
+    def arrive_and_validate(self, validator: Callable[[], None]) -> None:
+        self._arrive(validator)
+
+    def arrive_without_execution(self) -> None:
+        self._arrive(None)
+
+
+def _balanced_repo_component_shards(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    shard_count: int,
+) -> tuple[tuple[Mapping[str, Any], ...], ...]:
+    """Balance subjects while keeping every known repository in one shard."""
+
+    if shard_count <= 0:
+        raise RunnerError("no-token shard count must be positive")
+    if not rows:
+        return ()
+
+    parents = list(range(len(rows)))
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    repository_owner: dict[str, int] = {}
+    subject_ids: list[str] = []
+    repositories_by_row: list[frozenset[str]] = []
+    for index, row in enumerate(rows):
+        subject_id = row.get("analysis_subject")
+        repositories = row.get("repositories")
+        if not isinstance(subject_id, str) or not subject_id:
+            raise RunnerError("no-token shard subject identity is malformed")
+        if (
+            not isinstance(repositories, list)
+            or any(
+                not isinstance(repository, str) or not repository
+                for repository in repositories
+            )
+        ):
+            raise RunnerError("no-token shard repository mapping is malformed")
+        subject_ids.append(subject_id)
+        repository_set = frozenset(repositories)
+        repositories_by_row.append(repository_set)
+        for repository in repository_set:
+            owner = repository_owner.setdefault(repository, index)
+            union(index, owner)
+
+    components: dict[int, list[int]] = {}
+    for index in range(len(rows)):
+        components.setdefault(find(index), []).append(index)
+    ordered_components = sorted(
+        components.values(),
+        key=lambda indices: (
+            -len(indices),
+            tuple(subject_ids[index] for index in indices),
+        ),
+    )
+
+    actual_shards = min(shard_count, len(rows))
+    shard_indices: list[list[int]] = [[] for _ in range(actual_shards)]
+    shard_loads = [0] * actual_shards
+    for component in ordered_components:
+        target = min(
+            range(actual_shards),
+            key=lambda shard: (shard_loads[shard], shard),
+        )
+        shard_indices[target].extend(component)
+        shard_loads[target] += len(component)
+
+    shards = tuple(
+        tuple(rows[index] for index in sorted(indices))
+        for indices in shard_indices
+        if indices
+    )
+    flattened = [
+        str(row["analysis_subject"])
+        for shard in shards
+        for row in shard
+    ]
+    if sorted(flattened) != sorted(subject_ids) or len(flattened) != len(
+        set(flattened)
+    ):
+        raise RunnerError("no-token shard allocation is not exactly once")
+    seen_repositories: set[str] = set()
+    for shard in shards:
+        shard_repositories = {
+            repository
+            for row in shard
+            for repository in row["repositories"]
+        }
+        if seen_repositories & shard_repositories:
+            raise RunnerError("no-token shards share a known repository")
+        seen_repositories.update(shard_repositories)
+    return shards
+
+
 @dataclass(frozen=True)
 class LegacyCollision:
     """One static legacy-cache ambiguity that requires runtime resolution."""
@@ -260,18 +470,49 @@ class CampaignExecution:
     alias_class_delta_path: str = ""
     alias_class_manifest_sha256: str = ""
     analysis_checkout: dict[str, Any] | None = None
+    artifact_root: Path | None = None
+    repository_cache_root: Path | None = None
+
+
+def _campaign_artifact_root(campaign: CampaignExecution) -> Path:
+    """Return the durable store shared by compatible formal campaigns."""
+
+    return campaign.artifact_root or (campaign.root / "artifacts")
 
 
 @dataclass(frozen=True)
 class PilotPricing:
-    """Explicit worst-case pricing inputs for one release-ineligible pilot."""
+    """Explicit staged pricing inputs for one release-ineligible pilot."""
 
-    input_usd_per_million_tokens: str
-    output_usd_per_million_tokens: str
-    max_input_tokens: int
-    max_output_tokens: int
+    screening_input_usd_per_million_tokens: str
+    screening_output_usd_per_million_tokens: str
+    verification_input_usd_per_million_tokens: str
+    verification_output_usd_per_million_tokens: str
+    screening_max_input_tokens: int
+    screening_max_output_tokens: int
+    verification_max_input_tokens: int
+    verification_max_output_tokens: int
+    screening_max_calls: int
+    verification_max_calls: int
     max_cost_microusd: int
     max_attempts: int = OPENCLAW_PILOT_MAX_ATTEMPTS
+
+
+@dataclass(frozen=True)
+class LlmPlanPricing:
+    """Fail-closed per-stage prices and token/call upper bounds."""
+
+    screening_input_usd_per_million_tokens: str
+    screening_output_usd_per_million_tokens: str
+    verification_input_usd_per_million_tokens: str
+    verification_output_usd_per_million_tokens: str
+    screening_max_input_tokens: int
+    screening_max_output_tokens: int
+    verification_max_input_tokens: int
+    verification_max_output_tokens: int
+    screening_max_calls_per_candidate: int
+    verification_max_calls_per_candidate: int
+    max_cost_microusd: int
 
 
 CommandRunner = Callable[..., int]
@@ -655,6 +896,7 @@ def _validate_source_delta_contract(
     candidate_ids: Sequence[str],
     recapture_current_inputs: bool = True,
     replay_semantics: bool = True,
+    fsck_cache: source_delta_builder.SuccessfulGitFsckCache | None = None,
 ) -> dict[str, Any]:
     """Verify the schema-3 completeness proof against every current input."""
 
@@ -681,6 +923,7 @@ def _validate_source_delta_contract(
         "population_policy",
         "analyzer_contract",
         "input_snapshot_sha256",
+        "build_checkpoint",
         "input_snapshot",
         "baseline",
         "coverage",
@@ -709,6 +952,33 @@ def _validate_source_delta_contract(
     ).hexdigest()
     if integrity != expected_integrity:
         raise RunnerError("source delta integrity payload hash is invalid")
+
+    build_checkpoint = delta.get("build_checkpoint")
+    if not isinstance(build_checkpoint, dict) or set(build_checkpoint) != {
+        "schema_version",
+        "build_key",
+        "directory",
+        "phases",
+    }:
+        raise RunnerError("source delta build checkpoint contract is malformed")
+    if (
+        build_checkpoint.get("schema_version") != 1
+        or not isinstance(build_checkpoint.get("build_key"), str)
+        or _HEX_SHA256.fullmatch(build_checkpoint["build_key"]) is None
+        or not isinstance(build_checkpoint.get("directory"), str)
+        or not isinstance(build_checkpoint.get("phases"), list)
+        or build_checkpoint.get("phases")
+        != ["git", "nvd", "osv", "discovery"]
+    ):
+        raise RunnerError("source delta build checkpoint metadata is invalid")
+    checkpoint_directory = build_checkpoint["directory"]
+    checkpoint_path = (paths.repo_root / checkpoint_directory).resolve()
+    try:
+        checkpoint_path.relative_to(paths.repo_root.resolve())
+    except ValueError as exc:
+        raise RunnerError("source delta build checkpoint escapes repository root") from exc
+    if Path(checkpoint_directory).is_absolute() or "\\" in checkpoint_directory:
+        raise RunnerError("source delta build checkpoint directory is unsafe")
 
     production = delta.get("production_discovery")
     cache = delta.get("result_cache")
@@ -1076,6 +1346,7 @@ def _validate_source_delta_contract(
             replayed = source_delta_builder.build_artifacts(
                 build_paths,
                 generated_at_utc=delta["generated_at_utc"],
+                fsck_cache=fsck_cache,
             )
         except source_delta_builder.SourceDeltaError as exc:
             raise RunnerError(f"source delta semantic replay failed: {exc}") from exc
@@ -1101,7 +1372,9 @@ def _validate_source_delta_contract(
             )
     elif recapture_current_inputs:
         try:
-            current_guard = source_delta_builder.capture_input_guard(build_paths)
+            current_guard = source_delta_builder.capture_input_guard(
+                build_paths, fsck_cache=fsck_cache
+            )
         except source_delta_builder.SourceDeltaError as exc:
             raise RunnerError(f"cannot recapture source delta inputs: {exc}") from exc
 
@@ -1144,6 +1417,7 @@ def _validate_plan_inputs(
     *,
     recapture_delta_inputs: bool = True,
     replay_delta_semantics: bool = True,
+    fsck_cache: source_delta_builder.SuccessfulGitFsckCache | None = None,
 ) -> None:
     inputs = manifest.get("inputs")
     if not isinstance(inputs, dict):
@@ -1177,6 +1451,7 @@ def _validate_plan_inputs(
         candidate_ids=candidate_ids,
         recapture_current_inputs=recapture_delta_inputs,
         replay_semantics=replay_delta_semantics,
+        fsck_cache=fsck_cache,
     )
     if inputs.get("candidate_sha256") != file_sha256(candidate_path):
         raise RunnerError("grouped manifest candidate hash is stale")
@@ -1283,6 +1558,7 @@ def load_plan(
     *,
     recapture_delta_inputs: bool = True,
     replay_delta_semantics: bool = True,
+    fsck_cache: source_delta_builder.SuccessfulGitFsckCache | None = None,
 ) -> tuple[BatchSpec, ...]:
     """Load and validate the fixed campaign, including its execution order."""
     repo_root = paths.repo_root.resolve()
@@ -1340,6 +1616,7 @@ def load_plan(
         plan,
         recapture_delta_inputs=recapture_delta_inputs,
         replay_delta_semantics=replay_delta_semantics,
+        fsck_cache=fsck_cache,
     )
     return plan
 
@@ -1355,6 +1632,53 @@ def _normalize_repo(value: str) -> str:
     if not host or not path:
         raise RunnerError(f"invalid repository identity: {value!r}")
     return normalized
+
+
+def _deterministic_cross_repo_pilot_selection(
+    candidate_repositories: Mapping[str, Sequence[str]],
+    *,
+    seed_sha256: str,
+    count: int = CROSS_REPO_PILOT_CLASS_COUNT,
+) -> list[dict[str, str]]:
+    """Choose exact-once subjects from distinct repositories without randomness."""
+
+    if re.fullmatch(r"[0-9a-f]{64}", seed_sha256) is None:
+        raise RunnerError("cross-repo pilot seed must be a lowercase SHA-256")
+    if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
+        raise RunnerError("cross-repo pilot count must be positive")
+    pairs: list[tuple[str, str, str]] = []
+    for subject_id, repositories in sorted(candidate_repositories.items()):
+        if not isinstance(subject_id, str) or not subject_id:
+            raise RunnerError("cross-repo pilot subject is invalid")
+        for repository in sorted(set(repositories)):
+            normalized = _normalize_repo(repository)
+            rank = hashlib.sha256(
+                f"{seed_sha256}\0{normalized}\0{subject_id}".encode("utf-8")
+            ).hexdigest()
+            pairs.append((rank, subject_id, normalized))
+    selected: list[dict[str, str]] = []
+    used_subjects: set[str] = set()
+    used_repositories: set[str] = set()
+    for rank, subject_id, repository in sorted(pairs):
+        if subject_id in used_subjects or repository in used_repositories:
+            continue
+        selected.append(
+            {
+                "subject_id": subject_id,
+                "repository_identity": repository,
+                "rank_sha256": rank,
+            }
+        )
+        used_subjects.add(subject_id)
+        used_repositories.add(repository)
+        if len(selected) == count:
+            break
+    if len(selected) != count:
+        raise RunnerError(
+            "formal LLM plan requires at least "
+            f"{count} strict candidates from distinct repositories; got {len(selected)}"
+        )
+    return selected
 
 
 def load_legacy_collisions(path: Path) -> tuple[LegacyCollision, ...]:
@@ -2522,9 +2846,11 @@ def _contract_files(paths: RunnerPaths) -> tuple[tuple[str, Path], ...]:
         repo_root / "scripts" / "refresh_source_inputs.py",
         repo_root / "scripts" / "build_source_delta.py",
         repo_root / "scripts" / "build_data_refresh_batches.py",
+        repo_root / "scripts" / "build_legacy_collision_inventory.py",
         repo_root / "scripts" / "analysis_contract.py",
         repo_root / "scripts" / "generate_web_data.py",
         paths.source_remote_receipt,
+        paths.collision_inventory,
         paths.legacy_batch,
         paths.grouped_dir.parent / "new-osv-candidates.txt",
         paths.grouped_dir.parent / "source-delta-current.json",
@@ -2604,7 +2930,7 @@ def litellm_transport_contract(
         raise RunnerError("LiteLLM campaign transport is not configured")
 
     contract = {
-        "schema_version": 1,
+        "schema_version": 2,
         "api_base_sha256": hashlib.sha256(config.api_base.encode("utf-8")).hexdigest(),
         "base_env_vars": list(config.base_env_vars),
         "key_env_vars": list(config.key_env_vars),
@@ -2614,6 +2940,13 @@ def litellm_transport_contract(
         "api_modes": ["responses"],
         "api_key_configured": True,
         "max_concurrent_requests": LLM_CONCURRENCY,
+        "adaptive_concurrency": {
+            "initial_utilization": 0.50,
+            "target_utilization": 0.75,
+            "hard_utilization": 0.85,
+            "screening_max": LLM_SCREENING_MAX_CONCURRENCY,
+            "verification_max": LLM_VERIFY_MAX_CONCURRENCY,
+        },
         "request_timeout_seconds": REQUEST_TIMEOUT_SECONDS,
         "max_reasoning_output_tokens_floor": (MAX_REASONING_OUTPUT_TOKENS_FLOOR),
     }
@@ -2672,12 +3005,26 @@ def campaign_execution(
         "analyzer_contract_sha256": analyzer_epoch["sha256"],
         "signature_sha256": analyzer_epoch["signature_sha256"],
         "alias_class_manifest_sha256": alias_manifest_sha256,
-        "model": MODEL,
-        "reasoning_effort": REASONING_EFFORT,
+        "screening_model": SCREENING_MODEL,
+        "verification_model": VERIFY_MODEL,
+        "screening_reasoning_effort": SCREENING_REASONING_EFFORT,
+        "verification_reasoning_effort": REASONING_EFFORT,
         "workers": WORKERS,
-        "forced_verification": True,
-        "result_cache_reads": False,
+        "no_token_child_processes": NO_TOKEN_CHILD_PROCESSES,
+        "no_token_total_workers": NO_TOKEN_TOTAL_WORKERS,
+        "host_logical_cpus": HOST_LOGICAL_CPUS,
+        "local_cpu_reserve": LOCAL_CPU_RESERVE,
+        "local_resource_profile": "repo-sharded-local-workers-v2",
+        "screening_gates_verification": True,
+        "result_cache_reads": True,
         "llm_cache_reads": False,
+        "pipeline_phases": [
+            "no_token",
+            "screening",
+            "verification",
+            "aggregation_publication",
+        ],
+        "llm_plan_digest_approval_required": True,
         "litellm_transport_sha256": transport_digest,
         "batch_timeout_seconds": BATCH_TIMEOUT_SECONDS,
     }
@@ -2697,6 +3044,10 @@ def campaign_execution(
         signature_sha256=analyzer_epoch["signature_sha256"],
         alias_class_delta_path=alias_delta_path,
         alias_class_manifest_sha256=alias_manifest_sha256,
+        artifact_root=paths.state_dir.parent / "artifacts-v1",
+        repository_cache_root=data_refresh_paths.shared_analyzer_cache_root(
+            paths.repo_root
+        ),
     )
 
 
@@ -2711,6 +3062,7 @@ def _prepare_campaign_execution(campaign: CampaignExecution) -> None:
             campaign.result_dir,
             campaign.api_cache_dir,
             campaign.derived_cache_root,
+            _campaign_artifact_root(campaign),
         ):
             directory.mkdir(parents=True, exist_ok=True)
             if directory.is_symlink() or not directory.is_dir():
@@ -3049,32 +3401,47 @@ def build_command(
     batch: BatchSpec,
     *,
     analyzer_dir: Path | None = None,
+    phase: str = "full",
 ) -> list[str]:
     """Build the immutable analyzer invocation for a batch."""
+    if phase not in {"full", "no_token", "screening", "verification"}:
+        raise RunnerError(f"unknown pipeline phase: {phase}")
     analyzer_root = (
         (_REPO_ROOT / "cve-analyzer") if analyzer_dir is None else analyzer_dir
     ).resolve()
-    return [
+    command = [
         sys.executable,
         "-I",
         str(analyzer_root / "src" / "cve_analyzer" / "cli.py"),
-        "--no-cache",
-        "batch",
-        "--cve-list",
-        str(batch.path),
-        "--recheck",
-        "--force-verify",
-        "--workers",
-        str(WORKERS),
-        "--no-deep-discovery",
-        "--llm-verify",
-        "--llm-model",
-        MODEL,
-        "--verify-model",
-        MODEL,
-        "--coding-agent",
-        "off",
     ]
+    if phase in {"full", "no_token"}:
+        command.append("--no-cache")
+    command.extend(
+        [
+            "batch",
+            "--cve-list",
+            str(batch.path),
+        ]
+    )
+    if phase in {"full", "no_token"}:
+        command.append("--recheck")
+    command.extend(("--workers", str(WORKERS), "--no-deep-discovery"))
+    if phase == "no_token":
+        command.append("--no-verify")
+    else:
+        command.extend(
+            (
+                "--llm-verify",
+                "--llm-model",
+                SCREENING_MODEL,
+                "--verify-model",
+                VERIFY_MODEL,
+            )
+        )
+        if phase in {"screening", "verification"}:
+            command.extend(("--llm-phase", phase))
+    command.extend(("--coding-agent", "off"))
+    return command
 
 
 def build_environment(
@@ -3083,6 +3450,7 @@ def build_environment(
     campaign: CampaignExecution | None = None,
     batch_key: str = "",
     started_at: str = "",
+    phase: str = "full",
 ) -> dict[str, str]:
     environment = dict(os.environ if base is None else base)
     # The launcher and child both execute the repository-bound virtualenv.
@@ -3094,10 +3462,26 @@ def build_environment(
     environment["PYTHONNOUSERSITE"] = "1"
     environment["CVE_REASONING_EFFORT"] = REASONING_EFFORT
     environment[FROZEN_LOCAL_SOURCES_ENV] = "1"
-    environment[LLM_MODEL_OVERRIDE_ENV] = MODEL
+    environment.pop(LLM_MODEL_OVERRIDE_ENV, None)
+    environment[LLM_SCREENING_MODEL_ENV] = SCREENING_MODEL
+    environment[LLM_SCREENING_REASONING_EFFORT_ENV] = SCREENING_REASONING_EFFORT
+    environment[LLM_VERIFY_MODEL_OVERRIDE_ENV] = VERIFY_MODEL
     environment[LLM_STRICT_MODEL_ENV] = "1"
     environment[LLM_DISABLE_CACHE_ENV] = "1"
+    if phase not in {"full", "no_token", "screening", "verification"}:
+        raise RunnerError(f"unknown pipeline phase: {phase}")
+    environment[PIPELINE_PHASE_ENV] = phase
     environment[LLM_CONCURRENCY_ENV] = str(LLM_CONCURRENCY)
+    environment[LLM_MAX_CONCURRENCY_ENV] = str(LLM_MAX_CONCURRENCY)
+    environment[LLM_SCREENING_MAX_CONCURRENCY_ENV] = str(
+        LLM_SCREENING_MAX_CONCURRENCY
+    )
+    environment[LLM_VERIFY_MAX_CONCURRENCY_ENV] = str(LLM_VERIFY_MAX_CONCURRENCY)
+    environment[GITHUB_MAX_IN_FLIGHT_ENV] = str(GITHUB_MAX_IN_FLIGHT)
+    environment[GITHUB_RESERVE_FRACTION_ENV] = str(GITHUB_RESERVE_FRACTION)
+    environment[GITHUB_TARGET_UTILIZATION_ENV] = str(
+        GITHUB_TARGET_UTILIZATION
+    )
     if campaign is not None:
         if not batch_key or not started_at:
             raise RunnerError(
@@ -3111,9 +3495,36 @@ def build_environment(
             or current_transport != campaign.litellm_transport
         ):
             raise RunnerError("LiteLLM campaign transport changed after binding")
+        if phase in {"full", "screening", "verification"}:
+            missing_limits = []
+            for name in (
+                LLM_SCREENING_RPM_ENV,
+                LLM_SCREENING_TPM_ENV,
+                LLM_VERIFY_RPM_ENV,
+                LLM_VERIFY_TPM_ENV,
+            ):
+                raw = environment.get(name, "").strip()
+                try:
+                    if int(raw) <= 0:
+                        raise ValueError
+                except ValueError:
+                    missing_limits.append(name)
+            if missing_limits:
+                raise RunnerError(
+                    "formal LLM phase requires explicit positive RPM/TPM limits: "
+                    + ", ".join(missing_limits)
+                )
         environment[RESULT_DIR_ENV] = str(campaign.result_dir)
         environment[API_CACHE_DIR_ENV] = str(campaign.api_cache_dir)
         environment[DERIVED_CACHE_ROOT_ENV] = str(campaign.derived_cache_root)
+        if campaign.repository_cache_root is not None:
+            environment[REPOSITORY_CACHE_ROOT_ENV] = str(
+                campaign.repository_cache_root
+            )
+        environment[ARTIFACT_ROOT_ENV] = str(_campaign_artifact_root(campaign))
+        environment[GITHUB_GOVERNOR_DB_ENV] = str(
+            campaign.root / "github-governor-v1.sqlite3"
+        )
         environment[CAMPAIGN_ID_ENV] = campaign.campaign_id
         environment[CAMPAIGN_BATCH_ENV] = batch_key
         environment[CAMPAIGN_STARTED_AT_ENV] = started_at
@@ -3149,6 +3560,8 @@ _KNOWN_NONTERMINAL_RESULT_CATEGORIES = frozenset({"no_ai_activity"})
 _INCOMPLETE_RESULT_CATEGORIES = frozenset(
     {"fix_commit_unavailable", "skipped_advisory"}
 )
+SUBJECT_MAX_ATTEMPTS = 3
+SUBJECT_RETRY_BACKOFF_SECONDS = (30, 120)
 
 
 def _terminal_result_problem(payload: dict[str, Any]) -> str | None:
@@ -3199,12 +3612,34 @@ def _analysis_stage_receipt_proof(
     ):
         return "missing or invalid complete analysis stage receipts", None
 
+    from cve_analyzer.models import CveAnalysisResult
+    from cve_analyzer.source_matcher import candidate_evidence_complete, match_result
+
+    ai_first_complete = False
+    raw_candidate_refs = payload.get("candidate_set_refs")
+    if raw_candidate_refs:
+        try:
+            analysis_result = CveAnalysisResult.from_dict(dict(payload))
+        except (KeyError, TypeError, ValueError):
+            return "cannot reconstruct candidate evidence for stage proof", None
+        ai_first_complete = bool(
+            analysis_result.candidate_set_refs
+            and candidate_evidence_complete(analysis_result)
+            and analysis_result.candidate_match
+            == match_result(analysis_result, complete=True).to_dict()
+        )
+
     outcomes = [raw_receipts[stage]["outcome"] for stage in ANALYSIS_STAGE_NAMES]
-    if outcomes[0] != "resolved":
-        return "source discovery stage did not resolve", None
-    exhausted = False
+    if outcomes[0] not in {"resolved", "exhausted_no_match"}:
+        return "source discovery stage did not reach a terminal outcome", None
+    exhausted_stage = ""
     for stage, outcome in zip(ANALYSIS_STAGE_NAMES, outcomes, strict=True):
         if outcome in {"incomplete", "error"}:
+            if ai_first_complete and stage in {
+                "bic_resolution",
+                "signal_classification",
+            }:
+                continue
             if (
                 stage == "adjudication"
                 and outcome == "incomplete"
@@ -3213,7 +3648,13 @@ def _analysis_stage_receipt_proof(
             ):
                 continue
             return f"analysis stage is non-terminal: {stage}={outcome}", None
-        if exhausted:
+        if exhausted_stage:
+            if (
+                exhausted_stage == "source_discovery"
+                and stage == "fix_resolution"
+                and outcome == "exhausted_no_match"
+            ):
+                continue
             if outcome != "not_applicable":
                 return (
                     f"downstream analysis stage must be not_applicable: {stage}",
@@ -3223,9 +3664,9 @@ def _analysis_stage_receipt_proof(
         if outcome == "not_applicable":
             return f"analysis stage is unexpectedly not_applicable: {stage}", None
         if outcome == "exhausted_no_match":
-            exhausted = True
+            exhausted_stage = stage
 
-    for stage in ("fix_resolution", "bic_resolution"):
+    for stage in ("source_discovery", "fix_resolution", "bic_resolution"):
         stage_receipt = raw_receipts[stage]
         if stage_receipt["outcome"] != "exhausted_no_match":
             continue
@@ -3386,12 +3827,19 @@ def _analysis_stage_receipt_proof(
         "campaign_contract_sha256": campaign.contract_sha256,
         "campaign_id": campaign.campaign_id,
         "model_contract": {
-            "requested_model": MODEL,
-            "reasoning_effort": REASONING_EFFORT,
+            "requested_models": {
+                "phase_c_screening": SCREENING_MODEL,
+                "phase_d_deep_verification": VERIFY_MODEL,
+            },
+            "reasoning_efforts": {
+                "phase_c_screening": SCREENING_REASONING_EFFORT,
+                "phase_d_deep_verification": REASONING_EFFORT,
+            },
             "litellm_transport_sha256": campaign.litellm_transport_sha256,
         },
         "repository_inputs": repository_inputs,
         "fix_inputs": fix_inputs,
+        "ai_first_candidate_evidence_complete": ai_first_complete,
     }
     previous_output = hashlib.sha256(_canonical_json_bytes(base_binding)).hexdigest()
     bound_stages: dict[str, dict[str, Any]] = {}
@@ -3434,7 +3882,12 @@ def _analysis_stage_receipt_proof(
 def _llm_provenance_problem(payload: dict[str, Any]) -> str | None:
     """Reject cached or downgraded LLM judgments in a fixed campaign result."""
 
-    allowed_models = {MODEL, f"osv+{MODEL}"}
+    allowed_models = {
+        SCREENING_MODEL,
+        f"osv+{SCREENING_MODEL}",
+        VERIFY_MODEL,
+        f"osv+{VERIFY_MODEL}",
+    }
 
     def visit(value: object, path: str) -> str | None:
         if isinstance(value, dict):
@@ -3445,7 +3898,7 @@ def _llm_provenance_problem(payload: dict[str, Any]) -> str | None:
                     f"expected {MODEL}, got {model}"
                 )
             if path.endswith(".deep_verification"):
-                if model not in allowed_models:
+                if model not in {VERIFY_MODEL, f"osv+{VERIFY_MODEL}"}:
                     return f"LLM model provenance mismatch at {path}"
                 effort = value.get("reasoning_effort")
                 if effort != REASONING_EFFORT:
@@ -3481,16 +3934,36 @@ def _campaign_receipt_problem(
     if not isinstance(receipt, dict):
         return "missing campaign receipt"
     expected = {
-        "schema_version": 1,
+        "schema_version": 3,
         "campaign_id": campaign.campaign_id,
+        "pipeline_phase": "verification",
         "batch": batch_key,
         "started_at": started_at,
         "source_snapshot_sha256": campaign.source_snapshot_sha256,
         "contract_sha256": campaign.contract_sha256,
         "litellm_transport_sha256": campaign.litellm_transport_sha256,
-        "requested_model": MODEL,
-        "reasoning_effort": REASONING_EFFORT,
+        "requested_models": {
+            "phase_c_screening": SCREENING_MODEL,
+            "phase_d_deep_verification": VERIFY_MODEL,
+        },
+        "reasoning_efforts": {
+            "phase_c_screening": SCREENING_REASONING_EFFORT,
+            "phase_d_deep_verification": REASONING_EFFORT,
+        },
         "llm_cache_disabled": True,
+        "resource_governance": {
+            "llm_global_max": str(LLM_MAX_CONCURRENCY),
+            "llm_screening_max": str(LLM_SCREENING_MAX_CONCURRENCY),
+            "llm_verification_max": str(LLM_VERIFY_MAX_CONCURRENCY),
+            "llm_screening_rpm": os.environ.get(LLM_SCREENING_RPM_ENV, ""),
+            "llm_screening_tpm": os.environ.get(LLM_SCREENING_TPM_ENV, ""),
+            "llm_verification_rpm": os.environ.get(LLM_VERIFY_RPM_ENV, ""),
+            "llm_verification_tpm": os.environ.get(LLM_VERIFY_TPM_ENV, ""),
+            "github_max_in_flight": str(GITHUB_MAX_IN_FLIGHT),
+            "github_reserve_fraction": str(GITHUB_RESERVE_FRACTION),
+            "github_target_utilization": str(GITHUB_TARGET_UTILIZATION),
+            "github_governor_backend": "sqlite_wal_v1",
+        },
         "status": "success",
         "failed_stages": [],
     }
@@ -4049,6 +4522,32 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
+def _atomic_write_bytes(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.stem}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def _regular_json_object(path: Path, label: str) -> dict[str, Any]:
     try:
         if path.is_symlink() or not path.is_file():
@@ -4076,26 +4575,56 @@ def _canonical_price(raw: str, label: str) -> tuple[str, Decimal]:
     return canonical or "0", value
 
 
-def _pilot_pricing_contract(pricing: PilotPricing) -> tuple[dict[str, Any], int]:
+def _pilot_stage_pricing_contract(
+    *,
+    stage: str,
+    model: str,
+    reasoning_effort: str,
+    input_price_raw: str,
+    output_price_raw: str,
+    max_input_tokens: int,
+    max_output_tokens: int,
+    max_calls: int,
+) -> dict[str, Any]:
     input_text, input_price = _canonical_price(
-        pricing.input_usd_per_million_tokens,
-        "pilot input price",
+        input_price_raw, f"pilot {stage} input price"
     )
     output_text, output_price = _canonical_price(
-        pricing.output_usd_per_million_tokens,
-        "pilot output price",
+        output_price_raw, f"pilot {stage} output price"
     )
     if (
-        isinstance(pricing.max_input_tokens, bool)
-        or not isinstance(pricing.max_input_tokens, int)
-        or pricing.max_input_tokens <= 0
-        or isinstance(pricing.max_output_tokens, bool)
-        or not isinstance(pricing.max_output_tokens, int)
-        or pricing.max_output_tokens < MAX_REASONING_OUTPUT_TOKENS_CEILING
+        isinstance(max_input_tokens, bool)
+        or not isinstance(max_input_tokens, int)
+        or max_input_tokens <= 0
+        or isinstance(max_output_tokens, bool)
+        or not isinstance(max_output_tokens, int)
+        or max_output_tokens < MAX_REASONING_OUTPUT_TOKENS_CEILING
+        or isinstance(max_calls, bool)
+        or not isinstance(max_calls, int)
+        or max_calls <= 0
     ):
-        raise RunnerError(
-            "pilot token bounds must be positive and cover the maximum reasoning output"
-        )
+        raise RunnerError(f"pilot {stage} token/call bounds are invalid")
+    reservation = int(
+        (
+            Decimal(max_input_tokens) * input_price
+            + Decimal(max_output_tokens) * output_price
+        ).to_integral_value(rounding=ROUND_CEILING)
+    )
+    if reservation <= 0:
+        raise RunnerError(f"pilot {stage} pricing has no positive reservation")
+    return {
+        "model": model,
+        "reasoning_effort": reasoning_effort,
+        "input_usd_per_million_tokens": input_text,
+        "output_usd_per_million_tokens": output_text,
+        "max_input_tokens": max_input_tokens,
+        "max_output_tokens": max_output_tokens,
+        "max_calls": max_calls,
+        "reservation_microusd": reservation,
+    }
+
+
+def _pilot_pricing_contract(pricing: PilotPricing) -> tuple[dict[str, Any], int]:
     if (
         isinstance(pricing.max_attempts, bool)
         or not isinstance(pricing.max_attempts, int)
@@ -4112,26 +4641,42 @@ def _pilot_pricing_contract(pricing: PilotPricing) -> tuple[dict[str, Any], int]
         raise RunnerError(
             "pilot cost ceiling must be positive and no greater than USD 25"
         )
-    reservation = int(
-        (
-            Decimal(pricing.max_input_tokens) * input_price
-            + Decimal(pricing.max_output_tokens) * output_price
-        ).to_integral_value(rounding=ROUND_CEILING)
-    )
-    if reservation <= 0:
-        raise RunnerError("pilot pricing must reserve a positive worst-case cost")
-    if reservation > pricing.max_cost_microusd:
-        raise RunnerError(
-            "one pilot request reservation exceeds the total cost ceiling"
-        )
-    contract = {
-        "model": MODEL,
-        "input_usd_per_million_tokens": input_text,
-        "output_usd_per_million_tokens": output_text,
-        "max_input_tokens": pricing.max_input_tokens,
-        "max_output_tokens": pricing.max_output_tokens,
+    stages = {
+        "screening": _pilot_stage_pricing_contract(
+            stage="screening",
+            model=SCREENING_MODEL,
+            reasoning_effort=SCREENING_REASONING_EFFORT,
+            input_price_raw=pricing.screening_input_usd_per_million_tokens,
+            output_price_raw=pricing.screening_output_usd_per_million_tokens,
+            max_input_tokens=pricing.screening_max_input_tokens,
+            max_output_tokens=pricing.screening_max_output_tokens,
+            max_calls=pricing.screening_max_calls,
+        ),
+        "verification": _pilot_stage_pricing_contract(
+            stage="verification",
+            model=VERIFY_MODEL,
+            reasoning_effort=REASONING_EFFORT,
+            input_price_raw=pricing.verification_input_usd_per_million_tokens,
+            output_price_raw=pricing.verification_output_usd_per_million_tokens,
+            max_input_tokens=pricing.verification_max_input_tokens,
+            max_output_tokens=pricing.verification_max_output_tokens,
+            max_calls=pricing.verification_max_calls,
+        ),
     }
-    return contract, reservation
+    planned_attempts = sum(stage["max_calls"] for stage in stages.values())
+    reservation_ceiling = sum(
+        stage["reservation_microusd"] * stage["max_calls"]
+        for stage in stages.values()
+    )
+    if planned_attempts > pricing.max_attempts:
+        raise RunnerError("pilot staged call bounds exceed the total attempt ceiling")
+    if reservation_ceiling > pricing.max_cost_microusd:
+        raise RunnerError("pilot staged reservations exceed the total cost ceiling")
+    contract = {
+        "schema_version": 2,
+        "stages": stages,
+    }
+    return contract, reservation_ceiling
 
 
 def _pilot_pricing_attestation(
@@ -4180,7 +4725,10 @@ def _pilot_pricing_attestation(
     if not isinstance(entries, list):
         raise RunnerError("LiteLLM model-info response has no model inventory")
 
-    matched: list[dict[str, Any]] = []
+    matched_by_model: dict[str, list[dict[str, Any]]] = {
+        SCREENING_MODEL: [],
+        VERIFY_MODEL: [],
+    }
     for entry in entries:
         if not isinstance(entry, dict):
             continue
@@ -4188,7 +4736,8 @@ def _pilot_pricing_attestation(
         model_info = entry.get("model_info")
         if not isinstance(parameters, dict) or not isinstance(model_info, dict):
             continue
-        if entry.get("model_name") != MODEL:
+        model_name = entry.get("model_name")
+        if model_name not in matched_by_model:
             continue
         try:
             input_cost = Decimal(str(model_info["input_cost_per_token"]))
@@ -4212,7 +4761,7 @@ def _pilot_pricing_attestation(
             or max_output <= 0
         ):
             raise RunnerError("LiteLLM model-info pricing is malformed")
-        matched.append(
+        matched_by_model[model_name].append(
             {
                 "model_name": entry.get("model_name"),
                 "litellm_model": parameters.get("model"),
@@ -4222,60 +4771,85 @@ def _pilot_pricing_attestation(
                 "max_output_tokens": max_output,
             }
         )
-    if not matched:
-        raise RunnerError(f"LiteLLM model-info has no exact {MODEL!r} contract")
-
-    provider_input = max(
-        Decimal(item["input_cost_per_token"]) for item in matched
-    ) * Decimal(1_000_000)
-    provider_output = max(
-        Decimal(item["output_cost_per_token"]) for item in matched
-    ) * Decimal(1_000_000)
-    configured_input = _canonical_price(
-        pricing.input_usd_per_million_tokens,
-        "pilot input price",
-    )[1]
-    configured_output = _canonical_price(
-        pricing.output_usd_per_million_tokens,
-        "pilot output price",
-    )[1]
-    provider_max_input = min(item["max_input_tokens"] for item in matched)
-    provider_max_output = min(item["max_output_tokens"] for item in matched)
-    if configured_input < provider_input or configured_output < provider_output:
-        raise RunnerError("pilot prices are below the live LiteLLM model contract")
-    if (
-        pricing.max_input_tokens > provider_max_input
-        or pricing.max_output_tokens > provider_max_output
-    ):
-        raise RunnerError("pilot token bounds exceed the live LiteLLM model contract")
-
-    provider_input_text = _canonical_price(
-        format(provider_input, "f"),
-        "provider input price",
-    )[0]
-    provider_output_text = _canonical_price(
-        format(provider_output, "f"),
-        "provider output price",
-    )[0]
-    matched.sort(key=_canonical_json_bytes)
+    stage_inputs = {
+        "screening": {
+            "model": SCREENING_MODEL,
+            "configured_input": pricing.screening_input_usd_per_million_tokens,
+            "configured_output": pricing.screening_output_usd_per_million_tokens,
+            "max_input": pricing.screening_max_input_tokens,
+            "max_output": pricing.screening_max_output_tokens,
+        },
+        "verification": {
+            "model": VERIFY_MODEL,
+            "configured_input": pricing.verification_input_usd_per_million_tokens,
+            "configured_output": pricing.verification_output_usd_per_million_tokens,
+            "max_input": pricing.verification_max_input_tokens,
+            "max_output": pricing.verification_max_output_tokens,
+        },
+    }
+    stage_attestations: dict[str, dict[str, Any]] = {}
+    for stage, configured in stage_inputs.items():
+        model = configured["model"]
+        matched = matched_by_model[model]
+        if not matched:
+            raise RunnerError(
+                f"LiteLLM model-info has no exact {model!r} contract"
+            )
+        provider_input = max(
+            Decimal(item["input_cost_per_token"]) for item in matched
+        ) * Decimal(1_000_000)
+        provider_output = max(
+            Decimal(item["output_cost_per_token"]) for item in matched
+        ) * Decimal(1_000_000)
+        configured_input = _canonical_price(
+            str(configured["configured_input"]), f"pilot {stage} input price"
+        )[1]
+        configured_output = _canonical_price(
+            str(configured["configured_output"]), f"pilot {stage} output price"
+        )[1]
+        provider_max_input = min(item["max_input_tokens"] for item in matched)
+        provider_max_output = min(item["max_output_tokens"] for item in matched)
+        if configured_input < provider_input or configured_output < provider_output:
+            raise RunnerError(
+                f"pilot {stage} prices are below the live LiteLLM model contract"
+            )
+        if (
+            configured["max_input"] > provider_max_input
+            or configured["max_output"] > provider_max_output
+        ):
+            raise RunnerError(
+                f"pilot {stage} token bounds exceed the live LiteLLM model contract"
+            )
+        matched.sort(key=_canonical_json_bytes)
+        stage_attestations[stage] = {
+            "model": model,
+            "matched_entry_count": len(matched),
+            "matched_entries_sha256": hashlib.sha256(
+                _canonical_json_bytes(matched)
+            ).hexdigest(),
+            "provider_input_usd_per_million_tokens": _canonical_price(
+                format(provider_input, "f"), "provider input price"
+            )[0],
+            "provider_output_usd_per_million_tokens": _canonical_price(
+                format(provider_output, "f"), "provider output price"
+            )[0],
+            "provider_max_input_tokens": provider_max_input,
+            "provider_max_output_tokens": provider_max_output,
+            "configured_prices_at_or_above_provider": True,
+            "configured_token_bounds_within_provider": True,
+        }
     return {
-        "schema_version": 1,
-        "model": MODEL,
+        "schema_version": 2,
+        "models": {
+            "screening": SCREENING_MODEL,
+            "verification": VERIFY_MODEL,
+        },
         "currency": "USD",
         "source_kind": "live_litellm_model_info",
         "effective_time": "queried_immediately_before_pilot_identity",
         "endpoint_sha256": hashlib.sha256(endpoint.encode("utf-8")).hexdigest(),
         "source_response_sha256": hashlib.sha256(content).hexdigest(),
-        "matched_entry_count": len(matched),
-        "matched_entries_sha256": hashlib.sha256(
-            _canonical_json_bytes(matched)
-        ).hexdigest(),
-        "provider_input_usd_per_million_tokens": provider_input_text,
-        "provider_output_usd_per_million_tokens": provider_output_text,
-        "provider_max_input_tokens": provider_max_input,
-        "provider_max_output_tokens": provider_max_output,
-        "configured_prices_at_or_above_provider": True,
-        "configured_token_bounds_within_provider": True,
+        "stages": stage_attestations,
     }
 
 
@@ -4482,6 +5056,151 @@ def _pilot_budget_snapshot(
     immutable: Mapping[str, Any],
 ) -> dict[str, Any]:
     payload = _regular_json_object(path, "pilot budget ledger")
+    if payload.get("schema_version") not in {2, 3}:
+        raise RunnerError("legacy single-model pilot ledger is not reusable")
+    expected_fields_v2 = {
+        "schema_version", "artifact_kind", "pilot_id", "selection_sha256",
+        "pricing_contract_sha256", "pricing_contract", "deadline_epoch_seconds",
+        "max_attempts", "max_cost_microusd", "attempts_reserved",
+        "attempts_completed", "reserved_cost_microusd", "spent_cost_microusd",
+        "attempt_receipts", "budget_breached",
+    }
+    if set(payload) != expected_fields_v2 or any(
+        payload.get(key) != value for key, value in immutable.items()
+    ):
+        raise RunnerError("pilot budget ledger identity changed")
+    pricing = payload.get("pricing_contract")
+    stages = pricing.get("stages") if isinstance(pricing, dict) else None
+    if (
+        not isinstance(stages, dict)
+        or set(stages) != {"screening", "verification"}
+        or pricing.get("schema_version") != 2
+        or hashlib.sha256(_canonical_json_bytes(pricing)).hexdigest()
+        != payload.get("pricing_contract_sha256")
+    ):
+        raise RunnerError("pilot staged pricing contract is invalid")
+    stage_caps: dict[str, int] = {}
+    stage_reservations: dict[str, int] = {}
+    for stage, contract in stages.items():
+        if not isinstance(contract, dict) or set(contract) != {
+            "model", "reasoning_effort", "input_usd_per_million_tokens",
+            "output_usd_per_million_tokens", "max_input_tokens",
+            "max_output_tokens", "max_calls", "reservation_microusd",
+        }:
+            raise RunnerError("pilot staged pricing contract is invalid")
+        stage_caps[stage] = contract["max_calls"]
+        stage_reservations[stage] = contract["reservation_microusd"]
+    receipts = payload.get("attempt_receipts")
+    integer_fields_v2 = (
+        "max_attempts", "max_cost_microusd", "attempts_reserved",
+        "attempts_completed", "reserved_cost_microusd", "spent_cost_microusd",
+    )
+    if (
+        any(isinstance(payload.get(field), bool) or not isinstance(payload.get(field), int) or payload[field] < 0 for field in integer_fields_v2)
+        or not isinstance(receipts, list)
+        or payload.get("budget_breached") is not False
+        or payload["attempts_completed"] > payload["attempts_reserved"]
+        or payload["attempts_reserved"] > payload["max_attempts"]
+        or payload["reserved_cost_microusd"] > payload["max_cost_microusd"]
+        or payload["spent_cost_microusd"] > payload["reserved_cost_microusd"]
+    ):
+        raise RunnerError("pilot staged budget bounds are invalid")
+    reserved = 0
+    spent = 0
+    completed = 0
+    stage_counts: Counter[str] = Counter()
+    audited_fields = {
+        "request_body_sha256", "subject_id", "repository_identity",
+        "logical_turn", "http_retry_index",
+    }
+    for sequence, receipt in enumerate(receipts, start=1):
+        expected_receipt_fields = {
+            "sequence", "stage", "model", "reservation_microusd",
+            "admitted_at_epoch_seconds", "completed_at_epoch_seconds",
+            "status", "actual_cost_microusd", "input_tokens", "output_tokens",
+        }
+        if payload.get("schema_version") == 3:
+            expected_receipt_fields |= audited_fields
+        if (
+            not isinstance(receipt, dict)
+            or receipt.get("sequence") != sequence
+            or set(receipt) != expected_receipt_fields
+        ):
+            raise RunnerError("pilot staged attempt receipt is invalid")
+        if payload.get("schema_version") == 3 and (
+            re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("request_body_sha256", "")))
+            is None
+            or not isinstance(receipt.get("subject_id"), str)
+            or not receipt["subject_id"]
+            or not isinstance(receipt.get("repository_identity"), str)
+            or isinstance(receipt.get("logical_turn"), bool)
+            or not isinstance(receipt.get("logical_turn"), int)
+            or receipt["logical_turn"] < 0
+            or isinstance(receipt.get("http_retry_index"), bool)
+            or not isinstance(receipt.get("http_retry_index"), int)
+            or receipt["http_retry_index"] < 0
+        ):
+            raise RunnerError("pilot staged audited receipt is invalid")
+        stage = receipt.get("stage")
+        contract = stages.get(stage) if isinstance(stage, str) else None
+        if (
+            not isinstance(contract, dict)
+            or receipt.get("model") != contract.get("model")
+            or receipt.get("reservation_microusd") != stage_reservations.get(stage)
+            or isinstance(receipt.get("admitted_at_epoch_seconds"), bool)
+            or not isinstance(
+                receipt.get("admitted_at_epoch_seconds"), (int, float)
+            )
+        ):
+            raise RunnerError("pilot staged attempt receipt is invalid")
+        stage_counts[stage] += 1
+        reserved += receipt["reservation_microusd"]
+        if receipt.get("status") == "reserved":
+            if any(
+                receipt.get(field) is not None
+                for field in (
+                    "completed_at_epoch_seconds",
+                    "actual_cost_microusd",
+                    "input_tokens",
+                    "output_tokens",
+                )
+            ):
+                raise RunnerError("pilot staged reserved attempt receipt is invalid")
+            continue
+        completed += 1
+        actual = receipt.get("actual_cost_microusd")
+        usage_values = (actual, receipt.get("input_tokens"), receipt.get("output_tokens"))
+        if (
+            not isinstance(receipt.get("status"), str)
+            or not receipt["status"]
+            or isinstance(receipt.get("completed_at_epoch_seconds"), bool)
+            or not isinstance(
+                receipt.get("completed_at_epoch_seconds"), (int, float)
+            )
+            or any(
+                value is not None
+                and (
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                )
+                for value in usage_values
+            )
+            or len({value is None for value in usage_values}) != 1
+            or (isinstance(actual, int) and actual > receipt["reservation_microusd"])
+        ):
+            raise RunnerError("pilot staged completed attempt receipt is invalid")
+        spent += actual or 0
+    if (
+        len(receipts) != payload["attempts_reserved"]
+        or completed != payload["attempts_completed"]
+        or reserved != payload["reserved_cost_microusd"]
+        or spent != payload["spent_cost_microusd"]
+        or any(stage_counts[stage] > stage_caps[stage] for stage in stages)
+    ):
+        raise RunnerError("pilot staged budget counters are inconsistent")
+    return payload
+    # Schema-1 validation remains below only for archived artifact documentation.
     expected_fields = {
         "schema_version",
         "artifact_kind",
@@ -4522,16 +5241,24 @@ def _pilot_budget_snapshot(
         raise RunnerError("pilot budget ledger counters are invalid")
     receipts = payload.get("attempt_receipts")
     deadline = payload.get("deadline_epoch_seconds")
+    artifact_kind = payload.get("artifact_kind")
+    max_attempt_limit = (
+        OPENCLAW_PILOT_MAX_ATTEMPTS if artifact_kind == "pilot" else 10_000_000
+    )
+    max_cost_limit = (
+        OPENCLAW_PILOT_MAX_COST_MICROUSD
+        if artifact_kind == "pilot"
+        else 100_000_000_000
+    )
     if (
-        payload.get("budget_breached") is not False
+        artifact_kind not in {"pilot", "llm_plan_phase"}
+        or payload.get("budget_breached") is not False
         or not isinstance(receipts, list)
         or isinstance(deadline, bool)
         or not isinstance(deadline, (int, float))
         or not math.isfinite(float(deadline))
-        or not 1 <= payload["max_attempts"] <= OPENCLAW_PILOT_MAX_ATTEMPTS
-        or not 1
-        <= payload["max_cost_microusd"]
-        <= OPENCLAW_PILOT_MAX_COST_MICROUSD
+        or not 1 <= payload["max_attempts"] <= max_attempt_limit
+        or not 1 <= payload["max_cost_microusd"] <= max_cost_limit
         or payload["reservation_microusd"] <= 0
         or payload["attempts_completed"] > payload["attempts_reserved"]
         or payload["reserved_cost_microusd"]
@@ -4894,7 +5621,7 @@ def run_openclaw_pilot(
     source_snapshot = _validated_source_snapshot(capture_source_snapshot(paths))
     contract_digest = contract_sha256(paths)
     base_campaign = campaign_execution(paths, source_snapshot, contract_digest)
-    pricing_contract, reservation = _pilot_pricing_contract(pricing)
+    pricing_contract, reservation_ceiling = _pilot_pricing_contract(pricing)
     pricing_sha256 = hashlib.sha256(_canonical_json_bytes(pricing_contract)).hexdigest()
     pricing_attestation = _pilot_pricing_attestation(pricing)
     pricing_attestation_sha256 = hashlib.sha256(
@@ -4902,7 +5629,7 @@ def run_openclaw_pilot(
     ).hexdigest()
     selection_sha256 = hashlib.sha256(_canonical_json_bytes(selection)).hexdigest()
     identity = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "formal_release_eligible": False,
         "gate_contract_version": OPENCLAW_PILOT_GATE_CONTRACT_VERSION,
@@ -4915,8 +5642,14 @@ def run_openclaw_pilot(
         "signature_sha256": base_campaign.signature_sha256,
         "alias_class_manifest_sha256": base_campaign.alias_class_manifest_sha256,
         "analysis_checkout": analysis_checkout,
-        "model": MODEL,
-        "reasoning_effort": REASONING_EFFORT,
+        "models": {
+            "screening": SCREENING_MODEL,
+            "verification": VERIFY_MODEL,
+        },
+        "reasoning_efforts": {
+            "screening": SCREENING_REASONING_EFFORT,
+            "verification": REASONING_EFFORT,
+        },
         "class_cap": OPENCLAW_PILOT_CLASS_COUNT,
         "wall_time_cap_seconds": OPENCLAW_PILOT_TIMEOUT_SECONDS,
         "llm_attempt_cap": pricing.max_attempts,
@@ -4924,7 +5657,7 @@ def run_openclaw_pilot(
     }
     pilot_id = hashlib.sha256(_canonical_json_bytes(identity)).hexdigest()
     selection_document = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "formal_release_eligible": False,
         "pilot_id": pilot_id,
@@ -4948,14 +5681,11 @@ def run_openclaw_pilot(
             "all_population_class_count": population_count,
             "analysis_checkout": analysis_checkout,
             "pricing_attestation": pricing_attestation,
-            "reservation_microusd_per_attempt": reservation,
-            "maximum_admissible_attempts_by_cost": (
-                pricing.max_cost_microusd // reservation
-            ),
+            "staged_reservation_ceiling_microusd": reservation_ceiling,
         }
 
     immutable_ledger = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "pilot_id": pilot_id,
         "selection_sha256": selection_sha256,
@@ -4963,7 +5693,6 @@ def run_openclaw_pilot(
         "pricing_contract": pricing_contract,
         "max_attempts": pricing.max_attempts,
         "max_cost_microusd": pricing.max_cost_microusd,
-        "reservation_microusd": reservation,
     }
     with batch_singleton_lock(pilots_root, pilot_id) as pilot_lock_fd:
         _revalidate_openclaw_checkout(analysis_checkout)
@@ -5095,7 +5824,7 @@ def run_openclaw_pilot(
         )
         completed_at = _utc_now()
         marker = {
-            "schema_version": 1,
+            "schema_version": 2,
             "artifact_kind": "pilot",
             "formal_release_eligible": False,
             "pilot_id": pilot_id,
@@ -5132,26 +5861,22 @@ def _validate_pilot_pricing_attestation(
 ) -> dict[str, Any]:
     fields = {
         "schema_version",
-        "model",
+        "models",
         "currency",
         "source_kind",
         "effective_time",
         "endpoint_sha256",
         "source_response_sha256",
-        "matched_entry_count",
-        "matched_entries_sha256",
-        "provider_input_usd_per_million_tokens",
-        "provider_output_usd_per_million_tokens",
-        "provider_max_input_tokens",
-        "provider_max_output_tokens",
-        "configured_prices_at_or_above_provider",
-        "configured_token_bounds_within_provider",
+        "stages",
     }
     if (
         not isinstance(attestation, dict)
         or set(attestation) != fields
-        or attestation.get("schema_version") != 1
-        or attestation.get("model") != MODEL
+        or attestation.get("schema_version") != 2
+        or attestation.get("models") != {
+            "screening": SCREENING_MODEL,
+            "verification": VERIFY_MODEL,
+        }
         or attestation.get("currency") != "USD"
         or attestation.get("source_kind") != "live_litellm_model_info"
         or attestation.get("effective_time")
@@ -5159,63 +5884,51 @@ def _validate_pilot_pricing_attestation(
         or any(
             not isinstance(attestation.get(field), str)
             or re.fullmatch(r"[0-9a-f]{64}", attestation[field]) is None
-            for field in (
-                "endpoint_sha256",
-                "source_response_sha256",
-                "matched_entries_sha256",
-            )
+            for field in ("endpoint_sha256", "source_response_sha256")
         )
-        or isinstance(attestation.get("matched_entry_count"), bool)
-        or not isinstance(attestation.get("matched_entry_count"), int)
-        or attestation["matched_entry_count"] <= 0
-        or attestation.get("configured_prices_at_or_above_provider") is not True
-        or attestation.get("configured_token_bounds_within_provider") is not True
     ):
         raise RunnerError("pilot pricing attestation is malformed")
-    try:
-        provider_input = Decimal(
-            str(attestation["provider_input_usd_per_million_tokens"])
-        )
-        provider_output = Decimal(
-            str(attestation["provider_output_usd_per_million_tokens"])
-        )
-        configured_input = Decimal(
-            str(pricing_contract["input_usd_per_million_tokens"])
-        )
-        configured_output = Decimal(
-            str(pricing_contract["output_usd_per_million_tokens"])
-        )
-        provider_max_input = attestation["provider_max_input_tokens"]
-        provider_max_output = attestation["provider_max_output_tokens"]
-        configured_max_input = pricing_contract["max_input_tokens"]
-        configured_max_output = pricing_contract["max_output_tokens"]
-    except (KeyError, InvalidOperation, TypeError, ValueError) as exc:
-        raise RunnerError("pilot pricing attestation is malformed") from exc
+    stage_attestations = attestation.get("stages")
+    stage_contracts = pricing_contract.get("stages")
     if (
-        any(
-            not value.is_finite() or value < 0
-            for value in (
-                provider_input,
-                provider_output,
-                configured_input,
-                configured_output,
-            )
-        )
-        or configured_input < provider_input
-        or configured_output < provider_output
-        or any(
-            isinstance(value, bool) or not isinstance(value, int) or value <= 0
-            for value in (
-                provider_max_input,
-                provider_max_output,
-                configured_max_input,
-                configured_max_output,
-            )
-        )
-        or configured_max_input > provider_max_input
-        or configured_max_output > provider_max_output
+        not isinstance(stage_attestations, dict)
+        or set(stage_attestations) != {"screening", "verification"}
+        or not isinstance(stage_contracts, Mapping)
     ):
-        raise RunnerError("pilot pricing attestation does not cover its contract")
+        raise RunnerError("pilot pricing attestation is malformed")
+    required_stage_fields = {
+        "model", "matched_entry_count", "matched_entries_sha256",
+        "provider_input_usd_per_million_tokens",
+        "provider_output_usd_per_million_tokens", "provider_max_input_tokens",
+        "provider_max_output_tokens", "configured_prices_at_or_above_provider",
+        "configured_token_bounds_within_provider",
+    }
+    for stage, stage_attestation in stage_attestations.items():
+        contract = stage_contracts.get(stage)
+        if (
+            not isinstance(stage_attestation, dict)
+            or set(stage_attestation) != required_stage_fields
+            or not isinstance(contract, Mapping)
+            or stage_attestation.get("model") != contract.get("model")
+            or stage_attestation.get("configured_prices_at_or_above_provider") is not True
+            or stage_attestation.get("configured_token_bounds_within_provider") is not True
+            or re.fullmatch(r"[0-9a-f]{64}", str(stage_attestation.get("matched_entries_sha256", ""))) is None
+        ):
+            raise RunnerError("pilot pricing attestation is malformed")
+        try:
+            provider_input = Decimal(str(stage_attestation["provider_input_usd_per_million_tokens"]))
+            provider_output = Decimal(str(stage_attestation["provider_output_usd_per_million_tokens"]))
+            configured_input = Decimal(str(contract["input_usd_per_million_tokens"]))
+            configured_output = Decimal(str(contract["output_usd_per_million_tokens"]))
+        except (KeyError, InvalidOperation, TypeError, ValueError) as exc:
+            raise RunnerError("pilot pricing attestation is malformed") from exc
+        if (
+            configured_input < provider_input
+            or configured_output < provider_output
+            or contract["max_input_tokens"] > stage_attestation["provider_max_input_tokens"]
+            or contract["max_output_tokens"] > stage_attestation["provider_max_output_tokens"]
+        ):
+            raise RunnerError("pilot pricing attestation does not cover its contract")
     return dict(attestation)
 
 
@@ -5248,7 +5961,7 @@ def _validated_openclaw_pilot_completion(
     }
     if (
         set(selection_document) != selection_fields
-        or selection_document.get("schema_version") != 1
+        or selection_document.get("schema_version") != 2
         or selection_document.get("artifact_kind") != "pilot"
         or selection_document.get("formal_release_eligible") is not False
         or selection_document.get("pilot_id") != pilot_id
@@ -5269,8 +5982,8 @@ def _validated_openclaw_pilot_completion(
         "signature_sha256",
         "alias_class_manifest_sha256",
         "analysis_checkout",
-        "model",
-        "reasoning_effort",
+        "models",
+        "reasoning_efforts",
         "class_cap",
         "wall_time_cap_seconds",
         "llm_attempt_cap",
@@ -5279,14 +5992,16 @@ def _validated_openclaw_pilot_completion(
     if (
         not isinstance(identity, dict)
         or set(identity) != identity_fields
-        or identity.get("schema_version") != 1
+        or identity.get("schema_version") != 2
         or identity.get("artifact_kind") != "pilot"
         or identity.get("formal_release_eligible") is not False
         or identity.get("gate_contract_version")
         != OPENCLAW_PILOT_GATE_CONTRACT_VERSION
         or hashlib.sha256(_canonical_json_bytes(identity)).hexdigest() != pilot_id
-        or identity.get("model") != MODEL
-        or identity.get("reasoning_effort") != REASONING_EFFORT
+        or identity.get("models")
+        != {"screening": SCREENING_MODEL, "verification": VERIFY_MODEL}
+        or identity.get("reasoning_efforts")
+        != {"screening": SCREENING_REASONING_EFFORT, "verification": REASONING_EFFORT}
         or identity.get("class_cap") != OPENCLAW_PILOT_CLASS_COUNT
         or identity.get("wall_time_cap_seconds") != OPENCLAW_PILOT_TIMEOUT_SECONDS
     ):
@@ -5330,7 +6045,7 @@ def _validated_openclaw_pilot_completion(
         _canonical_json_bytes(pricing_contract)
     ).hexdigest()
     immutable_ledger = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "pilot",
         "pilot_id": pilot_id,
         "selection_sha256": selection_sha256,
@@ -5338,31 +6053,42 @@ def _validated_openclaw_pilot_completion(
         "pricing_contract": pricing_contract,
         "max_attempts": identity.get("llm_attempt_cap"),
         "max_cost_microusd": identity.get("cost_cap_microusd"),
-        "reservation_microusd": raw_ledger.get("reservation_microusd"),
     }
     ledger = _pilot_budget_snapshot(
         pilot_root / "budget-ledger.json",
         immutable=immutable_ledger,
     )
     try:
+        screening_contract = pricing_contract["stages"]["screening"]
+        verification_contract = pricing_contract["stages"]["verification"]
         replay_pricing = PilotPricing(
-            input_usd_per_million_tokens=str(
-                pricing_contract["input_usd_per_million_tokens"]
+            screening_input_usd_per_million_tokens=str(
+                screening_contract["input_usd_per_million_tokens"]
             ),
-            output_usd_per_million_tokens=str(
-                pricing_contract["output_usd_per_million_tokens"]
+            screening_output_usd_per_million_tokens=str(
+                screening_contract["output_usd_per_million_tokens"]
             ),
-            max_input_tokens=pricing_contract["max_input_tokens"],
-            max_output_tokens=pricing_contract["max_output_tokens"],
+            verification_input_usd_per_million_tokens=str(
+                verification_contract["input_usd_per_million_tokens"]
+            ),
+            verification_output_usd_per_million_tokens=str(
+                verification_contract["output_usd_per_million_tokens"]
+            ),
+            screening_max_input_tokens=screening_contract["max_input_tokens"],
+            screening_max_output_tokens=screening_contract["max_output_tokens"],
+            verification_max_input_tokens=verification_contract["max_input_tokens"],
+            verification_max_output_tokens=verification_contract["max_output_tokens"],
+            screening_max_calls=screening_contract["max_calls"],
+            verification_max_calls=verification_contract["max_calls"],
             max_cost_microusd=ledger["max_cost_microusd"],
             max_attempts=ledger["max_attempts"],
         )
     except KeyError as exc:
         raise RunnerError("pilot pricing contract is malformed") from exc
-    replayed_contract, reservation = _pilot_pricing_contract(replay_pricing)
+    replayed_contract, reservation_ceiling = _pilot_pricing_contract(replay_pricing)
     if (
         replayed_contract != pricing_contract
-        or reservation != ledger["reservation_microusd"]
+        or reservation_ceiling > ledger["max_cost_microusd"]
         or identity.get("pricing_contract_sha256") != pricing_sha256
     ):
         raise RunnerError("pilot pricing contract binding is invalid")
@@ -5401,7 +6127,7 @@ def _validated_openclaw_pilot_completion(
     }
     if (
         set(completion) != completion_fields
-        or completion.get("schema_version") != 1
+        or completion.get("schema_version") != 2
         or completion.get("artifact_kind") != "pilot"
         or completion.get("formal_release_eligible") is not False
         or completion.get("pilot_id") != pilot_id
@@ -5708,8 +6434,11 @@ def _openclaw_smoke_context(
         max_attempts=max_attempts,
         max_cost_microusd=max_cost_microusd,
     )
-    reservation = pilot["ledger"]["reservation_microusd"]
-    if max_cost_microusd < reservation:
+    stage_reservations = [
+        stage["reservation_microusd"]
+        for stage in pilot["pricing_contract"]["stages"].values()
+    ]
+    if max_cost_microusd < min(stage_reservations):
         raise RunnerError(
             "OpenClaw smoke budget cannot reserve one bounded LLM attempt"
         )
@@ -5773,7 +6502,6 @@ def _openclaw_smoke_context(
         "budget_contract_sha256": budget_contract_sha256,
         "identity": identity,
         "identity_sha256": smoke_id,
-        "reservation_microusd": reservation,
     }
 
 
@@ -5811,7 +6539,7 @@ def _validated_openclaw_smoke_completion(
         smoke_root / "budget-ledger.json", "OpenClaw smoke budget ledger"
     )
     immutable_ledger = {
-        "schema_version": 1,
+        "schema_version": 2,
         # The analyzer's process-locked admission primitive is deliberately
         # reused here; its on-disk schema names the primitive, while the smoke
         # identity and selection remain separate exact artifacts.
@@ -5822,7 +6550,6 @@ def _validated_openclaw_smoke_completion(
         "pricing_contract": pilot["pricing_contract"],
         "max_attempts": context["budget_contract"]["max_attempts"],
         "max_cost_microusd": context["budget_contract"]["max_cost_microusd"],
-        "reservation_microusd": context["reservation_microusd"],
     }
     ledger = _pilot_budget_snapshot(
         smoke_root / "budget-ledger.json",
@@ -6034,7 +6761,7 @@ def run_openclaw_smoke(
             else:
                 initial_deadline = time.time() + OPENCLAW_SMOKE_TIMEOUT_SECONDS
             immutable_ledger = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "artifact_kind": "pilot",
                 "pilot_id": smoke_id,
                 "selection_sha256": context["selection_sha256"],
@@ -6042,7 +6769,6 @@ def run_openclaw_smoke(
                 "pricing_contract": pilot["pricing_contract"],
                 "max_attempts": max_attempts,
                 "max_cost_microusd": max_cost_microusd,
-                "reservation_microusd": context["reservation_microusd"],
             }
             initial_ledger = {
                 **immutable_ledger,
@@ -6296,7 +7022,24 @@ class RefreshRunner:
         require_formal: bool = True,
     ) -> None:
         self.paths = paths
-        self.plan = load_plan(paths)
+        self.source_snapshot_provider = source_snapshot_provider
+        self._source_fsck_cache = (
+            source_delta_builder.SuccessfulGitFsckCache(
+                receipt_path=source_delta_builder.git_fsck_receipt_path(
+                    paths.repo_root
+                )
+            )
+            if source_snapshot_provider is capture_source_snapshot
+            else None
+        )
+        # Validate the cheap static cache-identity gate before load_plan can
+        # perform full source fsck and semantic replay.
+        collision_inventory = load_legacy_collisions(paths.collision_inventory)
+        self.collisions = unresolved_legacy_collisions(
+            collision_inventory,
+            cache_resolver,
+        )
+        self.plan = load_plan(paths, fsck_cache=self._source_fsck_cache)
         self._campaign_result_ids = tuple(
             subject_id for batch in self.plan for subject_id in batch.ids
         )
@@ -6305,6 +7048,10 @@ class RefreshRunner:
             raise RunnerError(
                 "formal campaign requires population_policy=formal_full; incremental plans are release-ineligible"
             )
+        (
+            _bound_alias_delta_path,
+            self._bound_alias_class_manifest_sha256,
+        ) = _alias_manifest_execution_binding(paths)
         self._bound_batch_sha256 = {
             batch.key: file_sha256(batch.path) for batch in self.plan
         }
@@ -6316,20 +7063,9 @@ class RefreshRunner:
             raise RunnerError(f"cannot bind analyzer contract epoch: {exc}") from exc
         self._bound_contract_sha256 = contract_sha256(paths)
         self._assert_campaign_binding("during runner initialization")
-        collision_inventory = load_legacy_collisions(paths.collision_inventory)
-        self.collisions = unresolved_legacy_collisions(
-            collision_inventory,
-            cache_resolver,
-        )
         self.command_runner = command_runner
         self.disk_free = disk_free or (lambda path: shutil.disk_usage(path).free)
         self.batch_validator = batch_validator
-        self.source_snapshot_provider = source_snapshot_provider
-        self._source_fsck_cache = (
-            source_delta_builder.SuccessfulGitFsckCache()
-            if source_snapshot_provider is capture_source_snapshot
-            else None
-        )
 
     def _assert_campaign_binding(
         self,
@@ -6362,6 +7098,7 @@ class RefreshRunner:
                 # Subsequent bindings still hash the complete contract and can
                 # recapture all mutable inputs without rescanning aliases.
                 replay_delta_semantics=False,
+                fsck_cache=self._source_fsck_cache,
             )
         except RunnerError as exc:
             raise RunnerError(f"campaign plan changed {phase}: {exc}{suffix}") from exc
@@ -6385,6 +7122,14 @@ class RefreshRunner:
 
     def _marker_path(self, batch: BatchSpec) -> Path:
         return self.paths.state_dir / "completed" / f"{batch.key}.json"
+
+    def _phase_marker_path(self, batch: BatchSpec, phase: str) -> Path:
+        return (
+            self.paths.state_dir
+            / "completed-phases-v1"
+            / phase
+            / f"{batch.key}.json"
+        )
 
     def _capture_source_snapshot(self) -> SourceSnapshot:
         try:
@@ -6495,6 +7240,7 @@ class RefreshRunner:
             "campaign_result_dir": str(current_campaign.result_dir),
             "campaign_api_cache_dir": str(current_campaign.api_cache_dir),
             "campaign_derived_cache_root": str(current_campaign.derived_cache_root),
+            "campaign_artifact_root": str(_campaign_artifact_root(current_campaign)),
             "litellm_transport_sha256": (current_campaign.litellm_transport_sha256),
             "litellm_transport": current_campaign.litellm_transport,
             "batch_timeout_seconds": BATCH_TIMEOUT_SECONDS,
@@ -6631,6 +7377,7 @@ class RefreshRunner:
             "campaign_result_dir": str(campaign.result_dir),
             "campaign_api_cache_dir": str(campaign.api_cache_dir),
             "campaign_derived_cache_root": str(campaign.derived_cache_root),
+            "campaign_artifact_root": str(_campaign_artifact_root(campaign)),
             "litellm_transport_sha256": campaign.litellm_transport_sha256,
             "litellm_transport": campaign.litellm_transport,
             "batch_timeout_seconds": BATCH_TIMEOUT_SECONDS,
@@ -6643,6 +7390,2633 @@ class RefreshRunner:
             "result_validation": result_validation,
         }
         _atomic_write_json(self._marker_path(batch), marker)
+
+    def _validate_intermediate_results(
+        self,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+        result_dir: Path | None = None,
+    ) -> dict[str, Any]:
+        """Classify each staged subject without discarding terminal siblings."""
+
+        from cve_analyzer.models import CveAnalysisResult
+        from cve_analyzer.screening_router import (
+            evaluate_evidence_availability,
+            route_for_screening,
+        )
+        from cve_analyzer.source_matcher import candidate_evidence_complete, match_result
+
+        result_digests: dict[str, str] = {}
+        candidate_ids: list[str] = []
+        screening_positive_ids: list[str] = []
+        terminal_ids: list[str] = []
+        retryable: dict[str, str] = {}
+        invalid: dict[str, str] = {}
+        for subject_id in sorted(set(batch.ids)):
+            path = (result_dir or campaign.result_dir) / f"{subject_id}.json"
+            if path.is_symlink():
+                invalid[subject_id] = "staged result is an unsafe symlink"
+                continue
+            if not path.is_file():
+                retryable[subject_id] = "missing staged result"
+                continue
+            try:
+                raw = path.read_bytes()
+                payload = json.loads(raw)
+                result = CveAnalysisResult.from_dict(payload)
+            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+                invalid[subject_id] = f"unreadable staged result: {type(exc).__name__}"
+                continue
+            if result.cve_id != subject_id:
+                invalid[subject_id] = "staged result identity mismatch"
+                continue
+            if phase == "no_token" and (
+                result.screening is not None
+                or any(
+                    bic.deep_verification is not None
+                    for bic in result.bug_introducing_commits
+                )
+            ):
+                invalid[subject_id] = "no-token phase contains LLM output"
+                continue
+            problem = _terminal_result_problem(payload)
+            if problem is not None:
+                if problem.startswith(
+                    ("transient ", "incomplete ", "non-terminal ")
+                ):
+                    retryable[subject_id] = problem
+                else:
+                    invalid[subject_id] = problem
+                continue
+            candidate = match_result(
+                result, complete=candidate_evidence_complete(result)
+            )
+            if result.candidate_match != candidate.to_dict():
+                invalid[subject_id] = "staged candidate matcher output is stale"
+                continue
+            evidence = evaluate_evidence_availability(result)
+            route = route_for_screening(result, candidate, evidence=evidence)
+            if (
+                result.evidence_availability != evidence.to_dict()
+                or result.screening_route != route.to_dict()
+            ):
+                invalid[subject_id] = "staged no-token screening route is stale"
+                continue
+            if not candidate.complete:
+                retryable[subject_id] = "incomplete candidate evidence"
+                continue
+            if route.eligible:
+                candidate_ids.append(subject_id)
+            if phase == "screening" and route.eligible:
+                if (
+                    result.screening is None
+                    or result.screening.model != SCREENING_MODEL
+                    or not isinstance(result.screening.worth_investigating, bool)
+                ):
+                    retryable[subject_id] = "screening phase lacks exact Flash decision"
+                    continue
+                known_edge_ids = {
+                    edge_id
+                    for ref in result.candidate_set_refs
+                    if isinstance(ref, dict)
+                    for edge_id in ref.get("edge_ids", [])
+                    if isinstance(ref.get("edge_ids"), list)
+                    and isinstance(edge_id, str)
+                }
+                relevant_edge_ids = result.screening.relevant_edges
+                if (
+                    not known_edge_ids
+                    or len(relevant_edge_ids) != len(set(relevant_edge_ids))
+                    or not set(relevant_edge_ids) <= known_edge_ids
+                    or (
+                        result.screening.worth_investigating
+                        and not relevant_edge_ids
+                    )
+                    or (
+                        not result.screening.worth_investigating
+                        and relevant_edge_ids
+                    )
+                ):
+                    invalid[subject_id] = "screening edge coverage is invalid"
+                    continue
+                if result.screening.worth_investigating:
+                    screening_positive_ids.append(subject_id)
+            result_digests[subject_id] = hashlib.sha256(raw).hexdigest()
+            terminal_ids.append(subject_id)
+        expected_count = len(set(batch.ids))
+        return {
+            "complete": len(terminal_ids) == expected_count,
+            "expected_count": expected_count,
+            "result_count": len(result_digests),
+            "result_sha256": dict(sorted(result_digests.items())),
+            "candidate_ids": sorted(candidate_ids),
+            "screening_positive_ids": sorted(screening_positive_ids),
+            "terminal_subject_ids": sorted(terminal_ids),
+            "retryable_subjects": dict(sorted(retryable.items())),
+            "invalid_subjects": dict(sorted(invalid.items())),
+        }
+
+    def _subject_retry_binding(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+    ) -> str:
+        repo_refs: dict[str, object] = {}
+        for subject_id in sorted(set(batch.ids)):
+            record = self._formal_class_records.get(subject_id)
+            repo_refs[subject_id] = (
+                record.get("analysis_input", {})
+                if isinstance(record, Mapping)
+                else {}
+            )
+        return hashlib.sha256(
+            _canonical_json_bytes(
+                {
+                    "source_snapshot_sha256": campaign.source_snapshot_sha256,
+                    "contract_sha256": self._bound_contract_sha256,
+                    "batch_sha256": self._bound_batch_sha256.get(batch.key)
+                    or file_sha256(batch.path),
+                    "phase": phase,
+                    "repo_refs": repo_refs,
+                }
+            )
+        ).hexdigest()
+
+    def _subject_retry_path(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+    ) -> Path:
+        return campaign.root / "subject-retries-v1" / phase / f"{batch.key}.json"
+
+    def _load_subject_retry_state(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+    ) -> dict[str, Any]:
+        binding = self._subject_retry_binding(
+            batch=batch, campaign=campaign, phase=phase
+        )
+        path = self._subject_retry_path(
+            batch=batch, campaign=campaign, phase=phase
+        )
+        if not path.is_file() or path.is_symlink():
+            return {"schema_version": 1, "binding_sha256": binding, "subjects": {}}
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return {"schema_version": 1, "binding_sha256": binding, "subjects": {}}
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schema_version") != 1
+            or payload.get("binding_sha256") != binding
+            or not isinstance(payload.get("subjects"), dict)
+        ):
+            return {"schema_version": 1, "binding_sha256": binding, "subjects": {}}
+        return payload
+
+    def _retry_due_subjects(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+        subjects: Sequence[str],
+    ) -> tuple[tuple[str, ...], dict[str, Any], dict[str, Any]]:
+        state = self._load_subject_retry_state(
+            batch=batch, campaign=campaign, phase=phase
+        )
+        now = time.time()
+        due: list[str] = []
+        waiting: dict[str, float] = {}
+        exhausted: dict[str, int] = {}
+        records = state["subjects"]
+        for subject_id in subjects:
+            record = records.get(subject_id, {})
+            attempts = record.get("attempts", 0) if isinstance(record, dict) else 0
+            next_retry_at = (
+                record.get("next_retry_at", 0.0) if isinstance(record, dict) else 0.0
+            )
+            if not isinstance(attempts, int) or attempts < 0:
+                attempts = 0
+            if attempts >= SUBJECT_MAX_ATTEMPTS:
+                exhausted[subject_id] = attempts
+            elif isinstance(next_retry_at, (int, float)) and next_retry_at > now:
+                waiting[subject_id] = next_retry_at
+            else:
+                due.append(subject_id)
+        return tuple(due), state, {
+            "waiting": dict(sorted(waiting.items())),
+            "exhausted": dict(sorted(exhausted.items())),
+        }
+
+    def _record_subject_attempts(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+        executed_subjects: Sequence[str],
+        validation: Mapping[str, Any],
+        state: dict[str, Any],
+    ) -> dict[str, Any]:
+        records = state["subjects"]
+        terminal = set(validation.get("terminal_subject_ids", ()))
+        retryable = validation.get("retryable_subjects", {})
+        invalid = validation.get("invalid_subjects", {})
+        now = time.time()
+        for subject_id in terminal:
+            records.pop(subject_id, None)
+        for subject_id in executed_subjects:
+            if subject_id in terminal:
+                continue
+            prior = records.get(subject_id, {})
+            prior_attempts = prior.get("attempts", 0) if isinstance(prior, dict) else 0
+            attempts = prior_attempts + 1 if isinstance(prior_attempts, int) else 1
+            if subject_id in invalid:
+                records[subject_id] = {
+                    "attempts": SUBJECT_MAX_ATTEMPTS,
+                    "status": "invalid",
+                    "reason": invalid[subject_id],
+                    "next_retry_at": 0.0,
+                }
+                continue
+            delay = (
+                SUBJECT_RETRY_BACKOFF_SECONDS[attempts - 1]
+                if attempts <= len(SUBJECT_RETRY_BACKOFF_SECONDS)
+                else 0
+            )
+            records[subject_id] = {
+                "attempts": attempts,
+                "status": (
+                    "retry_exhausted"
+                    if attempts >= SUBJECT_MAX_ATTEMPTS
+                    else "retryable"
+                ),
+                "reason": retryable.get(subject_id, "missing staged result"),
+                "next_retry_at": now + delay if delay else 0.0,
+            }
+        state["updated_at"] = _utc_now()
+        path = self._subject_retry_path(
+            batch=batch, campaign=campaign, phase=phase
+        )
+        _atomic_write_json(path, state)
+        return {
+            "path": str(path),
+            "binding_sha256": state["binding_sha256"],
+            "subjects": dict(sorted(records.items())),
+        }
+
+    def _phase_marker_matches(
+        self,
+        batch: BatchSpec,
+        phase: str,
+        command: Sequence[str],
+        campaign: CampaignExecution,
+    ) -> bool:
+        batch_sha256 = self._bound_batch_sha256.get(batch.key) or file_sha256(
+            batch.path
+        )
+        path = self._phase_marker_path(batch, phase)
+        if not path.is_file() or path.is_symlink():
+            return False
+        try:
+            marker = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise RunnerError(f"cannot read phase marker {path}: {exc}") from exc
+        if not isinstance(marker, dict) or marker.get("schema_version") != 2:
+            raise RunnerError(f"phase marker is malformed: {path}")
+        if marker.get("status") != "completed":
+            return False
+        if any(
+            marker.get(key) != expected
+            for key, expected in (
+                ("phase", phase),
+                ("batch", batch.key),
+                ("batch_sha256", batch_sha256),
+                ("contract_sha256", self._bound_contract_sha256),
+                ("source_snapshot_sha256", campaign.source_snapshot_sha256),
+                ("campaign_id", campaign.campaign_id),
+                ("command", list(command)),
+            )
+        ):
+            return False
+        artifact_execution = marker.get("artifact_execution")
+        artifact_ids = (
+            artifact_execution.get("artifact_ids")
+            if isinstance(artifact_execution, dict)
+            else None
+        )
+        if not isinstance(artifact_ids, dict) or not artifact_ids:
+            return False
+        from cve_analyzer.artifact_store import (
+            ArtifactCompleteness,
+            ArtifactStore,
+            REUSABLE_ARTIFACT_STATUSES,
+        )
+
+        artifact_store = ArtifactStore(_campaign_artifact_root(campaign))
+        for artifact_id in artifact_ids.values():
+            record = (
+                artifact_store.get(artifact_id)
+                if isinstance(artifact_id, str)
+                else None
+            )
+            if (
+                record is None
+                or record.envelope.completeness is not ArtifactCompleteness.COMPLETE
+                or record.envelope.status not in REUSABLE_ARTIFACT_STATUSES
+            ):
+                return False
+        validation_root = (
+            campaign.root / "no-token-results-v1"
+            if phase == "no_token"
+            else campaign.result_dir
+        )
+        current = self._validate_intermediate_results(
+            batch, campaign, phase, result_dir=validation_root
+        )
+        return marker.get("validation") == current
+
+    def _run_intermediate_one(
+        self,
+        batch: BatchSpec,
+        phase: str,
+        campaign: CampaignExecution,
+        campaign_lock_fd: int,
+        *,
+        budget_environment: Mapping[str, str] | None = None,
+        wave_binding_gate: _WaveBindingGate | None = None,
+        wave_binding_label: str | None = None,
+    ) -> dict[str, Any]:
+        def return_without_execution(payload: dict[str, Any]) -> dict[str, Any]:
+            if wave_binding_gate is not None:
+                wave_binding_gate.arrive_without_execution()
+            return payload
+
+        batch_sha256 = self._bound_batch_sha256.get(batch.key) or file_sha256(
+            batch.path
+        )
+        command = build_command(
+            batch,
+            analyzer_dir=self.paths.analyzer_dir,
+            phase=phase,
+        )
+        if self._phase_marker_matches(batch, phase, command, campaign):
+            return return_without_execution(
+                {
+                    "batch": batch.key,
+                    "phase": phase,
+                    "status": "already_completed",
+                }
+            )
+        artifact_cache = self._hydrate_reusable_phase_artifacts(
+            batch=batch,
+            campaign=campaign,
+            phase=phase,
+        )
+        execution_batch = batch
+        execution_command = command
+        skip_child = False
+        miss_set = set(artifact_cache.get("miss_subject_ids", ()))
+        miss_subjects = tuple(
+            subject_id for subject_id in batch.ids if subject_id in miss_set
+        )
+        retry_state = self._load_subject_retry_state(
+            batch=batch, campaign=campaign, phase=phase
+        )
+        retry_gate: dict[str, Any] = {"waiting": {}, "exhausted": {}}
+        due_subjects = miss_subjects
+        if miss_subjects:
+            due_subjects, retry_state, retry_gate = self._retry_due_subjects(
+                batch=batch,
+                campaign=campaign,
+                phase=phase,
+                subjects=miss_subjects,
+            )
+            if not due_subjects:
+                return return_without_execution(
+                    {
+                        "batch": batch.key,
+                        "phase": phase,
+                        "status": (
+                            "retry_exhausted"
+                            if retry_gate["exhausted"] and not retry_gate["waiting"]
+                            else "retry_wait"
+                        ),
+                        "terminal_count": artifact_cache.get("hits", 0),
+                        "retry_gate": retry_gate,
+                    }
+                )
+        else:
+            skip_child = True
+        if due_subjects and len(due_subjects) != len(batch.ids):
+            if batch.class_ids and len(batch.class_ids) != len(batch.ids):
+                raise RunnerError(f"batch class identity mismatch: {batch.key}")
+            class_by_subject = (
+                dict(zip(batch.ids, batch.class_ids, strict=True))
+                if batch.class_ids
+                else {}
+            )
+            miss_root = campaign.root / "phase-miss-batches-v1" / phase
+            miss_path = miss_root / f"{batch.key}.txt"
+            _atomic_write_bytes(
+                miss_path,
+                ("\n".join(due_subjects) + "\n").encode("utf-8"),
+            )
+            execution_batch = BatchSpec(
+                key=batch.key,
+                path=miss_path,
+                kind=f"{phase}_cache_miss",
+                ids=due_subjects,
+                repos=batch.repos,
+                class_ids=tuple(
+                    class_by_subject[item] for item in due_subjects
+                ),
+            )
+            execution_command = build_command(
+                execution_batch,
+                analyzer_dir=self.paths.analyzer_dir,
+                phase=phase,
+            )
+        free_before = self._check_disk("before")
+        started_at = _utc_now()
+        started_at_ns = time.time_ns()
+        log_path = self.paths.log_dir / f"{phase}-{batch.key}.log"
+        self.paths.log_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            environment = build_environment(
+                campaign=campaign,
+                batch_key=batch.key,
+                started_at=started_at,
+                phase=phase,
+            )
+            if budget_environment:
+                environment.update(budget_environment)
+            if skip_child:
+                exit_code = 0
+            else:
+                exit_code = self.command_runner(
+                    execution_command,
+                    cwd=self.paths.analyzer_dir,
+                    env=environment,
+                    log_path=log_path,
+                    inherited_fds=(campaign_lock_fd,),
+                )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise RunnerError(
+                f"cannot execute {phase}/{batch.key}; see {log_path}: {exc}"
+            ) from exc
+        if (
+            isinstance(exit_code, bool)
+            or not isinstance(exit_code, int)
+            or exit_code not in INTERMEDIATE_ANALYZABLE_EXIT_CODES
+        ):
+            raise RunnerError(
+                f"{phase}/{batch.key} failed with exit code {exit_code}; see {log_path}"
+            )
+        child_completed_at_ns = time.time_ns()
+        def validate_completion_binding() -> None:
+            label = wave_binding_label or f"{phase}/{batch.key}"
+            if (
+                self._capture_source_snapshot().sha256
+                != campaign.source_snapshot_sha256
+            ):
+                raise RunnerError(f"local source snapshot changed during {label}")
+            self._assert_campaign_binding(
+                f"while {label} was running",
+                completion_withheld=True,
+                recapture_delta_inputs=True,
+            )
+
+        if wave_binding_gate is None:
+            validate_completion_binding()
+        else:
+            wave_binding_gate.arrive_and_validate(validate_completion_binding)
+        validation = self._validate_intermediate_results(batch, campaign, phase)
+        retry_execution = self._record_subject_attempts(
+            batch=batch,
+            campaign=campaign,
+            phase=phase,
+            executed_subjects=due_subjects,
+            validation=validation,
+            state=retry_state,
+        )
+        final_validation: dict[str, Any] | None = None
+        if phase == "verification" and validation["complete"]:
+            final_validation = validate_batch_results(
+                batch,
+                campaign.result_dir,
+                started_at_ns,
+                completed_at_ns=child_completed_at_ns,
+                started_at=started_at,
+                campaign=campaign,
+                allowed_result_ids=self._campaign_result_ids,
+                class_records=self._formal_class_records,
+            )
+        if phase == "no_token":
+            seal_root = campaign.root / "no-token-results-v1"
+            for subject_id in validation["terminal_subject_ids"]:
+                source = campaign.result_dir / f"{subject_id}.json"
+                _atomic_write_bytes(
+                    seal_root / source.name,
+                    source.read_bytes(),
+                )
+        artifact_execution = (
+            self._materialize_phase_artifact(
+                batch=batch,
+                campaign=campaign,
+                phase=phase,
+                validation=validation,
+                input_digests=artifact_cache.get("input_sha256", {}),
+            )
+            if validation["terminal_subject_ids"]
+            else {
+                "schema_version": 2,
+                "status": "no_terminal_artifacts",
+                "artifact_ids": {},
+            }
+        )
+        status = (
+            "completed"
+            if validation["complete"]
+            else "invalid"
+            if validation["invalid_subjects"]
+            else "partial"
+        )
+        marker = {
+            "schema_version": 2,
+            "phase": phase,
+            "batch": batch.key,
+            "status": status,
+            "batch_sha256": batch_sha256,
+            "contract_sha256": self._bound_contract_sha256,
+            "source_snapshot_sha256": campaign.source_snapshot_sha256,
+            "campaign_id": campaign.campaign_id,
+            "command": command,
+            "execution_command": execution_command,
+            "child_exit_code": exit_code,
+            "child_skipped_from_cache": skip_child,
+            "started_at": started_at,
+            "completed_at": _utc_now(),
+            "validation": validation,
+            "artifact_execution": artifact_execution,
+            "artifact_cache": artifact_cache,
+            "retry_execution": retry_execution,
+        }
+        _atomic_write_json(self._phase_marker_path(batch, phase), marker)
+        free_after = self._check_disk("after")
+        if final_validation is not None:
+            completion = {
+                "schema_version": MARKER_SCHEMA_VERSION,
+                "batch": batch.key,
+                "kind": batch.kind,
+                "batch_file": str(
+                    batch.path.relative_to(self.paths.repo_root.resolve())
+                ),
+                "batch_sha256": batch_sha256,
+                "contract_sha256": self._bound_contract_sha256,
+                "analyzer_contract_sha256": campaign.analyzer_contract_sha256,
+                "signature_sha256": campaign.signature_sha256,
+                "alias_class_manifest_sha256": campaign.alias_class_manifest_sha256,
+                "source_snapshot_sha256": campaign.source_snapshot_sha256,
+                "source_snapshot": self._capture_source_snapshot().details,
+                "id_line_count": len(batch.ids),
+                "unique_id_count": len(set(batch.ids)),
+                "command": command,
+                "reasoning_effort": REASONING_EFFORT,
+                "model": MODEL,
+                "workers": WORKERS,
+                "campaign_id": campaign.campaign_id,
+                "campaign_result_dir": str(campaign.result_dir),
+                "campaign_api_cache_dir": str(campaign.api_cache_dir),
+                "campaign_derived_cache_root": str(campaign.derived_cache_root),
+                "campaign_artifact_root": str(_campaign_artifact_root(campaign)),
+                "litellm_transport_sha256": campaign.litellm_transport_sha256,
+                "litellm_transport": campaign.litellm_transport,
+                "batch_timeout_seconds": BATCH_TIMEOUT_SECONDS,
+                "free_bytes_before": free_before,
+                "free_bytes_after": free_after,
+                "log_file": str(log_path.relative_to(self.paths.repo_root.resolve())),
+                "started_at": started_at,
+                "completed_at": _utc_now(),
+                "exit_code": exit_code,
+                "result_validation": final_validation,
+            }
+            _atomic_write_json(self._marker_path(batch), completion)
+        return {
+            "batch": batch.key,
+            "phase": phase,
+            "status": status,
+            "child_exit_code": exit_code,
+            "terminal_count": len(validation["terminal_subject_ids"]),
+            "retryable_count": len(validation["retryable_subjects"]),
+            "invalid_count": len(validation["invalid_subjects"]),
+        }
+
+    @staticmethod
+    def _repo_disjoint_batch_waves(
+        batches: Sequence[BatchSpec],
+        *,
+        max_children: int,
+    ) -> list[tuple[BatchSpec, ...]]:
+        """Pack repo-disjoint waves with one heavyweight batch per wave."""
+
+        if max_children <= 0:
+            raise RunnerError("phase child count must be positive")
+        from cve_analyzer.repository_policy import is_heavyweight_repository
+
+        waves: list[tuple[BatchSpec, ...]] = []
+        current: list[BatchSpec] = []
+        current_repositories: set[str] = set()
+        current_has_heavyweight = False
+        for batch in batches:
+            conflicts = bool(current_repositories & set(batch.repos))
+            batch_has_heavyweight = any(
+                is_heavyweight_repository(repository)
+                for repository in batch.repos
+            )
+            if current and (
+                len(current) >= max_children
+                or conflicts
+                or (current_has_heavyweight and batch_has_heavyweight)
+            ):
+                waves.append(tuple(current))
+                current = []
+                current_repositories = set()
+                current_has_heavyweight = False
+            current.append(batch)
+            current_repositories.update(batch.repos)
+            current_has_heavyweight = (
+                current_has_heavyweight or batch_has_heavyweight
+            )
+        if current:
+            waves.append(tuple(current))
+        return waves
+
+    def _run_intermediate_batches(
+        self,
+        batches: Sequence[BatchSpec],
+        phase: str,
+        campaign: CampaignExecution,
+        campaign_lock_fd: int,
+        *,
+        max_children: int,
+        budget_environment: Mapping[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Run deterministic repo-disjoint waves with bounded child processes."""
+
+        report: list[dict[str, Any]] = []
+        for wave in self._repo_disjoint_batch_waves(
+            batches,
+            max_children=max_children,
+        ):
+            wave_label = (
+                f"{phase}/{wave[0].key}"
+                if len(wave) == 1
+                else f"{phase} wave ({len(wave)} repo-disjoint batches)"
+            )
+            self._assert_campaign_binding(
+                f"before {wave_label}",
+                recapture_delta_inputs=True,
+            )
+            if len(wave) == 1:
+                report.append(
+                    self._run_intermediate_one(
+                        wave[0],
+                        phase,
+                        campaign,
+                        campaign_lock_fd,
+                        budget_environment=budget_environment,
+                    )
+                )
+                continue
+            wave_binding_gate = _WaveBindingGate(len(wave))
+            with ThreadPoolExecutor(
+                max_workers=len(wave),
+                thread_name_prefix=f"{phase}-batch",
+            ) as executor:
+                futures = [
+                    executor.submit(
+                        self._run_intermediate_one,
+                        batch,
+                        phase,
+                        campaign,
+                        campaign_lock_fd,
+                        budget_environment=budget_environment,
+                        wave_binding_gate=wave_binding_gate,
+                        wave_binding_label=wave_label,
+                    )
+                    for batch in wave
+                ]
+                for future in futures:
+                    def abort_gate_on_failure(
+                        completed: Any,
+                        *,
+                        gate: _WaveBindingGate = wave_binding_gate,
+                    ) -> None:
+                        try:
+                            error = completed.exception()
+                        except BaseException as exc:
+                            gate.abort(exc)
+                            return
+                        if error is not None:
+                            gate.abort(error)
+
+                    future.add_done_callback(abort_gate_on_failure)
+                report.extend(future.result() for future in futures)
+        return report
+
+    def _formal_stage_contract(self, phase: str, *, aggregate: bool = False):
+        """Return the stage-owned cache contract for one formal phase."""
+        try:
+            return formal_stage_contract(
+                phase,
+                analyzer_package=self.paths.analyzer_dir / "src/cve_analyzer",
+                analyzer_contract_sha256=self._bound_analyzer_contract_sha256,
+                screening_model=SCREENING_MODEL,
+                screening_reasoning_effort=SCREENING_REASONING_EFFORT,
+                verification_model=VERIFY_MODEL,
+                verification_reasoning_effort=REASONING_EFFORT,
+                aggregate=aggregate,
+            )
+        except FormalStageContractError as exc:
+            raise RunnerError(str(exc)) from exc
+
+    @staticmethod
+    def _repository_semantic_key(subject_id: str, repository: str) -> str:
+        suffix = hashlib.sha256(repository.encode("utf-8")).hexdigest()[:24]
+        return f"{subject_id}|repo|{suffix}"
+
+    @staticmethod
+    def _merge_campaign_stage(
+        current: dict[str, Any],
+        *,
+        stage_name: str,
+        stage_payload: Mapping[str, Any] | None,
+        campaign: CampaignExecution,
+        artifact_id: str,
+    ) -> None:
+        if not isinstance(stage_payload, Mapping):
+            return
+        receipt = current.get("campaign_receipt")
+        if not isinstance(receipt, dict):
+            receipt = {}
+            current["campaign_receipt"] = receipt
+        stages = receipt.get("stages")
+        if not isinstance(stages, dict):
+            stages = {}
+            receipt["stages"] = stages
+        reused_stage = json.loads(json.dumps(stage_payload))
+        reused_stage["reused_artifact_id"] = artifact_id
+        stages[stage_name] = reused_stage
+        receipt["campaign_id"] = campaign.campaign_id
+
+    @staticmethod
+    def _screening_delta(subject_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        filtering = payload.get("filtering_log")
+        receipt = payload.get("campaign_receipt")
+        stages = receipt.get("stages") if isinstance(receipt, Mapping) else None
+        return {
+            "schema_version": 4,
+            "artifact_kind": "formal_screening_delta",
+            "subject_id": subject_id,
+            "screening": payload.get("screening"),
+            "candidate_match": payload.get("candidate_match"),
+            "filtering_log": {
+                "screening_result": filtering.get("screening_result")
+                if isinstance(filtering, Mapping)
+                else None,
+            },
+            "campaign_stage": stages.get("phase_c_screening")
+            if isinstance(stages, Mapping)
+            else None,
+        }
+
+    @classmethod
+    def _merge_screening_delta(
+        cls,
+        current: dict[str, Any],
+        delta: Mapping[str, Any],
+        *,
+        subject_id: str,
+        campaign: CampaignExecution,
+        artifact_id: str,
+    ) -> None:
+        if (
+            delta.get("schema_version") != 3
+            or delta.get("artifact_kind") != "formal_screening_delta"
+            or delta.get("subject_id") != subject_id
+        ):
+            raise RunnerError("screening artifact payload identity is invalid")
+        for key in ("screening", "candidate_match"):
+            if delta.get(key) is None:
+                current.pop(key, None)
+            else:
+                current[key] = json.loads(json.dumps(delta[key]))
+        filtering_delta = delta.get("filtering_log")
+        if isinstance(filtering_delta, Mapping):
+            filtering = current.setdefault("filtering_log", {})
+            if not isinstance(filtering, dict):
+                filtering = {}
+                current["filtering_log"] = filtering
+            if filtering_delta.get("screening_result") is None:
+                filtering.pop("screening_result", None)
+            else:
+                filtering["screening_result"] = json.loads(
+                    json.dumps(filtering_delta["screening_result"])
+                )
+        cls._merge_campaign_stage(
+            current,
+            stage_name="phase_c_screening",
+            stage_payload=delta.get("campaign_stage")
+            if isinstance(delta, Mapping)
+            else None,
+            campaign=campaign,
+            artifact_id=artifact_id,
+        )
+
+    @staticmethod
+    def _verification_repo_delta(
+        subject_id: str,
+        repository: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        bic_updates: list[dict[str, Any]] = []
+        for bic in payload.get("bug_introducing_commits", []):
+            if not isinstance(bic, Mapping) or bic.get("repository_identity") != repository:
+                continue
+            commit = bic.get("commit")
+            sha = commit.get("sha") if isinstance(commit, Mapping) else None
+            if not isinstance(sha, str):
+                raise RunnerError("verification artifact BIC identity is malformed")
+            bic_updates.append({
+                "repository_identity": repository,
+                "fix_commit_sha": bic.get("fix_commit_sha", ""),
+                "bic_sha": sha,
+                "blamed_file": bic.get("blamed_file", ""),
+                "deep_verification": bic.get("deep_verification"),
+            })
+        return {
+            "schema_version": 3,
+            "artifact_kind": "formal_verification_repo_delta",
+            "subject_id": subject_id,
+            "repository_identity": repository,
+            "bic_updates": bic_updates,
+        }
+
+    @staticmethod
+    def _verification_aggregate_delta(
+        subject_id: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        filtering = payload.get("filtering_log")
+        receipt = payload.get("campaign_receipt")
+        stages = receipt.get("stages") if isinstance(receipt, Mapping) else None
+        return {
+            "schema_version": 3,
+            "artifact_kind": "formal_verification_aggregate",
+            "subject_id": subject_id,
+            "ai_involved": payload.get("ai_involved"),
+            "ai_contribution": payload.get("ai_contribution", ""),
+            "investigation_scope_hash": payload.get("investigation_scope_hash", ""),
+            "filtering_log": {
+                key: filtering.get(key)
+                for key in (
+                    "deep_verify_verdicts",
+                    "final_included",
+                    "exclusion_reason",
+                )
+                if isinstance(filtering, Mapping)
+            },
+            "campaign_stage": stages.get("phase_d_deep_verification")
+            if isinstance(stages, Mapping)
+            else None,
+        }
+
+    def _hydrate_reusable_phase_artifacts(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+    ) -> dict[str, Any]:
+        """Hydrate exact compatible stage outputs before any paid request."""
+
+        from cve_analyzer.artifact_store import ArtifactStore, sha256_json
+        from cve_analyzer.llm_verify import screening_request_envelope
+        from cve_analyzer.models import CveAnalysisResult
+
+        if phase not in {"no_token", "screening", "verification"}:
+            raise RunnerError(f"unsupported artifact hydration phase: {phase}")
+        contract = self._formal_stage_contract(phase)
+        store = ArtifactStore(_campaign_artifact_root(campaign))
+        hit_ids: list[str] = []
+        input_digests: dict[str, str] = {}
+        repo_hits = 0
+        repo_misses = 0
+        sealed_root = campaign.root / "no-token-results-v1"
+        for subject_id in sorted(set(batch.ids)):
+            current_path = campaign.result_dir / f"{subject_id}.json"
+            if phase == "no_token":
+                class_record = self._formal_class_records.get(subject_id)
+                if not isinstance(class_record, Mapping):
+                    raise RunnerError(
+                        f"no-token artifact lacks alias-class input: {subject_id}"
+                    )
+                source_digest = hashlib.sha256(
+                    _canonical_json_bytes(class_record)
+                ).hexdigest()
+                input_digests[subject_id] = source_digest
+                record = store.lookup(
+                    contract.artifact_type,
+                    subject_id,
+                    required_stage_contract=contract.contract_digest,
+                    required_schema_version=contract.artifact_schema_version,
+                    include_building=False,
+                )
+                expected_input_digest = sha256_json(
+                    {"source_digests": [source_digest], "dependencies": []}
+                )
+                if (
+                    record is None
+                    or record.envelope.input_digest != expected_input_digest
+                    or not isinstance(record.payload, dict)
+                    or record.payload.get("cve_id") != subject_id
+                ):
+                    continue
+                _atomic_write_json(current_path, record.payload)
+                hit_ids.append(subject_id)
+                continue
+            if phase == "screening":
+                input_payload = _regular_json_object(
+                    sealed_root / f"{subject_id}.json",
+                    f"sealed no-token result {subject_id}",
+                )
+                result = CveAnalysisResult.from_dict(input_payload)
+                envelope = screening_request_envelope(
+                    result,
+                    model=SCREENING_MODEL,
+                    reasoning_effort=SCREENING_REASONING_EFFORT,
+                )
+                source_digest = hashlib.sha256(
+                    _canonical_json_bytes(
+                        envelope
+                        if envelope is not None
+                        else {
+                            "subject_id": subject_id,
+                            "screening": "not_applicable",
+                        }
+                    )
+                ).hexdigest()
+                expected_input_digest = sha256_json(
+                    {"source_digests": [source_digest], "dependencies": []}
+                )
+                input_digests[subject_id] = source_digest
+                record = store.lookup(
+                    contract.artifact_type,
+                    subject_id,
+                    required_stage_contract=contract.contract_digest,
+                    required_schema_version=contract.artifact_schema_version,
+                    include_building=False,
+                )
+                if (
+                    record is None
+                    or record.envelope.input_digest != expected_input_digest
+                    or not isinstance(record.payload, dict)
+                ):
+                    continue
+                current = _regular_json_object(
+                    current_path, f"current result {subject_id}"
+                )
+                self._merge_screening_delta(
+                    current,
+                    record.payload,
+                    subject_id=subject_id,
+                    campaign=campaign,
+                    artifact_id=record.artifact_id,
+                )
+                _atomic_write_json(current_path, current)
+                hit_ids.append(subject_id)
+                continue
+
+            from cve_analyzer.pipeline import (
+                investigation_request_envelopes_for_result,
+                materialize_screened_candidate_edges,
+            )
+
+            current = _regular_json_object(
+                current_path, f"screening result {subject_id}"
+            )
+            result = CveAnalysisResult.from_dict(current)
+            if materialize_screened_candidate_edges(result):
+                continue
+            current = result.to_dict()
+            _atomic_write_json(current_path, current)
+            envelopes = investigation_request_envelopes_for_result(
+                result,
+                model=VERIFY_MODEL,
+                reasoning_effort=REASONING_EFFORT,
+                max_turns=50,
+            )
+            repo_records = []
+            all_repo_hits = True
+            bic_index: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+            for bic in current.get("bug_introducing_commits", []):
+                if not isinstance(bic, dict):
+                    continue
+                commit = bic.get("commit")
+                sha = commit.get("sha") if isinstance(commit, Mapping) else None
+                if isinstance(sha, str):
+                    bic_index[(
+                        str(bic.get("repository_identity", "")),
+                        str(bic.get("fix_commit_sha", "")).lower(),
+                        sha.lower(),
+                        str(bic.get("blamed_file", "")),
+                    )] = bic
+            for repository, body in sorted(envelopes.items()):
+                source_digest = hashlib.sha256(
+                    _canonical_json_bytes(body)
+                ).hexdigest()
+                semantic_key = self._repository_semantic_key(subject_id, repository)
+                input_digests[semantic_key] = source_digest
+                record = store.lookup(
+                    contract.artifact_type,
+                    semantic_key,
+                    required_stage_contract=contract.contract_digest,
+                    required_schema_version=contract.artifact_schema_version,
+                    include_building=False,
+                )
+                expected_input_digest = sha256_json(
+                    {"source_digests": [source_digest], "dependencies": []}
+                )
+                if (
+                    record is None
+                    or record.envelope.input_digest != expected_input_digest
+                    or not isinstance(record.payload, Mapping)
+                    or record.payload.get("schema_version") != 3
+                    or record.payload.get("artifact_kind")
+                    != "formal_verification_repo_delta"
+                    or record.payload.get("subject_id") != subject_id
+                    or record.payload.get("repository_identity") != repository
+                ):
+                    all_repo_hits = False
+                    repo_misses += 1
+                    continue
+                for update in record.payload.get("bic_updates", []):
+                    if not isinstance(update, Mapping):
+                        raise RunnerError("verification repo artifact update is malformed")
+                    key = (
+                        str(update.get("repository_identity", "")),
+                        str(update.get("fix_commit_sha", "")).lower(),
+                        str(update.get("bic_sha", "")).lower(),
+                        str(update.get("blamed_file", "")),
+                    )
+                    target = bic_index.get(key)
+                    if target is None:
+                        raise RunnerError("verification repo artifact BIC identity drifted")
+                    if update.get("deep_verification") is None:
+                        target.pop("deep_verification", None)
+                    else:
+                        target["deep_verification"] = json.loads(
+                            json.dumps(update["deep_verification"])
+                        )
+                repo_records.append(record)
+                repo_hits += 1
+            _atomic_write_json(current_path, current)
+            if not all_repo_hits:
+                continue
+            aggregate_contract = self._formal_stage_contract(
+                "verification", aggregate=True
+            )
+            aggregate_source = sha256_json(
+                sorted(record.artifact_id for record in repo_records)
+            )
+            input_digests[f"{subject_id}|aggregate"] = aggregate_source
+            aggregate = store.lookup(
+                aggregate_contract.artifact_type,
+                subject_id,
+                required_stage_contract=aggregate_contract.contract_digest,
+                required_schema_version=aggregate_contract.artifact_schema_version,
+                include_building=False,
+            )
+            expected_aggregate_input = sha256_json(
+                {"source_digests": [aggregate_source], "dependencies": []}
+            )
+            if (
+                aggregate is None
+                or aggregate.envelope.input_digest != expected_aggregate_input
+                or not isinstance(aggregate.payload, Mapping)
+                or aggregate.payload.get("schema_version") != 3
+                or aggregate.payload.get("artifact_kind")
+                != "formal_verification_aggregate"
+                or aggregate.payload.get("subject_id") != subject_id
+            ):
+                continue
+            for key in ("ai_involved", "ai_contribution", "investigation_scope_hash"):
+                value = aggregate.payload.get(key)
+                if value in {None, ""}:
+                    current.pop(key, None)
+                else:
+                    current[key] = json.loads(json.dumps(value))
+            filtering_delta = aggregate.payload.get("filtering_log")
+            if isinstance(filtering_delta, Mapping):
+                filtering = current.setdefault("filtering_log", {})
+                if not isinstance(filtering, dict):
+                    filtering = {}
+                    current["filtering_log"] = filtering
+                for key, value in filtering_delta.items():
+                    filtering[key] = json.loads(json.dumps(value))
+            self._merge_campaign_stage(
+                current,
+                stage_name="phase_d_deep_verification",
+                stage_payload=aggregate.payload.get("campaign_stage"),
+                campaign=campaign,
+                artifact_id=aggregate.artifact_id,
+            )
+            _atomic_write_json(current_path, current)
+            hit_ids.append(subject_id)
+        return {
+            "hits": len(hit_ids),
+            "misses": len(set(batch.ids)) - len(hit_ids),
+            "hit_subject_ids": hit_ids,
+            "miss_subject_ids": sorted(set(batch.ids) - set(hit_ids)),
+            "repository_hits": repo_hits,
+            "repository_misses": repo_misses,
+            "input_sha256": input_digests,
+        }
+
+    def _materialize_phase_artifact(
+        self,
+        *,
+        batch: BatchSpec,
+        campaign: CampaignExecution,
+        phase: str,
+        validation: Mapping[str, Any],
+        input_digests: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Commit only fields owned by the completed stage."""
+
+        from cve_analyzer.artifact_store import (
+            ArtifactEnvelope,
+            ArtifactStore,
+            sha256_json,
+        )
+        from cve_analyzer.llm_verify import screening_request_envelope
+        from cve_analyzer.models import CveAnalysisResult
+        from cve_analyzer.pipeline import investigation_request_envelopes_for_result
+
+        if phase not in {"no_token", "screening", "verification"}:
+            raise RunnerError(f"unsupported artifact materialization phase: {phase}")
+        contract = self._formal_stage_contract(phase)
+        aggregate_contract = (
+            self._formal_stage_contract("verification", aggregate=True)
+            if phase == "verification"
+            else None
+        )
+        store = ArtifactStore(_campaign_artifact_root(campaign))
+        contract_digests = [contract.contract_digest]
+        if aggregate_contract is not None:
+            contract_digests.append(aggregate_contract.contract_digest)
+        generation_id = store.begin_generation(sha256_json(sorted(contract_digests)))
+        artifact_ids: dict[str, str] = {}
+
+        def persist(
+            *,
+            stage_contract,
+            semantic_key: str,
+            source_digest: str,
+            payload: Mapping[str, Any],
+            dependencies: tuple[str, ...] = (),
+        ):
+            record = store.put(
+                ArtifactEnvelope(
+                    artifact_type=stage_contract.artifact_type,
+                    artifact_schema_version=stage_contract.artifact_schema_version,
+                    semantic_key=semantic_key,
+                    producer_stage=stage_contract.name,
+                    stage_contract_version=stage_contract.contract_digest,
+                    input_artifact_ids=dependencies,
+                    input_digest=sha256_json(
+                        {"source_digests": [source_digest], "dependencies": []}
+                    ),
+                    generation_id=generation_id,
+                    metadata={
+                        "materialized_by_campaign": campaign.campaign_id,
+                        "batch": batch.key,
+                        "phase": phase,
+                    },
+                ),
+                payload,
+            )
+            artifact_ids[f"{stage_contract.name}:{semantic_key}"] = record.artifact_id
+            return record
+
+        sealed_root = campaign.root / "no-token-results-v1"
+        terminal_subject_ids = validation.get("terminal_subject_ids")
+        if not isinstance(terminal_subject_ids, list) or not terminal_subject_ids:
+            raise RunnerError("formal stage produced no terminal subjects")
+        for subject_id in terminal_subject_ids:
+            result_path = campaign.result_dir / f"{subject_id}.json"
+            payload = _regular_json_object(result_path, f"{phase} result {subject_id}")
+            if phase == "no_token":
+                class_record = self._formal_class_records.get(subject_id)
+                if not isinstance(class_record, Mapping):
+                    raise RunnerError(
+                        f"no-token artifact lacks alias-class input: {subject_id}"
+                    )
+                source_digest = hashlib.sha256(
+                    _canonical_json_bytes(class_record)
+                ).hexdigest()
+                persist(
+                    stage_contract=contract,
+                    semantic_key=subject_id,
+                    source_digest=source_digest,
+                    payload=payload,
+                )
+                continue
+            if phase == "screening":
+                if input_digests and subject_id in input_digests:
+                    source_digest = input_digests[subject_id]
+                else:
+                    sealed_payload = _regular_json_object(
+                        sealed_root / f"{subject_id}.json",
+                        f"sealed no-token result {subject_id}",
+                    )
+                    sealed_result = CveAnalysisResult.from_dict(sealed_payload)
+                    body = screening_request_envelope(
+                        sealed_result,
+                        model=SCREENING_MODEL,
+                        reasoning_effort=SCREENING_REASONING_EFFORT,
+                    )
+                    source_digest = hashlib.sha256(
+                        _canonical_json_bytes(
+                            body
+                            if body is not None
+                            else {
+                                "subject_id": subject_id,
+                                "screening": "not_applicable",
+                            }
+                        )
+                    ).hexdigest()
+                persist(
+                    stage_contract=contract,
+                    semantic_key=subject_id,
+                    source_digest=source_digest,
+                    payload=self._screening_delta(subject_id, payload),
+                )
+                continue
+
+            result = CveAnalysisResult.from_dict(payload)
+            envelopes = investigation_request_envelopes_for_result(
+                result,
+                model=VERIFY_MODEL,
+                reasoning_effort=REASONING_EFFORT,
+                max_turns=50,
+            )
+            repo_records = []
+            for repository, body in sorted(envelopes.items()):
+                semantic_key = self._repository_semantic_key(subject_id, repository)
+                source_digest = (
+                    input_digests.get(semantic_key)
+                    if input_digests
+                    else None
+                ) or hashlib.sha256(_canonical_json_bytes(body)).hexdigest()
+                repo_records.append(persist(
+                    stage_contract=contract,
+                    semantic_key=semantic_key,
+                    source_digest=source_digest,
+                    payload=self._verification_repo_delta(
+                        subject_id, repository, payload
+                    ),
+                ))
+            assert aggregate_contract is not None
+            aggregate_source = sha256_json(
+                sorted(record.artifact_id for record in repo_records)
+            )
+            persist(
+                stage_contract=aggregate_contract,
+                semantic_key=subject_id,
+                source_digest=aggregate_source,
+                payload=self._verification_aggregate_delta(subject_id, payload),
+                dependencies=tuple(
+                    sorted(record.artifact_id for record in repo_records)
+                ),
+            )
+        if not artifact_ids:
+            raise RunnerError("formal stage produced no reusable artifacts")
+        manifest_digest = sha256_json(dict(sorted(artifact_ids.items())))
+        store.promote_generation(generation_id, manifest_digest)
+        return {
+            "schema_version": 3,
+            "generation_id": generation_id,
+            "artifact_ids": dict(sorted(artifact_ids.items())),
+            "artifact_scope": "repo" if phase == "verification" else "subject",
+            "shared_across_campaigns": True,
+            "validation_sha256": hashlib.sha256(
+                _canonical_json_bytes(validation)
+            ).hexdigest(),
+        }
+
+    @staticmethod
+    def _stage_cost_microusd(
+        *,
+        candidates: int,
+        calls_per_candidate: int,
+        max_input_tokens: int,
+        max_output_tokens: int,
+        input_price: str,
+        output_price: str,
+    ) -> int:
+        _input_text, input_decimal = _canonical_price(input_price, "LLM input price")
+        _output_text, output_decimal = _canonical_price(output_price, "LLM output price")
+        raw = Decimal(candidates * calls_per_candidate) * (
+            Decimal(max_input_tokens) * input_decimal
+            + Decimal(max_output_tokens) * output_decimal
+        )
+        return int(raw.to_integral_value(rounding=ROUND_CEILING))
+
+    @classmethod
+    def _screening_plan_cost_contract(
+        cls,
+        *,
+        candidate_count: int,
+        screening_cache_hits: int,
+        pricing: LlmPlanPricing,
+        screening_call_count: int | None = None,
+    ) -> dict[str, Any]:
+        """Price only Flash; Luna remains conditional until Flash is sealed."""
+
+        screening_miss_count = candidate_count - screening_cache_hits
+        if screening_miss_count < 0:
+            raise RunnerError("screening cache hits exceed the candidate count")
+        maximum_screening_calls = (
+            screening_miss_count * pricing.screening_max_calls_per_candidate
+        )
+        screening_calls = (
+            maximum_screening_calls
+            if screening_call_count is None
+            else screening_call_count
+        )
+        if not 0 <= screening_calls <= maximum_screening_calls:
+            raise RunnerError(
+                "exact Flash partition count exceeds the per-candidate call bound"
+            )
+        screening_cost = cls._stage_cost_microusd(
+            candidates=screening_calls,
+            calls_per_candidate=1,
+            max_input_tokens=pricing.screening_max_input_tokens,
+            max_output_tokens=pricing.screening_max_output_tokens,
+            input_price=pricing.screening_input_usd_per_million_tokens,
+            output_price=pricing.screening_output_usd_per_million_tokens,
+        )
+        if screening_cost > pricing.max_cost_microusd:
+            raise RunnerError(
+                "sealed Flash plan exceeds the hard cost ceiling: "
+                f"{screening_cost} > {pricing.max_cost_microusd} micro-USD"
+            )
+        return {
+            "screening_miss_count": screening_miss_count,
+            "upper_bounds": {
+                "screening_candidates": screening_miss_count,
+                "screening_calls": screening_calls,
+                # The phase-scoped ledger requires the inactive stage to be zero.
+                "verification_calls": 0,
+            },
+            "deferred_verification": {
+                "status": "unpriced_until_screening_results_are_sealed",
+                "candidate_upper_bound": candidate_count,
+                "calls_per_request_bound": (
+                    pricing.verification_max_calls_per_candidate
+                ),
+            },
+            "cost": {
+                "screening_microusd": screening_cost,
+                "verification_microusd": 0,
+                "worst_case_microusd": screening_cost,
+                "hard_ceiling_microusd": pricing.max_cost_microusd,
+            },
+        }
+
+    def _llm_plan_payload(
+        self,
+        campaign: CampaignExecution,
+        pricing: LlmPlanPricing,
+    ) -> dict[str, Any]:
+        from cve_analyzer.screening_router import SCREENING_ROUTE_POLICY_ID
+
+        no_token_seal: dict[str, Any] = {}
+        candidate_ids: set[str] = set()
+        result_sha256: dict[str, str] = {}
+        for batch in self.plan:
+            command = build_command(
+                batch,
+                analyzer_dir=self.paths.analyzer_dir,
+                phase="no_token",
+            )
+            if not self._phase_marker_matches(
+                batch, "no_token", command, campaign
+            ):
+                raise RunnerError(
+                    f"cannot plan LLM work before sealed no-token batch {batch.key}"
+                )
+            marker_path = self._phase_marker_path(batch, "no_token")
+            marker = json.loads(marker_path.read_text(encoding="utf-8"))
+            validation = marker["validation"]
+            candidate_ids.update(validation["candidate_ids"])
+            result_sha256.update(validation["result_sha256"])
+            no_token_seal[batch.key] = {
+                "marker_sha256": file_sha256(marker_path),
+                "result_sha256": validation["result_sha256"],
+            }
+
+        prompt_contracts = {
+            "screening": file_sha256(
+                self.paths.analyzer_dir / "src/cve_analyzer/llm_verify.py"
+            ),
+            "verification": file_sha256(
+                self.paths.analyzer_dir
+                / "src/cve_analyzer/verifier/investigator.py"
+            ),
+        }
+        from cve_analyzer.artifact_store import ArtifactStore, sha256_json
+        from cve_analyzer.llm_verify import screening_request_envelope
+        from cve_analyzer.models import CveAnalysisResult
+
+        screening_contract = self._formal_stage_contract("screening")
+        store = ArtifactStore(_campaign_artifact_root(campaign))
+        prompt_hashes: dict[str, dict[str, str]] = {}
+        screening_partition_counts: dict[str, int] = {}
+        screening_cache_hit_ids: list[str] = []
+        candidate_repositories: dict[str, list[str]] = {}
+        sealed_root = campaign.root / "no-token-results-v1"
+        for subject_id in sorted(candidate_ids):
+            payload = _regular_json_object(
+                sealed_root / f"{subject_id}.json",
+                f"sealed no-token result {subject_id}",
+            )
+            repositories = sorted(
+                {
+                    str(item.get("repository_identity", ""))
+                    for item in payload.get("candidate_set_refs", [])
+                    if isinstance(item, dict)
+                    and isinstance(item.get("repository_identity"), str)
+                    and item["repository_identity"].strip()
+                }
+            )
+            if repositories:
+                candidate_repositories[subject_id] = repositories
+            result = CveAnalysisResult.from_dict(payload)
+            envelope = screening_request_envelope(
+                result,
+                model=SCREENING_MODEL,
+                reasoning_effort=SCREENING_REASONING_EFFORT,
+            )
+            if envelope is None:
+                raise RunnerError(
+                    f"candidate lacks an exact rendered screening request: {subject_id}"
+                )
+            partition_count = envelope.get("partition_count")
+            if (
+                envelope.get("artifact_kind")
+                != "screening_request_partition_set"
+                or isinstance(partition_count, bool)
+                or not isinstance(partition_count, int)
+                or partition_count <= 0
+                or partition_count > pricing.screening_max_calls_per_candidate
+            ):
+                raise RunnerError(
+                    f"candidate Flash partition bound is invalid: {subject_id}"
+                )
+            screening_partition_counts[subject_id] = partition_count
+            request_sha256 = hashlib.sha256(
+                _canonical_json_bytes(envelope)
+            ).hexdigest()
+            prompt_hashes[subject_id] = {"screening": request_sha256}
+            record = store.lookup(
+                screening_contract.artifact_type,
+                subject_id,
+                required_stage_contract=screening_contract.contract_digest,
+                required_schema_version=screening_contract.artifact_schema_version,
+                include_building=False,
+            )
+            expected_input_digest = sha256_json(
+                {"source_digests": [request_sha256], "dependencies": []}
+            )
+            if (
+                record is not None
+                and record.envelope.input_digest == expected_input_digest
+            ):
+                screening_cache_hit_ids.append(subject_id)
+        cross_repo_pilot = _deterministic_cross_repo_pilot_selection(
+            candidate_repositories,
+            seed_sha256=campaign.source_snapshot_sha256,
+        )
+        (
+            _openclaw_batches,
+            openclaw_selection,
+            _openclaw_records,
+            _openclaw_count,
+            _formal_count,
+        ) = _openclaw_pilot_selection(self.paths)
+        openclaw_subjects = [
+            item.get("analysis_subject")
+            for item in openclaw_selection.get("classes", [])
+            if isinstance(item, dict)
+        ]
+        if (
+            len(openclaw_subjects) != OPENCLAW_PILOT_CLASS_COUNT
+            or any(
+                not isinstance(subject, str) or subject not in candidate_ids
+                for subject in openclaw_subjects
+            )
+        ):
+            raise RunnerError(
+                "sealed no-token candidates do not contain the exact OpenClaw-24 pilot"
+            )
+        candidate_count = len(candidate_ids)
+        screening_hit_set = set(screening_cache_hit_ids)
+        screening_call_count = sum(
+            count
+            for subject_id, count in screening_partition_counts.items()
+            if subject_id not in screening_hit_set
+        )
+        cost_contract = self._screening_plan_cost_contract(
+            candidate_count=candidate_count,
+            screening_cache_hits=len(screening_cache_hit_ids),
+            pricing=pricing,
+            screening_call_count=screening_call_count,
+        )
+        screening_miss_count = cost_contract["screening_miss_count"]
+        return {
+            "schema_version": 3,
+            "artifact_kind": "screening_plan",
+            "approval_scope": "screening_only",
+            "campaign_id": campaign.campaign_id,
+            "source_snapshot_sha256": campaign.source_snapshot_sha256,
+            "contract_sha256": campaign.contract_sha256,
+            "models": {
+                "screening": SCREENING_MODEL,
+                "verification": VERIFY_MODEL,
+            },
+            "candidate_source": SCREENING_ROUTE_POLICY_ID,
+            "screening_route_policy_id": SCREENING_ROUTE_POLICY_ID,
+            "candidate_count": candidate_count,
+            "candidate_ids": sorted(candidate_ids),
+            "prompt_contract_sha256": prompt_contracts,
+            "request_hashes": prompt_hashes,
+            "screening_partition_counts": dict(
+                sorted(screening_partition_counts.items())
+            ),
+            "cache": {
+                "screening": {
+                    "hits": len(screening_cache_hit_ids),
+                    "misses": screening_miss_count,
+                    "hit_subject_ids": screening_cache_hit_ids,
+                },
+                "verification": {
+                    "status": "deferred_until_screening_results_are_sealed",
+                    "hits": 0,
+                    "misses_upper_bound": candidate_count,
+                },
+            },
+            "cross_repo_pilot": {
+                "schema_version": 1,
+                "required_before_full_population": True,
+                "selection_method": (
+                    "sha256(source_snapshot_sha256 + NUL + repository + NUL + subject)"
+                ),
+                "selected_class_count": len(cross_repo_pilot),
+                "distinct_repository_count": len(
+                    {item["repository_identity"] for item in cross_repo_pilot}
+                ),
+                "classes": cross_repo_pilot,
+            },
+            "openclaw_pilot": {
+                "schema_version": 1,
+                "required_before_cross_repo_pilot": True,
+                "selected_class_count": OPENCLAW_PILOT_CLASS_COUNT,
+                "classes": openclaw_selection["classes"],
+            },
+            "upper_bounds": cost_contract["upper_bounds"],
+            "deferred_verification": cost_contract["deferred_verification"],
+            "pricing": asdict(pricing),
+            "cost": cost_contract["cost"],
+            "no_token_seal": dict(sorted(no_token_seal.items())),
+        }
+
+    def prepare_screening_plan(
+        self,
+        pricing: LlmPlanPricing,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Complete no-token work and seal an exact Flash-only approval plan."""
+
+        source = self._capture_source_snapshot()
+        campaign = campaign_execution(
+            self.paths, source, self._bound_contract_sha256
+        )
+        _prepare_campaign_execution(campaign)
+        report: list[dict[str, Any]] = []
+        if dry_run:
+            return [
+                {
+                    "phase": "no_token",
+                    "status": "dry_run",
+                    "batch_count": len(self.plan),
+                    "artifact_root": str(_campaign_artifact_root(campaign)),
+                }
+            ]
+        with batch_singleton_lock(
+            self.paths.state_dir, CAMPAIGN_LOCK_KEY
+        ) as campaign_lock_fd:
+            ready_batches: list[BatchSpec] = []
+            for batch in self.plan:
+                risky_repos = sorted(batch.repos & self.collisions)
+                if risky_repos:
+                    raise RunnerError(
+                        f"{batch.key} intersects legacy-origin-collision repositories: "
+                        + ", ".join(risky_repos)
+                    )
+                ready_batches.append(batch)
+            report.extend(
+                self._run_intermediate_batches(
+                    ready_batches,
+                    "no_token",
+                    campaign,
+                    campaign_lock_fd,
+                    max_children=NO_TOKEN_CHILD_PROCESSES,
+                )
+            )
+            payload = self._llm_plan_payload(campaign, pricing)
+            digest = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+            plan = {**payload, "plan_digest": digest}
+            path = campaign.root / "screening-plan-v1.json"
+            _atomic_write_json(path, plan)
+            report.append(
+                {
+                    "phase": "screening_plan",
+                    "status": "prepared",
+                    "plan_digest": digest,
+                    "candidate_count": payload["candidate_count"],
+                    "screening_microusd": payload["cost"]["screening_microusd"],
+                    "path": str(path),
+                }
+            )
+        return report
+
+    def run_no_token_pilot(
+        self,
+        selection_path: Path,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Run only the sealed 1,000-subject prediction-blind no-token pilot."""
+
+        import build_no_token_pilot as no_token_pilot
+
+        selection, selection_file_sha256 = no_token_pilot._stable_json_file(
+            selection_path.resolve(),
+            "no-token pilot selection",
+        )
+        selected = no_token_pilot._validate_selection(selection)
+        if (
+            selection.get("per_cell") != no_token_pilot.FORMAL_PER_CELL
+            or selection.get("expected_subject_count")
+            != no_token_pilot.FORMAL_SUBJECT_COUNT
+            or selection.get("source_delta_sha256")
+            != file_sha256(self.paths.grouped_dir.parent / "source-delta-current.json")
+            or selection.get("alias_class_manifest_sha256")
+            != self._bound_alias_class_manifest_sha256
+        ):
+            raise RunnerError("no-token pilot selection is stale or non-formal")
+        ground_truth = no_token_pilot.evaluate_source_matcher_ground_truth(
+            no_token_pilot.DEFAULT_SOURCE_ORACLE
+        )
+        if ground_truth.get("source_candidate_gate_ready") is not True:
+            raise RunnerError("source matcher ground-truth gate is not ready")
+        if self._formal_class_records is None:
+            raise RunnerError("no-token pilot requires formal class records")
+
+        pilot_root = selection_path.resolve().parent
+        batches: list[BatchSpec] = []
+        for lane in no_token_pilot.LANES:
+            rows = [row for row in selected if row.get("lane") == lane]
+            subject_ids = tuple(str(row.get("analysis_subject", "")) for row in rows)
+            if len(subject_ids) != no_token_pilot.FORMAL_SUBJECT_COUNT // 2:
+                raise RunnerError(f"no-token pilot {lane} lane is incomplete")
+            for row, subject_id in zip(rows, subject_ids, strict=True):
+                class_record = self._formal_class_records.get(subject_id)
+                if (
+                    not isinstance(class_record, Mapping)
+                    or class_record.get("class_id") != row.get("class_id")
+                ):
+                    raise RunnerError(
+                        f"no-token pilot class binding changed for {subject_id}"
+                    )
+                raw_repositories = row.get("repositories")
+                if not isinstance(raw_repositories, list) or any(
+                    not isinstance(repository, str) or not repository
+                    for repository in raw_repositories
+                ):
+                    raise RunnerError("no-token pilot repository mapping is malformed")
+            batch_path = pilot_root / f"batch-{lane}.txt"
+            expected_batch = ("\n".join(subject_ids) + "\n").encode()
+            if (
+                not batch_path.is_file()
+                or batch_path.is_symlink()
+                or batch_path.read_bytes() != expected_batch
+            ):
+                raise RunnerError(f"no-token pilot {lane} batch is missing or stale")
+
+        execution_root = pilot_root / "execution-batches-v1"
+        shards = _balanced_repo_component_shards(
+            selected,
+            shard_count=NO_TOKEN_CHILD_PROCESSES,
+        )
+        for index, rows in enumerate(shards):
+            subject_ids = tuple(str(row["analysis_subject"]) for row in rows)
+            class_ids = tuple(
+                str(self._formal_class_records[subject_id]["class_id"])
+                for subject_id in subject_ids
+            )
+            repositories = frozenset(
+                repository
+                for row in rows
+                for repository in row["repositories"]
+            )
+            batch_path = execution_root / f"shard-{index:02d}.txt"
+            expected_batch = ("\n".join(subject_ids) + "\n").encode()
+            if not dry_run:
+                if batch_path.is_symlink():
+                    raise RunnerError(
+                        f"no-token pilot execution shard is an unsafe symlink: {batch_path}"
+                    )
+                _atomic_write_bytes(batch_path, expected_batch)
+            batches.append(
+                BatchSpec(
+                    key=(
+                        f"no-token-pilot-{selection['pilot_id'][:16]}"
+                        f"-shard-{index:02d}"
+                    ),
+                    path=batch_path,
+                    kind="formal_no_token_pilot",
+                    ids=subject_ids,
+                    repos=repositories,
+                    class_ids=class_ids,
+                )
+            )
+        risky_repositories = sorted(
+            set().union(*(batch.repos for batch in batches)) & self.collisions
+        )
+        if risky_repositories:
+            raise RunnerError(
+                "no-token pilot intersects legacy-origin collisions: "
+                + ", ".join(risky_repositories)
+            )
+        if dry_run:
+            return [
+                {
+                    "phase": "no_token_pilot",
+                    "status": "dry_run",
+                    "pilot_id": selection["pilot_id"],
+                    "selection_file_sha256": selection_file_sha256,
+                    "subject_count": len(selected),
+                    "child_processes": len(batches),
+                    "workers_per_child": WORKERS,
+                    "total_local_workers": len(batches) * WORKERS,
+                    "shard_subject_counts": [len(batch.ids) for batch in batches],
+                    "llm_allowed": False,
+                }
+            ]
+
+        source = self._capture_source_snapshot()
+        campaign = campaign_execution(
+            self.paths,
+            source,
+            self._bound_contract_sha256,
+        )
+        _prepare_campaign_execution(campaign)
+        with batch_singleton_lock(
+            self.paths.state_dir,
+            CAMPAIGN_LOCK_KEY,
+        ) as campaign_lock_fd:
+            report = self._run_intermediate_batches(
+                batches,
+                "no_token",
+                campaign,
+                campaign_lock_fd,
+                max_children=NO_TOKEN_CHILD_PROCESSES,
+            )
+            evaluation = no_token_pilot.evaluate_results(
+                selection_path.resolve(),
+                campaign.root / "no-token-results-v1",
+            )
+            _atomic_write_json(pilot_root / "report.json", evaluation)
+        report.append(
+            {
+                "phase": "no_token_pilot_report",
+                "status": (
+                    "accepted"
+                    if evaluation["acceptance"]["resume_paid_pipeline"]
+                    else "blocked"
+                ),
+                "pilot_id": selection["pilot_id"],
+                "valid_result_count": evaluation["valid_result_count"],
+                "candidate_subject_count": evaluation["candidate_subject_count"],
+                "estimated_population_candidate_subjects": evaluation[
+                    "estimated_population_candidate_subjects"
+                ],
+                "acceptance": evaluation["acceptance"],
+                "path": str(pilot_root / "report.json"),
+            }
+        )
+        return report
+
+    def prepare_llm_plan(
+        self,
+        pricing: LlmPlanPricing,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Reject the legacy combined approval workflow."""
+
+        del pricing, dry_run
+        raise RunnerError(
+            "--prepare-llm-plan is retired; use --prepare-screening-plan"
+        )
+
+    def _formal_llm_budget_environment(
+        self,
+        *,
+        campaign: CampaignExecution,
+        plan_digest: str,
+        plan: Mapping[str, Any],
+        active_phase: str | None = None,
+    ) -> dict[str, str]:
+        """Create or replay a ledger scoped to one separately approved phase."""
+
+        if active_phase not in {None, "screening", "verification"}:
+            raise RunnerError("formal LLM budget phase is invalid")
+
+        pricing = plan.get("pricing")
+        upper_bounds = plan.get("upper_bounds")
+        costs = plan.get("cost")
+        models = plan.get("models")
+        if not all(
+            isinstance(value, Mapping)
+            for value in (pricing, upper_bounds, costs, models)
+        ):
+            raise RunnerError("sealed LLM plan budget contract is malformed")
+        stages: dict[str, dict[str, Any]] = {}
+        total_calls = 0
+        total_cost = 0
+        for phase, effort in (
+            ("screening", SCREENING_REASONING_EFFORT),
+            ("verification", REASONING_EFFORT),
+        ):
+            try:
+                calls = upper_bounds[f"{phase}_calls"]
+                stage_cost = costs[f"{phase}_microusd"]
+                model = models[phase]
+                input_price = pricing[f"{phase}_input_usd_per_million_tokens"]
+                output_price = pricing[f"{phase}_output_usd_per_million_tokens"]
+                max_input = pricing[f"{phase}_max_input_tokens"]
+                max_output = pricing[f"{phase}_max_output_tokens"]
+            except KeyError as exc:
+                raise RunnerError("sealed LLM stage pricing is incomplete") from exc
+            if active_phase is not None and phase != active_phase:
+                calls = 0
+                stage_cost = 0
+            if (
+                isinstance(calls, bool)
+                or not isinstance(calls, int)
+                or calls < 0
+                or isinstance(stage_cost, bool)
+                or not isinstance(stage_cost, int)
+                or stage_cost < 0
+                or not isinstance(model, str)
+                or not model
+            ):
+                raise RunnerError("sealed LLM plan budget bounds are invalid")
+            if calls > 10_000_000 or stage_cost > 100_000_000_000:
+                raise RunnerError("sealed LLM stage exceeds runtime ledger limits")
+            reservation = self._stage_cost_microusd(
+                candidates=1,
+                calls_per_candidate=1,
+                max_input_tokens=max_input,
+                max_output_tokens=max_output,
+                input_price=str(input_price),
+                output_price=str(output_price),
+            )
+            if (calls == 0) != (stage_cost == 0) or (
+                calls > 0 and (reservation <= 0 or reservation * calls != stage_cost)
+            ):
+                raise RunnerError("sealed LLM stage reservation formula is invalid")
+            stages[phase] = {
+                "model": model,
+                "reasoning_effort": effort,
+                "input_usd_per_million_tokens": input_price,
+                "output_usd_per_million_tokens": output_price,
+                "max_input_tokens": max_input,
+                "max_output_tokens": max_output,
+                "max_calls": calls,
+                "reservation_microusd": reservation,
+            }
+            total_calls += calls
+            total_cost += stage_cost
+        if total_calls == 0:
+            return {}
+        expected_total_cost = (
+            costs.get("worst_case_microusd")
+            if active_phase is None
+            else costs.get(f"{active_phase}_microusd")
+        )
+        if total_cost != expected_total_cost:
+            raise RunnerError("sealed LLM staged cost total is invalid")
+        pricing_contract = {"schema_version": 2, "stages": stages}
+        ledger_id = hashlib.sha256(
+            _canonical_json_bytes(
+                {"plan_digest": plan_digest, "pricing_contract": pricing_contract}
+            )
+        ).hexdigest()
+        pricing_sha256 = hashlib.sha256(
+            _canonical_json_bytes(pricing_contract)
+        ).hexdigest()
+        immutable = {
+            "schema_version": 2,
+            "artifact_kind": "llm_plan",
+            "pilot_id": ledger_id,
+            "selection_sha256": plan_digest,
+            "pricing_contract_sha256": pricing_sha256,
+            "pricing_contract": pricing_contract,
+            "max_attempts": total_calls,
+            "max_cost_microusd": total_cost,
+        }
+        if active_phase is not None:
+            immutable["schema_version"] = 3
+        budget_name = (
+            "llm-budget-v2"
+            if active_phase is None
+            else f"{active_phase}-budget-v1"
+        )
+        budget_root = campaign.root / budget_name / plan_digest
+        if budget_root.exists() and (budget_root.is_symlink() or not budget_root.is_dir()):
+            raise RunnerError("formal LLM budget directory is unsafe")
+        budget_root.mkdir(parents=True, exist_ok=True)
+        ledger_path = budget_root / "budget.json"
+        if ledger_path.exists():
+            _pilot_budget_snapshot(ledger_path, immutable=immutable)
+        else:
+            ledger = {
+                **immutable,
+                "deadline_epoch_seconds": time.time()
+                + BATCH_TIMEOUT_SECONDS * max(1, len(self.plan)),
+                "attempts_reserved": 0,
+                "attempts_completed": 0,
+                "reserved_cost_microusd": 0,
+                "spent_cost_microusd": 0,
+                "attempt_receipts": [],
+                "budget_breached": False,
+            }
+            _atomic_write_json(ledger_path, ledger)
+            os.chmod(ledger_path, 0o600)
+            _pilot_budget_snapshot(ledger_path, immutable=immutable)
+        return {
+            PILOT_BUDGET_LEDGER_ENV: str(ledger_path.resolve()),
+            PILOT_ID_ENV: ledger_id,
+        }
+
+    def _cross_repo_pilot_batch(
+        self,
+        *,
+        campaign: CampaignExecution,
+        plan_digest: str,
+        plan: Mapping[str, Any],
+    ) -> BatchSpec:
+        selection = plan.get("cross_repo_pilot")
+        classes = selection.get("classes") if isinstance(selection, Mapping) else None
+        if (
+            not isinstance(classes, list)
+            or len(classes) != CROSS_REPO_PILOT_CLASS_COUNT
+            or selection.get("selected_class_count") != CROSS_REPO_PILOT_CLASS_COUNT
+            or selection.get("distinct_repository_count")
+            != CROSS_REPO_PILOT_CLASS_COUNT
+            or selection.get("required_before_full_population") is not True
+        ):
+            raise RunnerError("sealed cross-repo pilot selection is invalid")
+        subjects = tuple(item.get("subject_id") for item in classes)
+        repositories = tuple(item.get("repository_identity") for item in classes)
+        if (
+            any(not isinstance(value, str) or not value for value in subjects)
+            or any(not isinstance(value, str) or not value for value in repositories)
+            or len(set(subjects)) != len(subjects)
+            or len(set(repositories)) != len(repositories)
+        ):
+            raise RunnerError("sealed cross-repo pilot is not exact-once")
+        class_ids: list[str] = []
+        for subject in subjects:
+            record = self._formal_class_records.get(subject)
+            class_id = record.get("class_id") if isinstance(record, Mapping) else None
+            if not isinstance(class_id, str) or not class_id:
+                raise RunnerError(
+                    f"cross-repo pilot subject lacks alias-class proof: {subject}"
+                )
+            class_ids.append(class_id)
+        root = campaign.root / "cross-repo-pilot-v1" / plan_digest
+        if root.exists() and (root.is_symlink() or not root.is_dir()):
+            raise RunnerError("cross-repo pilot directory is unsafe")
+        root.mkdir(parents=True, exist_ok=True)
+        batch_path = root / "batch.txt"
+        batch_bytes = ("\n".join(subjects) + "\n").encode("utf-8")
+        if batch_path.exists():
+            try:
+                if batch_path.is_symlink() or batch_path.read_bytes() != batch_bytes:
+                    raise RunnerError("persisted cross-repo pilot batch changed")
+            except OSError as exc:
+                raise RunnerError(f"cannot read cross-repo pilot batch: {exc}") from exc
+        else:
+            _atomic_write_bytes(batch_path, batch_bytes)
+        return BatchSpec(
+            key=f"cross-repo-pilot-{plan_digest[:16]}",
+            path=batch_path,
+            kind="cross_repo_pilot",
+            ids=subjects,
+            repos=frozenset(repositories),
+            class_ids=tuple(class_ids),
+        )
+
+    def _openclaw_plan_pilot_batch(
+        self,
+        *,
+        campaign: CampaignExecution,
+        plan_digest: str,
+        plan: Mapping[str, Any],
+    ) -> BatchSpec:
+        selection = plan.get("openclaw_pilot")
+        classes = selection.get("classes") if isinstance(selection, Mapping) else None
+        if (
+            not isinstance(classes, list)
+            or len(classes) != OPENCLAW_PILOT_CLASS_COUNT
+            or selection.get("selected_class_count") != OPENCLAW_PILOT_CLASS_COUNT
+            or selection.get("required_before_cross_repo_pilot") is not True
+        ):
+            raise RunnerError("sealed OpenClaw-24 pilot selection is invalid")
+        subjects = tuple(
+            item.get("analysis_subject") if isinstance(item, Mapping) else None
+            for item in classes
+        )
+        class_ids = tuple(
+            item.get("class_id") if isinstance(item, Mapping) else None
+            for item in classes
+        )
+        if (
+            any(not isinstance(value, str) or not value for value in subjects)
+            or any(not isinstance(value, str) or not value for value in class_ids)
+            or len(set(subjects)) != len(subjects)
+            or len(set(class_ids)) != len(class_ids)
+        ):
+            raise RunnerError("sealed OpenClaw-24 pilot is not exact-once")
+        root = campaign.root / "openclaw-plan-pilot-v1" / plan_digest
+        if root.exists() and (root.is_symlink() or not root.is_dir()):
+            raise RunnerError("OpenClaw plan pilot directory is unsafe")
+        root.mkdir(parents=True, exist_ok=True)
+        batch_path = root / "batch.txt"
+        batch_bytes = ("\n".join(subjects) + "\n").encode()
+        if batch_path.exists():
+            if batch_path.is_symlink() or batch_path.read_bytes() != batch_bytes:
+                raise RunnerError("persisted OpenClaw plan pilot batch changed")
+        else:
+            _atomic_write_bytes(batch_path, batch_bytes)
+        return BatchSpec(
+            key=f"openclaw-plan-pilot-{plan_digest[:16]}",
+            path=batch_path,
+            kind="openclaw_plan_pilot",
+            ids=subjects,
+            repos=frozenset({_OPENCLAW_REPOSITORY_MARKER}),
+            class_ids=class_ids,
+        )
+
+    def _seal_screening_result_manifest(
+        self,
+        *,
+        campaign: CampaignExecution,
+        parent_plan_digest: str,
+    ) -> dict[str, Any]:
+        """Seal the complete Flash output before a Luna plan is derived."""
+
+        batches: dict[str, dict[str, Any]] = {}
+        result_sha256: dict[str, str] = {}
+        for batch in self.plan:
+            command = build_command(
+                batch,
+                analyzer_dir=self.paths.analyzer_dir,
+                phase="screening",
+            )
+            if not self._phase_marker_matches(batch, "screening", command, campaign):
+                raise RunnerError(
+                    f"cannot seal screening results before {batch.key} is complete"
+                )
+            marker_path = self._phase_marker_path(batch, "screening")
+            marker = _regular_json_object(marker_path, f"screening marker {batch.key}")
+            validation = marker.get("validation")
+            if not isinstance(validation, Mapping) or not isinstance(
+                validation.get("result_sha256"), Mapping
+            ):
+                raise RunnerError("screening marker validation is malformed")
+            batch_results = dict(validation["result_sha256"])
+            result_sha256.update(batch_results)
+            batches[batch.key] = {
+                "marker_sha256": file_sha256(marker_path),
+                "result_sha256": batch_results,
+            }
+        payload = {
+            "schema_version": 1,
+            "artifact_kind": "screening_result_manifest",
+            "parent_screening_plan_digest": parent_plan_digest,
+            "campaign_id": campaign.campaign_id,
+            "source_snapshot_sha256": campaign.source_snapshot_sha256,
+            "contract_sha256": campaign.contract_sha256,
+            "result_count": len(result_sha256),
+            "result_sha256": dict(sorted(result_sha256.items())),
+            "batches": dict(sorted(batches.items())),
+        }
+        digest = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+        sealed = {**payload, "manifest_digest": digest}
+        path = campaign.root / "screening-result-manifest-v1.json"
+        _atomic_write_json(path, sealed)
+        return sealed
+
+    def _seal_verification_request_plan(
+        self,
+        *,
+        campaign: CampaignExecution,
+        parent_plan_digest: str,
+        plan: Mapping[str, Any],
+        screening_manifest: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Seal exact rendered Luna requests after Flash outputs are durable."""
+
+        from cve_analyzer.artifact_store import ArtifactStore, sha256_json
+        from cve_analyzer.models import CveAnalysisResult
+        from cve_analyzer.pipeline import investigation_request_envelopes_for_result
+        from cve_analyzer.verifier.agent_loop import investigation_loop_contract
+
+        contract = self._formal_stage_contract("verification")
+        store = ArtifactStore(_campaign_artifact_root(campaign))
+        request_hashes: dict[str, dict[str, str]] = {}
+        hit_ids: list[str] = []
+        hit_request_count = 0
+        request_count = 0
+        verification_subjects: list[str] = []
+        for subject_id in plan.get("candidate_ids", []):
+            if not isinstance(subject_id, str):
+                raise RunnerError("sealed LLM candidate identity is malformed")
+            payload = _regular_json_object(
+                campaign.result_dir / f"{subject_id}.json",
+                f"screening result {subject_id}",
+            )
+            result = CveAnalysisResult.from_dict(payload)
+            if (
+                result.screening is None
+                or result.screening.worth_investigating is not True
+            ):
+                continue
+            envelopes = investigation_request_envelopes_for_result(
+                result,
+                model=VERIFY_MODEL,
+                reasoning_effort=REASONING_EFFORT,
+                max_turns=50,
+            )
+            if not envelopes:
+                raise RunnerError(
+                    f"screening-positive subject lacks a Luna request: {subject_id}"
+                )
+            verification_subjects.append(subject_id)
+            request_count += len(envelopes)
+            request_hashes[subject_id] = {
+                repository: hashlib.sha256(
+                    _canonical_json_bytes(envelope)
+                ).hexdigest()
+                for repository, envelope in sorted(envelopes.items())
+            }
+            subject_all_hit = True
+            for repository, body in sorted(envelopes.items()):
+                source_digest = hashlib.sha256(
+                    _canonical_json_bytes(body)
+                ).hexdigest()
+                expected_input_digest = sha256_json(
+                    {"source_digests": [source_digest], "dependencies": []}
+                )
+                record = store.lookup(
+                    contract.artifact_type,
+                    self._repository_semantic_key(subject_id, repository),
+                    required_stage_contract=contract.contract_digest,
+                    required_schema_version=contract.artifact_schema_version,
+                    include_building=False,
+                )
+                if (
+                    record is not None
+                    and record.envelope.input_digest == expected_input_digest
+                ):
+                    hit_request_count += 1
+                else:
+                    subject_all_hit = False
+            if subject_all_hit:
+                hit_ids.append(subject_id)
+        pricing = plan.get("pricing")
+        if not isinstance(pricing, Mapping):
+            raise RunnerError("screening plan verification pricing is malformed")
+        try:
+            calls_per_request = pricing["verification_max_calls_per_candidate"]
+            max_input = pricing["verification_max_input_tokens"]
+            max_output = pricing["verification_max_output_tokens"]
+            input_price = str(pricing["verification_input_usd_per_million_tokens"])
+            output_price = str(pricing["verification_output_usd_per_million_tokens"])
+            hard_ceiling = pricing["max_cost_microusd"]
+        except KeyError as exc:
+            raise RunnerError("screening plan verification pricing is incomplete") from exc
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in (calls_per_request, max_input, max_output, hard_ceiling)
+        ):
+            raise RunnerError("screening plan verification bounds are invalid")
+        miss_request_count = request_count - hit_request_count
+        verification_calls = miss_request_count * calls_per_request
+        verification_cost = self._stage_cost_microusd(
+            candidates=miss_request_count,
+            calls_per_candidate=calls_per_request,
+            max_input_tokens=max_input,
+            max_output_tokens=max_output,
+            input_price=input_price,
+            output_price=output_price,
+        )
+        if verification_cost > hard_ceiling:
+            raise RunnerError("verification plan exceeds the sealed hard cost ceiling")
+        manifest_digest = screening_manifest.get("manifest_digest")
+        if re.fullmatch(r"[0-9a-f]{64}", str(manifest_digest)) is None:
+            raise RunnerError("screening result manifest digest is malformed")
+        payload = {
+            "schema_version": 1,
+            "artifact_kind": "verification_request_plan",
+            "approval_scope": "verification_only",
+            "parent_screening_plan_digest": parent_plan_digest,
+            "screening_result_manifest_digest": manifest_digest,
+            "campaign_id": campaign.campaign_id,
+            "source_snapshot_sha256": campaign.source_snapshot_sha256,
+            "contract_sha256": campaign.contract_sha256,
+            "model": VERIFY_MODEL,
+            "reasoning_effort": REASONING_EFFORT,
+            "loop_contract": investigation_loop_contract(max_turns=50),
+            "subject_count": len(verification_subjects),
+            "subject_ids": verification_subjects,
+            "request_count": request_count,
+            "request_hashes": request_hashes,
+            "cache": {
+                "hits": hit_request_count,
+                "misses": miss_request_count,
+                "hit_subject_ids": hit_ids,
+            },
+            "models": {
+                "screening": SCREENING_MODEL,
+                "verification": VERIFY_MODEL,
+            },
+            "pricing": dict(pricing),
+            "upper_bounds": {
+                "screening_calls": 0,
+                "verification_calls": verification_calls,
+            },
+            "cost": {
+                "screening_microusd": 0,
+                "verification_microusd": verification_cost,
+                "worst_case_microusd": verification_cost,
+            },
+            "cross_repo_pilot": plan.get("cross_repo_pilot"),
+            "openclaw_pilot": plan.get("openclaw_pilot"),
+        }
+        digest = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+        sealed = {**payload, "plan_digest": digest}
+        path = campaign.root / "verification-plan-v1.json"
+        _atomic_write_json(path, sealed)
+        return {
+            "phase": "verification_request_plan",
+            "status": "prepared",
+            "plan_digest": digest,
+            "subject_count": len(verification_subjects),
+            "cache_hits": hit_request_count,
+            "cache_misses": miss_request_count,
+            "worst_case_microusd": verification_cost,
+            "path": str(path),
+        }
+
+    @staticmethod
+    def _load_approved_plan(
+        path: Path,
+        approved_digest: str,
+        *,
+        artifact_kind: str,
+        approval_scope: str,
+    ) -> tuple[dict[str, Any], str]:
+        if re.fullmatch(r"[0-9a-f]{64}", approved_digest) is None:
+            raise RunnerError("approved plan requires a lowercase SHA-256")
+        sealed = _regular_json_object(path, f"sealed {artifact_kind}")
+        plan = dict(sealed)
+        recorded_digest = plan.pop("plan_digest", None)
+        actual_digest = hashlib.sha256(_canonical_json_bytes(plan)).hexdigest()
+        if recorded_digest != actual_digest or actual_digest != approved_digest:
+            raise RunnerError("plan digest is missing, corrupt, or not approved")
+        if (
+            plan.get("artifact_kind") != artifact_kind
+            or plan.get("approval_scope") != approval_scope
+        ):
+            raise RunnerError("approved plan scope is invalid")
+        return plan, actual_digest
+
+    def _validate_no_token_approval_inputs(
+        self,
+        *,
+        campaign: CampaignExecution,
+        plan: Mapping[str, Any],
+    ) -> None:
+        if (
+            plan.get("campaign_id") != campaign.campaign_id
+            or plan.get("source_snapshot_sha256") != campaign.source_snapshot_sha256
+            or plan.get("contract_sha256") != campaign.contract_sha256
+        ):
+            raise RunnerError("approved plan campaign binding changed")
+        for batch in self.plan:
+            command = build_command(
+                batch,
+                analyzer_dir=self.paths.analyzer_dir,
+                phase="no_token",
+            )
+            if not self._phase_marker_matches(batch, "no_token", command, campaign):
+                raise RunnerError(
+                    f"no-token inputs changed after approval: {batch.key}"
+                )
+
+    def _validate_screening_request_hashes(
+        self,
+        *,
+        campaign: CampaignExecution,
+        plan: Mapping[str, Any],
+    ) -> None:
+        from cve_analyzer.llm_verify import screening_request_envelope
+        from cve_analyzer.models import CveAnalysisResult
+
+        request_hashes = plan.get("request_hashes")
+        candidate_ids = plan.get("candidate_ids")
+        if not isinstance(request_hashes, Mapping) or not isinstance(
+            candidate_ids, list
+        ):
+            raise RunnerError("screening plan request manifest is malformed")
+        sealed_root = campaign.root / "no-token-results-v1"
+        observed: dict[str, dict[str, str]] = {}
+        for subject_id in candidate_ids:
+            if not isinstance(subject_id, str):
+                raise RunnerError("screening plan subject identity is malformed")
+            result = CveAnalysisResult.from_dict(
+                _regular_json_object(
+                    sealed_root / f"{subject_id}.json",
+                    f"sealed no-token result {subject_id}",
+                )
+            )
+            body = screening_request_envelope(
+                result,
+                model=SCREENING_MODEL,
+                reasoning_effort=SCREENING_REASONING_EFFORT,
+            )
+            if body is None:
+                raise RunnerError(f"screening request disappeared for {subject_id}")
+            observed[subject_id] = {
+                "screening": hashlib.sha256(
+                    _canonical_json_bytes(body)
+                ).hexdigest()
+            }
+        if observed != request_hashes:
+            raise RunnerError("screening HTTP request bodies changed after approval")
+
+    def run_approved_screening_plan(
+        self,
+        approved_digest: str,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Run Flash only, then seal outputs and a separately approvable Luna plan."""
+
+        source = self._capture_source_snapshot()
+        campaign = campaign_execution(self.paths, source, self._bound_contract_sha256)
+        plan, actual_digest = self._load_approved_plan(
+            campaign.root / "screening-plan-v1.json",
+            approved_digest,
+            artifact_kind="screening_plan",
+            approval_scope="screening_only",
+        )
+        self._validate_no_token_approval_inputs(campaign=campaign, plan=plan)
+        self._validate_screening_request_hashes(campaign=campaign, plan=plan)
+        if dry_run:
+            return [{
+                "phase": "screening_plan",
+                "status": "approval_valid",
+                "plan_digest": actual_digest,
+                "candidate_count": plan.get("candidate_count"),
+            }]
+        budget_environment = self._formal_llm_budget_environment(
+            campaign=campaign,
+            plan_digest=actual_digest,
+            plan=plan,
+            active_phase="screening",
+        )
+        pilot_batch = self._cross_repo_pilot_batch(
+            campaign=campaign, plan_digest=actual_digest, plan=plan
+        )
+        openclaw_pilot_batch = self._openclaw_plan_pilot_batch(
+            campaign=campaign, plan_digest=actual_digest, plan=plan
+        )
+        report: list[dict[str, Any]] = []
+        with batch_singleton_lock(
+            self.paths.state_dir, CAMPAIGN_LOCK_KEY
+        ) as campaign_lock_fd:
+            for staged_pilot, label in (
+                (openclaw_pilot_batch, "OpenClaw-24 pilot"),
+                (pilot_batch, "cross-repo pilot"),
+            ):
+                self._assert_campaign_binding(
+                    f"before {label} screening", recapture_delta_inputs=True
+                )
+                report.append(self._run_intermediate_one(
+                    staged_pilot,
+                    "screening",
+                    campaign,
+                    campaign_lock_fd,
+                    budget_environment=budget_environment,
+                ))
+            for batch in self.plan:
+                self._assert_campaign_binding(
+                    f"before screening/{batch.key}", recapture_delta_inputs=True
+                )
+                report.append(self._run_intermediate_one(
+                    batch,
+                    "screening",
+                    campaign,
+                    campaign_lock_fd,
+                    budget_environment=budget_environment,
+                ))
+            manifest = self._seal_screening_result_manifest(
+                campaign=campaign, parent_plan_digest=actual_digest
+            )
+            report.append({
+                "phase": "screening_result_manifest",
+                "status": "sealed",
+                "manifest_digest": manifest["manifest_digest"],
+                "result_count": manifest["result_count"],
+            })
+            report.append(self._seal_verification_request_plan(
+                campaign=campaign,
+                parent_plan_digest=actual_digest,
+                plan=plan,
+                screening_manifest=manifest,
+            ))
+        return report
+
+    def run_approved_verification_plan(
+        self,
+        approved_digest: str,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Run Luna only after validating the separately sealed verification plan."""
+
+        from cve_analyzer.models import CveAnalysisResult
+        from cve_analyzer.pipeline import investigation_request_envelopes_for_result
+
+        source = self._capture_source_snapshot()
+        campaign = campaign_execution(self.paths, source, self._bound_contract_sha256)
+        plan, actual_digest = self._load_approved_plan(
+            campaign.root / "verification-plan-v1.json",
+            approved_digest,
+            artifact_kind="verification_request_plan",
+            approval_scope="verification_only",
+        )
+        parent_digest = plan.get("parent_screening_plan_digest")
+        if re.fullmatch(r"[0-9a-f]{64}", str(parent_digest)) is None:
+            raise RunnerError("verification plan parent digest is malformed")
+        parent_plan, _ = self._load_approved_plan(
+            campaign.root / "screening-plan-v1.json",
+            str(parent_digest),
+            artifact_kind="screening_plan",
+            approval_scope="screening_only",
+        )
+        self._validate_no_token_approval_inputs(campaign=campaign, plan=parent_plan)
+        manifest_path = campaign.root / "screening-result-manifest-v1.json"
+        manifest = _regular_json_object(manifest_path, "screening result manifest")
+        manifest_copy = dict(manifest)
+        manifest_digest = manifest_copy.pop("manifest_digest", None)
+        if (
+            hashlib.sha256(_canonical_json_bytes(manifest_copy)).hexdigest()
+            != manifest_digest
+            or manifest_digest != plan.get("screening_result_manifest_digest")
+            or manifest.get("parent_screening_plan_digest") != parent_digest
+        ):
+            raise RunnerError("screening result manifest changed after Luna planning")
+        expected_hashes = plan.get("request_hashes")
+        if not isinstance(expected_hashes, Mapping):
+            raise RunnerError("verification request hash manifest is malformed")
+        observed_hashes: dict[str, dict[str, str]] = {}
+        for subject_id in plan.get("subject_ids", []):
+            if not isinstance(subject_id, str):
+                raise RunnerError("verification subject identity is malformed")
+            result_path = campaign.result_dir / f"{subject_id}.json"
+            expected_result_sha = manifest.get("result_sha256", {}).get(subject_id)
+            if expected_result_sha != file_sha256(result_path):
+                raise RunnerError(f"screening result changed for {subject_id}")
+            result = CveAnalysisResult.from_dict(
+                _regular_json_object(result_path, f"screening result {subject_id}")
+            )
+            envelopes = investigation_request_envelopes_for_result(
+                result,
+                model=VERIFY_MODEL,
+                reasoning_effort=REASONING_EFFORT,
+                max_turns=50,
+            )
+            observed_hashes[subject_id] = {
+                repository: hashlib.sha256(
+                    _canonical_json_bytes(body)
+                ).hexdigest()
+                for repository, body in sorted(envelopes.items())
+            }
+        if observed_hashes != expected_hashes:
+            raise RunnerError("Luna first HTTP request bodies changed after approval")
+        if dry_run:
+            return [{
+                "phase": "verification_plan",
+                "status": "approval_valid",
+                "plan_digest": actual_digest,
+                "request_count": plan.get("request_count"),
+            }]
+        budget_environment = self._formal_llm_budget_environment(
+            campaign=campaign,
+            plan_digest=actual_digest,
+            plan=plan,
+            active_phase="verification",
+        )
+        pilot_batch = self._cross_repo_pilot_batch(
+            campaign=campaign, plan_digest=str(parent_digest), plan=parent_plan
+        )
+        openclaw_pilot_batch = self._openclaw_plan_pilot_batch(
+            campaign=campaign, plan_digest=str(parent_digest), plan=parent_plan
+        )
+        report: list[dict[str, Any]] = []
+        with batch_singleton_lock(
+            self.paths.state_dir, CAMPAIGN_LOCK_KEY
+        ) as campaign_lock_fd:
+            for staged_pilot, label in (
+                (openclaw_pilot_batch, "OpenClaw-24 pilot"),
+                (pilot_batch, "cross-repo pilot"),
+            ):
+                self._assert_campaign_binding(
+                    f"before {label} verification", recapture_delta_inputs=True
+                )
+                report.append(self._run_intermediate_one(
+                    staged_pilot,
+                    "verification",
+                    campaign,
+                    campaign_lock_fd,
+                    budget_environment=budget_environment,
+                ))
+            for batch in self.plan:
+                self._assert_campaign_binding(
+                    f"before verification/{batch.key}", recapture_delta_inputs=True
+                )
+                report.append(self._run_intermediate_one(
+                    batch,
+                    "verification",
+                    campaign,
+                    campaign_lock_fd,
+                    budget_environment=budget_environment,
+                ))
+        return report
+
+    def run_approved_llm_plan(
+        self,
+        approved_digest: str,
+        *,
+        dry_run: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Reject the legacy combined Flash+Luna execution path."""
+
+        del approved_digest, dry_run
+        raise RunnerError(
+            "--approve-llm-plan is retired; approve screening and verification separately"
+        )
 
     def run(
         self,
@@ -6657,12 +10031,6 @@ class RefreshRunner:
         # well as execution.  A plan-only dry run must not report readiness when
         # the one permitted LLM transport is absent or ambiguous.
         litellm_transport_contract()
-        smoke_gate = _current_openclaw_smoke_gate_status(self.paths)
-        if smoke_gate.get("status") != "ready":
-            raise RunnerError(
-                "formal OpenClaw smoke gate is blocked: "
-                f"{smoke_gate.get('reason', 'current completion is invalid')}"
-            )
         if limit is not None and (
             isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0
         ):
@@ -6681,15 +10049,6 @@ class RefreshRunner:
             campaign_lock_fd: int | None = None,
         ) -> list[dict[str, Any]]:
             report: list[dict[str, Any]] = []
-            if dry_run:
-                report.append(
-                    {
-                        "batch": "openclaw-smoke-gate",
-                        "status": "gate_ready",
-                        "smoke_id": smoke_gate["smoke_id"],
-                        "class_count": smoke_gate["class_count"],
-                    }
-                )
             attempted = 0
             for batch in selected:
                 self._assert_campaign_binding(
@@ -6758,12 +10117,65 @@ class RefreshRunner:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the validated, resumable Luna-max incremental CVE refresh campaign."
+        description=(
+            "Run the validated, resumable no-token, Flash-screening, and "
+            "Luna-verification CVE refresh campaign."
+        )
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="validate and print work without executing batches",
+    )
+    parser.add_argument(
+        "--execute-after-dry-run",
+        action="store_true",
+        help=(
+            "for a no-token pilot only, execute immediately after a successful "
+            "dry-run in the same process so verified source checks are reused"
+        ),
+    )
+    llm_gate = parser.add_mutually_exclusive_group()
+    llm_gate.add_argument(
+        "--prepare-screening-plan",
+        action="store_true",
+        help="finish no-token work and seal an exact Flash-only cost plan",
+    )
+    llm_gate.add_argument(
+        "--approve-screening-plan",
+        metavar="SHA256",
+        help="run only Flash for the exact approved plan, then seal a Luna plan",
+    )
+    llm_gate.add_argument(
+        "--approve-verification-plan",
+        metavar="SHA256",
+        help="run only Luna for the exact separately approved verification plan",
+    )
+    llm_gate.add_argument(
+        "--run-no-token-pilot",
+        metavar="SELECTION_JSON",
+        type=Path,
+        help="run the sealed 1,000-subject no-model pilot and write its report",
+    )
+    llm_gate.add_argument(
+        "--prepare-llm-plan",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    llm_gate.add_argument(
+        "--approve-llm-plan",
+        metavar="SHA256",
+        help=argparse.SUPPRESS,
+    )
+    for stage in ("screening", "verification"):
+        parser.add_argument(f"--{stage}-input-usd-per-million-tokens")
+        parser.add_argument(f"--{stage}-output-usd-per-million-tokens")
+        parser.add_argument(f"--{stage}-max-input-tokens", type=int)
+        parser.add_argument(f"--{stage}-max-output-tokens", type=int)
+        parser.add_argument(f"--{stage}-max-calls-per-candidate", type=int)
+    parser.add_argument(
+        "--llm-cost-ceiling-usd",
+        help="hard worst-case cost ceiling for the sealed production LLM plan",
     )
     parser.add_argument(
         "--batch",
@@ -6837,6 +10249,56 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _llm_plan_pricing_from_args(args: argparse.Namespace) -> LlmPlanPricing:
+    names = (
+        "screening_input_usd_per_million_tokens",
+        "screening_output_usd_per_million_tokens",
+        "verification_input_usd_per_million_tokens",
+        "verification_output_usd_per_million_tokens",
+        "screening_max_input_tokens",
+        "screening_max_output_tokens",
+        "verification_max_input_tokens",
+        "verification_max_output_tokens",
+        "screening_max_calls_per_candidate",
+        "verification_max_calls_per_candidate",
+        "llm_cost_ceiling_usd",
+    )
+    missing = [f"--{name.replace('_', '-')}" for name in names if getattr(args, name) is None]
+    if missing:
+        raise RunnerError(
+            "--prepare-screening-plan requires explicit pricing and bounds: "
+            + ", ".join(missing)
+        )
+    integer_names = names[4:10]
+    for name in integer_names:
+        value = getattr(args, name)
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise RunnerError(f"--{name.replace('_', '-')} must be a positive integer")
+    canonical_prices = {
+        name: _canonical_price(getattr(args, name), name.replace("_", " "))[0]
+        for name in names[:4]
+    }
+    ceiling_text, ceiling = _canonical_price(
+        args.llm_cost_ceiling_usd, "LLM cost ceiling"
+    )
+    del ceiling_text
+    scaled = ceiling * Decimal(1_000_000)
+    if scaled != scaled.to_integral_value() or not 0 < scaled <= 100_000_000_000:
+        raise RunnerError(
+            "LLM cost ceiling must be positive, at most USD 100000, and use at most six decimals"
+        )
+    return LlmPlanPricing(
+        **canonical_prices,
+        screening_max_input_tokens=args.screening_max_input_tokens,
+        screening_max_output_tokens=args.screening_max_output_tokens,
+        verification_max_input_tokens=args.verification_max_input_tokens,
+        verification_max_output_tokens=args.verification_max_output_tokens,
+        screening_max_calls_per_candidate=args.screening_max_calls_per_candidate,
+        verification_max_calls_per_candidate=args.verification_max_calls_per_candidate,
+        max_cost_microusd=int(scaled),
+    )
+
+
 def _cost_ceiling_microusd(raw: str, *, label: str, maximum: int) -> int:
     _canonical, value = _canonical_price(raw, f"{label} cost ceiling")
     scaled = value * Decimal(1_000_000)
@@ -6869,14 +10331,28 @@ def _smoke_cost_ceiling_microusd(raw: str) -> int:
 
 def _pilot_pricing_from_args(args: argparse.Namespace) -> PilotPricing:
     required = {
-        "--pilot-input-usd-per-million-tokens": (
-            args.pilot_input_usd_per_million_tokens
+        "--screening-input-usd-per-million-tokens": (
+            args.screening_input_usd_per_million_tokens
         ),
-        "--pilot-output-usd-per-million-tokens": (
-            args.pilot_output_usd_per_million_tokens
+        "--screening-output-usd-per-million-tokens": (
+            args.screening_output_usd_per_million_tokens
         ),
-        "--pilot-max-input-tokens": args.pilot_max_input_tokens,
-        "--pilot-max-output-tokens": args.pilot_max_output_tokens,
+        "--verification-input-usd-per-million-tokens": (
+            args.verification_input_usd_per_million_tokens
+        ),
+        "--verification-output-usd-per-million-tokens": (
+            args.verification_output_usd_per_million_tokens
+        ),
+        "--screening-max-input-tokens": args.screening_max_input_tokens,
+        "--screening-max-output-tokens": args.screening_max_output_tokens,
+        "--verification-max-input-tokens": args.verification_max_input_tokens,
+        "--verification-max-output-tokens": args.verification_max_output_tokens,
+        "--screening-max-calls-per-candidate": (
+            args.screening_max_calls_per_candidate
+        ),
+        "--verification-max-calls-per-candidate": (
+            args.verification_max_calls_per_candidate
+        ),
         "--pilot-cost-ceiling-usd": args.pilot_cost_ceiling_usd,
     }
     missing = [name for name, value in required.items() if value is None]
@@ -6885,10 +10361,30 @@ def _pilot_pricing_from_args(args: argparse.Namespace) -> PilotPricing:
             "OpenClaw pilot requires explicit pricing bounds: " + ", ".join(missing)
         )
     return PilotPricing(
-        input_usd_per_million_tokens=str(args.pilot_input_usd_per_million_tokens),
-        output_usd_per_million_tokens=str(args.pilot_output_usd_per_million_tokens),
-        max_input_tokens=args.pilot_max_input_tokens,
-        max_output_tokens=args.pilot_max_output_tokens,
+        screening_input_usd_per_million_tokens=str(
+            args.screening_input_usd_per_million_tokens
+        ),
+        screening_output_usd_per_million_tokens=str(
+            args.screening_output_usd_per_million_tokens
+        ),
+        verification_input_usd_per_million_tokens=str(
+            args.verification_input_usd_per_million_tokens
+        ),
+        verification_output_usd_per_million_tokens=str(
+            args.verification_output_usd_per_million_tokens
+        ),
+        screening_max_input_tokens=args.screening_max_input_tokens,
+        screening_max_output_tokens=args.screening_max_output_tokens,
+        verification_max_input_tokens=args.verification_max_input_tokens,
+        verification_max_output_tokens=args.verification_max_output_tokens,
+        screening_max_calls=(
+            OPENCLAW_PILOT_CLASS_COUNT
+            * args.screening_max_calls_per_candidate
+        ),
+        verification_max_calls=(
+            OPENCLAW_PILOT_CLASS_COUNT
+            * args.verification_max_calls_per_candidate
+        ),
         max_cost_microusd=_pilot_cost_ceiling_microusd(
             str(args.pilot_cost_ceiling_usd)
         ),
@@ -6910,7 +10406,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise RunnerError(
                     "--openclaw-pilot and --openclaw-smoke are mutually exclusive"
                 )
+            if args.openclaw_pilot or args.openclaw_smoke:
+                raise RunnerError(
+                    "OpenClaw is an independent regression, not a formal campaign "
+                    "gate; use scripts/run_openclaw_regression.py"
+                )
             if args.openclaw_pilot:
+                legacy_pilot_pricing = any(
+                    value is not None
+                    for value in (
+                        args.pilot_input_usd_per_million_tokens,
+                        args.pilot_output_usd_per_million_tokens,
+                        args.pilot_max_input_tokens,
+                        args.pilot_max_output_tokens,
+                    )
+                )
                 if (
                     args.batch_key is not None
                     or args.limit is not None
@@ -6918,9 +10428,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     or args.pilot_id is not None
                     or args.smoke_cost_ceiling_usd is not None
                     or args.smoke_max_attempts is not None
+                    or args.llm_cost_ceiling_usd is not None
+                    or legacy_pilot_pricing
                 ):
                     raise RunnerError(
-                        "OpenClaw pilot cannot be combined with batch-selection options"
+                        "OpenClaw pilot accepts only staged pricing/bounds and its "
+                        "pilot cost/attempt ceiling"
                     )
                 results: Any = run_openclaw_pilot(
                     paths,
@@ -6945,6 +10458,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                         args.pilot_max_output_tokens,
                         args.pilot_cost_ceiling_usd,
                         args.pilot_max_attempts,
+                        args.screening_input_usd_per_million_tokens,
+                        args.screening_output_usd_per_million_tokens,
+                        args.verification_input_usd_per_million_tokens,
+                        args.verification_output_usd_per_million_tokens,
+                        args.screening_max_input_tokens,
+                        args.screening_max_output_tokens,
+                        args.verification_max_input_tokens,
+                        args.verification_max_output_tokens,
+                        args.screening_max_calls_per_candidate,
+                        args.verification_max_calls_per_candidate,
+                        args.llm_cost_ceiling_usd,
                     )
                 )
                 if supplied_pilot_pricing:
@@ -7000,12 +10524,116 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "pilot/smoke options require their matching OpenClaw mode"
                     )
                 refresh = RefreshRunner(paths)
-                results = refresh.run(
-                    dry_run=args.dry_run,
-                    batch_key=args.batch_key,
-                    limit=args.limit,
-                    skip_legacy_origin_collisions=(args.skip_legacy_origin_collisions),
+                staged_pricing_values = (
+                    args.screening_input_usd_per_million_tokens,
+                    args.screening_output_usd_per_million_tokens,
+                    args.verification_input_usd_per_million_tokens,
+                    args.verification_output_usd_per_million_tokens,
+                    args.screening_max_input_tokens,
+                    args.screening_max_output_tokens,
+                    args.verification_max_input_tokens,
+                    args.verification_max_output_tokens,
+                    args.screening_max_calls_per_candidate,
+                    args.verification_max_calls_per_candidate,
+                    args.llm_cost_ceiling_usd,
                 )
+                if args.prepare_llm_plan or args.approve_llm_plan is not None:
+                    raise RunnerError(
+                        "combined LLM approval is retired; use --prepare-screening-plan, "
+                        "--approve-screening-plan, then --approve-verification-plan"
+                    )
+                if args.run_no_token_pilot is not None:
+                    if any(value is not None for value in staged_pricing_values):
+                        raise RunnerError(
+                            "no-token pilot does not accept model pricing options"
+                        )
+                    if (
+                        args.batch_key is not None
+                        or args.limit is not None
+                        or args.skip_legacy_origin_collisions
+                    ):
+                        raise RunnerError(
+                            "no-token pilot cannot be combined with batch-selection options"
+                        )
+                    if args.execute_after_dry_run and not args.dry_run:
+                        raise RunnerError(
+                            "--execute-after-dry-run requires --dry-run"
+                        )
+                    if args.execute_after_dry_run:
+                        preflight = refresh.run_no_token_pilot(
+                            args.run_no_token_pilot,
+                            dry_run=True,
+                        )
+                        execution = refresh.run_no_token_pilot(
+                            args.run_no_token_pilot,
+                            dry_run=False,
+                        )
+                        results = {
+                            "preflight": preflight,
+                            "execution": execution,
+                        }
+                    else:
+                        results = refresh.run_no_token_pilot(
+                            args.run_no_token_pilot,
+                            dry_run=args.dry_run,
+                        )
+                elif args.prepare_screening_plan:
+                    if (
+                        args.batch_key is not None
+                        or args.limit is not None
+                        or args.skip_legacy_origin_collisions
+                    ):
+                        raise RunnerError(
+                            "--prepare-screening-plan requires the complete formal population"
+                        )
+                    results = refresh.prepare_screening_plan(
+                        _llm_plan_pricing_from_args(args),
+                        dry_run=args.dry_run,
+                    )
+                elif args.approve_screening_plan is not None:
+                    if any(value is not None for value in staged_pricing_values):
+                        raise RunnerError(
+                            "approved execution replays sealed pricing; pricing options are not accepted"
+                        )
+                    if (
+                        args.batch_key is not None
+                        or args.limit is not None
+                        or args.skip_legacy_origin_collisions
+                    ):
+                        raise RunnerError(
+                            "--approve-screening-plan requires the complete sealed population"
+                        )
+                    results = refresh.run_approved_screening_plan(
+                        args.approve_screening_plan,
+                        dry_run=args.dry_run,
+                    )
+                elif args.approve_verification_plan is not None:
+                    if any(value is not None for value in staged_pricing_values):
+                        raise RunnerError(
+                            "approved execution replays sealed pricing; pricing options are not accepted"
+                        )
+                    if (
+                        args.batch_key is not None
+                        or args.limit is not None
+                        or args.skip_legacy_origin_collisions
+                    ):
+                        raise RunnerError(
+                            "--approve-verification-plan requires the complete sealed population"
+                        )
+                    results = refresh.run_approved_verification_plan(
+                        args.approve_verification_plan,
+                        dry_run=args.dry_run,
+                    )
+                else:
+                    if args.execute_after_dry_run:
+                        raise RunnerError(
+                            "--execute-after-dry-run requires --run-no-token-pilot"
+                        )
+                    raise RunnerError(
+                        "formal refresh requires --prepare-screening-plan, "
+                        "--approve-screening-plan SHA256, or "
+                        "--approve-verification-plan SHA256"
+                    )
     except CampaignSignalInterrupt as exc:
         print(
             f"data refresh interrupted by {exc.signal_name}; child process group terminated",
@@ -7020,7 +10648,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         json.dumps(
             {
                 "schema_version": 1,
-                "dry_run": args.dry_run,
+                "dry_run": args.dry_run and not args.execute_after_dry_run,
+                "preflight_dry_run": args.execute_after_dry_run,
                 "results": results,
             },
             indent=2,
