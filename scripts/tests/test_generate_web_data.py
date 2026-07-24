@@ -22,6 +22,7 @@ from cve_analyzer.models import (
     BugIntroducingCommit,
     CommitInfo,
     CveAnalysisResult,
+    CveScreeningResult,
     FixCommit,
 )
 from generate_web_data import (
@@ -193,7 +194,12 @@ def _inventory_bic(
             AiSignal(
                 tool=tool,
                 signal_type=signal_type,
-                matched_text="fixture",
+                matched_text=(
+                    "Co-authored-by: Claude <noreply@anthropic.com>"
+                    if signal_type == "co_author_trailer"
+                    and tool is AiTool.CLAUDE_CODE
+                    else "fixture"
+                ),
                 confidence=0.95,
             )
         ]
@@ -207,7 +213,12 @@ def _inventory_bic(
             author_email="fixture@example.invalid",
             committer_name="Fixture",
             committer_email="fixture@example.invalid",
-            message="fixture",
+            message=(
+                "fixture\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+                if signal_type == "co_author_trailer"
+                and tool is AiTool.CLAUDE_CODE
+                else "fixture"
+            ),
             authored_date="2026-07-18T00:00:00Z",
             ai_signals=signals,
         ),
@@ -266,16 +277,16 @@ def test_detector_inventory_keeps_catalog_candidates_and_rejection_strata_separa
     rows = {row["class_id"]: row for row in inventory["rows"]}
     assert rows["CVE-2026-1"]["recall_stratum"] == "no_fix_commit"
     assert rows["CVE-2026-2"]["recall_stratum"] == "fix_no_bic"
-    assert rows["CVE-2026-3"]["detector_state"] == "candidate"
+    assert rows["CVE-2026-3"]["detector_state"] == "negative"
     assert rows["CVE-2026-3"]["recall_stratum"] == "bic_no_trusted_authorship"
     assert rows["CVE-2026-4"]["detector_state"] == "positive"
     assert rows["CVE-2026-4"]["publication_state"] == "published"
-    assert inventory["detector_candidate_count"] == 2
+    assert inventory["detector_candidate_count"] == 1
     assert inventory["complete"] is True
 
 
 def test_cve_2025_11445_ellipsis_review_signal_cannot_become_positive() -> None:
-    """Regression: Ellipsis review attribution remains candidate-only."""
+    """Regression: Ellipsis review attribution remains shadow-only."""
     cve_id = "CVE-2025-11445"
     fix = FixCommit(
         sha="2" * 40,
@@ -305,9 +316,9 @@ def test_cve_2025_11445_ellipsis_review_signal_cannot_become_positive() -> None:
     )
 
     row = inventory["rows"][0]
-    assert row["detector_state"] == "candidate"
+    assert row["detector_state"] == "negative"
     assert row["recall_stratum"] == "bic_no_trusted_authorship"
-    assert row["publication_state"] == "withheld"
+    assert row["publication_state"] == "not_applicable"
 
 
 def test_detector_inventory_exposes_missing_current_alias_class_as_coverage_failure() -> (
@@ -485,7 +496,7 @@ def _write_result(path: Path, cve_id: str) -> None:
     signal = AiSignal(
         tool=AiTool.CURSOR,
         signal_type="co_author_trailer",
-        matched_text="Co-authored-by: Cursor",
+        matched_text="Co-authored-by: Cursor <cursoragent@cursor.com>",
         confidence=0.95,
     )
     commit = CommitInfo(
@@ -494,7 +505,10 @@ def _write_result(path: Path, cve_id: str) -> None:
         author_email="fixture@example.invalid",
         committer_name="Fixture",
         committer_email="fixture@example.invalid",
-        message="fixture campaign result",
+        message=(
+            "fixture campaign result\n\n"
+            "Co-authored-by: Cursor <cursoragent@cursor.com>"
+        ),
         authored_date="2026-07-18T12:00:00Z",
         ai_signals=[signal],
     )
@@ -527,6 +541,12 @@ def _write_result(path: Path, cve_id: str) -> None:
             )
         ],
         bug_introducing_commits=[bic],
+        screening=CveScreeningResult(
+            worth_investigating=True,
+            reasoning="Fixture screening retains the candidate.",
+            relevant_commits=[bic.commit.sha],
+            model="gemini-3.5-flash-lite",
+        ),
         ai_involved=True,
         investigation_scope_hash=hashlib.sha256(
             "\0".join(bic.subject_key()).encode("utf-8")
@@ -675,6 +695,14 @@ def test_exact_campaign_loader_rejects_unplanned_inventory(
 def test_release_gate_requires_complete_detector_and_both_point_targets() -> None:
     detector_report = {
         "evaluation_complete": True,
+        "detector_inventory": {
+            "stage_quality_gate": {
+                "screening_zero_false_negatives": True,
+                "final_precision_lower_bound_at_least_0_95": True,
+                "final_recall_lower_bound_at_least_0_95": True,
+                "passed": True,
+            }
+        },
         "fixed_contract_campaign_proof": {
             "complete": True,
             "campaign_mode": "formal",
@@ -702,6 +730,14 @@ def test_release_gate_requires_complete_detector_and_both_point_targets() -> Non
         "point_gate_passed": True,
         "certified_gate_passed": True,
         "release_gate_passed": True,
+        "precision": {"one_sided_95pct_lower_bound": 0.96},
+        "recall": {"one_sided_95pct_lower_bound": 0.96},
+        "stage_metrics": {
+            "screening": {
+                "confusion": {"tp": 59, "fp": 0, "fn": 0, "tn": 0},
+                "screening_zero_false_negatives": True,
+            }
+        },
         "campaign": {
             "campaign_id": "1" * 64,
             "contract_sha256": "2" * 64,
@@ -1145,12 +1181,31 @@ def _mock_release_dependencies(
                 "analyzer_contract_sha256": analyzer_contract_sha256,
                 "signature_sha256": signature_sha256,
                 "alias_class_manifest_sha256": alias_class_manifest_sha256,
-                "model": generator.refresh_runner.MODEL,
-                "reasoning_effort": generator.refresh_runner.REASONING_EFFORT,
+                "screening_model": generator.refresh_runner.SCREENING_MODEL,
+                "verification_model": generator.refresh_runner.VERIFY_MODEL,
+                "screening_reasoning_effort": (
+                    generator.refresh_runner.SCREENING_REASONING_EFFORT
+                ),
+                "verification_reasoning_effort": (
+                    generator.refresh_runner.REASONING_EFFORT
+                ),
                 "workers": generator.refresh_runner.WORKERS,
-                "forced_verification": True,
-                "result_cache_reads": False,
+                "no_token_child_processes": (
+                    generator.refresh_runner.NO_TOKEN_CHILD_PROCESSES
+                ),
+                "no_token_total_workers": (
+                    generator.refresh_runner.NO_TOKEN_TOTAL_WORKERS
+                ),
+                "screening_gates_verification": True,
+                "result_cache_reads": True,
                 "llm_cache_reads": False,
+                "pipeline_phases": [
+                    "no_token",
+                    "screening",
+                    "verification",
+                    "aggregation_publication",
+                ],
+                "llm_plan_digest_approval_required": True,
                 "litellm_transport_sha256": litellm_transport_sha256,
                 "batch_timeout_seconds": (
                     generator.refresh_runner.BATCH_TIMEOUT_SECONDS
@@ -1217,7 +1272,9 @@ def _mock_release_dependencies(
         key=batch_spec.key,
         path=batch_spec.path,
         ids=batch_spec.ids,
-        command=tuple(generator.refresh_runner.build_command(batch_spec)),
+        command=tuple(
+            generator.refresh_runner.build_command(batch_spec, phase="verification")
+        ),
         class_ids=tuple(class_id_by_subject[item] for item in batch_spec.ids),
     )
     batch.path.write_text("\n".join(subject_ids) + "\n", encoding="utf-8")
@@ -1232,6 +1289,12 @@ def _mock_release_dependencies(
         model="gpt-5.6-luna",
         reasoning_effort="max",
         workers=generator.refresh_runner.WORKERS,
+        no_token_child_processes=(
+            generator.refresh_runner.NO_TOKEN_CHILD_PROCESSES
+        ),
+        no_token_total_workers=(
+            generator.refresh_runner.NO_TOKEN_TOTAL_WORKERS
+        ),
         marker_schema_version=generator.refresh_runner.MARKER_SCHEMA_VERSION,
         litellm_transport_sha256=litellm_transport_sha256,
         litellm_transport=litellm_transport,
@@ -1448,6 +1511,18 @@ def _mock_release_dependencies(
             "campaign_mode": detector_inventory["campaign_mode"],
             "complete": detector_inventory["complete"],
             "alias_class_count": detector_inventory["alias_class_count"],
+            "stage_metrics": {
+                "screening": {"confusion_counts": {"tp": 1, "fp": 0, "fn": 0, "tn": 0}},
+                "final_publication": {
+                    "confusion_counts": {"tp": 1, "fp": 0, "fn": 0, "tn": 0}
+                },
+            },
+            "stage_quality_gate": {
+                "screening_zero_false_negatives": True,
+                "final_precision_lower_bound_at_least_0_95": True,
+                "final_recall_lower_bound_at_least_0_95": True,
+                "passed": True,
+            },
         },
         "fixed_contract_campaign_proof": {
             "complete": True,
@@ -1478,6 +1553,10 @@ def _mock_release_dependencies(
                 "model": context.model,
                 "reasoning_effort": context.reasoning_effort,
                 "workers": context.workers,
+                "no_token_child_processes": (
+                    context.no_token_child_processes
+                ),
+                "no_token_total_workers": context.no_token_total_workers,
                 "litellm_transport_sha256": context.litellm_transport_sha256,
                 "litellm_transport": context.litellm_transport,
                 "batch_timeout_seconds": context.batch_timeout_seconds,
@@ -1521,6 +1600,7 @@ def _mock_release_dependencies(
             subject_ids=(f"CVE-2026-{10_000 + index}",),
             predicted_positive=True,
             candidate_positive=True,
+            screening_positive=True,
             prediction_reasons=("included",),
             infrastructure_categories=(),
             unresolved_reasons=(),
@@ -1701,7 +1781,7 @@ def _mock_release_dependencies(
         require_certified=True,
     )
     heldout_report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "evaluation_kind": "independent_heldout_fixed_campaign_detector_quality",
         "selection_manifest_sha256": selection["selection_manifest_sha256"],
         "campaign": selection["campaign"],
@@ -1713,6 +1793,7 @@ def _mock_release_dependencies(
         },
         "precision": quality["precision"],
         "recall": quality["recall"],
+        "stage_metrics": quality["stage_metrics"],
         "denominators": quality["denominators"],
         "strata": quality["strata"],
         "point_gate_passed": quality["point_gate_passed"],

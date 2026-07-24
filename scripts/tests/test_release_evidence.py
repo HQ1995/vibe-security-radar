@@ -31,6 +31,7 @@ from cve_analyzer.models import (
     BugIntroducingCommit,
     CommitInfo,
     CveAnalysisResult,
+    CveScreeningResult,
     FixCommit,
 )
 from verify_formal_release import verify_formal_release
@@ -606,7 +607,7 @@ def _campaign_result_bytes(
     signal = AiSignal(
         tool=AiTool.CURSOR,
         signal_type="co_author_trailer",
-        matched_text="Co-authored-by: Cursor",
+        matched_text="Co-authored-by: Cursor <cursoragent@cursor.com>",
         confidence=0.95,
     )
     commit = CommitInfo(
@@ -615,7 +616,10 @@ def _campaign_result_bytes(
         author_email="fixture@example.invalid",
         committer_name="Fixture",
         committer_email="fixture@example.invalid",
-        message="fixture campaign result",
+        message=(
+            "fixture campaign result\n\n"
+            "Co-authored-by: Cursor <cursoragent@cursor.com>"
+        ),
         authored_date="2026-07-18T12:00:00Z",
         ai_signals=[signal],
     )
@@ -649,6 +653,12 @@ def _campaign_result_bytes(
             else []
         ),
         bug_introducing_commits=[bic],
+        screening=CveScreeningResult(
+            worth_investigating=True,
+            reasoning="Fixture screening evidence.",
+            relevant_commits=["a" * 40],
+            model=refresh_runner.SCREENING_MODEL,
+        ),
         campaign_receipt={
             "schema_version": 1,
             "campaign_id": campaign.campaign_id,
@@ -861,7 +871,7 @@ def _artifacts(
         ids=batch_ids,
         repos=frozenset(),
     )
-    batch_command = refresh_runner.build_command(batch_spec)
+    batch_command = refresh_runner.build_command(batch_spec, phase="verification")
     batch_sha256 = hashlib.sha256(batch_bytes).hexdigest()
     command_sha256 = _canonical_sha256(batch_command)
     campaign_identity = {
@@ -871,12 +881,23 @@ def _artifacts(
         "analyzer_contract_sha256": analyzer_contract_sha256,
         "signature_sha256": signature_sha256,
         "alias_class_manifest_sha256": alias_manifest["classes_sha256"],
-        "model": refresh_runner.MODEL,
-        "reasoning_effort": refresh_runner.REASONING_EFFORT,
+        "screening_model": refresh_runner.SCREENING_MODEL,
+        "verification_model": refresh_runner.VERIFY_MODEL,
+        "screening_reasoning_effort": refresh_runner.SCREENING_REASONING_EFFORT,
+        "verification_reasoning_effort": refresh_runner.REASONING_EFFORT,
         "workers": refresh_runner.WORKERS,
-        "forced_verification": True,
-        "result_cache_reads": False,
+        "no_token_child_processes": refresh_runner.NO_TOKEN_CHILD_PROCESSES,
+        "no_token_total_workers": refresh_runner.NO_TOKEN_TOTAL_WORKERS,
+        "screening_gates_verification": True,
+        "result_cache_reads": True,
         "llm_cache_reads": False,
+        "pipeline_phases": [
+            "no_token",
+            "screening",
+            "verification",
+            "aggregation_publication",
+        ],
+        "llm_plan_digest_approval_required": True,
         "litellm_transport_sha256": litellm_transport_sha256,
         "batch_timeout_seconds": refresh_runner.BATCH_TIMEOUT_SECONDS,
     }
@@ -945,7 +966,9 @@ def _artifacts(
         ),
         "model": "gpt-5.6-luna",
         "reasoning_effort": "max",
-        "workers": 32,
+        "workers": refresh_runner.WORKERS,
+        "no_token_child_processes": refresh_runner.NO_TOKEN_CHILD_PROCESSES,
+        "no_token_total_workers": refresh_runner.NO_TOKEN_TOTAL_WORKERS,
         "litellm_transport_sha256": litellm_transport_sha256,
         "litellm_transport": litellm_transport,
         "batch_timeout_seconds": refresh_runner.BATCH_TIMEOUT_SECONDS,
@@ -1161,6 +1184,20 @@ def _artifacts(
             "campaign_mode": detector_inventory["campaign_mode"],
             "complete": detector_inventory["complete"],
             "alias_class_count": detector_inventory["alias_class_count"],
+            "stage_metrics": {
+                "screening": {
+                    "confusion_counts": {"tp": 100, "fp": 0, "fn": 0, "tn": 0}
+                },
+                "final_publication": {
+                    "confusion_counts": {"tp": 100, "fp": 0, "fn": 0, "tn": 0}
+                },
+            },
+            "stage_quality_gate": {
+                "screening_zero_false_negatives": True,
+                "final_precision_lower_bound_at_least_0_95": True,
+                "final_recall_lower_bound_at_least_0_95": True,
+                "passed": True,
+            },
         },
     }
     if publication_files is None:
@@ -1192,6 +1229,7 @@ def _artifacts(
             subject_ids=(f"CVE-2026-{10_000 + index}",),
             predicted_positive=True,
             candidate_positive=True,
+            screening_positive=True,
             prediction_reasons=("included",),
             infrastructure_categories=(),
             unresolved_reasons=(),
@@ -1352,7 +1390,7 @@ def _artifacts(
     )
     boundary = selection["measurement_boundary"]
     heldout_report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "evaluation_kind": "independent_heldout_fixed_campaign_detector_quality",
         "selection_manifest_sha256": selection["selection_manifest_sha256"],
         "campaign": selection["campaign"],
@@ -1364,6 +1402,7 @@ def _artifacts(
         },
         "precision": quality["precision"],
         "recall": quality["recall"],
+        "stage_metrics": quality["stage_metrics"],
         "denominators": quality["denominators"],
         "strata": quality["strata"],
         "point_gate_passed": quality["point_gate_passed"],
@@ -1404,7 +1443,9 @@ def _artifacts(
         ),
         "model": "gpt-5.6-luna",
         "reasoning_effort": "max",
-        "workers": 32,
+        "workers": refresh_runner.WORKERS,
+        "no_token_child_processes": refresh_runner.NO_TOKEN_CHILD_PROCESSES,
+        "no_token_total_workers": refresh_runner.NO_TOKEN_TOTAL_WORKERS,
         "marker_schema_version": refresh_runner.MARKER_SCHEMA_VERSION,
         "litellm_transport_sha256": litellm_transport_sha256,
         "litellm_transport": litellm_transport,
@@ -1465,8 +1506,10 @@ def _artifacts(
             "protected_census": {"class_count": 0},
         },
     }
+    stage_metrics = detector_report["detector_inventory"]["stage_metrics"]
+    stage_quality_gate = detector_report["detector_inventory"]["stage_quality_gate"]
     receipt = {
-        "schema_version": 4,
+        "schema_version": 5,
         "generation_id": generation_id,
         "generated_at": "2026-07-18T13:00:00+00:00",
         "campaign_id": campaign_id,
@@ -1488,6 +1531,9 @@ def _artifacts(
         "publication_bundle_sha256": publication_bundle_sha256,
         "publication_manifest_sha256": _canonical_sha256(publication_files),
         "detector_report_sha256": _canonical_sha256(detector_report),
+        "detector_stage_metrics_sha256": _canonical_sha256(stage_metrics),
+        "detector_stage_quality_gate_sha256": _canonical_sha256(stage_quality_gate),
+        "detector_stage_quality_gate_passed": True,
         "detector_inventory_id": detector_inventory["inventory_id"],
         "detector_inventory_sha256": _canonical_sha256(detector_inventory),
         "detector_inventory_campaign_mode": "formal",
@@ -1547,6 +1593,12 @@ def _artifacts(
         "model": campaign_contract["model"],
         "reasoning_effort": campaign_contract["reasoning_effort"],
         "workers": campaign_contract["workers"],
+        "no_token_child_processes": campaign_contract[
+            "no_token_child_processes"
+        ],
+        "no_token_total_workers": campaign_contract[
+            "no_token_total_workers"
+        ],
         "litellm_transport_sha256": campaign_contract["litellm_transport_sha256"],
     }
     return {

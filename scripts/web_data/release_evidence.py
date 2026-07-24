@@ -122,12 +122,27 @@ def _campaign_identity_sha256(campaign_contract: Mapping[str, Any]) -> str:
         "analyzer_contract_sha256": campaign_contract["analyzer_contract_sha256"],
         "signature_sha256": campaign_contract["signature_sha256"],
         "alias_class_manifest_sha256": campaign_contract["alias_class_manifest_sha256"],
-        "model": refresh_runner.MODEL,
-        "reasoning_effort": refresh_runner.REASONING_EFFORT,
+        "screening_model": refresh_runner.SCREENING_MODEL,
+        "verification_model": refresh_runner.VERIFY_MODEL,
+        "screening_reasoning_effort": refresh_runner.SCREENING_REASONING_EFFORT,
+        "verification_reasoning_effort": refresh_runner.REASONING_EFFORT,
         "workers": refresh_runner.WORKERS,
-        "forced_verification": True,
-        "result_cache_reads": False,
+        "no_token_child_processes": campaign_contract[
+            "no_token_child_processes"
+        ],
+        "no_token_total_workers": campaign_contract[
+            "no_token_total_workers"
+        ],
+        "screening_gates_verification": True,
+        "result_cache_reads": True,
         "llm_cache_reads": False,
+        "pipeline_phases": [
+            "no_token",
+            "screening",
+            "verification",
+            "aggregation_publication",
+        ],
+        "llm_plan_digest_approval_required": True,
         "litellm_transport_sha256": campaign_contract["litellm_transport_sha256"],
         "batch_timeout_seconds": refresh_runner.BATCH_TIMEOUT_SECONDS,
     }
@@ -2581,6 +2596,8 @@ def _validate_campaign_archive_contract(
         "model",
         "reasoning_effort",
         "workers",
+        "no_token_child_processes",
+        "no_token_total_workers",
         "marker_schema_version",
         "litellm_transport_sha256",
         "litellm_transport",
@@ -2622,6 +2639,10 @@ def _validate_campaign_archive_contract(
         or isinstance(campaign_contract.get("workers"), bool)
         or not isinstance(campaign_contract.get("workers"), int)
         or campaign_contract["workers"] <= 0
+        or campaign_contract.get("no_token_child_processes")
+        != refresh_runner.NO_TOKEN_CHILD_PROCESSES
+        or campaign_contract.get("no_token_total_workers")
+        != refresh_runner.NO_TOKEN_TOTAL_WORKERS
         or campaign_contract.get("marker_schema_version")
         != refresh_runner.MARKER_SCHEMA_VERSION
         or not isinstance(campaign_contract.get("litellm_transport"), dict)
@@ -2640,6 +2661,10 @@ def _validate_campaign_archive_contract(
         campaign_contract.get("model") != refresh_runner.MODEL
         or campaign_contract.get("reasoning_effort") != refresh_runner.REASONING_EFFORT
         or campaign_contract.get("workers") != refresh_runner.WORKERS
+        or campaign_contract.get("no_token_child_processes")
+        != refresh_runner.NO_TOKEN_CHILD_PROCESSES
+        or campaign_contract.get("no_token_total_workers")
+        != refresh_runner.NO_TOKEN_TOTAL_WORKERS
     ):
         raise ReleaseEvidenceError("campaign contract Luna/max proof is invalid")
     alias_manifest = campaign_contract.get("alias_class_manifest")
@@ -2686,6 +2711,10 @@ def _validate_campaign_archive_contract(
         or campaign_contract["model"] != receipt.get("model")
         or campaign_contract["reasoning_effort"] != receipt.get("reasoning_effort")
         or campaign_contract["workers"] != receipt.get("workers")
+        or campaign_contract["no_token_child_processes"]
+        != receipt.get("no_token_child_processes")
+        or campaign_contract["no_token_total_workers"]
+        != receipt.get("no_token_total_workers")
         or campaign_contract["litellm_transport_sha256"]
         != receipt.get("litellm_transport_sha256")
         or campaign_contract["campaign_mode"] != receipt.get("campaign_mode")
@@ -2785,7 +2814,8 @@ def _validate_campaign_archive_contract(
                 kind="archived_release_validation",
                 ids=tuple(ids),
                 repos=frozenset(),
-            )
+            ),
+            phase="verification",
         )
         if command != expected_command:
             raise ReleaseEvidenceError(
@@ -3385,6 +3415,8 @@ def _validate_fixed_campaign_proof(
         "model",
         "reasoning_effort",
         "workers",
+        "no_token_child_processes",
+        "no_token_total_workers",
         "litellm_transport_sha256",
         "litellm_transport",
         "batch_timeout_seconds",
@@ -3410,6 +3442,10 @@ def _validate_fixed_campaign_proof(
         or expected.get("model") != "gpt-5.6-luna"
         or expected.get("reasoning_effort") != "max"
         or expected.get("workers") != campaign_contract.get("workers")
+        or expected.get("no_token_child_processes")
+        != campaign_contract.get("no_token_child_processes")
+        or expected.get("no_token_total_workers")
+        != campaign_contract.get("no_token_total_workers")
         or expected.get("litellm_transport_sha256")
         != campaign_contract.get("litellm_transport_sha256")
         or expected.get("litellm_transport")
@@ -4087,6 +4123,8 @@ def _validate_cross_artifact_contract(
         "source_snapshot_sha256",
         "publication_bundle_sha256",
         "detector_report_sha256",
+        "detector_stage_metrics_sha256",
+        "detector_stage_quality_gate_sha256",
         "detector_inventory_sha256",
         "analyzer_contract_sha256",
         "signature_sha256",
@@ -4115,13 +4153,14 @@ def _validate_cross_artifact_contract(
             raise ReleaseEvidenceError(
                 f"release receipt {field} must be a lowercase SHA-256"
             )
-    if receipt.get("schema_version") != 4:
-        raise ReleaseEvidenceError("release receipt requires schema_version 4")
+    if receipt.get("schema_version") != 5:
+        raise ReleaseEvidenceError("release receipt requires schema_version 5")
     if (
         receipt.get("evaluation_complete") is not True
         or receipt.get("release_safe") is not True
         or receipt.get("curation_consistent") is not True
         or receipt.get("heldout_certified") is not True
+        or receipt.get("detector_stage_quality_gate_passed") is not True
         or receipt.get("recall_evaluation_complete") is not True
         or receipt.get("recall_evaluation_status") != "complete_end_to_end"
         or receipt.get("protected_census_complete") is not True
@@ -4186,6 +4225,20 @@ def _validate_cross_artifact_contract(
     ):
         raise ReleaseEvidenceError(
             "detector inventory does not match the formal campaign receipt"
+        )
+    stage_metrics = detector_inventory_report.get("stage_metrics")
+    stage_quality_gate = detector_inventory_report.get("stage_quality_gate")
+    if (
+        not isinstance(stage_metrics, dict)
+        or not isinstance(stage_quality_gate, dict)
+        or stage_quality_gate.get("passed") is not True
+        or _canonical_sha256(stage_metrics)
+        != receipt.get("detector_stage_metrics_sha256")
+        or _canonical_sha256(stage_quality_gate)
+        != receipt.get("detector_stage_quality_gate_sha256")
+    ):
+        raise ReleaseEvidenceError(
+            "detector stage-quality evidence does not match the release receipt"
         )
     if (
         _canonical_sha256(curation_report)
@@ -4378,6 +4431,10 @@ def _validate_cross_artifact_contract(
         or campaign_contract.get("model") != receipt.get("model")
         or campaign_contract.get("reasoning_effort") != receipt.get("reasoning_effort")
         or campaign_contract.get("workers") != receipt.get("workers")
+        or campaign_contract.get("no_token_child_processes")
+        != receipt.get("no_token_child_processes")
+        or campaign_contract.get("no_token_total_workers")
+        != receipt.get("no_token_total_workers")
         or campaign_contract.get("litellm_transport_sha256")
         != receipt.get("litellm_transport_sha256")
         or campaign_contract.get("campaign_mode") != "formal"
@@ -4603,13 +4660,33 @@ def _validate_cross_artifact_contract(
         raise ReleaseEvidenceError(
             "publication curation-consistency report did not pass"
         )
+    heldout_stage_metrics = heldout_report.get("stage_metrics")
+    heldout_screening = (
+        heldout_stage_metrics.get("screening")
+        if isinstance(heldout_stage_metrics, dict)
+        else None
+    )
+    heldout_screening_confusion = (
+        heldout_screening.get("confusion")
+        if isinstance(heldout_screening, dict)
+        else None
+    )
     if (
-        heldout_report.get("schema_version") != 2
+        heldout_report.get("schema_version") != 3
         or heldout_report.get("evaluation_kind")
         != "independent_heldout_fixed_campaign_detector_quality"
         or heldout_report.get("evaluation_complete") is not True
         or heldout_report.get("point_gate_passed") is not True
         or heldout_report.get("release_gate_passed") is not True
+        or not isinstance(heldout_screening_confusion, dict)
+        or set(heldout_screening_confusion) != {"tp", "fp", "fn", "tn"}
+        or any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in heldout_screening_confusion.values()
+        )
+        or heldout_screening_confusion.get("fn") != 0
+        or heldout_screening_confusion.get("tp", 0) <= 0
+        or heldout_screening.get("screening_zero_false_negatives") is not True
     ):
         raise ReleaseEvidenceError("independent held-out report did not pass")
     heldout_campaign = heldout_report.get("campaign")
@@ -4657,6 +4734,10 @@ def _validate_cross_artifact_contract(
         or fixed_expected_contract.get("result_dir")
         != campaign_contract.get("result_dir")
         or fixed_expected_contract.get("workers") != campaign_contract.get("workers")
+        or fixed_expected_contract.get("no_token_child_processes")
+        != campaign_contract.get("no_token_child_processes")
+        or fixed_expected_contract.get("no_token_total_workers")
+        != campaign_contract.get("no_token_total_workers")
         or fixed_expected_contract.get("litellm_transport_sha256")
         != campaign_contract.get("litellm_transport_sha256")
     ):

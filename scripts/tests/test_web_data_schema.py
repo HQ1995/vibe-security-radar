@@ -425,7 +425,7 @@ class TestProducerNormalization:
         signal = AiSignal(
             tool=AiTool.CURSOR,
             signal_type="co_author_trailer",
-            matched_text="Co-authored-by: Cursor",
+            matched_text="Co-authored-by: Cursor <cursoragent@cursor.com>",
             confidence=0.95,
             origin="commit_metadata",
         )
@@ -436,7 +436,10 @@ class TestProducerNormalization:
                 author_email="alice@example.com",
                 committer_name="Alice",
                 committer_email="alice@example.com",
-                message="introduce bug",
+                message=(
+                    "introduce bug\n\n"
+                    "Co-authored-by: Cursor <cursoragent@cursor.com>"
+                ),
                 authored_date="2025-05-01T00:00:00Z",
                 ai_signals=[signal],
             ),

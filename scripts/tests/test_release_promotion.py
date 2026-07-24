@@ -271,7 +271,7 @@ def _test_receipt_payload(staged: writer.StagedWebData) -> dict:
         },
     }
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "generation_id": publication.index["generation_id"],
         "generated_at": publication.index["generated_at"],
         "campaign_id": inventory["campaign_id"],
@@ -321,6 +321,9 @@ def _test_receipt_payload(staged: writer.StagedWebData) -> dict:
             "source_alias_class_manifest_sha256"
         ],
         "detector_inventory_alias_class_count": inventory["alias_class_count"],
+        "detector_stage_metrics_sha256": "5" * 64,
+        "detector_stage_quality_gate_sha256": "6" * 64,
+        "detector_stage_quality_gate_passed": True,
         "targets": {"precision": 0.95, "recall": 0.95},
         "curation_consistency_point_estimates": {
             "precision": 1.0,

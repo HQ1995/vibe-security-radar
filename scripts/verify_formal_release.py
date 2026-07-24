@@ -68,7 +68,8 @@ def verify_formal_release(
     if inventory is None:
         raise PublishedDataError("formal release detector inventory is missing")
     if (
-        receipt.get("schema_version") != 4
+        receipt.get("schema_version") != 5
+        or receipt.get("detector_stage_quality_gate_passed") is not True
         or inventory.get("campaign_mode") != "formal"
         or inventory.get("complete") is not True
         or receipt.get("detector_inventory_id") != inventory.get("inventory_id")

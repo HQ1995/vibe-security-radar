@@ -123,6 +123,12 @@ export interface InventoryRow {
   readonly adjudication_state: "ai_causal" | "not_ai_causal" | "unknown" | "unreviewed";
   readonly publication_state: "published" | "eligible" | "withheld" | "not_applicable";
   readonly recall_stratum: "detected_positive" | "coverage_failure" | "no_current_campaign_result" | "no_fix_commit" | "fix_no_bic" | "bic_no_trusted_authorship" | "trusted_signal_classifier_negative_or_incomplete";
+  readonly stage_predictions?: {
+    readonly source_matcher: "positive" | "negative" | "incomplete";
+    readonly screening: "positive" | "negative" | "incomplete";
+    readonly verification: "positive" | "negative" | "incomplete";
+    readonly final_publication: "positive" | "negative" | "incomplete";
+  };
   readonly reasons: readonly string[];
 }
 

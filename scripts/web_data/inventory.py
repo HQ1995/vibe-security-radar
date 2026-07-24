@@ -12,6 +12,7 @@ from cve_analyzer.models import (
     CveAnalysisResult,
     analysis_stage_receipts_are_valid,
 )
+from cve_analyzer.source_matcher import bic_is_candidate
 
 from web_data.schema import validate_inventory_payload
 
@@ -249,12 +250,13 @@ def build_detector_inventory(
         fixes = [
             fix for result in class_results for fix in result.fix_commits if fix.sha
         ]
-        has_candidate_signal = any(bic.all_ai_signals() for bic in bics) or any(
+        has_shadow_signal = any(bic.all_ai_signals() for bic in bics) or any(
             result.ai_signals for result in class_results
         )
-        has_authorship = any(bic.all_authorship_signals() for bic in bics)
+        has_candidate_signal = any(bic_is_candidate(bic) for bic in bics)
+        has_authorship = has_candidate_signal
         has_attested_confirmed = any(
-            _deep_verdict(bic) == "CONFIRMED" and bool(bic.authorship_signals())
+            _deep_verdict(bic) == "CONFIRMED" and bic_is_candidate(bic)
             for bic in bics
         )
         if coverage_status != "complete":
@@ -272,16 +274,43 @@ def build_detector_inventory(
             detector_state = "exhausted"
             recall_stratum = "fix_no_bic"
         elif not has_authorship:
-            detector_state = "candidate" if has_candidate_signal else "negative"
+            detector_state = "negative"
             recall_stratum = "bic_no_trusted_authorship"
-            if has_candidate_signal:
-                reasons.append("workflow_or_non_attesting_signal")
+            if has_shadow_signal:
+                reasons.append("shadow_signal_only")
         elif has_attested_confirmed:
             detector_state = "positive"
             recall_stratum = "detected_positive"
         else:
             detector_state = "candidate"
             recall_stratum = "trusted_signal_classifier_negative_or_incomplete"
+
+        if coverage_status != "complete":
+            stage_predictions = {
+                stage: "incomplete"
+                for stage in (
+                    "source_matcher",
+                    "screening",
+                    "verification",
+                    "final_publication",
+                )
+            }
+        else:
+            screening_positive = any(
+                any(bic_is_candidate(bic) for bic in result.bug_introducing_commits)
+                and result.screening is not None
+                and result.screening.worth_investigating
+                for result in class_results
+            )
+            verification_positive = has_attested_confirmed
+            stage_predictions = {
+                "source_matcher": "positive" if has_candidate_signal else "negative",
+                "screening": "positive" if screening_positive else "negative",
+                "verification": "positive" if verification_positive else "negative",
+                "final_publication": (
+                    "positive" if members & published_ids else "negative"
+                ),
+            }
 
         positive = bool(members & adjudicated_positive_ids)
         excluded = bool(members & audit_exclusions)
@@ -316,6 +345,7 @@ def build_detector_inventory(
                 "adjudication_state": adjudication_state,
                 "publication_state": publication_state,
                 "recall_stratum": recall_stratum,
+                "stage_predictions": stage_predictions,
                 "reasons": sorted(set(reasons)),
             }
         )

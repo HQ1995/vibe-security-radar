@@ -589,6 +589,40 @@ def _require_release_gates(
         or heldout_report.get("certified_gate_passed") is not True
     ):
         raise ReleaseGateError("independent held-out certified-quality gate failed")
+    heldout_stage_metrics = heldout_report.get("stage_metrics")
+    heldout_screening = (
+        heldout_stage_metrics.get("screening")
+        if isinstance(heldout_stage_metrics, dict)
+        else None
+    )
+    screening_confusion = (
+        heldout_screening.get("confusion")
+        if isinstance(heldout_screening, dict)
+        else None
+    )
+    if (
+        not isinstance(screening_confusion, dict)
+        or screening_confusion.get("fn") != 0
+        or heldout_screening.get("screening_zero_false_negatives") is not True
+    ):
+        raise ReleaseGateError(
+            "independent held-out screening false-negative gate failed"
+        )
+    for metric in ("precision", "recall"):
+        evidence = heldout_report.get(metric)
+        lower_bound = (
+            evidence.get("one_sided_95pct_lower_bound")
+            if isinstance(evidence, dict)
+            else None
+        )
+        if (
+            isinstance(lower_bound, bool)
+            or not isinstance(lower_bound, (int, float))
+            or float(lower_bound) < 0.95
+        ):
+            raise ReleaseGateError(
+                f"independent held-out final {metric} lower bound is below 0.95"
+            )
     heldout_campaign = heldout_report.get("campaign")
     expected_contract = proof.get("expected_contract")
     if not isinstance(heldout_campaign, dict) or not isinstance(
@@ -1575,6 +1609,8 @@ def _campaign_contract_artifact(context: Any) -> dict[str, Any]:
         "model": context.model,
         "reasoning_effort": context.reasoning_effort,
         "workers": context.workers,
+        "no_token_child_processes": context.no_token_child_processes,
+        "no_token_total_workers": context.no_token_total_workers,
         "marker_schema_version": context.marker_schema_version,
         "litellm_transport_sha256": context.litellm_transport_sha256,
         "litellm_transport": context.litellm_transport,
@@ -2054,8 +2090,15 @@ def _generate_release_locked(
         )
 
         fixed_proof = detector_report["fixed_contract_campaign_proof"]
+        detector_inventory_report = detector_report.get("detector_inventory")
+        if not isinstance(detector_inventory_report, dict):
+            raise ReleaseGateError("detector inventory report is missing")
+        stage_metrics = detector_inventory_report.get("stage_metrics")
+        stage_quality_gate = detector_inventory_report.get("stage_quality_gate")
+        if not isinstance(stage_metrics, dict) or not isinstance(stage_quality_gate, dict):
+            raise ReleaseGateError("detector stage evidence is missing")
         receipt = {
-            "schema_version": 4,
+            "schema_version": 5,
             "generation_id": publication.index["generation_id"],
             "generated_at": generated_at,
             "campaign_id": initial_context.campaign_id,
@@ -2080,6 +2123,12 @@ def _generate_release_locked(
             "publication_bundle_sha256": publication_hash,
             "publication_manifest_sha256": publication_manifest_sha256,
             "detector_report_sha256": _canonical_sha256(detector_report),
+            "detector_stage_metrics_sha256": _canonical_sha256(stage_metrics),
+            "detector_stage_quality_gate_sha256": _canonical_sha256(
+                stage_quality_gate
+            ),
+            "detector_stage_quality_gate_passed": stage_quality_gate.get("passed")
+            is True,
             "fixed_campaign_proof_sha256": _canonical_sha256(fixed_proof),
             "publication_curation_consistency_report_sha256": _canonical_sha256(
                 curation_report
@@ -2142,6 +2191,10 @@ def _generate_release_locked(
             "model": initial_context.model,
             "reasoning_effort": initial_context.reasoning_effort,
             "workers": initial_context.workers,
+            "no_token_child_processes": (
+                initial_context.no_token_child_processes
+            ),
+            "no_token_total_workers": initial_context.no_token_total_workers,
         }
         if built.inventory is not None:
             receipt.update(

@@ -22,6 +22,7 @@ from cve_analyzer.models import (
     investigation_scope_is_current,
     is_legacy_unscoped_verification,
 )
+from cve_analyzer.source_matcher import bic_is_candidate
 from cve_analyzer.scoring import compute_ai_confidence
 
 from web_data.constants import CONFIDENCE_STR_TO_NUMERIC, STRONG_SIGNAL_TYPES
@@ -417,7 +418,10 @@ def build_entry(
     publishable_bics_before_audit = [
         bic
         for bic in result.bug_introducing_commits
-        if bic.fix_commit_sha in known_fix_shas and bool(bic.blamed_file) and not bic.blamed_file.startswith("(")
+        if bic.fix_commit_sha in known_fix_shas
+        and bool(bic.blamed_file)
+        and not bic.blamed_file.startswith("(")
+        and bic_is_candidate(bic)
     ]
     audit_detail = (audit_override_details or {}).get(cve_id, {}) if is_override else {}
     excluded_bic_subjects = {

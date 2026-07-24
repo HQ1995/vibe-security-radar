@@ -324,6 +324,34 @@ DEFS: dict[str, dict] = {
                     "trusted_signal_classifier_negative_or_incomplete",
                 ],
             },
+            "stage_predictions": {
+                "type": "object",
+                "properties": {
+                    "source_matcher": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "incomplete"],
+                    },
+                    "screening": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "incomplete"],
+                    },
+                    "verification": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "incomplete"],
+                    },
+                    "final_publication": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "incomplete"],
+                    },
+                },
+                "required": [
+                    "source_matcher",
+                    "screening",
+                    "verification",
+                    "final_publication",
+                ],
+                "additionalProperties": False,
+            },
             "reasons": _STRING_LIST,
         },
         "required": [

@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 from cve_analyzer.models import CveAnalysisResult, investigation_scope_is_current
+from cve_analyzer.source_matcher import (
+    bic_is_candidate,
+    candidate_evidence_complete,
+    match_result,
+)
 
 
 def is_fallback_verdict(dv: dict) -> bool:
@@ -65,6 +70,15 @@ def _should_include_with_reason(
     if "rejected reason:" in desc or "this cve id has been rejected" in desc:
         return False, "rejected_cve"
 
+    # Publication v1 has one source contract: a known-AI Co-authored-by
+    # trailer in commit metadata. Broader detector signals stay available in
+    # inventory telemetry, but neither an audit override nor a downstream LLM
+    # verdict may promote them into the catalog.
+    if not match_result(
+        result, complete=candidate_evidence_complete(result)
+    ).eligible:
+        return False, "no_production_source_match"
+
     if audit_exclusions and result.cve_id in audit_exclusions:
         return False, "audit_not_ai"
 
@@ -81,7 +95,7 @@ def _should_include_with_reason(
     # Per-BIC fallback remains strict: screening is diagnostic, and a positive
     # needs both causal confirmation and an authorship-bearing signal.
     for bic in result.bug_introducing_commits:
-        has_signals = bool(bic.all_ai_signals())
+        has_signals = bic_is_candidate(bic)
         has_screening = bic.screening_verification is not None
         if not has_signals and not has_screening:
             continue
@@ -89,8 +103,7 @@ def _should_include_with_reason(
         dv = bic.deep_verification
         if dv and not is_fallback_verdict(dv):
             verdict = (dv.get("final_verdict") or dv.get("verdict") or "").upper()
-            source = str(dv.get("ai_signal_source") or "")
-            if verdict == "CONFIRMED" and bic.has_authorship_attestation(source):
+            if verdict == "CONFIRMED" and bic_is_candidate(bic):
                 return True, ""
             continue
     return False, "no_confirmed_verdict"

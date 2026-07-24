@@ -890,6 +890,9 @@ def _validate_release_receipt(
         "source_snapshot_sha256",
         "source_remote_cutoff",
         "publication_bundle_sha256",
+        "detector_stage_metrics_sha256",
+        "detector_stage_quality_gate_sha256",
+        "detector_stage_quality_gate_passed",
         "publication_manifest_sha256",
         "publication_curation_consistency_report_sha256",
         "publication_curation_inputs_sha256",
@@ -928,8 +931,8 @@ def _validate_release_receipt(
     missing = sorted(required - receipt.keys())
     if missing:
         _invalid(f"release receipt is missing required fields: {missing}")
-    if receipt.get("schema_version") != 4:
-        _invalid("release receipt requires schema_version 4")
+    if receipt.get("schema_version") != 5:
+        _invalid("release receipt requires schema_version 5")
     for field in (
         "generation_id",
         "campaign_id",
@@ -939,6 +942,8 @@ def _validate_release_receipt(
         "alias_class_manifest_sha256",
         "source_snapshot_sha256",
         "publication_bundle_sha256",
+        "detector_stage_metrics_sha256",
+        "detector_stage_quality_gate_sha256",
         "publication_manifest_sha256",
         "publication_curation_consistency_report_sha256",
         "publication_curation_inputs_sha256",
@@ -969,6 +974,8 @@ def _validate_release_receipt(
         _invalid("release receipt curation_consistent must be true")
     if receipt.get("heldout_certified") is not True:
         _invalid("release receipt heldout_certified must be true")
+    if receipt.get("detector_stage_quality_gate_passed") is not True:
+        _invalid("release receipt detector stage-quality gate must be true")
     protected_overlap_count = receipt.get("protected_overlap_class_count")
     if (
         receipt.get("protected_census_complete") is not True

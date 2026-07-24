@@ -23,15 +23,27 @@ from web_data.filters import is_fallback_verdict, should_include
 # ---------------------------------------------------------------------------
 
 def make_commit(sha: str = "abc123", ai_signals: list[AiSignal] | None = None) -> CommitInfo:
+    signals = ai_signals or []
+    source_lines = [
+        signal.matched_text
+        for signal in signals
+        if signal.signal_type == "co_author_trailer"
+        and "<" in signal.matched_text
+        and ">" in signal.matched_text
+    ]
     return CommitInfo(
         sha=sha,
         author_name="Alice",
         author_email="alice@example.com",
         committer_name="Alice",
         committer_email="alice@example.com",
-        message="some commit",
+        message=(
+            "some commit\n\n" + "\n".join(source_lines)
+            if source_lines
+            else "some commit"
+        ),
         authored_date="2025-06-01T00:00:00Z",
-        ai_signals=ai_signals or [],
+        ai_signals=signals,
     )
 
 
@@ -39,7 +51,7 @@ def make_signal() -> AiSignal:
     return AiSignal(
         tool=AiTool.CLAUDE_CODE,
         signal_type="co_author_trailer",
-        matched_text="Co-authored-by: Claude",
+        matched_text="Co-authored-by: Claude <noreply@anthropic.com>",
         confidence=0.95,
     )
 
@@ -164,10 +176,10 @@ class TestShouldIncludeErrorAndRejected:
 # ---------------------------------------------------------------------------
 
 class TestShouldIncludeAuditOverrides:
-    def test_audit_override_forces_inclusion(self):
-        # No signals, no ai_involved — would normally be excluded
+    def test_audit_override_cannot_bypass_source_contract(self):
+        # Human adjudication cannot manufacture missing source evidence.
         result = make_result(cve_id="CVE-2025-1234")
-        assert should_include(result, audit_overrides={"CVE-2025-1234"})
+        assert not should_include(result, audit_overrides={"CVE-2025-1234"})
 
     def test_audit_override_bypasses_rejection_check(self):
         # Override does NOT bypass rejection — rejection is checked first
@@ -420,13 +432,13 @@ class TestShouldIncludeFilteringLog:
         assert result.filtering_log.final_included is False
         assert result.filtering_log.exclusion_reason == "ai_not_involved"
 
-    def test_populates_filtering_log_excluded_no_confirmed_verdict(self):
-        # No BICs → falls through to no_confirmed_verdict
+    def test_populates_filtering_log_excluded_without_source_match(self):
+        # No BICs cannot satisfy the production source contract.
         result = make_result(ai_involved=None)
         result.filtering_log = FilteringLog()
         assert should_include(result) is False
         assert result.filtering_log.final_included is False
-        assert result.filtering_log.exclusion_reason == "no_confirmed_verdict"
+        assert result.filtering_log.exclusion_reason == "no_production_source_match"
 
     def test_populates_filtering_log_included_ai_involved_true(self):
         result = make_result(ai_involved=True)

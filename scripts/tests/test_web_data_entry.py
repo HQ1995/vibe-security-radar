@@ -37,6 +37,17 @@ def make_commit(
     author: str = "Alice",
     message: str = "some commit",
 ) -> CommitInfo:
+    signals = ai_signals or []
+    source_lines = [
+        signal.matched_text
+        for signal in signals
+        if signal.signal_type == "co_author_trailer"
+        and signal.origin == "commit_metadata"
+        and "<" in signal.matched_text
+        and ">" in signal.matched_text
+    ]
+    if message == "some commit" and source_lines:
+        message = f"{message}\n\n" + "\n".join(source_lines)
     return CommitInfo(
         sha=sha,
         author_name=author,
@@ -45,17 +56,25 @@ def make_commit(
         committer_email="alice@example.com",
         message=message,
         authored_date="2025-06-01T00:00:00Z",
-        ai_signals=ai_signals or [],
+        ai_signals=signals,
     )
 
 
 def make_signal(
     tool: AiTool = AiTool.CURSOR,
     signal_type: str = "co_author_trailer",
-    text: str = "Co-authored-by: Cursor",
+    text: str | None = None,
     confidence: float = 0.95,
     origin: str = "commit_metadata",
 ) -> AiSignal:
+    if text is None:
+        text = {
+            AiTool.CURSOR: "Co-authored-by: Cursor <cursoragent@cursor.com>",
+            AiTool.CLAUDE_CODE: (
+                "Co-authored-by: Claude <noreply@anthropic.com>"
+            ),
+            AiTool.AIDER: "Co-authored-by: aider <aider@aider.dev>",
+        }.get(tool, "Co-authored-by: Cursor <cursoragent@cursor.com>")
     return AiSignal(
         tool=tool,
         signal_type=signal_type,
@@ -163,7 +182,9 @@ class TestBuildSignalEntry:
         d = _build_signal_entry(sig)
         assert d["tool"] == "cursor"
         assert d["signal_type"] == "co_author_trailer"
-        assert d["matched_text"] == "Co-authored-by: Cursor"
+        assert d["matched_text"] == (
+            "Co-authored-by: Cursor <cursoragent@cursor.com>"
+        )
         assert d["confidence"] == 0.95
 
 
@@ -235,7 +256,7 @@ class TestBuildEntryBasic:
 
 
 class TestSignalSourcePrBody:
-    """PR body only signals produce signal_source='pr_body'."""
+    """PR-body-only signals remain outside the production catalog."""
 
     def test_pr_body_only(self):
         pr_signal = make_signal(origin="pr_body")
@@ -246,9 +267,12 @@ class TestSignalSourcePrBody:
             pr_signals=[pr_signal],
         )
         result = make_result(bics=[bic])
-        entry = build_entry(result)
-        assert entry is not None
-        assert entry["signal_source"] == "pr_body"
+        quarantine = QuarantineLog()
+        entry = build_entry(result, quarantine=quarantine)
+        assert entry is None
+        assert [record.reason for record in quarantine] == [
+            "no publishable bug-introducing commits"
+        ]
 
 
 class TestAiInvolvedFallback:
@@ -280,7 +304,7 @@ class TestAiInvolvedFallback:
 
         assert build_entry(result, quarantine=quarantine) is None
         assert [record.reason for record in quarantine] == [
-            "no displayable bug commits"
+            "no publishable bug-introducing commits"
         ]
 
 
@@ -288,12 +312,12 @@ class TestCulpritPromotion:
     """Culprit SHA replaces squash merge SHA in bug_commits."""
 
     def test_culprit_sha_promoted(self):
-        culprit_sig = make_signal(tool=AiTool.CLAUDE_CODE, text="Co-authored-by: Claude")
+        culprit_sig = make_signal(tool=AiTool.CLAUDE_CODE)
         dc = DecomposedCommit(
             sha="culprit_abc",
             author_name="Bob",
             author_email="bob@example.com",
-            message="fix: add validation",
+            message=f"fix: add validation\n\n{culprit_sig.matched_text}",
             ai_signals=[culprit_sig],
             touched_blamed_file=True,
         )
@@ -317,7 +341,7 @@ class TestCulpritPromotion:
             sha="inferred_culprit",
             author_name="Charlie",
             author_email="charlie@example.com",
-            message="feat: new feature",
+            message=f"feat: new feature\n\n{dc_sig.matched_text}",
             ai_signals=[dc_sig],
             touched_blamed_file=True,
         )
