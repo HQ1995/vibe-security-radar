@@ -30,6 +30,24 @@ def _detector_inventory(rows: list[dict]) -> dict:
         row["source_evidence_sha256"] = detector_quality.canonical_sha256(
             {"class_id": row["class_id"], "member_ids": member_ids}
         )
+        prediction = (
+            "incomplete"
+            if row["coverage_status"] != "complete"
+            else "positive" if row["detector_state"] == "positive" else "negative"
+        )
+        row.setdefault(
+            "stage_predictions",
+            {
+                "source_matcher": prediction,
+                "screening": prediction,
+                "verification": prediction,
+                "final_publication": (
+                    "positive"
+                    if row["publication_state"] == "published"
+                    else "negative"
+                ),
+            },
+        )
         normalized_rows.append(row)
     dimensions = (
         "coverage_status",
@@ -144,6 +162,10 @@ def test_detector_metrics_project_inventory_state_independently_from_publication
         "CVE-2026-1",
         "CVE-2026-2",
     ]
+    assert [row["stage_outcomes"]["screening"] for row in manifest] == [
+        "tp",
+        "tn",
+    ]
 
 
 def _write_adjudications(path: Path, entries: list[dict]) -> None:
@@ -231,7 +253,7 @@ def _raw_result(
                     "worth_investigating": True,
                     "reasoning": "fixture screening",
                     "relevant_commits": ["1" * 40],
-                    "model": "gpt-5.6-luna",
+                    "model": "gemini-3.5-flash-lite",
                 },
             }
         )
@@ -273,7 +295,8 @@ def _fixed_campaign_fixture(
                 kind="fixed_contract_fixture",
                 ids=subject_ids,
                 repos=frozenset(),
-            )
+            ),
+            phase="verification",
         )
     )
     all_members_by_subject = {
@@ -360,7 +383,13 @@ def _fixed_campaign_fixture(
         source_snapshot=source_details,
         model="gpt-5.6-luna",
         reasoning_effort="max",
-        workers=32,
+        workers=detector_quality.refresh_runner.WORKERS,
+        no_token_child_processes=(
+            detector_quality.refresh_runner.NO_TOKEN_CHILD_PROCESSES
+        ),
+        no_token_total_workers=(
+            detector_quality.refresh_runner.NO_TOKEN_TOTAL_WORKERS
+        ),
         campaign_id=campaign_id,
         result_dir=result_dir,
         litellm_transport_sha256="c" * 64,
@@ -466,20 +495,65 @@ def _fixed_campaign_fixture(
                 "adjudication": {"outcome": "not_applicable"},
             }
         payload["campaign_receipt"] = {
-            "schema_version": 1,
+            "schema_version": 3,
             "campaign_id": campaign_id,
+            "pipeline_phase": "verification",
             "batch": batch.key,
             "started_at": started_at.isoformat(),
             "completed_at": receipt_completed_at.isoformat(),
             "source_snapshot_sha256": source_sha256,
             "contract_sha256": context.contract_sha256,
             "litellm_transport_sha256": context.litellm_transport_sha256,
-            "requested_model": "gpt-5.6-luna",
-            "reasoning_effort": "max",
+            "requested_models": {
+                "phase_c_screening": "gemini-3.5-flash-lite",
+                "phase_d_deep_verification": "gpt-5.6-luna",
+            },
+            "reasoning_efforts": {
+                "phase_c_screening": (
+                    detector_quality.refresh_runner.SCREENING_REASONING_EFFORT
+                ),
+                "phase_d_deep_verification": "max",
+            },
             "llm_cache_disabled": True,
+            "resource_governance": {
+                "llm_global_max": str(
+                    detector_quality.refresh_runner.LLM_MAX_CONCURRENCY
+                ),
+                "llm_screening_max": str(
+                    detector_quality.refresh_runner.LLM_SCREENING_MAX_CONCURRENCY
+                ),
+                "llm_verification_max": str(
+                    detector_quality.refresh_runner.LLM_VERIFY_MAX_CONCURRENCY
+                ),
+                "llm_screening_rpm": os.environ.get(
+                    detector_quality.refresh_runner.LLM_SCREENING_RPM_ENV, ""
+                ),
+                "llm_screening_tpm": os.environ.get(
+                    detector_quality.refresh_runner.LLM_SCREENING_TPM_ENV, ""
+                ),
+                "llm_verification_rpm": os.environ.get(
+                    detector_quality.refresh_runner.LLM_VERIFY_RPM_ENV, ""
+                ),
+                "llm_verification_tpm": os.environ.get(
+                    detector_quality.refresh_runner.LLM_VERIFY_TPM_ENV, ""
+                ),
+                "github_max_in_flight": str(
+                    detector_quality.refresh_runner.GITHUB_MAX_IN_FLIGHT
+                ),
+                "github_reserve_fraction": str(
+                    detector_quality.refresh_runner.GITHUB_RESERVE_FRACTION
+                ),
+                "github_target_utilization": str(
+                    detector_quality.refresh_runner.GITHUB_TARGET_UTILIZATION
+                ),
+                "github_governor_backend": "sqlite_wal_v1",
+            },
             "stages": {
                 "phase_c_screening": (
-                    {"status": "success", "actual_model": "gpt-5.6-luna"}
+                    {
+                        "status": "success",
+                        "actual_model": "gemini-3.5-flash-lite",
+                    }
                     if has_ai
                     else {"status": "not_applicable"}
                 ),
@@ -563,7 +637,7 @@ def _fixed_campaign_fixture(
         "command": list(command),
         "reasoning_effort": "max",
         "model": "gpt-5.6-luna",
-        "workers": 32,
+        "workers": detector_quality.refresh_runner.WORKERS,
         "campaign_id": campaign_id,
         "campaign_result_dir": str(result_dir),
         "campaign_api_cache_dir": str(result_dir.parent / "api-responses"),
@@ -740,7 +814,9 @@ def test_complete_runner_proof_promotes_fixed_contract_campaign_metrics(
         "frozen_adjudication_fixed_contract_campaign_vs_curated_publication"
     )
     assert report["evaluation_complete"] is True
-    assert report["fixed_contract_campaign_proof"]["complete"] is True
+    assert report["fixed_contract_campaign_proof"]["complete"] is True, report[
+        "fixed_contract_campaign_proof"
+    ]["failures"]
     assert report["fixed_contract_campaign_proof"]["failures"] == []
     assert report["code_provenance"]["generation_contract_status"] == (
         "fixed_current_contract"
@@ -801,7 +877,9 @@ def test_fixed_campaign_metrics_read_content_addressed_staged_results(
         fixed_campaign_context=context,
     )
 
-    assert report["fixed_contract_campaign_proof"]["complete"] is True
+    assert report["fixed_contract_campaign_proof"]["complete"] is True, report[
+        "fixed_contract_campaign_proof"
+    ]["failures"]
     assert report["fixed_contract_campaign_metrics"]["confusion_counts"]["fn"] == 1
     staged_inputs = report["input_provenance"]["fixed_contract_campaign_results"]
     assert staged_inputs["directory"] == str(context.result_dir)
@@ -885,7 +963,9 @@ def test_fixed_campaign_rejects_receipt_or_manifest_tampering(
         result_path = context.result_dir / "CVE-TAMPER.json"
         if mutation == "receipt":
             payload = json.loads(result_path.read_text(encoding="utf-8"))
-            payload["campaign_receipt"]["requested_model"] = "gpt-5.4"
+            payload["campaign_receipt"]["requested_models"][
+                "phase_d_deep_verification"
+            ] = "gpt-5.4"
             result_path.write_text(json.dumps(payload), encoding="utf-8")
         midpoint = datetime.fromisoformat(marker["started_at"]) + timedelta(
             seconds=3 if mutation == "receipt_mtime" else 2
@@ -1243,7 +1323,7 @@ def test_report_is_deterministic_and_captures_model_effort_and_error_strata(
         },
         {
             "json_path": "$.screening",
-            "model": "gpt-5.6-luna",
+            "model": "gemini-3.5-flash-lite",
         },
     ]
     assert first["evaluation_complete"] is False

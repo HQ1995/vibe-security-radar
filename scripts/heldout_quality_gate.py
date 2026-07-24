@@ -8,11 +8,11 @@ re-proves the campaign and selection, then accepts only blinded, independent
 dual-review labels bound to that exact selection digest.
 
 Precision trials are sampled from final predicted-positive alias classes. Recall
-trials are independently sampled from classes with raw AI signals on at least one
-candidate bug-introducing commit, before the final publication predicate. This
-recall lane measures the final classifier within the discovered AI-signal candidate
-population; it does not estimate upstream advisory-discovery or signature-discovery
-recall.
+trials are independently sampled from classes with a production-v1 strict
+``Co-authored-by`` trailer match on at least one candidate bug-introducing commit,
+before the final publication predicate. This recall lane measures the final
+classifier within the production source-matcher population; it does not estimate
+upstream advisory-discovery or source-matcher recall.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from urllib.parse import unquote
 import evaluate_detector_quality as detector_quality
 import data_refresh_paths
 from evaluate_publication_quality import clopper_pearson_lower_bound
+from cve_analyzer.source_matcher import bic_is_candidate
 from web_data.loader import build_alias_map
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -79,8 +80,8 @@ _EMBEDDED_YEAR_VULNERABILITY_TOKEN = re.compile(
 )
 _MAX_URL_UNQUOTE_ROUNDS = 8
 _MAX_PROTECTED_VALUE_CHARS = 16 * 1024 * 1024
-_SELECTION_ALGORITHM = "heldout-fixed-campaign-domain-separated-uniform-topk-v2"
-_SELECTION_SCHEMA_VERSION = 2
+_SELECTION_ALGORITHM = "heldout-fixed-campaign-domain-separated-uniform-topk-v3"
+_SELECTION_SCHEMA_VERSION = 3
 _LABEL_SCHEMA_VERSION = 3
 _DEFAULT_PRECISION_TARGET = 0.95
 _DEFAULT_RECALL_TARGET = 0.95
@@ -117,6 +118,7 @@ class SelectionUnit:
     infrastructure_categories: tuple[str, ...]
     unresolved_reasons: tuple[str, ...]
     results: tuple[ResultReference, ...]
+    screening_positive: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -395,6 +397,7 @@ def _unit_manifest_row(unit: SelectionUnit, *, seed: str, lane: str) -> dict[str
         "selection_rank_sha256": _selection_rank(seed, lane, unit),
         "predicted_positive": unit.predicted_positive,
         "candidate_positive": unit.candidate_positive,
+        "screening_positive": unit.screening_positive,
         "prediction_reasons": list(unit.prediction_reasons),
         "execution_status": execution_status,
         "infrastructure_categories": list(unit.infrastructure_categories),
@@ -447,7 +450,7 @@ def validate_selection_seal(manifest: Mapping[str, Any]) -> str:
         "selection_manifest_sha256",
     }
     if set(manifest) != expected_fields:
-        raise HeldoutQualityError("selection manifest requires exact schema-2 fields")
+        raise HeldoutQualityError("selection manifest requires exact schema-3 fields")
     if (
         manifest.get("schema_version") != _SELECTION_SCHEMA_VERSION
         or manifest.get("kind") != "heldout_detector_quality_selection"
@@ -480,7 +483,7 @@ def validate_selection_seal(manifest: Mapping[str, Any]) -> str:
         policy.get("precision_population")
         != "fixed_campaign_predicted_positive_alias_classes"
         or policy.get("recall_population")
-        != "fixed_campaign_raw_ai_signal_candidate_positive_alias_classes"
+        != "fixed_campaign_strict_coauthor_candidate_positive_alias_classes"
     ):
         raise HeldoutQualityError("selection population policy is invalid")
     for lane in ("precision", "recall"):
@@ -584,7 +587,7 @@ def build_selection_manifest(
             "recall_sample_size": recall_sample_size,
             "precision_population": "fixed_campaign_predicted_positive_alias_classes",
             "recall_population": (
-                "fixed_campaign_raw_ai_signal_candidate_positive_alias_classes"
+                "fixed_campaign_strict_coauthor_candidate_positive_alias_classes"
             ),
             "sampling": "global_uniform_domain_separated_sha256_top_k",
             "stratification": "canonical_id_family_diagnostics_only",
@@ -917,9 +920,14 @@ def _alias_units(
             )
         )
         candidate_positive = any(
-            bic.all_ai_signals()
+            bic_is_candidate(bic)
             for item in class_inputs
             for bic in item.result.bug_introducing_commits
+        )
+        screening_positive = any(
+            item.result.screening is not None
+            and item.result.screening.worth_investigating is True
+            for item in class_inputs
         )
         units.append(
             SelectionUnit(
@@ -929,6 +937,7 @@ def _alias_units(
                     item.predicted_positive for item in class_inputs
                 ),
                 candidate_positive=candidate_positive,
+                screening_positive=screening_positive,
                 prediction_reasons=prediction_reasons,
                 infrastructure_categories=infrastructure,
                 unresolved_reasons=unresolved,
@@ -1415,6 +1424,7 @@ def _selected_rows(manifest: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
         "selection_rank_sha256",
         "predicted_positive",
         "candidate_positive",
+        "screening_positive",
         "prediction_reasons",
         "execution_status",
         "infrastructure_categories",
@@ -1432,7 +1442,7 @@ def _selected_rows(manifest: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
         for row in lane_rows:
             if not isinstance(row, dict) or set(row) != expected_row_fields:
                 raise HeldoutQualityError(
-                    f"selection {lane} row requires exact schema-2 fields"
+                    f"selection {lane} row requires exact schema-3 fields"
                 )
             sample_id = row.get("sample_id")
             if not isinstance(sample_id, str) or not sample_id:
@@ -1459,6 +1469,7 @@ def _selected_rows(manifest: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
                 sample_id not in subject_ids
                 or not isinstance(row.get("predicted_positive"), bool)
                 or not isinstance(row.get("candidate_positive"), bool)
+                or not isinstance(row.get("screening_positive"), bool)
             ):
                 raise HeldoutQualityError(
                     f"selection {lane} row has invalid prediction fields"
@@ -1919,6 +1930,29 @@ def _compute_quality_fields(
     recall_successes = sum(
         row.get("predicted_positive") is True for row in recall_actual_positives
     )
+    screening_conclusive = [
+        row for row in recall_rows if labels[row["sample_id"]] in _FORMAL_LABELS
+    ]
+    screening_tp = sum(
+        labels[row["sample_id"]] == "AI_CAUSAL"
+        and row.get("screening_positive") is True
+        for row in screening_conclusive
+    )
+    screening_fn = sum(
+        labels[row["sample_id"]] == "AI_CAUSAL"
+        and row.get("screening_positive") is False
+        for row in screening_conclusive
+    )
+    screening_fp = sum(
+        labels[row["sample_id"]] == "NOT_AI_CAUSAL"
+        and row.get("screening_positive") is True
+        for row in screening_conclusive
+    )
+    screening_tn = sum(
+        labels[row["sample_id"]] == "NOT_AI_CAUSAL"
+        and row.get("screening_positive") is False
+        for row in screening_conclusive
+    )
     all_unique_rows = {row["sample_id"]: row for row in rows}
     infrastructure_ids = sorted(
         sample_id
@@ -1945,20 +1979,46 @@ def _compute_quality_fields(
         and precision["trials"] > 0
         and recall["trials"] > 0
     )
+    screening_zero_false_negatives = bool(
+        evaluation_complete and screening_fn == 0 and screening_tp > 0
+    )
     point_gate_passed = bool(
         evaluation_complete
         and precision["point_meets_target"]
         and recall["point_meets_target"]
+        and screening_zero_false_negatives
     )
     certified_gate_passed = bool(
         evaluation_complete
         and precision["certified_meets_target"]
         and recall["certified_meets_target"]
+        and screening_zero_false_negatives
     )
     return {
         "evaluation_complete": evaluation_complete,
         "precision": precision,
         "recall": recall,
+        "stage_metrics": {
+            "screening": {
+                "measurement_population": (
+                    "heldout_recall_lane_conclusive_strict_coauthor_candidates"
+                ),
+                "confusion": {
+                    "tp": screening_tp,
+                    "fp": screening_fp,
+                    "fn": screening_fn,
+                    "tn": screening_tn,
+                },
+                "recall": _metric(
+                    screening_tp,
+                    screening_tp + screening_fn,
+                    1.0,
+                ),
+                "screening_zero_false_negatives": (
+                    screening_zero_false_negatives
+                ),
+            }
+        },
         "denominators": {
             "selected_unique_alias_classes": len(selected_subjects),
             "precision_selected": len(precision_rows),
@@ -2044,7 +2104,7 @@ def evaluate_selection(
     )
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "evaluation_kind": "independent_heldout_fixed_campaign_detector_quality",
         "selection_manifest_sha256": selection_digest,
         "campaign": selection["campaign"],
@@ -2056,6 +2116,7 @@ def evaluate_selection(
         },
         "precision": quality["precision"],
         "recall": quality["recall"],
+        "stage_metrics": quality["stage_metrics"],
         "denominators": quality["denominators"],
         "strata": quality["strata"],
         "point_gate_passed": quality["point_gate_passed"],

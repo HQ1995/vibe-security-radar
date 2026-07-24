@@ -61,6 +61,7 @@ def _unit(
     infrastructure: tuple[str, ...] = (),
     unresolved: tuple[str, ...] = (),
     aliases: tuple[str, ...] = (),
+    screening_positive: bool | None = None,
 ) -> heldout.SelectionUnit:
     subject_ids = tuple(sorted((canonical_id, *aliases)))
     return heldout.SelectionUnit(
@@ -68,6 +69,11 @@ def _unit(
         subject_ids=subject_ids,
         predicted_positive=predicted_positive,
         candidate_positive=candidate_positive,
+        screening_positive=(
+            candidate_positive
+            if screening_positive is None
+            else screening_positive
+        ),
         prediction_reasons=("fixture",),
         infrastructure_categories=infrastructure,
         unresolved_reasons=unresolved,

@@ -5,8 +5,8 @@ This evaluator deliberately exposes two different predictions for every
 advisory equivalence class:
 
 * ``fixed_contract_campaign_metrics`` is emitted only when every batch in the
-  current plan has a schema-6 marker and an exact staged result manifest, while
-  every result carries a valid Luna/max campaign receipt.
+  current plan has a current marker and an exact staged result manifest, while
+  every result carries a valid Flash-screening/Luna-verification receipt.
 * ``cached_pipeline_snapshot_metrics`` is the fail-closed fallback when that
   proof is incomplete. It projects stored, mixed-version analyzer results
   through the current inclusion predicate.
@@ -61,6 +61,7 @@ _TERMINAL_NON_INFRA_ERROR_CATEGORIES = frozenset(
 _PUBLIC_ID = re.compile(VULNERABILITY_ID_PATTERN)
 _ALGORITHM = "fixed-contract-or-mixed-cache-detector-quality-v4"
 _FIXED_CAMPAIGN_MODEL = "gpt-5.6-luna"
+_FIXED_SCREENING_MODEL = "gemini-3.5-flash-lite"
 _FIXED_CAMPAIGN_REASONING_EFFORT = "max"
 
 
@@ -117,6 +118,8 @@ class FixedCampaignProofContext:
     model: str
     reasoning_effort: str
     workers: int
+    no_token_child_processes: int
+    no_token_total_workers: int
     campaign_id: str
     result_dir: Path
     litellm_transport_sha256: str
@@ -584,7 +587,9 @@ def _current_fixed_campaign_context(
                 key=batch.key,
                 path=batch.path.resolve(),
                 ids=tuple(batch.ids),
-                command=tuple(refresh_runner.build_command(batch)),
+                command=tuple(
+                    refresh_runner.build_command(batch, phase="verification")
+                ),
                 class_ids=(
                     tuple(batch.class_ids)
                     if batch.class_ids
@@ -599,6 +604,8 @@ def _current_fixed_campaign_context(
         model=refresh_runner.MODEL,
         reasoning_effort=refresh_runner.REASONING_EFFORT,
         workers=refresh_runner.WORKERS,
+        no_token_child_processes=refresh_runner.NO_TOKEN_CHILD_PROCESSES,
+        no_token_total_workers=refresh_runner.NO_TOKEN_TOTAL_WORKERS,
         campaign_id=campaign.campaign_id,
         result_dir=campaign.result_dir,
         litellm_transport_sha256=campaign.litellm_transport_sha256,
@@ -727,7 +734,7 @@ def _campaign_receipt_failures(
     result_mtime_ns: int,
     context: FixedCampaignProofContext,
 ) -> list[dict[str, Any]]:
-    """Validate the schema-1 receipt and independently re-prove its stage claims."""
+    """Validate the staged receipt and independently re-prove its stage claims."""
     failures: list[dict[str, Any]] = []
 
     def fail(code: str, **details: Any) -> None:
@@ -743,15 +750,17 @@ def _campaign_receipt_failures(
     expected_keys = {
         "schema_version",
         "campaign_id",
+        "pipeline_phase",
         "batch",
         "started_at",
         "completed_at",
         "source_snapshot_sha256",
         "contract_sha256",
         "litellm_transport_sha256",
-        "requested_model",
-        "reasoning_effort",
+        "requested_models",
+        "reasoning_efforts",
         "llm_cache_disabled",
+        "resource_governance",
         "stages",
         "status",
         "failed_stages",
@@ -764,16 +773,46 @@ def _campaign_receipt_failures(
         )
 
     expected_values = {
-        "schema_version": 1,
+        "schema_version": 3,
         "campaign_id": context.campaign_id,
+        "pipeline_phase": "verification",
         "batch": batch_key,
         "started_at": marker_started_at,
         "source_snapshot_sha256": context.source_snapshot_sha256,
         "contract_sha256": context.contract_sha256,
         "litellm_transport_sha256": context.litellm_transport_sha256,
-        "requested_model": _FIXED_CAMPAIGN_MODEL,
-        "reasoning_effort": _FIXED_CAMPAIGN_REASONING_EFFORT,
+        "requested_models": {
+            "phase_c_screening": _FIXED_SCREENING_MODEL,
+            "phase_d_deep_verification": _FIXED_CAMPAIGN_MODEL,
+        },
+        "reasoning_efforts": {
+            "phase_c_screening": refresh_runner.SCREENING_REASONING_EFFORT,
+            "phase_d_deep_verification": _FIXED_CAMPAIGN_REASONING_EFFORT,
+        },
         "llm_cache_disabled": True,
+        "resource_governance": {
+            "llm_global_max": str(refresh_runner.LLM_MAX_CONCURRENCY),
+            "llm_screening_max": str(refresh_runner.LLM_SCREENING_MAX_CONCURRENCY),
+            "llm_verification_max": str(refresh_runner.LLM_VERIFY_MAX_CONCURRENCY),
+            "llm_screening_rpm": os.environ.get(
+                refresh_runner.LLM_SCREENING_RPM_ENV, ""
+            ),
+            "llm_screening_tpm": os.environ.get(
+                refresh_runner.LLM_SCREENING_TPM_ENV, ""
+            ),
+            "llm_verification_rpm": os.environ.get(
+                refresh_runner.LLM_VERIFY_RPM_ENV, ""
+            ),
+            "llm_verification_tpm": os.environ.get(
+                refresh_runner.LLM_VERIFY_TPM_ENV, ""
+            ),
+            "github_max_in_flight": str(refresh_runner.GITHUB_MAX_IN_FLIGHT),
+            "github_reserve_fraction": str(refresh_runner.GITHUB_RESERVE_FRACTION),
+            "github_target_utilization": str(
+                refresh_runner.GITHUB_TARGET_UTILIZATION
+            ),
+            "github_governor_backend": "sqlite_wal_v1",
+        },
         "status": "success",
         "failed_stages": [],
     }
@@ -832,9 +871,9 @@ def _campaign_receipt_failures(
             fail("result_campaign_screening_stage_fields_invalid")
     elif (
         set(screening_stage) != {"status", "actual_model"}
-        or screening_stage.get("actual_model") != _FIXED_CAMPAIGN_MODEL
+        or screening_stage.get("actual_model") != _FIXED_SCREENING_MODEL
         or result.screening is None
-        or result.screening.model != _FIXED_CAMPAIGN_MODEL
+        or result.screening.model != _FIXED_SCREENING_MODEL
     ):
         fail("result_campaign_screening_model_invalid")
 
@@ -925,6 +964,8 @@ def _fixed_contract_campaign_proof(
         "model": _FIXED_CAMPAIGN_MODEL,
         "reasoning_effort": _FIXED_CAMPAIGN_REASONING_EFFORT,
         "workers": context.workers,
+        "no_token_child_processes": context.no_token_child_processes,
+        "no_token_total_workers": context.no_token_total_workers,
         "litellm_transport_sha256": context.litellm_transport_sha256,
         "litellm_transport": context.litellm_transport,
         "batch_timeout_seconds": context.batch_timeout_seconds,
@@ -1234,7 +1275,8 @@ def _fixed_contract_campaign_proof(
                     kind="fixed_contract_proof",
                     ids=batch.ids,
                     repos=frozenset(),
-                )
+                ),
+                phase="verification",
             )
         )
         if batch.command != expected_command:
@@ -1608,6 +1650,8 @@ def _fixed_contract_campaign_proof(
             for provenance in _extract_llm_provenance(payload):
                 model = provenance["model"]
                 if model not in {
+                    _FIXED_SCREENING_MODEL,
+                    f"osv+{_FIXED_SCREENING_MODEL}",
                     _FIXED_CAMPAIGN_MODEL,
                     f"osv+{_FIXED_CAMPAIGN_MODEL}",
                 }:
@@ -1918,6 +1962,27 @@ def _inventory_prediction_manifest(
             prediction = "positive"
         else:
             prediction = "negative"
+        stage_predictions = row.get("stage_predictions")
+        if not isinstance(stage_predictions, dict):
+            # Schema-v2 inventories produced before stage telemetry existed
+            # remain readable. They cannot recover intermediate distinctions,
+            # so every stage is explicitly projected from the legacy terminal
+            # state instead of invalidating the durable cache.
+            terminal = (
+                "incomplete"
+                if prediction == "incomplete"
+                else "positive" if prediction == "positive" else "negative"
+            )
+            stage_predictions = {
+                "source_matcher": terminal,
+                "screening": terminal,
+                "verification": terminal,
+                "final_publication": (
+                    "positive"
+                    if row["publication_state"] == "published"
+                    else terminal
+                ),
+            }
         manifest.append(
             {
                 "canonical_id": entry.canonical_id,
@@ -1929,6 +1994,11 @@ def _inventory_prediction_manifest(
                 "coverage_status": row["coverage_status"],
                 "detector_state": row["detector_state"],
                 "recall_stratum": row["recall_stratum"],
+                "stage_predictions": dict(stage_predictions),
+                "stage_outcomes": {
+                    stage: _state_outcome(entry.label, prediction)
+                    for stage, prediction in stage_predictions.items()
+                },
             }
         )
     return manifest
@@ -2336,6 +2406,42 @@ def build_report(
         },
     }
     if detector_inventory is not None and inventory_manifest is not None:
+        stage_metrics = {
+            stage: _metrics(
+                [
+                    {
+                        **row,
+                        "stage_prediction": row["stage_predictions"][stage],
+                        "stage_outcome": row["stage_outcomes"][stage],
+                    }
+                    for row in inventory_manifest
+                ],
+                prediction_key="stage_prediction",
+                outcome_key="stage_outcome",
+            )
+            for stage in (
+                "source_matcher",
+                "screening",
+                "verification",
+                "final_publication",
+            )
+        }
+        final_metrics = stage_metrics["final_publication"]
+        screening_metrics = stage_metrics["screening"]
+        stage_quality_gate = {
+            "screening_zero_false_negatives": (
+                screening_metrics["confusion_counts"]["fn"] == 0
+            ),
+            "final_precision_lower_bound_at_least_0_95": (
+                (final_metrics["precision_one_sided_95pct_lower_bound"] or 0.0)
+                >= 0.95
+            ),
+            "final_recall_lower_bound_at_least_0_95": (
+                (final_metrics["recall_one_sided_95pct_lower_bound"] or 0.0)
+                >= 0.95
+            ),
+        }
+        stage_quality_gate["passed"] = all(stage_quality_gate.values())
         report["detector_inventory"] = {
             "inventory_id": detector_inventory["inventory_id"],
             "source_snapshot_sha256": detector_inventory["source_snapshot_sha256"],
@@ -2354,6 +2460,8 @@ def build_report(
                 prediction_key="inventory_detector_prediction",
                 outcome_key="inventory_detector_outcome",
             ),
+            "stage_metrics": stage_metrics,
+            "stage_quality_gate": stage_quality_gate,
         }
     return report
 

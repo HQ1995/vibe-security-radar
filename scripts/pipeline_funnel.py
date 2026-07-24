@@ -11,6 +11,17 @@ from collections import Counter
 from pathlib import Path
 
 from web_data.writer import load_published_web_data
+from cve_analyzer.models import CveAnalysisResult
+from cve_analyzer.screening_router import (
+    ScreeningRouteStatus,
+    evaluate_evidence_availability,
+    route_for_screening,
+)
+from cve_analyzer.source_matcher import (
+    bic_is_candidate,
+    candidate_evidence_complete,
+    match_result,
+)
 
 CACHE_DIR = Path(os.path.expanduser("~/.cache/cve-analyzer"))
 RESULTS_DIR = CACHE_DIR / "results"
@@ -54,8 +65,59 @@ def load_web_cves(data_dir: Path = WEB_DATA_DIR) -> dict[str, dict]:
     return {entry["id"]: entry for entry in published.entries}
 
 
+def production_funnel_counts(results: list[dict]) -> dict[str, int]:
+    """Return the token-free production-v1 funnel over cached result JSON."""
+
+    counts: Counter[str] = Counter()
+    for payload in results:
+        try:
+            result = CveAnalysisResult.from_dict(payload)
+        except (KeyError, TypeError, ValueError):
+            counts["unreadable"] += 1
+            continue
+        counts["readable"] += 1
+        decision = match_result(
+            result, complete=candidate_evidence_complete(result)
+        )
+        route = route_for_screening(
+            result,
+            decision,
+            evidence=evaluate_evidence_availability(result),
+        )
+        counts[f"route_{route.status.value}"] += 1
+        counts[f"route_reason::{route.reason_code}"] += 1
+        has_shadow = bool(result.ai_signals) or any(
+            bic.all_ai_signals() for bic in result.bug_introducing_commits
+        )
+        if not decision.eligible:
+            if has_shadow:
+                counts["shadow_only"] += 1
+            continue
+        counts["source_match"] += 1
+        if (
+            route.status is ScreeningRouteStatus.SCREENABLE
+            and result.screening is not None
+            and result.screening.worth_investigating
+        ):
+            counts["screening_positive"] += 1
+        if route.status is ScreeningRouteStatus.SCREENABLE and any(
+            bic_is_candidate(bic)
+            and isinstance(bic.deep_verification, dict)
+            and str(
+                bic.deep_verification.get("final_verdict")
+                or bic.deep_verification.get("verdict")
+                or ""
+            ).upper()
+            == "CONFIRMED"
+            for bic in result.bug_introducing_commits
+        ):
+            counts["verification_confirmed"] += 1
+    return dict(counts)
+
+
 def analyze_funnel(results: list[dict]) -> None:
     total = len(results)
+    production = production_funnel_counts(results)
 
     # Stage 1: Error categories (why CVEs fail early)
     error_cats: Counter[str] = Counter()
@@ -173,6 +235,34 @@ def analyze_funnel(results: list[dict]) -> None:
     print(f"{'CVEs with AI signals':<45} {len(has_signals):>7,}  {_pct(len(has_signals), total):>6}  {_bar(len(has_signals), total)}")
     print(f"{'CVEs with confidence > 0':<45} {len(has_confidence):>7,}  {_pct(len(has_confidence), total):>6}  {_bar(len(has_confidence), total)}")
     print(f"{'CVEs on website':<45} {len(web_ids):>7,}  {_pct(len(web_ids), total):>6}  {_bar(len(web_ids), total)}")
+
+    print(f"\n{'=' * 70}")
+    print("PRODUCTION V1 TOKEN-FREE FUNNEL (explicit AI authorship sources)")
+    print("=" * 70)
+    for label, key in (
+        ("Readable cached results", "readable"),
+        ("Explicit AI source matches", "source_match"),
+        ("Route: screenable", "route_screenable"),
+        ("Route: no screening value", "route_no_screening_value"),
+        ("Route: deferred/retryable", "route_deferred_retryable"),
+        ("Shadow-only signals (excluded)", "shadow_only"),
+        ("Flash screening positives", "screening_positive"),
+        ("Luna verification confirmed", "verification_confirmed"),
+        ("Unreadable legacy results", "unreadable"),
+    ):
+        count = production.get(key, 0)
+        print(f"  {label:<43} {count:>7,}  {_pct(count, total):>6}")
+    route_reasons = Counter(
+        {
+            key.removeprefix("route_reason::"): count
+            for key, count in production.items()
+            if key.startswith("route_reason::")
+        }
+    )
+    if route_reasons:
+        print("  Route reasons:")
+        for reason, count in route_reasons.most_common():
+            print(f"    {reason:<41} {count:>7,}  {_pct(count, total):>6}")
 
     # ── Drop-off analysis ───────────────────────────────────────────
     print(f"\n{'=' * 70}")
