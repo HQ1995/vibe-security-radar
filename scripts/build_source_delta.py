@@ -27,7 +27,8 @@ import threading
 import time
 import zipfile
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -144,12 +145,35 @@ class SourceDeltaError(RuntimeError):
 
 
 GitFsckCacheKey = tuple[str, str, str, str]
+GIT_FSCK_RECEIPT_SCHEMA_VERSION = 1
+GIT_FSCK_RECEIPT_CONTRACT = "git-fsck-full-strict-no-dangling-v1"
+GIT_FSCK_RECEIPT_FILENAME = "git-fsck-receipts-v1.json"
+
+
+def git_fsck_receipt_path(repo_root: Path) -> Path:
+    """Return the shared, repo-local durable fsck receipt path."""
+
+    return (
+        data_refresh_paths.data_refresh_state_root(repo_root)
+        / GIT_FSCK_RECEIPT_FILENAME
+    )
 
 
 class SuccessfulGitFsckCache:
-    """Bounded process-local LRU containing only stable successful fsck keys."""
+    """Bounded LRU of successful fsck keys with optional durable receipts.
 
-    def __init__(self, max_entries: int = 16) -> None:
+    A receipt is reusable only after the caller has independently revalidated
+    repository layout, config, index/worktree bytes, HEAD/tree identities, and
+    the complete object/ref metadata digest. Any Git object or ref mutation
+    changes that digest (including inode ctime) and therefore forces fsck.
+    """
+
+    def __init__(
+        self,
+        max_entries: int = 16,
+        *,
+        receipt_path: Path | None = None,
+    ) -> None:
         if (
             not isinstance(max_entries, int)
             or isinstance(max_entries, bool)
@@ -157,11 +181,137 @@ class SuccessfulGitFsckCache:
         ):
             raise ValueError("max_entries must be a positive integer")
         self.max_entries = max_entries
+        self.receipt_path = (
+            receipt_path.resolve(strict=False) if receipt_path is not None else None
+        )
         self._entries: dict[GitFsckCacheKey, None] = {}
         self._lock = threading.RLock()
 
+    @staticmethod
+    def _decode_receipt(data: bytes) -> tuple[GitFsckCacheKey, ...]:
+        if len(data) > 1024 * 1024:
+            return ()
+        try:
+            payload = json.loads(data)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return ()
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schema_version") != GIT_FSCK_RECEIPT_SCHEMA_VERSION
+            or payload.get("contract") != GIT_FSCK_RECEIPT_CONTRACT
+            or set(payload) != {"schema_version", "contract", "entries"}
+            or not isinstance(payload.get("entries"), list)
+        ):
+            return ()
+        keys: list[GitFsckCacheKey] = []
+        for entry in payload["entries"]:
+            if (
+                not isinstance(entry, dict)
+                or set(entry) != {"path", "head", "tree", "metadata_digest"}
+                or any(not isinstance(value, str) or not value for value in entry.values())
+            ):
+                return ()
+            keys.append(
+                (
+                    entry["path"],
+                    entry["head"],
+                    entry["tree"],
+                    entry["metadata_digest"],
+                )
+            )
+        return tuple(keys)
+
+    def _load_durable(self) -> tuple[GitFsckCacheKey, ...]:
+        path = self.receipt_path
+        if path is None:
+            return ()
+        try:
+            metadata = path.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+                return ()
+            return self._decode_receipt(path.read_bytes())
+        except (FileNotFoundError, OSError):
+            return ()
+
+    def _write_durable(self) -> None:
+        path = self.receipt_path
+        if path is None:
+            return
+        parent = path.parent
+        parent.mkdir(parents=True, exist_ok=True)
+        if parent.is_symlink() or not parent.is_dir():
+            return
+        entries = [
+            {
+                "path": key[0],
+                "head": key[1],
+                "tree": key[2],
+                "metadata_digest": key[3],
+            }
+            for key in self._entries
+        ]
+        data = (
+            json.dumps(
+                {
+                    "schema_version": GIT_FSCK_RECEIPT_SCHEMA_VERSION,
+                    "contract": GIT_FSCK_RECEIPT_CONTRACT,
+                    "entries": entries,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode()
+        descriptor, temporary = tempfile.mkstemp(
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=parent,
+        )
+        temp_path = Path(temporary)
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, path)
+            _fsync_directory(parent)
+        except OSError:
+            temp_path.unlink(missing_ok=True)
+
+    def _merge_durable(self) -> None:
+        for key in self._load_durable():
+            self._entries.pop(key, None)
+            self._entries[key] = None
+        while len(self._entries) > self.max_entries:
+            self._entries.pop(next(iter(self._entries)))
+
+    @contextmanager
+    def _durable_write_lock(self) -> Iterator[None]:
+        path = self.receipt_path
+        if path is None:
+            yield
+            return
+        parent = path.parent
+        try:
+            parent.mkdir(parents=True, exist_ok=True)
+            descriptor = os.open(
+                parent / f".{path.name}.lock",
+                os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0),
+                0o600,
+            )
+        except OSError:
+            yield
+            return
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+            os.close(descriptor)
+
     def contains(self, key: GitFsckCacheKey) -> bool:
         with self._lock:
+            self._merge_durable()
             if key not in self._entries:
                 return False
             self._entries.pop(key)
@@ -170,10 +320,13 @@ class SuccessfulGitFsckCache:
 
     def record_success(self, key: GitFsckCacheKey) -> None:
         with self._lock:
-            self._entries.pop(key, None)
-            self._entries[key] = None
-            while len(self._entries) > self.max_entries:
-                self._entries.pop(next(iter(self._entries)))
+            with self._durable_write_lock():
+                self._merge_durable()
+                self._entries.pop(key, None)
+                self._entries[key] = None
+                while len(self._entries) > self.max_entries:
+                    self._entries.pop(next(iter(self._entries)))
+                self._write_durable()
 
     def rebind_resolved_path(self, old_value: str, new_value: str) -> None:
         """Transfer successful keys after an owned same-inode directory rename."""
@@ -181,17 +334,21 @@ class SuccessfulGitFsckCache:
         if not old_value or not new_value:
             raise ValueError("resolved cache paths must be non-empty")
         with self._lock:
-            replacements = [
-                ((new_value, head, tree, metadata), key)
-                for key in self._entries
-                for path, head, tree, metadata in (key,)
-                if path == old_value
-            ]
-            for new_key, old_key in replacements:
-                self._entries.pop(old_key, None)
-                self._entries[new_key] = None
-            while len(self._entries) > self.max_entries:
-                self._entries.pop(next(iter(self._entries)))
+            with self._durable_write_lock():
+                self._merge_durable()
+                replacements = [
+                    ((new_value, head, tree, metadata), key)
+                    for key in self._entries
+                    for path, head, tree, metadata in (key,)
+                    if path == old_value
+                ]
+                for new_key, old_key in replacements:
+                    self._entries.pop(old_key, None)
+                    self._entries[new_key] = None
+                while len(self._entries) > self.max_entries:
+                    self._entries.pop(next(iter(self._entries)))
+                if replacements:
+                    self._write_durable()
 
     def __len__(self) -> int:
         with self._lock:
@@ -270,6 +427,7 @@ class BuildPaths:
     adjudicated_corpus_file: Path | None
     discovery_since: str = DEFAULT_DISCOVERY_SINCE
     population_policy: str = FORMAL_FULL_POLICY
+    checkpoint_dir: Path | None = None
 
     @classmethod
     def defaults(cls, repo_root: Path = _REPO_ROOT) -> BuildPaths:
@@ -308,6 +466,7 @@ class BuildPaths:
             delta_output=state / "source-delta-current.json",
             candidate_output=state / "new-osv-candidates.txt",
             adjudicated_corpus_file=corpus if corpus.is_file() else None,
+            checkpoint_dir=state / "source-delta-build",
         )
 
 
@@ -1653,9 +1812,21 @@ def validate_git_repository_safety(
     *,
     allow_incomplete_storage: bool = False,
     allow_safe_symlinks: bool = False,
+    defer_object_fsck: bool = False,
     fsck_cache: SuccessfulGitFsckCache | None = None,
 ) -> Path:
-    """Reject Git layouts/configuration that can redirect evidence or run code."""
+    """Reject Git layouts/configuration that can redirect evidence or run code.
+
+    ``defer_object_fsck`` is only for a transaction that performs a full
+    validation immediately after its next Git mutation. It retains layout,
+    config, index, and worktree checks but does not establish reusable object
+    integrity by itself.
+    """
+
+    if defer_object_fsck and allow_incomplete_storage:
+        raise ValueError(
+            "deferred object fsck cannot be combined with incomplete storage"
+        )
 
     try:
         directory_metadata = source_dir.lstat()
@@ -1837,21 +2008,26 @@ def validate_git_repository_safety(
         # that every object reachable from HEAD/history is actually present
         # and internally valid.  Partial legacy caches skip this only in the
         # disposable migration preflight and are never accepted as sources.
-        fsck_key: GitFsckCacheKey = (
-            str(directory),
-            head_before,
-            tree_before,
-            metadata_digest_before,
-        )
-        fsck_cached = fsck_cache is not None and fsck_cache.contains(fsck_key)
-        if not fsck_cached:
-            git_output(["fsck", "--full", "--strict", "--no-dangling", "--no-progress"])
+        fsck_key: GitFsckCacheKey | None = None
+        fsck_cached = False
+        if not defer_object_fsck:
+            fsck_key = (
+                str(directory),
+                head_before,
+                tree_before,
+                metadata_digest_before,
+            )
+            fsck_cached = fsck_cache is not None and fsck_cache.contains(fsck_key)
+            if not fsck_cached:
+                git_output(
+                    ["fsck", "--full", "--strict", "--no-dangling", "--no-progress"]
+                )
         metadata_digest_after = _validate_git_metadata_tree(git_dir, label)
         if metadata_digest_after != metadata_digest_before:
             raise SourceDeltaError(
                 f"{label} Git object/ref metadata changed during validation"
             )
-        if not fsck_cached and fsck_cache is not None:
+        if fsck_key is not None and not fsck_cached and fsck_cache is not None:
             fsck_cache.record_success(fsck_key)
     head_after = git_output(["rev-parse", "--verify", "HEAD^{commit}"]).strip()
     tree_after = git_output(["rev-parse", "--verify", "HEAD^{tree}"]).strip()
@@ -3759,10 +3935,21 @@ def _capture_input_guard(
         ),
         "files": manifest,
     }
-    git = {
-        source.name: _git_state(source, fsck_cache=fsck_cache)
-        for source in paths.git_sources
-    }
+    # The source repositories are independent immutable inputs. Validate them
+    # concurrently so their CPU-bound fsck passes do not serialize on large
+    # hosts. Resolve futures in declared order to keep the guard deterministic.
+    with ThreadPoolExecutor(
+        max_workers=max(1, min(len(paths.git_sources), os.cpu_count() or 1)),
+        thread_name_prefix="source-git-guard",
+    ) as pool:
+        git_futures = {
+            source.name: pool.submit(_git_state, source, fsck_cache=fsck_cache)
+            for source in paths.git_sources
+        }
+        git = {
+            source.name: git_futures[source.name].result()
+            for source in paths.git_sources
+        }
     nvd = {
         path.name: _capture_regular_file_snapshot(
             path,
@@ -3890,6 +4077,124 @@ def _validate_paths(paths: BuildPaths) -> None:
         raise SourceDeltaError("analysis result cache cannot alias an output")
 
 
+_CHECKPOINT_SCHEMA_VERSION = 1
+
+
+def _source_delta_checkpoint_root(paths: BuildPaths) -> Path:
+    """Return the durable, repository-adjacent checkpoint directory."""
+
+    return (
+        paths.checkpoint_dir
+        if paths.checkpoint_dir is not None
+        else paths.repo_root / _DEFAULT_STATE_ROOT / "source-delta-build"
+    ).resolve()
+
+
+def _source_delta_build_key(
+    paths: BuildPaths,
+    *,
+    input_snapshot_sha256: str,
+    analyzer_contract: Mapping[str, Any],
+) -> str:
+    payload = {
+        "input_snapshot_sha256": input_snapshot_sha256,
+        "analyzer_contract_sha256": analyzer_contract.get("sha256", ""),
+        "population_policy": paths.population_policy,
+        "discovery_since": paths.discovery_since,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _checkpoint_path(paths: BuildPaths, build_key: str, phase: str) -> Path:
+    if not re.fullmatch(r"[a-z0-9_-]+", phase):
+        raise SourceDeltaError("invalid source-delta checkpoint phase")
+    root = _source_delta_checkpoint_root(paths) / build_key
+    return root / f"{phase}.json"
+
+
+def _write_source_delta_checkpoint(
+    paths: BuildPaths,
+    *,
+    build_key: str,
+    input_snapshot_sha256: str,
+    analyzer_contract: Mapping[str, Any],
+    phase: str,
+    payload: Mapping[str, Any],
+) -> None:
+    """Atomically persist one completed phase and a human-readable progress row."""
+
+    target = _checkpoint_path(paths, build_key, phase)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.parent.is_symlink() or not target.parent.is_dir():
+        raise SourceDeltaError("source-delta checkpoint directory is unsafe")
+    envelope = {
+        "schema_version": _CHECKPOINT_SCHEMA_VERSION,
+        "phase": phase,
+        "build_key": build_key,
+        "input_snapshot_sha256": input_snapshot_sha256,
+        "analyzer_contract_sha256": analyzer_contract.get("sha256", ""),
+        "payload": dict(payload),
+    }
+    encoded = (json.dumps(envelope, sort_keys=False, separators=(",", ":")) + "\n").encode()
+    temporary = _write_temp(target.parent, f".{target.name}.", encoded)
+    try:
+        os.replace(temporary, target)
+        _fsync_directory(target.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+    progress = target.parent / "progress.json"
+    progress_payload = {
+        "schema_version": _CHECKPOINT_SCHEMA_VERSION,
+        "build_key": build_key,
+        "input_snapshot_sha256": input_snapshot_sha256,
+        "analyzer_contract_sha256": analyzer_contract.get("sha256", ""),
+        "last_completed_phase": phase,
+        "updated_at_utc": datetime.now(UTC).isoformat(),
+    }
+    progress_temp = _write_temp(
+        target.parent,
+        ".progress.",
+        (json.dumps(progress_payload, sort_keys=True, indent=2) + "\n").encode(),
+    )
+    try:
+        os.replace(progress_temp, progress)
+        _fsync_directory(target.parent)
+    finally:
+        progress_temp.unlink(missing_ok=True)
+
+
+def _read_source_delta_checkpoint(
+    paths: BuildPaths,
+    *,
+    build_key: str,
+    input_snapshot_sha256: str,
+    analyzer_contract: Mapping[str, Any],
+    phase: str,
+) -> dict[str, Any] | None:
+    """Read only a checkpoint bound to the exact current input and contract."""
+
+    path = _checkpoint_path(paths, build_key, phase)
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("schema_version") != _CHECKPOINT_SCHEMA_VERSION
+        or envelope.get("phase") != phase
+        or envelope.get("build_key") != build_key
+        or envelope.get("input_snapshot_sha256") != input_snapshot_sha256
+        or envelope.get("analyzer_contract_sha256") != analyzer_contract.get("sha256", "")
+        or not isinstance(envelope.get("payload"), dict)
+    ):
+        return None
+    return dict(envelope["payload"])
+
+
 def build_artifacts(
     paths: BuildPaths,
     *,
@@ -3908,6 +4213,11 @@ def build_artifacts(
     except analysis_contract.AnalysisContractError as exc:
         raise SourceDeltaError(f"cannot capture analyzer contract epoch: {exc}") from exc
     initial_guard = _capture_input_guard(paths, fsck_cache=operation_fsck_cache)
+    build_key = _source_delta_build_key(
+        paths,
+        input_snapshot_sha256=initial_guard["sha256"],
+        analyzer_contract=analyzer_contract,
+    )
     cache_snapshot = _scan_result_cache(paths.result_cache_dir, paths.repo_root)
     if cache_snapshot.metadata != initial_guard["result_cache"]:
         raise SourceDeltaError(
@@ -3927,26 +4237,111 @@ def build_artifacts(
             paths.adjudicated_corpus_file, "adjudicated corpus"
         )
 
-    git_output: dict[str, Any] = {}
-    for source in paths.git_sources:
-        git_output[source.name] = _compare_git(
-            source, initial_guard["git"][source.name]
+    cached_git = _read_source_delta_checkpoint(
+        paths,
+        build_key=build_key,
+        input_snapshot_sha256=initial_guard["sha256"],
+        analyzer_contract=analyzer_contract,
+        phase="git",
+    )
+    if cached_git is not None and set(cached_git) == {source.name for source in paths.git_sources}:
+        git_output = {
+            source.name: cached_git[source.name] for source in paths.git_sources
+        }
+    else:
+        git_output = {}
+        for source in paths.git_sources:
+            git_output[source.name] = _compare_git(
+                source, initial_guard["git"][source.name]
+            )
+        _write_source_delta_checkpoint(
+            paths,
+            build_key=build_key,
+            input_snapshot_sha256=initial_guard["sha256"],
+            analyzer_contract=analyzer_contract,
+            phase="git",
+            payload=git_output,
         )
-    nvd_output = _compare_nvd(
+
+    cached_nvd = _read_source_delta_checkpoint(
         paths,
-        initial_guard["nvd"],
-        initial_guard["baseline"]["files"],
+        build_key=build_key,
+        input_snapshot_sha256=initial_guard["sha256"],
+        analyzer_contract=analyzer_contract,
+        phase="nvd",
     )
-    osv_output = _compare_osv(
+    if cached_nvd is not None:
+        nvd_output = cached_nvd
+    else:
+        nvd_output = _compare_nvd(
+            paths,
+            initial_guard["nvd"],
+            initial_guard["baseline"]["files"],
+        )
+        _write_source_delta_checkpoint(
+            paths,
+            build_key=build_key,
+            input_snapshot_sha256=initial_guard["sha256"],
+            analyzer_contract=analyzer_contract,
+            phase="nvd",
+            payload=nvd_output,
+        )
+
+    cached_osv = _read_source_delta_checkpoint(
         paths,
-        initial_guard["osv"],
-        initial_guard["baseline"]["files"],
+        build_key=build_key,
+        input_snapshot_sha256=initial_guard["sha256"],
+        analyzer_contract=analyzer_contract,
+        phase="osv",
     )
-    uncached_discovery_ids, discovery_metadata = _build_production_discovery(
+    if cached_osv is not None:
+        osv_output = cached_osv
+    else:
+        osv_output = _compare_osv(
+            paths,
+            initial_guard["osv"],
+            initial_guard["baseline"]["files"],
+        )
+        _write_source_delta_checkpoint(
+            paths,
+            build_key=build_key,
+            input_snapshot_sha256=initial_guard["sha256"],
+            analyzer_contract=analyzer_contract,
+            phase="osv",
+            payload=osv_output,
+        )
+
+    cached_discovery = _read_source_delta_checkpoint(
         paths,
-        valid_cache_ids=cache_snapshot.subject_ids,
-        source_snapshot_sha256=advisory_source_snapshot_sha256(initial_guard),
+        build_key=build_key,
+        input_snapshot_sha256=initial_guard["sha256"],
+        analyzer_contract=analyzer_contract,
+        phase="discovery",
     )
+    if (
+        cached_discovery is not None
+        and isinstance(cached_discovery.get("uncached_discovery_ids"), list)
+        and isinstance(cached_discovery.get("discovery_metadata"), dict)
+    ):
+        uncached_discovery_ids = list(cached_discovery["uncached_discovery_ids"])
+        discovery_metadata = dict(cached_discovery["discovery_metadata"])
+    else:
+        uncached_discovery_ids, discovery_metadata = _build_production_discovery(
+            paths,
+            valid_cache_ids=cache_snapshot.subject_ids,
+            source_snapshot_sha256=advisory_source_snapshot_sha256(initial_guard),
+        )
+        _write_source_delta_checkpoint(
+            paths,
+            build_key=build_key,
+            input_snapshot_sha256=initial_guard["sha256"],
+            analyzer_contract=analyzer_contract,
+            phase="discovery",
+            payload={
+                "uncached_discovery_ids": uncached_discovery_ids,
+                "discovery_metadata": discovery_metadata,
+            },
+        )
 
     all_delta_ids: set[str] = set()
     for source in git_output.values():
@@ -4048,6 +4443,15 @@ def build_artifacts(
         "population_policy": paths.population_policy,
         "analyzer_contract": analyzer_contract,
         "input_snapshot_sha256": initial_guard["sha256"],
+        "build_checkpoint": {
+            "schema_version": _CHECKPOINT_SCHEMA_VERSION,
+            "build_key": build_key,
+            "directory": _relative_path(
+                _source_delta_checkpoint_root(paths) / build_key,
+                paths.repo_root,
+            ),
+            "phases": ["git", "nvd", "osv", "discovery"],
+        },
         "input_snapshot": initial_guard,
         "baseline": {
             "directory": _relative_path(paths.baseline_dir, paths.repo_root),
@@ -4229,7 +4633,9 @@ def build_source_delta(
 ) -> dict[str, Any]:
     """Build and publish a coherent source delta and candidate union."""
 
-    fsck_cache = SuccessfulGitFsckCache()
+    fsck_cache = SuccessfulGitFsckCache(
+        receipt_path=git_fsck_receipt_path(paths.repo_root)
+    )
     artifacts = build_artifacts(
         paths,
         generated_at_utc=generated_at_utc,

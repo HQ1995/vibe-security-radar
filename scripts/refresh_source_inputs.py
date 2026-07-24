@@ -32,6 +32,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -456,7 +457,15 @@ class _GitTransaction:
         original: GitState,
         remote: RemoteGitState,
     ) -> GitState:
-        current = _git_state(mirror, fsck_cache=self._fsck_cache)
+        # Fetch already validates transferred objects and the authoritative
+        # post-merge state below performs a full fsck. Repeating a full fsck
+        # here would validate the old HEAD plus newly fetched objects, only to
+        # do the same work again immediately after the exact fast-forward.
+        current = _git_state(
+            mirror,
+            fsck_cache=self._fsck_cache,
+            defer_object_fsck=True,
+        )
         if current != original:
             raise SourceRefreshError(f"Git mirror changed before update: {mirror.name}")
         if original.branch != remote.branch:
@@ -744,19 +753,29 @@ class SourceRefresher:
         osv_entries: list[dict[str, object]] = []
         osv_manifest_entry: dict[str, object] | None = None
         checked_at = _utc_now()
-        operation_fsck_cache = build_source_delta.SuccessfulGitFsckCache()
+        operation_fsck_cache = build_source_delta.SuccessfulGitFsckCache(
+            receipt_path=build_source_delta.git_fsck_receipt_path(
+                self.paths.repo_root
+            )
+        )
 
         with _read_only_campaign_lock(self.paths.runner_state_dir):
-            for mirror in sorted(self.paths.git_mirrors, key=lambda item: item.name):
-                try:
-                    local = _git_state(
-                        mirror,
-                        fsck_cache=operation_fsck_cache,
+            mirrors = sorted(self.paths.git_mirrors, key=lambda item: item.name)
+            strict_states = _parallel_strict_git_states(
+                mirrors,
+                operation_fsck_cache,
+            )
+            for mirror in mirrors:
+                local = strict_states[mirror.name]
+                if isinstance(local, SourceRefreshError):
+                    drift.append(
+                        {"source": f"git:{mirror.name}", "reason": str(local)}
                     )
-                except SourceRefreshError as exc:
-                    drift.append({"source": f"git:{mirror.name}", "reason": str(exc)})
                     continue
-                remote = _remote_default(mirror)
+                remote = _remote_default(
+                    mirror,
+                    fsck_cache=operation_fsck_cache,
+                )
                 if local.branch != remote.branch or local.head != remote.head:
                     drift.append(
                         {
@@ -873,7 +892,11 @@ class SourceRefresher:
     def refresh(self) -> dict[str, object]:
         """Stage, verify, transactionally install, and formally bind all inputs."""
         file_transaction = _FileTransaction()
-        operation_fsck_cache = build_source_delta.SuccessfulGitFsckCache()
+        operation_fsck_cache = build_source_delta.SuccessfulGitFsckCache(
+            receipt_path=build_source_delta.git_fsck_receipt_path(
+                self.paths.repo_root
+            )
+        )
         git_transaction = _GitTransaction(operation_fsck_cache)
         migration_transaction = _GitMigrationTransaction(operation_fsck_cache)
         initial_git: dict[str, GitState] = {}
@@ -892,12 +915,14 @@ class SourceRefresher:
                 _validate_existing_http_inventory(self.paths)
                 for mirror in self.paths.git_mirrors:
                     _recover_git_migration(mirror)
-                    try:
-                        initial = _git_state(
-                            mirror,
-                            fsck_cache=operation_fsck_cache,
-                        )
-                    except SourceRefreshError as strict_error:
+                strict_states = _parallel_strict_git_states(
+                    self.paths.git_mirrors,
+                    operation_fsck_cache,
+                )
+                for mirror in self.paths.git_mirrors:
+                    strict_state = strict_states[mirror.name]
+                    if isinstance(strict_state, SourceRefreshError):
+                        strict_error = strict_state
                         try:
                             initial = _git_state(
                                 mirror,
@@ -918,6 +943,7 @@ class SourceRefresher:
                         migrations[mirror.name] = migration
                         remote_git[mirror.name] = migration.remote
                     else:
+                        initial = strict_state
                         remote_git[mirror.name] = _remote_default(
                             mirror,
                             validate_safety=False,
@@ -1806,6 +1832,7 @@ def _assert_git_mirror_safety(
     mirror: GitMirror,
     *,
     allow_incomplete_storage: bool = False,
+    defer_object_fsck: bool = False,
     fsck_cache: build_source_delta.SuccessfulGitFsckCache | None = None,
 ) -> Path:
     directory = _require_real_directory(mirror.directory, f"{mirror.name} Git mirror")
@@ -1824,6 +1851,7 @@ def _assert_git_mirror_safety(
                 ),
             ).stdout.strip(),
             allow_incomplete_storage=allow_incomplete_storage,
+            defer_object_fsck=defer_object_fsck,
             fsck_cache=fsck_cache,
         )
     except build_source_delta.SourceDeltaError as exc:
@@ -1952,11 +1980,13 @@ def _git_state(
     mirror: GitMirror,
     *,
     allow_incomplete_storage: bool = False,
+    defer_object_fsck: bool = False,
     fsck_cache: build_source_delta.SuccessfulGitFsckCache | None = None,
 ) -> GitState:
     _assert_git_mirror_safety(
         mirror,
         allow_incomplete_storage=allow_incomplete_storage,
+        defer_object_fsck=defer_object_fsck,
         fsck_cache=fsck_cache,
     )
     if allow_incomplete_storage and not _git_materialization_markers(mirror):
@@ -2009,6 +2039,36 @@ def _git_state(
     return GitState(branch=branch, head=head, tree=tree, origin=origins[0])
 
 
+def _parallel_strict_git_states(
+    mirrors: Sequence[GitMirror],
+    fsck_cache: build_source_delta.SuccessfulGitFsckCache,
+) -> dict[str, GitState | SourceRefreshError]:
+    """Strictly validate independent mirrors concurrently, preserving errors."""
+
+    ordered = tuple(mirrors)
+    if not ordered or len({mirror.name for mirror in ordered}) != len(ordered):
+        raise SourceRefreshError("Git mirror inventory is empty or duplicated")
+    with ThreadPoolExecutor(
+        max_workers=min(len(ordered), os.cpu_count() or 1),
+        thread_name_prefix="source-refresh-git-guard",
+    ) as pool:
+        futures = {
+            mirror.name: pool.submit(
+                _git_state,
+                mirror,
+                fsck_cache=fsck_cache,
+            )
+            for mirror in ordered
+        }
+        results: dict[str, GitState | SourceRefreshError] = {}
+        for mirror in ordered:
+            try:
+                results[mirror.name] = futures[mirror.name].result()
+            except SourceRefreshError as exc:
+                results[mirror.name] = exc
+    return results
+
+
 def _assert_git_tree_has_no_symlinks(mirror: GitMirror, revision: str) -> None:
     listing = _run_git(
         mirror,
@@ -2041,9 +2101,10 @@ def _remote_default(
     mirror: GitMirror,
     *,
     validate_safety: bool = True,
+    fsck_cache: build_source_delta.SuccessfulGitFsckCache | None = None,
 ) -> RemoteGitState:
     if validate_safety:
-        _assert_git_mirror_safety(mirror)
+        _assert_git_mirror_safety(mirror, fsck_cache=fsck_cache)
     _git_origins(mirror)
     output = _run_git(
         mirror,

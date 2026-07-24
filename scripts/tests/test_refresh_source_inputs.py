@@ -9,7 +9,9 @@ import json
 import os
 import signal
 import subprocess
+import threading
 import zipfile
+from collections import Counter
 from collections.abc import Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -25,6 +27,43 @@ import run_data_refresh as campaign_contract
 
 
 _TEST_OSV_ECOSYSTEMS = ("GitHub Actions", "PyPI", "[EMPTY]")
+
+
+def test_strict_git_states_validate_independent_mirrors_concurrently(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mirrors = tuple(
+        refresh.GitMirror(
+            name=f"mirror-{index}",
+            directory=tmp_path / f"mirror-{index}",
+            expected_origin=f"https://example.invalid/mirror-{index}.git",
+        )
+        for index in range(3)
+    )
+    barrier = threading.Barrier(len(mirrors))
+
+    def fake_state(
+        mirror: refresh.GitMirror,
+        **_kwargs: object,
+    ) -> refresh.GitState:
+        barrier.wait(timeout=2)
+        return refresh.GitState(
+            branch="main",
+            head=str(mirrors.index(mirror)) * 40,
+            tree="f" * 40,
+            origin=mirror.expected_origin,
+        )
+
+    monkeypatch.setattr(refresh, "_git_state", fake_state)
+
+    states = refresh._parallel_strict_git_states(
+        mirrors,
+        build_source_delta.SuccessfulGitFsckCache(),
+    )
+
+    assert list(states) == [mirror.name for mirror in mirrors]
+    assert all(isinstance(state, refresh.GitState) for state in states.values())
 
 
 def _git(*arguments: str, cwd: Path | None = None) -> str:
@@ -1283,6 +1322,65 @@ def test_one_refresh_reuses_successful_fsck_for_unchanged_installed_sources(
     refresh.SourceRefresher(paths, http=http).refresh()
 
     assert fsck_calls == len(git_fixtures)
+
+
+def test_one_refresh_reuses_updated_head_fsck_during_receipt_validation(
+    source_fixture: tuple[refresh.RefreshPaths, list[GitFixture], FakeHttp],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, git_fixtures, http = source_fixture
+    git_fixtures[0].advance("remote-update")
+    original = refresh._run_git
+    fsck_calls: list[str] = []
+    def counted_run_git(
+        target: refresh.GitMirror,
+        arguments: Sequence[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        if arguments and arguments[0] == "fsck":
+            fsck_calls.append(target.name)
+        return original(target, arguments, **kwargs)
+
+    monkeypatch.setattr(refresh, "_run_git", counted_run_git)
+
+    refresh.SourceRefresher(paths, http=http).refresh()
+
+    assert Counter(fsck_calls) == Counter(
+        {
+            git_fixtures[0].mirror.name: 2,
+            git_fixtures[1].mirror.name: 1,
+            git_fixtures[2].mirror.name: 1,
+        }
+    )
+
+
+def test_one_check_reuses_successful_fsck_for_remote_discovery_and_receipt(
+    source_fixture: tuple[refresh.RefreshPaths, list[GitFixture], FakeHttp],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, git_fixtures, http = source_fixture
+    refresher = refresh.SourceRefresher(paths, http=http)
+    refresher.refresh()
+    original = refresh._run_git
+    fsck_calls = 0
+
+    def counted_run_git(
+        target: refresh.GitMirror,
+        arguments: Sequence[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        nonlocal fsck_calls
+        if arguments and arguments[0] == "fsck":
+            fsck_calls += 1
+        return original(target, arguments, **kwargs)
+
+    monkeypatch.setattr(refresh, "_run_git", counted_run_git)
+
+    result = refresher.check()
+
+    assert result["remote_parity"] is True
+    # refresh() persisted exact metadata-bound receipts for all mirrors.
+    assert fsck_calls == 0
 
 
 @pytest.mark.parametrize(

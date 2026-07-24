@@ -1071,6 +1071,76 @@ def test_successful_fsck_cache_skips_same_key_and_invalidates_object_metadata(
     assert fsck_calls == [2]
 
 
+def test_durable_fsck_receipt_reuses_success_across_process_instances(
+    tmp_path: Path,
+) -> None:
+    source = _make_git_source(
+        tmp_path / "source",
+        name="source",
+        head_file=tmp_path / "source.head",
+        origin="https://example.invalid/advisories.git",
+        baseline_files={"source.json": "baseline\n"},
+        current_files={"source.json": "current\n"},
+    )
+    receipt = tmp_path / "state/git-fsck-receipts-v1.json"
+    fsck_calls = [0]
+
+    _validate_with_fsck_cache(
+        source,
+        builder.SuccessfulGitFsckCache(receipt_path=receipt),
+        fsck_calls,
+    )
+    _validate_with_fsck_cache(
+        source,
+        builder.SuccessfulGitFsckCache(receipt_path=receipt),
+        fsck_calls,
+    )
+
+    assert fsck_calls == [1]
+    payload = json.loads(receipt.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == builder.GIT_FSCK_RECEIPT_SCHEMA_VERSION
+    assert payload["contract"] == builder.GIT_FSCK_RECEIPT_CONTRACT
+    assert len(payload["entries"]) == 1
+
+    oid = _git(source.directory, "rev-parse", "HEAD:source.json")
+    object_path = _loose_object_path(source.directory, oid)
+    metadata = object_path.stat()
+    os.utime(
+        object_path,
+        ns=(metadata.st_atime_ns, metadata.st_mtime_ns + 1_000_000),
+    )
+    _validate_with_fsck_cache(
+        source,
+        builder.SuccessfulGitFsckCache(receipt_path=receipt),
+        fsck_calls,
+    )
+    assert fsck_calls == [2]
+
+
+def test_malformed_durable_fsck_receipt_fails_closed_to_full_fsck(
+    tmp_path: Path,
+) -> None:
+    source = _make_git_source(
+        tmp_path / "source",
+        name="source",
+        head_file=tmp_path / "source.head",
+        origin="https://example.invalid/advisories.git",
+        baseline_files={"source.json": "baseline\n"},
+        current_files={"source.json": "current\n"},
+    )
+    receipt = tmp_path / "git-fsck-receipts-v1.json"
+    receipt.write_text('{"schema_version": 999, "entries": []}\n', encoding="utf-8")
+    fsck_calls = [0]
+
+    _validate_with_fsck_cache(
+        source,
+        builder.SuccessfulGitFsckCache(receipt_path=receipt),
+        fsck_calls,
+    )
+
+    assert fsck_calls == [1]
+
+
 def test_failed_fsck_is_never_cached(tmp_path: Path) -> None:
     source = _make_git_source(
         tmp_path / "source",
