@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import shutil
 import statistics
 import sys
@@ -48,6 +49,7 @@ DEFAULT_OSV_DIR = Path.home() / ".cache" / "cve-analyzer" / "osv-bulk"
 # Leave room for the blobs that blame/SZZ will lazily fetch later.
 DEFAULT_DISK_FLOOR_GB = 150.0
 DEFAULT_MAX_REPO_GB = 8.0
+DEFAULT_SIZE_SAMPLE = 300
 
 
 def _index_path(state_root: Path, cutoff: str) -> Path:
@@ -193,7 +195,13 @@ def _ranked_targets(
 def cmd_plan(args: argparse.Namespace) -> int:
     frame = _load_frame(args.state_root, args.cutoff)
     cloned, unresolved = discover_local_clones(_REPO_ROOT)
-    sizes = sorted(directory_size_mb(p) for p in cloned.values())
+
+    # A random sample is enough to estimate median/mean size; walking every
+    # clone with `du` does not scale as the corpus grows into the thousands,
+    # and the disk projection only needs a stable estimate, not an exact sum.
+    sample_paths = random.sample(list(cloned.values()), min(args.size_sample, len(cloned)))
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        sizes = sorted(executor.map(directory_size_mb, sample_paths))
     median = statistics.median(sizes) if sizes else 0.0
     mean = statistics.mean(sizes) if sizes else 0.0
     usage = shutil.disk_usage(_REPO_ROOT)
@@ -326,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_plan = sub.add_parser("plan", help="report disk projection without cloning")
     p_plan.add_argument("--disk-floor-gb", type=float, default=DEFAULT_DISK_FLOOR_GB)
+    p_plan.add_argument("--size-sample", type=int, default=DEFAULT_SIZE_SAMPLE)
     p_plan.set_defaults(func=cmd_plan)
 
     p_clone = sub.add_parser("clone", help="clone frame members within the disk budget")

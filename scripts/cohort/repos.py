@@ -8,7 +8,7 @@ origin and canonicalise that.
 
 from __future__ import annotations
 
-import os
+import subprocess
 from pathlib import Path
 
 
@@ -82,13 +82,28 @@ def clone_url(identity: str) -> str:
 
 
 def directory_size_mb(path: Path) -> float:
-    """Return the on-disk size of a directory in MiB (0.0 when unreadable)."""
+    """Return the on-disk size of a directory in MiB (0.0 when unreadable).
 
-    total = 0
-    for dirpath, dirnames, filenames in os.walk(path, onerror=lambda _e: None):
-        for name in filenames:
-            try:
-                total += os.lstat(os.path.join(dirpath, name)).st_size
-            except OSError:
-                continue
-    return total / (1024 * 1024)
+    Shells out to ``du`` rather than walking with ``os.walk`` + per-file
+    ``lstat``: measured against the cohort's largest clone (66 GB, likely
+    millions of loose objects before a gc), the pure-Python walk made the
+    frame planner's per-repo size pass effectively unbounded, while ``du``'s
+    own C-level walk finishes in a fraction of the time.
+    """
+
+    try:
+        completed = subprocess.run(
+            ["du", "-sk", str(path)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return 0.0
+    if completed.returncode != 0 or not completed.stdout:
+        return 0.0
+    try:
+        kib = int(completed.stdout.split()[0])
+    except (ValueError, IndexError):
+        return 0.0
+    return kib / 1024
