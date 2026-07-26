@@ -11,8 +11,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-CLONE_DIR_PREFIX = "v2_"
-
 
 def cache_roots(repo_root: Path) -> list[tuple[str, Path]]:
     """Return (label, path) for every repository cache root, preferred first."""
@@ -50,6 +48,13 @@ def clone_identity(repo_dir: Path) -> str:
 def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[str, str]]]:
     """Map canonical identity -> clone path, preferring the project-local cache.
 
+    The home cache holds two generations of naming: 121 clones under the
+    hashed ``v2_*`` scheme and ~5,900 older clones named directly after their
+    repository (``torvalds_linux``, ``libreoffice_core``, ...). Both are real,
+    readable git checkouts — restricting discovery to ``v2_*`` made 808 GB of
+    already-cloned repositories invisible, which would have re-cloned them.
+    Every directory containing a ``.git`` is checked, regardless of name.
+
     Returns the mapping plus the cache directories whose origin could not be
     canonicalised, so callers can report them instead of silently dropping them.
     """
@@ -60,7 +65,7 @@ def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[s
         if not root.is_dir():
             continue
         for entry in sorted(root.iterdir()):
-            if not entry.name.startswith(CLONE_DIR_PREFIX) or not entry.is_dir():
+            if not entry.is_dir() or not (entry / ".git").exists():
                 continue
             identity = clone_identity(entry)
             if not identity:
