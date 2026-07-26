@@ -34,6 +34,18 @@ uv run ruff check src/ tests/                # Lint
 
 Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batch commands. CVEs before 2025-05 are outside coverage.
 
+## Research Direction (2026-07-26)
+
+The formal data-refresh campaign is **frozen**: `scripts/run_data_refresh.py`, the
+release gate, and the no-token pilot get no further investment. Their on-disk
+state stays where it is — do not delete it. The CVE→blame→AI direction proved
+structurally expensive on large repos and can never produce a denominator.
+
+New main line: a **forward cohort study** — enumerate AI-attributed commits,
+pair them with controls, then link outcomes. Entry point:
+`scripts/cohort_scan_ai_commits.py`. The web dashboard continues as a curated
+case collection of confirmed AI-introduced CVEs; it needs no coverage proof.
+
 ## Quality Assurance
 
 - **Unit tests**: Algorithm correctness (`cve-analyzer/tests/`)
