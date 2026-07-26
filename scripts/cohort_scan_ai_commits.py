@@ -194,6 +194,13 @@ def _commit_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
                 "authored_date": authored,
                 "year": authored[:4],
                 "tools": sorted({str(m.get("tool")) for m in matches if m.get("tool")}),
+                # Exposure stratum.  An autonomous agent authored the whole
+                # change so its AI share is 1.0 and needs no squash
+                # decomposition; a security autofix writes fixes and is
+                # reported apart from code authorship.
+                "agent_kinds": sorted(
+                    {str(m.get("agent_kind")) for m in matches if m.get("agent_kind")}
+                ),
                 "source_modules": sorted(
                     {str(m.get("source_module")) for m in matches if m.get("source_module")}
                 ),
@@ -223,9 +230,12 @@ def _build_summary(
     years: Counter[str] = Counter()
     per_repo: Counter[str] = Counter()
     topology: Counter[str] = Counter()
+    agent_kinds: Counter[str] = Counter()
     for row in rows:
         for tool in row["tools"]:
             tools[tool] += 1
+        for agent_kind in row["agent_kinds"]:
+            agent_kinds[agent_kind] += 1
         for module in row["source_modules"]:
             modules[module] += 1
         for signal_type in row["signal_types"]:
@@ -260,6 +270,7 @@ def _build_summary(
         "source_module_commit_counts": dict(modules.most_common()),
         "signal_type_commit_counts": dict(signal_types.most_common()),
         "merge_topology_counts": dict(topology.most_common()),
+        "agent_kind_commit_counts": dict(agent_kinds.most_common()),
         "commits_by_year": dict(sorted(years.items())),
         "top_repositories": dict(per_repo.most_common(30)),
         "incomplete_repositories": incomplete,
@@ -283,6 +294,7 @@ def _print_report(summary: dict[str, Any]) -> None:
         ("by tool", "tool_commit_counts"),
         ("by source module", "source_module_commit_counts"),
         ("by merge topology", "merge_topology_counts"),
+        ("by agent kind", "agent_kind_commit_counts"),
         ("by year", "commits_by_year"),
     ):
         counts = summary[key]
