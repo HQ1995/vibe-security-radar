@@ -22,6 +22,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -35,7 +36,7 @@ from typing import Any
 
 import data_refresh_paths
 
-from cohort.repos import discover_local_clones
+from cohort.repos import discover_local_clone_groups
 
 # Same trailing-PR-reference shape pr_enrichment.py keys squash detection on.
 _PR_NUMBER_RE = re.compile(r"\(#(\d+)\)\s*$", re.MULTILINE)
@@ -45,6 +46,17 @@ _REPO_ROOT = _SCRIPT_DIR.parent
 
 DEFAULT_WORKERS = 8
 COHORT_STATE_RELATIVE = Path(data_refresh_paths.PROJECT_RUNTIME_DIRECTORY) / "state" / "cohort-v1"
+
+
+def _canonical_sha256(value: object) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -116,13 +128,13 @@ def _parent_shas(repo_path: Path, shas: list[str]) -> dict[str, list[str]]:
     return parents
 
 
-def _scan_one(
+def _scan_one_clone(
     identity: str,
     repo_path: Path,
     since: str | None,
     scan_repo_ai_commit_index,
 ) -> dict[str, Any]:
-    """Scan one repository; a failure is recorded, never raised."""
+    """Scan one clone; a failure is recorded, never raised."""
 
     started = time.monotonic()
     kwargs = {"since": since} if since else {}
@@ -135,6 +147,7 @@ def _scan_one(
             "complete": False,
             "error": f"scan_exception:{type(exc).__name__}",
             "commits": [],
+            "refs_digest": "",
             "elapsed_seconds": round(time.monotonic() - started, 3),
         }
     commits = payload.get("commits") or []
@@ -146,10 +159,128 @@ def _scan_one(
         "error": str(payload.get("error") or ""),
         "commits": commits,
         "parents": _parent_shas(repo_path, shas) if shas else {},
+        "refs_digest": str(payload.get("refs_digest") or ""),
         "tool_commit_counts": payload.get("tool_commit_counts") or {},
         "source_module_commit_counts": payload.get("source_module_commit_counts") or {},
         "elapsed_seconds": round(time.monotonic() - started, 3),
     }
+
+
+def _merge_clone_scan_results(
+    identity: str,
+    clone_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Union duplicate-clone scans by immutable commit SHA.
+
+    Clone ref sets are not assumed to be nested.  Matches and changed-file
+    metadata are therefore unioned for an overlapping SHA, and every row keeps
+    the clone paths that made it reachable.  Any failed clone keeps the
+    repository result incomplete because that clone may contain unique refs.
+    """
+
+    commits_by_sha: dict[str, dict[str, Any]] = {}
+    parents_by_sha: dict[str, list[str]] = {}
+    parent_conflicts: list[str] = []
+    for result in clone_results:
+        repo_path = str(result.get("repo_path") or "")
+        for commit in result.get("commits") or []:
+            sha = str(commit.get("sha") or "")
+            if not sha:
+                continue
+            existing = commits_by_sha.get(sha)
+            if existing is None:
+                existing = dict(commit)
+                existing["changed_files"] = sorted(
+                    {str(path) for path in commit.get("changed_files") or []}
+                )
+                existing["source_matches"] = list(commit.get("source_matches") or [])
+                existing["_observed_in_clone_paths"] = [repo_path] if repo_path else []
+                commits_by_sha[sha] = existing
+            else:
+                existing["changed_files"] = sorted(
+                    {
+                        *(str(path) for path in existing.get("changed_files") or []),
+                        *(str(path) for path in commit.get("changed_files") or []),
+                    }
+                )
+                matches = {
+                    json.dumps(
+                        match,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    ): match
+                    for match in (
+                        *(existing.get("source_matches") or []),
+                        *(commit.get("source_matches") or []),
+                    )
+                }
+                existing["source_matches"] = [
+                    matches[key] for key in sorted(matches)
+                ]
+                existing["_observed_in_clone_paths"] = sorted(
+                    {
+                        *(str(path) for path in existing.get("_observed_in_clone_paths") or []),
+                        *([repo_path] if repo_path else []),
+                    }
+                )
+
+        for sha, parents in (result.get("parents") or {}).items():
+            normalized = [str(parent) for parent in parents]
+            previous = parents_by_sha.get(str(sha))
+            if previous is not None and previous != normalized:
+                parent_conflicts.append(str(sha))
+                continue
+            parents_by_sha[str(sha)] = normalized
+
+    incomplete = [result for result in clone_results if not result.get("complete")]
+    errors = [
+        f"{result.get('repo_path')}:{result.get('error')}"
+        for result in incomplete
+    ]
+    if parent_conflicts:
+        errors.append(
+            "parent_conflict:" + ",".join(sorted(set(parent_conflicts)))
+        )
+    clone_coverage = [
+        {
+            "repo_path": str(result.get("repo_path") or ""),
+            "complete": bool(result.get("complete")),
+            "error": str(result.get("error") or ""),
+            "refs_digest": str(result.get("refs_digest") or ""),
+            "ai_commit_count": len(result.get("commits") or []),
+        }
+        for result in clone_results
+    ]
+    return {
+        "repository_identity": identity,
+        "repo_path": str(clone_results[0].get("repo_path") or "") if clone_results else "",
+        "clone_paths": [entry["repo_path"] for entry in clone_coverage],
+        "clone_coverage": clone_coverage,
+        "complete": not incomplete and not parent_conflicts and bool(clone_results),
+        "error": ";".join(errors),
+        "commits": [commits_by_sha[sha] for sha in sorted(commits_by_sha)],
+        "parents": parents_by_sha,
+        "elapsed_seconds": round(
+            sum(float(result.get("elapsed_seconds") or 0.0) for result in clone_results),
+            3,
+        ),
+    }
+
+
+def _scan_one(
+    identity: str,
+    repo_paths: tuple[Path, ...],
+    since: str | None,
+    scan_repo_ai_commit_index,
+) -> dict[str, Any]:
+    """Scan and losslessly union every clone of one canonical repository."""
+
+    clone_results = [
+        _scan_one_clone(identity, repo_path, since, scan_repo_ai_commit_index)
+        for repo_path in repo_paths
+    ]
+    return _merge_clone_scan_results(identity, clone_results)
 
 
 def _pr_number(message: str) -> int | None:
@@ -212,6 +343,13 @@ def _commit_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
                 "parents": parents,
                 "pr_number": _pr_number(message),
                 "merge_topology": _merge_topology(message, parents),
+                "observed_in_clone_paths": sorted(
+                    {
+                        str(path)
+                        for path in commit.get("_observed_in_clone_paths") or []
+                        if path
+                    }
+                ),
             }
         )
     return rows
@@ -254,6 +392,23 @@ def _build_summary(
         for result in results
         if not result["complete"]
     ]
+    scanned_identities = sorted(
+        str(result["repository_identity"]) for result in results
+    )
+    complete_identities = sorted(
+        str(result["repository_identity"])
+        for result in results
+        if result["complete"]
+    )
+    coverage_rows = [
+        {
+            "repository_identity": str(result["repository_identity"]),
+            "complete": bool(result["complete"]),
+            "error": str(result["error"]),
+            "clone_coverage": result.get("clone_coverage") or [],
+        }
+        for result in sorted(results, key=lambda row: str(row["repository_identity"]))
+    ]
     return {
         "schema_version": 1,
         "artifact_kind": "cohort_ai_commit_scan",
@@ -264,6 +419,17 @@ def _build_summary(
         "repositories_complete": sum(1 for r in results if r["complete"]),
         "repositories_incomplete": len(incomplete),
         "repositories_with_ai_commits": sum(1 for count in per_repo.values() if count),
+        "repository_clone_count": sum(
+            len(result.get("clone_coverage") or [result.get("repo_path")])
+            for result in results
+        ),
+        "repositories_with_duplicate_clones": sum(
+            1 for result in results if len(result.get("clone_coverage") or []) > 1
+        ),
+        "scanned_repository_identities": scanned_identities,
+        "complete_repository_identities": complete_identities,
+        "repository_coverage_sha256": _canonical_sha256(coverage_rows),
+        "repository_clone_coverage": coverage_rows,
         "unresolved_cache_dirs": len(unresolved),
         "ai_commit_count": len(rows),
         "tool_commit_counts": dict(tools.most_common()),
@@ -316,6 +482,8 @@ def _print_report(summary: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    if args.output_dir is not None and args.output_dir.exists():
+        raise SystemExit(f"output directory already exists: {args.output_dir}")
     workers = max(1, args.workers)
 
     # git_ops binds the throttle singleton at import time, so resizing it
@@ -331,7 +499,7 @@ def main(argv: list[str] | None = None) -> int:
     since = args.since or DEFAULT_PROVENANCE_SINCE
 
     print("Discovering local clones...", flush=True)
-    repositories, unresolved = discover_local_clones(_REPO_ROOT)
+    repositories, unresolved = discover_local_clone_groups(_REPO_ROOT)
     if args.repo:
         wanted = {identity.strip().casefold() for identity in args.repo}
         repositories = {k: v for k, v in repositories.items() if k.casefold() in wanted}
@@ -346,6 +514,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(
         f"  {len(targets)} repositories to scan"
+        f" across {sum(len(paths) for _, paths in targets)} clones"
         f" ({len(unresolved)} cache dirs without a usable origin)",
         flush=True,
     )
@@ -354,8 +523,8 @@ def main(argv: list[str] | None = None) -> int:
     results: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(_scan_one, identity, path, args.since, scan_repo_ai_commit_index): identity
-            for identity, path in targets
+            executor.submit(_scan_one, identity, paths, since, scan_repo_ai_commit_index): identity
+            for identity, paths in targets
         }
         for done, future in enumerate(as_completed(futures), start=1):
             result = future.result()
@@ -364,6 +533,7 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"  [{done}/{len(targets)}] {result['repository_identity']}"
                 f" — {len(result['commits'])} AI commits,"
+                f" {len(result.get('clone_paths') or [])} clones,"
                 f" {result['elapsed_seconds']}s {status}",
                 flush=True,
             )
@@ -379,7 +549,7 @@ def main(argv: list[str] | None = None) -> int:
         / COHORT_STATE_RELATIVE
         / f"scan-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     )
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=False)
     commits_path = output_dir / "commits.jsonl"
     with commits_path.open("w", encoding="utf-8") as handle:
         for row in rows:
