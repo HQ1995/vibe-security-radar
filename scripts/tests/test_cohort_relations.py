@@ -28,6 +28,7 @@ def _unit(sha: str, *, squash: bool = False) -> dict:
         "authored_date": "2026-02-01" if squash else "2026-01-01",
         "merge_topology": "squash" if squash else "direct",
         "pr_number": 7 if squash else None,
+        "retained": True,
         "tools": ["landed"] if squash else ["origin"],
     }
 
@@ -125,6 +126,67 @@ def test_missing_pull_ref_is_blocked_without_fabricating_a_relation() -> None:
     assert inventory["pull_roots"][0]["reason"] == "no_pr_ref"
 
 
+def test_readable_retained_carrier_covers_surface_without_atomic_claim() -> None:
+    witness = {
+        "atomic_provenance_status": "BLOCKED_NO_PUBLIC_PR_REF",
+        "carrier_fix_edge_count": 1,
+        "carrier_parent_sha": "9" * 40,
+        "carrier_patch_sha256": "a" * 64,
+        "carrier_patch_status": "READABLE_NONEMPTY",
+    }
+    inventory = build_pull_relation_inventory(
+        REPOSITORY,
+        [_unit(LANDED, squash=True)],
+        {7: {"status": "BLOCKED", "members": [], "reason": "no_pr_ref"}},
+        carrier_only_witnesses={LANDED: witness},
+    )
+
+    root = inventory["pull_roots"][0]
+    assert root["status"] == "CARRIER_ONLY"
+    assert root["candidate_surface_status"] == "COVERED_BY_DIRECT_CARRIER"
+    assert root["atomic_provenance_status"] == "BLOCKED_NO_PUBLIC_PR_REF"
+    assert root["member_count"] is None
+    assert root["eligible_origin_count"] is None
+    assert inventory["candidate_surface_coverage_complete"] is True
+    assert inventory["atomic_provenance_complete"] is False
+    assert inventory["atomic_provenance_gap_count"] == 1
+    assert inventory["conservation"]["pull_roots_conserved"] is True
+
+    empty = build_pull_relation_inventory(
+        REPOSITORY,
+        [_unit(LANDED, squash=True)],
+        {7: {"status": "BLOCKED", "members": [], "reason": "no_pr_ref"}},
+        carrier_only_witnesses={
+            LANDED: {**witness, "carrier_patch_status": "READABLE_EMPTY_NET_DELTA"}
+        },
+    )
+    assert empty["pull_roots"][0]["candidate_surface_status"] == "EMPTY_NET_DELTA"
+
+    not_retained = _unit(LANDED, squash=True)
+    not_retained["retained"] = False
+    with pytest.raises(RelationContractError, match="not retained"):
+        build_pull_relation_inventory(
+            REPOSITORY,
+            [not_retained],
+            {7: {"status": "BLOCKED", "members": [], "reason": "no_pr_ref"}},
+            carrier_only_witnesses={LANDED: witness},
+        )
+
+    with pytest.raises(RelationContractError, match="outside no_pr_ref"):
+        build_pull_relation_inventory(
+            REPOSITORY,
+            [_unit(LANDED, squash=True)],
+            {
+                7: {
+                    "status": "BLOCKED",
+                    "members": [],
+                    "reason": "integration_branch",
+                }
+            },
+            carrier_only_witnesses={LANDED: witness},
+        )
+
+
 def test_ambiguous_pr_mapping_fans_out_without_losing_members() -> None:
     other_landed = "6" * 40
     other = _unit(other_landed, squash=True)
@@ -141,6 +203,7 @@ def test_ambiguous_pr_mapping_fans_out_without_losing_members() -> None:
     assert inventory["conservation"] == {
         "pull_root_count": 2,
         "resolved_pull_root_count": 2,
+        "carrier_only_pull_root_count": 0,
         "blocked_pull_root_count": 0,
         "pull_roots_conserved": True,
     }

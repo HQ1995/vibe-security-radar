@@ -751,6 +751,47 @@ def _single_diff_metadata(
     return _path_metadata(names.splitlines()) if names is not None else None
 
 
+def _carrier_patch_witness(
+    repo: Path, sha: str, *, timeout: int
+) -> dict[str, object] | None:
+    """Prove that a retained single-parent carrier has reviewable patch content."""
+
+    parents = _git_output_or_none(
+        repo, ["show", "--no-patch", "--format=%P", sha], timeout=timeout
+    )
+    if parents is None:
+        return None
+    parent_shas = parents.split()
+    if len(parent_shas) != 1 or not re.fullmatch(r"[0-9a-f]{40}", parent_shas[0]):
+        return None
+    patch = _git_output_or_none(
+        repo,
+        [
+            "diff-tree",
+            "-p",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-renames",
+            "--full-index",
+            "--binary",
+            parent_shas[0],
+            sha,
+            "--",
+        ],
+        timeout=timeout,
+    )
+    if patch is None:
+        return None
+    return {
+        "atomic_provenance_status": "BLOCKED_NO_PUBLIC_PR_REF",
+        "carrier_parent_sha": parent_shas[0],
+        "carrier_patch_sha256": hashlib.sha256(patch.encode("utf-8")).hexdigest(),
+        "carrier_patch_status": (
+            "READABLE_NONEMPTY" if patch else "READABLE_EMPTY_NET_DELTA"
+        ),
+    }
+
+
 def _diff_metadata(
     repo: Path, shas: Sequence[str], *, timeout: int
 ) -> dict[str, dict[str, object]]:
@@ -849,6 +890,7 @@ def _candidate_units(
         unit = {
             "repository_identity": identity,
             "sha": sha,
+            "retained": candidate.get("retained") is True,
             **{
                 field: candidate[field]
                 for field in _OBSERVATION_FIELDS
@@ -881,13 +923,15 @@ def _missing_pr_root(identity: str, landed_sha: str) -> dict[str, object]:
         "landed_sha": landed_sha,
         "status": "BLOCKED",
         "reason": "missing_pr_number",
-        "member_count": 0,
-        "eligible_origin_count": 0,
-        "eligible_origins_sha256": canonical_sha256([]),
-        "observed_origin_count": 0,
-        "unobserved_origin_count": 0,
+        "member_count": None,
+        "eligible_origin_count": None,
+        "eligible_origins_sha256": None,
+        "observed_origin_count": None,
+        "unobserved_origin_count": None,
         "member_ai_signal_count": 0,
         "squash_attribution_only": True,
+        "candidate_surface_status": "UNCOVERED",
+        "atomic_provenance_status": "BLOCKED_MISSING_PR_NUMBER",
     }
 
 
@@ -1025,6 +1069,7 @@ def _build_relations(
                 repo, pr_numbers, batch=fetch_batch, timeout=timeout
             )
         pull_results: dict[int, dict[str, object]] = {}
+        carrier_only_witnesses: dict[str, dict[str, object]] = {}
         members_by_pr: dict[int, list[str]] = {}
         if repo is None:
             for number in pr_numbers:
@@ -1061,6 +1106,33 @@ def _build_relations(
                         "members": [],
                         "reason": "no_pr_ref",
                     }
+                    for landed_sha in sorted(landed_for_pr[number]):
+                        matching_rows = [
+                            row
+                            for row in candidates
+                            if str(row.get("repository_identity") or "").lower()
+                            == identity
+                            and str(row.get("sha") or "").lower() == landed_sha
+                        ]
+                        witness = _carrier_patch_witness(
+                            repo, landed_sha, timeout=timeout
+                        )
+                        if (
+                            matching_rows
+                            and all(row.get("retained") is True for row in matching_rows)
+                            and witness is not None
+                        ):
+                            fix_edges = {
+                                (
+                                    str(row.get("advisory") or ""),
+                                    str(row.get("fix_sha") or "").lower(),
+                                )
+                                for row in matching_rows
+                            }
+                            carrier_only_witnesses[landed_sha] = {
+                                **witness,
+                                "carrier_fix_edge_count": len(fix_edges),
+                            }
                 elif oversized or len(member_union) > MAX_PR_MEMBERS:
                     pull_results[number] = {
                         "status": "BLOCKED",
@@ -1206,6 +1278,7 @@ def _build_relations(
                 _candidate_units(identity, candidates, matched_members),
                 pull_results,
                 landed_candidate_shas=valid_targets,
+                carrier_only_witnesses=carrier_only_witnesses,
             )
             local_relations = [dict(row) for row in inventory["relations"]]
             local_roots = [dict(row) for row in inventory["pull_roots"]]
@@ -1399,6 +1472,9 @@ def main(argv: list[str] | None = None) -> int:
                 "resolved_root_count": sum(
                     row.get("status") == "RESOLVED" for row in depth_roots
                 ),
+                "carrier_only_root_count": sum(
+                    row.get("status") == "CARRIER_ONLY" for row in depth_roots
+                ),
                 "blocked_root_count": sum(
                     row.get("status") == "BLOCKED" for row in depth_roots
                 ),
@@ -1441,6 +1517,9 @@ def main(argv: list[str] | None = None) -> int:
         if root.get("status") == "BLOCKED"
     )
     resolved_count = sum(root.get("status") == "RESOLVED" for root in roots)
+    carrier_only_count = sum(
+        root.get("status") == "CARRIER_ONLY" for root in roots
+    )
     blocked_count = sum(root.get("status") == "BLOCKED" for root in roots)
     relation_member_shas = {
         (str(row["repository_identity"]), str(row["origin_sha"])) for row in relations
@@ -1450,7 +1529,7 @@ def main(argv: list[str] | None = None) -> int:
         for key in relation_member_shas
     )
     summary: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "proof_carrying_origin_squash_relation_closure",
         "split_id": parent_summary.get("split_id")
         or f"prospective-{parent_summary.get('advisory')}",
@@ -1467,8 +1546,10 @@ def main(argv: list[str] | None = None) -> int:
             "without member-level evidence. Exact pre-fix hunk context mapped to PR-head "
             "blame is ranking evidence, not by itself a causality verdict. Recovered "
             "members that are themselves landed squashes are recursively expanded up "
-            "to the declared bound. Blocked roots and depth-limit gaps retain their "
-            "landed squash as fail-open candidates."
+            "to the declared bound. CARRIER_ONLY means the retained landed patch is "
+            "fully readable for vulnerability screening while atomic PR membership "
+            "remains unknown. It is not atomic attribution. Blocked roots and "
+            "depth-limit gaps retain their landed squash as fail-open candidates."
         ),
         "parent_generation_sha256": canonical_sha256(parent_summary),
         "parent_candidate_inventory_sha256": canonical_sha256(parent_candidates),
@@ -1487,7 +1568,14 @@ def main(argv: list[str] | None = None) -> int:
         "nested_squash_depth_limit_gap_count": len(recursive_scope_gaps),
         "squash_relation_root_count": len(roots),
         "resolved_squash_relation_root_count": resolved_count,
+        "carrier_only_squash_relation_root_count": carrier_only_count,
         "blocked_squash_relation_root_count": blocked_count,
+        "atomic_provenance_gap_count": carrier_only_count + blocked_count,
+        "candidate_surface_uncovered_count": blocked_count,
+        "candidate_surface_coverage_complete": blocked_count == 0,
+        "atomic_provenance_complete": (
+            carrier_only_count == 0 and blocked_count == 0
+        ),
         "recovered_atomic_member_count": len(relation_member_shas),
         "member_level_ai_signal_count": member_signal_count,
         "empty_atomic_member_count": sum(
@@ -1517,17 +1605,26 @@ def main(argv: list[str] | None = None) -> int:
         "fetch_enabled": not args.no_fetch,
         "fetch_stats": fetch_stats,
         "all_parent_candidates_retained": all_parent_candidates_retained,
-        "all_relation_roots_conserved": len(roots) == resolved_count + blocked_count,
+        "all_relation_roots_conserved": (
+            len(roots) == resolved_count + carrier_only_count + blocked_count
+        ),
         "candidate_rows_sha256": canonical_sha256(expanded),
         "relations_sha256": canonical_sha256(relations),
         "relation_roots_sha256": canonical_sha256(roots),
         "gate_status": (
             "READY"
-            if blocked_count == 0 and not recursive_scope_gaps
-            else "READY_WITH_BLOCKED_SQUASH_FALLBACKS"
+            if carrier_only_count == 0
+            and blocked_count == 0
+            and not recursive_scope_gaps
+            else (
+                "READY_WITH_CARRIER_ONLY_ATOMIC_GAPS"
+                if blocked_count == 0 and not recursive_scope_gaps
+                else "READY_WITH_UNCOVERED_SQUASH_FALLBACKS"
+            )
         ),
         "negative_disposition": "DEFER_not_delete",
         "blocked_disposition": "RETAIN_landed_squash",
+        "carrier_only_disposition": "REVIEW_complete_landed_patch_no_atomic_claim",
         "model_api_calls": 0,
         "model_input_tokens": 0,
         "model_output_tokens": 0,

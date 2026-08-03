@@ -36,6 +36,13 @@ _PULL_MEMBER_GAP_FIELDS = (
     "member_record_metadata_gap_shas",
     "member_diff_metadata_gap_shas",
 )
+_CARRIER_WITNESS_FIELDS = (
+    "atomic_provenance_status",
+    "carrier_fix_edge_count",
+    "carrier_parent_sha",
+    "carrier_patch_sha256",
+    "carrier_patch_status",
+)
 
 
 class RelationContractError(ValueError):
@@ -133,6 +140,7 @@ def build_pull_relation_inventory(
     pull_results: Mapping[int, Mapping[str, object]],
     *,
     landed_candidate_shas: Iterable[str] | None = None,
+    carrier_only_witnesses: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     """Map every PR-head member to its landed squash commit.
 
@@ -144,6 +152,31 @@ def build_pull_relation_inventory(
     """
 
     identity = _identity(repository_identity, field="repository identity")
+    normalized_carrier_witnesses: dict[str, dict[str, object]] = {}
+    for raw_sha, raw_witness in (carrier_only_witnesses or {}).items():
+        sha = _full_sha(raw_sha, field="carrier-only landed sha")
+        witness = dict(raw_witness)
+        if set(witness) != set(_CARRIER_WITNESS_FIELDS):
+            raise RelationContractError(f"malformed carrier-only witness: {sha}")
+        witness["carrier_parent_sha"] = _full_sha(
+            witness["carrier_parent_sha"], field="carrier parent sha"
+        )
+        patch_sha = str(witness["carrier_patch_sha256"] or "").strip().lower()
+        if len(patch_sha) != 64 or any(
+            character not in "0123456789abcdef" for character in patch_sha
+        ):
+            raise RelationContractError(f"malformed carrier patch digest: {sha}")
+        if witness["carrier_patch_status"] not in {
+            "READABLE_NONEMPTY",
+            "READABLE_EMPTY_NET_DELTA",
+        }:
+            raise RelationContractError(f"malformed carrier patch status: {sha}")
+        if witness["atomic_provenance_status"] != "BLOCKED_NO_PUBLIC_PR_REF":
+            raise RelationContractError(f"malformed atomic provenance status: {sha}")
+        edge_count = witness["carrier_fix_edge_count"]
+        if not isinstance(edge_count, int) or isinstance(edge_count, bool) or edge_count < 1:
+            raise RelationContractError(f"malformed carrier fix edge count: {sha}")
+        normalized_carrier_witnesses[sha] = witness
     target_landed = (
         {
             _full_sha(sha, field="landed candidate sha")
@@ -186,6 +219,14 @@ def build_pull_relation_inventory(
             raise RelationContractError(
                 f"landed candidate is not an observed squash unit: {missing[0]}"
             )
+    unexpected_witnesses = sorted(
+        set(normalized_carrier_witnesses)
+        - {sha for landed_shas in squashes_by_pr.values() for sha in landed_shas}
+    )
+    if unexpected_witnesses:
+        raise RelationContractError(
+            f"carrier-only witness is not a landed squash: {unexpected_witnesses[0]}"
+        )
 
     relations: list[dict[str, object]] = []
     pull_roots: list[dict[str, object]] = []
@@ -225,9 +266,24 @@ def build_pull_relation_inventory(
                     member_gaps[field] = gaps
         ambiguous_fanout = len(landed_shas) > 1
         for landed_sha in sorted(landed_shas):
+            carrier_witness = normalized_carrier_witnesses.get(landed_sha)
+            root_status = "CARRIER_ONLY" if carrier_witness is not None else status
+            if carrier_witness is not None and (
+                status != "BLOCKED" or reason != "no_pr_ref"
+            ):
+                raise RelationContractError(
+                    f"carrier-only witness supplied outside no_pr_ref: PR {pr_number}"
+                )
+            if (
+                carrier_witness is not None
+                and units_by_sha[landed_sha].get("retained") is not True
+            ):
+                raise RelationContractError(
+                    f"carrier-only witness is not retained: {landed_sha}"
+                )
             eligible = (
                 sorted(set(members) - {landed_sha})
-                if status == "RESOLVED"
+                if root_status == "RESOLVED"
                 else []
             )
             observed = sorted(set(eligible) & set(units_by_sha))
@@ -265,18 +321,56 @@ def build_pull_relation_inventory(
                 "repository_identity": identity,
                 "pr_number": pr_number,
                 "landed_sha": landed_sha,
-                "status": status,
+                "status": root_status,
                 "reason": (
                     "ambiguous_pr_fanout"
-                    if status == "RESOLVED" and ambiguous_fanout
+                    if root_status == "RESOLVED" and ambiguous_fanout
                     else reason
                 ),
-                "member_count": len(members),
-                "eligible_origin_count": len(eligible),
-                "eligible_origins_sha256": _sha256_json(eligible),
-                "observed_origin_count": len(observed),
-                "unobserved_origin_count": len(eligible) - len(observed),
+                "member_count": (
+                    None if root_status == "CARRIER_ONLY" else len(members)
+                ),
+                "eligible_origin_count": (
+                    None if root_status == "CARRIER_ONLY" else len(eligible)
+                ),
+                "eligible_origins_sha256": (
+                    None if root_status == "CARRIER_ONLY" else _sha256_json(eligible)
+                ),
+                "observed_origin_count": (
+                    None if root_status == "CARRIER_ONLY" else len(observed)
+                ),
+                "unobserved_origin_count": (
+                    None
+                    if root_status == "CARRIER_ONLY"
+                    else len(eligible) - len(observed)
+                ),
+                "candidate_surface_status": (
+                    (
+                        "EMPTY_NET_DELTA"
+                        if carrier_witness is not None
+                        and carrier_witness["carrier_patch_status"]
+                        == "READABLE_EMPTY_NET_DELTA"
+                        else "COVERED_BY_DIRECT_CARRIER"
+                    )
+                    if root_status == "CARRIER_ONLY"
+                    else (
+                        "COVERED_BY_ATOMIC_MEMBERS"
+                        if root_status == "RESOLVED"
+                        else "UNCOVERED"
+                    )
+                ),
+                "atomic_provenance_status": (
+                    "RESOLVED_PUBLIC_PR_MEMBERS"
+                    if root_status == "RESOLVED"
+                    else (
+                        "BLOCKED_NO_PUBLIC_PR_REF"
+                        if reason == "no_pr_ref"
+                        else f"BLOCKED_{reason.upper()}"
+                    )
+                ),
             }
+            if carrier_witness is not None:
+                root.update(carrier_witness)
             if ambiguous_fanout:
                 root["ambiguous_pr_fanout"] = True
                 root["landed_variant_count"] = len(landed_shas)
@@ -285,18 +379,24 @@ def build_pull_relation_inventory(
     relations.sort(key=lambda row: str(row["relation_id"]))
     pull_roots.sort(key=lambda row: str(row["root_id"]))
     resolved = sum(root["status"] == "RESOLVED" for root in pull_roots)
+    carrier_only = sum(root["status"] == "CARRIER_ONLY" for root in pull_roots)
     blocked = sum(root["status"] == "BLOCKED" for root in pull_roots)
     conservation = {
         "pull_root_count": len(pull_roots),
         "resolved_pull_root_count": resolved,
+        "carrier_only_pull_root_count": carrier_only,
         "blocked_pull_root_count": blocked,
-        "pull_roots_conserved": len(pull_roots) == resolved + blocked,
+        "pull_roots_conserved": len(pull_roots) == resolved + carrier_only + blocked,
     }
     inventory: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "forward_cohort_pull_relation_inventory",
         "repository_identity": identity,
-        "coverage_complete": blocked == 0,
+        "coverage_complete": carrier_only == 0 and blocked == 0,
+        "atomic_provenance_complete": carrier_only == 0 and blocked == 0,
+        "atomic_provenance_gap_count": carrier_only + blocked,
+        "candidate_surface_coverage_complete": blocked == 0,
+        "candidate_surface_uncovered_count": blocked,
         "relations": relations,
         "pull_roots": pull_roots,
         "relations_sha256": _sha256_json(relations),

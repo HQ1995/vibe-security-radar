@@ -112,6 +112,89 @@ def test_commit_record_batch_failure_isolated_per_sha(
     assert set(_commit_records(tmp_path, [*good, bad], timeout=30)) == set(good)
 
 
+def test_cli_keeps_readable_no_ref_squash_as_carrier_only(tmp_path: Path) -> None:
+    identity = "github.com/example/repo"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", "main")
+    _git(repo, "remote", "add", "origin", "https://github.com/example/repo")
+    _commit(repo, "base", "value = 0\n")
+    landed = _commit(repo, "land feature (#7)", "value = 1\n")
+    fix = _commit(repo, "fix feature", "value = 0\n")
+    candidates = [
+        {
+            "advisory": "CVE-2099-0000",
+            "repository_identity": identity,
+            "fix_sha": fix,
+            "sha": landed,
+            "merge_topology": "squash",
+            "pr_number": 7,
+            "observed_ai_unit": True,
+            "priority_rank": 1,
+            "retained": True,
+            "signals": ["affected_file_history"],
+        }
+    ]
+    scan_rows = [
+        {
+            "repository_identity": identity,
+            "sha": landed,
+            "merge_topology": "squash",
+            "pr_number": 7,
+        }
+    ]
+    scan_dir = tmp_path / "scan"
+    _jsonl(scan_dir / "commits.jsonl", scan_rows)
+    fixes = [
+        {
+            "advisory": "CVE-2099-0000",
+            "repository_identity": identity,
+            "fix_sha": fix,
+            "repository_path": str(repo),
+            "status": "RESOLVED",
+        }
+    ]
+    generated = tmp_path / "generated"
+    _jsonl(generated / "candidates.jsonl", candidates)
+    _jsonl(generated / "fixes.jsonl", fixes)
+    _json(
+        generated / "summary.json",
+        {
+            "ai_scan_inputs": [
+                {
+                    "directory": str(scan_dir),
+                    "commit_rows_sha256": canonical_sha256(scan_rows),
+                }
+            ],
+            "artifact_kind": "proof_carrying_origin_candidate_reduction",
+            "candidate_rows_sha256": canonical_sha256(candidates),
+            "fix_rows_sha256": canonical_sha256(fixes),
+            "schema_version": 1,
+            "split_id": "toy-no-ref-v1",
+        },
+    )
+
+    output = tmp_path / "expanded"
+    assert main(
+        [
+            "--generated-dir",
+            str(generated),
+            "--no-fetch",
+            "--output-dir",
+            str(output),
+        ]
+    ) == 0
+    root = json.loads((output / "relation_roots.jsonl").read_text())
+    summary = json.loads((output / "summary.json").read_text())
+    assert root["status"] == "CARRIER_ONLY"
+    assert root["candidate_surface_status"] == "COVERED_BY_DIRECT_CARRIER"
+    assert root["member_count"] is None
+    assert summary["carrier_only_squash_relation_root_count"] == 1
+    assert summary["candidate_surface_uncovered_count"] == 0
+    assert summary["atomic_provenance_gap_count"] == 1
+    assert summary["gate_status"] == "READY_WITH_CARRIER_ONLY_ATOMIC_GAPS"
+
+
 def test_cli_hydrates_pr_number_and_keeps_ai_and_unattributed_members(
     monkeypatch, tmp_path: Path,
 ) -> None:

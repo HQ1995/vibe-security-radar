@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     if pair_count != len(candidates) or membership_count != len(units):
         raise SystemExit("packetization conservation failed")
     packet_summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "artifact_kind": "lossless_origin_candidate_packets",
         "parent_generation_sha256": canonical_sha256(summary),
         "candidate_inventory_sha256": canonical_sha256(candidates),
@@ -119,6 +119,18 @@ def main(argv: list[str] | None = None) -> int:
         == "proof_carrying_origin_squash_relation_closure",
         "blocked_squash_relation_root_count": int(
             summary.get("blocked_squash_relation_root_count") or 0
+        ),
+        "carrier_only_squash_relation_root_count": int(
+            summary.get("carrier_only_squash_relation_root_count") or 0
+        ),
+        "atomic_provenance_gap_count": int(
+            summary.get("atomic_provenance_gap_count") or 0
+        ),
+        "candidate_surface_uncovered_count": int(
+            summary.get("candidate_surface_uncovered_count") or 0
+        ),
+        "candidate_surface_coverage_complete": bool(
+            summary.get("candidate_surface_coverage_complete", True)
         ),
     }
     args.output_dir.mkdir(parents=True)
