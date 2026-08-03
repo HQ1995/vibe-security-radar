@@ -24,6 +24,8 @@ def test_shallow_marker_can_be_overridden_only_by_complete_local_object_view(
         calls.append((arguments, global_arguments or []))
         if arguments[:2] == ["rev-parse", "--is-shallow-repository"]:
             return "true\n", ""
+        if arguments[:2] == ["rev-parse", "--verify"]:
+            return SECOND + "\n", ""
         if arguments[0] == "for-each-ref":
             return "refs/heads/main\x00" + SECOND + "\n", ""
         assert global_arguments == ["--shallow-file", ""]
@@ -56,6 +58,8 @@ def test_failed_complete_local_view_stays_blocked_and_keeps_shallow_rows(
     ) -> tuple[str, str]:
         if arguments[:2] == ["rev-parse", "--is-shallow-repository"]:
             return "true\n", ""
+        if arguments[:2] == ["rev-parse", "--verify"]:
+            return SECOND + "\n", ""
         if arguments[0] == "for-each-ref":
             return "refs/heads/main\x00" + SECOND + "\n", ""
         if global_arguments:
@@ -74,6 +78,40 @@ def test_failed_complete_local_view_stays_blocked_and_keeps_shallow_rows(
         "shallow_repository",
     ]
     assert provenance["history_view"] == "declared_shallow_graph"
+
+
+def test_unborn_head_does_not_block_complete_ref_enumeration(
+    monkeypatch, tmp_path
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_git_output(
+        _repo_path,
+        arguments: list[str],
+        _timeout: int,
+        *,
+        global_arguments: list[str] | None = None,
+    ) -> tuple[str, str]:
+        calls.append(arguments)
+        if arguments[:2] == ["rev-parse", "--is-shallow-repository"]:
+            return "false\n", ""
+        if arguments[:2] == ["rev-parse", "--verify"]:
+            return "", "git_rev-parse_nonzero:128"
+        if arguments[0] == "for-each-ref":
+            return "refs/remotes/origin/main\x00" + SECOND + "\n", ""
+        assert arguments == ["rev-list", "--all", "--parents", "--timestamp"]
+        assert global_arguments is None
+        return f"2 {SECOND} {FIRST}\n1 {FIRST}\n", ""
+
+    monkeypatch.setattr(cli, "_git_output", fake_git_output)
+
+    records, _refs, reasons, _provenance = cli._enumerate_history(
+        "github.com/acme/project", tmp_path, timeout=30
+    )
+
+    assert len(records) == 2
+    assert reasons == []
+    assert all("HEAD" not in arguments for arguments in calls)
 
 
 def test_clone_choice_prefers_complete_graph_then_larger_complete_graph() -> None:

@@ -229,6 +229,13 @@ def _enumerate_history(
         reasons.append(refs_error)
     refs_lines = sorted(line for line in refs.splitlines() if line)
     refs_sha256 = canonical_sha256(refs_lines)
+    _head, head_error = _git_output(
+        repo_path,
+        ["rev-parse", "--verify", "HEAD^{commit}"],
+        min(timeout, 30),
+    )
+    revisions = ["--all"] + ([] if head_error else ["HEAD"])
+    history_arguments = ["rev-list", *revisions, "--parents", "--timestamp"]
 
     history_view = "declared_repository_graph"
     history = ""
@@ -236,7 +243,7 @@ def _enumerate_history(
     if shallow_marker_present:
         history, history_error = _git_output(
             repo_path,
-            ["rev-list", "--all", "HEAD", "--parents", "--timestamp"],
+            history_arguments,
             timeout,
             global_arguments=["--shallow-file", ""],
         )
@@ -247,14 +254,14 @@ def _enumerate_history(
             reasons.append("complete_local_object_graph_unavailable")
             history, history_error = _git_output(
                 repo_path,
-                ["rev-list", "--all", "HEAD", "--parents", "--timestamp"],
+                history_arguments,
                 timeout,
             )
             history_view = "declared_shallow_graph"
     else:
         history, history_error = _git_output(
             repo_path,
-            ["rev-list", "--all", "HEAD", "--parents", "--timestamp"],
+            history_arguments,
             timeout,
         )
     if history_error:
