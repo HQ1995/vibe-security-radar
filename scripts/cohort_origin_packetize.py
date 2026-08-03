@@ -22,9 +22,7 @@ def _nonnegative_int(summary: dict[str, object], field: str) -> int:
 
 def _squash_surface_fields(summary: dict[str, object]) -> dict[str, object]:
     blocked = _nonnegative_int(summary, "blocked_squash_relation_root_count")
-    carrier_only = _nonnegative_int(
-        summary, "carrier_only_squash_relation_root_count"
-    )
+    carrier_only = _nonnegative_int(summary, "carrier_only_squash_relation_root_count")
     atomic_gaps = _nonnegative_int(summary, "atomic_provenance_gap_count")
     uncovered = _nonnegative_int(summary, "candidate_surface_uncovered_count")
     complete = summary.get("candidate_surface_coverage_complete")
@@ -130,8 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     if canonical_sha256(candidates) != summary.get("candidate_rows_sha256"):
         raise SystemExit("reduced candidate digest mismatch")
     closure_applied = (
-        summary.get("artifact_kind")
-        == "proof_carrying_origin_squash_relation_closure"
+        summary.get("artifact_kind") == "proof_carrying_origin_squash_relation_closure"
     )
     surface_fields = _squash_surface_fields(summary) if closure_applied else {}
     units = fold_candidate_fix_pairs(candidates)

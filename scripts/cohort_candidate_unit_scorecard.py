@@ -21,10 +21,20 @@ DEFAULT_BUDGETS = (1, 5, 10, 25, 50, 100)
 CONFIRMED_STATUS = "CONFIRMED_TRUE_POSITIVE"
 UNLEDGERED_STATUS = "NOT_EXPLICITLY_LEDGERED"
 _FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+ATOMIC_BUDGET_UNIT = "atomic"
+CARRIER_BUDGET_UNIT = "carrier"
+_BUDGET_UNITS = (ATOMIC_BUDGET_UNIT, CARRIER_BUDGET_UNIT)
+_CANDIDATE_SURFACE_FIELDS = (
+    "candidate_surface_uncovered_count",
+    "candidate_surface_coverage_complete",
+    "carrier_only_squash_relation_root_count",
+    "atomic_provenance_gap_count",
+)
 
 UnitKey = tuple[str, str, str]
 FixKey = tuple[str, str, str]
 EdgeKey = tuple[str, str, str, str]
+MembershipKey = tuple[str, str, str, str]
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -35,6 +45,16 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     generate.add_argument("--packets-dir", type=Path, required=True)
     generate.add_argument("--output-dir", type=Path, required=True)
     generate.add_argument("--budget", type=int, action="append", default=[])
+    generate.add_argument(
+        "--budget-unit",
+        choices=_BUDGET_UNITS,
+        default=ATOMIC_BUDGET_UNIT,
+        help=(
+            "atomic keeps one candidate SHA per budget slot; carrier folds "
+            "connected squash/landed-PR evidence into one slot while retaining "
+            "exact atomic ranks"
+        ),
+    )
 
     evaluate = subparsers.add_parser("evaluate")
     evaluate.add_argument("--generated-dir", type=Path, required=True)
@@ -150,8 +170,110 @@ def _normalize_budgets(values: Sequence[int]) -> list[int]:
     return budgets
 
 
+def _nonnegative_int(value: object, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise SystemExit(f"{label} must be a non-negative integer")
+    return value
+
+
+def _packet_surface_counts(
+    packet_summary: Mapping[str, object], budget_unit: str
+) -> tuple[int, int, int, int, bool]:
+    blocked_roots = _nonnegative_int(
+        packet_summary.get("blocked_squash_relation_root_count"),
+        "packet summary blocked_squash_relation_root_count",
+    )
+    has_new_surface = any(
+        field in packet_summary for field in _CANDIDATE_SURFACE_FIELDS
+    )
+    if budget_unit == CARRIER_BUDGET_UNIT:
+        candidate_uncovered = _nonnegative_int(
+            packet_summary.get("candidate_surface_uncovered_count"),
+            "packet summary candidate_surface_uncovered_count",
+        )
+        carrier_only_roots = _nonnegative_int(
+            packet_summary.get("carrier_only_squash_relation_root_count"),
+            "packet summary carrier_only_squash_relation_root_count",
+        )
+        atomic_gaps = _nonnegative_int(
+            packet_summary.get("atomic_provenance_gap_count"),
+            "packet summary atomic_provenance_gap_count",
+        )
+        if packet_summary.get("squash_relation_closure_applied") is not True:
+            raise SystemExit("carrier schedule requires squash relation closure")
+        has_new_surface = True
+    elif has_new_surface:
+        candidate_uncovered = _nonnegative_int(
+            packet_summary.get("candidate_surface_uncovered_count"),
+            "packet summary candidate_surface_uncovered_count",
+        )
+        carrier_only_roots = (
+            _nonnegative_int(
+                packet_summary.get("carrier_only_squash_relation_root_count"),
+                "packet summary carrier_only_squash_relation_root_count",
+            )
+            if "carrier_only_squash_relation_root_count" in packet_summary
+            else 0
+        )
+        atomic_gaps = (
+            _nonnegative_int(
+                packet_summary.get("atomic_provenance_gap_count"),
+                "packet summary atomic_provenance_gap_count",
+            )
+            if "atomic_provenance_gap_count" in packet_summary
+            else 0
+        )
+    else:
+        candidate_uncovered = blocked_roots
+        carrier_only_roots = 0
+        atomic_gaps = 0
+
+    if has_new_surface:
+        expected_complete = candidate_uncovered == 0
+        if (
+            packet_summary.get("candidate_surface_coverage_complete")
+            is not expected_complete
+        ):
+            raise SystemExit(
+                "packet summary candidate_surface_coverage_complete contradicts "
+                "candidate_surface_uncovered_count"
+            )
+    if has_new_surface and atomic_gaps != carrier_only_roots + blocked_roots:
+        raise SystemExit(
+            "packet summary atomic_provenance_gap_count must equal "
+            "carrier_only_squash_relation_root_count plus "
+            "blocked_squash_relation_root_count"
+        )
+    if has_new_surface and candidate_uncovered != blocked_roots:
+        raise SystemExit(
+            "packet summary candidate_surface_uncovered_count must equal "
+            "blocked_squash_relation_root_count"
+        )
+    return (
+        blocked_roots,
+        candidate_uncovered,
+        carrier_only_roots,
+        atomic_gaps,
+        has_new_surface,
+    )
+
+
+def _schedule_budget_unit(summary: Mapping[str, object]) -> str:
+    schema_version = summary.get("schema_version")
+    explicit = summary.get("budget_unit")
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool):
+        raise SystemExit("unsupported or ambiguous frozen schedule schema")
+    if schema_version == 1 and explicit is None:
+        return ATOMIC_BUDGET_UNIT
+    if schema_version == 2 and explicit == CARRIER_BUDGET_UNIT:
+        return CARRIER_BUDGET_UNIT
+    raise SystemExit("unsupported or ambiguous frozen schedule schema")
+
+
 def _normalize_units(
     raw_units: Sequence[Mapping[str, object]],
+    *,
+    preserve_carrier_metadata: bool = False,
 ) -> list[dict[str, object]]:
     units: list[dict[str, object]] = []
     seen_ids: set[str] = set()
@@ -200,20 +322,86 @@ def _normalize_units(
             int(edge["source_priority_rank"]) for edge in edges
         ):
             raise SystemExit(f"candidate unit best_priority_rank mismatch: {unit_id}")
-        units.append(
-            {
-                "unit_id": unit_id,
-                "repository_identity": identity,
-                "advisory": advisory,
-                "candidate_sha": candidate_sha,
-                "best_priority_rank": best_priority_rank,
-                "fix_edges": edges,
-                "fix_edge_count": len(edges),
-            }
-        )
+        unit = {
+            "unit_id": unit_id,
+            "repository_identity": identity,
+            "advisory": advisory,
+            "candidate_sha": candidate_sha,
+            "best_priority_rank": best_priority_rank,
+            "fix_edges": edges,
+            "fix_edge_count": len(edges),
+        }
+        if preserve_carrier_metadata:
+            raw_group_ids = raw.get("squash_group_ids", [])
+            if not isinstance(raw_group_ids, list) or any(
+                not isinstance(value, str) for value in raw_group_ids
+            ):
+                raise SystemExit(
+                    f"candidate unit has malformed squash_group_ids: {unit_id}"
+                )
+            unit["squash_group_ids"] = sorted(
+                {_full_sha(value, "squash_group_id") for value in raw_group_ids}
+            )
+            raw_pr_number = raw.get("pr_number")
+            unit["carrier_squash_pr_number_connector"] = (
+                raw_pr_number
+                if str(raw.get("merge_topology") or "").strip().lower() == "squash"
+                and isinstance(raw_pr_number, int)
+                and not isinstance(raw_pr_number, bool)
+                and raw_pr_number > 0
+                else None
+            )
+        units.append(unit)
         seen_ids.add(unit_id)
         seen_keys.add(key)
     return units
+
+
+def _assign_carrier_groups(
+    units: Sequence[dict[str, object]],
+) -> None:
+    by_case: defaultdict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
+    for unit in units:
+        case_key = (str(unit["repository_identity"]), str(unit["advisory"]))
+        by_case[case_key].append(unit)
+
+    for (identity, advisory), case_units in sorted(by_case.items()):
+        by_id = {str(unit["unit_id"]): unit for unit in case_units}
+        parent = {unit_id: unit_id for unit_id in by_id}
+        owner_by_connector: dict[tuple[str, object], str] = {}
+
+        def root(unit_id: str) -> str:
+            while parent[unit_id] != unit_id:
+                parent[unit_id] = parent[parent[unit_id]]
+                unit_id = parent[unit_id]
+            return unit_id
+
+        for unit in sorted(case_units, key=lambda row: str(row["unit_id"])):
+            unit_id = str(unit["unit_id"])
+            raw_group_ids = unit.get("squash_group_ids", [])
+            assert isinstance(raw_group_ids, list)
+            connectors: list[tuple[str, object]] = [
+                ("sha", str(unit["candidate_sha"])),
+                *(("sha", group_id) for group_id in raw_group_ids),
+            ]
+            pr_number = unit.get("carrier_squash_pr_number_connector")
+            if isinstance(pr_number, int):
+                connectors.append(("squash_pr", pr_number))
+            for connector in connectors:
+                owner = owner_by_connector.setdefault(connector, unit_id)
+                parent[root(unit_id)] = root(owner)
+
+        components: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
+        for unit_id, unit in by_id.items():
+            components[root(unit_id)].append(unit)
+        for component in components.values():
+            member_shas = sorted(str(unit["candidate_sha"]) for unit in component)
+            digest = hashlib.sha256(
+                "\0".join((identity, advisory, *member_shas)).encode()
+            ).hexdigest()
+            group_id = f"carrier-group-{digest}"
+            for unit in component:
+                unit["carrier_group_id"] = group_id
 
 
 def _unit_order(row: Mapping[str, object]) -> tuple[int, str, str]:
@@ -222,6 +410,26 @@ def _unit_order(row: Mapping[str, object]) -> tuple[int, str, str]:
         str(row["candidate_sha"]),
         str(row["unit_id"]),
     )
+
+
+def _atomic_fix_positions(
+    units: Sequence[Mapping[str, object]],
+) -> dict[tuple[str, str], int]:
+    fix_members: defaultdict[FixKey, list[tuple[int, str, str]]] = defaultdict(list)
+    for unit in units:
+        identity, advisory, candidate_sha = _unit_key(unit)
+        unit_id = str(unit["unit_id"])
+        for edge in unit["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, Mapping)
+            fix_sha = _full_sha(edge.get("fix_sha"), "fix_sha")
+            fix_members[(identity, advisory, fix_sha)].append(
+                (int(edge["source_priority_rank"]), candidate_sha, unit_id)
+            )
+    positions: dict[tuple[str, str], int] = {}
+    for fix_key, members in fix_members.items():
+        for position, (_, _, unit_id) in enumerate(sorted(members), start=1):
+            positions[(unit_id, fix_key[2])] = position
+    return positions
 
 
 def _freeze_schedule(units: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
@@ -233,31 +441,7 @@ def _freeze_schedule(units: Sequence[Mapping[str, object]]) -> list[dict[str, ob
             *_unit_order(row),
         ),
     )
-    fix_members: defaultdict[FixKey, list[tuple[Mapping[str, object], int]]] = (
-        defaultdict(list)
-    )
-    for unit in ordered:
-        for edge in unit["fix_edges"]:  # type: ignore[union-attr]
-            assert isinstance(edge, Mapping)
-            fix_members[
-                (
-                    str(unit["repository_identity"]),
-                    str(unit["advisory"]),
-                    str(edge["fix_sha"]),
-                )
-            ].append((unit, int(edge["source_priority_rank"])))
-    fix_positions: dict[tuple[str, str], int] = {}
-    for fix_key, members in fix_members.items():
-        ordered_members = sorted(
-            members,
-            key=lambda member: (
-                member[1],
-                str(member[0]["candidate_sha"]),
-                str(member[0]["unit_id"]),
-            ),
-        )
-        for position, (unit, _) in enumerate(ordered_members, start=1):
-            fix_positions[(str(unit["unit_id"]), fix_key[2])] = position
+    fix_positions = _atomic_fix_positions(ordered)
 
     case_positions: Counter[tuple[str, str]] = Counter()
     schedule: list[dict[str, object]] = []
@@ -294,6 +478,81 @@ def _freeze_schedule(units: Sequence[Mapping[str, object]]) -> list[dict[str, ob
             }
         )
     return schedule
+
+
+def _carrier_fix_positions(
+    schedule: Sequence[Mapping[str, object]], group_ids: Mapping[str, str]
+) -> dict[tuple[FixKey, str], int]:
+    group_ranks: defaultdict[FixKey, dict[str, int]] = defaultdict(dict)
+    for row in schedule:
+        identity, advisory, _ = _unit_key(row)
+        group_id = group_ids[str(row["unit_id"])]
+        for edge in row["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, Mapping)
+            fix_key = (
+                identity,
+                advisory,
+                _full_sha(edge.get("fix_sha"), "fix_sha"),
+            )
+            rank = int(edge["source_priority_rank"])
+            group_ranks[fix_key][group_id] = min(
+                rank, group_ranks[fix_key].get(group_id, rank)
+            )
+    return {
+        (fix_key, group_id): position
+        for fix_key, ranks in group_ranks.items()
+        for position, group_id in enumerate(
+            sorted(ranks, key=lambda value: (ranks[value], value)), start=1
+        )
+    }
+
+
+def _add_carrier_schedule(
+    schedule: Sequence[dict[str, object]],
+    units: Sequence[Mapping[str, object]],
+) -> None:
+    units_by_id = {str(unit["unit_id"]): unit for unit in units}
+    group_ids = {
+        unit_id: str(unit["carrier_group_id"]) for unit_id, unit in units_by_id.items()
+    }
+    positions = _carrier_fix_positions(schedule, group_ids)
+    for row in schedule:
+        unit = units_by_id[str(row["unit_id"])]
+        group_id = group_ids[str(row["unit_id"])]
+        provenance = {"squash_group_ids": list(unit["squash_group_ids"])}
+        pr_number = unit.get("carrier_squash_pr_number_connector")
+        if isinstance(pr_number, int):
+            provenance["squash_pr_number"] = pr_number
+        row.update(
+            carrier_group_id=group_id,
+            carrier_connector_provenance=provenance,
+        )
+        for edge in row["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, dict)
+            fix_key = (
+                str(row["repository_identity"]),
+                str(row["advisory"]),
+                str(edge["fix_sha"]),
+            )
+            edge["frozen_carrier_fix_position"] = positions[(fix_key, group_id)]
+
+
+def _rebuild_schedule(
+    raw_units: Sequence[Mapping[str, object]], budget_unit: str
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    carrier_mode = budget_unit == CARRIER_BUDGET_UNIT
+    if budget_unit not in _BUDGET_UNITS:
+        raise SystemExit("unknown schedule budget unit")
+    units = _normalize_units(
+        raw_units,
+        preserve_carrier_metadata=carrier_mode,
+    )
+    if carrier_mode:
+        _assign_carrier_groups(units)
+    schedule = _freeze_schedule(units)
+    if carrier_mode:
+        _add_carrier_schedule(schedule, units)
+    return units, schedule
 
 
 def _index_schedule(
@@ -341,34 +600,198 @@ def _index_schedule(
     return units, edge_keys, set(fix_positions)
 
 
+def _validate_schedule_mode(
+    schedule: Sequence[Mapping[str, object]], budget_unit: str
+) -> None:
+    expected_atomic_positions = _atomic_fix_positions(schedule)
+    for row in schedule:
+        edges = row["fix_edges"]  # type: ignore[assignment]
+        assert isinstance(edges, list)
+        for edge in edges:
+            assert isinstance(edge, Mapping)
+            expected_position = expected_atomic_positions[
+                (str(row["unit_id"]), _full_sha(edge.get("fix_sha"), "fix_sha"))
+            ]
+            if edge.get("frozen_fix_position") != expected_position:
+                raise SystemExit("frozen atomic fix position mismatch")
+
+    if budget_unit == ATOMIC_BUDGET_UNIT:
+        if any(
+            any(
+                field in row
+                for field in ("carrier_group_id", "carrier_connector_provenance")
+            )
+            or any(
+                "frozen_carrier_fix_position" in edge
+                for edge in row["fix_edges"]  # type: ignore[union-attr]
+            )
+            for row in schedule
+        ):
+            raise SystemExit("atomic schedule contains carrier metadata")
+        return
+    if budget_unit != CARRIER_BUDGET_UNIT:
+        raise SystemExit("unknown schedule budget unit")
+
+    reconstructed_units: list[dict[str, object]] = []
+    for row in schedule:
+        edges = row["fix_edges"]  # type: ignore[assignment]
+        assert isinstance(edges, list)
+        group_id = row.get("carrier_group_id")
+        provenance = row.get("carrier_connector_provenance")
+        if (
+            not isinstance(group_id, str)
+            or not group_id
+            or not isinstance(provenance, Mapping)
+        ):
+            raise SystemExit("frozen schedule budget-unit schema mismatch")
+        if set(provenance) - {"squash_group_ids", "squash_pr_number"}:
+            raise SystemExit("frozen schedule carrier provenance is malformed")
+        raw_group_ids = provenance.get("squash_group_ids")
+        if not isinstance(raw_group_ids, list) or any(
+            not isinstance(value, str) for value in raw_group_ids
+        ):
+            raise SystemExit("frozen schedule carrier provenance is malformed")
+        squash_group_ids = sorted(
+            {_full_sha(value, "squash_group_id") for value in raw_group_ids}
+        )
+        pr_number = provenance.get("squash_pr_number")
+        if "squash_pr_number" in provenance:
+            pr_number = _positive_int(pr_number, "squash_pr_number")
+        if any(
+            not isinstance(edge, Mapping)
+            or not isinstance(edge.get("frozen_carrier_fix_position"), int)
+            or isinstance(edge.get("frozen_carrier_fix_position"), bool)
+            or int(edge["frozen_carrier_fix_position"]) < 1
+            for edge in edges
+        ):
+            raise SystemExit("frozen schedule budget-unit schema mismatch")
+        identity, advisory, candidate_sha = _unit_key(row)
+        reconstructed_units.append(
+            {
+                "unit_id": str(row["unit_id"]),
+                "repository_identity": identity,
+                "advisory": advisory,
+                "candidate_sha": candidate_sha,
+                "squash_group_ids": squash_group_ids,
+                "carrier_squash_pr_number_connector": pr_number,
+            }
+        )
+
+    _assign_carrier_groups(reconstructed_units)
+    expected_group_ids = {
+        str(unit["unit_id"]): str(unit["carrier_group_id"])
+        for unit in reconstructed_units
+    }
+    for row in schedule:
+        if row["carrier_group_id"] != expected_group_ids[str(row["unit_id"])]:
+            raise SystemExit("frozen carrier group id mismatch")
+    expected_carrier_positions = _carrier_fix_positions(schedule, expected_group_ids)
+    for row in schedule:
+        group_id = expected_group_ids[str(row["unit_id"])]
+        identity, advisory, _ = _unit_key(row)
+        for edge in row["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, Mapping)
+            fix_key = (
+                identity,
+                advisory,
+                _full_sha(edge.get("fix_sha"), "fix_sha"),
+            )
+            if (
+                edge["frozen_carrier_fix_position"]
+                != expected_carrier_positions[(fix_key, group_id)]
+            ):
+                raise SystemExit("frozen carrier fix position mismatch")
+
+
+def _budget_selection(
+    units: Mapping[str, Mapping[str, object]],
+    budget: int,
+    budget_unit: str,
+) -> tuple[set[MembershipKey], set[str], set[EdgeKey], set[EdgeKey]]:
+    position_field = (
+        "frozen_fix_position"
+        if budget_unit == ATOMIC_BUDGET_UNIT
+        else "frozen_carrier_fix_position"
+    )
+    memberships: set[MembershipKey] = set()
+    entity_by_unit: dict[str, tuple[str, str, str]] = {}
+    for unit_id, row in units.items():
+        identity, advisory, _ = _unit_key(row)
+        entity = (
+            unit_id
+            if budget_unit == ATOMIC_BUDGET_UNIT
+            else str(row["carrier_group_id"])
+        )
+        scoped_entity = (
+            identity,
+            advisory,
+            entity,
+        )
+        entity_by_unit[unit_id] = scoped_entity
+        for edge in row["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, Mapping)
+            if int(edge[position_field]) <= budget:
+                memberships.add(
+                    (*scoped_entity, _full_sha(edge.get("fix_sha"), "fix_sha"))
+                )
+    selected_entities = {membership[:3] for membership in memberships}
+    selected_units = {
+        unit_id
+        for unit_id, entity in entity_by_unit.items()
+        if entity in selected_entities
+    }
+    same_fix_edges: set[EdgeKey] = set()
+    global_edges: set[EdgeKey] = set()
+    for unit_id, row in units.items():
+        for edge in row["fix_edges"]:  # type: ignore[union-attr]
+            assert isinstance(edge, Mapping)
+            edge_key = _edge_key(row, edge)
+            if (*entity_by_unit[unit_id], edge_key[3]) in memberships:
+                same_fix_edges.add(edge_key)
+            if unit_id in selected_units:
+                global_edges.add(edge_key)
+    return memberships, selected_units, same_fix_edges, global_edges
+
+
 def _aggregate_slots(
-    schedule: Sequence[Mapping[str, object]], budgets: Sequence[int]
+    schedule: Sequence[Mapping[str, object]],
+    budgets: Sequence[int],
+    *,
+    budget_unit: str = ATOMIC_BUDGET_UNIT,
 ) -> list[dict[str, object]]:
     units, _, fix_keys = _index_schedule(schedule)
+    _validate_schedule_mode(schedule, budget_unit)
     result: list[dict[str, object]] = []
     for budget in budgets:
-        selected_memberships: set[tuple[str, str]] = set()
-        selected_units: set[str] = set()
-        for unit_id, row in units.items():
-            for edge in row["fix_edges"]:  # type: ignore[union-attr]
-                assert isinstance(edge, Mapping)
-                if int(edge["frozen_fix_position"]) <= budget:
-                    selected_memberships.add((unit_id, str(edge["fix_sha"])))
-                    selected_units.add(unit_id)
-        carried_edge_count = sum(
-            int(units[unit_id]["fix_edge_count"]) for unit_id in selected_units
+        memberships, selected_units, _, global_edges = _budget_selection(
+            units, budget, budget_unit
         )
+        if budget_unit == CARRIER_BUDGET_UNIT:
+            result.append(
+                {
+                    "budget_per_fix": budget,
+                    "budget_unit": CARRIER_BUDGET_UNIT,
+                    "triggered_carrier_fix_membership_count": len(memberships),
+                    "triggered_unique_carrier_group_count": len(
+                        {
+                            (repository, advisory, group_id)
+                            for repository, advisory, group_id, _ in memberships
+                        }
+                    ),
+                    "expanded_atomic_unit_count": len(selected_units),
+                }
+            )
+            continue
         result.append(
             {
                 "budget_per_fix": budget,
                 "fix_scope_count": len(fix_keys),
                 "aggregate_per_fix_slot_capacity": budget * len(fix_keys),
-                "aggregate_fix_prefix_membership_slots": len(selected_memberships),
+                "aggregate_fix_prefix_membership_slots": len(memberships),
                 "aggregate_unique_unit_review_slots": len(selected_units),
-                "folded_duplicate_membership_slots": (
-                    len(selected_memberships) - len(selected_units)
-                ),
-                "selected_units_carried_edge_count": carried_edge_count,
+                "folded_duplicate_membership_slots": len(memberships)
+                - len(selected_units),
+                "selected_units_carried_edge_count": len(global_edges),
             }
         )
     return result
@@ -390,14 +813,16 @@ def _generate(args: argparse.Namespace) -> int:
     if packet_summary.get("all_candidate_units_assigned_once") is not True:
         raise SystemExit("packet artifact did not assign every candidate unit once")
 
-    units = _normalize_units(raw_units)
+    budget_unit = str(args.budget_unit)
+    carrier_mode = budget_unit == CARRIER_BUDGET_UNIT
+    _packet_surface_counts(packet_summary, budget_unit)
+    units, schedule = _rebuild_schedule(raw_units, budget_unit)
     edge_count = sum(int(unit["fix_edge_count"]) for unit in units)
     if packet_summary.get("candidate_fix_pair_count") != edge_count:
         raise SystemExit("candidate fix-edge count mismatch")
     budgets = _normalize_budgets(args.budget)
-    schedule = _freeze_schedule(units)
     _, edge_keys, fix_keys = _index_schedule(schedule)
-    aggregates = _aggregate_slots(schedule, budgets)
+    aggregates = _aggregate_slots(schedule, budgets, budget_unit=budget_unit)
     case_count = len(
         {(str(row["repository_identity"]), str(row["advisory"])) for row in schedule}
     )
@@ -406,7 +831,7 @@ def _generate(args: argparse.Namespace) -> int:
     schedule_path = args.output_dir / "schedule.jsonl"
     _atomic_jsonl(schedule_path, schedule)
     summary = {
-        "schema_version": 1,
+        "schema_version": 2 if carrier_mode else 1,
         "artifact_kind": "frozen_candidate_unit_schedule",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "generation_process_boundary": (
@@ -449,6 +874,25 @@ def _generate(args: argparse.Namespace) -> int:
             "passed": len(schedule) == len(units) and len(edge_keys) == edge_count,
         },
     }
+    if carrier_mode:
+        summary.update(
+            {
+                "budget_unit": CARRIER_BUDGET_UNIT,
+                "schedule_order_policy": (
+                    "Per-fix carrier order: minimum source_priority_rank, then group id; "
+                    "frozen_fix_position stays atomic."
+                ),
+                "budget_semantics": (
+                    "B carrier groups/fix; carry same-fix atomic edges; cost is expanded "
+                    "units; transport/token cost is unknown."
+                ),
+                "carrier_group_policy": (
+                    "Repo+advisory components over SHA/group IDs plus positive PR only "
+                    "for squash; budget-only, not atomic provenance; unconnected direct "
+                    "is singleton."
+                ),
+            }
+        )
     _atomic_json(args.output_dir / "summary.json", summary)
     print("Candidate-unit schedule frozen")
     print(f"  units : {len(schedule)}")
@@ -566,6 +1010,8 @@ def _evaluate(args: argparse.Namespace) -> int:
     schedule = _read_jsonl(schedule_path)
     if summary.get("artifact_kind") != "frozen_candidate_unit_schedule":
         raise SystemExit("evaluation requires a frozen candidate-unit schedule")
+    if _schedule_budget_unit(summary) != ATOMIC_BUDGET_UNIT:
+        raise SystemExit("label-ledger evaluation supports atomic schedules only")
     if summary.get("generation_process_boundary") != (
         "frozen_candidate_units_no_label_or_adjudication_ledger_read"
     ):

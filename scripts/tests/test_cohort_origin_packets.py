@@ -133,7 +133,11 @@ def test_packet_surface_summary_fails_closed_on_missing_or_forged_counts() -> No
     for forged in (
         {**summary, "candidate_surface_uncovered_count": 0},
         {**summary, "atomic_provenance_gap_count": 2},
-        {key: value for key, value in summary.items() if key != "atomic_provenance_gap_count"},
+        {
+            key: value
+            for key, value in summary.items()
+            if key != "atomic_provenance_gap_count"
+        },
     ):
         with pytest.raises(SystemExit):
             _squash_surface_fields(forged)

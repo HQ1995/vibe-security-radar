@@ -9,13 +9,18 @@ from pathlib import Path
 
 from cohort.root_adjudication import canonical_sha256
 from cohort_candidate_unit_scorecard import (
+    CARRIER_BUDGET_UNIT,
     _atomic_json,
-    _edge_key,
+    _budget_selection,
     _file_sha256,
     _index_schedule,
     _normalize_budgets,
+    _packet_surface_counts,
     _read_json,
     _read_jsonl,
+    _rebuild_schedule,
+    _schedule_budget_unit,
+    _validate_schedule_mode,
 )
 
 
@@ -40,6 +45,103 @@ def _full_sha(value: object, field: str) -> str:
     return sha
 
 
+def _sha256_digest(value: object, field: str) -> str:
+    digest = value if isinstance(value, str) else ""
+    if len(digest) != 64 or any(
+        character not in "0123456789abcdef" for character in digest
+    ):
+        raise SystemExit(f"{field} must be a lowercase SHA-256 digest")
+    return digest
+
+
+def _bind_packet_summary(
+    schedule_summary: Mapping[str, object], packet_summary_path: Path
+) -> dict[str, object]:
+    source_artifacts = schedule_summary.get("source_artifacts")
+    if not isinstance(source_artifacts, Mapping):
+        raise SystemExit("schedule source_artifacts is missing")
+    frozen_packet_summary = source_artifacts.get("packet_summary")
+    if not isinstance(frozen_packet_summary, Mapping):
+        raise SystemExit("schedule packet-summary provenance is missing")
+    expected_file_sha256 = _sha256_digest(
+        frozen_packet_summary.get("sha256"),
+        "schedule packet-summary sha256",
+    )
+    expected_canonical_sha256 = _sha256_digest(
+        frozen_packet_summary.get("canonical_sha256"),
+        "schedule packet-summary canonical_sha256",
+    )
+    packet_summary = _read_json(packet_summary_path)
+    if _file_sha256(packet_summary_path) != expected_file_sha256:
+        raise SystemExit("packet-summary file digest mismatch")
+    if canonical_sha256(packet_summary) != expected_canonical_sha256:
+        raise SystemExit("packet-summary canonical digest mismatch")
+    return packet_summary
+
+
+def _bind_schedule_to_candidate_units(
+    schedule_summary: Mapping[str, object],
+    packet_summary: Mapping[str, object],
+    packet_summary_path: Path,
+    schedule: Sequence[Mapping[str, object]],
+    budget_unit: str,
+) -> None:
+    source_artifacts = schedule_summary.get("source_artifacts")
+    if not isinstance(source_artifacts, Mapping):
+        raise SystemExit("schedule source_artifacts is missing")
+    frozen_candidate_units = source_artifacts.get("candidate_units")
+    if not isinstance(frozen_candidate_units, Mapping):
+        raise SystemExit("schedule candidate-units provenance is missing")
+    expected_file_sha256 = _sha256_digest(
+        frozen_candidate_units.get("sha256"),
+        "schedule candidate-units sha256",
+    )
+    expected_canonical_sha256 = _sha256_digest(
+        frozen_candidate_units.get("canonical_sha256"),
+        "schedule candidate-units canonical_sha256",
+    )
+    packet_candidate_units_sha256 = _sha256_digest(
+        packet_summary.get("candidate_units_sha256"),
+        "packet summary candidate_units_sha256",
+    )
+    candidate_units_path = packet_summary_path.parent / "candidate_units.jsonl"
+    raw_units = _read_jsonl(candidate_units_path)
+    if _file_sha256(candidate_units_path) != expected_file_sha256:
+        raise SystemExit("candidate-units file digest mismatch")
+    raw_units_sha256 = canonical_sha256(raw_units)
+    if raw_units_sha256 != expected_canonical_sha256:
+        raise SystemExit("candidate-units canonical digest mismatch")
+    if raw_units_sha256 != packet_candidate_units_sha256:
+        raise SystemExit("packet summary candidate-unit digest mismatch")
+
+    units, rebuilt_schedule = _rebuild_schedule(raw_units, budget_unit)
+    candidate_unit_count = packet_summary.get("candidate_unit_count")
+    if (
+        not isinstance(candidate_unit_count, int)
+        or isinstance(candidate_unit_count, bool)
+        or candidate_unit_count != len(units)
+    ):
+        raise SystemExit("packet summary candidate-unit count mismatch")
+    candidate_fix_pair_count = packet_summary.get("candidate_fix_pair_count")
+    rebuilt_edge_count = sum(int(unit["fix_edge_count"]) for unit in units)
+    if (
+        not isinstance(candidate_fix_pair_count, int)
+        or isinstance(candidate_fix_pair_count, bool)
+        or candidate_fix_pair_count != rebuilt_edge_count
+    ):
+        raise SystemExit("packet summary candidate fix-edge count mismatch")
+    rebuilt_schedule_sha256 = canonical_sha256(rebuilt_schedule)
+    schedule_sha256 = canonical_sha256(schedule)
+    rows_match = len(rebuilt_schedule) == len(schedule) and all(
+        rebuilt_row == schedule_row
+        for rebuilt_row, schedule_row in zip(rebuilt_schedule, schedule)
+    )
+    if rebuilt_schedule_sha256 != schedule_sha256:
+        raise SystemExit("schedule canonical digest does not match candidate units")
+    if not rows_match:
+        raise SystemExit("schedule rows do not match candidate units")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     if args.output.exists():
@@ -53,6 +155,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     schedule = _read_jsonl(schedule_path)
     if summary.get("artifact_kind") != "frozen_candidate_unit_schedule":
         raise SystemExit("case scorecard requires a frozen schedule")
+    budget_unit = _schedule_budget_unit(summary)
     if summary.get("generation_process_boundary") != (
         "frozen_candidate_units_no_label_or_adjudication_ledger_read"
     ):
@@ -64,15 +167,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     if _file_sha256(schedule_path) != summary.get("schedule_file_sha256"):
         raise SystemExit("schedule file digest mismatch")
     units, schedule_edges, _ = _index_schedule(schedule)
+    _validate_schedule_mode(schedule, budget_unit)
 
-    packet_summary = _read_json(args.packet_summary)
+    packet_summary = _bind_packet_summary(summary, args.packet_summary)
     if packet_summary.get("artifact_kind") != "lossless_origin_candidate_packets":
         raise SystemExit("packet summary artifact kind is invalid")
     if packet_summary.get("all_fix_edges_conserved") is not True:
         raise SystemExit("packet summary did not conserve fix edges")
     if packet_summary.get("all_candidate_units_assigned_once") is not True:
         raise SystemExit("packet summary did not conserve units")
-    blocked_roots = int(packet_summary.get("blocked_squash_relation_root_count") or 0)
+    (
+        blocked_roots,
+        candidate_uncovered,
+        carrier_only_roots,
+        atomic_gaps,
+        has_new_surface,
+    ) = _packet_surface_counts(packet_summary, budget_unit)
+    _bind_schedule_to_candidate_units(
+        summary,
+        packet_summary,
+        args.packet_summary,
+        schedule,
+        budget_unit,
+    )
 
     ground_truth = _read_json(args.ground_truth)
     if ground_truth.get("artifact_kind") != GROUND_TRUTH_KIND:
@@ -90,7 +207,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         fix_sha = _full_sha(raw.get("fix_sha"), "case fix_sha")
         case_key = (repository, advisory, fix_sha)
         subjects = raw.get("accepted_ai_causal_subject_shas")
-        if not repository or not advisory or not isinstance(subjects, list) or not subjects:
+        if (
+            not repository
+            or not advisory
+            or not isinstance(subjects, list)
+            or not subjects
+        ):
             raise SystemExit("ground truth contains an incomplete case")
         if case_key in expected_by_case:
             raise SystemExit(f"ground truth repeats case: {advisory}")
@@ -117,36 +239,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.primary_budget not in budgets:
         raise SystemExit("primary budget is absent from frozen ground truth")
 
-    unit_edges: dict[str, set[tuple[str, str, str, str]]] = {}
-    unit_fix_edges: dict[tuple[str, str], set[tuple[str, str, str, str]]] = {}
-    positions: dict[tuple[str, str, str, str], int] = {}
-    for unit_id, row in units.items():
-        edges: set[tuple[str, str, str, str]] = set()
-        for raw_edge in row["fix_edges"]:  # type: ignore[union-attr]
-            assert isinstance(raw_edge, Mapping)
-            edge = _edge_key(row, raw_edge)
-            edges.add(edge)
-            unit_fix_edges.setdefault((unit_id, edge[3]), set()).add(edge)
-            positions[edge] = int(raw_edge["frozen_fix_position"])
-        unit_edges[unit_id] = edges
-
     inventory_missing = expected_edges - schedule_edges
     evaluations: list[dict[str, object]] = []
     for budget in budgets:
-        selected_memberships = {
-            (unit_id, edge[3])
-            for unit_id, edges in unit_edges.items()
-            for edge in edges
-            if positions[edge] <= budget
-        }
-        same_fix_edges = set().union(
-            *(unit_fix_edges[membership] for membership in selected_memberships),
-            set(),
-        )
-        selected_units = {unit_id for unit_id, _ in selected_memberships}
-        global_carried_edges = set().union(
-            *(unit_edges[unit_id] for unit_id in selected_units), set()
-        )
+        (
+            selected_memberships,
+            selected_units,
+            same_fix_edges,
+            global_carried_edges,
+        ) = _budget_selection(units, budget, budget_unit)
         case_rows: list[dict[str, object]] = []
         for case_key, expected in expected_by_case.items():
             strict_missing = expected - same_fix_edges
@@ -158,7 +259,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "fix_sha": case_key[2],
                     "stratum": strata[case_key],
                     "expected_edge_count": len(expected),
-                    "strict_same_fix_covered_edge_count": len(expected - strict_missing),
+                    "strict_same_fix_covered_edge_count": len(
+                        expected - strict_missing
+                    ),
                     "strict_same_fix_any": len(strict_missing) < len(expected),
                     "strict_same_fix_complete": not strict_missing,
                     "strict_same_fix_missing_candidate_shas": sorted(
@@ -167,41 +270,63 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "operational_global_unit_complete": not operational_missing,
                 }
             )
-        strict_complete = sum(row["strict_same_fix_complete"] is True for row in case_rows)
-        evaluations.append(
-            {
-                "budget_per_fix": budget,
-                "selected_fix_membership_count": len(selected_memberships),
-                "selected_unique_unit_count": len(selected_units),
-                "strict_same_fix_covered_edge_count": len(
-                    expected_edges & same_fix_edges
-                ),
-                "strict_same_fix_edge_recall": len(expected_edges & same_fix_edges)
-                / len(expected_edges),
-                "strict_same_fix_case_any_count": sum(
-                    row["strict_same_fix_any"] is True for row in case_rows
-                ),
-                "strict_same_fix_case_complete_count": strict_complete,
-                "strict_same_fix_case_complete_recall": strict_complete
-                / len(case_rows),
-                "operational_global_unit_case_complete_count": sum(
-                    row["operational_global_unit_complete"] is True
-                    for row in case_rows
-                ),
-                "cases": case_rows,
-            }
+        strict_complete = sum(
+            row["strict_same_fix_complete"] is True for row in case_rows
         )
+        evaluation = {
+            "budget_per_fix": budget,
+            "selected_fix_membership_count": len(selected_memberships),
+            "selected_unique_unit_count": len(selected_units),
+            "strict_same_fix_covered_edge_count": len(expected_edges & same_fix_edges),
+            "strict_same_fix_edge_recall": len(expected_edges & same_fix_edges)
+            / len(expected_edges),
+            "strict_same_fix_case_any_count": sum(
+                row["strict_same_fix_any"] is True for row in case_rows
+            ),
+            "strict_same_fix_case_complete_count": strict_complete,
+            "strict_same_fix_case_complete_recall": strict_complete / len(case_rows),
+            "operational_global_unit_case_complete_count": sum(
+                row["operational_global_unit_complete"] is True for row in case_rows
+            ),
+            "cases": case_rows,
+        }
+        if budget_unit == CARRIER_BUDGET_UNIT:
+            evaluation.update(
+                {
+                    "budget_unit": CARRIER_BUDGET_UNIT,
+                    "triggered_carrier_fix_membership_count": len(selected_memberships),
+                    "triggered_unique_carrier_group_count": len(
+                        {
+                            (repository, advisory, group_id)
+                            for repository, advisory, group_id, _ in selected_memberships
+                        }
+                    ),
+                    "expanded_atomic_unit_count": len(selected_units),
+                    "same_fix_carried_atomic_edge_count": len(same_fix_edges),
+                }
+            )
+        evaluations.append(evaluation)
 
     primary = next(
         row for row in evaluations if row["budget_per_fix"] == args.primary_budget
     )
     gate_passed = (
         not inventory_missing
-        and blocked_roots == 0
+        and candidate_uncovered == 0
         and primary["strict_same_fix_case_complete_count"] == len(expected_by_case)
     )
+    claim_boundary = (
+        "Carrier credit is same-fix only; cross-fix carried review is diagnostic. "
+        "This is frozen-case recall, not population recall or atomic provenance."
+        if budget_unit == CARRIER_BUDGET_UNIT
+        else (
+            "The primary gate credits a unit only within the same fix prefix that "
+            "selected it. Operational global-unit credit is diagnostic only. This "
+            "is recall on dual-reviewed frozen cases, not population recall."
+        )
+    )
     artifact = {
-        "schema_version": 1,
+        "schema_version": 2 if budget_unit == CARRIER_BUDGET_UNIT else 1,
         "artifact_kind": "prospective_origin_recall_v5_case_complete_scorecard",
         "source_artifacts": {
             "schedule_summary": {
@@ -236,12 +361,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             "primary_gate_passed": gate_passed,
         },
         "budget_evaluations": evaluations,
-        "claim_boundary": (
-            "The primary gate credits a unit only within the same fix prefix that "
-            "selected it. Operational global-unit credit is diagnostic only. This "
-            "is recall on dual-reviewed frozen cases, not population recall."
-        ),
+        "claim_boundary": claim_boundary,
     }
+    if budget_unit == CARRIER_BUDGET_UNIT:
+        artifact_summary = artifact["summary"]
+        assert isinstance(artifact_summary, dict)
+        artifact_summary["budget_unit"] = CARRIER_BUDGET_UNIT
+    if has_new_surface:
+        artifact_summary = artifact["summary"]
+        assert isinstance(artifact_summary, dict)
+        artifact_summary.update(
+            {
+                "candidate_surface_uncovered_count": candidate_uncovered,
+                "candidate_surface_coverage_complete": packet_summary.get(
+                    "candidate_surface_coverage_complete"
+                ),
+                "carrier_only_squash_relation_root_count": carrier_only_roots,
+                "atomic_provenance_gap_count": atomic_gaps,
+            }
+        )
     _atomic_json(args.output, artifact)
     print("Blind case-complete scorecard written")
     print(f"  cases : {len(expected_by_case)}")
