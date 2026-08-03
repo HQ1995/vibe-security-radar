@@ -1,0 +1,754 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "prospective_origin_heldout_v4_causal_review",
+  "reviewer": "A",
+  "target": {
+    "advisory": "CVE-2026-21531",
+    "repository_identity": "github.com/azure/azure-sdk-for-python",
+    "repository_path": "/home/hanqing/.cache/cve-analyzer/repos/azure_azure-sdk-for-python",
+    "vulnerability": "untrusted continuation-token deserialization leading to network-reachable code execution",
+    "fix_shas": [
+      "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "a3d655bbd01442eac6ead280514f4e87208ed8f0"
+    ]
+  },
+  "protocol": {
+    "two_stage_blind_review": true,
+    "stage_a": {
+      "schedule_blind": true,
+      "candidate_inventory_blind": true,
+      "inputs": [
+        "the two fix diffs",
+        "affected-code-file blame",
+        "affected-code-file git log -S/-G",
+        "affected-code-file chronology and commit-object ancestry"
+      ],
+      "frozen_note_path": "/tmp/azure-v4-stage-a-review-a-20260803.json",
+      "frozen_note_sha256": "05f3d55de0ced8e13f1607922f8b171180b9472e5495f998fd73fdf708fc355e",
+      "frozen_obligation_shas": [
+        "03bebad907ae3c013db69c4128fa548f05efcef4",
+        "cc7fc5411f17ea1e90e32a3bb279bd39b2308c0d",
+        "5e200878fa00169ef16d6ef596a889aa271ce817"
+      ]
+    },
+    "stage_b": {
+      "schedule_path": ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+      "schedule_file_sha256": "9615e0396abb5ec96b553a2e0865bef628dd39f76e3dacce5c67c7d0606dd9d3",
+      "candidate_units_path": ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-origin-packets-20260803-v1/candidate_units.jsonl",
+      "candidate_units_file_sha256": "a309b499dbd387970f533cf0eba202c530f3e63a1a7260d97132c3868668798e",
+      "candidate_units_canonical_sha256": "7aaacc321638cfcb9f2d52f8d1994bc873362ebec15fd257f77cb64b178e5f80",
+      "review_budget_per_fix": 10,
+      "union_semantics": "Review the union of each fix's frozen top-10 units once, while adjudicating every carried exact fix edge.",
+      "unique_units_reviewed": 10,
+      "exact_fix_edges_reviewed": 20
+    },
+    "external_model_or_api_used": false,
+    "repository_state": {
+      "is_shallow": true,
+      "shallow_boundary_affecting_ta_blame": "cafe68ee7779a50b7ba5718f74bfacea907625f5",
+      "worktree_files_used": false,
+      "git_object_access_used": true,
+      "shallow_handling": "Boundary blame was not accepted as origin. The boundary commit's declared parent was inspected and ancestry below that parent was proven explicitly."
+    },
+    "verdict_definitions": {
+      "DIRECT_CAUSAL_ORIGIN": "The commit introduces the vulnerable source/sink or unsafe state-transfer mechanism repaired by the fix.",
+      "COMPOSITIONAL_CAUSAL_CONTRIBUTOR": "The commit adds a necessary or materially expanded route that composes with an already-present unsafe mechanism.",
+      "NONCAUSAL": "The commit is chronologically or topologically related but its patch does not introduce or materially compose the repaired mechanism.",
+      "INCONCLUSIVE": "Available Git evidence cannot establish or reject causal contribution."
+    }
+  },
+  "summary": {
+    "global_candidate_unit_count": 4542,
+    "global_candidate_fix_edge_count": 8449,
+    "azure_candidate_unit_count": 4335,
+    "azure_ta_fix_edge_count": 4335,
+    "azure_conversations_fix_edge_count": 3905,
+    "stage_a_causal_obligation_count": 3,
+    "direct_origin_count": 2,
+    "compositional_contributor_count": 1,
+    "obligations_present_in_full_inventory": 0,
+    "obligations_missing_from_full_inventory": 3,
+    "direct_origins_present_in_full_inventory": 0,
+    "direct_origins_missing_from_full_inventory": 2,
+    "top10_unique_unit_count": 10,
+    "top10_exact_edge_count": 20,
+    "top10_verdict_counts": {
+      "DIRECT_CAUSAL_ORIGIN": 0,
+      "COMPOSITIONAL_CAUSAL_CONTRIBUTOR": 0,
+      "NONCAUSAL": 20,
+      "INCONCLUSIVE": 0
+    },
+    "top10_true_positive_edge_count": 0,
+    "top10_false_positive_edge_count": 20,
+    "obligation_recall_at_full_inventory": 0.0,
+    "direct_origin_recall_at_full_inventory": 0.0,
+    "obligation_recall_at_10_per_fix": 0.0,
+    "inventory_miss_status": "ALL_STAGE_A_CAUSAL_OBLIGATIONS_MISSING",
+    "finding": "The frozen ranking did not merely rank the causal commits late: it omitted both direct origins and the one compositional contributor from the complete 4,542-unit inventory. Its top ten units are shared across both fixes through squash-member ancestry fallback despite zero affected-file overlap, and all twenty carried exact edges are noncausal."
+  },
+  "fixes": [
+    {
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "parent_sha": "5f62689b17b3b44ac93329b9ed396cdcfffa854c",
+      "subject": "[TA] fix GA pickle (#45364)",
+      "authored_date": "2026-02-25T12:49:22-08:00",
+      "affected_code_files": [
+        "sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_lro.py",
+        "sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/aio/_lro_async.py",
+        "sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_response_handlers.py"
+      ],
+      "mechanism_before": "Four sync/async polling methods stored request metadata in the initial response and returned base64(pickle.dumps(initial_response)). Their poller restoration methods and the response-handler helper forwarded caller-supplied continuation tokens into polling_method.from_continuation_token.",
+      "mechanism_after": "The four methods delegate to the structured azure-core continuation-token implementation after placing only scalar state in context, and the callback consumes context.deserialized_data with a legacy context.options fallback.",
+      "causal_obligation_ids": [
+        "35142d37-ta-origin-03bebad",
+        "35142d37-ta-contributor-cc7fc54"
+      ],
+      "full_inventory_coverage": {
+        "obligation_count": 2,
+        "present": 0,
+        "missing": 2,
+        "recall": 0.0
+      },
+      "top10": {
+        "reviewed_edges": 10,
+        "causal_edges": 0,
+        "noncausal_edges": 10
+      }
+    },
+    {
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "parent_sha": "cef47674c125cae14962f3b03faf22025b2cf5b7",
+      "subject": "[Conv authoring] fix pickle issue (#44806)",
+      "authored_date": "2026-01-22T15:00:08-08:00",
+      "affected_code_files": [
+        "sdk/cognitivelanguage/azure-ai-language-conversations-authoring/azure/ai/language/conversations/authoring/models/_patch.py"
+      ],
+      "mechanism_before": "Both synchronous and asynchronous custom Jobs polling methods serialized the initial response with pickle and directly executed pickle.loads(base64.b64decode(continuation_token)) on caller-provided token bytes.",
+      "mechanism_after": "The fix replaces pickle with a versioned JSON token carrying polling_url, polling_interval, and path_format_arguments, validates the token schema/version, and restores only structured state.",
+      "causal_obligation_ids": [
+        "a3d655bb-conv-origin-5e20087"
+      ],
+      "full_inventory_coverage": {
+        "obligation_count": 1,
+        "present": 0,
+        "missing": 1,
+        "recall": 0.0
+      },
+      "top10": {
+        "reviewed_edges": 10,
+        "causal_edges": 0,
+        "noncausal_edges": 10
+      }
+    }
+  ],
+  "causal_obligations": [
+    {
+      "obligation_id": "35142d37-ta-origin-03bebad",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "03bebad907ae3c013db69c4128fa548f05efcef4",
+      "verdict": "DIRECT_CAUSAL_ORIGIN",
+      "authored_date": "2021-10-26T12:08:09-07:00",
+      "subject": "[textanalytics] feature/ta-v3.2-preview.2 (#21409)",
+      "mechanism": "Introduced all four pickle-based continuation-token serializers and corresponding sync/async restoration wrappers.",
+      "evidence": [
+        "The diff from parent 652f6e8612acc10ab850d104ffe8bcf97b22f141 adds four pickle.dumps(self._initial_response) implementations in the affected sync/async LRO files.",
+        "The same diff adds public/class restoration wrappers that pass continuation_token to polling_method.from_continuation_token.",
+        "03bebad is an ancestor of 6427bf868d8a3a4dff3994e6a068e49de412330e; cafe68 declares 6427bf as parent; cafe68 is an ancestor of the fix parent. This reconstructs the ancestry hidden by the shallow boundary.",
+        "The boundary commit cafe68 makes no sensitive continuation-token change versus its declared parent, so its boundary blame is not an origin."
+      ],
+      "inventory": {
+        "present_in_candidate_units": false,
+        "present_in_schedule": false,
+        "frozen_fix_position": null,
+        "source_priority_rank": null,
+        "schedule_position": null,
+        "miss": true
+      }
+    },
+    {
+      "obligation_id": "35142d37-ta-contributor-cc7fc54",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "cc7fc5411f17ea1e90e32a3bb279bd39b2308c0d",
+      "verdict": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "authored_date": "2022-07-12T10:37:19-07:00",
+      "subject": "[textanalytics] add custom named entities bespoke method (#24995)",
+      "mechanism": "Added the affected _get_result_from_continuation_token helper and generic sync/async restoration dispatch, forwarding caller-provided continuation_token to poller_type.from_continuation_token.",
+      "evidence": [
+        "The affected _response_handlers.py diff adds _get_result_from_continuation_token and the direct poller_type.from_continuation_token dispatch.",
+        "cc7fc54 is an ancestor of the fix parent.",
+        "The security fix edits this same helper to consume structured context.deserialized_data rather than assuming state embedded in a pickled initial response."
+      ],
+      "inventory": {
+        "present_in_candidate_units": false,
+        "present_in_schedule": false,
+        "frozen_fix_position": null,
+        "source_priority_rank": null,
+        "schedule_position": null,
+        "miss": true
+      }
+    },
+    {
+      "obligation_id": "a3d655bb-conv-origin-5e20087",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "5e200878fa00169ef16d6ef596a889aa271ce817",
+      "verdict": "DIRECT_CAUSAL_ORIGIN",
+      "authored_date": "2025-09-05T09:23:38-07:00",
+      "subject": "[Conv authoring] python sdk 20250515preview (#42149)",
+      "mechanism": "Introduced the affected models/_patch.py file with both sync and async pickle token serializers and direct pickle.loads of base64-decoded caller-supplied continuation tokens.",
+      "evidence": [
+        "The affected file does not exist in parent 8c43a6deb5092512948ac6fc9cdd2a72ae194b83 and is added by 5e20087.",
+        "Fix-parent blame attributes both pickle.dumps and both pickle.loads statements to 5e20087.",
+        "5e20087 is an ancestor of the fix parent, and later affected-file commits do not alter the unsafe statements."
+      ],
+      "inventory": {
+        "present_in_candidate_units": false,
+        "present_in_schedule": false,
+        "frozen_fix_position": null,
+        "source_priority_rank": null,
+        "schedule_position": null,
+        "miss": true
+      }
+    }
+  ],
+  "inventory_misses": [
+    {
+      "obligation_id": "35142d37-ta-origin-03bebad",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "03bebad907ae3c013db69c4128fa548f05efcef4",
+      "causal_verdict": "DIRECT_CAUSAL_ORIGIN",
+      "miss_layer": "candidate_generation",
+      "frozen_position": null,
+      "status": "ABSENT_FROM_4542_UNIT_INVENTORY"
+    },
+    {
+      "obligation_id": "35142d37-ta-contributor-cc7fc54",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "cc7fc5411f17ea1e90e32a3bb279bd39b2308c0d",
+      "causal_verdict": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "miss_layer": "candidate_generation",
+      "frozen_position": null,
+      "status": "ABSENT_FROM_4542_UNIT_INVENTORY"
+    },
+    {
+      "obligation_id": "a3d655bb-conv-origin-5e20087",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "5e200878fa00169ef16d6ef596a889aa271ce817",
+      "causal_verdict": "DIRECT_CAUSAL_ORIGIN",
+      "miss_layer": "candidate_generation",
+      "frozen_position": null,
+      "status": "ABSENT_FROM_4542_UNIT_INVENTORY"
+    }
+  ],
+  "top10_units": [
+    {
+      "unit_id": "origin-unit-c003625a71b52372c33b20f4a59f0c7f0c703e9a5931145c2e22b4639bab69c5",
+      "candidate_sha": "1cf65a8e0d2ea42fb8fa28cfaf6428239b0f6105",
+      "subject": "Squash and rebase distro perf counters",
+      "union_position": 1,
+      "changed_scope": "azure-monitor-opentelemetry performance counters",
+      "landed_sha": "001cb4f1f61815c7da27a51640736dd17df48bb9",
+      "relation_pr_number": 43262,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-4f6543d6ecb1cb612498852f9ea212eea055fe2a650720bd5f96a5dc83f3bc43",
+      "candidate_sha": "504705e3ce6670bfc85257514c98d52b244a9372",
+      "subject": "Bump typespec-version for emitter-package.json and emitter-package-lock.json",
+      "union_position": 2,
+      "changed_scope": "TypeSpec emitter package manifests and lockfile",
+      "landed_sha": "007b9c975870fcbdfea389afb9f6e0d4a054201f",
+      "relation_pr_number": 42069,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-200575ca29a1f62fd287ffab76f6687b091cd7ef62a238f78ad878e819fa0045",
+      "candidate_sha": "7b82d253dd7b30d4def1245f3abb1798beaddaf0",
+      "subject": "Update health and typing reports to check for pyproject.toml",
+      "union_position": 3,
+      "changed_scope": "repository health and type-completeness scripts",
+      "landed_sha": "00d3ee2860bf24e79b1aaeba7e7af5d5d34c7562",
+      "relation_pr_number": 41797,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-8c9954279e22b3bf3d59389e3e80495a5e4f9034110374f8d12be6fe053fbccc",
+      "candidate_sha": "61282282e6c63430ac8841036e8ccd9d3e214d2c",
+      "subject": "[Monitor Metrics] Add samples",
+      "union_position": 4,
+      "changed_scope": "azure-monitor-querymetrics samples and package patch files",
+      "landed_sha": "011a618e8b6183645b2dd55bd2980315f20c1de1",
+      "relation_pr_number": 42242,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-a36b7dea7b654429d0361f2da5262174acd2f05b04a293be161908e94c848dfd",
+      "candidate_sha": "b6780d36113fe2b9075e3abbcd2e20944623f1f7",
+      "subject": "Allow links to use the checked out repo for validation",
+      "union_position": 5,
+      "changed_scope": "repository link-validation pipeline and PowerShell script",
+      "landed_sha": "03461759b9b10478f9f77886fe9dab41c7aa08ea",
+      "relation_pr_number": 41038,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-63b1c4c09f1410b307daa346efd74766a81bf7c14989e847934e1aa3f29a6fe9",
+      "candidate_sha": "46578dbaee60a972ea1a89ca9ed4f0d72093e70d",
+      "subject": "fix tests",
+      "union_position": 6,
+      "changed_scope": "azure-appconfiguration test assets and tests",
+      "landed_sha": "046b9735cad4231324bed4f0f2e3a598c0294feb",
+      "relation_pr_number": 44112,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-03261056963a5185a7c5c03ddfe4ae9345e52ee1c55261600feeea0e2b82721b",
+      "candidate_sha": "442892baa2e8a7b15da641af56aaf14b05ccfd0b",
+      "subject": "code and test",
+      "union_position": 7,
+      "changed_scope": "generated azure-mgmt-mongodbatlas client and samples",
+      "landed_sha": "0471dc477a8db9a5ce7611640e2e9a4879cb15e5",
+      "relation_pr_number": 41657,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-271e2a3daa6d9d184ed6675cdb383196b041273e10d4b4382eacfe491b25c580",
+      "candidate_sha": "235d428689c8141e4ec514fb0856fa80ab39de52",
+      "subject": "more",
+      "union_position": 8,
+      "changed_scope": "azpysdk sample-check tooling and documentation",
+      "landed_sha": "05b029a54cea0e3eabb07b4ff5414387c1b0bf07",
+      "relation_pr_number": 44417,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-786efcfa2daea5ca149acaa71cccc1d730b5956a0fc7fb4aa1d993bf7bc978d6",
+      "candidate_sha": "47333fba4a6613fa9efbb41656f19a825bf916a6",
+      "subject": "Remove deprecated multiapi functionality from release-helper scripts",
+      "union_position": 9,
+      "changed_scope": "release-helper script",
+      "landed_sha": "07cbf9435a689de4bed9f260a278b4c8a659c309",
+      "relation_pr_number": 42890,
+      "carried_fix_edge_count": 2
+    },
+    {
+      "unit_id": "origin-unit-a362fe4f47271471a50ec56a3020ef4a72e93c10db68538f9593a0ce651ba15b",
+      "candidate_sha": "79e6622bce2b85fa78662ffae516d6d958b2c688",
+      "subject": "Update eng/common/pipelines/templates/steps/publish-1es-artifact.yml",
+      "union_position": 10,
+      "changed_scope": "artifact-publishing pipeline template",
+      "landed_sha": "07cf4b38589b40bfd4db38495e172a8782b87dd7",
+      "relation_pr_number": 41833,
+      "carried_fix_edge_count": 2
+    }
+  ],
+  "top10_edge_reviews": [
+    {
+      "unit_id": "origin-unit-c003625a71b52372c33b20f4a59f0c7f0c703e9a5931145c2e22b4639bab69c5",
+      "candidate_sha": "1cf65a8e0d2ea42fb8fa28cfaf6428239b0f6105",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 1,
+      "source_priority_rank": 1,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "001cb4f1f61815c7da27a51640736dd17df48bb9",
+      "relation_pr_number": 43262,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Performance-counter implementation in a separate monitor package; no Text Analytics LRO, continuation-token, pickle, base64, polling, or deserialization change."
+    },
+    {
+      "unit_id": "origin-unit-c003625a71b52372c33b20f4a59f0c7f0c703e9a5931145c2e22b4639bab69c5",
+      "candidate_sha": "1cf65a8e0d2ea42fb8fa28cfaf6428239b0f6105",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 1,
+      "source_priority_rank": 1,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "001cb4f1f61815c7da27a51640736dd17df48bb9",
+      "relation_pr_number": 43262,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Performance-counter implementation in a separate monitor package; no Conversations Jobs polling or unsafe continuation-token deserialization change."
+    },
+    {
+      "unit_id": "origin-unit-4f6543d6ecb1cb612498852f9ea212eea055fe2a650720bd5f96a5dc83f3bc43",
+      "candidate_sha": "504705e3ce6670bfc85257514c98d52b244a9372",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 2,
+      "source_priority_rank": 2,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "007b9c975870fcbdfea389afb9f6e0d4a054201f",
+      "relation_pr_number": 42069,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Mechanical TypeSpec emitter manifest/lockfile version update; no runtime Text Analytics or continuation-token behavior."
+    },
+    {
+      "unit_id": "origin-unit-4f6543d6ecb1cb612498852f9ea212eea055fe2a650720bd5f96a5dc83f3bc43",
+      "candidate_sha": "504705e3ce6670bfc85257514c98d52b244a9372",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 2,
+      "source_priority_rank": 2,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "007b9c975870fcbdfea389afb9f6e0d4a054201f",
+      "relation_pr_number": 42069,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Mechanical TypeSpec emitter manifest/lockfile version update; no Conversations Authoring runtime or token deserializer."
+    },
+    {
+      "unit_id": "origin-unit-200575ca29a1f62fd287ffab76f6687b091cd7ef62a238f78ad878e819fa0045",
+      "candidate_sha": "7b82d253dd7b30d4def1245f3abb1798beaddaf0",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 3,
+      "source_priority_rank": 3,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "00d3ee2860bf24e79b1aaeba7e7af5d5d34c7562",
+      "relation_pr_number": 41797,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Repository reporting scripts only; no SDK runtime, LRO, pickle, or continuation-token path."
+    },
+    {
+      "unit_id": "origin-unit-200575ca29a1f62fd287ffab76f6687b091cd7ef62a238f78ad878e819fa0045",
+      "candidate_sha": "7b82d253dd7b30d4def1245f3abb1798beaddaf0",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 3,
+      "source_priority_rank": 3,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "00d3ee2860bf24e79b1aaeba7e7af5d5d34c7562",
+      "relation_pr_number": 41797,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Repository reporting scripts only; no Conversations Authoring polling or continuation-token path."
+    },
+    {
+      "unit_id": "origin-unit-8c9954279e22b3bf3d59389e3e80495a5e4f9034110374f8d12be6fe053fbccc",
+      "candidate_sha": "61282282e6c63430ac8841036e8ccd9d3e214d2c",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 4,
+      "source_priority_rank": 4,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "011a618e8b6183645b2dd55bd2980315f20c1de1",
+      "relation_pr_number": 42242,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Azure Monitor Query Metrics samples and package-local patch code; no Text Analytics files or unsafe token state transfer."
+    },
+    {
+      "unit_id": "origin-unit-8c9954279e22b3bf3d59389e3e80495a5e4f9034110374f8d12be6fe053fbccc",
+      "candidate_sha": "61282282e6c63430ac8841036e8ccd9d3e214d2c",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 4,
+      "source_priority_rank": 4,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "011a618e8b6183645b2dd55bd2980315f20c1de1",
+      "relation_pr_number": 42242,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Azure Monitor Query Metrics samples and package-local patch code; no Conversations Authoring polling or pickle token handling."
+    },
+    {
+      "unit_id": "origin-unit-a36b7dea7b654429d0361f2da5262174acd2f05b04a293be161908e94c848dfd",
+      "candidate_sha": "b6780d36113fe2b9075e3abbcd2e20944623f1f7",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 5,
+      "source_priority_rank": 5,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "03461759b9b10478f9f77886fe9dab41c7aa08ea",
+      "relation_pr_number": 41038,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "CI link-validation behavior only; no SDK runtime or continuation-token processing."
+    },
+    {
+      "unit_id": "origin-unit-a36b7dea7b654429d0361f2da5262174acd2f05b04a293be161908e94c848dfd",
+      "candidate_sha": "b6780d36113fe2b9075e3abbcd2e20944623f1f7",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 5,
+      "source_priority_rank": 5,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "03461759b9b10478f9f77886fe9dab41c7aa08ea",
+      "relation_pr_number": 41038,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "CI link-validation behavior only; no Conversations Authoring runtime or token deserialization."
+    },
+    {
+      "unit_id": "origin-unit-63b1c4c09f1410b307daa346efd74766a81bf7c14989e847934e1aa3f29a6fe9",
+      "candidate_sha": "46578dbaee60a972ea1a89ca9ed4f0d72093e70d",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 6,
+      "source_priority_rank": 6,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "046b9735cad4231324bed4f0f2e3a598c0294feb",
+      "relation_pr_number": 44112,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Azure App Configuration test/assets update; no Text Analytics runtime or continuation-token implementation."
+    },
+    {
+      "unit_id": "origin-unit-63b1c4c09f1410b307daa346efd74766a81bf7c14989e847934e1aa3f29a6fe9",
+      "candidate_sha": "46578dbaee60a972ea1a89ca9ed4f0d72093e70d",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 6,
+      "source_priority_rank": 6,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "046b9735cad4231324bed4f0f2e3a598c0294feb",
+      "relation_pr_number": 44112,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Azure App Configuration test/assets update; no Conversations Authoring runtime or unsafe deserializer."
+    },
+    {
+      "unit_id": "origin-unit-03261056963a5185a7c5c03ddfe4ae9345e52ee1c55261600feeea0e2b82721b",
+      "candidate_sha": "442892baa2e8a7b15da641af56aaf14b05ccfd0b",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 7,
+      "source_priority_rank": 7,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "0471dc477a8db9a5ce7611640e2e9a4879cb15e5",
+      "relation_pr_number": 41657,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Generated MongoDB Atlas management client and samples in a separate package; no Text Analytics continuation-token code."
+    },
+    {
+      "unit_id": "origin-unit-03261056963a5185a7c5c03ddfe4ae9345e52ee1c55261600feeea0e2b82721b",
+      "candidate_sha": "442892baa2e8a7b15da641af56aaf14b05ccfd0b",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 7,
+      "source_priority_rank": 7,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "0471dc477a8db9a5ce7611640e2e9a4879cb15e5",
+      "relation_pr_number": 41657,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Generated MongoDB Atlas management client and samples in a separate package; no Conversations Authoring Jobs polling code."
+    },
+    {
+      "unit_id": "origin-unit-271e2a3daa6d9d184ed6675cdb383196b041273e10d4b4382eacfe491b25c580",
+      "candidate_sha": "235d428689c8141e4ec514fb0856fa80ab39de52",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 8,
+      "source_priority_rank": 8,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "05b029a54cea0e3eabb07b4ff5414387c1b0bf07",
+      "relation_pr_number": 44417,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Repository tooling for checking SDK samples; no Text Analytics runtime, poller, or token state."
+    },
+    {
+      "unit_id": "origin-unit-271e2a3daa6d9d184ed6675cdb383196b041273e10d4b4382eacfe491b25c580",
+      "candidate_sha": "235d428689c8141e4ec514fb0856fa80ab39de52",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 8,
+      "source_priority_rank": 8,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "05b029a54cea0e3eabb07b4ff5414387c1b0bf07",
+      "relation_pr_number": 44417,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Repository tooling for checking SDK samples; no Conversations Authoring runtime or continuation-token deserializer."
+    },
+    {
+      "unit_id": "origin-unit-786efcfa2daea5ca149acaa71cccc1d730b5956a0fc7fb4aa1d993bf7bc978d6",
+      "candidate_sha": "47333fba4a6613fa9efbb41656f19a825bf916a6",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 9,
+      "source_priority_rank": 9,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "07cbf9435a689de4bed9f260a278b4c8a659c309",
+      "relation_pr_number": 42890,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Release-helper script cleanup; no Text Analytics SDK runtime or continuation-token behavior."
+    },
+    {
+      "unit_id": "origin-unit-786efcfa2daea5ca149acaa71cccc1d730b5956a0fc7fb4aa1d993bf7bc978d6",
+      "candidate_sha": "47333fba4a6613fa9efbb41656f19a825bf916a6",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 9,
+      "source_priority_rank": 9,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "07cbf9435a689de4bed9f260a278b4c8a659c309",
+      "relation_pr_number": 42890,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Release-helper script cleanup; no Conversations Authoring package or continuation-token behavior."
+    },
+    {
+      "unit_id": "origin-unit-a362fe4f47271471a50ec56a3020ef4a72e93c10db68538f9593a0ce651ba15b",
+      "candidate_sha": "79e6622bce2b85fa78662ffae516d6d958b2c688",
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "frozen_fix_position": 10,
+      "source_priority_rank": 10,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "07cf4b38589b40bfd4db38495e172a8782b87dd7",
+      "relation_pr_number": 41833,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Artifact-publishing CI template change; no Text Analytics runtime or token serialization/deserialization."
+    },
+    {
+      "unit_id": "origin-unit-a362fe4f47271471a50ec56a3020ef4a72e93c10db68538f9593a0ce651ba15b",
+      "candidate_sha": "79e6622bce2b85fa78662ffae516d6d958b2c688",
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "frozen_fix_position": 10,
+      "source_priority_rank": 10,
+      "materialization": "squash_pr_member_relation",
+      "landed_sha": "07cf4b38589b40bfd4db38495e172a8782b87dd7",
+      "relation_pr_number": 41833,
+      "fix_file_overlap_count": 0,
+      "verdict": "NONCAUSAL",
+      "mechanism_assessment": "Artifact-publishing CI template change; no Conversations Authoring runtime or token serialization/deserialization."
+    }
+  ],
+  "reviewed_stage_a_noncausal_commits": [
+    {
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "50fb5a7c82f91f74b7e7524ffe2dd433c302382d",
+      "verdict": "NONCAUSAL",
+      "reason": "Patch-equivalent non-ancestor duplicate of 03bebad; identical stable patch-id on the affected files but not on the fix lineage."
+    },
+    {
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "cafe68ee7779a50b7ba5718f74bfacea907625f5",
+      "verdict": "NONCAUSAL",
+      "reason": "Shallow-boundary blame carrier whose declared parent already contains the vulnerable statements."
+    },
+    {
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "6a79f618321c17564d1bb255a7628e21c37ab2be",
+      "verdict": "NONCAUSAL",
+      "reason": "Separate non-ancestor history introducing the same feature."
+    },
+    {
+      "fix_sha": "35142d37f9f9955c688f87c9d564dba228c88ccb",
+      "candidate_sha": "f9802f927ef089f4655c9d2c64ca124e3b9456e2",
+      "verdict": "NONCAUSAL",
+      "reason": "Refactors poller/protocol classes but introduces neither the pickle mechanism nor the response-handler dispatch."
+    },
+    {
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "950d16a06f70d36cf42c902787ed00d586c9bb39",
+      "verdict": "NONCAUSAL",
+      "reason": "Non-ancestor branch commit carrying the unsafe statements but not on the fix lineage."
+    },
+    {
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "78d30f280c0e941e6ceddcea20a05f6c5bbfb59a",
+      "verdict": "NONCAUSAL",
+      "reason": "Makes poller class names private while leaving the unsafe statements unchanged."
+    },
+    {
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "cefece2a6c9ec9ced39dd8bc153943d9072007a2",
+      "verdict": "NONCAUSAL",
+      "reason": "Formatting/type change outside the token methods."
+    },
+    {
+      "fix_sha": "a3d655bbd01442eac6ead280514f4e87208ed8f0",
+      "candidate_sha": "dff4df0cf00095e30b3b8717f015f479302d09d3",
+      "verdict": "NONCAUSAL",
+      "reason": "Adds an unrelated model class after the polling implementation."
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "E1",
+      "claim": "The Text Analytics direct origin is 03bebad, not the shallow boundary cafe68.",
+      "observations": [
+        "03bebad's parent-to-commit diff adds all four unsafe serializers and restoration wrappers.",
+        "03bebad is an ancestor of cafe68's declared parent.",
+        "cafe68's parent already contains the unsafe lines and cafe68 makes no sensitive change."
+      ]
+    },
+    {
+      "evidence_id": "E2",
+      "claim": "cc7fc54 is a Text Analytics compositional contributor.",
+      "observations": [
+        "It adds the affected response-handler helper that dispatches caller-provided continuation tokens.",
+        "The fix edits that same helper for structured restored state."
+      ]
+    },
+    {
+      "evidence_id": "E3",
+      "claim": "5e20087 is the Conversations Authoring direct origin.",
+      "observations": [
+        "Its parent lacks the affected file.",
+        "It adds both direct pickle.loads sinks and both serializers.",
+        "All four unsafe statements blame to it at the fix parent."
+      ]
+    },
+    {
+      "evidence_id": "E4",
+      "claim": "All three Stage A obligations are full-inventory misses.",
+      "observations": [
+        "Exact candidate_sha lookup returned no row in candidate_units.jsonl.",
+        "Exact candidate_sha lookup returned no row in the 4,542-row schedule.jsonl."
+      ]
+    },
+    {
+      "evidence_id": "E5",
+      "claim": "All top-10 carried edges are valid ancestry-fallback edges but noncausal.",
+      "observations": [
+        "Each candidate is a pull-request member and is not itself an ancestor of either fix parent.",
+        "Each packet's recorded landed squash SHA is an ancestor of both fix parents.",
+        "Every packet edge reports zero fix-file overlap.",
+        "Review of each candidate's changed files and patch found no pickle, continuation-token, from_continuation_token, deserialization, base64, polling-method, or LROPoller change."
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "command_id": "C1",
+      "command": "git diff --unified=12 5f62689b17b3b44ac93329b9ed396cdcfffa854c 35142d37f9f9955c688f87c9d564dba228c88ccb -- sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_lro.py sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/aio/_lro_async.py sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_response_handlers.py",
+      "purpose": "Inspect the Text Analytics repair mechanism."
+    },
+    {
+      "command_id": "C2",
+      "command": "git log --all -S 'pickle.dumps(self._initial_response)' -- sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_lro.py sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/aio/_lro_async.py",
+      "purpose": "Locate exact introduction/removal candidates for the Text Analytics unsafe serializer."
+    },
+    {
+      "command_id": "C3",
+      "command": "git merge-base --is-ancestor 03bebad907ae3c013db69c4128fa548f05efcef4 6427bf868d8a3a4dff3994e6a068e49de412330e; git cat-file -p cafe68ee7779a50b7ba5718f74bfacea907625f5; git diff 6427bf868d8a3a4dff3994e6a068e49de412330e cafe68ee7779a50b7ba5718f74bfacea907625f5 -- <TA affected code files>",
+      "purpose": "Recover the ancestry hidden by the shallow boundary and reject boundary blame as origin."
+    },
+    {
+      "command_id": "C4",
+      "command": "git log --all -S 'def _get_result_from_continuation_token' -- sdk/textanalytics/azure-ai-textanalytics/azure/ai/textanalytics/_response_handlers.py",
+      "purpose": "Locate the response-handler dispatch contributor."
+    },
+    {
+      "command_id": "C5",
+      "command": "git diff --unified=10 cef47674c125cae14962f3b03faf22025b2cf5b7 a3d655bbd01442eac6ead280514f4e87208ed8f0 -- sdk/cognitivelanguage/azure-ai-language-conversations-authoring/azure/ai/language/conversations/authoring/models/_patch.py",
+      "purpose": "Inspect the Conversations Authoring repair mechanism."
+    },
+    {
+      "command_id": "C6",
+      "command": "git blame -L 185,220 cef47674c125cae14962f3b03faf22025b2cf5b7 -- sdk/cognitivelanguage/azure-ai-language-conversations-authoring/azure/ai/language/conversations/authoring/models/_patch.py; git blame -L 315,350 cef47674c125cae14962f3b03faf22025b2cf5b7 -- sdk/cognitivelanguage/azure-ai-language-conversations-authoring/azure/ai/language/conversations/authoring/models/_patch.py",
+      "purpose": "Attribute both sync and async unsafe token implementations."
+    },
+    {
+      "command_id": "C7",
+      "command": "jq -c 'select(.candidate_sha == \"03bebad907ae3c013db69c4128fa548f05efcef4\" or .candidate_sha == \"cc7fc5411f17ea1e90e32a3bb279bd39b2308c0d\" or .candidate_sha == \"5e200878fa00169ef16d6ef596a889aa271ce817\")' .ai-slop/state/cohort-v1/prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+      "purpose": "Check exact frozen positions for Stage A obligations; output was empty."
+    },
+    {
+      "command_id": "C8",
+      "command": "jq -c 'select(.repository_identity == \"github.com/azure/azure-sdk-for-python\" and any(.fix_edges[]; .frozen_fix_position <= 10))' .ai-slop/state/cohort-v1/prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+      "purpose": "Extract the full top-10-per-fix union."
+    },
+    {
+      "command_id": "C9",
+      "command": "git diff-tree --no-commit-id --name-status -r <top10-candidate>; git show --format= --unified=1 <top10-candidate> | rg -i '^[+-].*(pickle|continuation.?token|from_continuation|deserializ|base64|polling_method|lropoller)'",
+      "purpose": "Review each top-10 candidate's complete changed-file scope and search its patch for the repaired mechanisms."
+    },
+    {
+      "command_id": "C10",
+      "command": "git merge-base --is-ancestor <candidate_sha> <fix_parent>; git merge-base --is-ancestor <recorded_landed_sha> <fix_parent>",
+      "purpose": "Validate all twenty carried squash-member exact edges: candidate SHA is non-ancestor, recorded landed squash is ancestor."
+    }
+  ]
+}

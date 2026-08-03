@@ -1,0 +1,608 @@
+{
+  "schema_version": "1.0",
+  "artifact_kind": "prospective_origin_heldout_v4_blinded_causal_review",
+  "reviewer": "A",
+  "case_id": "CVE-2025-68952",
+  "repository": {
+    "path": "/home/hanqing/.cache/cve-analyzer/repos/eigent-ai_eigent",
+    "remote": "https://github.com/eigent-ai/eigent"
+  },
+  "fixes": [
+    {
+      "sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+      "parent": "928fb32b0d52f67081c68c485e34f16a4f4af66b",
+      "authored_at": "2025-09-25T15:26:12+08:00",
+      "subject": "fix:Prevent XSS in FolderComponent and block ipcRenderer injection",
+      "parent_package_version": "0.0.68"
+    },
+    {
+      "sha": "e21f82ee83e99c660825fd420374613f9af00020",
+      "parent": "60c792d202de6615684d50cad7426aac10d52c69",
+      "authored_at": "2025-09-29T01:49:28+08:00",
+      "subject": "enhance: PR394 Prevent XSS in FolderComponent and block ipcRenderer injection",
+      "parent_package_version": "0.0.71"
+    }
+  ],
+  "protocol": {
+    "stage_a": {
+      "status": "FROZEN",
+      "frozen_at_utc": "2026-08-03T15:56:03Z",
+      "allowed_inputs": [
+        "the two fix commits and their parents",
+        "affected and mechanism-adjacent files",
+        "local Git history, blame, -S, -G, ancestry, blob identity, and release chronology"
+      ],
+      "prohibited_inputs_not_read_before_freeze": [
+        ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+        "all heldout v4 packet units and candidate ranks",
+        "old causal ledgers",
+        "other reviewers' conclusions"
+      ],
+      "external_model_or_api_used": false,
+      "blindness_assertion": "Stage A conclusions below were written before opening any schedule, packet, rank, old causal ledger, or other reviewer conclusion."
+    },
+    "stage_b": {
+      "status": "COMPLETE",
+      "started_after_stage_a_freeze": true,
+      "completed_at_utc": "2026-08-03T16:01:02Z",
+      "stage_a_snapshot_sha256_before_stage_b_write": "95930da6fe6a34dab813d6847b48345652c0c057bdaf7dbf0117d5fd190ec5c2"
+    },
+    "classification_policy": {
+      "DIRECT_CAUSAL_ORIGIN": "The commit itself introduces a complete exploitable chain or the direct unsafe sink/source state in this DAG.",
+      "COMPOSITIONAL_CAUSAL_CONTRIBUTOR": "The commit introduces a necessary or materially enabling source, activation, or privilege component that is dangerous in composition.",
+      "NONCAUSAL": "The inspected delta does not create or materially enlarge the first exploit path; carrier-only, formatting, or mitigating changes are noncausal.",
+      "INCONCLUSIVE": "The local history proves adjacency or origin of changed code but does not prove exploitability or causal necessity."
+    },
+    "uncertainty_rule": "No unreviewed or mechanism-uncertain edge is promoted above INCONCLUSIVE.",
+    "chronology_note": "Local tags place v0.0.60 at cf003632 and v0.0.61 at 624f7de1, with navigation commits fecaf6f4 and 0747c10d between them. The two supplied XSS fixes are later, at package-parent versions 0.0.68 and 0.0.71; this review does not falsely treat either supplied fix as the v0.0.60-to-v0.0.61 release transition."
+  },
+  "causal_obligations": [
+    {
+      "obligation_id": "O1-initial-complete-local-rce-chain",
+      "candidate_sha": "f6dd426830bf75ed6a1aa0fa515c6dd3ccf1a827",
+      "candidate_subject": "initial commit",
+      "candidate_authored_at": "2025-07-29T23:57:16+08:00",
+      "origin_shape": "root_commit",
+      "mechanism": "This root already contains the one-click local-file chain: ChatBox stores a clicked output file and switches to documentWorkSpace; Folder observes selectedFile and invokes open-file; HTML open-file returns the path; Folder embeds localfile:// HTML; the main window has webSecurity=false and nodeIntegration=true; preload exposes unrestricted ipcRenderer.invoke/send plus electronAPI.executeCommand; main handles execute-command by spawning attacker-controlled command and serves .html through the localfile protocol.",
+      "mechanism_evidence_ids": ["E3", "E4", "E5", "E6"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "DIRECT_CAUSAL_ORIGIN",
+          "confidence": "HIGH",
+          "rationale": "The complete unsafe local HTML-to-IPC-to-spawn path exists in this root and survives to the first fix."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "DIRECT_CAUSAL_ORIGIN",
+          "confidence": "HIGH_FOR_VULNERABILITY_FAMILY_MODERATE_FOR_RESIDUAL_BYPASS",
+          "rationale": "It is the root of the privileged renderer bridge and command capability retained through the second hardening edge; the exact sanitizer bypass addressed by e21f82 is not independently executed here."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O2-remote-file-materialization",
+      "candidate_sha": "4e38cf8cc8046dce6c79b1de927b880d609a8949",
+      "candidate_subject": "feat: add support for loading remote files",
+      "candidate_authored_at": "2025-08-04T16:11:36+08:00",
+      "origin_shape": "ordinary_commit_with_later_squash_duplicate",
+      "mechanism": "Adds downloadFile/isLocalFile/getTempFilePath and makes open-file download an http(s) URL into app temp before the existing HTML path-return and localfile iframe render. The parent already obtains item.url from /api/chat/files but cannot serve that URL through localfile; this delta materializes attacker-controlled remote HTML into the active local preview path.",
+      "mechanism_evidence_ids": ["E7", "E8"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "It materially enables the remote-file source but needs the pre-existing active HTML sink and privileged IPC bridge."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "The remote untrusted-content source persists into the second hardening edge."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O3-restored-chat-to-preview-auto-open",
+      "candidate_sha": "81d59319aad487aaa4ad306ff4de0bab63f537a9",
+      "candidate_subject": "fix: correct MCP_REMOTE_CONFIG_DIR path",
+      "candidate_authored_at": "2025-08-04T18:17:20+08:00",
+      "origin_shape": "misleading_subject_cross_file_behavior_change",
+      "mechanism": "After 4e38cf removed the old selectedFile observer, this commit rewrites file-list loading and newly looks up chatStoreSelectedFile by name, then calls selecetdFileChange. That restores automatic opening of the chat-selected local or remote output and is not described by its commit subject.",
+      "mechanism_evidence_ids": ["E9"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "It restores the one-click activation edge but depends on the unsafe preview and IPC capability."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "The activation edge is retained through the second fix lineage."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O4-squash-root-vulnerable-snapshot",
+      "candidate_sha": "723df5a03e329364306f5aac0a95245f618953c2",
+      "candidate_subject": "Initial commit of eigent-main",
+      "candidate_authored_at": "2025-08-12T01:16:39+02:00",
+      "origin_shape": "unrelated_root_snapshot_or_squash_import",
+      "mechanism": "This parentless root imports the complete vulnerable snapshot. Pre-fix blame attributes the HTML iframe/raw-HTML preview and ChatBox click path to this root, while its fileReader blob is byte-identical to 4e38cf's post-change blob. It is therefore a direct DAG origin and a squash/import carrier; it must not erase the earlier ordinary origins 4e38cf and 81d593.",
+      "mechanism_evidence_ids": ["E2", "E8", "E10", "E11"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "DIRECT_CAUSAL_ORIGIN",
+          "confidence": "HIGH",
+          "rationale": "With no parent, the root directly introduces the complete vulnerable state into its DAG and owns the surviving unsafe sink lines by blame."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "DIRECT_CAUSAL_ORIGIN",
+          "confidence": "HIGH_FOR_VULNERABILITY_FAMILY_MODERATE_FOR_RESIDUAL_BYPASS",
+          "rationale": "It directly imports the untrusted source and active-preview lineage, while the exact residual sanitizer bypass at e21f82 is not independently executed here."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O5-mounted-workspace-selected-file-reactivation",
+      "candidate_sha": "fecaf6f48149d9abb8c2a0960358f52caa320a78",
+      "candidate_subject": "fix: navigation when opening output file from chat ( #255)",
+      "candidate_authored_at": "2025-09-01T14:44:39+08:00",
+      "origin_shape": "release-boundary_activation_commit",
+      "mechanism": "Persists opened files to chatStore and adds a selectedFile.path effect that finds the selected output and invokes selectedFileChange/open-file. This makes chat-output navigation automatically open a newly selected file even when the Folder workspace is already mounted.",
+      "mechanism_evidence_ids": ["E12", "E13"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "It materially broadens reliability of the one-click activation path without creating the sink or privilege primitive."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "The same automatic-open behavior remains in the second fix ancestry."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O6-path-correct-auto-open-refinement",
+      "candidate_sha": "0747c10de3e5d72718eb233286a2c1c2f2d17adc",
+      "candidate_subject": "enhance:navigation when opening output file from chat",
+      "candidate_authored_at": "2025-09-03T07:25:01+08:00",
+      "origin_shape": "release-boundary_activation_refinement",
+      "mechanism": "Changes selected output matching from non-unique name to exact path and adds fileGroups/source-mode/task dependencies, making the automatic open select the intended output and retrigger after file-list population.",
+      "mechanism_evidence_ids": ["E12", "E13"],
+      "per_fix_edges": [
+        {
+          "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "It makes the already introduced one-click path reliable and path-correct; it is not merely cosmetic."
+        },
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+          "confidence": "HIGH",
+          "rationale": "The refined activation path remains in the second fix ancestry."
+        }
+      ]
+    },
+    {
+      "obligation_id": "O7-first-fix-as-second-fix-predecessor",
+      "candidate_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+      "candidate_subject": "fix:Prevent XSS in FolderComponent and block ipcRenderer injection",
+      "candidate_authored_at": "2025-09-25T15:26:12+08:00",
+      "origin_shape": "partial_fix_predecessor",
+      "mechanism": "Creates FolderComponent with DOMPurify and a literal case-sensitive raw.includes('ipcRenderer') check; e21f82 later replaces that check with broader case-insensitive patterns and stricter forbidden tags/attributes. History proves code provenance, but without executing a bypass it does not prove that 442830 introduced an exploitable residual RCE rather than an incomplete or defense-in-depth fix.",
+      "mechanism_evidence_ids": ["E14", "E15"],
+      "scope_exclusion": "It is the first fix itself, not a predecessor candidate for its own fix edge.",
+      "per_fix_edges": [
+        {
+          "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+          "ancestry": "ANCESTOR",
+          "classification": "INCONCLUSIVE",
+          "confidence": "MODERATE",
+          "rationale": "Exact sanitizer-policy provenance is direct, but exploitability and causal necessity of the broadened textual block list are not proven from history alone."
+        }
+      ]
+    }
+  ],
+  "stage_a_examined_controls": [
+    {
+      "sha": "5d88044aa4df79ece7ed4a2d4c018aaf33ac02f9",
+      "classification": "NONCAUSAL",
+      "reason": "Carrier merge only for reviewed files: both parents already contain the vulnerable mechanism, and relevant-file diffs from the merge result to either parent are empty."
+    },
+    {
+      "sha": "5f46e153bfd6895e208f8291cfc24de70a38da4b",
+      "classification": "NONCAUSAL",
+      "reason": "Formatting/UI/file-list environment cleanup; it retains the unsafe sink and does not introduce the selected-output auto-open restored later by 81d593."
+    },
+    {
+      "sha": "af2c754c9a22748ee3ba0cd82334770effa365d9",
+      "classification": "NONCAUSAL",
+      "reason": "Folder tree/UI refactor and xlsx support; the active HTML sink and one-click observer predate it."
+    },
+    {
+      "sha": "f1713d332acbed7aef3c7e3ffb06424dd85d3b86",
+      "classification": "NONCAUSAL",
+      "reason": "History-sidebar and Folder styling changes leave the source, auto-open, sink, and privilege chain unchanged."
+    },
+    {
+      "sha": "f0045b335b1a940430db9942b714b2246bd6abe5",
+      "classification": "NONCAUSAL",
+      "reason": "Deduplicates remote file-list requests while preserving the already-existing first auto-open."
+    },
+    {
+      "sha": "d3401a3ee2cd3da411e3e50e22de1a1e30b995b8",
+      "classification": "NONCAUSAL",
+      "reason": "Adds selectedFile path inequality guards that suppress duplicate reopens; it preserves the first malicious-file open and is mitigating/idempotence logic."
+    },
+    {
+      "sha": "89dca71f132746738eae94c5cc72bd073f2d3bfd",
+      "classification": "NONCAUSAL",
+      "reason": "Adds selectedFile to an effect dependency list; no new source, sink, privilege, or first-open path."
+    },
+    {
+      "sha": "78226b1acf46129177c3cbba578f58b733e301d4",
+      "classification": "NONCAUSAL",
+      "reason": "Removes the selectedFile dependency added by 89dca; no new first-open path."
+    }
+  ],
+  "top10_edge_reviews": [
+    {
+      "unit_id": "origin-unit-d000c00bb11a9c775eaddfbb817f674466b867186a2399ee8ae5e639a8cd9329",
+      "candidate_sha": "482f26588a7f49524def8924c0b437e29745b099",
+      "case_schedule_position": 1,
+      "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+      "frozen_fix_position": 1,
+      "source_priority_rank": 1,
+      "reviewed": true,
+      "classification": "NONCAUSAL",
+      "confidence": "HIGH",
+      "mechanism_review": "Claude-attributed merge resolution concerns BottomInput validation/tooltip behavior. Both merge parents already contain all six frozen Stage A origins/contributors. The surviving ChatBox file click and workspace switch still blame to 723df5a0; this merge adds no HTML source, active preview sink, IPC capability, command execution primitive, or new first-open edge.",
+      "carried_edge_review": "The packet relation is reachable_ancestor only. Ancestry carriage to this fix is real, but causal carriage is rejected because the complete vulnerable chain predates both parents."
+    },
+    {
+      "unit_id": "origin-unit-d000c00bb11a9c775eaddfbb817f674466b867186a2399ee8ae5e639a8cd9329",
+      "candidate_sha": "482f26588a7f49524def8924c0b437e29745b099",
+      "case_schedule_position": 1,
+      "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+      "frozen_fix_position": 1,
+      "source_priority_rank": 1,
+      "reviewed": true,
+      "classification": "NONCAUSAL",
+      "confidence": "HIGH",
+      "mechanism_review": "The merge remains unrelated to FolderComponent sanitizer policy and to the pre-existing HTML-to-IPC chain. Its AI attribution is genuine but its vulnerability causality is not.",
+      "carried_edge_review": "Reachability to the second fix parent is confirmed; no causal mechanism is introduced or materially enlarged."
+    },
+    {
+      "unit_id": "origin-unit-780286bbd81f4f6e6ebdca846ba0122528858af12d80692cbaf1b02b31d6b796",
+      "candidate_sha": "d1bf5a0af3e1510872d351591a054137da53f8a0",
+      "case_schedule_position": 2,
+      "fix_sha": "442830b1cb3846edb094d81742709a28bdec37dc",
+      "frozen_fix_position": 2,
+      "source_priority_rank": 2,
+      "reviewed": true,
+      "classification": "NONCAUSAL",
+      "confidence": "HIGH",
+      "mechanism_review": "Claude-attributed merge resolution is i18n/icon work in TaskState plus Folder translations, React key file.name-to-file.path, and duplicate-open guards. Both parents already contain all six Stage A causal commits. The selectedFile path inequality checks suppress duplicate reopens and preserve the first malicious-file open; they are mitigating/idempotence behavior, not an origin.",
+      "carried_edge_review": "The packet's reachable-ancestor edge is valid as ancestry only; the candidate contributes no new source, sink, privilege, or first-open mechanism."
+    },
+    {
+      "unit_id": "origin-unit-780286bbd81f4f6e6ebdca846ba0122528858af12d80692cbaf1b02b31d6b796",
+      "candidate_sha": "d1bf5a0af3e1510872d351591a054137da53f8a0",
+      "case_schedule_position": 2,
+      "fix_sha": "e21f82ee83e99c660825fd420374613f9af00020",
+      "frozen_fix_position": 2,
+      "source_priority_rank": 2,
+      "reviewed": true,
+      "classification": "NONCAUSAL",
+      "confidence": "HIGH",
+      "mechanism_review": "No FolderComponent, DOMPurify, IPC bridge, localfile protocol, or execute-command policy is introduced or weakened by this merge.",
+      "carried_edge_review": "Reachability to the second fix parent is confirmed; causal relevance is rejected after parent and merge-resolution review."
+    }
+  ],
+  "inventory_misses": [
+    {
+      "candidate_sha": "f6dd426830bf75ed6a1aa0fa515c6dd3ccf1a827",
+      "stage_a_role": "DIRECT_CAUSAL_ORIGIN",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 4,
+        "e21f82ee83e99c660825fd420374613f9af00020": 7
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    },
+    {
+      "candidate_sha": "4e38cf8cc8046dce6c79b1de927b880d609a8949",
+      "stage_a_role": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 26,
+        "e21f82ee83e99c660825fd420374613f9af00020": 25
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["STRUCTURAL_TOP10_BUDGET", "AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    },
+    {
+      "candidate_sha": "81d59319aad487aaa4ad306ff4de0bab63f537a9",
+      "stage_a_role": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 35,
+        "e21f82ee83e99c660825fd420374613f9af00020": null
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["STRUCTURAL_TOP10_BUDGET", "SECOND_FIX_STRUCTURAL_INVENTORY", "AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    },
+    {
+      "candidate_sha": "723df5a03e329364306f5aac0a95245f618953c2",
+      "stage_a_role": "DIRECT_CAUSAL_ORIGIN",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 1,
+        "e21f82ee83e99c660825fd420374613f9af00020": 2
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    },
+    {
+      "candidate_sha": "fecaf6f48149d9abb8c2a0960358f52caa320a78",
+      "stage_a_role": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 10,
+        "e21f82ee83e99c660825fd420374613f9af00020": null
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["SECOND_FIX_STRUCTURAL_INVENTORY", "AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    },
+    {
+      "candidate_sha": "0747c10de3e5d72718eb233286a2c1c2f2d17adc",
+      "stage_a_role": "COMPOSITIONAL_CAUSAL_CONTRIBUTOR",
+      "universe_present": true,
+      "observed_ai_unit": false,
+      "structural_positions": {
+        "442830b1cb3846edb094d81742709a28bdec37dc": 2,
+        "e21f82ee83e99c660825fd420374613f9af00020": null
+      },
+      "origin_reduction_present": false,
+      "origin_packet_present": false,
+      "frozen_schedule_present": false,
+      "miss_layers": ["SECOND_FIX_STRUCTURAL_INVENTORY", "AI_ONLY_ORIGIN_REDUCTION", "ORIGIN_PACKET", "FROZEN_SCHEDULE"]
+    }
+  ],
+  "commands": [
+    "git -c gc.auto=0 show --format=fuller --stat --patch <fix> -- <affected-files>",
+    "git -c gc.auto=0 blame -L <range> <fix-parent> -- <mechanism-file>",
+    "git -c gc.auto=0 log --full-history <fix-parent> -S<needle> -- <bounded-paths>",
+    "git -c gc.auto=0 log --full-history <fix-parent> -G<pattern> -- <bounded-paths>",
+    "git -c gc.auto=0 merge-base --is-ancestor <candidate> <fix>",
+    "git -c gc.auto=0 rev-parse 4e38cf8:electron/main/fileReader.ts",
+    "git -c gc.auto=0 rev-parse 723df5a0:electron/main/fileReader.ts",
+    "git -c gc.auto=0 diff --quiet 4e38cf8:electron/main/fileReader.ts 723df5a0:electron/main/fileReader.ts",
+    "git -c gc.auto=0 diff --stat <merge-parent> 5d88044a -- <reviewed-mechanism-files>",
+    "git -c gc.auto=0 log --graph cf003632..624f7de -- src/components/Folder/index.tsx",
+    "rg -n 'CVE-2025-68952' prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+    "rg -n '<unit-id>|CVE-2025-68952' prospective-origin-heldout-v4-origin-packets-20260803-v1/{candidate_units,packets}.jsonl",
+    "git -c gc.auto=0 show --cc --patch <scheduled-merge-candidate>",
+    "git -c gc.auto=0 diff <merge-parent> <scheduled-merge-candidate> -- <mechanism-files>",
+    "git -c gc.auto=0 merge-base --is-ancestor <stage-a-origin> <scheduled-merge-parent>",
+    "jq -c 'select(.advisory == \"CVE-2025-68952\" and <stage-a-sha-set>) | {fix_sha,sha,priority_rank,priority_class,observed_ai_unit}' prospective-origin-heldout-v4-structural-20260803-final-v1/candidates.jsonl"
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "fact": "Fix 442830 changes HTML handling from returning a file path plus localfile iframe to reading content plus FolderComponent sanitization; e21f82 broadens dangerous-pattern and DOMPurify restrictions."
+    },
+    {
+      "id": "E2",
+      "fact": "Pre-fix blame assigns the HTML localfile iframe and raw dangerouslySetInnerHTML sink to parentless root 723df5a0."
+    },
+    {
+      "id": "E3",
+      "fact": "Pre-fix preload lines 4-20 expose unrestricted ipcRenderer send/invoke; blame assigns them to parentless root f6dd4268."
+    },
+    {
+      "id": "E4",
+      "fact": "Pre-fix main process execute-command handler imports child_process, splits a renderer-provided command, and calls spawn; core lines blame to f6dd4268."
+    },
+    {
+      "id": "E5",
+      "fact": "Pre-fix BrowserWindow uses webSecurity=false, nodeIntegration=true, contextIsolation=true; localfile protocol decodes an arbitrary path and serves .html as text/html."
+    },
+    {
+      "id": "E6",
+      "fact": "The f6dd4268 root ChatBox click stores the file and switches to documentWorkSpace; Folder's selectedFile effect invokes open-file; HTML returns its path and is embedded via localfile iframe."
+    },
+    {
+      "id": "E7",
+      "fact": "4e38cf adds HTTP(S) download into app temp and then continues normal openFile processing; its parent already obtains remote item.url but lacks that materialization step."
+    },
+    {
+      "id": "E8",
+      "fact": "4e38cf and 723df5a0 resolve electron/main/fileReader.ts to the same blob a96e79799a437cedc52a4fbbd1706a41b8806974."
+    },
+    {
+      "id": "E9",
+      "fact": "81d593 rewrites file-list loading and newly calls selecetdFileChange for chatStoreSelectedFile; 4e38cf had deleted the older direct selectedFile effect."
+    },
+    {
+      "id": "E10",
+      "fact": "723df5a0 is a parentless root; 5d88044a is the first descendant containing both unrelated roots. Relevant-file diffs from 5d88044a to either parent are empty."
+    },
+    {
+      "id": "E11",
+      "fact": "The f6dd4268, 4e38cf, 81d593, 723df5a0, fecaf6, and 0747c10 commits are ancestors of both supplied fixes."
+    },
+    {
+      "id": "E12",
+      "fact": "fecaf6 adds persistence plus a selectedFile.path effect that reopens the selected output; 0747c10 switches lookup from name to path and adds dependencies required after file-list population."
+    },
+    {
+      "id": "E13",
+      "fact": "fecaf6 is the direct child of tag v0.0.60 commit cf003632; 0747c10 descends from fecaf6; both are ancestors of tag v0.0.61 commit 624f7de."
+    },
+    {
+      "id": "E14",
+      "fact": "442830 creates FolderComponent with DOMPurify plus a case-sensitive raw.includes('ipcRenderer') block."
+    },
+    {
+      "id": "E15",
+      "fact": "e21f82 changes that component to case-insensitive ipcRenderer/parent/top/frames/electron patterns and a broader forbidden tag/attribute policy; this proves hardening provenance but not a working bypass."
+    },
+    {
+      "id": "E16",
+      "fact": "The frozen Eigent schedule contains exactly two candidate units. Each carries both fix edges, so the full top-10-per-fix union is two units and four edges."
+    },
+    {
+      "id": "E17",
+      "fact": "The two scheduled units are Claude-attributed merge commits 482f2658 and d1bf5a0a. Every one of the six Stage A causal commits is already an ancestor of every merge parent."
+    },
+    {
+      "id": "E18",
+      "fact": "482f2658 resolves BottomInput/merge UI behavior and leaves the output-file click blamed to 723df5a0. d1bf5a0a resolves i18n/UI plus duplicate-open guards and a React key; neither introduces a vulnerability mechanism."
+    },
+    {
+      "id": "E19",
+      "fact": "Structural ranks for fix 442830 are 723df5a0=1, 0747c10d=2, f6dd4268=4, fecaf6f4=10, 4e38cf8c=26, 81d59319=35. For fix e21f82, 723df5a0=2, f6dd4268=7, 4e38cf8c=25, while 81d59319/fecaf6f4/0747c10d are absent."
+    },
+    {
+      "id": "E20",
+      "fact": "All six provable Stage A causal commits are present in the all-history universe but have observed_ai_unit=false. The AI-only reduction retains only the two noncausal Claude-attributed merges, yielding zero scheduled true-positive coverage for this case."
+    }
+  ],
+  "stage_a_summary": {
+    "provable_direct_origin_commits": 2,
+    "provable_compositional_contributor_commits": 4,
+    "inconclusive_predecessor_commits": 1,
+    "examined_noncausal_control_commits": 8,
+    "provable_origin_or_contributor_shas": [
+      "f6dd426830bf75ed6a1aa0fa515c6dd3ccf1a827",
+      "4e38cf8cc8046dce6c79b1de927b880d609a8949",
+      "81d59319aad487aaa4ad306ff4de0bab63f537a9",
+      "723df5a03e329364306f5aac0a95245f618953c2",
+      "fecaf6f48149d9abb8c2a0960358f52caa320a78",
+      "0747c10de3e5d72718eb233286a2c1c2f2d17adc"
+    ],
+    "squash_handling": "Keep both levels: 723df5a0 is a direct root/snapshot origin in the visible DAG, while byte-identical and control-flow provenance preserves earlier ordinary origins 4e38cf and 81d593 instead of collapsing them into the squash/root carrier.",
+    "stage_b_rank_information_seen": false
+  },
+  "stage_b": {
+    "status": "COMPLETE",
+    "schedule_read": true,
+    "packet_units_read": true,
+    "schedule_path": ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-frozen-unit-schedule-20260803-v1/schedule.jsonl",
+    "packet_paths": [
+      ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-origin-packets-20260803-v1/candidate_units.jsonl",
+      ".ai-slop/state/cohort-v1/prospective-origin-heldout-v4-origin-packets-20260803-v1/packets.jsonl"
+    ],
+    "case_schedule_unit_count": 2,
+    "top10_union_unit_count": 2,
+    "reviewed_unit_count": 2,
+    "carried_fix_edge_count": 4,
+    "reviewed_fix_edge_count": 4,
+    "edge_classification_counts": {
+      "DIRECT_CAUSAL_ORIGIN": 0,
+      "COMPOSITIONAL_CAUSAL_CONTRIBUTOR": 0,
+      "NONCAUSAL": 4,
+      "INCONCLUSIVE": 0
+    },
+    "stage_a_provable_origin_or_contributor_count": 6,
+    "scheduled_true_positive_count": 0,
+    "scheduled_recall": 0.0,
+    "structural_inventory_coverage": {
+      "442830b1cb3846edb094d81742709a28bdec37dc": {
+        "provable_count": 6,
+        "present_any_rank": 6,
+        "present_top10": 4,
+        "recall_at_10": 0.666667,
+        "rank_needed_for_all_six": 35
+      },
+      "e21f82ee83e99c660825fd420374613f9af00020": {
+        "provable_count": 6,
+        "present_any_rank": 3,
+        "present_top10": 2,
+        "recall_at_10": 0.333333,
+        "maximum_recall_from_structural_inventory": 0.5
+      }
+    },
+    "origin_ranks": [
+      {
+        "sha": "723df5a03e329364306f5aac0a95245f618953c2",
+        "fix_442830_rank": 1,
+        "fix_e21f82_rank": 2,
+        "frozen_schedule_position": null
+      },
+      {
+        "sha": "0747c10de3e5d72718eb233286a2c1c2f2d17adc",
+        "fix_442830_rank": 2,
+        "fix_e21f82_rank": null,
+        "frozen_schedule_position": null
+      },
+      {
+        "sha": "f6dd426830bf75ed6a1aa0fa515c6dd3ccf1a827",
+        "fix_442830_rank": 4,
+        "fix_e21f82_rank": 7,
+        "frozen_schedule_position": null
+      },
+      {
+        "sha": "fecaf6f48149d9abb8c2a0960358f52caa320a78",
+        "fix_442830_rank": 10,
+        "fix_e21f82_rank": null,
+        "frozen_schedule_position": null
+      },
+      {
+        "sha": "4e38cf8cc8046dce6c79b1de927b880d609a8949",
+        "fix_442830_rank": 26,
+        "fix_e21f82_rank": 25,
+        "frozen_schedule_position": null
+      },
+      {
+        "sha": "81d59319aad487aaa4ad306ff4de0bab63f537a9",
+        "fix_442830_rank": 35,
+        "fix_e21f82_rank": null,
+        "frozen_schedule_position": null
+      }
+    ],
+    "inventory_miss_verdict": "CASE_LEVEL_FAILURE_AT_AI_ONLY_REDUCTION: structural generation recovers all six causal commits for the first fix but AI-only reduction discards every one because observed_ai_unit=false; the second fix structural inventory additionally misses three cross-file activation contributors.",
+    "required_review_complete": true
+  }
+}

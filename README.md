@@ -8,6 +8,15 @@ We scan public advisory databases (OSV, GitHub Advisory Database, NVD), trace ea
 
 > Detection relies on commit metadata — not all AI-assisted code leaves traces. Our numbers are a strict lower bound. The project is under active development and results may contain errors. See the [methodology & limitations](https://vibe-radar-ten.vercel.app/about) page.
 
+> **Research status (2026-08-03):** the CVE -> SZZ pipeline below is retained
+> for the curated catalog, not as the recall study. The active research path is
+> the [forward-cohort recall workflow](docs/origin-recall-closure-20260803.md):
+> retain every local pre-fix ancestor, expand recoverable relation members, and
+> use AI attribution, SZZ, structural signals, and models only for ordering. The
+> v4 held-out exposed the old AI-metadata admission gate as a real source of
+> misses; the repaired workflow is finite but is not yet a zero-miss population
+> certification.
+
 ## Quick Start
 
 A full `--all` run clones ~10k repos and requires **2TB+ disk space**. For a quick test, use `--ecosystem` or `--cve-list` to analyze a smaller set.
@@ -42,7 +51,26 @@ cd web && npm install && npm run dev
 
 Run `uv run cve-analyzer --help` for full CLI reference.
 
-## How It Works
+## Active recall study
+
+1. Freeze advisory/fix observations and preserve unresolved fix roots as unknown.
+2. Admit every commit in each resolved fix's local pre-fix ancestry. AI metadata,
+   SZZ, path history, add-check, and cross-file signals rank but never exclude.
+3. Expand recoverable squash and other explicit relations without deleting the
+   landed carrier or original ancestor edge; blocked roots fail open.
+4. Fold repeated fix edges into bounded candidate units while preserving every
+   edge's own per-fix rank and edge-specific verdict.
+5. Let models return `PROMOTE`, `DEFER`, or `BLOCKED`; no model negative has
+   deletion authority.
+6. Confirm causal positives with fix-history-first independent adjudication, then
+   measure candidate recall and recall at the declared finite review budget.
+
+See the [frozen pilot](docs/origin-recall-pilot-20260801.md), the
+[final closure audit](docs/origin-recall-closure-20260803.md), and the
+[portable technical report](reports/origin-recall-v4/report.html) for measured
+boundaries and the negative v4 held-out result.
+
+## Legacy curated-CVE pipeline
 
 1. **Find the fix commit** — aggregate from OSV, GHSA, Gemnasium, NVD; fall back to LLM-assisted git log search
 2. **Trace who introduced the bug** — SZZ-style git blame, squash-merge decomposition via GitHub API
