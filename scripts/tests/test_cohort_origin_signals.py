@@ -7,6 +7,7 @@ import re
 import pytest
 
 from cohort.origin_signals import (
+    DIRECT_SIGNAL_ORDER,
     OriginSignalContractError,
     candidate_signal_row,
     deleted_line_ranges,
@@ -191,6 +192,33 @@ def test_ai_attribution_cannot_crowd_out_unknown_add_check() -> None:
     assert add_check["priority_class"] == "P1_CAUSAL_SIGNAL"
     assert add_check["priority_rank"] == 2
     assert add_check["within_priority_class_rank"] == 1
+
+
+def test_direct_lanes_stay_fair_across_attribution_classes() -> None:
+    rows = [
+        {
+            "sha": f"{lane_index * 10 + round_index:040x}",
+            "signals": [lane],
+            "observed_ai_unit": round_index == 0,
+            "retained": True,
+        }
+        for lane_index, lane in enumerate(DIRECT_SIGNAL_ORDER, start=1)
+        for round_index in range(2)
+    ]
+
+    ranked = prioritize_candidate_rows(rows)
+
+    assert {row["primary_lane"] for row in ranked[:8]} == set(DIRECT_SIGNAL_ORDER)
+    for priority_class in (
+        "P0_OBSERVED_AI_CAUSAL_SIGNAL",
+        "P1_CAUSAL_SIGNAL",
+    ):
+        class_ranks = [
+            row["within_priority_class_rank"]
+            for row in ranked
+            if row["priority_class"] == priority_class
+        ]
+        assert class_ranks == list(range(1, len(class_ranks) + 1))
 
 
 def test_file_history_only_follows_every_direct_signal_lane() -> None:
