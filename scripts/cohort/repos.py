@@ -45,8 +45,10 @@ def clone_identity(repo_dir: Path) -> str:
     return canonical_repository_identity(completed.stdout.strip())
 
 
-def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[str, str]]]:
-    """Map canonical identity -> clone path, preferring the project-local cache.
+def discover_local_clone_groups(
+    repo_root: Path,
+) -> tuple[dict[str, tuple[Path, ...]], list[dict[str, str]]]:
+    """Map canonical identity to every locally available clone path.
 
     The home cache holds two generations of naming: 121 clones under the
     hashed ``v2_*`` scheme and ~5,900 older clones named directly after their
@@ -55,11 +57,17 @@ def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[s
     already-cloned repositories invisible, which would have re-cloned them.
     Every directory containing a ``.git`` is checked, regardless of name.
 
-    Returns the mapping plus the cache directories whose origin could not be
-    canonicalised, so callers can report them instead of silently dropping them.
+    Duplicate clones are intentionally retained.  Their ref sets need not be
+    nested: a project-local clone can carry pulled PR refs while an older home
+    clone carries remote topic branches.  A recall-first inventory must union
+    both rather than silently choosing either one.
+
+    Returns the groups plus cache directories whose origin could not be
+    canonicalised, so callers can report them instead of silently dropping
+    them.  Paths preserve cache-root preference and lexical order.
     """
 
-    resolved: dict[str, Path] = {}
+    resolved: dict[str, list[Path]] = {}
     unresolved: list[dict[str, str]] = []
     for root_name, root in cache_roots(repo_root):
         if not root.is_dir():
@@ -71,8 +79,30 @@ def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[s
             if not identity:
                 unresolved.append({"path": str(entry), "root": root_name})
                 continue
-            resolved.setdefault(identity, entry)
-    return resolved, unresolved
+            paths = resolved.setdefault(identity, [])
+            if entry not in paths:
+                paths.append(entry)
+    return {
+        identity: tuple(paths)
+        for identity, paths in resolved.items()
+    }, unresolved
+
+
+def discover_local_clones(repo_root: Path) -> tuple[dict[str, Path], list[dict[str, str]]]:
+    """Map canonical identity to one preferred clone for single-checkout jobs.
+
+    Consumers that enumerate repository history must use
+    :func:`discover_local_clone_groups` and union all clones.  This compatibility
+    view remains for jobs that require exactly one worktree to execute Git
+    operations; it preserves the historical project-cache-first choice.
+    """
+
+    groups, unresolved = discover_local_clone_groups(repo_root)
+    return {
+        identity: paths[0]
+        for identity, paths in groups.items()
+        if paths
+    }, unresolved
 
 
 def clone_url(identity: str) -> str:
