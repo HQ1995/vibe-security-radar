@@ -163,6 +163,36 @@ def test_add_check_lane_cannot_be_crowded_out_by_szz() -> None:
     assert add_check["primary_lane"] == "add_context_blame"
 
 
+def test_ai_attribution_cannot_crowd_out_unknown_add_check() -> None:
+    rows = [
+        {
+            "sha": f"{index:040x}",
+            "signals": ["squash_pr_member_relation"],
+            "observed_ai_unit": True,
+            "retained": True,
+        }
+        for index in range(1, 21)
+    ]
+    rows.append(
+        candidate_signal_row(
+            sha="f" * 40,
+            in_copy_aware_szz=False,
+            in_file_local_szz=False,
+            in_file_history=False,
+            in_add_context_blame=True,
+            observed_ai_unit=False,
+        )
+    )
+
+    ranked = prioritize_candidate_rows(rows)
+    add_check = next(row for row in ranked if row["sha"] == "f" * 40)
+
+    assert len(ranked) == len(rows)
+    assert add_check["priority_class"] == "P1_CAUSAL_SIGNAL"
+    assert add_check["priority_rank"] == 2
+    assert add_check["within_priority_class_rank"] == 1
+
+
 def test_file_history_only_follows_every_direct_signal_lane() -> None:
     rows = [
         candidate_signal_row(

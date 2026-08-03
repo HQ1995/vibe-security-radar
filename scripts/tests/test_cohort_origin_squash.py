@@ -81,7 +81,11 @@ def test_squash_lane_round_robin_does_not_bury_add_check() -> None:
     add_check = "d" * 40
     candidates = [
         _candidate(LANDED, 2, ["ai_ancestry_fallback"]),
-        _candidate(add_check, 1, ["add_context_blame"]),
+        {
+            **_candidate(add_check, 1, ["add_context_blame"]),
+            "observed_ai_unit": False,
+            "tools": [],
+        },
     ]
     relations = [
         _relation(f"{number:040x}", f"relation-{number}") for number in range(1, 5)

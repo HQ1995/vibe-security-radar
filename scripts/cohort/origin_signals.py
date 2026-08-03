@@ -404,20 +404,8 @@ def prioritize_candidate_rows(
 
     groups = (
         (
-            "P0_OBSERVED_AI_CAUSAL_SIGNAL",
-            [
-                row
-                for row in materialized.values()
-                if direct(row) and ai_exposure_supported(row)
-            ],
-        ),
-        (
-            "P1_CAUSAL_SIGNAL",
-            [
-                row
-                for row in materialized.values()
-                if direct(row) and not ai_exposure_supported(row)
-            ],
+            "DIRECT_SIGNAL",
+            [row for row in materialized.values() if direct(row)],
         ),
         (
             "P2_OBSERVED_AI_AFFECTED_FILE_HISTORY",
@@ -459,6 +447,7 @@ def prioritize_candidate_rows(
     )
 
     ranked: list[dict[str, object]] = []
+    within_class_ranks: defaultdict[str, int] = defaultdict(int)
     for priority_class, group in groups:
         remaining = {str(row["sha"]): row for row in group}
         lane_queues = {
@@ -475,10 +464,7 @@ def prioritize_candidate_rows(
             for lane in DIRECT_SIGNAL_ORDER
         }
         ordered: list[dict[str, object]] = []
-        if priority_class in {
-            "P0_OBSERVED_AI_CAUSAL_SIGNAL",
-            "P1_CAUSAL_SIGNAL",
-        }:
+        if priority_class == "DIRECT_SIGNAL":
             while remaining:
                 made_progress = False
                 for lane in DIRECT_SIGNAL_ORDER:
@@ -496,11 +482,21 @@ def prioritize_candidate_rows(
         else:
             ordered = [remaining[sha] for sha in sorted(remaining)]
 
-        for within_class_rank, row in enumerate(ordered, start=1):
+        for row in ordered:
             signals = row["signals"]
             assert isinstance(signals, list)
-            row["priority_class"] = priority_class
-            row["within_priority_class_rank"] = within_class_rank
+            row_priority_class = priority_class
+            if priority_class == "DIRECT_SIGNAL":
+                row_priority_class = (
+                    "P0_OBSERVED_AI_CAUSAL_SIGNAL"
+                    if ai_exposure_supported(row)
+                    else "P1_CAUSAL_SIGNAL"
+                )
+            within_class_ranks[row_priority_class] += 1
+            row["priority_class"] = row_priority_class
+            row["within_priority_class_rank"] = within_class_ranks[
+                row_priority_class
+            ]
             row["primary_lane"] = next(
                 (lane for lane in DIRECT_SIGNAL_ORDER if lane in signals),
                 (
