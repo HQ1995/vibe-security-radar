@@ -172,7 +172,7 @@ def test_prior_exclusion_projection_includes_controls_audits_and_cached_repos() 
                 "controls": [
                     {
                         "advisory": "CVE-control",
-                        "repository_identity": "github.com/acme/control",
+                        "repository_identity": "https://github.com/acme/control.git",
                     }
                 ]
             }

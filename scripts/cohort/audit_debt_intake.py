@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 
 from cohort.relations import canonical_repository_identity
+from cve_analyzer.git_url import parse_repo_url
 
 
 class AuditDebtIntakeContractError(ValueError):
@@ -46,6 +47,11 @@ def _identity(value: object, aliases: Mapping[str, str]) -> str:
     raw = str(value or "").strip().lower()
     if not raw:
         return ""
+    parsed = parse_repo_url(raw)
+    if parsed is not None:
+        raw = "/".join(str(part) for part in parsed)
+    elif "://" in raw or "@" in raw or raw.startswith("git:"):
+        raise AuditDebtIntakeContractError(f"invalid repository identity: {raw}")
     try:
         return canonical_repository_identity(raw, aliases)
     except ValueError as exc:
