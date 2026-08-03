@@ -260,11 +260,11 @@ def test_verified_ground_truth_is_projected_to_identity_only(tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    assert _ground_truth_controls(path) == {
+    assert _ground_truth_controls(path, {}) == {
         "controls": [
             {
                 "advisory": "CVE-1",
-                "repository_identity": "https://github.com/acme/project",
+                "repository_identity": "github.com/acme/project",
             }
         ]
     }

@@ -14,6 +14,7 @@ from typing import Any
 
 from cohort.prospective_intake import (
     ProspectiveIntakeContractError,
+    _identity as canonical_repository_identity,
     aggregate_ai_exposure,
     build_pre_history_pool,
     build_prior_exclusion_projection,
@@ -151,7 +152,9 @@ def _aliases(path: Path) -> dict[str, str]:
         raise SystemExit(f"repository aliases are malformed: {exc}") from exc
 
 
-def _ground_truth_controls(path: Path) -> dict[str, object]:
+def _ground_truth_controls(
+    path: Path, aliases: dict[str, str]
+) -> dict[str, object]:
     rows = _load_json(path)
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
         raise SystemExit("verified ground truth is malformed")
@@ -161,9 +164,11 @@ def _ground_truth_controls(path: Path) -> dict[str, object]:
         repository = str(row.get("repo_url") or "").strip()
         if not advisory or not repository:
             raise SystemExit("verified ground truth has an incomplete identity")
-        controls.append(
-            {"advisory": advisory, "repository_identity": repository}
-        )
+        control = {"advisory": advisory}
+        identity = canonical_repository_identity(repository, aliases)
+        if identity:
+            control["repository_identity"] = identity
+        controls.append(control)
     return {"controls": controls}
 
 
@@ -227,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(value, dict):
             raise SystemExit(f"control payload is not an object: {path}")
         controls.append(value)
-    controls.append(_ground_truth_controls(args.verified_ground_truth))
+    controls.append(_ground_truth_controls(args.verified_ground_truth, aliases))
     audit_dirs = args.audit_dir or list(DEFAULT_AUDIT_DIRS)
     audits, cached, adjudicated = _audit_inputs(
         audit_dirs, args.result_cache_dir, args.adjudications
