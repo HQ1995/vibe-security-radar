@@ -150,10 +150,14 @@ def build_pilot_spec(
     *,
     pilot_id: str,
     per_stratum: int = 2,
+    source_classes: Sequence[str] | None = None,
 ) -> dict[str, object]:
     if not pilot_id or per_stratum < 1:
         raise RootAdjudicationContractError("pilot selection settings are invalid")
-    strata = {"association_only", "public_exact_present"}
+    allowed_strata = {"association_only", "public_exact_present"}
+    strata = set(source_classes) if source_classes is not None else allowed_strata
+    if not strata or not strata <= allowed_strata or len(strata) != len(source_classes or strata):
+        raise RootAdjudicationContractError("pilot source classes are invalid")
     rows: list[dict[str, object]] = []
     seen_packets: set[str] = set()
     for raw in packet_metadata:
@@ -195,8 +199,9 @@ def build_pilot_spec(
         "artifact_kind": "blinded_root_adjudication_pilot_spec",
         "pilot_id": pilot_id,
         "per_stratum": per_stratum,
+        "sampled_source_classes": sorted(strata),
         "selection_rule": (
-            "Select the lowest SHA-256 hashes per frozen source class; use medium "
+            "Select the lowest SHA-256 hashes per predeclared frozen source class; use medium "
             "reasoning for sealed public-exact controls and high reasoning for "
             "association-only targets. Do not change rows after model output."
         ),

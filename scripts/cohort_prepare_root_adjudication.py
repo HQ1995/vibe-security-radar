@@ -250,18 +250,25 @@ def _candidate_view(
         ["diff-tree", "--no-commit-id", "--name-only", "-r", "-m", sha],
         timeout=timeout,
     )
+    all_changed_paths = sorted(
+        {line.strip() for line in paths_text.splitlines() if line.strip()}
+    )
+    changed_paths = all_changed_paths[:changed_path_limit]
+    patch_arguments = [
+        "show",
+        "--format=",
+        "--no-color",
+        "--no-ext-diff",
+        "--unified=2",
+        "--find-renames=40%",
+        sha,
+    ]
+    if changed_paths:
+        patch_arguments.extend(["--", *changed_paths])
     patch, patch_error = _git_text(
         repo_path,
         global_arguments,
-        [
-            "show",
-            "--format=",
-            "--no-color",
-            "--no-ext-diff",
-            "--unified=2",
-            "--find-renames=40%",
-            sha,
-        ],
+        patch_arguments,
         timeout=timeout,
     )
     errors = sorted(
@@ -276,10 +283,7 @@ def _candidate_view(
             authored, subject, body = fields
         else:
             errors.append("metadata_malformed")
-    changed_paths = sorted(
-        {line.strip() for line in paths_text.splitlines() if line.strip()}
-    )[:changed_path_limit]
-    truncated = len(patch) > patch_chars
+    truncated = len(all_changed_paths) > changed_path_limit or len(patch) > patch_chars
     return {
         "authored_date": authored.strip(),
         "subject": redact_blind_text(
@@ -389,6 +393,14 @@ def main(argv: list[str] | None = None) -> int:
     ) < 1:
         raise SystemExit("packet limits must be positive")
     selected = _load_jsonl(args.intake_dir / "selected.jsonl")
+    intake = _load_json(args.intake_dir / "intake.json")
+    if not isinstance(intake, dict) or not isinstance(
+        intake.get("sampled_source_classes"), list
+    ):
+        raise SystemExit("intake sampled source classes are malformed")
+    sampled_source_classes = [
+        str(value) for value in intake["sampled_source_classes"]
+    ]
     selected_by_pair = {
         (str(row["repository_identity"]), str(row["advisory"])): row
         for row in selected
@@ -519,6 +531,7 @@ def main(argv: list[str] | None = None) -> int:
             packet_metadata,
             pilot_id=args.pilot_id,
             per_stratum=args.per_stratum,
+            source_classes=sampled_source_classes,
         )
     except RootAdjudicationContractError as exc:
         raise SystemExit(f"root-adjudication pilot contract failed: {exc}") from exc

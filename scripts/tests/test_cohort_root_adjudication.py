@@ -114,6 +114,36 @@ def test_public_control_closure_accepts_tree_identical_merge_parent(
     ]
 
 
+def test_candidate_view_limits_patch_to_the_disclosed_paths(monkeypatch, tmp_path) -> None:
+    def fake_git_text(_repo, _global, arguments, *, timeout):
+        assert timeout == 30
+        if arguments[:2] == ["show", "--no-patch"]:
+            return "2026-01-01T00:00:00Z\x00subject\x00body\n", ""
+        if arguments[0] == "diff-tree":
+            return "c.py\na.py\nb.py\n", ""
+        assert arguments[-3:] == ["--", "a.py", "b.py"]
+        return "diff excerpt", ""
+
+    monkeypatch.setattr(prepare, "_git_text", fake_git_text)
+
+    result = prepare._candidate_view(
+        tmp_path,
+        [],
+        "commit",
+        repository_identity="github.com/acme/project",
+        advisory="CVE-2026-1000",
+        body_chars=100,
+        patch_chars=100,
+        changed_path_limit=2,
+        timeout=30,
+    )
+
+    assert result["changed_paths"] == ["a.py", "b.py"]
+    assert result["patch_excerpt"] == "diff excerpt"
+    assert result["patch_truncated"] is True
+    assert result["evidence_status"] == "READY"
+
+
 def test_explicit_cvelist_commit_shas_excludes_unstated_range_boundary(
     tmp_path,
 ) -> None:
@@ -197,6 +227,23 @@ def test_pilot_selection_is_deterministic_and_balanced() -> None:
         "medium",
         "high",
     }
+
+
+def test_pilot_selection_honors_predeclared_association_only_frame() -> None:
+    rows = [
+        {"packet_id": f"hard-{index}", "source_class": "association_only"}
+        for index in range(3)
+    ]
+
+    result = build_pilot_spec(
+        rows,
+        pilot_id="association-only",
+        per_stratum=3,
+        source_classes=["association_only"],
+    )
+
+    assert result["sampled_source_classes"] == ["association_only"]
+    assert len(result["selected"]) == 3
 
 
 def test_model_decision_must_reference_only_packet_candidates() -> None:
