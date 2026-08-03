@@ -13,6 +13,7 @@ from pathlib import Path
 
 from cohort.prospective_intake import (
     ProspectiveIntakeContractError,
+    SOURCE_CLASSES,
     build_prospective_intake,
     canonical_sha256,
 )
@@ -26,6 +27,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--split-id", default="prospective-all-commit-20260801-v1"
     )
     parser.add_argument("--per-stratum", type=int, default=6)
+    parser.add_argument(
+        "--source-class",
+        action="append",
+        choices=sorted(SOURCE_CLASSES),
+        dest="source_classes",
+    )
     parser.add_argument("--minimum-ai-units", type=int, default=8)
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser.parse_args(argv)
@@ -98,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             split_id=args.split_id,
             per_stratum=args.per_stratum,
             minimum_ai_units=args.minimum_ai_units,
+            source_classes=args.source_classes,
         )
     except ProspectiveIntakeContractError as exc:
         raise SystemExit(f"prospective intake contract failed: {exc}") from exc

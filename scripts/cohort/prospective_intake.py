@@ -389,6 +389,7 @@ def build_prospective_intake(
     split_id: str,
     per_stratum: int = 6,
     minimum_ai_units: int = 8,
+    source_classes: Sequence[str] | None = None,
 ) -> dict[str, object]:
     """Select a deterministic, repository-disjoint prospective batch."""
 
@@ -396,6 +397,14 @@ def build_prospective_intake(
         raise ProspectiveIntakeContractError("split_id must be non-empty")
     if per_stratum < 1 or minimum_ai_units < 1:
         raise ProspectiveIntakeContractError("selection thresholds must be positive")
+    sampled_source_classes = tuple(sorted(source_classes or SOURCE_CLASSES))
+    if not sampled_source_classes or any(
+        source_class not in SOURCE_CLASSES
+        for source_class in sampled_source_classes
+    ):
+        raise ProspectiveIntakeContractError("sampled source classes are invalid")
+    if len(sampled_source_classes) != len(set(sampled_source_classes)):
+        raise ProspectiveIntakeContractError("sampled source classes are duplicated")
     exclusions = validate_exclusion_projection(exclusion_projection)
     prior_advisories = set(exclusions["advisories"])
     prior_repositories = set(exclusions["repositories"])
@@ -415,6 +424,8 @@ def build_prospective_intake(
             row["intake_status"] = "EXCLUDED_PRIOR_REPOSITORY"
         elif int(row["ai_unit_count"]) < minimum_ai_units:
             row["intake_status"] = "EXCLUDED_BELOW_MINIMUM_AI_UNITS"
+        elif str(row["source_class"]) not in sampled_source_classes:
+            row["intake_status"] = "DEFERRED_SOURCE_CLASS_NOT_SAMPLED"
         else:
             row["intake_status"] = "ELIGIBLE_PRE_HISTORY"
         normalized.append(row)
@@ -456,10 +467,10 @@ def build_prospective_intake(
             str(row["advisory"]).casefold(),
         )
     )
-    required = per_stratum * len(SOURCE_CLASSES)
+    required = per_stratum * len(sampled_source_classes)
     ready = len(selected) == required and all(
         selected_counts[source_class] == per_stratum
-        for source_class in SOURCE_CLASSES
+        for source_class in sampled_source_classes
     )
     result: dict[str, object] = {
         "schema_version": 1,
@@ -468,8 +479,9 @@ def build_prospective_intake(
         "selection_rule": (
             "Hash split_id, source class, repository, and advisory; scan globally in "
             "ascending SHA-256 order; select at most one advisory per repository and "
-            "exactly the fixed quota per source class. Never replace a selected row "
-            "after inspecting repository history or downstream results."
+            "exactly the fixed quota per predeclared sampled source class. Unsampled "
+            "source classes remain in the census. Never replace a selected row after "
+            "inspecting repository history or downstream results."
         ),
         "claim_boundary": (
             "Selection sees only repository/advisory identity, aggregate legacy AI "
@@ -479,12 +491,13 @@ def build_prospective_intake(
         ),
         "minimum_ai_units": minimum_ai_units,
         "per_stratum": per_stratum,
+        "sampled_source_classes": list(sampled_source_classes),
         "pool_row_count": len(normalized),
         "selected_count": len(selected),
         "selected_repository_count": len(selected_repositories),
         "selected_source_class_counts": {
             source_class: selected_counts[source_class]
-            for source_class in sorted(SOURCE_CLASSES)
+            for source_class in sampled_source_classes
         },
         "intake_status_counts": dict(
             sorted(Counter(str(row["intake_status"]) for row in normalized).items())

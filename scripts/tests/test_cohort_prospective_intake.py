@@ -225,6 +225,40 @@ def test_prior_rows_and_small_exposure_are_accounted_not_silently_dropped() -> N
     }
 
 
+def test_selector_can_predeclare_association_only_sampling_frame() -> None:
+    rows = [
+        _pool_row(
+            f"github.com/acme/association-{index}",
+            f"CVE-A-{index}",
+            ASSOCIATION_ONLY,
+        )
+        for index in range(4)
+    ] + [
+        _pool_row(
+            f"github.com/acme/public-{index}",
+            f"CVE-P-{index}",
+            PUBLIC_EXACT_PRESENT,
+        )
+        for index in range(4)
+    ]
+
+    result = build_prospective_intake(
+        rows,
+        _exclusions(),
+        split_id="association-only",
+        per_stratum=3,
+        source_classes=[ASSOCIATION_ONLY],
+    )
+
+    assert result["gate_status"] == "READY_FOR_HISTORY_ENUMERATION"
+    assert result["sampled_source_classes"] == [ASSOCIATION_ONLY]
+    assert result["selected_source_class_counts"] == {ASSOCIATION_ONLY: 3}
+    assert {row["source_class"] for row in result["selected"]} == {
+        ASSOCIATION_ONLY
+    }
+    assert result["intake_status_counts"]["DEFERRED_SOURCE_CLASS_NOT_SAMPLED"] == 4
+
+
 def test_opened_prospective_v1_rows_are_permanent_control_exclusions() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     controls_path = repo_root / "scripts" / "cohort_prospective_v1_controls.json"
