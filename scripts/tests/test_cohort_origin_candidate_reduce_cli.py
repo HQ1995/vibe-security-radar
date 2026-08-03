@@ -99,20 +99,20 @@ def test_pre_fix_ancestry_uses_complete_local_graph_behind_shallow_marker(
     assert ancestors == {first, parent}
 
 
-def test_generate_then_evaluate_conserves_observed_ai_scope(tmp_path: Path) -> None:
+def test_generate_then_evaluate_conserves_full_ancestry_scope(tmp_path: Path) -> None:
     identity = "github.com/example/repo"
     advisory = "CVE-2099-0001"
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init")
     _git(repo, "remote", "add", "origin", "https://github.com/example/repo")
-    _commit(repo, "initial", "unsafe = False\n")
+    initial = _commit(repo, "initial", "unsafe = False\n")
     origin = _commit(
         repo,
         "introduce unsafe path\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
         "unsafe = True\n",
     )
-    _commit(repo, "unrelated", "unsafe = True\nother = 1\n")
+    unrelated = _commit(repo, "unrelated", "unsafe = True\nother = 1\n")
     fix = _commit(repo, "fix unsafe path", "unsafe = False\nother = 1\n")
     future_ai = _commit(
         repo,
@@ -214,12 +214,18 @@ def test_generate_then_evaluate_conserves_observed_ai_scope(tmp_path: Path) -> N
         (generated_dir / "summary.json").read_text(encoding="utf-8")
     )
     assert generated_summary["ancestor_pair_count"] == 3
-    assert generated_summary["candidate_count"] == 1
+    assert generated_summary["candidate_count"] == 3
+    assert generated_summary["all_ancestor_pairs_retained"] is True
+    assert generated_summary["ai_attribution_disposition"] == "rank_only_no_deletion"
     assert generated_summary["certified_non_ancestor_count"] == 1
-    candidate = json.loads(
-        (generated_dir / "candidates.jsonl").read_text(encoding="utf-8")
-    )
-    assert candidate["sha"] == origin
+    candidates = [
+        json.loads(line)
+        for line in (generated_dir / "candidates.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert {row["sha"] for row in candidates} == {initial, origin, unrelated}
+    assert candidates[0]["sha"] == origin
 
     controls_path = tmp_path / "controls.json"
     _json(

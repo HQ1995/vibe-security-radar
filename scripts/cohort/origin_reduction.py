@@ -1,8 +1,7 @@
-"""Proof-carrying reduction from repository history to origin candidates.
+"""Proof-carrying inventory of every pre-fix ancestor candidate.
 
-The only destructive operation in this stage is exact Git reachability over a
-frozen AI-observation inventory.  SZZ and other origin signals only annotate
-and rank retained candidates.
+Exact Git reachability defines membership. AI attribution, SZZ, and the other
+origin signals only annotate and rank retained candidates.
 """
 
 from __future__ import annotations
@@ -58,12 +57,11 @@ def reduce_origin_candidates(
     *,
     observation_complete: bool,
 ) -> dict[str, object]:
-    """Intersect observed AI units with pre-fix ancestry, or fail open.
+    """Retain every pre-fix ancestor and use AI observations only for ranking.
 
-    A complete observation inventory yields ``observed AI ∩ ancestors``.  If
-    observation coverage is incomplete, every ancestor is retained and the
-    unclassified rows are explicitly marked.  Structural signals never remove
-    a candidate in either mode.
+    ``observation_complete`` describes whether the metadata scan finished; it
+    cannot establish that every AI-assisted commit left observable metadata.
+    Therefore it never grants deletion authority.
     """
 
     ancestors = _sha_set(ancestor_shas, "ancestor")
@@ -81,9 +79,7 @@ def reduce_origin_candidates(
     observed_ancestor_shas = set(observed) & ancestors
     certified_non_ancestor_shas = set(observed) - ancestors
     unobserved_ancestor_shas = ancestors - set(observed)
-    retained_shas = (
-        observed_ancestor_shas if observation_complete else set(ancestors)
-    )
+    retained_shas = set(ancestors)
 
     raw_candidates: list[dict[str, object]] = []
     for candidate_sha in sorted(retained_shas):
@@ -106,7 +102,7 @@ def reduce_origin_candidates(
             materialization = "exact_ai_ancestry_fallback"
         else:
             signals = [ATTRIBUTION_UNKNOWN_FAIL_OPEN_SIGNAL]
-            materialization = "incomplete_observation_fail_open"
+            materialization = "attribution_unobserved_fail_open"
         row: dict[str, object] = {
             "sha": candidate_sha,
             "signals": signals,
@@ -140,10 +136,8 @@ def reduce_origin_candidates(
         raise OriginReductionContractError("observed AI conservation failed")
     if ancestors != observed_ancestor_shas | unobserved_ancestor_shas:
         raise OriginReductionContractError("ancestor scope conservation failed")
-    if observation_complete and retained_shas != observed_ancestor_shas:
-        raise OriginReductionContractError("complete observation reduction failed")
-    if not observation_complete and retained_shas != ancestors:
-        raise OriginReductionContractError("incomplete observation did not fail open")
+    if retained_shas != ancestors:
+        raise OriginReductionContractError("pre-fix ancestry inventory was reduced")
 
     return {
         "status": "RESOLVED" if observation_complete else "BLOCKED",
@@ -160,7 +154,7 @@ def reduce_origin_candidates(
         ),
         "retained_candidate_count": len(candidates),
         "fail_open_candidate_count": sum(
-            row["materialization"] == "incomplete_observation_fail_open"
+            row["materialization"] == "attribution_unobserved_fail_open"
             for row in candidates
         ),
         "all_retained": all(row.get("retained") is True for row in candidates),

@@ -14,7 +14,7 @@ def _row(sha: str, **extra: object) -> dict[str, object]:
     return {"sha": sha, **extra}
 
 
-def test_complete_observation_uses_exact_ai_ancestor_intersection() -> None:
+def test_complete_metadata_scan_still_retains_every_ancestor() -> None:
     ancestor_a = "a" * 40
     ancestor_b = "b" * 40
     ancestor_c = "c" * 40
@@ -36,13 +36,16 @@ def test_complete_observation_uses_exact_ai_ancestor_intersection() -> None:
         observation_complete=True,
     )
 
-    assert [row["sha"] for row in result["candidates"]] == [ancestor_b]
+    rows = result["candidates"]
+    assert {row["sha"] for row in rows} == {ancestor_a, ancestor_b, ancestor_c}
+    assert rows[0]["sha"] == ancestor_b
     assert result["certified_non_ancestor_shas"] == [other_branch]
     assert result["unobserved_ancestor_count"] == 2
-    assert result["retained_candidate_count"] == 1
+    assert result["retained_candidate_count"] == 3
+    assert result["fail_open_candidate_count"] == 2
     assert result["status"] == "RESOLVED"
-    assert result["candidates"][0]["pr_number"] == 17
-    assert result["candidates"][0]["squash_attribution_only"] is True
+    assert rows[0]["pr_number"] == 17
+    assert rows[0]["squash_attribution_only"] is True
 
 
 def test_incomplete_observation_fails_open_to_every_ancestor() -> None:
@@ -80,6 +83,24 @@ def test_structural_signals_rank_without_deleting_ai_fallback() -> None:
     assert rows[0]["priority_class"] == "P0_OBSERVED_AI_CAUSAL_SIGNAL"
     assert rows[1]["priority_class"] == "P4_OBSERVED_AI_ANCESTRY_FALLBACK"
     assert all(row["retained"] is True for row in rows)
+
+
+def test_unobserved_structural_origin_is_ranked_not_deleted() -> None:
+    structural_origin = "a" * 40
+    observed_fallback = "b" * 40
+
+    result = reduce_origin_candidates(
+        [structural_origin, observed_fallback],
+        [_row(observed_fallback)],
+        [_row(structural_origin, signals=["szz_copy_aware"])],
+        observation_complete=True,
+    )
+
+    rows = result["candidates"]
+    assert [row["sha"] for row in rows] == [structural_origin, observed_fallback]
+    assert rows[0]["priority_class"] == "P1_CAUSAL_SIGNAL"
+    assert rows[1]["priority_class"] == "P4_OBSERVED_AI_ANCESTRY_FALLBACK"
+    assert result["retained_candidate_count"] == result["ancestor_count"] == 2
 
 
 def test_structural_signal_outside_ancestry_fails_closed() -> None:

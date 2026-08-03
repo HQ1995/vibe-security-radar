@@ -405,14 +405,14 @@ def _generate(args: argparse.Namespace) -> int:
                 "advisory": advisory,
                 "repository_identity": identity,
                 "fix_sha": fix_sha,
-                "scope_kind": "outside_observed_ai_attribution_policy",
+                "scope_kind": "attribution_unobserved_but_retained",
                 "not_a_negative_result": True,
                 "unobserved_ancestor_count": reduction["unobserved_ancestor_count"],
                 "unobserved_ancestor_shas_sha256": reduction[
                     "unobserved_ancestor_shas_sha256"
                 ],
                 "disposition": (
-                    "OUTSIDE_CONDITIONAL_CLAIM"
+                    "RETAINED_LOW_PRIORITY"
                     if observation_complete
                     else "RETAINED_FAIL_OPEN"
                 ),
@@ -471,10 +471,13 @@ def _generate(args: argparse.Namespace) -> int:
             "sealed_fix_plus_frozen_ai_observation_no_golden_origin_read"
         ),
         "claim_boundary": (
-            "Zero inventory misses are claimed only for AI commits materialized by "
-            "the frozen attribution policy and reachable from a pre-fix parent. "
-            "Unobserved AI use and cross-repository copies require separate closure."
+            "Every commit in the frozen local pre-fix ancestry is retained. AI "
+            "attribution and structural signals only rank candidates. This does "
+            "not cover missing/private history, cross-repository copies, or exact "
+            "atomic members hidden behind an unexpanded squash carrier."
         ),
+        "candidate_membership_policy": "all_pre_fix_ancestors",
+        "ai_attribution_disposition": "rank_only_no_deletion",
         "fix_manifest_sha256": canonical_sha256(manifest_payload),
         "structural_inputs": structural_provenance,
         "ai_scan_inputs": ai_provenance,
@@ -490,6 +493,7 @@ def _generate(args: argparse.Namespace) -> int:
         "reduction_fraction": (
             1.0 - (total_candidates / total_ancestors) if total_ancestors else 0.0
         ),
+        "all_ancestor_pairs_retained": total_candidates == total_ancestors,
         "all_candidates_retained": all(
             row.get("retained") is True for row in candidates
         ),
