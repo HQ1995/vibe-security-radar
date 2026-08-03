@@ -233,7 +233,9 @@ def _freeze_schedule(units: Sequence[Mapping[str, object]]) -> list[dict[str, ob
             *_unit_order(row),
         ),
     )
-    fix_members: defaultdict[FixKey, list[Mapping[str, object]]] = defaultdict(list)
+    fix_members: defaultdict[FixKey, list[tuple[Mapping[str, object], int]]] = (
+        defaultdict(list)
+    )
     for unit in ordered:
         for edge in unit["fix_edges"]:  # type: ignore[union-attr]
             assert isinstance(edge, Mapping)
@@ -243,10 +245,18 @@ def _freeze_schedule(units: Sequence[Mapping[str, object]]) -> list[dict[str, ob
                     str(unit["advisory"]),
                     str(edge["fix_sha"]),
                 )
-            ].append(unit)
+            ].append((unit, int(edge["source_priority_rank"])))
     fix_positions: dict[tuple[str, str], int] = {}
     for fix_key, members in fix_members.items():
-        for position, unit in enumerate(sorted(members, key=_unit_order), start=1):
+        ordered_members = sorted(
+            members,
+            key=lambda member: (
+                member[1],
+                str(member[0]["candidate_sha"]),
+                str(member[0]["unit_id"]),
+            ),
+        )
+        for position, (unit, _) in enumerate(ordered_members, start=1):
             fix_positions[(str(unit["unit_id"]), fix_key[2])] = position
 
     case_positions: Counter[tuple[str, str]] = Counter()
@@ -403,9 +413,9 @@ def _generate(args: argparse.Namespace) -> int:
             "frozen_candidate_units_no_label_or_adjudication_ledger_read"
         ),
         "schedule_order_policy": (
-            "Within each repository/advisory and fix scope: best_priority_rank, "
-            "candidate_sha, unit_id. Global schedule_position is stable serialization "
-            "only and is never interpreted as a review budget."
+            "Within each fix scope: that edge's source_priority_rank, candidate_sha, "
+            "unit_id. Global schedule_position uses the unit's best edge rank for "
+            "stable serialization only and is never interpreted as a review budget."
         ),
         "budget_semantics": (
             "B is applied independently to every fix scope. Aggregate unit-review "

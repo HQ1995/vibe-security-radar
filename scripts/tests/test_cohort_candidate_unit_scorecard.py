@@ -177,10 +177,12 @@ def test_labels_do_not_change_schedule_and_multifix_units_stay_folded(
         "fix_scope_count": 3,
         "aggregate_per_fix_slot_capacity": 3,
         "aggregate_fix_prefix_membership_slots": 3,
-        "aggregate_unique_unit_review_slots": 2,
-        "folded_duplicate_membership_slots": 1,
-        "selected_units_carried_edge_count": 3,
+        "aggregate_unique_unit_review_slots": 3,
+        "folded_duplicate_membership_slots": 0,
+        "selected_units_carried_edge_count": 4,
     }
+    unit_a = next(row for row in schedule_rows if row["unit_id"] == "unit-a")
+    assert [edge["frozen_fix_position"] for edge in unit_a["fix_edges"]] == [1, 2]
 
     first_ledger = tmp_path / "labels-one.json"
     _ledger(
@@ -266,7 +268,7 @@ def test_labels_do_not_change_schedule_and_multifix_units_stay_folded(
         "REJECTED_NONCAUSAL",
         "CONFIRMED_TRUE_POSITIVE",
     ]
-    assert first["aggregate_review_slots"][0]["aggregate_unique_unit_review_slots"] == 2
+    assert first["aggregate_review_slots"][0]["aggregate_unique_unit_review_slots"] == 3
     assert (
         first["aggregate_review_slots"][0]["aggregate_fix_prefix_membership_slots"] == 3
     )
