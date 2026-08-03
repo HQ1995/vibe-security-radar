@@ -31,6 +31,11 @@ _UNIT_METADATA_KEYS = (
     "tier",
     "tools",
 )
+_PULL_MEMBER_GAP_FIELDS = (
+    "member_parent_metadata_gap_shas",
+    "member_record_metadata_gap_shas",
+    "member_diff_metadata_gap_shas",
+)
 
 
 class RelationContractError(ValueError):
@@ -186,6 +191,7 @@ def build_pull_relation_inventory(
     pull_roots: list[dict[str, object]] = []
     for pr_number, landed_shas in sorted(squashes_by_pr.items()):
         raw_result = pull_results.get(pr_number)
+        member_gaps: dict[str, list[str]] = {}
         if raw_result is None:
             status, reason, members = "BLOCKED", "pull_result_missing", []
         else:
@@ -206,6 +212,17 @@ def build_pull_relation_inventory(
                 raise RelationContractError(
                     f"malformed pull member for PR {pr_number}"
                 ) from exc
+            for field in _PULL_MEMBER_GAP_FIELDS:
+                raw_gaps = raw_result.get(field, [])
+                if not isinstance(raw_gaps, list):
+                    raise RelationContractError(
+                        f"malformed {field} for PR {pr_number}"
+                    )
+                gaps = sorted(
+                    {_full_sha(sha, field=field) for sha in raw_gaps}
+                )
+                if gaps:
+                    member_gaps[field] = gaps
         ambiguous_fanout = len(landed_shas) > 1
         for landed_sha in sorted(landed_shas):
             eligible = (
@@ -263,6 +280,7 @@ def build_pull_relation_inventory(
             if ambiguous_fanout:
                 root["ambiguous_pr_fanout"] = True
                 root["landed_variant_count"] = len(landed_shas)
+            root.update(member_gaps)
             pull_roots.append(root)
     relations.sort(key=lambda row: str(row["relation_id"]))
     pull_roots.sort(key=lambda row: str(row["root_id"]))

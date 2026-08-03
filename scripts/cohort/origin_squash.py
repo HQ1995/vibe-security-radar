@@ -33,6 +33,9 @@ _ORIGIN_METADATA_FIELDS = (
     "commit_subject",
     "deletions",
     "empty_commit",
+    "member_diff_metadata_complete",
+    "member_parent_metadata_complete",
+    "member_record_metadata_complete",
     "signal_types",
     "source_modules",
     "tools",
@@ -210,6 +213,18 @@ def _member_candidate(
     for field in (*_PRIORITY_FIELDS, *_ORIGIN_METADATA_FIELDS, *_LANDED_ONLY_FIELDS):
         candidate.pop(field, None)
     member_ai_observed = member_metadata.get("observed_ai_unit") is True
+    member_record_complete = (
+        member_metadata.get("member_record_metadata_complete") is True
+    )
+    member_attribution_status = (
+        "OBSERVED_AI_SIGNAL"
+        if member_ai_observed
+        else (
+            "NO_OBSERVED_AI_SIGNAL"
+            if member_record_complete
+            else "UNKNOWN_MEMBER_METADATA"
+        )
+    )
     carrier_ai_observed = landed.get("observed_ai_unit") is True
     member_files = {str(path) for path in member_metadata.get("changed_files", [])}
     member_code_files = {
@@ -253,6 +268,7 @@ def _member_candidate(
             # without carrying any AI signal, so relation membership must not
             # silently promote it to AI-authored.
             "observed_ai_unit": member_ai_observed,
+            "member_attribution_status": member_attribution_status,
             "ai_exposure_supported": member_ai_observed or carrier_ai_observed,
             "ai_exposure_basis": (
                 "member_commit_signal"
@@ -260,7 +276,11 @@ def _member_candidate(
                 else (
                     "ai_attributed_landed_squash"
                     if carrier_ai_observed
-                    else "no_observed_ai_attribution"
+                    else (
+                        "no_observed_ai_attribution"
+                        if member_record_complete
+                        else "member_metadata_unreadable"
+                    )
                 )
             ),
             "carrier_ai_attribution": carrier_ai_observed,

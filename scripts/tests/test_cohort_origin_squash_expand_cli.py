@@ -9,7 +9,12 @@ from types import SimpleNamespace
 
 from cohort.root_adjudication import canonical_sha256
 import cohort_origin_squash_expand
-from cohort_origin_squash_expand import _git_output, main
+from cohort_origin_squash_expand import (
+    _commit_records,
+    _git_output,
+    _single_diff_metadata,
+    main,
+)
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -63,8 +68,52 @@ def test_git_output_rejects_successful_partial_blame(
     assert _git_output(tmp_path, ["blame", "HEAD", "--", "app.py"], timeout=30) == ""
 
 
+def test_diff_metadata_falls_back_to_tree_paths(monkeypatch, tmp_path: Path) -> None:
+    def partial_numstat(arguments, **kwargs):
+        if "--numstat" in arguments:
+            return SimpleNamespace(
+                returncode=128,
+                stdout="",
+                stderr="fatal: unable to read " + "b" * 40 + "\n",
+            )
+        return SimpleNamespace(
+            returncode=0,
+            stdout="README.md\nsrc/app.py\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(cohort_origin_squash_expand.subprocess, "run", partial_numstat)
+
+    assert _single_diff_metadata(tmp_path, "a" * 40, timeout=30) == {
+        "changed_files": ["README.md", "src/app.py"],
+        "code_files_changed": ["src/app.py"],
+        "empty_commit": False,
+    }
+
+
+def test_commit_record_batch_failure_isolated_per_sha(
+    monkeypatch, tmp_path: Path
+) -> None:
+    good = ["a" * 40, "c" * 40]
+    bad = "b" * 40
+
+    def poisoned_batch(repo, arguments, *, timeout):
+        shas = arguments[3:]
+        if len(shas) != 1 or shas[0] == bad:
+            return ""
+        sha = shas[0]
+        return (
+            f"\x1e{sha}\x1fAuthor\x1fa@example.com\x1fCommitter"
+            "\x1fc@example.com\x1f2026-01-01T00:00:00+00:00\x1fsubject"
+        )
+
+    monkeypatch.setattr(cohort_origin_squash_expand, "_git_output", poisoned_batch)
+
+    assert set(_commit_records(tmp_path, [*good, bad], timeout=30)) == set(good)
+
+
 def test_cli_hydrates_pr_number_and_keeps_ai_and_unattributed_members(
-    tmp_path: Path,
+    monkeypatch, tmp_path: Path,
 ) -> None:
     identity = "github.com/example/repo"
     repo = tmp_path / "repo"
@@ -144,6 +193,31 @@ def test_cli_hydrates_pr_number_and_keeps_ai_and_unattributed_members(
         },
     )
 
+    real_commit_records = cohort_origin_squash_expand._commit_records
+    real_diff_metadata = cohort_origin_squash_expand._diff_metadata
+
+    def incomplete_commit_records(repo, shas, *, timeout):
+        records = real_commit_records(repo, shas, timeout=timeout)
+        records.pop(member_unattributed)
+        return records
+
+    def incomplete_diff_metadata(repo, shas, *, timeout):
+        metadata = real_diff_metadata(repo, shas, timeout=timeout)
+        metadata.pop(member_unattributed)
+        return metadata
+
+    monkeypatch.setattr(
+        cohort_origin_squash_expand,
+        "_materialize_member_parents",
+        lambda repo, shas, timeout: {member_unattributed},
+    )
+    monkeypatch.setattr(
+        cohort_origin_squash_expand, "_commit_records", incomplete_commit_records
+    )
+    monkeypatch.setattr(
+        cohort_origin_squash_expand, "_diff_metadata", incomplete_diff_metadata
+    )
+
     output = tmp_path / "expanded"
     assert (
         main(
@@ -166,6 +240,12 @@ def test_cli_hydrates_pr_number_and_keeps_ai_and_unattributed_members(
     assert set(rows) == {landed, member_ai, member_unattributed}
     assert rows[member_ai]["observed_ai_unit"] is True
     assert rows[member_unattributed]["observed_ai_unit"] is False
+    assert rows[member_unattributed]["member_attribution_status"] == (
+        "UNKNOWN_MEMBER_METADATA"
+    )
+    assert rows[member_unattributed]["member_parent_metadata_complete"] is False
+    assert rows[member_unattributed]["member_record_metadata_complete"] is False
+    assert rows[member_unattributed]["member_diff_metadata_complete"] is False
     assert rows[member_unattributed]["retained"] is True
     assert rows[member_unattributed]["squash_internal_blame_line_count"] >= 1
     assert "squash_internal_fix_context_blame" in rows[member_unattributed]["signals"]
@@ -176,6 +256,16 @@ def test_cli_hydrates_pr_number_and_keeps_ai_and_unattributed_members(
     assert summary["member_level_ai_signal_count"] == 1
     assert summary["atomic_member_pairs_with_internal_fix_context_blame"] >= 1
     assert summary["all_parent_candidates_retained"] is True
+    root = json.loads((output / "relation_roots.jsonl").read_text())
+    assert root["status"] == "RESOLVED"
+    assert set(root["reason"].split(";")) == {
+        "member_parent_metadata_incomplete_fail_open",
+        "member_read_metadata_incomplete_fail_open",
+        "member_diff_metadata_incomplete_fail_open",
+    }
+    assert root["member_parent_metadata_gap_shas"] == [member_unattributed]
+    assert root["member_record_metadata_gap_shas"] == [member_unattributed]
+    assert root["member_diff_metadata_gap_shas"] == [member_unattributed]
 
 
 def test_cli_recursively_expands_nested_squash_and_blocks_at_depth_limit(

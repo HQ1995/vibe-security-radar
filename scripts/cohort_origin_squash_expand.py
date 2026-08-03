@@ -336,52 +336,48 @@ def _commit_records(
     ordered = sorted(set(shas))
     for start in range(0, len(ordered), 200):
         chunk = ordered[start : start + 200]
-        try:
-            completed = subprocess.run(
-                [
-                    "git",
-                    "-C",
-                    str(repo),
-                    "show",
-                    "--no-patch",
-                    f"--format={fmt}",
-                    *chunk,
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
+        output = _git_output(
+            repo,
+            ["show", "--no-patch", f"--format={fmt}", *chunk],
+            timeout=timeout,
+        )
+        outputs = [output] if output else [
+            single
+            for sha in chunk
+            if (
+                single := _git_output(
+                    repo,
+                    ["show", "--no-patch", f"--format={fmt}", sha],
+                    timeout=timeout,
+                )
             )
-        except (OSError, subprocess.SubprocessError):
-            continue
-        if completed.returncode != 0:
-            continue
-        for record in completed.stdout.split(_RECORD_SEP):
-            if not record.strip():
-                continue
-            fields = record.split(_FIELD_SEP, 6)
-            if len(fields) != 7:
-                continue
-            (
-                sha,
-                author_name,
-                author_email,
-                committer_name,
-                committer_email,
-                authored,
-                message,
-            ) = fields
-            normalized_sha = sha.strip().lower()
-            records[normalized_sha] = CommitInfo(
-                sha=normalized_sha,
-                author_name=author_name,
-                author_email=author_email,
-                committer_name=committer_name,
-                committer_email=committer_email,
-                message=message,
-                authored_date=authored.strip(),
-            )
+        ]
+        for raw_output in outputs:
+            for record in raw_output.split(_RECORD_SEP):
+                if not record.strip():
+                    continue
+                fields = record.split(_FIELD_SEP, 6)
+                if len(fields) != 7:
+                    continue
+                (
+                    sha,
+                    author_name,
+                    author_email,
+                    committer_name,
+                    committer_email,
+                    authored,
+                    message,
+                ) = fields
+                normalized_sha = sha.strip().lower()
+                records[normalized_sha] = CommitInfo(
+                    sha=normalized_sha,
+                    author_name=author_name,
+                    author_email=author_email,
+                    committer_name=committer_name,
+                    committer_email=committer_email,
+                    message=message,
+                    authored_date=authored.strip(),
+                )
     return records
 
 
@@ -398,7 +394,9 @@ def _is_code_path(path: str) -> bool:
     return True
 
 
-def _git_output(repo: Path, arguments: Sequence[str], *, timeout: int) -> str:
+def _git_output_or_none(
+    repo: Path, arguments: Sequence[str], *, timeout: int
+) -> str | None:
     try:
         completed = subprocess.run(
             ["git", "-C", str(repo), *arguments],
@@ -419,8 +417,12 @@ def _git_output(repo: Path, arguments: Sequence[str], *, timeout: int) -> str:
     if completed.returncode != 0 or _INCOMPLETE_OBJECT_RE.search(
         str(completed.stderr or "")
     ):
-        return ""
+        return None
     return completed.stdout
+
+
+def _git_output(repo: Path, arguments: Sequence[str], *, timeout: int) -> str:
+    return _git_output_or_none(repo, arguments, timeout=timeout) or ""
 
 
 def _materialize_member_parents(
@@ -698,6 +700,15 @@ def _squash_internal_fix_context(
     return deduplicated
 
 
+def _path_metadata(changed_files: Sequence[str]) -> dict[str, object]:
+    unique_files = sorted(set(changed_files))
+    return {
+        "changed_files": unique_files,
+        "code_files_changed": [path for path in unique_files if _is_code_path(path)],
+        "empty_commit": not unique_files,
+    }
+
+
 def _numstat_metadata(lines: Sequence[str]) -> dict[str, object]:
     changed_files: list[str] = []
     additions = 0
@@ -712,47 +723,32 @@ def _numstat_metadata(lines: Sequence[str]) -> dict[str, object]:
             additions += int(raw_additions)
         if raw_deletions.isdigit():
             deletions += int(raw_deletions)
-    unique_files = sorted(set(changed_files))
-    return {
-        "changed_files": unique_files,
-        "code_files_changed": [path for path in unique_files if _is_code_path(path)],
-        "additions": additions,
-        "deletions": deletions,
-        "empty_commit": not unique_files,
-    }
+    metadata = _path_metadata(changed_files)
+    metadata.update({"additions": additions, "deletions": deletions})
+    return metadata
 
 
 def _single_diff_metadata(
     repo: Path, sha: str, *, timeout: int
 ) -> dict[str, object] | None:
-    try:
-        completed = subprocess.run(
-            [
-                "git",
-                "-C",
-                str(repo),
-                "diff-tree",
-                "--no-commit-id",
-                "--no-renames",
-                "--numstat",
-                "-r",
-                f"{sha}^1",
-                sha,
-                "--",
-            ],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if completed.returncode != 0 or _INCOMPLETE_OBJECT_RE.search(
-        str(completed.stderr or "")
-    ):
-        return None
-    return _numstat_metadata(completed.stdout.splitlines())
+    base = [
+        "diff-tree",
+        "--no-commit-id",
+        "--no-renames",
+        "-r",
+        f"{sha}^1",
+        sha,
+        "--",
+    ]
+    numstat = _git_output_or_none(
+        repo, [*base[:3], "--numstat", *base[3:]], timeout=timeout
+    )
+    if numstat is not None:
+        return _numstat_metadata(numstat.splitlines())
+    names = _git_output_or_none(
+        repo, [*base[:3], "--name-only", *base[3:]], timeout=timeout
+    )
+    return _path_metadata(names.splitlines()) if names is not None else None
 
 
 def _diff_metadata(
@@ -1090,13 +1086,6 @@ def _build_relations(
             missing_parent_members = _materialize_member_parents(
                 repo, member_shas, timeout=timeout
             )
-            for number, members in members_by_pr.items():
-                if any(sha in missing_parent_members for sha in members):
-                    pull_results[number] = {
-                        "status": "BLOCKED",
-                        "members": [],
-                        "reason": "member_parent_materialization_incomplete",
-                    }
             fix_shas = sorted(
                 {
                     str(row.get("fix_sha") or "").lower()
@@ -1115,18 +1104,41 @@ def _build_relations(
             for number, members in members_by_pr.items():
                 if pull_results[number].get("status") != "RESOLVED":
                     continue
-                if any(sha not in records for sha in members):
-                    pull_results[number] = {
-                        "status": "BLOCKED",
-                        "members": [],
-                        "reason": "member_read_incomplete",
-                    }
-                elif any(sha not in diff_metadata for sha in members):
-                    pull_results[number] = {
-                        "status": "BLOCKED",
-                        "members": [],
-                        "reason": "member_diff_read_incomplete",
-                    }
+                gap_shas = {
+                    "member_parent_metadata_gap_shas": sorted(
+                        sha for sha in members if sha in missing_parent_members
+                    ),
+                    "member_record_metadata_gap_shas": sorted(
+                        sha for sha in members if sha not in records
+                    ),
+                    "member_diff_metadata_gap_shas": sorted(
+                        sha for sha in members if sha not in diff_metadata
+                    ),
+                }
+                pull_results[number].update(
+                    {field: shas for field, shas in gap_shas.items() if shas}
+                )
+                gap_reasons = [
+                    str(pull_results[number].get("reason") or ""),
+                    *(
+                        ["member_parent_metadata_incomplete_fail_open"]
+                        if gap_shas["member_parent_metadata_gap_shas"]
+                        else []
+                    ),
+                    *(
+                        ["member_read_metadata_incomplete_fail_open"]
+                        if gap_shas["member_record_metadata_gap_shas"]
+                        else []
+                    ),
+                    *(
+                        ["member_diff_metadata_incomplete_fail_open"]
+                        if gap_shas["member_diff_metadata_gap_shas"]
+                        else []
+                    ),
+                ]
+                pull_results[number]["reason"] = ";".join(
+                    reason for reason in gap_reasons if reason
+                )
             missing_fix_metadata = [sha for sha in fix_shas if sha not in diff_metadata]
             if missing_fix_metadata:
                 raise SystemExit(
@@ -1137,8 +1149,18 @@ def _build_relations(
                     diff_metadata[sha]["changed_files"]
                 )
             local_metadata: dict[str, dict[str, object]] = {}
-            for sha, record in records.items():
-                metadata = _member_metadata(record)
+            for sha in member_shas:
+                record = records.get(sha)
+                metadata = _member_metadata(record) if record is not None else {}
+                metadata.update(
+                    {
+                        "member_parent_metadata_complete": (
+                            sha not in missing_parent_members
+                        ),
+                        "member_record_metadata_complete": record is not None,
+                        "member_diff_metadata_complete": sha in diff_metadata,
+                    }
+                )
                 metadata.update(diff_metadata.get(sha, {}))
                 local_metadata[sha] = metadata
             for sha, metadata in local_metadata.items():
