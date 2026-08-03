@@ -287,8 +287,10 @@ def _generate(args: argparse.Namespace) -> int:
                 "repository_identity": identity,
                 "fix_sha": fix_sha,
                 "repository_path": str(repo),
-                "status": "RESOLVED" if not gaps else "BLOCKED",
-                "reason": "" if not gaps else "origin_signal_coverage_gap",
+                "status": (
+                    "RESOLVED" if not gaps else "RESOLVED_WITH_SIGNAL_GAPS"
+                ),
+                "reason": "" if not gaps else "optional_origin_signal_coverage_gap",
                 "coverage_gaps": gaps,
                 "ancestor_fallback_candidate_count": len(ancestors),
                 "materialized_candidate_count": len(ranked),
@@ -327,12 +329,13 @@ def _generate(args: argparse.Namespace) -> int:
     _atomic_jsonl(args.output_dir / "candidates.jsonl", candidate_rows)
     _atomic_jsonl(args.output_dir / "fixes.jsonl", fix_rows)
     _atomic_jsonl(args.output_dir / "cross_file_bridge.jsonl", bridge_rows)
+    ready_statuses = {"RESOLVED", "RESOLVED_WITH_SIGNAL_GAPS"}
     summary = {
         "schema_version": 1,
         "artifact_kind": "blind_origin_recall_control_generation",
         "gate_status": (
             "READY_FOR_SEPARATE_EVALUATION"
-            if fix_rows and all(row["status"] == "RESOLVED" for row in fix_rows)
+            if fix_rows and all(row["status"] in ready_statuses for row in fix_rows)
             else "BLOCKED"
         ),
         "split_id": manifest["split_id"],
@@ -341,8 +344,14 @@ def _generate(args: argparse.Namespace) -> int:
         "ai_priority_mode": "disabled_for_structural_signal_recall",
         "fix_manifest_sha256": canonical_sha256(manifest),
         "fix_count": len(fix_rows),
-        "resolved_fix_count": sum(row["status"] == "RESOLVED" for row in fix_rows),
+        "resolved_fix_count": sum(row["status"] in ready_statuses for row in fix_rows),
         "blocked_fix_count": sum(row["status"] == "BLOCKED" for row in fix_rows),
+        "signal_gap_fix_count": sum(
+            row["status"] == "RESOLVED_WITH_SIGNAL_GAPS" for row in fix_rows
+        ),
+        "signal_gap_count": sum(
+            len(row.get("coverage_gaps", [])) for row in fix_rows
+        ),
         "candidate_count": len(candidate_rows),
         "unresolved_clone_count": len(unresolved_clones),
         "candidate_rows_sha256": canonical_sha256(candidate_rows),
@@ -350,7 +359,9 @@ def _generate(args: argparse.Namespace) -> int:
         "bridge_rows_sha256": canonical_sha256(bridge_rows),
         "claim_boundary": (
             "Generation reads fix-only rows and local Git history. It deliberately "
-            "does not read origins, expected relations, or AI-attribution labels."
+            "does not read origins, expected relations, or AI-attribution labels. "
+            "Optional signal gaps may degrade ranking but cannot delete candidates "
+            "from the downstream observed-AI ancestry inventory."
         ),
     }
     _atomic_json(args.output_dir / "summary.json", summary)
