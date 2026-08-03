@@ -267,4 +267,5 @@ def test_merge_uses_first_parent_delta_without_importing_other_side(
     assert collected["alternate_parent_delta_paths"] == {
         fix_branch: ["noise.py"]
     }
+    assert fix_branch in collected["ancestors"]
     assert noise not in collected["file_history"]

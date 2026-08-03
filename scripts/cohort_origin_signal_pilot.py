@@ -580,7 +580,7 @@ def collect_origin_signals(
     )
     ancestors: set[str] = set()
     commit_paths: defaultdict[str, set[str]] = defaultdict(set)
-    for parent in (analysis_parent,):
+    for parent in parents:
         ancestors.update(
             _extract_shas(
                 _git_text(
@@ -591,7 +591,7 @@ def collect_origin_signals(
                 )
             )
         )
-        if fix_has_global_guard:
+        if parent == analysis_parent and fix_has_global_guard:
             history_output = _optional_git_text(
                 repo,
                 global_arguments,
