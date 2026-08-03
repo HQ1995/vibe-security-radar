@@ -9,6 +9,7 @@ from cohort.origin_packets import (
     fold_candidate_fix_pairs,
     packetize_candidate_units,
 )
+from cohort_origin_packetize import _squash_surface_fields
 
 
 def _pair(candidate: str, fix: str, rank: int) -> dict[str, object]:
@@ -109,3 +110,30 @@ def test_squash_relation_provenance_survives_folding() -> None:
     assert edge["parent_priority_rank"] == 4
     assert edge["squash_internal_blame_line_count"] == 1
     assert edge["squash_internal_blame_paths"] == ["src/server.py"]
+
+
+def test_packet_surface_summary_fails_closed_on_missing_or_forged_counts() -> None:
+    summary = {
+        "all_parent_candidates_retained": True,
+        "all_relation_roots_conserved": True,
+        "atomic_provenance_gap_count": 3,
+        "blocked_squash_relation_root_count": 1,
+        "candidate_surface_coverage_complete": False,
+        "candidate_surface_uncovered_count": 1,
+        "carrier_only_squash_relation_root_count": 2,
+    }
+
+    assert _squash_surface_fields(summary) == {
+        "atomic_provenance_gap_count": 3,
+        "blocked_squash_relation_root_count": 1,
+        "candidate_surface_coverage_complete": False,
+        "candidate_surface_uncovered_count": 1,
+        "carrier_only_squash_relation_root_count": 2,
+    }
+    for forged in (
+        {**summary, "candidate_surface_uncovered_count": 0},
+        {**summary, "atomic_provenance_gap_count": 2},
+        {key: value for key, value in summary.items() if key != "atomic_provenance_gap_count"},
+    ):
+        with pytest.raises(SystemExit):
+            _squash_surface_fields(forged)

@@ -13,6 +13,41 @@ from cohort.origin_packets import fold_candidate_fix_pairs, packetize_candidate_
 from cohort.root_adjudication import canonical_sha256
 
 
+def _nonnegative_int(summary: dict[str, object], field: str) -> int:
+    value = summary.get(field)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise SystemExit(f"squash summary {field} must be a non-negative integer")
+    return value
+
+
+def _squash_surface_fields(summary: dict[str, object]) -> dict[str, object]:
+    blocked = _nonnegative_int(summary, "blocked_squash_relation_root_count")
+    carrier_only = _nonnegative_int(
+        summary, "carrier_only_squash_relation_root_count"
+    )
+    atomic_gaps = _nonnegative_int(summary, "atomic_provenance_gap_count")
+    uncovered = _nonnegative_int(summary, "candidate_surface_uncovered_count")
+    complete = summary.get("candidate_surface_coverage_complete")
+    if complete is not (uncovered == 0):
+        raise SystemExit("squash summary candidate-surface fields contradict")
+    if atomic_gaps != carrier_only + blocked:
+        raise SystemExit("squash summary atomic provenance counts contradict")
+    if uncovered != blocked:
+        raise SystemExit("squash summary lacks a certificate for blocked-root coverage")
+    if (
+        summary.get("all_parent_candidates_retained") is not True
+        or summary.get("all_relation_roots_conserved") is not True
+    ):
+        raise SystemExit("squash summary conservation failed")
+    return {
+        "blocked_squash_relation_root_count": blocked,
+        "carrier_only_squash_relation_root_count": carrier_only,
+        "atomic_provenance_gap_count": atomic_gaps,
+        "candidate_surface_uncovered_count": uncovered,
+        "candidate_surface_coverage_complete": complete,
+    }
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--generated-dir", type=Path, required=True)
@@ -94,6 +129,11 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("packetization requires a proof-carrying reduction")
     if canonical_sha256(candidates) != summary.get("candidate_rows_sha256"):
         raise SystemExit("reduced candidate digest mismatch")
+    closure_applied = (
+        summary.get("artifact_kind")
+        == "proof_carrying_origin_squash_relation_closure"
+    )
+    surface_fields = _squash_surface_fields(summary) if closure_applied else {}
     units = fold_candidate_fix_pairs(candidates)
     packets = packetize_candidate_units(units, max_candidates=args.max_candidates)
     pair_count = sum(int(unit["fix_edge_count"]) for unit in units)
@@ -115,23 +155,8 @@ def main(argv: list[str] | None = None) -> int:
         "all_candidate_units_assigned_once": membership_count == len(units),
         "negative_disposition": "DEFER_not_delete",
         "missing_response_disposition": "BLOCKED_split_and_retry",
-        "squash_relation_closure_applied": summary.get("artifact_kind")
-        == "proof_carrying_origin_squash_relation_closure",
-        "blocked_squash_relation_root_count": int(
-            summary.get("blocked_squash_relation_root_count") or 0
-        ),
-        "carrier_only_squash_relation_root_count": int(
-            summary.get("carrier_only_squash_relation_root_count") or 0
-        ),
-        "atomic_provenance_gap_count": int(
-            summary.get("atomic_provenance_gap_count") or 0
-        ),
-        "candidate_surface_uncovered_count": int(
-            summary.get("candidate_surface_uncovered_count") or 0
-        ),
-        "candidate_surface_coverage_complete": bool(
-            summary.get("candidate_surface_coverage_complete", True)
-        ),
+        "squash_relation_closure_applied": closure_applied,
+        **surface_fields,
     }
     args.output_dir.mkdir(parents=True)
     _atomic_jsonl(args.output_dir / "candidate_units.jsonl", units)
