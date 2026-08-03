@@ -18,6 +18,7 @@ from cohort.prospective_intake import (
     description_associations,
     public_exact_pairs,
 )
+from cohort_prepare_prospective_pool import _ground_truth_controls
 
 
 def _pool_row(
@@ -242,3 +243,28 @@ def test_opened_prospective_v1_rows_are_permanent_control_exclusions() -> None:
         return row["advisory"], row["repository_identity"]
 
     assert {identity(row) for row in controls} == {identity(row) for row in selected}
+
+
+def test_verified_ground_truth_is_projected_to_identity_only(tmp_path: Path) -> None:
+    path = tmp_path / "ground-truth.json"
+    path.write_text(
+        json.dumps(
+            [
+                {
+                    "cve_id": "CVE-1",
+                    "repo_url": "https://github.com/acme/project",
+                    "expected_shas": ["a" * 40],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert _ground_truth_controls(path) == {
+        "controls": [
+            {
+                "advisory": "CVE-1",
+                "repository_identity": "https://github.com/acme/project",
+            }
+        ]
+    }

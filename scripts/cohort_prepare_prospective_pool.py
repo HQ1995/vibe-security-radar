@@ -38,6 +38,7 @@ DEFAULT_PUBLIC_REFERENCES = (
 )
 DEFAULT_ALIASES = _SCRIPT_DIR / "cohort_repository_aliases.json"
 DEFAULT_ADJUDICATIONS = _SCRIPT_DIR / "audit_adjudications.json"
+DEFAULT_VERIFIED_GROUND_TRUTH = _SCRIPT_DIR / "fixtures/verified-ground-truth.json"
 DEFAULT_AUDIT_DIRS = (
     _SCRIPT_DIR / "audit_results",
     _SCRIPT_DIR / "audit_recovery_results",
@@ -57,6 +58,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--repository-aliases", type=Path, default=DEFAULT_ALIASES)
     parser.add_argument("--adjudications", type=Path, default=DEFAULT_ADJUDICATIONS)
+    parser.add_argument(
+        "--verified-ground-truth",
+        type=Path,
+        default=DEFAULT_VERIFIED_GROUND_TRUTH,
+    )
     parser.add_argument("--audit-dir", action="append", type=Path, default=[])
     parser.add_argument("--existing-controls", action="append", type=Path, default=[])
     parser.add_argument("--result-cache-dir", type=Path, default=DEFAULT_RESULT_CACHE)
@@ -145,6 +151,22 @@ def _aliases(path: Path) -> dict[str, str]:
         raise SystemExit(f"repository aliases are malformed: {exc}") from exc
 
 
+def _ground_truth_controls(path: Path) -> dict[str, object]:
+    rows = _load_json(path)
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise SystemExit("verified ground truth is malformed")
+    controls: list[dict[str, str]] = []
+    for row in rows:
+        advisory = str(row.get("cve_id") or "").strip()
+        repository = str(row.get("repo_url") or "").strip()
+        if not advisory or not repository:
+            raise SystemExit("verified ground truth has an incomplete identity")
+        controls.append(
+            {"advisory": advisory, "repository_identity": repository}
+        )
+    return {"controls": controls}
+
+
 def _audit_inputs(
     directories: list[Path], cache_dir: Path, adjudications_path: Path
 ) -> tuple[dict[str, dict[str, object]], dict[str, dict[str, object]], set[str]]:
@@ -205,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(value, dict):
             raise SystemExit(f"control payload is not an object: {path}")
         controls.append(value)
+    controls.append(_ground_truth_controls(args.verified_ground_truth))
     audit_dirs = args.audit_dir or list(DEFAULT_AUDIT_DIRS)
     audits, cached, adjudicated = _audit_inputs(
         audit_dirs, args.result_cache_dir, args.adjudications
@@ -275,6 +298,12 @@ def main(argv: list[str] | None = None) -> int:
             "repository_aliases_sha256": _sha256_file(args.repository_aliases),
             "adjudications_path": str(args.adjudications.resolve()),
             "adjudications_sha256": _sha256_file(args.adjudications),
+            "verified_ground_truth_path": str(
+                args.verified_ground_truth.resolve()
+            ),
+            "verified_ground_truth_sha256": _sha256_file(
+                args.verified_ground_truth
+            ),
             "control_paths": [str(path.resolve()) for path in control_paths],
             "control_sha256": {
                 str(path.resolve()): _sha256_file(path) for path in control_paths
