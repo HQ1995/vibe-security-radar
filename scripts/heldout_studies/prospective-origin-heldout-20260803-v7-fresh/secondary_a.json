@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "reviewer": "fresh-public-cases-a",
+  "created_at": "2026-08-04T00:07:01Z",
+  "blindness_protocol": {
+    "selection_freeze_commit": "6948d1c",
+    "method_freeze_commit": "07f8d5e",
+    "carrier_schedule_state_at_seal": "generated_but_rank_and_rows_unread",
+    "candidate_rank_or_schedule_rows_read_by_reviewer": false,
+    "ground_truth_or_witness_artifacts_read_by_reviewer": false,
+    "workspace_candidate_artifacts_read_by_reviewer": false,
+    "note": "The reviewer saw only post-freeze path names returned by rg, not their contents. Full causal details below must remain sealed until the schedule freeze binds this file hash."
+  },
+  "freshness_gate": {
+    "scope": [
+      "docs",
+      "scripts",
+      ".ai-slop/state"
+    ],
+    "pre_selection_result": {
+      "repository": "https://github.com/dynatrace-oss/dynatrace-mcp",
+      "unexpected_hits": 0,
+      "identities_checked": [
+        "dynatrace-oss/dynatrace-mcp",
+        "dynatrace-mcp",
+        "GHSA-p7w7-4929-vpj5",
+        "GHSA-pqh8-p93p-2rx7",
+        "8f12972481e9165e8bd24d63b0a9e71976f85a43",
+        "15d3546c0618ffbaeaeca477337e08e92f2151bc"
+      ]
+    },
+    "post_selection_result": {
+      "unexpected_hits": 0,
+      "expected_new_v7_paths_seen_but_not_read": [
+        "scripts/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/exposure_gate.json",
+        "scripts/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/selection_freeze.json",
+        "scripts/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/fix_manifest.json",
+        ".ai-slop/state/cohort-v1/prospective-origin-heldout-v7-fresh-structural-20260803-v1/fixes.jsonl",
+        ".ai-slop/state/cohort-v1/prospective-origin-heldout-v7-fresh-structural-20260803-v1/candidates.jsonl"
+      ],
+      "interpretation": "These hits were created after the pre-selection zero-hit check and are expected products of the frozen v7 workflow."
+    }
+  },
+  "summary": {
+    "sealed_cases": 2,
+    "confirmed_exact_subject_ai_attributed_causal_candidates": 2,
+    "accepted_edge_count": 3,
+    "direct_bot_author_candidates": 1,
+    "squash_carrier_coauthor_candidates": 1,
+    "freshness_disqualifications": 1,
+    "other_repositories_rejected_after_history_review": 13
+  },
+  "cases": [
+    {
+      "case_id": "GHSA-p7w7-4929-vpj5",
+      "repository": "https://github.com/dynatrace-oss/dynatrace-mcp",
+      "advisory": {
+        "url": "https://github.com/dynatrace-oss/dynatrace-mcp/security/advisories/GHSA-p7w7-4929-vpj5",
+        "title": "Unauthenticated HTTP MCP Tool Invocation in @dynatrace-oss/dynatrace-mcp-server",
+        "published_at": "2026-06-09",
+        "affected_versions": "<= 1.8.7",
+        "patched_versions": ">= 2.0.0",
+        "weakness": "CWE-306"
+      },
+      "public_fix": {
+        "sha": "8f12972481e9165e8bd24d63b0a9e71976f85a43",
+        "url": "https://github.com/dynatrace-oss/dynatrace-mcp/commit/8f12972481e9165e8bd24d63b0a9e71976f85a43",
+        "subject": "feat: add bearer token auth and HTTP server hardening (#536)",
+        "committed_at": "2026-06-16"
+      },
+      "adjudication": {
+        "exact_subject_ai_attributed_causal_candidate": true,
+        "status": "CONFIRMED",
+        "candidate_form": "CARRIER_ONLY",
+        "accepted_edge_count": 1,
+        "accepted_edges": [
+          {
+            "origin_sha": "00b7649a78aba78c578af4e128b38f7bae18a059",
+            "path": "src/index.ts",
+            "subject": "Unauthenticated network HTTP transport and direct MCP request dispatch"
+          }
+        ],
+        "confidence": "high_for_mainline_squash_carrier; not_an_atomic_bot_author_case",
+        "origin": {
+          "sha": "00b7649a78aba78c578af4e128b38f7bae18a059",
+          "url": "https://github.com/dynatrace-oss/dynatrace-mcp/commit/00b7649a78aba78c578af4e128b38f7bae18a059",
+          "subject": "patch: Added HTTP server mode (#107)",
+          "form": "squash_merge_carrier",
+          "committed_at": "2025-08-20",
+          "ai_attribution": {
+            "signal_type": "coauthored_by_trailer",
+            "identity": "Copilot <175728472+Copilot@users.noreply.github.com>",
+            "occurrences_in_commit_message": 2
+          }
+        },
+        "exact_subject_binding": {
+          "advisory_subject": "HTTP transport dispatches MCP tool calls without authentication or host/origin validation.",
+          "origin_delta": [
+            "adds --http and --server modes",
+            "adds a configurable host whose default is 0.0.0.0",
+            "adds node:http createServer",
+            "parses untrusted POST bodies and passes them directly to httpTransport.handleRequest",
+            "contains no authentication, Authorization-header, Host, or Origin check"
+          ],
+          "parent_counterfactual": "The parent has only StdioServerTransport and no network-reachable HTTP request handler, so the advisory attack surface is absent.",
+          "fix_relation": "The public fix adds bearer-token helpers and request gating/hardening to the HTTP path."
+        },
+        "ancestry": {
+          "origin_is_ancestor_of_fix": true,
+          "verification": "git merge-base --is-ancestor returned 0"
+        },
+        "carrier_caveat": {
+          "atomic_precursor_sha": "6cca70b23c068cd862ec0420d126387eed0436d6",
+          "atomic_precursor_url": "https://github.com/dynatrace-oss/dynatrace-mcp/commit/6cca70b23c068cd862ec0420d126387eed0436d6",
+          "atomic_precursor_author": "Christian Kreuzberger <christian.kreuzberger@dynatrace.com>",
+          "atomic_precursor_ai_signal": "none_observed",
+          "interpretation": "The PR-side atomic precursor already contains the unauthenticated HTTP path. Credit is defensible only at the canonical mainline squash-carrier/coauthorship level. It must not be counted as a direct bot-authored atomic origin."
+        }
+      }
+    },
+    {
+      "case_id": "GHSA-pqh8-p93p-2rx7",
+      "repository": "https://github.com/dynatrace-oss/dynatrace-mcp",
+      "advisory": {
+        "url": "https://github.com/dynatrace-oss/dynatrace-mcp/security/advisories/GHSA-pqh8-p93p-2rx7",
+        "title": "DQL injection via parameters not documented as DQL",
+        "published_at": "2026-06-09",
+        "affected_versions": "all versions through 1.8.5",
+        "patched_versions": "none listed at review time",
+        "weakness": "CWE-89"
+      },
+      "public_fix": {
+        "sha": "15d3546c0618ffbaeaeca477337e08e92f2151bc",
+        "url": "https://github.com/dynatrace-oss/dynatrace-mcp/commit/15d3546c0618ffbaeaeca477337e08e92f2151bc",
+        "subject": "fix(security): validate and escape DQL template parameters (GHSA-pqh8-p93p-2rx7) (#562)",
+        "committed_at": "2026-07-14"
+      },
+      "adjudication": {
+        "exact_subject_ai_attributed_causal_candidate": true,
+        "status": "CONFIRMED",
+        "candidate_form": "DIRECT_BOT_AUTHOR",
+        "accepted_edge_count": 2,
+        "accepted_edges": [
+          {
+            "origin_sha": "66ff2a7c8bedc23939d6d70ab4c3bdce53673843",
+            "path": "src/capabilities/get-events-for-cluster.ts",
+            "subject": "Unvalidated timeframe interpolation into a DQL fetch expression"
+          },
+          {
+            "origin_sha": "66ff2a7c8bedc23939d6d70ab4c3bdce53673843",
+            "path": "src/capabilities/list-vulnerabilities.ts",
+            "subject": "Unvalidated timeframe interpolation into a DQL fetch expression"
+          }
+        ],
+        "confidence": "high",
+        "origin": {
+          "sha": "66ff2a7c8bedc23939d6d70ab4c3bdce53673843",
+          "url": "https://github.com/dynatrace-oss/dynatrace-mcp/commit/66ff2a7c8bedc23939d6d70ab4c3bdce53673843",
+          "subject": "Add timeframe parameter to list_vulnerabilities and get_kubernetes_events tools",
+          "form": "atomic_direct_origin",
+          "committed_at": "2025-12-22",
+          "ai_attribution": {
+            "signal_type": "author_name_and_email",
+            "identity": "copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>"
+          }
+        },
+        "exact_subject_binding": {
+          "advisory_subject": "Unvalidated timeframe strings are interpolated as DQL expressions in list-vulnerabilities and get-events-for-cluster.",
+          "origin_delta": [
+            "adds a caller-controlled timeframe string to listVulnerabilities",
+            "interpolates it as fetch security.events, from: now()-${timeframe}, to: now()",
+            "adds a caller-controlled timeframe string to getEventsForCluster",
+            "interpolates it as fetch events, from: now()-${timeframe}, to: now()"
+          ],
+          "advisory_line_binding": "The advisory's affected-interpolation table names both exact files, parameters, and interpolation forms.",
+          "parent_counterfactual": "Before this commit, listVulnerabilities used a fixed query window and getEventsForCluster did not accept or interpolate timeframe, so these two injection edges are absent.",
+          "fix_relation": "The public fix introduces validateTimeframe and applies it to these two capability paths along with the other advisory vectors."
+        },
+        "ancestry": {
+          "origin_is_ancestor_of_fix": true,
+          "verification": "git merge-base --is-ancestor returned 0"
+        },
+        "scope_caveat": "The advisory lists additional DQL injection vectors with other origins. This adjudication accepts only the two exact timeframe edges introduced by the bot-authored commit; it does not attribute the whole advisory or all vectors to AI."
+      }
+    }
+  ],
+  "disqualified_after_freshness_check": [
+    {
+      "repository": "https://github.com/gitpython-developers/GitPython",
+      "case_id": "GHSA-539m-9xh6-q6rr",
+      "public_fix_sha": "7a4f5dcb7bf3cbcbf6e438017efcdfe0bc0d36ca",
+      "status": "DISQUALIFIED_PREEXPOSED",
+      "reason": "Repository/advisory/fix identifiers already occur in legacy .ai-slop/state candidate, exposure, outcomes, discovery, and scan artifacts, so it cannot be a fresh v7 case.",
+      "workspace_hit_paths": [
+        ".ai-slop/state/data-refresh/grouped-batches-v1/manifest.json",
+        ".ai-slop/state/cohort-v1/advisory-candidates-heldout-20260731-v1/public_fix_references.jsonl",
+        ".ai-slop/state/cohort-v1/frame-clone-20260726T132127Z.json",
+        ".ai-slop/state/cohort-v1/outcomes-20260727T032754Z/outcomes.jsonl",
+        ".ai-slop/state/cohort-v1/advisory-20260727T191121Z/advisory_outcomes.jsonl",
+        ".ai-slop/state/cohort-v1/exposure-20260727T025842Z/exposure.jsonl",
+        ".ai-slop/state/cohort-v1/advisory-repos-since-2025-05.json",
+        ".ai-slop/state/cohort-v1/scan-20260726T203823Z/commits.jsonl",
+        ".ai-slop/state/cohort-v1/scan-20260726T211124Z/commits.jsonl",
+        ".ai-slop/state/data-refresh/source-delta-current.json",
+        ".ai-slop/state/data-refresh/source-delta-build/82ecca4ca1e60aa59e9e2e7b70dbc076ad073d93581ae82315c1e57aa62e36b0/discovery.json",
+        ".ai-slop/state/data-refresh/source-delta-build/e2bee83751e63cc98626d1f91cd2aab3b9c89c917ba0ce251e17b5ab6dc2f182/discovery.json",
+        ".ai-slop/state/cohort-v1/advisory-candidates-expansion-20260731-v1/public_fix_references.jsonl",
+        ".ai-slop/state/cohort-v1/exposure-20260727T030211Z/exposure.jsonl",
+        ".ai-slop/state/cohort-v1/scan-20260726T195746Z/commits.jsonl",
+        ".ai-slop/state/cohort-v1/advisory-candidates-controls-20260731-v1/public_fix_references.jsonl",
+        ".ai-slop/state/cohort-v1/advisory-repos-since-2025-05-01.json"
+      ],
+      "secondary_causality_caveat": "Even absent contamination, the apparent AI-authored change was an incomplete security guard over an already unsafe forwarding sink, not a clean first introduction of the underlying risk."
+    }
+  ],
+  "other_repositories_reviewed_and_rejected": [
+    {
+      "repository": "sequelize/sequelize",
+      "reason": "The relevant vulnerable/fix history predates the later Copilot rewrite; no exact causal AI edge."
+    },
+    {
+      "repository": "open-webui/open-webui",
+      "reason": "The exact rich-text feature origin is human-authored; no exact observable AI attribution."
+    },
+    {
+      "repository": "zingolabs/zaino",
+      "reason": "The exact recursive-reorg origin commits have no AI trailer or bot identity."
+    },
+    {
+      "repository": "gtsteffaniak/filebrowser",
+      "reason": "The exact subtitle-handler origins are human-authored."
+    },
+    {
+      "repository": "modelcontextprotocol/ruby-sdk",
+      "reason": "No exact observable AI-attributed causal origin found."
+    },
+    {
+      "repository": "flytohub/flyto-core",
+      "reason": "No exact observable AI-attributed causal origin found."
+    },
+    {
+      "repository": "eLyiN/gemini-bridge",
+      "reason": "The observable AI-authored commit was a dependency chore, not the vulnerability origin."
+    },
+    {
+      "repository": "pyca/cryptography",
+      "reason": "No exact advisory-bound AI-origin edge established in the bounded review."
+    },
+    {
+      "repository": "guzzle/guzzle",
+      "reason": "No exact advisory-bound AI-origin edge established in the bounded review."
+    },
+    {
+      "repository": "aio-libs/aiohttp",
+      "reason": "No exact advisory-bound AI-origin edge established in the bounded review."
+    },
+    {
+      "repository": "honojs/hono",
+      "reason": "Repository-level AI activity did not bind to an exact advisory subject."
+    },
+    {
+      "repository": "nocobase/nocobase",
+      "reason": "No exact advisory-bound AI-origin edge established in the bounded review."
+    },
+    {
+      "repository": "apostrophecms/apostrophe",
+      "reason": "No exact advisory-bound AI-origin edge established in the bounded review."
+    }
+  ],
+  "additional_scan_only_repositories": [
+    "HackingRepo/dssrf-js",
+    "beaugunderson/ip-address",
+    "nodejs/undici",
+    "fastify/fast-uri",
+    "socketio/socket.io",
+    "postcss/postcss",
+    "juliangruber/brace-expansion",
+    "Eugeny/russh",
+    "pion/dtls",
+    "pion/stun",
+    "sigstore/sigstore-go",
+    "xdan/jodit",
+    "thumbor/thumbor",
+    "pterodactyl/wings"
+  ],
+  "claim_boundary": "A repository-level AI signal is never sufficient. Case 1 is carrier-only and must retain its atomic-human caveat. Case 2 supports exactly two named timeframe interpolation edges, not blanket AI attribution of every vector in the advisory."
+}
