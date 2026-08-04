@@ -71,8 +71,8 @@ v5 split:
 - `github.com/craigjbass/clearancekit`
 - `github.com/j178/prek-action`
 
-The candidate schedule and both sealed reviewer-file hashes were committed in
-`96b7f1e` before the primary researcher opened either review. Both reviewers
+The candidate-schedule digest and both sealed reviewer-file hashes were committed
+in `96b7f1e` before the primary researcher opened either review. Both reviewers
 worked fix-first and did not read candidate, packet, rank, schedule, ledger, or
 ground-truth artifacts.
 
