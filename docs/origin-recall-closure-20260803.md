@@ -1,6 +1,111 @@
 # Origin-recall research closure — 2026-08-03
 
-## Verdict
+> Updated 2026-08-04: the v7 addendum below supersedes the pre-v7 statistical
+> status retained afterward for provenance.
+
+## V7 addendum — frozen-method result
+
+The finite workflow now passes a fresh targeted-positive test on a repository
+that was absent from all prior research state:
+
+- the originally sealed schedule recovers the valid-fix blind case and both
+  independently accepted exact subjects at B=100 (`1/1` case, `2/2` edges);
+- after correcting a bad public fix anchor without changing the method or
+  budget, the replay recovers both cases and all three accepted exact subjects
+  (`2/2` cases, `3/3` edges);
+- both results were already complete at the tested B=25 point;
+- all 1,560 corrected candidate/fix edges are conserved, with 99/99 public
+  squash roots resolved and zero blocked, carrier-only, provenance-gap, or
+  uncovered-surface roots.
+
+The canonical machine-readable v7 result is
+[`final_result.json`](../scripts/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/final_result.json).
+
+### Freshness and review protocol
+
+`github.com/dynatrace-oss/dynatrace-mcp` passed an all-research exposure gate
+before its history was opened. The method was fixed at `07f8d5e`, selection at
+`6948d1c`, and the original carrier schedule at `290dfc4` before the primary
+researcher opened candidate ranks or causal subjects.
+
+Three isolated fix-first reviewers then adjudicated the two public advisories:
+
+- [GHSA-p7w7-4929-vpj5](https://github.com/advisories/GHSA-p7w7-4929-vpj5)
+- [GHSA-pqh8-p93p-2rx7](https://github.com/advisories/GHSA-pqh8-p93p-2rx7)
+
+All three accepted `00b7649a` and `66ff2a7c`. Two independently accepted
+`689fd87d`, which the first reviewer did not report. A strict all-reviewer
+intersection would therefore have created a ground-truth false negative. The
+final gate uses a two-of-three majority and separately scores the
+recall-conservative union. They are identical here: three unique exact
+commit/fix edges and seven semantic sink/mechanism edges.
+
+This aggregation policy was not preregistered. The selection freeze named a
+two-reviewer exact intersection; after the first reviewer omitted `689fd87d`,
+the final protocol added a third isolated reviewer and changed to majority plus
+recall-conservative union. That post-freeze change makes the recall gate
+strictly harder by adding an edge, but it must not be described as a
+preregistered ground-truth rule.
+
+Attribution is deliberately split by proof strength:
+
+- `66ff2a7c` is directly bot-authored and its causal hunks are bound cleanly;
+- `00b7649a` and `689fd87d` carry observable Copilot trailers at the landed
+  squash/carrier level, but recoverable PR members show that the vulnerable
+  hunks were initially human-authored. They are not line-level AI-authorship
+  claims.
+
+### Fix-anchor correction
+
+The originally frozen HTTP fix, `8f129724`, is only a partial repair. It
+enforces bearer authentication when `MCP_BEARER_TOKEN` is configured but warns
+and continues unauthenticated when it is absent. The first mainline fail-closed
+fix is `61676d71`, which requires the token before creating the HTTP server and
+always gates non-health requests before dispatch.
+
+This conflicts with the public advisory's `patched >=2.0.0` metadata. Code and
+release ancestry show v2.0.0 and v2.0.1 remain fail-open; v2.1.0 is the first
+release containing the complete fix. Consequently:
+
+- the HTTP case is excluded from the originally blind denominator;
+- the valid DQL case remains a clean original-schedule result;
+- the HTTP case is included only in a separately labeled locked-method,
+  corrected-root replay.
+
+No score is silently rescued by changing the method, budget, or accepted
+subjects after seeing ranks.
+
+### V7 exact results
+
+| Evidence set | Role | Final edges | Surface gaps | Positive cases | Exact edges | First complete B | B=100 expanded units |
+|---|---|---:|---:|---:|---:|---:|---:|
+| v7 valid-fix subset | fresh sealed-schedule validation | 1,543 | 0 | 1/1 | 2/2 | 25 | 715 |
+| v7 corrected root | locked-method corrective replay | 1,560 | 0 | 2/2 | 3/3 | 25 | 721 |
+| v6 reserved | sealed-schedule regression | 1,724 | 0 | 2/2 | 3/3 | 25 | 227 |
+| v5 lane-fair | post-hoc regression | 51,218 | 0 | 12/12 | 16/16 | 25 | 2,574 |
+
+The v7 scripted pipeline made zero external model calls and records zero model
+tokens or cost. Replaying the older Luna low-effort calibration shape projects
+about `$0.58` for corrected B=100 and `$1.26` for the full corrected inventory.
+These are historical-shape projections, not current prices or actual bills.
+
+### Updated claim boundary
+
+The result supports finite-inventory near-zero-miss behavior inside a fixed
+repository/fix/readable-history boundary. It is stronger than the v5/v6
+regressions because one repository is method-unseen, but selection was
+deliberately enriched for a positive and both advisories belong to the same
+repository. It is not an unbiased population recall estimate.
+
+Remaining irreducible miss sources are incorrect or missing fix anchors before
+adjudication, private/deleted/rewritten history, cross-repository copies, and
+undisclosed AI assistance. Reaching a one-sided 95% lower recall bound of 0.95
+still requires 59 independent fresh units with zero misses; 0.99 requires 299.
+
+The next research work is therefore more independent fresh repositories and
+fix-anchor validation, not more ranking heuristics.
+
+## Pre-v7 verdict (retained for provenance)
 
 The workflow is now recall-first in the only defensible finite sense:
 
