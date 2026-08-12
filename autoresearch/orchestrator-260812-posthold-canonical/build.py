@@ -208,9 +208,21 @@ def apply_inherited_corrections(rows: list[dict], correction_doc: dict, hashes: 
             "counting",
             "overlap_with",
             "reuse_justification",
+            "narrow_scope",
+            "alias_amendments",
         ):
             if field in correction:
                 row[field] = correction[field]
+        if "public_ids" in correction:
+            ids = sorted(set(correction["public_ids"]))
+            row["public_ids"] = ids
+            row["declared_public_ids"] = ids
+            row["primary_id"] = next((value for value in ids if value.startswith("CVE-")), ids[0])
+        if any(
+            field in correction
+            for field in ("candidate_fix_edges", "mechanism", "repository")
+        ):
+            row["mechanism_fingerprint"] = canonical_mechanism_fingerprint(row)
         row.setdefault("state_axes", {}).update(correction["state_axes_updates"])
         row.setdefault("notes", []).extend(correction["notes_append"])
         row.setdefault("source_refs", []).append(
@@ -268,13 +280,14 @@ def build_outputs() -> tuple[str, str]:
             "source_envelope_is_not_final_count": True,
         },
         "blockers": [
-            "The 199 broad released value is a source envelope containing three REJECT, one UNKNOWN, and four NARROW rows; it is not a confirmed count.",
+            "The 199 broad released value is a source envelope containing four REJECT, two UNKNOWN, and twelve NARROW rows; it is not a confirmed count.",
             "Only 20 of the original 74 post-strict rows received Batch 1 adversarial causal-control review.",
-            "One released component remains UNKNOWN and three remain REJECT after inherited-row closure.",
-            "Four released rows are NARROW after combining Batch 2 and post-hold adjudications.",
+            "Two released components remain UNKNOWN and four remain REJECT after Batch I.",
+            "Twelve released rows are NARROW after combining Batch 2, post-hold, and Batch I adjudications.",
             "Three commit-only component rows remain UNKNOWN.",
             "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
-            "Current live release replay covers 33 targeted rows rather than every inherited released row.",
+            "Batch I re-adjudicated 24 strict-200-v3 rows and did not produce a confirmed 200.",
+            "Current live release replay covers targeted rows rather than every inherited released row.",
         ],
     }
     summary_text = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

@@ -199,10 +199,10 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         {"STRICT_RELEASED": 132, "INCOMPLETE_RELEASED": 67, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
     )
     assert Counter(row["row_state"] for row in released) == Counter(
-        {"PASS": 191, "NARROW": 4, "UNKNOWN": 1, "REJECT": 3}
+        {"PASS": 181, "NARROW": 12, "UNKNOWN": 2, "REJECT": 4}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 358
+    assert len(public_ids) == len(set(public_ids)) == 363
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
@@ -228,8 +228,29 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "post:gitea-draft-attachment@canonical",
         "post:praisonai-jwt-default@canonical",
         "strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce",
+        "strict-200-v3:alias-043e2fc26bdd6275f9cae512",
+        "strict-200-v3:alias-04f677245516e574c5201c86",
         "strict-200-v3:alias-08f4ee97e5be53cda71a58d8",
+        "strict-200-v3:alias-1ac241b6b959b320f90a397c",
+        "strict-200-v3:alias-29dedb40ead513739ee1d647",
+        "strict-200-v3:alias-323bf07420daae79c5a0844f",
+        "strict-200-v3:alias-3f35b69df081559ab1fad010",
+        "strict-200-v3:alias-57569b18ed81b84118a1fdb1",
+        "strict-200-v3:alias-63a1cac4d02e61992ad6cf29",
+        "strict-200-v3:alias-69c709472a21c9ed2b2637a2",
+        "strict-200-v3:alias-7e96caa20b835ee167518f82",
+        "strict-200-v3:alias-8fde3b61bfb7a8b43050519d",
+        "strict-200-v3:alias-92431dcbbb3899c7f124c4dd",
+        "strict-200-v3:alias-948cde45baab136c086accc3",
+        "strict-200-v3:alias-9764e28bbc2e093b13aaac3e",
+        "strict-200-v3:alias-994d3f3f9e29079393c87538",
         "strict-200-v3:alias-99ee5f834a00aca5862a1926",
+        "strict-200-v3:alias-9dc5f3e6176baf486fd2696c",
+        "strict-200-v3:alias-a05009adfdf51481b4c4ab3d",
+        "strict-200-v3:alias-a87ef9051feecb7a9cd00c99",
+        "strict-200-v3:alias-b2364e4376391dd977cef4fa",
+        "strict-200-v3:alias-b52bedc69eca463aef477f74",
+        "strict-200-v3:alias-b957cebfc80b884b647c24e8",
     }
     indexed = {row["row_key"]: row for row in ledger}
     assert indexed["post:gitea-draft-attachment@canonical"]["row_state"] == "PASS"
@@ -263,6 +284,37 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     assert mysti["atomic_fix_members"] == ["c6daf9107a8dc14088feff4671657e6319e36628"]
     assert mysti["release_evidence"]["fix_member_sha"] == mysti["atomic_fix_members"][0]
     assert mysti["release_evidence"]["fixed_tag"] is None
+    prek = indexed["strict-200-v3:alias-04f677245516e574c5201c86"]
+    assert prek["row_state"] == "NARROW"
+    assert "GHSA-PWF7-47C3-MFHX" in prek["public_ids"]
+    hermes_session = indexed["strict-200-v3:alias-1ac241b6b959b320f90a397c"]
+    assert hermes_session["row_state"] == "NARROW"
+    getlogs = indexed["strict-200-v3:alias-63a1cac4d02e61992ad6cf29"]
+    assert getlogs["row_state"] == "NARROW" and set(getlogs["public_ids"]) == {
+        "CVE-2026-34599",
+        "GHSA-Q9J6-XCVX-PX63",
+    }
+    helper = indexed["strict-200-v3:alias-7e96caa20b835ee167518f82"]
+    assert helper["row_state"] == "PASS" and set(helper["public_ids"]) == {
+        "CVE-2026-42148",
+        "GHSA-X9QH-W4C4-54F9",
+    }
+    agentic = indexed["strict-200-v3:alias-8fde3b61bfb7a8b43050519d"]
+    assert agentic["row_state"] == "PASS"
+    assert agentic["atomic_fix_members"] == ["a0f9c2bf95b6203b3e1b24f92a7e390d6774de13"]
+    assert agentic["release_evidence"]["fix_sha"] == "0c2ec967736a8b6b85832c6bae2a3e74989705ec"
+    media = indexed["strict-200-v3:alias-948cde45baab136c086accc3"]
+    assert media["row_state"] == "PASS"
+    assert media["candidate_fix_edges"][0]["fix_sha"] == "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
+    assert set(media["public_ids"]) == {"CVE-2026-41345", "GHSA-68V4-HMWV-F43H"}
+    quay = indexed["strict-200-v3:alias-994d3f3f9e29079393c87538"]
+    assert quay["row_state"] == "UNKNOWN"
+    assert quay["release_evidence"]["vulnerable_tag"] is None
+    attachments = indexed["strict-200-v3:alias-b2364e4376391dd977cef4fa"]
+    assert attachments["row_state"] == "REJECT" and attachments["counting"]["canonical_instance"] is True
+    gitlab_mcp = indexed["strict-200-v3:alias-9dc5f3e6176baf486fd2696c"]
+    assert gitlab_mcp["row_state"] == "NARROW"
+    assert "GHSA-7C3W-FXGH-FRC7" in gitlab_mcp["public_ids"]
     filebrowser = indexed["post:filebrowser-scoped-fs@canonical"]
     assert filebrowser["row_state"] == "REJECT" and not any(filebrowser["counting"].values())
     assert set(filebrowser["overlap_with"]) == {
@@ -552,6 +604,71 @@ def verify_inherited_live() -> dict:
     }
 
 
+def verify_batch_i_live() -> dict:
+    ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
+    cache = Path.home() / ".cache/cve-analyzer/repos"
+
+    attachments = ledger["strict-200-v3:alias-b2364e4376391dd977cef4fa"]
+    oc = cache / "openclaw_openclaw"
+    parent_src = git(oc, "show", "0279f0945916f0c309703dd24cc0f1de3532d63f:src/gateway/chat-attachments.ts").stdout
+    assert "export function buildMessageWithAttachments(" in parent_src
+    assert 'Buffer.from(b64, "base64").byteLength' in parent_src
+    assert attachments["row_state"] == "REJECT"
+
+    prek = ledger["strict-200-v3:alias-04f677245516e574c5201c86"]
+    prek_repo = cache / "j178_prek-action"
+    parent_action = git(prek_repo, "show", "aa1aa3537bd5d7db7b20d2bcf88c0320f7dee2dd:action.yaml").stdout
+    candidate_action = git(prek_repo, "show", prek["candidate_fix_edges"][0]["candidate_sha"] + ":action.yaml").stdout
+    assert "${{ inputs.extra_args }}" in parent_action
+    assert "prek-version" not in parent_action
+    assert "${{ inputs.prek-version }}" in candidate_action
+    assert prek["row_state"] == "NARROW"
+
+    getlogs = ledger["strict-200-v3:alias-63a1cac4d02e61992ad6cf29"]
+    coolify = cache / "coollabsio_coolify"
+    parent_logs = git(
+        coolify,
+        "show",
+        getlogs["candidate_fix_edges"][0]["candidate_sha"] + "^:app/Livewire/Project/Shared/GetLogs.php",
+    ).stdout
+    candidate_logs = git(
+        coolify,
+        "show",
+        getlogs["candidate_fix_edges"][0]["candidate_sha"] + ":app/Livewire/Project/Shared/GetLogs.php",
+    ).stdout
+    assert "function getLogs" in parent_logs and "function downloadAllLogs" not in parent_logs
+    assert "function downloadAllLogs" in candidate_logs
+    assert getlogs["row_state"] == "NARROW"
+
+    media = ledger["strict-200-v3:alias-948cde45baab136c086accc3"]
+    first_fix = media["candidate_fix_edges"][0]["fix_sha"]
+    later = "e704323ff388ed21f6963f9b8e0b1b8dfaaabc5f"
+    assert git(oc, "merge-base", "--is-ancestor", first_fix, later, check=False).returncode == 0
+    later_parent = git(oc, "grep", "-n", "retainSafeHeadersForCrossOriginRedirectHeaders", later + "^", "--", "src/media/store.ts")
+    assert later_parent.returncode == 0
+    assert media["row_state"] == "PASS"
+
+    agentic = ledger["strict-200-v3:alias-8fde3b61bfb7a8b43050519d"]
+    af = cache / "github.com_ruvnet_agentic-flow"
+    merge_parents = git(af, "rev-list", "--parents", "-n", "1", agentic["release_evidence"]["fix_sha"]).stdout.split()
+    assert agentic["atomic_fix_members"][0] in merge_parents
+    assert len(git(af, "rev-list", "--parents", "-n", "1", agentic["atomic_fix_members"][0]).stdout.split()) == 2
+
+    quay = ledger["strict-200-v3:alias-994d3f3f9e29079393c87538"]
+    quay_repo = cache / "quay_quay"
+    tags = git(quay_repo, "tag", "-l", "*3.16*", "*3.17*").stdout.strip()
+    assert tags == ""
+    assert quay["row_state"] == "UNKNOWN"
+
+    return {
+        "state_changing_rows_replayed": 6,
+        "reject_rows": 1,
+        "narrow_rows": 2,
+        "unknown_rows": 1,
+        "pass_fix_recoveries": 2,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
@@ -560,6 +677,7 @@ def main() -> None:
     summary, additions, controls = verify_structural()
     live_counts = verify_live(additions) if args.live else None
     inherited_live = verify_inherited_live() if args.live else None
+    batch_i_live = verify_batch_i_live() if args.live else None
     result = {
         "status": "HOLD",
         "validation": "PASS",
@@ -569,6 +687,7 @@ def main() -> None:
         "structural_counts": summary["counts"],
         "live_counts": live_counts,
         "inherited_live": inherited_live,
+        "batch_i_live": batch_i_live,
         "route_controls": len(controls),
         "gate_status": {
             "public_id_alias_released": "PASS",
@@ -584,6 +703,7 @@ def main() -> None:
         (HERE / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     live_suffix = "" if live_counts is None else (
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
+        f", batch-I {batch_i_live['state_changing_rows_replayed']} targeted rows replayed"
     )
     print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 

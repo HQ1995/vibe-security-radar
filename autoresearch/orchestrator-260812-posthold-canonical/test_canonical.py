@@ -14,7 +14,7 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(summary["counts"]["canonical_source_components"], 211)
         self.assertEqual(
             summary["counts"]["released_rows_by_state"],
-            {"PASS": 191, "NARROW": 4, "UNKNOWN": 1, "REJECT": 3},
+            {"PASS": 181, "NARROW": 12, "UNKNOWN": 2, "REJECT": 4},
         )
         self.assertEqual(len(additions), 28)
         self.assertEqual(len(controls), 30)
@@ -48,6 +48,26 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(mysti["atomic_fix_members"], ["c6daf9107a8dc14088feff4671657e6319e36628"])
         self.assertEqual(mysti["release_evidence"]["fix_sha"], "6d709229b5199f6769fb3cf763e5122dcc43c079")
         self.assertIsNone(mysti["release_evidence"]["fixed_tag"])
+
+        attachments = next(
+            row
+            for row in verify.load_jsonl(verify.HERE / "ledger.jsonl")
+            if row["row_key"] == "strict-200-v3:alias-b2364e4376391dd977cef4fa"
+        )
+        self.assertEqual(attachments["row_state"], "REJECT")
+        quay = next(
+            row
+            for row in verify.load_jsonl(verify.HERE / "ledger.jsonl")
+            if row["row_key"] == "strict-200-v3:alias-994d3f3f9e29079393c87538"
+        )
+        self.assertEqual(quay["row_state"], "UNKNOWN")
+        media = next(
+            row
+            for row in verify.load_jsonl(verify.HERE / "ledger.jsonl")
+            if row["row_key"] == "strict-200-v3:alias-948cde45baab136c086accc3"
+        )
+        self.assertEqual(media["candidate_fix_edges"][0]["fix_sha"], "f865a5455ee03924a444e9ba0f1c4743d8fb6566")
+        self.assertEqual(media["row_state"], "PASS")
 
 
 if __name__ == "__main__":
