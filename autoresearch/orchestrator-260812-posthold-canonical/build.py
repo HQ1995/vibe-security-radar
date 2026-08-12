@@ -274,7 +274,7 @@ def build_outputs() -> tuple[str, str]:
             "Four released rows are NARROW after combining Batch 2 and post-hold adjudications.",
             "Three commit-only component rows remain UNKNOWN.",
             "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
-            "Current live release replay covers 32 targeted rows rather than every inherited released row.",
+            "Current live release replay covers 33 targeted rows rather than every inherited released row.",
         ],
     }
     summary_text = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

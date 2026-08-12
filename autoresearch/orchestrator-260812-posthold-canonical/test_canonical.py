@@ -40,6 +40,15 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(ha_mcp["atomic_fix_members"], ["0ca572a1452cbabc9004993d6a649afa3c0f435d"])
         self.assertEqual(ha_mcp["release_evidence"]["fix_sha"], "dc8eaa16a8550f885614655f14b6fd9fe429b278")
 
+        mysti = next(
+            row
+            for row in verify.load_jsonl(verify.HERE / "ledger.jsonl")
+            if row["row_key"] == "strict-200-v3:alias-08f4ee97e5be53cda71a58d8"
+        )
+        self.assertEqual(mysti["atomic_fix_members"], ["c6daf9107a8dc14088feff4671657e6319e36628"])
+        self.assertEqual(mysti["release_evidence"]["fix_sha"], "6d709229b5199f6769fb3cf763e5122dcc43c079")
+        self.assertIsNone(mysti["release_evidence"]["fixed_tag"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -252,6 +252,54 @@
         "The isolated 0ca572a1 tree passes all 46 OAuth unit tests. The published, unwithdrawn repository and reviewed global advisories both map the GHSA to CVE-2026-32111 and name 7.0.0 as the first patched release.",
         "The release edge remains squash carrier 39806871 -> dc8eaa16, while atomic_fix_members records the one minimum semantic fix member instead of treating the carrier as atomic."
       ]
+    },
+    {
+      "row_key": "strict-200-v3:alias-08f4ee97e5be53cda71a58d8",
+      "expected_row_state": "PASS",
+      "new_row_state": "PASS",
+      "decision": "DECOMPOSE_FIX_SQUASH_TO_MINIMUM_MEMBER",
+      "source_locator": "strict-U005-fix-squash",
+      "repository": "DeepMyst/Mysti",
+      "identity_relation": "FORMAL_ALIAS",
+      "causal_class": "AI_DIRECT_ROOT",
+      "mechanism": "A stable lexical workspace alias is hashed directly into the per-project memory namespace, so repointing that alias under a shared HOME reuses another real workspace's MEMORY.md; invariant: project-memory identity must bind to the canonical real workspace with a domain-separated, full-length key.",
+      "mechanism_key": "mysti-project-memory-lexical-path-cross-workspace-reuse",
+      "candidate_fix_edges": [
+        {
+          "candidate_sha": "bce0d2ba7904c056c576cf94db817635421d1f41",
+          "fix_sha": "6d709229b5199f6769fb3cf763e5122dcc43c079",
+          "origin_kind": "direct_commit"
+        }
+      ],
+      "atomic_fix_members": [
+        "c6daf9107a8dc14088feff4671657e6319e36628"
+      ],
+      "ai_provenance": {
+        "marker_sha": "bce0d2ba7904c056c576cf94db817635421d1f41",
+        "scope": "ATOMIC_COMMIT",
+        "marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+      },
+      "release_evidence": {
+        "kind": "git_tag_and_squash_fix",
+        "repo_cache": "deepmyst_mysti",
+        "candidate_sha": "bce0d2ba7904c056c576cf94db817635421d1f41",
+        "fix_sha": "6d709229b5199f6769fb3cf763e5122dcc43c079",
+        "fix_member_sha": "c6daf9107a8dc14088feff4671657e6319e36628",
+        "fix_pr": 49,
+        "vulnerable_tag": "v0.4.0",
+        "fixed_tag": null
+      },
+      "state_axes_updates": {
+        "alias_qa_action": "LIVE_GLOBAL_FORMAL_ALIAS_AND_FIRST_PARTY_ISSUE",
+        "negative_control_outcome": "PASS_AFTER_FIX_SQUASH_DECOMPOSITION",
+        "integration_state": "FIX_SQUASH_DECOMPOSED"
+      },
+      "notes_append": [
+        "The Claude-coauthored bce0d2ba delta adds initProjectMemory and keys its directory with sha256(literal workspacePath)[0:12]; the commit is exactly tag v0.4.0, and its parent has no per-project memory implementation.",
+        "First-party issue #46 identifies bce0d2ba/v0.4.0 as affected and demonstrates cross-workspace memory disclosure through a repointed lexical symlink. The published, unwithdrawn global GHSA formally aliases CVE-2026-14611 and cites the same issue, PR, and fix.",
+        "PR #49 is a squash. Its first member c6daf910 is the minimum semantic fix: canonical realpath plus a schema-separated full SHA-256 key. The second member only migrates legacy directories; the isolated c6daf910 tree passes its symlink-isolation test.",
+        "No fixed release tag exists in the repository. The global unreviewed advisory simultaneously says v0.4.0 is affected and that upgrading to v0.4.0 fixes it, so that sentence is rejected as contradictory metadata; this row claims a released vulnerable AI origin and commit-level fix, not a released fix version."
+      ]
     }
   ]
 }

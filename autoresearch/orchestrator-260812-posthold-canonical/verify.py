@@ -228,6 +228,7 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "post:gitea-draft-attachment@canonical",
         "post:praisonai-jwt-default@canonical",
         "strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce",
+        "strict-200-v3:alias-08f4ee97e5be53cda71a58d8",
         "strict-200-v3:alias-99ee5f834a00aca5862a1926",
     }
     indexed = {row["row_key"]: row for row in ledger}
@@ -257,6 +258,11 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     assert ha_mcp["atomic_fix_members"] == ["0ca572a1452cbabc9004993d6a649afa3c0f435d"]
     assert ha_mcp["release_evidence"]["candidate_member_sha"] == ha_mcp["candidate_fix_edges"][0]["candidate_sha"]
     assert ha_mcp["release_evidence"]["fix_member_sha"] == ha_mcp["atomic_fix_members"][0]
+    mysti = indexed["strict-200-v3:alias-08f4ee97e5be53cda71a58d8"]
+    assert mysti["row_state"] == "PASS" and mysti["repository"] == "DeepMyst/Mysti"
+    assert mysti["atomic_fix_members"] == ["c6daf9107a8dc14088feff4671657e6319e36628"]
+    assert mysti["release_evidence"]["fix_member_sha"] == mysti["atomic_fix_members"][0]
+    assert mysti["release_evidence"]["fixed_tag"] is None
     filebrowser = indexed["post:filebrowser-scoped-fs@canonical"]
     assert filebrowser["row_state"] == "REJECT" and not any(filebrowser["counting"].values())
     assert set(filebrowser["overlap_with"]) == {
@@ -505,12 +511,44 @@ def verify_inherited_live() -> dict:
     ha_global = advisory_alias("homeassistant-ai/ha-mcp", "GHSA-FMFG-9G7C-3VQ7", "CVE-2026-32111")
     assert ha_global["vulnerabilities"][0]["first_patched_version"] == "7.0.0"
 
+    mysti = ledger["strict-200-v3:alias-08f4ee97e5be53cda71a58d8"]
+    mysti_repo = Path.home() / ".cache/cve-analyzer/repos" / mysti["release_evidence"]["repo_cache"]
+    mysti_edge = mysti["candidate_fix_edges"][0]
+    mysti_fix_member = mysti["atomic_fix_members"][0]
+    for sha_value in {mysti_edge["candidate_sha"], mysti_edge["fix_sha"], mysti_fix_member}:
+        git(mysti_repo, "cat-file", "-e", f"{sha_value}^{{commit}}")
+    assert len(git(mysti_repo, "rev-list", "--parents", "-n", "1", mysti_edge["candidate_sha"]).stdout.split()) == 2
+    assert len(git(mysti_repo, "rev-list", "--parents", "-n", "1", mysti_fix_member).stdout.split()) == 2
+    assert "claude opus 4.6" in git(
+        mysti_repo, "show", "-s", "--format=%s%n%b", mysti["ai_provenance"]["marker_sha"]
+    ).stdout.lower()
+    assert git(mysti_repo, "rev-parse", "v0.4.0^{commit}").stdout.strip() == mysti_edge["candidate_sha"]
+    assert git(mysti_repo, "merge-base", "--is-ancestor", mysti_edge["fix_sha"], "v0.4.0", check=False).returncode == 1
+    vulnerable_source = git(mysti_repo, "show", f"{mysti_edge['candidate_sha']}:src/managers/MemoryManager.ts").stdout
+    assert ".update(workspacePath).digest('hex').substring(0, 12)" in vulnerable_source
+    fixed_source = git(mysti_repo, "show", f"{mysti_fix_member}:src/managers/MemoryManager.ts").stdout
+    assert "fs.realpathSync.native(workspacePath)" in fixed_source
+    assert "PROJECT_MEMORY_KEY_SCHEMA" in fixed_source
+    fix_pr = gh_json("repos/DeepMyst/Mysti/pulls/49")
+    fix_members = gh_json("repos/DeepMyst/Mysti/pulls/49/commits")
+    assert fix_pr["merged"] and fix_pr["merge_commit_sha"] == mysti_edge["fix_sha"]
+    assert mysti_fix_member == fix_members[0]["sha"]
+    issue = gh_json("repos/DeepMyst/Mysti/issues/46")
+    assert issue["state"] == "closed" and mysti_edge["candidate_sha"] in issue["body"]
+    mysti_global = gh_json("advisories/ghsa-fwpr-59hh-gr98")
+    assert mysti_global["withdrawn_at"] is None
+    assert {item["value"].upper() for item in mysti_global["identifiers"]} == {
+        "CVE-2026-14611",
+        "GHSA-FWPR-59HH-GR98",
+    }
+    assert "upgrading to version 0.4.0 is sufficient" in mysti_global["description"].lower()
+
     return {
         "admitted_alias_release_rows": 2,
-        "corrected_strict_fix_edges": 2,
+        "corrected_strict_fix_edges": 3,
         "semantic_overlap_controls": 1,
         "attribution_unknown_controls": 1,
-        "targeted_rows": 6,
+        "targeted_rows": 7,
     }
 
 

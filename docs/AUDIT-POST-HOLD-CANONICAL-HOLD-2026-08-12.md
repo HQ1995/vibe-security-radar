@@ -139,6 +139,23 @@ uv run --project /tmp/ha-mcp-u001-replay pytest -n 0 \
   /tmp/ha-mcp-u001-replay/tests/src/unit/test_oauth.py -q
 ```
 
+## Strict U005 fix squash 拆分（计数不变）
+
+`CVE-2026-14611 / GHSA-FWPR-59HH-GR98` 的现有 origin `bce0d2ba7904c056c576cf94db817635421d1f41` 是真实 AI 因果点，不是邻近提交误绑；需要修正的是 fix 的原子性和发布口径：
+
+- Claude Opus 4.6 co-authored 的 `bce0d2ba` 在 parent 没有 per-project memory 的前提下，新增 `initProjectMemory(workspacePath)`，并用 `sha256(literal workspacePath)[0:12]` 直接构造持久化目录。它恰为 tag `v0.4.0`。一方 issue #46 用同一 lexical symlink 先指向 victim、再指向 attacker workspace，复现了共享 `$HOME` 下跨项目加载 `MEMORY.md`。
+- PR #49 是 squash；其第一个 member `c6daf9107a8dc14088feff4671657e6319e36628` 已完整关闭该身份边界：对 workspace 做 `realpathSync.native()`（失败时 `path.resolve()`），再以 schema-domain-separated payload 计算 full SHA-256。第二个 member `40305cf3...` 只迁移 legacy 目录，不是消除泄漏所必需。
+- 在 detached `c6daf910` 上，仓库新增的 symlink-isolation test 实跑 `1 passed`。账本因此保留发布 edge `bce0d2ba → 6d709229`，并记录 `atomic_fix_members=[c6daf910...]`，不再把整个 squash carrier 当作原子修复。
+- global GHSA 为 published、未撤回，并正式列出 CVE/GHSA 两个 identifiers；它引用一方 issue #46、PR #49 和 exact fix。该 unreviewed 文本却同时说 `v0.4.0` affected 和“升级到 `v0.4.0` 即修复”，内部矛盾，故账本明确拒绝后一句作为 fixed-release evidence。当前可证明的是：AI origin 已进入 `v0.4.0`，fix 已在主线 commit，仓库尚无包含 fix 的 tag。
+
+定向重放：
+
+```zsh
+git -C ~/.cache/cve-analyzer/repos/deepmyst_mysti worktree add --detach /tmp/mysti-u005-replay c6daf9107a8dc14088feff4671657e6319e36628
+npm --prefix /tmp/mysti-u005-replay ci --ignore-scripts --no-audit --no-fund
+npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryManager.test.ts --maxWorkers=1
+```
+
 ## 仍阻断最终 200 的发布级行
 
 ### REJECT（3）
@@ -180,9 +197,10 @@ uv run --project /tmp/ha-mcp-u001-replay pytest -n 0 \
 - 追加重放 Gitea/PraisonAI 2/2：formal alias、candidate/fix 和 release/package containment 均闭合；
 - U052 严格 edge 1/1：root AI marker、六成员 ancestry、旧 `94a` 缺失关键行为、`9f66` 最小闭合点、`v0.10.1` carrier 与正式 alias 均闭合；
 - U001 严格 edge 1/1：origin/fix 两侧 PR member-to-squash 映射、最小 fix member、`v6.7.2 → v7.0.0` 与正式 alias 均闭合；
+- U005 严格 edge 1/1：AI origin delta、`v0.4.0` containment、PR #49 两成员 squash、最小 fix member、一方 issue 与 global formal alias 均闭合；错误的“`v0.4.0` 已修复”元数据未被采用；
 - 最终仍强制 `status=HOLD`、`integration_ready=false`、`final_count=null`。
 
-闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 32 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
+闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 33 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
 
 ## 可重放命令
 
