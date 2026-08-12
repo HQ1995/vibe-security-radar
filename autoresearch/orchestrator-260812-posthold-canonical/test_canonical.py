@@ -14,7 +14,7 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(summary["counts"]["canonical_source_components"], 211)
         self.assertEqual(
             summary["counts"]["released_rows_by_state"],
-            {"PASS": 181, "NARROW": 12, "UNKNOWN": 2, "REJECT": 4},
+            {"PASS": 159, "NARROW": 26, "UNKNOWN": 4, "REJECT": 10},
         )
         self.assertEqual(len(additions), 28)
         self.assertEqual(len(controls), 30)
@@ -68,6 +68,20 @@ class CanonicalLedgerTest(unittest.TestCase):
         )
         self.assertEqual(media["candidate_fix_edges"][0]["fix_sha"], "f865a5455ee03924a444e9ba0f1c4743d8fb6566")
         self.assertEqual(media["row_state"], "PASS")
+
+        ledger = verify.load_jsonl(verify.HERE / "ledger.jsonl")
+        graphiti = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-081a549b9da97e4d5e1e54c4")
+        self.assertEqual(graphiti["row_state"], "UNKNOWN")
+        self.assertEqual(graphiti["candidate_fix_edges"][0]["candidate_sha"], "1d94f7a3e3cebeba404aa4b48cf3d0742750595f")
+        coder = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-ed3fab545510d72c9e9ecc14")
+        self.assertEqual(coder["row_state"], "REJECT")
+        self.assertIsNone(coder["release_evidence"]["vulnerable_tag"])
+        actual = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-3ed594d20d11056d42d54528")
+        self.assertEqual(actual["row_state"], "PASS")
+        self.assertEqual(actual["atomic_fix_members"], ["48699c46b1b5cc296bc76dd637edb47b0c02d926"])
+        faraday = next(row for row in ledger if row["row_key"] == "post:faraday-uri-authority@canonical")
+        self.assertEqual(faraday["row_state"], "PASS")
+        self.assertEqual(faraday["candidate_fix_edges"][0]["candidate_sha"], "a6d3a3a0bf59c2ab307d0abd91bc126aef5561bc")
 
 
 if __name__ == "__main__":

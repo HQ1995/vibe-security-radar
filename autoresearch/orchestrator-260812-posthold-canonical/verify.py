@@ -199,10 +199,10 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         {"STRICT_RELEASED": 132, "INCOMPLETE_RELEASED": 67, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
     )
     assert Counter(row["row_state"] for row in released) == Counter(
-        {"PASS": 181, "NARROW": 12, "UNKNOWN": 2, "REJECT": 4}
+        {"PASS": 159, "NARROW": 26, "UNKNOWN": 4, "REJECT": 10}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 363
+    assert len(public_ids) == len(set(public_ids)) == 366
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
@@ -223,23 +223,41 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
 
     corrected = {item["row_key"]: item for item in corrections["corrections"]}
     assert set(corrected) == {
+        "post:argo-artifactgc-podspec@canonical",
         "post:coolify-trust-host-cache@canonical",
+        "post:faraday-uri-authority@canonical",
+        "post:filebrowser-delete-scope@canonical",
         "post:filebrowser-scoped-fs@canonical",
         "post:gitea-draft-attachment@canonical",
         "post:praisonai-jwt-default@canonical",
         "strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce",
         "strict-200-v3:alias-043e2fc26bdd6275f9cae512",
+        "strict-200-v3:alias-04967329955171a53cc2731f",
         "strict-200-v3:alias-04f677245516e574c5201c86",
+        "strict-200-v3:alias-081a549b9da97e4d5e1e54c4",
         "strict-200-v3:alias-08f4ee97e5be53cda71a58d8",
+        "strict-200-v3:alias-1416131f1ab575212ff869b2",
+        "strict-200-v3:alias-169a79f1a59e092002eab928",
+        "strict-200-v3:alias-17d78446a20e0607b519cb7d",
         "strict-200-v3:alias-1ac241b6b959b320f90a397c",
+        "strict-200-v3:alias-1c31c40c0a061d5194e8ba95",
+        "strict-200-v3:alias-21d75c6b2298811581b2259d",
+        "strict-200-v3:alias-2788167921d685f8a3bb43a5",
         "strict-200-v3:alias-29dedb40ead513739ee1d647",
         "strict-200-v3:alias-323bf07420daae79c5a0844f",
+        "strict-200-v3:alias-3cac93e2e744b1b362bb38a6",
+        "strict-200-v3:alias-3ed594d20d11056d42d54528",
         "strict-200-v3:alias-3f35b69df081559ab1fad010",
+        "strict-200-v3:alias-444d166bd62f8714937b931d",
+        "strict-200-v3:alias-470d0cf2ef6e3a7cf2d1be73",
+        "strict-200-v3:alias-4f3fe99f85fab6a063ea6784",
         "strict-200-v3:alias-57569b18ed81b84118a1fdb1",
         "strict-200-v3:alias-63a1cac4d02e61992ad6cf29",
         "strict-200-v3:alias-69c709472a21c9ed2b2637a2",
         "strict-200-v3:alias-7e96caa20b835ee167518f82",
+        "strict-200-v3:alias-8099a555171349d287af92d",
         "strict-200-v3:alias-8fde3b61bfb7a8b43050519d",
+        "strict-200-v3:alias-9012f3e444c033b0f2a19660",
         "strict-200-v3:alias-92431dcbbb3899c7f124c4dd",
         "strict-200-v3:alias-948cde45baab136c086accc3",
         "strict-200-v3:alias-9764e28bbc2e093b13aaac3e",
@@ -247,10 +265,16 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "strict-200-v3:alias-99ee5f834a00aca5862a1926",
         "strict-200-v3:alias-9dc5f3e6176baf486fd2696c",
         "strict-200-v3:alias-a05009adfdf51481b4c4ab3d",
+        "strict-200-v3:alias-a16652492e42b6eefef74358",
         "strict-200-v3:alias-a87ef9051feecb7a9cd00c99",
         "strict-200-v3:alias-b2364e4376391dd977cef4fa",
         "strict-200-v3:alias-b52bedc69eca463aef477f74",
         "strict-200-v3:alias-b957cebfc80b884b647c24e8",
+        "strict-200-v3:alias-ca54d2dace0b4a1f719ce3be",
+        "strict-200-v3:alias-e185a69fdf0f5a626f9bc3d0",
+        "strict-200-v3:alias-ed3fab545510d72c9e9ecc14",
+        "strict-200-v3:alias-f0b371318e30448b9a250d8a",
+        "strict-200-v3:component-ironclaw-cw23-command-risk",
     }
     indexed = {row["row_key"]: row for row in ledger}
     assert indexed["post:gitea-draft-attachment@canonical"]["row_state"] == "PASS"
@@ -321,6 +345,22 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "post:filebrowser-delete-scope@canonical",
         "post:filebrowser-dangling-write@canonical",
     }
+    graphiti = indexed["strict-200-v3:alias-081a549b9da97e4d5e1e54c4"]
+    assert graphiti["row_state"] == "UNKNOWN"
+    assert graphiti["candidate_fix_edges"][0]["candidate_sha"] == "1d94f7a3e3cebeba404aa4b48cf3d0742750595f"
+    coder = indexed["strict-200-v3:alias-ed3fab545510d72c9e9ecc14"]
+    assert coder["row_state"] == "REJECT" and coder["counting"]["canonical_instance"] is True
+    assert coder["release_evidence"]["vulnerable_tag"] is None
+    karakeep = indexed["strict-200-v3:alias-21d75c6b2298811581b2259d"]
+    assert karakeep["row_state"] == "REJECT" and "GHSA-MG93-F9MW-WPGJ" in karakeep["public_ids"]
+    actual = indexed["strict-200-v3:alias-3ed594d20d11056d42d54528"]
+    assert actual["row_state"] == "PASS"
+    assert actual["atomic_fix_members"] == ["48699c46b1b5cc296bc76dd637edb47b0c02d926"]
+    faraday = indexed["post:faraday-uri-authority@canonical"]
+    assert faraday["row_state"] == "PASS"
+    assert faraday["candidate_fix_edges"][0]["candidate_sha"] == "a6d3a3a0bf59c2ab307d0abd91bc126aef5561bc"
+    delete_scope = indexed["post:filebrowser-delete-scope@canonical"]
+    assert delete_scope["row_state"] == "REJECT" and delete_scope["counting"]["canonical_instance"] is True
     assert summary["source_envelopes"] == {
         "strict_document_rows": 132,
         "broad_released_max": 199,
@@ -669,6 +709,98 @@ def verify_batch_i_live() -> dict:
     }
 
 
+def verify_batch_ii_live() -> dict:
+    ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
+    cache = Path.home() / ".cache/cve-analyzer/repos"
+    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
+
+    graphiti = ledger["strict-200-v3:alias-081a549b9da97e4d5e1e54c4"]
+    g_repo = cache / "getzep_graphiti"
+    search_utils = git(g_repo, "show", "v0.28.1:graphiti_core/search/search_utils.py").stdout
+    assert 'group_id:"{g}"' in search_utils
+    search_py = git(g_repo, "show", "v0.28.1:graphiti_core/search/search.py").stdout
+    assert "from graphiti_core.search.search_utils import" in search_py
+    assert ".search_ops" not in search_py
+    assert graphiti["row_state"] == "UNKNOWN"
+
+    coder = ledger["strict-200-v3:alias-ed3fab545510d72c9e9ecc14"]
+    c_repo = cache / "coder_coder"
+    member = coder["candidate_fix_edges"][0]["candidate_sha"]
+    carrier = coder["candidate_fix_edges"][0]["carrier_sha"]
+    fix = coder["candidate_fix_edges"][0]["fix_sha"]
+    assert git(c_repo, "merge-base", "--is-ancestor", carrier, "v2.34.0", check=False).returncode == 0
+    assert git(c_repo, "merge-base", "--is-ancestor", fix, "v2.34.0", check=False).returncode == 0
+    assert git(c_repo, "merge-base", "--is-ancestor", carrier, "v2.34.0-rc.0", check=False).returncode == 1
+    parent = git(c_repo, "rev-parse", member + "^").stdout.strip()
+    parent_src = git(c_repo, "show", parent + ":coderd/azureidentity/azureidentity.go").stdout
+    assert "allowedCertHosts" in parent_src
+    assert coder["row_state"] == "REJECT"
+
+    karakeep = ledger["strict-200-v3:alias-21d75c6b2298811581b2259d"]
+    k_repo = cache / "karakeep-app_karakeep"
+    assert git(k_repo, "cat-file", "-e", "v0.30.0:apps/workers/scripts/parseHtmlSubprocess.ts", check=False).returncode != 0
+    crawler = git(k_repo, "show", "v0.30.0:apps/workers/workers/crawlerWorker.ts").stdout
+    assert "meta.readableContentHtml" in crawler
+    assert karakeep["row_state"] == "REJECT"
+
+    argo = ledger["post:argo-artifactgc-podspec@canonical"]
+    a_repo = cache / "argoproj_argo-workflows"
+    parents = git(a_repo, "rev-list", "--parents", "-n", "1", argo["candidate_fix_edges"][0]["candidate_sha"]).stdout.split()
+    assert len(parents) == 2
+    assert "Claude Opus 4.6" in git(a_repo, "log", "-1", "--format=%B", argo["candidate_fix_edges"][0]["candidate_sha"]).stdout
+    assert argo["row_state"] == "UNKNOWN"
+
+    actual = ledger["strict-200-v3:alias-3ed594d20d11056d42d54528"]
+    act_repo = cache / "actualbudget_actual"
+    origin_parent = git(act_repo, "rev-parse", actual["candidate_fix_edges"][0]["candidate_sha"] + "^").stdout.strip()
+    assert git(act_repo, "cat-file", "-e", origin_parent + ":packages/cli/src/output.ts", check=False).returncode != 0
+    origin = git(act_repo, "show", actual["candidate_fix_edges"][0]["candidate_sha"] + ":packages/cli/src/output.ts").stdout
+    assert "function escapeCsv" in origin and "FORMULA_TRIGGERS" not in origin
+    fix_member = git(act_repo, "show", actual["atomic_fix_members"][0] + ":packages/cli/src/output.ts").stdout
+    assert "FORMULA_TRIGGERS" in fix_member
+    assert actual["row_state"] == "PASS"
+
+    faraday = ledger["post:faraday-uri-authority@canonical"]
+    f_repo = cache / "lostisland_faraday"
+    vulnerable = git(f_repo, "show", "v2.14.1:lib/faraday/connection.rb").stdout
+    assert "url.start_with?('//')" in vulnerable
+    assert "url.to_s if url.respond_to?(:host)" not in vulnerable
+    fixed = git(f_repo, "show", "v2.14.2:lib/faraday/connection.rb").stdout
+    assert "url.to_s if url.respond_to?(:host)" in fixed
+    assert faraday["row_state"] == "PASS"
+
+    sticker = ledger["strict-200-v3:alias-169a79f1a59e092002eab928"]
+    oc = cache / "openclaw_openclaw"
+    sticker_parent = git(oc, "rev-parse", sticker["candidate_fix_edges"][0]["candidate_sha"] + "^").stdout.strip()
+    parent_fetch = git(oc, "show", sticker_parent + ":src/media/fetch.ts").stdout
+    assert "Failed to fetch media from ${url}" in parent_fetch
+    names = git(oc, "diff", "--name-only", sticker_parent, sticker["candidate_fix_edges"][0]["candidate_sha"]).stdout
+    assert "src/media/fetch.ts" not in names
+    assert sticker["row_state"] == "REJECT"
+
+    delete_scope = ledger["post:filebrowser-delete-scope@canonical"]
+    fb = cache / "filebrowser_filebrowser"
+    scoped = git(fb, "show", "7c2c0a11b31b2bb214d741005a0b02b1764208b3:files/scoped.go").stdout
+    assert "func (s *ScopedFs) RemoveAll(path string) error {\n\treturn s.base.RemoveAll(path)" in scoped
+    remove_all = scoped.split("func (s *ScopedFs) RemoveAll")[1].split("func ")[0]
+    assert "s.guard(" not in remove_all
+    assert delete_scope["row_state"] == "REJECT"
+
+    fission = ledger["strict-200-v3:alias-1416131f1ab575212ff869b2"]
+    fi = v2 / fission["release_evidence"]["repo_cache"]
+    assert git(fi, "cat-file", "-e", "v1.24.0:pkg/webhook/httptrigger.go", check=False).returncode == 0
+    assert git(fi, "merge-base", "--is-ancestor", fission["candidate_fix_edges"][0]["carrier_sha"], "v1.24.0", check=False).returncode == 1
+    assert fission["row_state"] == "REJECT"
+
+    return {
+        "state_changing_rows_replayed": 9,
+        "reject_rows": 5,
+        "narrow_rows": 0,
+        "unknown_rows": 2,
+        "pass_rows": 2,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
@@ -678,6 +810,7 @@ def main() -> None:
     live_counts = verify_live(additions) if args.live else None
     inherited_live = verify_inherited_live() if args.live else None
     batch_i_live = verify_batch_i_live() if args.live else None
+    batch_ii_live = verify_batch_ii_live() if args.live else None
     result = {
         "status": "HOLD",
         "validation": "PASS",
@@ -688,6 +821,7 @@ def main() -> None:
         "live_counts": live_counts,
         "inherited_live": inherited_live,
         "batch_i_live": batch_i_live,
+        "batch_ii_live": batch_ii_live,
         "route_controls": len(controls),
         "gate_status": {
             "public_id_alias_released": "PASS",
@@ -704,6 +838,7 @@ def main() -> None:
     live_suffix = "" if live_counts is None else (
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
         f", batch-I {batch_i_live['state_changing_rows_replayed']} targeted rows replayed"
+        f", batch-II {batch_ii_live['state_changing_rows_replayed']} targeted rows replayed"
     )
     print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 

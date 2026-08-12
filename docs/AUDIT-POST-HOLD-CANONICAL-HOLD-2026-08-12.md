@@ -22,12 +22,12 @@
 
 | 状态 | 发布级行数 | 是否可直接进入最终计数 |
 |---|---:|---|
-| PASS | 181 | 仅表示当前 ledger 的行级 PASS；继承的未抽样行仍受覆盖限制 |
-| NARROW | 12 | 只能按写明的窄机制使用 |
-| UNKNOWN | 2 | 否 |
-| REJECT | 4 | 否 |
+| PASS | 159 | 仅表示当前 ledger 的行级 PASS；继承的未抽样行仍受覆盖限制 |
+| NARROW | 26 | 只能按写明的窄机制使用 |
+| UNKNOWN | 4 | 否 |
+| REJECT | 10 | 否 |
 
-先前的 `200` 只是含重复 umbrella 的 source envelope；File Browser 终审后降为 `199`。账本按 fail-closed 规则输出 `HOLD`，没有把 REJECT、UNKNOWN 或 NARROW 偷换成 PASS。
+先前的 `200` 只是含重复 umbrella 的 source envelope；File Browser 终审后降为 `199`。账本按 fail-closed 规则输出 `HOLD`，没有把 REJECT、UNKNOWN 或 NARROW 偷换成 PASS。Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159。NARROW/UNKNOWN/REJECT 一律不计入 claim-grade 最终 200。
 
 ## 本轮 28 个发布级候选的红队结果
 
@@ -158,19 +158,27 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 
 ## 仍阻断最终 200 的发布级行
 
-### REJECT（4）
+### REJECT（10）
 
 - Gitea OAuth reactivation：CVE-2026-55987 / GHSA-VRHC-JJFC-M3M3。
 - GitPython positional `--file`：GHSA-3WXW-XV34-2FRG。
 - Scriban lazy multiplication：GHSA-89CF-6HMV-8RXM。
 - OpenClaw chat-attachment decode-before-limit：CVE-2026-29612 / GHSA-W2CG-VXX6-5XJG（Batch I row 22；AI 只复制了已有 `Buffer.from` 路径）。
+- Coder Azure cert-host revert：CVE-2026-45796 / GHSA-686C-7VGV-V3FX（Batch II row 3；未发布 revert，`v2.34.0` 同时含 carrier 与 restoring fix）。
+- Karakeep Reddit HTML passthrough：CVE-2026-27627 / GHSA-MG93-F9MW-WPGJ（Batch II row 10；复制 human `f5c32d94` 旧 bug，candidate 不在 `v0.30.0`）。
+- better-auth oauth-proxy matcher：GHSA-WXW3-Q3M9-C3JR（Batch II row 14；同日 revert，未进入 tag）。
+- Fission HTTPTrigger webhook retire：CVE-2026-50569 / GHSA-VCHH-R53J-8MPW（Batch II row 17；parent webhook 本就未强制 RelativeURL/Prefix）。
+- OpenClaw Telegram sticker fetch：GHSA-XWCJ-HWHF-H378（Batch II row 22；parent `fetch.ts` 已插 bot-token URL）。
+- File Browser delete-scope：CVE-2026-55667 / GHSA-FMM7-X4GX-8JHR（Batch II row 23；AI `847d08bd` 不是 incomplete remediator，human `7c2c0a11` 才是）。
 
-### UNKNOWN（2）
+### UNKNOWN（4）
 
 - Coolify TrustHosts cold-cache attribution：CVE-2026-34198 / GHSA-CGJ8-7M5Q-X5GV。
 - Quay org-mirror SSRF release containment：CVE-2026-2376 / GHSA-9W78-X9JW-9C7M（Batch I row 17；本地 clone 无 `v3.16.0`/`v3.17.0` tag，也没有未修复 origin 的已发布制品）。
+- Graphiti group_ids Lucene helper：CVE-2026-32247 / GHSA-GG5M-55JJ-8M5G（Batch II row 1；copied helper 无 recovered `.search_ops` 调用路径）。
+- Argo ArtifactGC PodSpecPatch：CVE-2026-54526 / GHSA-48P8-G2FX-3WWM（Batch II row 5；merge-from-fork 的 private-fork member 未回收）。
 
-### NARROW（12）
+### NARROW（26）
 
 - Hermes cross-profile session search：CVE-2026-49956 / GHSA-MGXW-V6RH-WCV6。
 - OpenClaw Feishu webhook scoped evidence：CVE-2026-32974 / CVE-2026-44109 / GHSA-G353-MGV3-8PCJ / GHSA-XH72-V6V9-MWHC。
@@ -184,8 +192,22 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - Batch I row 16 Feishu webhook 新表面：CVE-2026-28478 / GHSA-Q447-RJ3R-2CGH。
 - Batch I row 19 artifact `job_id` 新表面：CVE-2026-61462 / GHSA-5383-J2P9-QFG3 / GHSA-7C3W-FXGH-FRC7。
 - Batch I row 24 suspended-process sweeper：CVE-2026-27486 / GHSA-JFV4-H8MC-JCP8。
+- Batch II row 2 frontend compose unbounded logs：CVE-2025-32425 / GHSA-VW3V-WHVP-33V5。
+- Batch II row 4 Untar TypeSymlink：CVE-2026-32885 / GHSA-X2XQ-QHJF-5MVG。
+- Batch II row 6 Anthropic PDF `force_download`：CVE-2026-25580 / GHSA-2JRP-274C-JHV3。
+- Batch II row 7 exec-event heartbeat：CVE-2026-41329 / GHSA-G5CG-8X5W-7JPM。
+- Batch II row 8 node-host on-miss skip：CVE-2026-28391 / GHSA-QJ77-C3C8-9C3Q。
+- Batch II row 9 PDF validate-then-I/O seam：CVE-2026-32232 / GHSA-2M67-CXXQ-C3H8。
+- Batch II row 11 native-vm replacement：CVE-2025-69288 / GHSA-PQGX-6WG3-GMVR。
+- Batch II row 12 Claude deploy symlink copy：CVE-2026-45539 / GHSA-Q5PP-GVJG-H7V4。
+- Batch II row 13 `/music/temp/` startswith：CVE-2026-10108 / GHSA-5J8P-5RRJ-8WJG。
+- Batch II row 15 `OUROBOROS_CLI_PATH`：CVE-2026-47211 / GHSA-C4M7-2GWP-VW76。
+- Batch II row 16 Ironclaw High `contains()` weakening：CVE-2026-18980 / GHSA-CW23-QWR7-C655。
+- Batch II row 18 delimiter-free hash concat：CVE-2026-11330 / GHSA-5GVR-V6QV-H5MM。
+- Batch II row 19 Token Users API：CVE-2026-63102 / GHSA-H4RQ-P45C-642R。
+- Batch II row 21 PrefixSearch regConfig：CVE-2026-45288 / GHSA-VMW2-QWM8-X84C。
 
-即使把十二条 NARROW 全按其窄范围保留，当前也只有 193 个可接纳发布级 source rows；至少还要替换 4 个 REJECT、闭合 2 个 UNKNOWN，并新增无重复组件，才可能到 200。继承的 74 条 post-strict 中只有 20 条做过 Batch 1 adversarial sampling，这一 coverage blocker 也尚未消失。Batch I 审的是 strict-200-v3 的 24 行，不能拿来填那 74 行的覆盖缺口。
+即使把二十六条 NARROW 全按其窄范围保留，当前也只有 185 个可接纳发布级 source rows；至少还要替换 10 个 REJECT、闭合 4 个 UNKNOWN，并新增无重复组件，才可能到 200。继承的 74 条 post-strict 中只有 20 条做过 Batch 1 adversarial sampling，这一 coverage blocker 也尚未消失。Batch I/II 审的是 strict-200-v3 与三条 post-strict 行，不能拿来填那 74 行的覆盖缺口。
 
 ## Verifier 闸门
 
@@ -194,8 +216,8 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - 9 个 source artifacts 的 SHA-256 全匹配；
 - builder 对 `ledger.jsonl` / `summary.json` byte-identical；
 - 271 个 row keys 唯一，211 个 canonical components 守恒；
-- 30 个 non-counting route controls 为 `29 REJECT / 1 UNKNOWN`；Batch H 的 public IDs 与 363 个 canonical public IDs 零交集。既有 `HXVM` control 与 canonical 组件共享两个正式 alias，但拒绝的是后出的 `3affd5e8` sanitizer route，canonical 接纳的是不同的早期 `db67492a → 018494fa` contributor edge；
-- 363 个 canonical public-ID occurrences 全部唯一，无跨组件 alias collision；Batch I 补了 5 个同组件 alias（`GHSA-Q9J6-XCVX-PX63`、`GHSA-4MPW-WCJ4-V9PP`、`GHSA-X9QH-W4C4-54F9`、`CVE-2026-41345`、`GHSA-7C3W-FXGH-FRC7`），没有新增 component；
+- 30 个 non-counting route controls 为 `29 REJECT / 1 UNKNOWN`；Batch H 的 public IDs 与 366 个 canonical public IDs 零交集。既有 `HXVM` control 与 canonical 组件共享两个正式 alias，但拒绝的是后出的 `3affd5e8` sanitizer route，canonical 接纳的是不同的早期 `db67492a → 018494fa` contributor edge；
+- 366 个 canonical public-ID occurrences 全部唯一，无跨组件 alias collision；Batch I 补了 5 个同组件 alias，Batch II 再补 3 个（`GHSA-VW3V-WHVP-33V5`、`GHSA-MG93-F9MW-WPGJ`、`GHSA-PQGX-6WG3-GMVR`），没有新增 component；
 - 211 个 exact mechanism fingerprints 全部唯一；该机械检查不替代上面的 File Browser 语义终审；
 - 新增 39 个 public IDs 内部唯一，且与 Batch 2 canonical public IDs 零交集；
 - 28 个 mechanism fingerprints 唯一；
@@ -209,9 +231,10 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - U001 严格 edge 1/1：origin/fix 两侧 PR member-to-squash 映射、最小 fix member、`v6.7.2 → v7.0.0` 与正式 alias 均闭合；
 - U005 严格 edge 1/1：AI origin delta、`v0.4.0` containment、PR #49 两成员 squash、最小 fix member、一方 issue 与 global formal alias 均闭合；错误的“`v0.4.0` 已修复”元数据未被采用；
 - Batch I 24/24：独立 packet 覆盖 rows 1–24 各一次；integrator 接纳 14 PASS / 8 NARROW / 1 UNKNOWN / 1 REJECT。Row 15 packet 标 NARROW 是因为提议 fix `e704323f` 不是首个语义修复；替换为 `f865a545` 后 origin 与 npm containment 仍成立，故保持 PASS。未把 NARROW/UNKNOWN 提升为 PASS，也未把 199 写成 200；
+- Batch II 24/24：独立 packet 覆盖 ordinals 1–24 各一次；integrator 接纳 2 PASS / 14 NARROW / 2 UNKNOWN / 6 REJECT。未盲信 packet：row 9 保留 routing `mechanism_key`，拒绝 packet 重命名。未把 NARROW/UNKNOWN/REJECT 计为 claim-grade 200；
 - 最终仍强制 `status=HOLD`、`integration_ready=false`、`final_count=null`。
 
-闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 33 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
+闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 33 条有本轮 live replay，Batch I 另定向 6 行、Batch II 另定向 9 行，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
 
 ## Batch I：24 个 strict-200-v3 行的独立红队
 
@@ -246,6 +269,39 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 
 Replay 入口仍是同一组命令。Batch I 定向 live 检查：row 22 parent `Buffer.from`、row 3 `prek-version` 新表面、row 10 `downloadAllLogs`、row 15 `f865a545` 先于 `e704323f`、row 13 `a0f9c2bf` 是 merge 第二亲、row 17 本地无 3.16/3.17 tag。
 
+## Batch II：24 个 released 行的独立红队
+
+四份只读 packet（`/tmp/herdr-ai-slop-b2a` rows 1–6、`b2b` 7–12、`b2c` 13–18、`b2d` 19–24）机械覆盖 Batch II ordinals 1–24 各一次。Routing manifest SHA `1a11c7742bb817b27e8562cf181b4ca8eb478d74ed9add6e26135e27e19dfbcc`。Packet 与 routing 的 row identity 一致；rows 2/10/11 的额外 GHSA 是 alias 补丁，不是 identity mismatch。Routing、OSV `introduced`、同文件 overlap、ancestry-only、AI trailer 单独出现、commit subject 或模型投票都不当作因果。
+
+| 行 | 终审 | 相对冻结 PASS 的变化 | 直接依据 |
+|---:|---|---|---|
+| 1 | UNKNOWN | PASS→UNKNOWN | Graphiti copied `group_ids` Lucene helper；`search()` 仍走 parent `search_utils`；无 recovered `.search_ops` 调用 |
+| 2 | NARROW | PASS→NARROW；补 GHSA | frontend compose 无界 logs；`GHSA-VW3V-WHVP-33V5` |
+| 3 | REJECT | PASS→REJECT | 未发布 Azure cert-host revert；`tag --contains 9400eaa9` 起于同时含 fix 的 `v2.34.0` |
+| 4 | NARROW | PASS→NARROW | Untar `TypeSymlink`；fix member `257cdba5` |
+| 5 | UNKNOWN | PASS→UNKNOWN | merge-from-fork 单亲；private-fork member 不在 clone |
+| 6 | NARROW | PASS→NARROW | Anthropic PDF `force_download` 新表面 |
+| 7 | NARROW | PASS→NARROW | exec-event heartbeat；fix member `d94b9db` |
+| 8 | NARROW | PASS→NARROW | node-host on-miss skip；gateway skip 已在 `3b18efdd` |
+| 9 | NARROW | PASS→NARROW | PDF TOCTOU；保留 routing `mechanism_key`，拒绝 packet 重命名 |
+| 10 | REJECT | PASS→REJECT；补 GHSA | 复制 `f5c32d94` crawlerWorker 旧 bug；不在 `v0.30.0` |
+| 11 | NARROW | PASS→NARROW；补 GHSA | native-vm replacement；`GHSA-PQGX-6WG3-GMVR` |
+| 12 | NARROW | PASS→NARROW | Claude deploy target；回收 carrier `84abb22` |
+| 13 | NARROW | PASS→NARROW | `/music/temp/` startswith；fix member `d4acdf6c` |
+| 14 | REJECT | PASS→REJECT | oauth-proxy matcher 同日 revert；不在 tags |
+| 15 | NARROW | PASS→NARROW | 只算 `OUROBOROS_CLI_PATH`；`.env` load 更晚 |
+| 16 | NARROW | PASS→NARROW | Low→Never 未发布；已发布洞是 High `contains()` weakening |
+| 17 | REJECT | PASS→REJECT | webhook 从未强制 RelativeURL/Prefix；candidate 不在 `v1.24.0` |
+| 18 | NARROW | PASS→NARROW | 只算 delimiter concat；`slice(0,16)` 仍在 `v12.0.0` |
+| 19 | NARROW | PASS→NARROW | Token Users API；回收 carrier `ebb39d59` |
+| 20 | PASS | 记录 fix member | 直接 root CLI CSV；fix member `48699c46`；npm `26.5.2` 有 `escapeCsv` 无 `FORMULA_TRIGGERS`，`26.6.0` 有 |
+| 21 | NARROW | PASS→NARROW | PrefixSearch 表面；origin member `3408b01`，fix member `6852195` |
+| 22 | REJECT | PASS→REJECT | sticker 非 but-for；parent `fetch.ts` 已插 bot-token URL |
+| 23 | REJECT | PASS→REJECT | AI `847d08bd` 不是 incomplete remediator；human `7c2c0a11` 才是 |
+| 24 | PASS | 补空 edges | Faraday incomplete remediation；`v2.14.1` 有 `//` guard、无 `url.to_s`；`v2.14.2` 有 |
+
+Batch II 定向 live 检查：row 1 `search.py` 无 `.search_ops`、row 3 无含 carrier 不含 fix 的 tag、row 5 单亲 merge-from-fork、row 10 `v0.30.0` 无 `parseHtmlSubprocess.ts`、row 17 `v1.24.0` 仍有 webhook 且 carrier 不在该 tag、row 20 parent 无 `output.ts`、row 22 parent 插 `${url}`、row 23 `7c2c0a11` Remove 无 `guard`、row 24 `v2.14.1`/`v2.14.2` URI guard。
+
 ## 可重放命令
 
 ```zsh
@@ -255,7 +311,7 @@ python3 autoresearch/orchestrator-260812-posthold-canonical/verify.py --live
 python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
 ```
 
-`--live` 只读取三个本地一方 Git clones，并通过 `gh api` 读取公开 advisory；命令不打印 credential。结构 verifier 与 test 不需要网络。
+`--live` 只读取本地一方 Git clones，并通过 `gh api` 读取公开 advisory；命令不打印 credential。结构 verifier 与 test 不需要网络。Batch II 定向 replay 另读 `.ai-slop/cache` 下的 fission v2 clone。
 
 ## Durable artifacts
 
@@ -269,4 +325,4 @@ python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
 - `autoresearch/orchestrator-260812-posthold-canonical/verify.py`
 - `autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py`
 
-本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行与 Batch I 的 24 个 strict 行，并保留所有未闭合项。Batch H 没有提供补位项；Batch I 把发布级 PASS 从 191 降到 181，并增加 REJECT/UNKNOWN/NARROW。仍需替换 4 个 released REJECT、闭合 2 个 released UNKNOWN 并新增无重复组件；十二条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。
+本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行与 Batch I/II 的 48 个抽样行，并保留所有未闭合项。Batch H 没有提供补位项；Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159，并增加 REJECT/UNKNOWN/NARROW。仍需替换 10 个 released REJECT、闭合 4 个 released UNKNOWN 并新增无重复组件；二十六条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。
