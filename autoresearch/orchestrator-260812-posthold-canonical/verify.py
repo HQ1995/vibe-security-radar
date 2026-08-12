@@ -96,7 +96,7 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     assert summary["adjudications_sha256"] == sha256(HERE / "adjudications.json")
     assert summary["inherited_corrections_sha256"] == sha256(HERE / "inherited_corrections.json")
 
-    assert len(ledger) == 247
+    assert len(ledger) == 271
     assert len({row["row_key"] for row in ledger}) == len(ledger)
     for row in ledger:
         assert row["row_state"] in {"PASS", "REJECT", "NARROW", "BLOCKED", "UNKNOWN", "DUPLICATE"}
@@ -116,7 +116,8 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     controls = [row for row in ledger if row["record_kind"] == "POST_HOLD_ROUTE_CONTROL"]
     assert len(additions) == 28
     assert Counter(row["row_state"] for row in additions) == Counter({"PASS": 26, "NARROW": 2})
-    assert len(controls) == 6 and all(row["row_state"] == "REJECT" for row in controls)
+    assert len(controls) == 30
+    assert Counter(row["row_state"] for row in controls) == Counter({"REJECT": 29, "UNKNOWN": 1})
     assert all(not any(row["counting"].values()) for row in controls)
 
     base_components = [row for row in base if row["record_kind"] == "COMPONENT_ROW" and row["counting"]["canonical_instance"]]
@@ -140,6 +141,12 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
             *row["atomic_fix_members"],
         ):
             assert SHA_RE.fullmatch(sha_value)
+    for row in controls:
+        source_ref = row["source_refs"][0]
+        assert source_ref["sha256"] == source_hashes[source_ref["path"]]
+        assert SHA_RE.fullmatch(row["candidate_fix_edges"][0]["candidate_sha"])
+        assert row["state_axes"]["source_verdict"] == row["row_state"]
+        assert row["state_axes"]["negative_control_outcome"] == row["row_state"]
 
     base_shas = {
         value
@@ -196,6 +203,21 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
     assert len(public_ids) == len(set(public_ids)) == 358
+    control_ids = [value for row in controls for value in row["public_ids"]]
+    assert len(control_ids) == len(set(control_ids))
+    assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
+    hxvm = next(row for row in controls if row["row_key"] == "posthold-control:hxvm")
+    hxvm_component = next(row for row in canonical if "GHSA-HXVM-XJVF-93F3" in row["public_ids"])
+    assert hxvm["candidate_fix_edges"][0]["candidate_sha"] not in {
+        edge["candidate_sha"] for edge in hxvm_component["candidate_fix_edges"]
+    }
+    batch_h_ids = {
+        value
+        for row in controls
+        if row["row_key"].startswith("posthold-control:H")
+        for value in row["public_ids"]
+    }
+    assert not (set(public_ids) & batch_h_ids)
     fingerprints = [build.canonical_mechanism_fingerprint(row) for row in canonical]
     assert len(fingerprints) == len(set(fingerprints)) == 211
 
@@ -422,7 +444,7 @@ def main() -> None:
     live_suffix = "" if live_counts is None else (
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows']} admitted release rows live-replayed"
     )
-    print(f"PASS: 247 records, source envelope 132/199/211, HOLD{live_suffix}")
+    print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 
 
 if __name__ == "__main__":

@@ -17,7 +17,11 @@ class CanonicalLedgerTest(unittest.TestCase):
             {"PASS": 191, "NARROW": 4, "UNKNOWN": 1, "REJECT": 3},
         )
         self.assertEqual(len(additions), 28)
-        self.assertEqual(len(controls), 6)
+        self.assertEqual(len(controls), 30)
+        self.assertEqual(
+            {state: sum(row["row_state"] == state for row in controls) for state in ("REJECT", "UNKNOWN")},
+            {"REJECT": 29, "UNKNOWN": 1},
+        )
 
 
 if __name__ == "__main__":

@@ -4,11 +4,11 @@
 
 ## 结论
 
-本轮把 Batch 2 的冻结账本、Batch F/G、OpenClaw sanitizer closure 与 residual 审计合并进一个 machine ledger。机械结果是：
+本轮把 Batch 2 的冻结账本、Batch F/G/H、OpenClaw sanitizer closure 与 residual 审计合并进一个 machine ledger。机械结果是：
 
 | 口径 | 结果 |
 |---|---:|
-| Ledger records | 247 |
+| Ledger records | 271 |
 | Canonical source components | 211 |
 | Strict released source rows | 132 |
 | Incomplete-remediation released source rows | 67 |
@@ -66,7 +66,7 @@
 
 R02/R03 的 `NARROW` 是实质限制：PR #63277 的 Codex-generated、human-reviewed 广义修复与后续同边界 closure 成立，但 Homebrew/Cloud SDK sibling 行在 review chain 中被删。它们只能表述为 PR-level incomplete-remediation contribution，不能写成“发布 carrier 保留了对应 AI 原子 hunk”。
 
-## 同步保留的 6 个 REJECT 控制
+## 此前同步保留的 6 个 REJECT 控制
 
 | Route | Public identity | 原因 |
 |---|---|---|
@@ -78,6 +78,12 @@ R02/R03 的 `NARROW` 是实质限制：PR #63277 的 Codex-generated、human-rev
 | 7wv4 | CVE-2026-43531 / GHSA-7WV4-CC7P-JHXC | 对应 fix 已早于 sanitizer candidate |
 
 这些记录是 non-counting controls，避免以后因同 SHA、同文件或“都是 env”重新抬回候选池。
+
+## Batch H：24 个 OpenClaw / ChurchCRM route controls
+
+[Batch H 逐行报告](RESEARCH-POST-HOLD-OPENCLAW-CHURCHCRM-BATCH-H-2026-08-12.md) 的结论是 `PASS=0 / REJECT=23 / UNKNOWN=1`。23 个 REJECT 分别由非 AI origin、remediation-only、format/refactor preservation 或不同机制反证；唯一 UNKNOWN 是 OpenClaw QQBot `GHSA-FWGR-FPV9-VF5X`：真实 regression 与发布区间成立，但精确 vulnerable PR member 没有 AI marker，Cursor trailer 只存在于同一 squash 的无关成员。
+
+这 24 行全部作为 non-counting controls 写入同一 ledger；它们不增加 component、public-ID 或 mechanism-fingerprint 计数，也不改变 `132/199/211` source envelopes。
 
 ## 继承的 4 个发布级 UNKNOWN 终审
 
@@ -117,9 +123,10 @@ GitHub repo/global advisory 已直接声明 Gitea 与 PraisonAI 的 CVE/GHSA ali
 
 本轮 verifier 实际通过：
 
-- 8 个 source artifacts 的 SHA-256 全匹配；
+- 9 个 source artifacts 的 SHA-256 全匹配；
 - builder 对 `ledger.jsonl` / `summary.json` byte-identical；
-- 247 个 row keys 唯一，211 个 canonical components 守恒；
+- 271 个 row keys 唯一，211 个 canonical components 守恒；
+- 30 个 non-counting route controls 为 `29 REJECT / 1 UNKNOWN`；Batch H 的 public IDs 与 358 个 canonical public IDs 零交集。既有 `HXVM` control 与 canonical 组件共享两个正式 alias，但拒绝的是后出的 `3affd5e8` sanitizer route，canonical 接纳的是不同的早期 `db67492a → 018494fa` contributor edge；
 - 358 个 canonical public-ID occurrences 全部唯一，无跨组件 alias collision；
 - 211 个 exact mechanism fingerprints 全部唯一；该机械检查不替代上面的 File Browser 语义终审；
 - 新增 39 个 public IDs 内部唯一，且与 Batch 2 canonical public IDs 零交集；
@@ -157,4 +164,4 @@ python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
 - `autoresearch/orchestrator-260812-posthold-canonical/verify.py`
 - `autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py`
 
-本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行，并保留所有未闭合项，因此可以作为下一轮替换 3 个 REJECT、闭合 1 个 UNKNOWN 并新增至少 1 个组件的起点；四条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。
+本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行，并保留所有未闭合项。Batch H 没有提供补位项，因此仍需替换 3 个 released REJECT、闭合 1 个 released UNKNOWN 并新增至少 1 个无重复组件；四条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。

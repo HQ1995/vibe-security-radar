@@ -173,9 +173,9 @@ def build_control(row: dict, hashes: dict[str, str]) -> dict:
             }
         ],
         "state_axes": {
-            "source_verdict": "REJECT",
+            "source_verdict": row["row_state"],
             "alias_qa_action": "NOT_COUNTED",
-            "negative_control_outcome": "REJECT",
+            "negative_control_outcome": row["row_state"],
             "integration_state": "NON_COUNTING_CONTROL",
         },
     }
@@ -270,6 +270,7 @@ def build_outputs() -> tuple[str, str]:
             "One released component remains UNKNOWN and three remain REJECT after inherited-row closure.",
             "Four released rows are NARROW after combining Batch 2 and post-hold adjudications.",
             "Three commit-only component rows remain UNKNOWN.",
+            "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
             "Current live release replay covers 30 targeted rows rather than every inherited released row.",
         ],
     }
