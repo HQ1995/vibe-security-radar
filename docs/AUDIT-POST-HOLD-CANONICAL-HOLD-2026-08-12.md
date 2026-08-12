@@ -121,6 +121,24 @@ uv run --project /tmp/zae-u052-replay --extra dev pytest -n 0 \
   /tmp/zae-u052-replay/tests/unit/test_sync_limiter.py::TestShardRetry -q
 ```
 
+## Strict U001 fix squash 拆分（计数不变）
+
+`CVE-2026-32111 / GHSA-FMFG-9G7C-3VQ7` 的 AI origin 与发布因果均成立；缺口只在旧账本没有拆 fix squash：
+
+- PR #368 的原子 member `aae7acba91dc21fc897ef6b78989b1f548c4083e` 带明确 Claude Code marker，新增 OAuth consent `ha_url`、`form.get("ha_url")`，并在 `_validate_ha_credentials` 对 `f"{ha_url}/api/config"` 发出 unauthenticated server-side request。squash carrier `39806871c9720bf8afdcf3e061095c0dd63dea7f` 保留这三个关键点，并进入 vulnerable `v6.7.2`。
+- PR #748 的第一个原子 member `0ca572a1452cbabc9004993d6a649afa3c0f435d` 已完整关闭同一边界：移除表单与 token claims 中的 `ha_url`、删除 `_validate_ha_credentials`，改为启动时读取 server-side `HOMEASSISTANT_URL`。后续六个 members 只做文档、redirect-domain UI、merge conflict 与 lint/type 修正，没有重新引入该输入到 sink。
+- fix member 自身不是主线祖先，因为 PR 以 `dc8eaa16a8550f885614655f14b6fd9fe429b278` squash；因此 release edge 保留 `39806871 → dc8eaa16`，同时 `atomic_fix_members=[0ca572a1...]`，不再把整个 squash carrier 冒充原子修复。
+- 在 detached `0ca572a1` 上，`tests/src/unit/test_oauth.py` 实跑 `46 passed`；其中包括 consent POST、server URL/per-user token、REST/WebSocket proxy 路径。
+- 一方 [repository advisory](https://github.com/homeassistant-ai/ha-mcp/security/advisories/GHSA-fmfg-9g7c-3vq7) 与 global reviewed advisory 均 published、未撤回，直接声明 CVE/GHSA formal alias；前者给出 `<=6.7.2 → 7.0.0`，后者给出 `<7.0.0 → 7.0.0`。fix carrier 在 `v7.0.0`、不在 `v6.7.2`。
+
+定向重放：
+
+```zsh
+git -C ~/.cache/cve-analyzer/repos/homeassistant-ai_ha-mcp worktree add --detach /tmp/ha-mcp-u001-replay 0ca572a1452cbabc9004993d6a649afa3c0f435d
+uv run --project /tmp/ha-mcp-u001-replay pytest -n 0 \
+  /tmp/ha-mcp-u001-replay/tests/src/unit/test_oauth.py -q
+```
+
 ## 仍阻断最终 200 的发布级行
 
 ### REJECT（3）
@@ -161,9 +179,10 @@ uv run --project /tmp/zae-u052-replay --extra dev pytest -n 0 \
 - 29/29 一方 repo advisories 当前 `published` 且未撤回；有 CVE 的行经 repo/global identifiers 闭合；
 - 追加重放 Gitea/PraisonAI 2/2：formal alias、candidate/fix 和 release/package containment 均闭合；
 - U052 严格 edge 1/1：root AI marker、六成员 ancestry、旧 `94a` 缺失关键行为、`9f66` 最小闭合点、`v0.10.1` carrier 与正式 alias 均闭合；
+- U001 严格 edge 1/1：origin/fix 两侧 PR member-to-squash 映射、最小 fix member、`v6.7.2 → v7.0.0` 与正式 alias 均闭合；
 - 最终仍强制 `status=HOLD`、`integration_ready=false`、`final_count=null`。
 
-闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 31 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
+闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 32 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
 
 ## 可重放命令
 

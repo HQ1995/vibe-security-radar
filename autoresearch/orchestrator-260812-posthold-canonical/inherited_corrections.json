@@ -201,6 +201,57 @@
         "The six-member atomic closure ends at 9f66c42f, which adds random shard selection, cross-shard retry, and conditional doubling after WCU exhaustion; 20 targeted async/sync tests pass at that exact commit.",
         "The first-party advisory identifies <=0.10.0 as vulnerable and 0.10.1 as patched; v0.10.1 is the official merge carrier 481ce44d. Later aggregator commits improve proactive behavior but are not required for the client-side minimum security closure."
       ]
+    },
+    {
+      "row_key": "strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce",
+      "expected_row_state": "PASS",
+      "new_row_state": "PASS",
+      "decision": "DECOMPOSE_FIX_SQUASH_TO_MINIMUM_MEMBER",
+      "source_locator": "strict-U001-fix-squash",
+      "repository": "homeassistant-ai/ha-mcp",
+      "identity_relation": "FORMAL_ALIAS",
+      "causal_class": "AI_DIRECT_ROOT",
+      "mechanism": "Unauthenticated OAuth consent ha_url -> server request to attacker-selected /api/config and credential-bound tool clients; invariant: the Home Assistant origin must be fixed by server configuration, not OAuth form input.",
+      "mechanism_key": "ha-mcp-oauth-user-supplied-ha-url-ssrf",
+      "candidate_fix_edges": [
+        {
+          "candidate_sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+          "carrier_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+          "fix_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+          "origin_kind": "squash_member"
+        }
+      ],
+      "atomic_fix_members": [
+        "0ca572a1452cbabc9004993d6a649afa3c0f435d"
+      ],
+      "ai_provenance": {
+        "marker_sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+        "scope": "SQUASH_MEMBER",
+        "marker": "Generated with Claude Code; Co-Authored-By: Claude <noreply@anthropic.com>"
+      },
+      "release_evidence": {
+        "kind": "git_squash_and_tag",
+        "repo_cache": "homeassistant-ai_ha-mcp",
+        "candidate_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+        "candidate_member_sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+        "candidate_pr": 368,
+        "fix_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+        "fix_member_sha": "0ca572a1452cbabc9004993d6a649afa3c0f435d",
+        "fix_pr": 748,
+        "vulnerable_tag": "v6.7.2",
+        "fixed_tag": "v7.0.0"
+      },
+      "state_axes_updates": {
+        "alias_qa_action": "LIVE_FIRST_PARTY_FORMAL_ALIAS",
+        "negative_control_outcome": "PASS_AFTER_FIX_SQUASH_DECOMPOSITION",
+        "integration_state": "FIX_SQUASH_DECOMPOSED"
+      },
+      "notes_append": [
+        "PR #368 member aae7acba introduces the user-supplied ha_url form field and the unauthenticated request to {ha_url}/api/config; squash carrier 39806871 preserves the same primitive and is released through v6.7.2.",
+        "PR #748 member 0ca572a1 removes ha_url from the form and token claims, deletes _validate_ha_credentials, and makes HOMEASSISTANT_URL server-side; later PR members do not reintroduce the primitive.",
+        "The isolated 0ca572a1 tree passes all 46 OAuth unit tests. The published, unwithdrawn repository and reviewed global advisories both map the GHSA to CVE-2026-32111 and name 7.0.0 as the first patched release.",
+        "The release edge remains squash carrier 39806871 -> dc8eaa16, while atomic_fix_members records the one minimum semantic fix member instead of treating the carrier as atomic."
+      ]
     }
   ]
 }

@@ -227,6 +227,7 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "post:filebrowser-scoped-fs@canonical",
         "post:gitea-draft-attachment@canonical",
         "post:praisonai-jwt-default@canonical",
+        "strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce",
         "strict-200-v3:alias-99ee5f834a00aca5862a1926",
     }
     indexed = {row["row_key"]: row for row in ledger}
@@ -251,6 +252,11 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "9f66c42f06f3b87107ce327bede6416a582f0e60",
     ]
     assert zae["release_evidence"]["fix_sha"] == "481ce44d818d66e31d8837bc48519660ce4c267f"
+    ha_mcp = indexed["strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce"]
+    assert ha_mcp["row_state"] == "PASS" and ha_mcp["repository"] == "homeassistant-ai/ha-mcp"
+    assert ha_mcp["atomic_fix_members"] == ["0ca572a1452cbabc9004993d6a649afa3c0f435d"]
+    assert ha_mcp["release_evidence"]["candidate_member_sha"] == ha_mcp["candidate_fix_edges"][0]["candidate_sha"]
+    assert ha_mcp["release_evidence"]["fix_member_sha"] == ha_mcp["atomic_fix_members"][0]
     filebrowser = indexed["post:filebrowser-scoped-fs@canonical"]
     assert filebrowser["row_state"] == "REJECT" and not any(filebrowser["counting"].values())
     assert set(filebrowser["overlap_with"]) == {
@@ -465,12 +471,46 @@ def verify_inherited_live() -> dict:
     zae_global = advisory_alias("zeroae/zae-limiter", "GHSA-76RV-2R9V-C5M6", "CVE-2026-27695")
     assert zae_global["vulnerabilities"][0]["first_patched_version"] == "0.10.1"
 
+    ha_mcp = ledger["strict-200-v3:alias-02fb7aeb21b9f4e1ab18fbce"]
+    ha_repo = Path.home() / ".cache/cve-analyzer/repos" / ha_mcp["release_evidence"]["repo_cache"]
+    ha_edge = ha_mcp["candidate_fix_edges"][0]
+    ha_fix_member = ha_mcp["atomic_fix_members"][0]
+    for sha_value in {ha_edge["candidate_sha"], ha_edge["carrier_sha"], ha_edge["fix_sha"], ha_fix_member}:
+        git(ha_repo, "cat-file", "-e", f"{sha_value}^{{commit}}")
+    assert len(git(ha_repo, "rev-list", "--parents", "-n", "1", ha_edge["candidate_sha"]).stdout.split()) == 2
+    assert len(git(ha_repo, "rev-list", "--parents", "-n", "1", ha_fix_member).stdout.split()) == 2
+    assert "claude" in git(
+        ha_repo, "show", "-s", "--format=%s%n%b", ha_mcp["ai_provenance"]["marker_sha"]
+    ).stdout.lower()
+    origin_pr = gh_json("repos/homeassistant-ai/ha-mcp/pulls/368")
+    origin_members = gh_json("repos/homeassistant-ai/ha-mcp/pulls/368/commits")
+    assert origin_pr["merged"] and origin_pr["merge_commit_sha"] == ha_edge["carrier_sha"]
+    assert ha_edge["candidate_sha"] in {item["sha"] for item in origin_members}
+    fix_pr = gh_json("repos/homeassistant-ai/ha-mcp/pulls/748")
+    fix_members = gh_json("repos/homeassistant-ai/ha-mcp/pulls/748/commits")
+    assert fix_pr["merged"] and fix_pr["merge_commit_sha"] == ha_edge["fix_sha"]
+    assert ha_fix_member in {item["sha"] for item in fix_members}
+    assert git(ha_repo, "merge-base", "--is-ancestor", ha_edge["carrier_sha"], "v6.7.2", check=False).returncode == 0
+    assert git(ha_repo, "merge-base", "--is-ancestor", ha_edge["fix_sha"], "v6.7.2", check=False).returncode == 1
+    assert git(ha_repo, "merge-base", "--is-ancestor", ha_edge["fix_sha"], "v7.0.0", check=False).returncode == 0
+    for revision in (ha_edge["candidate_sha"], ha_edge["carrier_sha"]):
+        for pattern in ('form.get("ha_url")', "_validate_ha_credentials", 'f"{ha_url}/api/config"'):
+            assert git(ha_repo, "grep", "-F", pattern, revision, "--", "src/ha_mcp", check=False).returncode == 0
+    for revision in (ha_fix_member, ha_edge["fix_sha"]):
+        for pattern in ('form.get("ha_url")', "_validate_ha_credentials", 'f"{ha_url}/api/config"'):
+            assert git(ha_repo, "grep", "-F", pattern, revision, "--", "src/ha_mcp", check=False).returncode == 1
+        assert git(
+            ha_repo, "grep", "-F", 'os.getenv("HOMEASSISTANT_URL")', revision, "--", "src/ha_mcp/__main__.py"
+        ).returncode == 0
+    ha_global = advisory_alias("homeassistant-ai/ha-mcp", "GHSA-FMFG-9G7C-3VQ7", "CVE-2026-32111")
+    assert ha_global["vulnerabilities"][0]["first_patched_version"] == "7.0.0"
+
     return {
         "admitted_alias_release_rows": 2,
-        "corrected_strict_fix_edges": 1,
+        "corrected_strict_fix_edges": 2,
         "semantic_overlap_controls": 1,
         "attribution_unknown_controls": 1,
-        "targeted_rows": 5,
+        "targeted_rows": 6,
     }
 
 
