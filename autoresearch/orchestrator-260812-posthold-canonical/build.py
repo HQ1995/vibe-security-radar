@@ -201,7 +201,10 @@ def apply_inherited_corrections(rows: list[dict], correction_doc: dict, hashes: 
             "ai_provenance",
             "release_evidence",
             "causal_class",
+            "repository",
+            "mechanism",
             "mechanism_key",
+            "identity_relation",
             "counting",
             "overlap_with",
             "reuse_justification",
@@ -271,7 +274,7 @@ def build_outputs() -> tuple[str, str]:
             "Four released rows are NARROW after combining Batch 2 and post-hold adjudications.",
             "Three commit-only component rows remain UNKNOWN.",
             "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
-            "Current live release replay covers 30 targeted rows rather than every inherited released row.",
+            "Current live release replay covers 31 targeted rows rather than every inherited released row.",
         ],
     }
     summary_text = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

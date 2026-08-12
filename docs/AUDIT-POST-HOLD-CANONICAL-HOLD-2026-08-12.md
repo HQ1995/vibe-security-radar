@@ -98,6 +98,29 @@ PraisonAI 的发布口径同时纠正：repo advisory 写 `>=0.1.5`，但 PyPI �
 
 GitHub repo/global advisory 已直接声明 Gitea 与 PraisonAI 的 CVE/GHSA alias。CVE Services 在本次重放仍返回 404；这被记录为同步状态，而不是反向否定一方正式分配。
 
+## Strict U052 fix edge 校正（计数不变）
+
+`CVE-2026-27695 / GHSA-76RV-2R9V-C5M6` 仍为 **PASS**，但旧 edge `3902c8c2 → 94a129ae` 不完整，不能继续作为单提交 reversal：
+
+- Claude Opus 4.5 co-authored 的 root commit `3902c8c22868832db6d9f54046e76d5be226f607` 创建了 `PK=ENTITY#{id}` 的 bucket 布局；它没有 parent，并完整包含于 vulnerable `v0.10.0`。
+- `94a129ae55acc3b034662045296e288279cbef2e` 只把 bucket 搬到 per-shard key 并注入 `wcu` 元数据。对该 commit 做 `git grep`，`bump_shard_count`、`random.randrange`、`MAX_SHARD_RETRIES`、`_is_wcu_exhausted` 均为零命中；单独移除/应用它不能证明热分区路径已关闭。
+- 最小实际安全闭合点是 `9f66c42f06f3b87107ce327bede6416a582f0e60`。账本记录六个有序原子成员：`2d8cdd8`（bucket/shard key builders）、`abd6a8a9`（保留 `wcu` 名，防用户配置覆盖内部 guard）、`8fba24d1`（WCU 常量）、`94a129ae`（per-shard item layout）、`6e64d5b2`（每次 speculative write 消耗 WCU 并缓存 shard count）、`9f66c42f`（随机选 shard、跨 shard retry、WCU 耗尽后 conditional doubling）。
+- 在 detached `9f66c42f` 上，async/sync repository 与 limiter 的 20 个定向 pre-shard/shard-retry tests 实跑为 `20 passed`。这包括 1,000 次 WCU 消耗后的 doubling、slow-path 新 shard 创建和跨 shard retry，不是仅靠 commit message 判定。
+- 一方 [repository advisory](https://github.com/zeroae/zae-limiter/security/advisories/GHSA-76rv-2r9v-c5m6) 与 global reviewed advisory 都声明 formal alias、`<=0.10.0` vulnerable、`0.10.1` patched。正式发布 carrier 是 merge `481ce44d818d66e31d8837bc48519660ce4c267f`，恰为 tag `v0.10.1`；六个原子成员均不在 `v0.10.0`、均在该 carrier。
+
+后续 aggregator commits 提供 proactive sharding、stream propagation 与 review 修补；它们增强修复，但不是 client-side minimum closure 的必要成员，因此没有为了把 fix-set 做大而收入 `atomic_fix_members`。这次校正只替换错误 fix edge，不新增 component/public ID，也不改变 `132/199/211` source envelopes。
+
+定向重放：
+
+```zsh
+git -C ~/.cache/cve-analyzer/repos/zeroae_zae-limiter worktree add --detach /tmp/zae-u052-replay 9f66c42f06f3b87107ce327bede6416a582f0e60
+uv run --project /tmp/zae-u052-replay --extra dev pytest -n 0 \
+  /tmp/zae-u052-replay/tests/unit/test_repository.py::TestPreShardBuckets \
+  /tmp/zae-u052-replay/tests/unit/test_limiter.py::TestShardRetry \
+  /tmp/zae-u052-replay/tests/unit/test_sync_repository.py::TestPreShardBuckets \
+  /tmp/zae-u052-replay/tests/unit/test_sync_limiter.py::TestShardRetry -q
+```
+
 ## 仍阻断最终 200 的发布级行
 
 ### REJECT（3）
@@ -137,9 +160,10 @@ GitHub repo/global advisory 已直接声明 Gitea 与 PraisonAI 的 CVE/GHSA ali
 - live Git replay 为 28/28：candidate/carrier 在 vulnerable tag，fix 不在 vulnerable tag，fix 在 fixed tag；
 - 29/29 一方 repo advisories 当前 `published` 且未撤回；有 CVE 的行经 repo/global identifiers 闭合；
 - 追加重放 Gitea/PraisonAI 2/2：formal alias、candidate/fix 和 release/package containment 均闭合；
+- U052 严格 edge 1/1：root AI marker、六成员 ancestry、旧 `94a` 缺失关键行为、`9f66` 最小闭合点、`v0.10.1` carrier 与正式 alias 均闭合；
 - 最终仍强制 `status=HOLD`、`integration_ready=false`、`final_count=null`。
 
-闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 30 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
+闸门分级保持保守：发布级 public-ID alias 为 `PASS`，但含三条 commit-only UNKNOWN 的 widest alias 为 `PARTIAL`；exact fingerprint 为 `PASS`，全量语义复核仍为 `PARTIAL`；release containment 也为 `PARTIAL`，因为上述 31 条有本轮 live replay，其余继承行沿用冻结 Batch2 证据，没有在本轮把 199 条全部重新下载/构建。因此 `integration_ready` 不能翻成 true。
 
 ## 可重放命令
 

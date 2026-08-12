@@ -227,11 +227,30 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "post:filebrowser-scoped-fs@canonical",
         "post:gitea-draft-attachment@canonical",
         "post:praisonai-jwt-default@canonical",
+        "strict-200-v3:alias-99ee5f834a00aca5862a1926",
     }
     indexed = {row["row_key"]: row for row in ledger}
     assert indexed["post:gitea-draft-attachment@canonical"]["row_state"] == "PASS"
     assert indexed["post:praisonai-jwt-default@canonical"]["row_state"] == "PASS"
     assert indexed["post:coolify-trust-host-cache@canonical"]["row_state"] == "UNKNOWN"
+    zae = indexed["strict-200-v3:alias-99ee5f834a00aca5862a1926"]
+    assert zae["row_state"] == "PASS" and zae["repository"] == "zeroae/zae-limiter"
+    assert zae["candidate_fix_edges"] == [
+        {
+            "candidate_sha": "3902c8c22868832db6d9f54046e76d5be226f607",
+            "fix_sha": "9f66c42f06f3b87107ce327bede6416a582f0e60",
+            "origin_kind": "direct_commit",
+        }
+    ]
+    assert zae["atomic_fix_members"] == [
+        "2d8cdd8c7c3825506e9e55def53ec0f3d18aa524",
+        "abd6a8a9aa043e755e7da798dcb5eebb6f6c1d69",
+        "8fba24d17cb8f7679f93a0476ce235d7e0433784",
+        "94a129ae55acc3b034662045296e288279cbef2e",
+        "6e64d5b2df6a4671024902c29861d93d9c2c4e16",
+        "9f66c42f06f3b87107ce327bede6416a582f0e60",
+    ]
+    assert zae["release_evidence"]["fix_sha"] == "481ce44d818d66e31d8837bc48519660ce4c267f"
     filebrowser = indexed["post:filebrowser-scoped-fs@canonical"]
     assert filebrowser["row_state"] == "REJECT" and not any(filebrowser["counting"].values())
     assert set(filebrowser["overlap_with"]) == {
@@ -403,11 +422,55 @@ def verify_inherited_live() -> dict:
     assert git(coolify_repo, "merge-base", "--is-ancestor", fix, "v4.0.0-beta.471", check=False).returncode == 0
     assert coolify["row_state"] == "UNKNOWN"
 
+    zae = ledger["strict-200-v3:alias-99ee5f834a00aca5862a1926"]
+    zae_repo = Path.home() / ".cache/cve-analyzer/repos" / zae["release_evidence"]["repo_cache"]
+    zae_candidate = zae["candidate_fix_edges"][0]["candidate_sha"]
+    zae_closure = zae["candidate_fix_edges"][0]["fix_sha"]
+    zae_carrier = zae["release_evidence"]["fix_sha"]
+    for sha_value in {zae_candidate, zae_closure, zae_carrier, *zae["atomic_fix_members"]}:
+        git(zae_repo, "cat-file", "-e", f"{sha_value}^{{commit}}")
+    assert len(git(zae_repo, "rev-list", "--parents", "-n", "1", zae_candidate).stdout.split()) == 1
+    assert "claude opus 4.5" in git(
+        zae_repo, "show", "-s", "--format=%s%n%b", zae["ai_provenance"]["marker_sha"]
+    ).stdout.lower()
+    assert git(zae_repo, "merge-base", "--is-ancestor", zae_candidate, "v0.10.0", check=False).returncode == 0
+    for member in zae["atomic_fix_members"]:
+        assert git(zae_repo, "merge-base", "--is-ancestor", member, "v0.10.0", check=False).returncode == 1
+        assert git(zae_repo, "merge-base", "--is-ancestor", member, zae_closure, check=False).returncode == 0
+        assert git(zae_repo, "merge-base", "--is-ancestor", member, "v0.10.1", check=False).returncode == 0
+    assert git(zae_repo, "rev-parse", "v0.10.1^{commit}").stdout.strip() == zae_carrier
+    old_symbols = git(
+        zae_repo,
+        "grep",
+        "-n",
+        "-E",
+        r"bump_shard_count|random\.randrange|MAX_SHARD_RETRIES|_is_wcu_exhausted",
+        "94a129ae55acc3b034662045296e288279cbef2e",
+        "--",
+        "src/zae_limiter",
+        check=False,
+    )
+    assert old_symbols.returncode == 1 and not old_symbols.stdout
+    closure_symbols = git(
+        zae_repo,
+        "grep",
+        "-n",
+        "-E",
+        r"bump_shard_count|random\.randrange|MAX_SHARD_RETRIES|_is_wcu_exhausted",
+        zae_closure,
+        "--",
+        "src/zae_limiter",
+    ).stdout
+    assert all(symbol in closure_symbols for symbol in ("bump_shard_count", "random.randrange", "MAX_SHARD_RETRIES"))
+    zae_global = advisory_alias("zeroae/zae-limiter", "GHSA-76RV-2R9V-C5M6", "CVE-2026-27695")
+    assert zae_global["vulnerabilities"][0]["first_patched_version"] == "0.10.1"
+
     return {
         "admitted_alias_release_rows": 2,
+        "corrected_strict_fix_edges": 1,
         "semantic_overlap_controls": 1,
         "attribution_unknown_controls": 1,
-        "targeted_rows": 4,
+        "targeted_rows": 5,
     }
 
 
@@ -442,7 +505,7 @@ def main() -> None:
     if args.write_result:
         (HERE / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     live_suffix = "" if live_counts is None else (
-        f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows']} admitted release rows live-replayed"
+        f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
     )
     print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 

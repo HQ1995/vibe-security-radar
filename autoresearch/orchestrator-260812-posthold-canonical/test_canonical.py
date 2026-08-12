@@ -23,6 +23,15 @@ class CanonicalLedgerTest(unittest.TestCase):
             {"REJECT": 29, "UNKNOWN": 1},
         )
 
+        zae = next(
+            row
+            for row in verify.load_jsonl(verify.HERE / "ledger.jsonl")
+            if row["row_key"] == "strict-200-v3:alias-99ee5f834a00aca5862a1926"
+        )
+        self.assertEqual(zae["candidate_fix_edges"][0]["fix_sha"], "9f66c42f06f3b87107ce327bede6416a582f0e60")
+        self.assertEqual(zae["release_evidence"]["fix_sha"], "481ce44d818d66e31d8837bc48519660ce4c267f")
+        self.assertEqual(len(zae["atomic_fix_members"]), 6)
+
 
 if __name__ == "__main__":
     unittest.main()
