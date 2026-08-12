@@ -14,7 +14,7 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(summary["counts"]["canonical_source_components"], 211)
         self.assertEqual(
             summary["counts"]["released_rows_by_state"],
-            {"PASS": 159, "NARROW": 26, "UNKNOWN": 4, "REJECT": 10},
+            {"PASS": 142, "NARROW": 36, "UNKNOWN": 5, "REJECT": 16},
         )
         self.assertEqual(len(additions), 28)
         self.assertEqual(len(controls), 30)
@@ -82,6 +82,14 @@ class CanonicalLedgerTest(unittest.TestCase):
         faraday = next(row for row in ledger if row["row_key"] == "post:faraday-uri-authority@canonical")
         self.assertEqual(faraday["row_state"], "PASS")
         self.assertEqual(faraday["candidate_fix_edges"][0]["candidate_sha"], "a6d3a3a0bf59c2ab307d0abd91bc126aef5561bc")
+        mruby = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-0c32bc35f9b2fdfd939667e3")
+        self.assertEqual(mruby["row_state"], "REJECT")
+        mlflow = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-125fe49a49acf7ef2baeb111")
+        self.assertEqual(mlflow["row_state"], "NARROW")
+        self.assertEqual(mlflow["candidate_fix_edges"][0]["candidate_sha"], "3e590361e0e251382ae30cbc9993d604bfdb67d5")
+        garmin = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-4018863fbab23917960da976")
+        self.assertEqual(garmin["row_state"], "PASS")
+        self.assertEqual(garmin["atomic_fix_members"], ["77a3837f1f79d486663c9646438e70e8319e1a48"])
 
 
 if __name__ == "__main__":

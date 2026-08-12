@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import tarfile
+import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -199,10 +200,10 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         {"STRICT_RELEASED": 132, "INCOMPLETE_RELEASED": 67, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
     )
     assert Counter(row["row_state"] for row in released) == Counter(
-        {"PASS": 159, "NARROW": 26, "UNKNOWN": 4, "REJECT": 10}
+        {"PASS": 142, "NARROW": 36, "UNKNOWN": 5, "REJECT": 16}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 366
+    assert len(public_ids) == len(set(public_ids)) == 371
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
@@ -275,6 +276,31 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "strict-200-v3:alias-ed3fab545510d72c9e9ecc14",
         "strict-200-v3:alias-f0b371318e30448b9a250d8a",
         "strict-200-v3:component-ironclaw-cw23-command-risk",
+    } | {
+        "strict-200-v3:alias-0ae0a984e1b1218e180ef355",
+        "strict-200-v3:alias-0c1856ecc9f259fe50edd5af",
+        "strict-200-v3:alias-0c32bc35f9b2fdfd939667e3",
+        "strict-200-v3:alias-125fe49a49acf7ef2baeb111",
+        "strict-200-v3:alias-12debd2395456ef3aa1dd946",
+        "strict-200-v3:alias-226bc664b77d22042b6f4336",
+        "strict-200-v3:alias-2d420fc19cb5fabda6edbe92",
+        "strict-200-v3:alias-2e4283d234c17809cb8d3294",
+        "strict-200-v3:alias-32624290ded12d479653d429",
+        "strict-200-v3:alias-3292147318b72b8ffb0807cc",
+        "strict-200-v3:alias-4018863fbab23917960da976",
+        "strict-200-v3:alias-4746e8151755cf3b6ee6d14d",
+        "strict-200-v3:alias-48acec3eadce8bee986a75d3",
+        "strict-200-v3:alias-62042a3acb09a9a9ad48ae77",
+        "strict-200-v3:alias-6cc43b070d8c0d98ab41f2c2",
+        "strict-200-v3:alias-7119f1cb6cfa481172422dc5",
+        "strict-200-v3:alias-72b82f9a2e737ed2c555363e",
+        "strict-200-v3:alias-8215494358ad2dbd50e4323c",
+        "strict-200-v3:alias-9b86599ed7002e4df341ef1d",
+        "strict-200-v3:alias-a45f374601ed322c071603fe",
+        "strict-200-v3:alias-a57df415a930e4db1ef3b6f7",
+        "strict-200-v3:alias-c4cd9379a4920e9fd9fed577",
+        "strict-200-v3:alias-c6e0a965a87d452bf5cc44af",
+        "strict-200-v3:alias-ff3fa870e1a23f5c964f7fb2",
     }
     indexed = {row["row_key"]: row for row in ledger}
     assert indexed["post:gitea-draft-attachment@canonical"]["row_state"] == "PASS"
@@ -359,6 +385,27 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     faraday = indexed["post:faraday-uri-authority@canonical"]
     assert faraday["row_state"] == "PASS"
     assert faraday["candidate_fix_edges"][0]["candidate_sha"] == "a6d3a3a0bf59c2ab307d0abd91bc126aef5561bc"
+    synology = indexed["strict-200-v3:alias-0c1856ecc9f259fe50edd5af"]
+    assert synology["row_state"] == "PASS"
+    assert synology["release_evidence"]["vulnerable_tag"] == "v2026.2.22"
+    mruby = indexed["strict-200-v3:alias-0c32bc35f9b2fdfd939667e3"]
+    assert mruby["row_state"] == "REJECT"
+    assert mruby["candidate_fix_edges"][0]["candidate_sha"] == "2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70"
+    assert mruby["release_evidence"]["vulnerable_tag"] is None
+    budibase = indexed["strict-200-v3:alias-226bc664b77d22042b6f4336"]
+    assert budibase["row_state"] == "PASS" and "CVE-2026-73308" in budibase["public_ids"]
+    n8n = indexed["strict-200-v3:alias-6cc43b070d8c0d98ab41f2c2"]
+    assert n8n["row_state"] == "REJECT" and n8n["release_evidence"]["vulnerable_tag"] is None
+    taylored = indexed["strict-200-v3:alias-a57df415a930e4db1ef3b6f7"]
+    assert taylored["row_state"] == "UNKNOWN"
+    mlflow = indexed["strict-200-v3:alias-125fe49a49acf7ef2baeb111"]
+    assert mlflow["row_state"] == "NARROW"
+    assert mlflow["candidate_fix_edges"][0]["candidate_sha"] == "3e590361e0e251382ae30cbc9993d604bfdb67d5"
+    garmin = indexed["strict-200-v3:alias-4018863fbab23917960da976"]
+    assert garmin["row_state"] == "PASS"
+    assert garmin["atomic_fix_members"] == ["77a3837f1f79d486663c9646438e70e8319e1a48"]
+    fleet = indexed["strict-200-v3:alias-72b82f9a2e737ed2c555363e"]
+    assert fleet["row_state"] == "REJECT"
     delete_scope = indexed["post:filebrowser-delete-scope@canonical"]
     assert delete_scope["row_state"] == "REJECT" and delete_scope["counting"]["canonical_instance"] is True
     assert summary["source_envelopes"] == {
@@ -801,6 +848,103 @@ def verify_batch_ii_live() -> dict:
     }
 
 
+def verify_batch_iii_live() -> dict:
+    ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
+    cache = Path.home() / ".cache/cve-analyzer/repos"
+    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
+
+    synology = ledger["strict-200-v3:alias-0c1856ecc9f259fe50edd5af"]
+    oc = v2 / synology["release_evidence"]["repo_cache"]
+    member = synology["candidate_fix_edges"][0]["candidate_sha"]
+    security = git(oc, "show", f"{member}:extensions/synology-chat/src/security.ts").stdout
+    assert "if (allowedUserIds.length === 0) return true" in security
+    assert git(oc, "merge-base", "--is-ancestor", synology["release_evidence"]["candidate_sha"], "v2026.2.22", check=False).returncode == 0
+    assert git(oc, "merge-base", "--is-ancestor", synology["candidate_fix_edges"][0]["fix_sha"], "v2026.2.22", check=False).returncode == 1
+    assert git(oc, "merge-base", "--is-ancestor", synology["candidate_fix_edges"][0]["fix_sha"], "v2026.2.24", check=False).returncode == 0
+    assert synology["row_state"] == "PASS"
+
+    mruby = ledger["strict-200-v3:alias-0c32bc35f9b2fdfd939667e3"]
+    mr = cache / "mruby_mruby"
+    origin = mruby["candidate_fix_edges"][0]["candidate_sha"]
+    fix = mruby["candidate_fix_edges"][0]["fix_sha"]
+    assert git(mr, "merge-base", "--is-ancestor", origin, "3.4.0", check=False).returncode == 1
+    assert git(mr, "merge-base", "--is-ancestor", origin, "4.0.0-rc", check=False).returncode == 0
+    assert git(mr, "merge-base", "--is-ancestor", fix, "4.0.0-rc", check=False).returncode == 0
+    assert mruby["row_state"] == "REJECT" and mruby["release_evidence"]["vulnerable_tag"] is None
+
+    n8n = ledger["strict-200-v3:alias-6cc43b070d8c0d98ab41f2c2"]
+    nw = cache / "zie619_n8n-workflows"
+    assert git(nw, "merge-base", "--is-ancestor", n8n["candidate_fix_edges"][0]["fix_sha"], "dmca-compliance-2025-08-14", check=False).returncode == 0
+    assert n8n["row_state"] == "REJECT"
+
+    mytube = ledger["strict-200-v3:alias-8215494358ad2dbd50e4323c"]
+    mt = cache / "franklioxygen_mytube"
+    parent = git(mt, "rev-parse", mytube["candidate_fix_edges"][0]["candidate_sha"] + "^").stdout.strip()
+    parent_mw = git(mt, "show", parent + ":backend/src/middleware/roleBasedAuthMiddleware.ts").stdout
+    assert 'path.includes("/passkeys/register")' in parent_mw
+    assert mytube["row_state"] == "REJECT"
+
+    misp = ledger["strict-200-v3:alias-9b86599ed7002e4df341ef1d"]
+    mi = cache / "misp_misp"
+    crud_parent = git(mi, "show", "41450bdb5d31ab017e147ccc921951ee6a70e134:app/Controller/Component/CRUDComponent.php").stdout
+    assert "$validationError === null && $this->Controller->request->is('post') || $this->Controller->request->is('delete')" in crud_parent
+    assert misp["row_state"] == "REJECT"
+
+    taylored = ledger["strict-200-v3:alias-a57df415a930e4db1ef3b6f7"]
+    for version in ("7.0.5", "7.0.6", "7.0.7", "7.0.8"):
+        try:
+            urllib.request.urlopen(f"https://registry.npmjs.org/taylored/-/taylored-{version}.tgz", timeout=20)
+            raise AssertionError(f"unexpected taylored {version} tarball")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404
+    assert taylored["row_state"] == "UNKNOWN"
+
+    mlflow = ledger["strict-200-v3:alias-125fe49a49acf7ef2baeb111"]
+    ml = cache / "mlflow_mlflow"
+    handler = git(ml, "grep", "-n", "_batch_get_trace_infos", mlflow["candidate_fix_edges"][0]["candidate_sha"], "--", "mlflow/server/handlers.py").stdout
+    assert "_batch_get_trace_infos" in handler
+    parent = git(ml, "rev-parse", mlflow["candidate_fix_edges"][0]["candidate_sha"] + "^").stdout.strip()
+    parent_handlers = git(ml, "grep", "-n", "GetTraceInfo", parent, "--", "mlflow/server/handlers.py").stdout
+    assert "GetTraceInfo" in parent_handlers
+    assert mlflow["candidate_fix_edges"][0]["candidate_sha"] != "f685d19b59889d9a93445a78abdde276ab33cf7c"
+    assert mlflow["row_state"] == "NARROW"
+
+    garmin = ledger["strict-200-v3:alias-4018863fbab23917960da976"]
+    gc = v2 / garmin["release_evidence"]["repo_cache"]
+    origin_client = git(gc, "show", garmin["candidate_fix_edges"][0]["candidate_sha"] + ":garminconnect/client.py").stdout
+    assert "write_text" in origin_client
+    fix_client = git(gc, "show", garmin["atomic_fix_members"][0] + ":garminconnect/client.py").stdout
+    assert "0o600" in fix_client
+    assert git(gc, "merge-base", "--is-ancestor", garmin["candidate_fix_edges"][0]["candidate_sha"], "0.3.4", check=False).returncode == 0
+    assert git(gc, "merge-base", "--is-ancestor", garmin["atomic_fix_members"][0], "0.3.4", check=False).returncode == 1
+    assert git(gc, "merge-base", "--is-ancestor", garmin["atomic_fix_members"][0], "0.3.5", check=False).returncode == 0
+    assert garmin["row_state"] == "PASS"
+
+    ultradag = ledger["strict-200-v3:alias-ff3fa870e1a23f5c964f7fb2"]
+    comparison = gh_json(
+        "repos/UltraDAGcom/core/compare/361e71d4329b672482531122117631ec5358953a...v0.1.0"
+    )
+    assert comparison["behind_by"] == 513 and comparison["ahead_by"] == 0
+    assert ultradag["row_state"] == "REJECT" and ultradag["release_evidence"]["vulnerable_tag"] is None
+
+    fleet = ledger["strict-200-v3:alias-72b82f9a2e737ed2c555363e"]
+    fl = cache / "rancher_fleet"
+    fleet_parent = git(fl, "rev-parse", fleet["candidate_fix_edges"][0]["candidate_sha"] + "^").stdout.strip()
+    parent_hook = git(fl, "show", fleet_parent + ":pkg/webhook/webhook.go").stdout
+    assert "u.Hostname()" in parent_hook and "QuoteMeta" not in parent_hook
+    names = git(fl, "diff-tree", "--no-commit-id", "--name-only", "-r", "9cc729f7dc0b9055938115103581a968a287bccf").stdout
+    assert "webhook.go" not in names
+    assert fleet["row_state"] == "REJECT"
+
+    return {
+        "state_changing_rows_replayed": 10,
+        "reject_rows": 6,
+        "narrow_rows": 1,
+        "unknown_rows": 1,
+        "pass_rows": 2,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
@@ -811,6 +955,7 @@ def main() -> None:
     inherited_live = verify_inherited_live() if args.live else None
     batch_i_live = verify_batch_i_live() if args.live else None
     batch_ii_live = verify_batch_ii_live() if args.live else None
+    batch_iii_live = verify_batch_iii_live() if args.live else None
     result = {
         "status": "HOLD",
         "validation": "PASS",
@@ -822,6 +967,7 @@ def main() -> None:
         "inherited_live": inherited_live,
         "batch_i_live": batch_i_live,
         "batch_ii_live": batch_ii_live,
+        "batch_iii_live": batch_iii_live,
         "route_controls": len(controls),
         "gate_status": {
             "public_id_alias_released": "PASS",
@@ -839,6 +985,7 @@ def main() -> None:
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
         f", batch-I {batch_i_live['state_changing_rows_replayed']} targeted rows replayed"
         f", batch-II {batch_ii_live['state_changing_rows_replayed']} targeted rows replayed"
+        f", batch-III {batch_iii_live['state_changing_rows_replayed']} targeted rows replayed"
     )
     print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 
