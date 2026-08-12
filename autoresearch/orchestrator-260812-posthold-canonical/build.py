@@ -50,6 +50,18 @@ def mechanism_fingerprint(row: dict) -> str:
     return sha256_bytes(compact_json(payload).encode())
 
 
+def canonical_mechanism_fingerprint(row: dict) -> str:
+    edges = []
+    for edge in row.get("candidate_fix_edges", []):
+        edges.append({key: edge[key] for key in sorted(edge) if key.endswith("_sha")})
+    payload = {
+        "repository": (row.get("repository") or "").lower(),
+        "mechanism": " ".join(row["mechanism"].lower().split()),
+        "edges": edges,
+    }
+    return sha256_bytes(compact_json(payload).encode())
+
+
 def component_id(row: dict) -> str:
     payload = {
         "repository": row["repository"].lower(),
@@ -169,12 +181,48 @@ def build_control(row: dict, hashes: dict[str, str]) -> dict:
     }
 
 
+def apply_inherited_corrections(rows: list[dict], correction_doc: dict, hashes: dict[str, str]) -> None:
+    by_key = {row["row_key"]: row for row in rows}
+    report = correction_doc["source_report"]
+    assert report in hashes
+    seen = set()
+    for correction in correction_doc["corrections"]:
+        row_key = correction["row_key"]
+        assert row_key not in seen
+        seen.add(row_key)
+        row = by_key[row_key]
+        assert row["row_state"] == correction["expected_row_state"]
+        row["row_state"] = correction["new_row_state"]
+        row["schema_version"] = 2
+        row["correction_decision"] = correction["decision"]
+        for field in (
+            "candidate_fix_edges",
+            "atomic_fix_members",
+            "ai_provenance",
+            "release_evidence",
+            "causal_class",
+            "mechanism_key",
+            "counting",
+            "overlap_with",
+            "reuse_justification",
+        ):
+            if field in correction:
+                row[field] = correction[field]
+        row.setdefault("state_axes", {}).update(correction["state_axes_updates"])
+        row.setdefault("notes", []).extend(correction["notes_append"])
+        row.setdefault("source_refs", []).append(
+            {"path": report, "sha256": hashes[report], "locator": correction["source_locator"]}
+        )
+
+
 def build_outputs() -> tuple[str, str]:
     manifest = load_json(HERE / "source_manifest.json")
     adjudications = load_json(HERE / "adjudications.json")
+    corrections = load_json(HERE / "inherited_corrections.json")
     hashes = source_hashes(manifest)
     base_path = ROOT / "autoresearch/herdr-260812-b2-unified-ledger/ledger.jsonl"
     base = load_jsonl(base_path)
+    apply_inherited_corrections(base, corrections, hashes)
     additions = [build_component(row, hashes) for row in adjudications["components"]]
     controls = [build_control(row, hashes) for row in adjudications["route_controls"]]
     ledger = base + additions + controls
@@ -184,11 +232,12 @@ def build_outputs() -> tuple[str, str]:
     canonical = [row for row in components if row["counting"]["canonical_instance"]]
     released = [row for row in canonical if row["source_tier"].endswith("_RELEASED")]
     summary = {
-        "schema_version": 2,
+        "schema_version": 3,
         "status": "HOLD",
         "integration_ready": False,
         "source_manifest_sha256": sha256_file(HERE / "source_manifest.json"),
         "adjudications_sha256": sha256_file(HERE / "adjudications.json"),
+        "inherited_corrections_sha256": sha256_file(HERE / "inherited_corrections.json"),
         "ledger_sha256": sha256_bytes(ledger_text.encode()),
         "counts": {
             "ledger_records": len(ledger),
@@ -216,11 +265,12 @@ def build_outputs() -> tuple[str, str]:
             "source_envelope_is_not_final_count": True,
         },
         "blockers": [
-            "The 200 broad released value is a source envelope containing REJECT, UNKNOWN, and NARROW rows; it is not a confirmed count.",
+            "The 199 broad released value is a source envelope containing three REJECT, one UNKNOWN, and four NARROW rows; it is not a confirmed count.",
             "Only 20 of the original 74 post-strict rows received Batch 1 adversarial causal-control review.",
-            "Four released component rows remain UNKNOWN and three remain REJECT in the inherited Batch 2 ledger.",
+            "One released component remains UNKNOWN and three remain REJECT after inherited-row closure.",
             "Four released rows are NARROW after combining Batch 2 and post-hold adjudications.",
-            "File Browser identity overlap and six inherited alias-QA UNKNOWN actions remain unresolved.",
+            "Three commit-only component rows remain UNKNOWN.",
+            "Current live release replay covers 30 targeted rows rather than every inherited released row.",
         ],
     }
     summary_text = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
