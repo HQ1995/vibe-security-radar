@@ -89,6 +89,10 @@ Each worker owns only its assigned files:
 
 The report must state exact ordinal coverage, verdict counts, every false-positive/narrow counterexample, primary-source citations, replay commands, limitations, and a reusable-experience section. Workers are not alone in the checkout: do not edit canonical files, other shards, code, manifests, caches, or unrelated dirty files; do not commit. Put temporary clones and raw API pages under `/tmp/fp211-shard-NN/`.
 
+## Independent cross-review
+
+After clearing the original worker context, a different worker reviews every shard. Cross-review JSONL uses the same row schema and writes only `crossreviews/shard-NN-by-MM.jsonl`; its report writes only `crossreports/shard-NN-by-MM.md`. The reviewer must inspect primary evidence before comparing with the first-pass verdict, list every disagreement, and may preserve `UNKNOWN`. Agreement is not proof; final adjudication still resolves every disagreement and every non-`CONFIRM/HIGH` result.
+
 ## Stop/claim boundary
 
 Mechanical 211/211 coverage is not proof that all rows are correct. Final acceptance also requires schema/conservation verification, conflict adjudication, independent review of every non-`CONFIRM/HIGH` row, and a rebuilt canonical HOLD ledger. Never turn routing or a green parser into causality.
