@@ -40,11 +40,32 @@ def sha256(path: Path) -> str:
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-C", str(repo), *args],
+        ["git", "--no-optional-locks", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-C", str(repo), *args],
         check=check,
         text=True,
         capture_output=True,
     )
+
+
+def require_live_cache_root(path: Path | None) -> Path:
+    if path is None:
+        raise SystemExit("ERROR: --live requires --cache-root")
+    root = path.expanduser().resolve()
+    if not root.is_dir():
+        raise SystemExit(f"ERROR: live cache root not found: {root}")
+    return root
+
+
+def live_cache_repo(root: Path, repo_cache: str) -> Path:
+    repo = root / repo_cache
+    if not repo.joinpath(".git").exists():
+        raise SystemExit(f"ERROR: live cache repository not found: {repo}")
+    return repo
+
+
+def require_live_cache_object(repo: Path, ref: str) -> None:
+    if git(repo, "cat-file", "-e", f"{ref}^{{object}}", check=False).returncode:
+        raise SystemExit(f"ERROR: live cache object not found: {repo}:{ref}")
 
 
 def gh_json(endpoint: str) -> dict:
@@ -88,6 +109,7 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     manifest = load_json(HERE / "source_manifest.json")
     adjudications = load_json(HERE / "adjudications.json")
     corrections = load_json(HERE / "inherited_corrections.json")
+    integration = load_json(HERE / "integration_corrections.json")
     ledger = load_jsonl(HERE / "ledger.jsonl")
     summary = load_json(HERE / "summary.json")
 
@@ -103,11 +125,13 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     assert summary["source_manifest_sha256"] == sha256(HERE / "source_manifest.json")
     assert summary["adjudications_sha256"] == sha256(HERE / "adjudications.json")
     assert summary["inherited_corrections_sha256"] == sha256(HERE / "inherited_corrections.json")
+    assert summary["integration_corrections_sha256"] == sha256(HERE / "integration_corrections.json")
     if check_result:
         verify_result_hashes(summary)
 
-    assert len(ledger) == 271
-    assert len({row["row_key"] for row in ledger}) == len(ledger)
+    assert len(ledger) == 273
+    row_keys = {row["row_key"] for row in ledger}
+    assert len(row_keys) == len(ledger)
     for row in ledger:
         assert row["row_state"] in {"PASS", "REJECT", "NARROW", "BLOCKED", "UNKNOWN", "DUPLICATE"}
         assert row["public_ids"] == sorted(set(row["public_ids"]))
@@ -119,13 +143,20 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
             "widest_max",
         }
         assert all(isinstance(value, bool) for value in row["counting"].values())
+        if row["row_state"] == "DUPLICATE" or row.get("duplicate_of") is not None:
+            assert row["row_state"] == "DUPLICATE"
+            assert row["duplicate_of"] in row_keys - {row["row_key"]}
+            assert not any(row["counting"].values())
+        if row.get("identity_relation") == "SEMANTIC_CROSS_REFERENCE":
+            assert row.get("duplicate_of") is None
+            assert row["counting"]["canonical_instance"]
 
     base_count = 213
     base = ledger[:base_count]
     additions = [row for row in ledger if row["source_layer"] == "POST_HOLD_REDTEAM" and row["record_kind"] == "COMPONENT_ROW"]
     controls = [row for row in ledger if row["record_kind"] == "POST_HOLD_ROUTE_CONTROL"]
-    assert len(additions) == 28
-    assert Counter(row["row_state"] for row in additions) == Counter({"PASS": 26, "NARROW": 2})
+    assert len(additions) == 30
+    assert Counter(row["row_state"] for row in additions) == Counter({"PASS": 27, "NARROW": 3})
     assert len(controls) == 30
     assert Counter(row["row_state"] for row in controls) == Counter({"REJECT": 29, "UNKNOWN": 1})
     assert all(not any(row["counting"].values()) for row in controls)
@@ -133,17 +164,23 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     base_components = [row for row in base if row["record_kind"] == "COMPONENT_ROW" and row["counting"]["canonical_instance"]]
     base_ids = {value for row in base_components for value in row["public_ids"]}
     new_ids = [value for row in additions for value in row["public_ids"]]
-    assert len(new_ids) == len(set(new_ids)) == 39
+    assert len(new_ids) == len(set(new_ids)) == 42
     assert not (base_ids & set(new_ids))
 
     fingerprints = [row["mechanism_fingerprint"] for row in additions]
-    assert len(fingerprints) == len(set(fingerprints)) == 28
+    assert len(fingerprints) == len(set(fingerprints)) == 30
+    integration_keys = {item["row_key"] for item in integration["corrections"]}
     source_hashes = {item["path"]: item["sha256"] for item in manifest["sources"]}
     for row in additions:
         source_ref = row["source_refs"][0]
         assert source_ref["sha256"] == source_hashes[source_ref["path"]]
         raw = next(item for item in adjudications["components"] if item["row_key"] == row["row_key"])
-        assert row["mechanism_fingerprint"] == build.mechanism_fingerprint(raw)
+        expected_fingerprint = (
+            build.canonical_mechanism_fingerprint(row)
+            if row["row_key"] in integration_keys
+            else build.mechanism_fingerprint(raw)
+        )
+        assert row["mechanism_fingerprint"] == expected_fingerprint
         for sha_value in (
             row["release_evidence"]["candidate_sha"],
             row["release_evidence"]["fix_sha"],
@@ -151,6 +188,11 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
             *row["atomic_fix_members"],
         ):
             assert SHA_RE.fullmatch(sha_value)
+        if row["row_state"] == "PASS":
+            assert all(
+                row["release_evidence"].get(key)
+                for key in ("repo_cache", "candidate_sha", "fix_sha", "vulnerable_tag", "fixed_tag")
+            )
     for row in controls:
         source_ref = row["source_refs"][0]
         assert source_ref["sha256"] == source_hashes[source_ref["path"]]
@@ -202,17 +244,32 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
         if len(rows) > 1:
             assert all(row["reuse_justification"] for row in rows)
 
-    canonical = [row for row in ledger if row["record_kind"] == "COMPONENT_ROW" and row["counting"]["canonical_instance"]]
+    components = [row for row in ledger if row["record_kind"] == "COMPONENT_ROW"]
+    canonical = [row for row in components if row["counting"]["canonical_instance"]]
     released = [row for row in canonical if row["source_tier"].endswith("_RELEASED")]
+    assert summary["counts"] == {
+        "ledger_records": len(ledger),
+        "component_row_instances": len(components),
+        "canonical_source_components": len(canonical),
+        "posthold_components": len(additions),
+        "posthold_route_controls": len(controls),
+        "posthold_admission": dict(Counter(row["row_state"] for row in additions)),
+        "component_rows_by_state": dict(Counter(row["row_state"] for row in canonical)),
+        "released_rows_by_state": dict(Counter(row["row_state"] for row in released)),
+        "component_rows_by_tier": dict(Counter(row["source_tier"] for row in canonical)),
+        "posthold_public_ids": len({value for row in additions for value in row["public_ids"]}),
+    }
     assert len(canonical) == 211
+    canonical_component_ids = [row["canonical_component_id"] for row in canonical]
+    assert len(canonical_component_ids) == len(set(canonical_component_ids))
     assert Counter(row["source_tier"] for row in canonical) == Counter(
-        {"STRICT_RELEASED": 132, "INCOMPLETE_RELEASED": 67, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
+        {"STRICT_RELEASED": 134, "INCOMPLETE_RELEASED": 65, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
     )
     assert Counter(row["row_state"] for row in released) == Counter(
-        {"PASS": 126, "NARROW": 43, "UNKNOWN": 7, "REJECT": 23}
+        {"PASS": 144, "NARROW": 24, "UNKNOWN": 8, "REJECT": 23}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 372
+    assert len(public_ids) == len(set(public_ids)) == 381
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
@@ -230,6 +287,21 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     assert not (set(public_ids) & batch_h_ids)
     fingerprints = [build.canonical_mechanism_fingerprint(row) for row in canonical]
     assert len(fingerprints) == len(set(fingerprints)) == 211
+
+    assert len(integration_keys) == len(integration["corrections"]) == 43
+    assert len(integration["holds"]) == 6
+    for item in integration["corrections"]:
+        source_ref = item["source_ref"]
+        assert source_ref["sha256"] == source_hashes[source_ref["path"]]
+        row = next(row for row in ledger if row["row_key"] == item["row_key"])
+        assert source_ref in row["source_refs"]
+    for duplicate_key, primary_key in {
+        "post:scriban-lazy-range@canonical": "post:scriban-array-multiply@canonical",
+        "post:gitpython-split-mode@canonical": "post:gitpython-kwarg-option@canonical",
+    }.items():
+        duplicate = next(row for row in components if row["row_key"] == duplicate_key)
+        assert duplicate["row_state"] == "DUPLICATE" and duplicate["duplicate_of"] == primary_key
+        assert not any(duplicate["counting"].values())
 
     corrected = {item["row_key"]: item for item in corrections["corrections"]}
     assert set(corrected) == {
@@ -373,7 +445,7 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     hermes_session = indexed["strict-200-v3:alias-1ac241b6b959b320f90a397c"]
     assert hermes_session["row_state"] == "NARROW"
     getlogs = indexed["strict-200-v3:alias-63a1cac4d02e61992ad6cf29"]
-    assert getlogs["row_state"] == "NARROW" and set(getlogs["public_ids"]) == {
+    assert getlogs["row_state"] == "PASS" and set(getlogs["public_ids"]) == {
         "CVE-2026-34599",
         "GHSA-Q9J6-XCVX-PX63",
     }
@@ -396,7 +468,7 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     attachments = indexed["strict-200-v3:alias-b2364e4376391dd977cef4fa"]
     assert attachments["row_state"] == "REJECT" and attachments["counting"]["canonical_instance"] is True
     gitlab_mcp = indexed["strict-200-v3:alias-9dc5f3e6176baf486fd2696c"]
-    assert gitlab_mcp["row_state"] == "NARROW"
+    assert gitlab_mcp["row_state"] == "PASS"
     assert "GHSA-7C3W-FXGH-FRC7" in gitlab_mcp["public_ids"]
     filebrowser = indexed["post:filebrowser-scoped-fs@canonical"]
     assert filebrowser["row_state"] == "REJECT" and not any(filebrowser["counting"].values())
@@ -432,7 +504,7 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     taylored = indexed["strict-200-v3:alias-a57df415a930e4db1ef3b6f7"]
     assert taylored["row_state"] == "UNKNOWN"
     mlflow = indexed["strict-200-v3:alias-125fe49a49acf7ef2baeb111"]
-    assert mlflow["row_state"] == "NARROW"
+    assert mlflow["row_state"] == "PASS"
     assert mlflow["candidate_fix_edges"][0]["candidate_sha"] == "3e590361e0e251382ae30cbc9993d604bfdb67d5"
     garmin = indexed["strict-200-v3:alias-4018863fbab23917960da976"]
     assert garmin["row_state"] == "PASS"
@@ -453,7 +525,7 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     wacrm = indexed["strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2"]
     assert wacrm["row_state"] == "UNKNOWN" and wacrm["release_evidence"]["vulnerable_tag"] is None
     kiro = indexed["strict-200-v3:alias-bd1a0da23e1a76c824287b27"]
-    assert kiro["row_state"] == "NARROW" and "GHSA-6MWV-4MRM-5P3M" in kiro["public_ids"]
+    assert kiro["row_state"] == "PASS" and "GHSA-6MWV-4MRM-5P3M" in kiro["public_ids"]
     sortcmp = indexed["strict-200-v3:alias-c819cf08c0a8bf17cf425ccc"]
     assert sortcmp["row_state"] == "REJECT" and sortcmp["release_evidence"]["vulnerable_tag"] is None
     guard = indexed["strict-200-v3:component-openclaw-gateway-config-guard"]
@@ -461,32 +533,41 @@ def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], l
     delete_scope = indexed["post:filebrowser-delete-scope@canonical"]
     assert delete_scope["row_state"] == "REJECT" and delete_scope["counting"]["canonical_instance"] is True
     assert summary["source_envelopes"] == {
-        "strict_document_rows": 132,
+        "strict_document_rows": 134,
         "broad_released_max": 199,
         "widest_max": 211,
         "final_count": None,
     }
     assert summary["status"] == "HOLD"
     assert summary["integration_ready"] is False
+    assert not summary["integration_ready"] or not summary["blockers"]
     return summary, additions, controls
 
 
-def verify_live(additions: list[dict]) -> dict:
+def verify_live(additions: list[dict], v2: Path) -> dict:
     checked_advisories: set[tuple[str, str]] = set()
     row_cves = {row["row_key"]: {value for value in row["public_ids"] if value.startswith("CVE-")} for row in additions}
     observed_cves: dict[str, set[str]] = defaultdict(set)
 
     for row in additions:
         evidence = row["release_evidence"]
-        repo = Path.home() / ".cache/cve-analyzer/repos" / evidence["repo_cache"]
+        default_repo = Path.home() / ".cache/cve-analyzer/repos" / evidence["repo_cache"]
+        repo = default_repo if default_repo.joinpath(".git").exists() else live_cache_repo(v2, evidence["repo_cache"])
         assert repo.joinpath(".git").exists(), repo
         atom = row["candidate_fix_edges"][0]["candidate_sha"]
-        for sha_value in {atom, evidence["candidate_sha"], evidence["fix_sha"], row["ai_provenance"]["marker_sha"], *row["atomic_fix_members"]}:
+        carrier = row["candidate_fix_edges"][0].get("carrier_sha")
+        landed_objects = {evidence["candidate_sha"], evidence["fix_sha"]}
+        if carrier is None:
+            landed_objects.update({atom, row["ai_provenance"]["marker_sha"], *row["atomic_fix_members"]})
+        for sha_value in landed_objects:
             git(repo, "cat-file", "-e", f"{sha_value}^{{commit}}")
-        parents = git(repo, "rev-list", "--parents", "-n", "1", atom).stdout.split()
-        assert len(parents) == 2, f"non-atomic candidate: {row['row_key']}"
-        marker_message = git(repo, "show", "-s", "--format=%s%n%b", row["ai_provenance"]["marker_sha"]).stdout.lower()
-        assert any(marker in marker_message for marker in AI_MARKERS), row["row_key"]
+        if carrier is None:
+            parents = git(repo, "rev-list", "--parents", "-n", "1", atom).stdout.split()
+            assert len(parents) in {2, 3}, f"unexpected candidate topology: {row['row_key']}"
+            marker_message = git(repo, "show", "-s", "--format=%s%n%b", row["ai_provenance"]["marker_sha"]).stdout.lower()
+            assert any(marker in marker_message for marker in AI_MARKERS), row["row_key"]
+        else:
+            assert evidence["candidate_sha"] == carrier
         assert git(repo, "merge-base", "--is-ancestor", evidence["candidate_sha"], evidence["vulnerable_tag"], check=False).returncode == 0
         assert git(repo, "merge-base", "--is-ancestor", evidence["fix_sha"], evidence["vulnerable_tag"], check=False).returncode == 1
         assert git(repo, "merge-base", "--is-ancestor", evidence["fix_sha"], evidence["fixed_tag"], check=False).returncode == 0
@@ -777,7 +858,7 @@ def verify_batch_i_live() -> dict:
     ).stdout
     assert "function getLogs" in parent_logs and "function downloadAllLogs" not in parent_logs
     assert "function downloadAllLogs" in candidate_logs
-    assert getlogs["row_state"] == "NARROW"
+    assert getlogs["row_state"] == "PASS"
 
     media = ledger["strict-200-v3:alias-948cde45baab136c086accc3"]
     first_fix = media["candidate_fix_edges"][0]["fix_sha"]
@@ -808,10 +889,9 @@ def verify_batch_i_live() -> dict:
     }
 
 
-def verify_batch_ii_live() -> dict:
+def verify_batch_ii_live(v2: Path) -> dict:
     ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
     cache = Path.home() / ".cache/cve-analyzer/repos"
-    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
 
     graphiti = ledger["strict-200-v3:alias-081a549b9da97e4d5e1e54c4"]
     g_repo = cache / "getzep_graphiti"
@@ -886,7 +966,9 @@ def verify_batch_ii_live() -> dict:
     assert delete_scope["row_state"] == "REJECT"
 
     fission = ledger["strict-200-v3:alias-1416131f1ab575212ff869b2"]
-    fi = v2 / fission["release_evidence"]["repo_cache"]
+    fi = live_cache_repo(v2, fission["release_evidence"]["repo_cache"])
+    require_live_cache_object(fi, "v1.24.0")
+    require_live_cache_object(fi, fission["candidate_fix_edges"][0]["carrier_sha"])
     assert git(fi, "cat-file", "-e", "v1.24.0:pkg/webhook/httptrigger.go", check=False).returncode == 0
     assert git(fi, "merge-base", "--is-ancestor", fission["candidate_fix_edges"][0]["carrier_sha"], "v1.24.0", check=False).returncode == 1
     assert fission["row_state"] == "REJECT"
@@ -900,13 +982,12 @@ def verify_batch_ii_live() -> dict:
     }
 
 
-def verify_batch_iii_live() -> dict:
+def verify_batch_iii_live(v2: Path) -> dict:
     ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
     cache = Path.home() / ".cache/cve-analyzer/repos"
-    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
 
     synology = ledger["strict-200-v3:alias-0c1856ecc9f259fe50edd5af"]
-    oc = v2 / synology["release_evidence"]["repo_cache"]
+    oc = live_cache_repo(v2, synology["release_evidence"]["repo_cache"])
     member = synology["candidate_fix_edges"][0]["candidate_sha"]
     security = git(oc, "show", f"{member}:extensions/synology-chat/src/security.ts").stdout
     assert "if (allowedUserIds.length === 0) return true" in security
@@ -959,10 +1040,10 @@ def verify_batch_iii_live() -> dict:
     parent_handlers = git(ml, "grep", "-n", "GetTraceInfo", parent, "--", "mlflow/server/handlers.py").stdout
     assert "GetTraceInfo" in parent_handlers
     assert mlflow["candidate_fix_edges"][0]["candidate_sha"] != "f685d19b59889d9a93445a78abdde276ab33cf7c"
-    assert mlflow["row_state"] == "NARROW"
+    assert mlflow["row_state"] == "PASS"
 
     garmin = ledger["strict-200-v3:alias-4018863fbab23917960da976"]
-    gc = v2 / garmin["release_evidence"]["repo_cache"]
+    gc = live_cache_repo(v2, garmin["release_evidence"]["repo_cache"])
     origin_client = git(gc, "show", garmin["candidate_fix_edges"][0]["candidate_sha"] + ":garminconnect/client.py").stdout
     assert "write_text" in origin_client
     fix_client = git(gc, "show", garmin["atomic_fix_members"][0] + ":garminconnect/client.py").stdout
@@ -997,13 +1078,12 @@ def verify_batch_iii_live() -> dict:
     }
 
 
-def verify_batch_iv_live() -> dict:
+def verify_batch_iv_live(v2: Path) -> dict:
     ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
     cache = Path.home() / ".cache/cve-analyzer/repos"
-    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
 
     nickname = ledger["strict-200-v3:alias-06ca275f5a582dacb68ec70b"]
-    oc = v2 / nickname["release_evidence"]["repo_cache"]
+    oc = live_cache_repo(v2, nickname["release_evidence"]["repo_cache"])
     member = nickname["candidate_fix_edges"][0]["candidate_sha"]
     handler = git(oc, "show", f"{member}:extensions/synology-chat/src/webhook-handler.ts").stdout
     assert "byNickname" in handler or "resolveChatUserId" in handler
@@ -1056,7 +1136,7 @@ def verify_batch_iv_live() -> dict:
     assert misp["row_state"] == "PASS"
 
     wacrm = ledger["strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2"]
-    wa = v2 / wacrm["release_evidence"]["repo_cache"]
+    wa = live_cache_repo(v2, wacrm["release_evidence"]["repo_cache"])
     tags = git(wa, "tag", "--list").stdout.strip()
     assert tags == ""
     assert wacrm["row_state"] == "UNKNOWN" and wacrm["release_evidence"]["vulnerable_tag"] is None
@@ -1071,7 +1151,7 @@ def verify_batch_iv_live() -> dict:
     assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["candidate_sha"], "v0.5.2", check=False).returncode == 0
     assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["fix_sha"], "v0.5.2", check=False).returncode == 1
     assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["fix_sha"], "v0.5.6", check=False).returncode == 0
-    assert kiro["row_state"] == "NARROW"
+    assert kiro["row_state"] == "PASS"
 
     return {
         "state_changing_rows_replayed": 10,
@@ -1085,20 +1165,23 @@ def verify_batch_iv_live() -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
+    parser.add_argument("--cache-root", type=Path, help="read-only v2 Git repository cache required by --live")
     parser.add_argument("--write-result", action="store_true")
     args = parser.parse_args()
+    result_path = HERE / "result.json"
+    previous_result = load_json(result_path) if args.write_result and result_path.is_file() else None
+    v2 = require_live_cache_root(args.cache_root) if args.live else None
     summary, additions, controls = verify_structural(check_result=not args.write_result)
-    live_counts = verify_live(additions) if args.live else None
+    live_counts = verify_live(additions, v2) if args.live else None
     inherited_live = verify_inherited_live() if args.live else None
     batch_i_live = verify_batch_i_live() if args.live else None
-    batch_ii_live = verify_batch_ii_live() if args.live else None
-    batch_iii_live = verify_batch_iii_live() if args.live else None
-    batch_iv_live = verify_batch_iv_live() if args.live else None
+    batch_ii_live = verify_batch_ii_live(v2) if args.live else None
+    batch_iii_live = verify_batch_iii_live(v2) if args.live else None
+    batch_iv_live = verify_batch_iv_live(v2) if args.live else None
     result = {
         "status": "HOLD",
         "validation": "PASS",
         "integration_ready": False,
-        "validated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "ledger_sha256": summary["ledger_sha256"],
         "source_manifest_sha256": summary["source_manifest_sha256"],
         "summary_sha256": sha256(HERE / "summary.json"),
@@ -1120,8 +1203,17 @@ def main() -> None:
         },
         "blockers": summary["blockers"],
     }
+    if previous_result is not None and not args.live:
+        for key in ("live_counts", "inherited_live", "batch_i_live", "batch_ii_live", "batch_iii_live", "batch_iv_live"):
+            result[key] = previous_result[key]
+    previous_evidence = None if previous_result is None else {
+        key: value for key, value in previous_result.items() if key != "validated_at"
+    }
+    result["validated_at"] = previous_result["validated_at"] if previous_evidence == result else (
+        datetime.now().astimezone().isoformat(timespec="seconds")
+    )
     if args.write_result:
-        (HERE / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        result_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
         verify_result_hashes(summary)
     live_suffix = "" if live_counts is None else (
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
@@ -1130,7 +1222,11 @@ def main() -> None:
         f", batch-III {batch_iii_live['state_changing_rows_replayed']} targeted rows replayed"
         f", batch-IV {batch_iv_live['state_changing_rows_replayed']} targeted rows replayed"
     )
-    print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
+    envelope = summary["source_envelopes"]
+    print(
+        f"PASS: {summary['counts']['ledger_records']} records, source envelope "
+        f"{envelope['strict_document_rows']}/{envelope['broad_released_max']}/{envelope['widest_max']}, HOLD{live_suffix}"
+    )
 
 
 if __name__ == "__main__":

@@ -14,6 +14,35 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 
 
+def pointer_parts(pointer: str) -> list[str]:
+    assert pointer.startswith("/")
+    return [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
+
+
+def pointer_get(value, pointer: str):
+    for part in pointer_parts(pointer):
+        value = value[int(part)] if isinstance(value, list) else value[part]
+    return value
+
+
+def pointer_exists(value, pointer: str) -> bool:
+    try:
+        pointer_get(value, pointer)
+        return True
+    except (KeyError, IndexError, TypeError):
+        return False
+
+
+def pointer_set(value, pointer: str, replacement) -> None:
+    parts = pointer_parts(pointer)
+    for part in parts[:-1]:
+        value = value[int(part)] if isinstance(value, list) else value[part]
+    if isinstance(value, list):
+        value[int(parts[-1])] = replacement
+    else:
+        value[parts[-1]] = replacement
+
+
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -230,10 +259,46 @@ def apply_inherited_corrections(rows: list[dict], correction_doc: dict, hashes: 
         )
 
 
+def apply_integration_corrections(rows: list[dict], correction_doc: dict) -> None:
+    by_key = {row["row_key"]: row for row in rows}
+    assert len(by_key) == len(rows)
+    assert len({item["row_key"] for item in correction_doc["corrections"]}) == len(correction_doc["corrections"])
+    for correction in correction_doc["corrections"]:
+        row = by_key[correction["row_key"]]
+        for precondition in correction["preconditions"]:
+            exists = pointer_exists(row, precondition["pointer"])
+            if precondition["exists"]:
+                assert exists, (correction["id"], precondition["pointer"])
+                assert pointer_get(row, precondition["pointer"]) == precondition["value"], (
+                    correction["id"],
+                    precondition["pointer"],
+                )
+            else:
+                assert not exists or pointer_get(row, precondition["pointer"]) is None, (
+                    correction["id"],
+                    precondition["pointer"],
+                )
+        for pointer, replacement in correction["set"].items():
+            pointer_set(row, pointer, replacement)
+        if "/public_ids" in correction["set"]:
+            ids = sorted(set(row["public_ids"]))
+            row["public_ids"] = row["declared_public_ids"] = ids
+            row["primary_id"] = next((value for value in ids if value.startswith("CVE-")), ids[0])
+        if any(
+            pointer in {"/repository", "/mechanism", "/mechanism_key", "/candidate_fix_edges"}
+            or pointer.startswith("/candidate_fix_edges/")
+            for pointer in correction["set"]
+        ):
+            row["mechanism_fingerprint"] = canonical_mechanism_fingerprint(row)
+        row.setdefault("notes", []).extend(correction.get("notes_append", []))
+        row.setdefault("source_refs", []).append(correction["source_ref"])
+
+
 def build_outputs() -> tuple[str, str]:
     manifest = load_json(HERE / "source_manifest.json")
     adjudications = load_json(HERE / "adjudications.json")
     corrections = load_json(HERE / "inherited_corrections.json")
+    integration = load_json(HERE / "integration_corrections.json")
     hashes = source_hashes(manifest)
     base_path = ROOT / "autoresearch/herdr-260812-b2-unified-ledger/ledger.jsonl"
     base = load_jsonl(base_path)
@@ -241,6 +306,7 @@ def build_outputs() -> tuple[str, str]:
     additions = [build_component(row, hashes) for row in adjudications["components"]]
     controls = [build_control(row, hashes) for row in adjudications["route_controls"]]
     ledger = base + additions + controls
+    apply_integration_corrections(ledger, integration)
     ledger_text = "".join(compact_json(row) + "\n" for row in ledger)
 
     components = [row for row in ledger if row["record_kind"] == "COMPONENT_ROW"]
@@ -253,6 +319,7 @@ def build_outputs() -> tuple[str, str]:
         "source_manifest_sha256": sha256_file(HERE / "source_manifest.json"),
         "adjudications_sha256": sha256_file(HERE / "adjudications.json"),
         "inherited_corrections_sha256": sha256_file(HERE / "inherited_corrections.json"),
+        "integration_corrections_sha256": sha256_file(HERE / "integration_corrections.json"),
         "ledger_sha256": sha256_bytes(ledger_text.encode()),
         "counts": {
             "ledger_records": len(ledger),
@@ -280,14 +347,19 @@ def build_outputs() -> tuple[str, str]:
             "source_envelope_is_not_final_count": True,
         },
         "blockers": [
-            "The 199 broad released value is a source envelope containing twenty-three REJECT, seven UNKNOWN, and forty-three NARROW rows; it is not a confirmed count.",
+            f'The {len(released)} broad released value is a source envelope containing '
+            f'{sum(row["row_state"] == "REJECT" for row in released)} REJECT, '
+            f'{sum(row["row_state"] == "UNKNOWN" for row in released)} UNKNOWN, and '
+            f'{sum(row["row_state"] == "NARROW" for row in released)} NARROW rows; it is not a confirmed count.',
             "Only 20 of the original 74 post-strict rows received Batch 1 adversarial causal-control review.",
-            "Seven released components remain UNKNOWN and twenty-three remain REJECT after Batch IV.",
-            "Forty-three released rows are NARROW after combining Batch 2, post-hold, Batch I, Batch II, Batch III, and Batch IV adjudications.",
-            "Three commit-only component rows remain UNKNOWN.",
+            f'{sum(row["row_state"] == "UNKNOWN" for row in released)} released components remain UNKNOWN and '
+            f'{sum(row["row_state"] == "REJECT" for row in released)} remain REJECT after the accepted integration corrections.',
+            f'{sum(row["row_state"] == "NARROW" for row in released)} released rows remain NARROW after the accepted integration corrections.',
+            f'{sum(row["row_state"] == "UNKNOWN" for row in canonical if not row["source_tier"].endswith("_RELEASED"))} commit-only component rows remain UNKNOWN.',
             "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
             "Batch I, Batch II, Batch III, and Batch IV each re-adjudicated 24 released rows and did not produce a confirmed 200.",
             "Current live release replay covers targeted rows rather than every inherited released row.",
+            f'{len(integration["holds"])} terminal disputes or excluded admissions remain in integration_corrections.json; none contribute to final_count.',
         ],
     }
     summary_text = json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
