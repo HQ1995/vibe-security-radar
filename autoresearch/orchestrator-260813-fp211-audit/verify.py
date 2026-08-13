@@ -63,9 +63,12 @@ def verify_row(actual: dict, expected: dict) -> None:
     elif actual["verdict"] == "FALSE_POSITIVE":
         assert actual["false_positive_class"]
         assert actual["counterevidence"] and "FAIL" in {
-            actual["ai_hunk_gate"], actual["but_for_gate"], actual["fix_reversal_gate"],
+            actual["ai_hunk_gate"], actual["topology_gate"], actual["but_for_gate"], actual["fix_reversal_gate"],
             actual["release_gate"], actual["uniqueness_gate"], actual["identity_gate"],
         }
+        if actual["duplicate_of"] is not None:
+            assert actual["uniqueness_gate"] == "FAIL"
+            assert actual["duplicate_of"] != actual["row_key"]
     else:
         assert any(actual[field] in {"NARROW", "UNKNOWN", "BLOCKED", "FAIL"} for field in (
             "identity_gate", "ai_hunk_gate", "topology_gate", "but_for_gate",
@@ -89,9 +92,12 @@ def main() -> None:
             raise AssertionError(f"missing shard: {path}")
         actual.extend(load_jsonl(path))
     assert len(actual) == len({row["ordinal"] for row in actual}) == len({row["row_key"] for row in actual})
+    row_keys = {row["row_key"] for row in actual}
     for row in actual:
         assert row["ordinal"] in expected
         verify_row(row, expected[row["ordinal"]])
+        if row["duplicate_of"] is not None:
+            assert row["duplicate_of"] in row_keys
     ordinals = sorted(row["ordinal"] for row in actual)
     if args.allow_partial:
         assert set(ordinals) <= set(expected)

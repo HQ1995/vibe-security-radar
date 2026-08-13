@@ -31,7 +31,7 @@ from web_data.writer import PublishedDataError, load_published_web_data
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
-_DEFAULT_ADJUDICATIONS = _SCRIPT_DIR / "audit_adjudications.json"
+_DEFAULT_ADJUDICATIONS = _SCRIPT_DIR / "publication_adjudications.json"
 _DEFAULT_PUBLICATION = _REPO_ROOT / "web" / "data"
 
 _ALLOWED_LABELS = frozenset({"AI_CAUSAL", "NOT_AI_CAUSAL", "INCONCLUSIVE"})
@@ -48,6 +48,7 @@ class AdjudicationEntry:
     canonical_id: str
     label: str
     aliases: frozenset[str] = frozenset()
+    excluded_aliases: frozenset[str] = frozenset()
 
     @property
     def subject_ids(self) -> frozenset[str]:
@@ -168,8 +169,22 @@ def load_adjudications(
             raise ValueError(f"Duplicate aliases for {cve_id}")
         if cve_id in aliases:
             raise ValueError(f"Canonical ID repeated as alias for {cve_id}")
+        raw_excluded_aliases = entry.get("excluded_aliases", [])
+        if not isinstance(raw_excluded_aliases, list) or not all(
+            isinstance(alias, str) and alias.strip() for alias in raw_excluded_aliases
+        ):
+            raise ValueError(f"Invalid excluded aliases for {cve_id}")
+        excluded_aliases = frozenset(alias.strip() for alias in raw_excluded_aliases)
+        if len(excluded_aliases) != len(raw_excluded_aliases):
+            raise ValueError(f"Duplicate excluded aliases for {cve_id}")
+        if {subject.upper() for subject in (cve_id, *aliases)} & {
+            alias.upper() for alias in excluded_aliases
+        }:
+            raise ValueError(f"Aliases and excluded aliases overlap for {cve_id}")
 
-        adjudication = AdjudicationEntry(cve_id, label, aliases)
+        adjudication = AdjudicationEntry(
+            cve_id, label, aliases, excluded_aliases
+        )
         for subject_id in adjudication.subject_ids:
             owner = subject_owner.get(subject_id)
             if owner is not None:
@@ -188,6 +203,7 @@ def load_adjudications(
                 "cve_id": entry.canonical_id,
                 "label": entry.label,
                 "aliases": sorted(entry.aliases),
+                "excluded_aliases": sorted(entry.excluded_aliases),
             }
             for entry in validated
         ],
@@ -199,6 +215,7 @@ def load_adjudications(
                 entry["cve_id"],
                 entry["label"],
                 frozenset(entry.get("aliases", [])),
+                frozenset(entry.get("excluded_aliases", [])),
             )
             for entry in expanded
         )

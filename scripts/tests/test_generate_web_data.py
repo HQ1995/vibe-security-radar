@@ -158,6 +158,15 @@ def test_publication_selection_quarantines_unadjudicated_pipeline_positive() -> 
     assert [result.cve_id for result in selected] == ["CVE-2026-1"]
 
 
+def test_publication_selection_rejects_positive_exclusion_overlap() -> None:
+    with pytest.raises(ReleaseGateError, match="positive and exclusion sets overlap"):
+        _select_publication_results(
+            [],
+            adjudicated_positive_ids={"CVE-2026-1"},
+            audit_exclusions={"CVE-2026-1"},
+        )
+
+
 def _complete_stage_receipts() -> dict[str, dict]:
     return {
         stage: {"outcome": "resolved"}
@@ -436,6 +445,27 @@ def test_release_input_hashes_bind_end_to_end_recall_evaluator() -> None:
 
     assert "scripts/build_recall_audit.py" in hashes
     assert len(hashes["scripts/build_recall_audit.py"]) == 64
+    assert {
+        "scripts/audit_adjudications.json",
+        "scripts/publication_adjudications.json",
+        "scripts/build_publication_adjudications.py",
+        "scripts/cohort/publication_admission.py",
+        "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+        "autoresearch/orchestrator-260813-fp211-audit/manifest.jsonl",
+        "autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl",
+    } <= hashes.keys()
+    assert all(len(hashes[path]) == 64 for path in hashes)
+
+
+def test_release_hashing_fails_closed_on_stale_publication_corpus(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stale = tmp_path / "publication_adjudications.json"
+    stale.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(generator, "_ADJUDICATIONS_PATH", stale)
+
+    with pytest.raises(ReleaseGateError, match="adjudications are stale"):
+        generator._release_input_hashes()
 
 
 def test_detector_inventory_rejects_unscheduled_formal_alias_class() -> None:

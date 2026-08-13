@@ -481,7 +481,9 @@ def _read_audit_adjudication_file() -> list[dict]:
     The corpus is a release-safety input. Malformed or conflicting labels are
     fatal so a broken file cannot silently publish a known false positive.
     """
-    path = os.path.join(os.path.dirname(__file__), "..", "audit_adjudications.json")
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "publication_adjudications.json"
+    )
     try:
         with open(path, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
@@ -514,6 +516,7 @@ def _read_audit_adjudication_file() -> list[dict]:
             raise ValueError(f"Invalid audit aliases for {cve_id}")
         if len(aliases) != len(set(aliases)) or cve_id in aliases:
             raise ValueError(f"Duplicate audit aliases for {cve_id}")
+        _audit_excluded_aliases(entry)
         confidence = entry.get("confidence")
         if confidence is not None and (
             isinstance(confidence, bool)
@@ -564,6 +567,28 @@ def _audit_subject_ids(entry: dict) -> set[str]:
     return {entry["cve_id"], *entry.get("aliases", [])}
 
 
+def _audit_excluded_aliases(entry: dict) -> set[str]:
+    """Return validated aliases that source expansion must not resurrect."""
+    canonical_id = entry.get("cve_id")
+    aliases = entry.get("aliases", [])
+    excluded = entry.get("excluded_aliases", [])
+    if not isinstance(excluded, list) or any(
+        not isinstance(alias, str) or not alias.strip() for alias in excluded
+    ):
+        raise ValueError(f"Invalid excluded audit aliases for {canonical_id}")
+    normalized = {alias.upper() for alias in excluded}
+    if len(normalized) != len(excluded):
+        raise ValueError(f"Duplicate excluded audit aliases for {canonical_id}")
+    subjects = {
+        subject.upper()
+        for subject in [canonical_id, *aliases]
+        if isinstance(subject, str)
+    }
+    if subjects & normalized:
+        raise ValueError(f"Audit aliases and excluded aliases overlap for {canonical_id}")
+    return normalized
+
+
 def expand_audit_adjudications(
     entries: list[dict],
     alias_map: dict[str, set[str]] | None = None,
@@ -579,6 +604,16 @@ def expand_audit_adjudications(
     source_aliases = alias_map or {}
     expanded: list[dict] = []
     subject_owner: dict[str, tuple[str, str]] = {}
+    excluded_aliases = set().union(
+        *(_audit_excluded_aliases(entry) for entry in entries)
+    )
+    explicit_subjects = {
+        subject.upper()
+        for entry in entries
+        for subject in _audit_subject_ids(entry)
+    }
+    if overlap := excluded_aliases & explicit_subjects:
+        raise ValueError(f"Excluded audit aliases are explicit subjects: {sorted(overlap)}")
 
     for entry in entries:
         canonical_id = entry["cve_id"]
@@ -588,7 +623,7 @@ def expand_audit_adjudications(
         while pending:
             subject_id = pending.pop()
             for alias in source_aliases.get(subject_id, ()):
-                if alias not in subjects:
+                if alias.upper() not in excluded_aliases and alias not in subjects:
                     subjects.add(alias)
                     pending.append(alias)
 

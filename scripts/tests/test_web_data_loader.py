@@ -218,6 +218,69 @@ def test_source_aliases_expand_audit_labels_before_filtering(monkeypatch) -> Non
     }
 
 
+def test_excluded_alias_tombstone_blocks_transitive_source_expansion() -> None:
+    kept = "GHSA-aaaa-bbbb-cccc"
+    bridge = "CVE-2026-1"
+    removed = "GHSA-dddd-eeee-ffff"
+    expanded = loader.expand_audit_adjudications(
+        [
+            {
+                "cve_id": kept,
+                "aliases": [],
+                "excluded_aliases": [removed],
+                "label": "INCONCLUSIVE",
+            }
+        ],
+        {
+            kept: {kept, bridge},
+            bridge: {kept, bridge, removed},
+            removed: {bridge, removed},
+        },
+    )
+
+    assert expanded[0]["aliases"] == [bridge]
+    assert expanded[0]["excluded_aliases"] == [removed]
+
+
+def test_excluded_alias_tombstone_applies_across_adjudication_rows() -> None:
+    removed = "GHSA-dddd-eeee-ffff"
+    expanded = loader.expand_audit_adjudications(
+        [
+            {
+                "cve_id": "GHSA-aaaa-bbbb-cccc",
+                "excluded_aliases": [removed],
+                "label": "INCONCLUSIVE",
+            },
+            {
+                "cve_id": "CVE-2026-2",
+                "label": "AI_CAUSAL",
+            },
+        ],
+        {"CVE-2026-2": {"CVE-2026-2", removed}},
+    )
+
+    assert expanded[1]["aliases"] == []
+
+
+def test_default_alias_expansion_does_not_resurrect_removed_fp211_ids() -> None:
+    payload = json.loads(
+        (Path(loader.__file__).resolve().parent.parent / "publication_adjudications.json")
+        .read_text(encoding="utf-8")
+    )
+    removed = set(payload["summary"]["removed_public_ids"])
+    expanded = loader.expand_audit_adjudications(
+        loader._read_audit_adjudication_file(),
+        loader.build_alias_map(),
+    )
+    subjects = {
+        subject.upper()
+        for row in expanded
+        for subject in [row["cve_id"], *row.get("aliases", [])]
+    }
+
+    assert subjects.isdisjoint(removed)
+
+
 def test_source_alias_label_conflict_fails_closed(monkeypatch) -> None:
     monkeypatch.setattr(
         loader,
@@ -281,10 +344,24 @@ def _write_audit_adjudications(
     package_dir = tmp_path / "web_data"
     package_dir.mkdir()
     monkeypatch.setattr(loader, "__file__", str(package_dir / "loader.py"))
-    (tmp_path / "audit_adjudications.json").write_text(
+    (tmp_path / "publication_adjudications.json").write_text(
         json.dumps({"schema_version": 1, "adjudications": adjudications}),
         encoding="utf-8",
     )
+
+
+def test_default_loader_consumes_effective_publication_corpus() -> None:
+    rows = loader._read_audit_adjudication_file()
+    labels = {
+        subject.upper(): row["label"]
+        for row in rows
+        for subject in [row["cve_id"], *row.get("aliases", [])]
+    }
+
+    assert labels["CVE-2026-32247"] == "NOT_AI_CAUSAL"
+    assert labels["CVE-2026-1979"] == "INCONCLUSIVE"
+    assert labels["CVE-2026-25481"] == "INCONCLUSIVE"
+    assert labels["GHSA-G353-MGV3-8PCJ"] == "INCONCLUSIVE"
 
 
 def test_audit_adjudication_accepts_exact_bic_subject_exclusions(

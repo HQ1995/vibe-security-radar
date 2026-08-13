@@ -18,6 +18,7 @@ import math
 import os
 import re
 import stat
+import subprocess
 import sys
 import zipfile
 from dataclasses import dataclass
@@ -92,7 +93,16 @@ _MAX_ARCHIVED_CAMPAIGN_RESULT_BYTES = 32 * 1024 * 1024
 _MAX_ARCHIVED_CAMPAIGN_RESULTS_TOTAL_BYTES = 512 * 1024 * 1024
 _MAX_ARCHIVED_PROTECTED_INPUT_BYTES = 32 * 1024 * 1024
 _MAX_ARCHIVED_PROTECTED_INPUTS_TOTAL_BYTES = 128 * 1024 * 1024
-_ADJUDICATIONS_PATH = _SCRIPT_DIR / "audit_adjudications.json"
+_ADJUDICATIONS_PATH = _SCRIPT_DIR / "publication_adjudications.json"
+_BASE_ADJUDICATIONS_PATH = _SCRIPT_DIR / "audit_adjudications.json"
+_PUBLICATION_ADJUDICATIONS_BUILDER_PATH = (
+    _SCRIPT_DIR / "build_publication_adjudications.py"
+)
+_PUBLICATION_ADMISSION_HELPER_PATH = _SCRIPT_DIR / "cohort" / "publication_admission.py"
+_FP211_DIR = _REPO_ROOT / "autoresearch" / "orchestrator-260813-fp211-audit"
+_FP211_FINAL_PATH = _FP211_DIR / "final_mechanisms.jsonl"
+_FP211_MANIFEST_PATH = _FP211_DIR / "manifest.jsonl"
+_FP211_PUBLIC_CASES_PATH = _FP211_DIR / "public_cases.jsonl"
 _AUDIT_OVERRIDES_PATH = _SCRIPT_DIR / "audit_overrides.json"
 
 
@@ -1228,6 +1238,11 @@ def _select_publication_results(
     inclusion_predicate=should_include,
 ) -> list:
     """Select the fail-closed, independently adjudicated publication set."""
+    overlap = adjudicated_positive_ids & audit_exclusions
+    if overlap:
+        raise ReleaseGateError(
+            f"publication positive and exclusion sets overlap: {sorted(overlap)}"
+        )
     return [
         result
         for result in results
@@ -1497,8 +1512,15 @@ def _context_fingerprint(context: Any) -> str:
 
 
 def _release_input_hashes() -> dict[str, str]:
+    _require_current_publication_adjudications()
     paths = (
         _ADJUDICATIONS_PATH,
+        _BASE_ADJUDICATIONS_PATH,
+        _PUBLICATION_ADJUDICATIONS_BUILDER_PATH,
+        _PUBLICATION_ADMISSION_HELPER_PATH,
+        _FP211_FINAL_PATH,
+        _FP211_MANIFEST_PATH,
+        _FP211_PUBLIC_CASES_PATH,
         _AUDIT_OVERRIDES_PATH,
         _SCRIPT_DIR / "generate_web_data.py",
         _SCRIPT_DIR / "build_recall_audit.py",
@@ -1518,6 +1540,28 @@ def _release_input_hashes() -> dict[str, str]:
             content
         ).hexdigest()
     return hashes
+
+
+def _require_current_publication_adjudications() -> None:
+    checked = subprocess.run(
+        [
+            sys.executable,
+            str(_PUBLICATION_ADJUDICATIONS_BUILDER_PATH),
+            "--output",
+            str(_ADJUDICATIONS_PATH),
+            "--check",
+        ],
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if checked.returncode != 0:
+        detail = (checked.stdout or checked.stderr).strip()
+        raise ReleaseGateError(
+            f"effective publication adjudications are stale: {detail}"
+        )
 
 
 def _publication_file_manifest(root: Path) -> tuple[dict[str, Any], ...]:

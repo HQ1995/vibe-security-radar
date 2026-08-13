@@ -50,7 +50,7 @@ from web_data.writer import PublishedDataError, load_published_web_data
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
-_DEFAULT_ADJUDICATIONS = _SCRIPT_DIR / "audit_adjudications.json"
+_DEFAULT_ADJUDICATIONS = _SCRIPT_DIR / "publication_adjudications.json"
 _DEFAULT_PUBLICATION_DIR = _REPO_ROOT / "web" / "data"
 _DEFAULT_OSV_BULK_DIR = Path.home() / ".cache" / "cve-analyzer" / "osv-bulk"
 
