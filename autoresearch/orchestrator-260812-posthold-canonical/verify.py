@@ -203,7 +203,7 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         {"PASS": 126, "NARROW": 43, "UNKNOWN": 7, "REJECT": 23}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 372 == 372
+    assert len(public_ids) == len(set(public_ids)) == 372
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
