@@ -14,7 +14,7 @@ class CanonicalLedgerTest(unittest.TestCase):
         self.assertEqual(summary["counts"]["canonical_source_components"], 211)
         self.assertEqual(
             summary["counts"]["released_rows_by_state"],
-            {"PASS": 142, "NARROW": 36, "UNKNOWN": 5, "REJECT": 16},
+            {"PASS": 126, "NARROW": 43, "UNKNOWN": 7, "REJECT": 23},
         )
         self.assertEqual(len(additions), 28)
         self.assertEqual(len(controls), 30)
@@ -90,6 +90,20 @@ class CanonicalLedgerTest(unittest.TestCase):
         garmin = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-4018863fbab23917960da976")
         self.assertEqual(garmin["row_state"], "PASS")
         self.assertEqual(garmin["atomic_fix_members"], ["77a3837f1f79d486663c9646438e70e8319e1a48"])
+        solidcam = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-061ebce41071bc874d061809")
+        self.assertEqual(solidcam["row_state"], "PASS")
+        self.assertIn("GHSA-92VG-F4FQ-FXM9", solidcam["public_ids"])
+        grep = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-2b440d3fa3dacafd8d29beca")
+        self.assertEqual(grep["row_state"], "REJECT")
+        feishu = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-9c7a2c50a4f4725177cca843")
+        self.assertEqual(feishu["row_state"], "UNKNOWN")
+        kiro = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-bd1a0da23e1a76c824287b27")
+        self.assertEqual(kiro["row_state"], "NARROW")
+        sortcmp = next(row for row in ledger if row["row_key"] == "strict-200-v3:alias-c819cf08c0a8bf17cf425ccc")
+        self.assertEqual(sortcmp["row_state"], "REJECT")
+        self.assertIsNone(sortcmp["release_evidence"]["vulnerable_tag"])
+        guard = next(row for row in ledger if row["row_key"] == "strict-200-v3:component-openclaw-gateway-config-guard")
+        self.assertEqual(guard["row_state"], "REJECT")
 
 
 if __name__ == "__main__":

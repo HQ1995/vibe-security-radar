@@ -22,12 +22,12 @@
 
 | 状态 | 发布级行数 | 是否可直接进入最终计数 |
 |---|---:|---|
-| PASS | 142 | 仅表示当前 ledger 的行级 PASS；继承的未抽样行仍受覆盖限制 |
-| NARROW | 36 | 只能按写明的窄机制使用 |
-| UNKNOWN | 5 | 否 |
-| REJECT | 16 | 否 |
+| PASS | 126 | 仅表示当前 ledger 的行级 PASS；继承的未抽样行仍受覆盖限制 |
+| NARROW | 43 | 只能按写明的窄机制使用 |
+| UNKNOWN | 7 | 否 |
+| REJECT | 23 | 否 |
 
-先前的 `200` 只是含重复 umbrella 的 source envelope；File Browser 终审后降为 `199`。账本按 fail-closed 规则输出 `HOLD`，没有把 REJECT、UNKNOWN 或 NARROW 偷换成 PASS。Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159；Batch III 再降到 142。NARROW/UNKNOWN/REJECT 一律不计入 claim-grade 最终 200。
+先前的 `200` 只是含重复 umbrella 的 source envelope；File Browser 终审后降为 `199`。账本按 fail-closed 规则输出 `HOLD`，没有把 REJECT、UNKNOWN 或 NARROW 偷换成 PASS。Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159；Batch III 再降到 142；Batch IV 再降到 126。NARROW/UNKNOWN/REJECT 一律不计入 claim-grade 最终 200。
 
 ## 本轮 28 个发布级候选的红队结果
 
@@ -158,7 +158,7 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 
 ## 仍阻断最终 200 的发布级行
 
-### REJECT（16）
+### REJECT（23）
 
 - Gitea OAuth reactivation：CVE-2026-55987 / GHSA-VRHC-JJFC-M3M3。
 - GitPython positional `--file`：GHSA-3WXW-XV34-2FRG。
@@ -176,16 +176,25 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - MISP EventTemplates CRUD caller：CVE-2026-10860 / GHSA-MQM2-JJX4-44GX（Batch III row 13；parent 已有共享 CRUD 旁路）。
 - UltraDAG SmartOp fee order：CVE-2026-40583 / GHSA-Q8WX-2CRX-C7PP（Batch III row 21；`v0.1.0` 早于 origin 513 个提交）。
 - Fleet webhook regex backport：CVE-2026-44937 / GHSA-JMF4-M7J9-G72R（Batch III row 22；Copilot 是 human #4060 的 backport，不是 but-for）。
+- OpenClaw `/v1/responses` trusted-proxy Origin：CVE-2026-41347 / GHSA-MHR7-2XMV-4C4Q（Batch IV row 4；parent 已有 chat-completions，trusted-proxy 更晚）。
+- OpenClaw launchctl kickstart：CVE-2026-44114 / GHSA-HXVM-XJVF-93F3（Batch IV row 5；parent 已覆盖 `OPENCLAW_*` / `GIT_DIR`；不重开 `posthold-control:hxvm`）。
+- claw-orchestrator `/session/grep`：CVE-2026-10291 / GHSA-95F6-RFPG-C3W8（Batch IV row 6；human parent `edf0c0d6` 已是 `RegExp` sink）。
+- OpenClaw plugin-auth write scope：CVE-2026-41394 / GHSA-MHGQ-XPFQ-6R66（Batch IV row 10；candidate 只改 Control UI 405 fallthrough）。
+- mruby `sort_cmp` pointer-only：CVE-2025-13120 / GHSA-J383-Q79V-268X（Batch IV row 16；无含 origin 不含 fix 的 tag）。
+- cti-transmute notification `innerHTML`：CVE-2026-9806 / GHSA-W9RM-VVQP-QQ3H（Batch IV row 18；只在开发分支，`v1.3` 已含 fix）。
+- OpenClaw gateway-config-guard set-diff：CVE-2026-45001 / GHSA-7JM2-G593-4QRC / GHSA-9FC9-8V4X-F5CP（Batch IV row 24；主线 denylist residual 预存在，AI 不是 incomplete remediator）。
 
-### UNKNOWN（5）
+### UNKNOWN（7）
 
 - Coolify TrustHosts cold-cache attribution：CVE-2026-34198 / GHSA-CGJ8-7M5Q-X5GV。
 - Quay org-mirror SSRF release containment：CVE-2026-2376 / GHSA-9W78-X9JW-9C7M（Batch I row 17；本地 clone 无 `v3.16.0`/`v3.17.0` tag，也没有未修复 origin 的已发布制品）。
 - Graphiti group_ids Lucene helper：CVE-2026-32247 / GHSA-GG5M-55JJ-8M5G（Batch II row 1；copied helper 无 recovered `.search_ops` 调用路径）。
 - Argo ArtifactGC PodSpecPatch：CVE-2026-54526 / GHSA-48P8-G2FX-3WWM（Batch II row 5；merge-from-fork 的 private-fork member 未回收）。
 - taylored PayPal webhook：GHSA-8G98-M4J9-QWW5（Batch III row 15；npm 7.0.5–7.0.8 tarball 404，gitHead 缺失）。
+- OpenClaw Feishu pairing-store：CVE-2026-32067 / GHSA-VJP8-WPRM-2JW9（Batch IV row 11；最小 origin 无 Co-Authored-By，AI 署名未复验）。
+- WACRM `send_webhook` SSRF：CVE-2026-67530 / GHSA-8JQH-598V-RFXC（Batch IV row 12；本地 clone 无 git tag）。
 
-### NARROW（36）
+### NARROW（43）
 
 - Hermes cross-profile session search：CVE-2026-49956 / GHSA-MGXW-V6RH-WCV6。
 - OpenClaw Feishu webhook scoped evidence：CVE-2026-32974 / CVE-2026-44109 / GHSA-G353-MGV3-8PCJ / GHSA-XH72-V6V9-MWHC。
@@ -223,8 +232,15 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - Batch III row 19 Prompty TS/C#/Rust file resolver：CVE-2026-53598 / GHSA-WXHM-2MQ7-7697。
 - Batch III row 23 token-only no-device skip：CVE-2026-32034 / GHSA-3CVX-236H-M9FJ。
 - Batch III row 24 simulate-print-complete debug：CVE-2026-25505 / GHSA-GC24-PX2R-5QMF。
+- Batch IV row 7 `/v1/responses` stale SecretRef：CVE-2026-43585 / GHSA-XMXX-7P24-H892。
+- Batch IV row 9 `/v1/responses` tokenless Tailscale HTTP：CVE-2026-32045 / GHSA-HFF7-CCV5-52F8。
+- Batch IV row 15 Kiro API-key region injection：CVE-2026-56678 / GHSA-6MWV-4MRM-5P3M。
+- Batch IV row 17 Discord audio `content_type` preflight：CVE-2026-41374 / GHSA-HHFF-FJ5F-QG48。
+- Batch IV row 21 native media/UNC caller：CVE-2026-34510 / GHSA-H3X4-HC5V-V2GM / GHSA-W4H3-GPV2-82QC。
+- Batch IV row 22 direct CDP WebSocket：CVE-2026-43576 / GHSA-F7FH-QG34-X2XH。
+- Batch IV row 23 Mysti channel-unscoped sender：CVE-2026-13591 / GHSA-4PQR-V6C3-X77J。
 
-即使把三十六条 NARROW 全按其窄范围保留，当前也只有 178 个可接纳发布级 source rows；至少还要替换 16 个 REJECT、闭合 5 个 UNKNOWN，并新增无重复组件，才可能到 200。继承的 74 条 post-strict 中只有 20 条做过 Batch 1 adversarial sampling，这一 coverage blocker 也尚未消失。Batch I/II/III 审的是已发布 PASS 抽样行，不能拿来填那 74 行的覆盖缺口。
+即使把四十三条 NARROW 全按其窄范围保留，当前也只有 169 个可接纳发布级 source rows；至少还要替换 23 个 REJECT、闭合 7 个 UNKNOWN，并新增无重复组件，才可能到 200。继承的 74 条 post-strict 中只有 20 条做过 Batch 1 adversarial sampling，这一 coverage blocker 也尚未消失。Batch I/II/III/IV 审的是已发布 PASS 抽样行，不能拿来填那 74 行的覆盖缺口。
 
 ## Verifier 闸门
 
@@ -233,8 +249,8 @@ npm --prefix /tmp/mysti-u005-replay exec -- vitest run tests/managers/memoryMana
 - 9 个 source artifacts 的 SHA-256 全匹配；
 - builder 对 `ledger.jsonl` / `summary.json` byte-identical；
 - 271 个 row keys 唯一，211 个 canonical components 守恒；
-- 30 个 non-counting route controls 为 `29 REJECT / 1 UNKNOWN`；Batch H 的 public IDs 与 371 个 canonical public IDs 零交集。既有 `HXVM` control 与 canonical 组件共享两个正式 alias，但拒绝的是后出的 `3affd5e8` sanitizer route，canonical 接纳的是不同的早期 `db67492a → 018494fa` contributor edge；
-- 371 个 canonical public-ID occurrences 全部唯一，无跨组件 alias collision；Batch I 补了 5 个同组件 alias，Batch II 再补 3 个，Batch III 再补 5 个（`GHSA-FPMV-5WGW-QHHR`、`CVE-2026-73308`、`GHSA-378W-XH68-QRC8`、`GHSA-C339-W3CQ-2RJR`、`GHSA-4VFF-6J8J-QHCG`），没有新增 component；
+- 30 个 non-counting route controls 为 `29 REJECT / 1 UNKNOWN`；Batch H 的 public IDs 与 372 个 canonical public IDs 零交集。既有 `HXVM` control 与 canonical 组件共享两个正式 alias，但拒绝的是后出的 `3affd5e8` sanitizer route；Batch IV 把同 ID 的 canonical 行从 PASS 改为 REJECT，仍不重开该 control；
+- 372 个 canonical public-ID occurrences 全部唯一，无跨组件 alias collision；Batch I 补了 5 个同组件 alias，Batch II 再补 3 个，Batch III 再补 5 个，Batch IV 再补 1 个（`GHSA-6MWV-4MRM-5P3M`），没有新增 component；
 - 211 个 exact mechanism fingerprints 全部唯一；该机械检查不替代上面的 File Browser 语义终审；
 - 新增 39 个 public IDs 内部唯一，且与 Batch 2 canonical public IDs 零交集；
 - 28 个 mechanism fingerprints 唯一；
@@ -362,7 +378,40 @@ python3 autoresearch/orchestrator-260812-posthold-canonical/verify.py --live
 python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
 ```
 
-`--live` 只读取本地一方 Git clones，并通过 `gh api` 读取公开 advisory；命令不打印 credential。结构 verifier 与 test 不需要网络。Batch II 定向 replay 另读 `.ai-slop/cache` 下的 fission v2 clone。Batch III 定向 replay 另读 OpenClaw/garminconnect v2 clone，并对 taylored 做 npm tarball 404 检查。
+`--live` 只读取本地一方 Git clones，并通过 `gh api` 读取公开 advisory；命令不打印 credential。结构 verifier 与 test 不需要网络。Batch II 定向 replay 另读 `.ai-slop/cache` 下的 fission v2 clone。Batch III 定向 replay 另读 OpenClaw/garminconnect v2 clone，并对 taylored 做 npm tarball 404 检查。Batch IV 定向 replay 另读 OpenClaw/mruby/MISP/claw-orchestrator/9router/WACRM clones。
+
+## Batch IV released-row redteam
+
+Integrator accepted all 24 packet verdicts: **PASS 8 / NARROW 7 / REJECT 7 / UNKNOWN 2**. Conflicted rows: **0**. Envelope still **132 / 199 / 211**. Claim-grade released PASS fell from **142 to 126**. Public IDs 371 → 372. `final_count` remains null. HOLD / `integration_ready=false`.
+
+| # | Verdict | row_key | Change vs frozen PASS |
+|---:|---|---|---|
+| 1 | PASS | `strict-200-v3:alias-061ebce41071bc874d061809` | fill GHSA-92VG-F4FQ-FXM9 + `v1.0.0 → v1.0.2` |
+| 2 | PASS | `strict-200-v3:alias-06ca275f5a582dacb68ec70b` | squash member `ce12b909`; `v2026.3.2 → v2026.3.22` |
+| 3 | PASS | `strict-200-v3:alias-10470c6830a2c45cfe7539af` | squash member `fbfe2f15`; `v2026.2.12 → v2026.3.31` |
+| 4 | REJECT | `strict-200-v3:alias-246b44dae3aa16a9a896dcf4` | `/v1/responses` is not but-for of trusted-proxy Origin gap |
+| 5 | REJECT | `strict-200-v3:alias-2b012541da0847fedc6f6867` | kickstart is not origin of OPENCLAW_* dotenv override |
+| 6 | REJECT | `strict-200-v3:alias-2b440d3fa3dacafd8d29beca` | human parent `edf0c0d6` already had `session/grep` RegExp |
+| 7 | NARROW | `strict-200-v3:alias-50f5531876200e99a322872e` | `/v1/responses` stale SecretRef call site only |
+| 8 | PASS | `strict-200-v3:alias-61bd78ccafb20adcb14b905d` | EmbeddedServer missing auth; `v3.5.5 → v3.5.6` |
+| 9 | NARROW | `strict-200-v3:alias-81f12adb7f1b7ae03d0c07f1` | `/v1/responses` tokenless Tailscale HTTP call site only |
+| 10 | REJECT | `strict-200-v3:alias-93fa45f75fcf8a90730ee3e9` | Control UI 405 fallthrough is not plugin-auth write-scope |
+| 11 | UNKNOWN | `strict-200-v3:alias-9c7a2c50a4f4725177cca843` | origin member has no Co-Authored-By; AI signal unverified |
+| 12 | UNKNOWN | `strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2` | local WACRM clone has zero git tags |
+| 13 | PASS | `strict-200-v3:alias-b36a7cd7bcd0e76bbb7491b4` | image-tool workspaceOnly gate deletion; `v2026.2.22 → v2026.2.23` |
+| 14 | PASS | `strict-200-v3:alias-b9a5a8da5751392a45949620` | Claude CLI keychain `execSync`; `v2026.2.13 → v2026.2.14` |
+| 15 | NARROW | `strict-200-v3:alias-bd1a0da23e1a76c824287b27` | kiro api-key region injection; add GHSA-6MWV-4MRM-5P3M |
+| 16 | REJECT | `strict-200-v3:alias-c819cf08c0a8bf17cf425ccc` | unreleased sort_cmp rewrite; only 4.0.0-rc contains origin+fix |
+| 17 | NARROW | `strict-200-v3:alias-cfe8a69b17c7144c755c5961` | Discord `content_type` detector only; not origin of pre-auth order |
+| 18 | REJECT | `strict-200-v3:alias-d019f5b5ca91c8bb1d8b320d` | unreleased innerHTML XSS; v1.3 already contains the fix |
+| 19 | PASS | `strict-200-v3:alias-d15c3d1da6dab91042d63c2e` | EventTemplateImporter overwrite; `v2.5.37 → v2.5.39` |
+| 20 | PASS | `strict-200-v3:alias-d6382d230e136d6c15eadf35` | stdin transcript_path read; `v0.0.12 → v0.1.0` |
+| 21 | NARROW | `strict-200-v3:alias-dc8ebac001df0ca8f9dbbe40` | native-media UNC seam only; not parent loadWebMedia |
+| 22 | NARROW | `strict-200-v3:alias-e08284f85ea883d18c60e813` | direct CDP websocket connect only |
+| 23 | NARROW | `strict-200-v3:alias-ec754f179ba2cc618a27a98b` | channel-unscoped sender; no published tag contains the fix |
+| 24 | REJECT | `strict-200-v3:component-openclaw-gateway-config-guard` | squash set-diff is not origin of pre-existing exec-only denylist |
+
+Batch IV 定向 live 检查：row 2 nickname/`v2026.3.2`/`v2026.3.22`、row 8 EmbeddedServer `v3.5.5`/`v3.5.6`、row 6 parent `session/grep`、row 16 无 origin-without-fix tag、row 7 SecretRef `v2026.4.14`/`v2026.4.15`、row 11 无 Co-Authored-By、row 19 EventTemplateImporter/`v2.5.37`/`v2.5.39`、row 12 零 git tag、row 24 carrier 不在 `v2026.4.12`、row 15 kiro `v0.5.2`/`v0.5.6`。
 
 ## Durable artifacts
 
@@ -376,4 +425,4 @@ python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
 - `autoresearch/orchestrator-260812-posthold-canonical/verify.py`
 - `autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py`
 
-本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行与 Batch I/II/III 的 72 个抽样行，并保留所有未闭合项。Batch H 没有提供补位项；Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159；Batch III 再降到 142，并增加 REJECT/UNKNOWN/NARROW。仍需替换 16 个 released REJECT、闭合 5 个 released UNKNOWN 并新增无重复组件；三十六条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。
+本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行与 Batch I/II/III/IV 的 96 个抽样行，并保留所有未闭合项。Batch H 没有提供补位项；Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159；Batch III 再降到 142；Batch IV 再降到 126，并增加 REJECT/UNKNOWN/NARROW。仍需替换 23 个 released REJECT、闭合 7 个 released UNKNOWN 并新增无重复组件；四十三条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。

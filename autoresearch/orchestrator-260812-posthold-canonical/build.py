@@ -280,13 +280,13 @@ def build_outputs() -> tuple[str, str]:
             "source_envelope_is_not_final_count": True,
         },
         "blockers": [
-            "The 199 broad released value is a source envelope containing sixteen REJECT, five UNKNOWN, and thirty-six NARROW rows; it is not a confirmed count.",
+            "The 199 broad released value is a source envelope containing twenty-three REJECT, seven UNKNOWN, and forty-three NARROW rows; it is not a confirmed count.",
             "Only 20 of the original 74 post-strict rows received Batch 1 adversarial causal-control review.",
-            "Five released components remain UNKNOWN and sixteen remain REJECT after Batch III.",
-            "Thirty-six released rows are NARROW after combining Batch 2, post-hold, Batch I, Batch II, and Batch III adjudications.",
+            "Seven released components remain UNKNOWN and twenty-three remain REJECT after Batch IV.",
+            "Forty-three released rows are NARROW after combining Batch 2, post-hold, Batch I, Batch II, Batch III, and Batch IV adjudications.",
             "Three commit-only component rows remain UNKNOWN.",
             "Batch H admitted zero of 24 OpenClaw/ChurchCRM routes; the QQBot regression remains a non-counting attribution UNKNOWN.",
-            "Batch I, Batch II, and Batch III each re-adjudicated 24 released rows and did not produce a confirmed 200.",
+            "Batch I, Batch II, Batch III, and Batch IV each re-adjudicated 24 released rows and did not produce a confirmed 200.",
             "Current live release replay covers targeted rows rather than every inherited released row.",
         ],
     }

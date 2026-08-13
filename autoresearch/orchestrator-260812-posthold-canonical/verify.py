@@ -200,10 +200,10 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         {"STRICT_RELEASED": 132, "INCOMPLETE_RELEASED": 67, "INCOMPLETE_COMMIT_ONLY": 11, "STRICT_COMMIT_ONLY": 1}
     )
     assert Counter(row["row_state"] for row in released) == Counter(
-        {"PASS": 142, "NARROW": 36, "UNKNOWN": 5, "REJECT": 16}
+        {"PASS": 126, "NARROW": 43, "UNKNOWN": 7, "REJECT": 23}
     )
     public_ids = [value for row in canonical for value in row["public_ids"]]
-    assert len(public_ids) == len(set(public_ids)) == 371
+    assert len(public_ids) == len(set(public_ids)) == 372 == 372
     control_ids = [value for row in controls for value in row["public_ids"]]
     assert len(control_ids) == len(set(control_ids))
     assert set(public_ids) & set(control_ids) == {"CVE-2026-44114", "GHSA-HXVM-XJVF-93F3"}
@@ -301,6 +301,30 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
         "strict-200-v3:alias-c4cd9379a4920e9fd9fed577",
         "strict-200-v3:alias-c6e0a965a87d452bf5cc44af",
         "strict-200-v3:alias-ff3fa870e1a23f5c964f7fb2",
+        "strict-200-v3:alias-061ebce41071bc874d061809",
+        "strict-200-v3:alias-06ca275f5a582dacb68ec70b",
+        "strict-200-v3:alias-10470c6830a2c45cfe7539af",
+        "strict-200-v3:alias-246b44dae3aa16a9a896dcf4",
+        "strict-200-v3:alias-2b012541da0847fedc6f6867",
+        "strict-200-v3:alias-2b440d3fa3dacafd8d29beca",
+        "strict-200-v3:alias-50f5531876200e99a322872e",
+        "strict-200-v3:alias-61bd78ccafb20adcb14b905d",
+        "strict-200-v3:alias-81f12adb7f1b7ae03d0c07f1",
+        "strict-200-v3:alias-93fa45f75fcf8a90730ee3e9",
+        "strict-200-v3:alias-9c7a2c50a4f4725177cca843",
+        "strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2",
+        "strict-200-v3:alias-b36a7cd7bcd0e76bbb7491b4",
+        "strict-200-v3:alias-b9a5a8da5751392a45949620",
+        "strict-200-v3:alias-bd1a0da23e1a76c824287b27",
+        "strict-200-v3:alias-c819cf08c0a8bf17cf425ccc",
+        "strict-200-v3:alias-cfe8a69b17c7144c755c5961",
+        "strict-200-v3:alias-d019f5b5ca91c8bb1d8b320d",
+        "strict-200-v3:alias-d15c3d1da6dab91042d63c2e",
+        "strict-200-v3:alias-d6382d230e136d6c15eadf35",
+        "strict-200-v3:alias-dc8ebac001df0ca8f9dbbe40",
+        "strict-200-v3:alias-e08284f85ea883d18c60e813",
+        "strict-200-v3:alias-ec754f179ba2cc618a27a98b",
+        "strict-200-v3:component-openclaw-gateway-config-guard",
     }
     indexed = {row["row_key"]: row for row in ledger}
     assert indexed["post:gitea-draft-attachment@canonical"]["row_state"] == "PASS"
@@ -406,6 +430,25 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     assert garmin["atomic_fix_members"] == ["77a3837f1f79d486663c9646438e70e8319e1a48"]
     fleet = indexed["strict-200-v3:alias-72b82f9a2e737ed2c555363e"]
     assert fleet["row_state"] == "REJECT"
+    solidcam = indexed["strict-200-v3:alias-061ebce41071bc874d061809"]
+    assert solidcam["row_state"] == "PASS" and "GHSA-92VG-F4FQ-FXM9" in solidcam["public_ids"]
+    nickname = indexed["strict-200-v3:alias-06ca275f5a582dacb68ec70b"]
+    assert nickname["row_state"] == "PASS"
+    assert nickname["candidate_fix_edges"][0]["candidate_sha"] == "ce12b9092f03d85603f0b6b8193d512260a65dab"
+    responses = indexed["strict-200-v3:alias-246b44dae3aa16a9a896dcf4"]
+    assert responses["row_state"] == "REJECT"
+    grep = indexed["strict-200-v3:alias-2b440d3fa3dacafd8d29beca"]
+    assert grep["row_state"] == "REJECT"
+    feishu = indexed["strict-200-v3:alias-9c7a2c50a4f4725177cca843"]
+    assert feishu["row_state"] == "UNKNOWN"
+    wacrm = indexed["strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2"]
+    assert wacrm["row_state"] == "UNKNOWN" and wacrm["release_evidence"]["vulnerable_tag"] is None
+    kiro = indexed["strict-200-v3:alias-bd1a0da23e1a76c824287b27"]
+    assert kiro["row_state"] == "NARROW" and "GHSA-6MWV-4MRM-5P3M" in kiro["public_ids"]
+    sortcmp = indexed["strict-200-v3:alias-c819cf08c0a8bf17cf425ccc"]
+    assert sortcmp["row_state"] == "REJECT" and sortcmp["release_evidence"]["vulnerable_tag"] is None
+    guard = indexed["strict-200-v3:component-openclaw-gateway-config-guard"]
+    assert guard["row_state"] == "REJECT"
     delete_scope = indexed["post:filebrowser-delete-scope@canonical"]
     assert delete_scope["row_state"] == "REJECT" and delete_scope["counting"]["canonical_instance"] is True
     assert summary["source_envelopes"] == {
@@ -945,6 +988,91 @@ def verify_batch_iii_live() -> dict:
     }
 
 
+def verify_batch_iv_live() -> dict:
+    ledger = {row["row_key"]: row for row in load_jsonl(HERE / "ledger.jsonl")}
+    cache = Path.home() / ".cache/cve-analyzer/repos"
+    v2 = ROOT / ".ai-slop/cache/cve-analyzer/repos"
+
+    nickname = ledger["strict-200-v3:alias-06ca275f5a582dacb68ec70b"]
+    oc = v2 / nickname["release_evidence"]["repo_cache"]
+    member = nickname["candidate_fix_edges"][0]["candidate_sha"]
+    handler = git(oc, "show", f"{member}:extensions/synology-chat/src/webhook-handler.ts").stdout
+    assert "byNickname" in handler or "resolveChatUserId" in handler
+    assert git(oc, "merge-base", "--is-ancestor", nickname["release_evidence"]["candidate_sha"], "v2026.3.2", check=False).returncode == 0
+    assert git(oc, "merge-base", "--is-ancestor", nickname["candidate_fix_edges"][0]["fix_sha"], "v2026.3.2", check=False).returncode == 1
+    assert git(oc, "merge-base", "--is-ancestor", nickname["candidate_fix_edges"][0]["fix_sha"], "v2026.3.22", check=False).returncode == 0
+    assert nickname["row_state"] == "PASS"
+
+    embedded = ledger["strict-200-v3:alias-61bd78ccafb20adcb14b905d"]
+    claw = cache / "github.com_enderfga_claw-orchestrator"
+    origin = embedded["candidate_fix_edges"][0]["candidate_sha"]
+    fix = embedded["candidate_fix_edges"][0]["fix_sha"]
+    assert git(claw, "merge-base", "--is-ancestor", origin, "v3.5.5", check=False).returncode == 0
+    assert git(claw, "merge-base", "--is-ancestor", fix, "v3.5.5", check=False).returncode == 1
+    assert git(claw, "merge-base", "--is-ancestor", fix, "v3.5.6", check=False).returncode == 0
+    assert embedded["row_state"] == "PASS"
+
+    grep = ledger["strict-200-v3:alias-2b440d3fa3dacafd8d29beca"]
+    parent = git(claw, "show", "edf0c0d6771bb150431d8f3b43cbea73efece90e:backend/src/server.ts").stdout
+    assert "session/grep" in parent or "new RegExp(pattern" in parent
+    assert grep["row_state"] == "REJECT"
+
+    sortcmp = ledger["strict-200-v3:alias-c819cf08c0a8bf17cf425ccc"]
+    mr = cache / "mruby_mruby"
+    origin = sortcmp["candidate_fix_edges"][0]["candidate_sha"]
+    fix = sortcmp["candidate_fix_edges"][0]["fix_sha"]
+    assert git(mr, "merge-base", "--is-ancestor", origin, "3.4.0", check=False).returncode == 1
+    assert git(mr, "merge-base", "--is-ancestor", origin, "4.0.0-rc", check=False).returncode == 0
+    assert git(mr, "merge-base", "--is-ancestor", fix, "4.0.0-rc", check=False).returncode == 0
+    assert sortcmp["row_state"] == "REJECT" and sortcmp["release_evidence"]["vulnerable_tag"] is None
+
+    secretref = ledger["strict-200-v3:alias-50f5531876200e99a322872e"]
+    assert git(oc, "merge-base", "--is-ancestor", secretref["candidate_fix_edges"][0]["candidate_sha"], "v2026.4.14", check=False).returncode == 0
+    assert git(oc, "merge-base", "--is-ancestor", secretref["candidate_fix_edges"][0]["fix_sha"], "v2026.4.14", check=False).returncode == 1
+    assert git(oc, "merge-base", "--is-ancestor", secretref["candidate_fix_edges"][0]["fix_sha"], "v2026.4.15", check=False).returncode == 0
+    assert secretref["row_state"] == "NARROW"
+
+    feishu = ledger["strict-200-v3:alias-9c7a2c50a4f4725177cca843"]
+    body = git(oc, "cat-file", "commit", feishu["candidate_fix_edges"][0]["candidate_sha"]).stdout
+    assert "Co-Authored-By" not in body
+    assert feishu["row_state"] == "UNKNOWN"
+
+    misp = ledger["strict-200-v3:alias-d15c3d1da6dab91042d63c2e"]
+    mi = cache / "misp_misp"
+    importer = git(mi, "show", misp["candidate_fix_edges"][0]["candidate_sha"] + ":app/Lib/Tools/EventTemplateImporter.php").stdout
+    assert "overwrite" in importer.lower() or "org_id" in importer
+    assert git(mi, "merge-base", "--is-ancestor", misp["candidate_fix_edges"][0]["candidate_sha"], "v2.5.37", check=False).returncode == 0
+    assert git(mi, "merge-base", "--is-ancestor", misp["atomic_fix_members"][0], "v2.5.37", check=False).returncode == 1
+    assert git(mi, "merge-base", "--is-ancestor", misp["atomic_fix_members"][0], "v2.5.39", check=False).returncode == 0
+    assert misp["row_state"] == "PASS"
+
+    wacrm = ledger["strict-200-v3:alias-9dd227fdd8e2b88da77a7ff2"]
+    wa = v2 / wacrm["release_evidence"]["repo_cache"]
+    tags = git(wa, "tag", "--list").stdout.strip()
+    assert tags == ""
+    assert wacrm["row_state"] == "UNKNOWN" and wacrm["release_evidence"]["vulnerable_tag"] is None
+
+    guard = ledger["strict-200-v3:component-openclaw-gateway-config-guard"]
+    assert git(oc, "merge-base", "--is-ancestor", guard["release_evidence"]["candidate_sha"], "v2026.4.12", check=False).returncode == 1
+    assert git(oc, "merge-base", "--is-ancestor", guard["candidate_fix_edges"][0]["fix_sha"], "v2026.5.4", check=False).returncode == 0
+    assert guard["row_state"] == "REJECT"
+
+    kiro = ledger["strict-200-v3:alias-bd1a0da23e1a76c824287b27"]
+    router = cache / "github.com_decolua_9router"
+    assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["candidate_sha"], "v0.5.2", check=False).returncode == 0
+    assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["fix_sha"], "v0.5.2", check=False).returncode == 1
+    assert git(router, "merge-base", "--is-ancestor", kiro["candidate_fix_edges"][0]["fix_sha"], "v0.5.6", check=False).returncode == 0
+    assert kiro["row_state"] == "NARROW"
+
+    return {
+        "state_changing_rows_replayed": 10,
+        "reject_rows": 3,
+        "narrow_rows": 2,
+        "unknown_rows": 2,
+        "pass_rows": 3,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
@@ -956,6 +1084,7 @@ def main() -> None:
     batch_i_live = verify_batch_i_live() if args.live else None
     batch_ii_live = verify_batch_ii_live() if args.live else None
     batch_iii_live = verify_batch_iii_live() if args.live else None
+    batch_iv_live = verify_batch_iv_live() if args.live else None
     result = {
         "status": "HOLD",
         "validation": "PASS",
@@ -968,6 +1097,7 @@ def main() -> None:
         "batch_i_live": batch_i_live,
         "batch_ii_live": batch_ii_live,
         "batch_iii_live": batch_iii_live,
+        "batch_iv_live": batch_iv_live,
         "route_controls": len(controls),
         "gate_status": {
             "public_id_alias_released": "PASS",
@@ -986,6 +1116,7 @@ def main() -> None:
         f", batch-I {batch_i_live['state_changing_rows_replayed']} targeted rows replayed"
         f", batch-II {batch_ii_live['state_changing_rows_replayed']} targeted rows replayed"
         f", batch-III {batch_iii_live['state_changing_rows_replayed']} targeted rows replayed"
+        f", batch-IV {batch_iv_live['state_changing_rows_replayed']} targeted rows replayed"
     )
     print(f"PASS: {summary['counts']['ledger_records']} records, source envelope 132/199/211, HOLD{live_suffix}")
 
