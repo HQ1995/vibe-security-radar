@@ -176,6 +176,25 @@ def test_commit_only_can_be_strict_but_cannot_enter_released_publication() -> No
     assert medium["causal_valid"] is True
 
 
+def test_released_publication_requires_every_gate_pass() -> None:
+    held = evaluate_publication_admission(
+        _row(identity_gate="NA"), source_tier="STRICT_RELEASED"
+    )
+
+    assert held["admission"] == "HOLD"
+    assert held["reason"] == "all_gates_must_pass"
+    assert held["may_publish"] is held["released_publication_admitted"] is False
+    assert held["strict_confirmed"] is True
+    assert held["causal_valid"] is True
+    assert held["errors"] == []
+
+    admitted = evaluate_publication_admission(_row(), source_tier="STRICT_RELEASED")
+    assert admitted["admission"] == "ADMIT"
+    assert (
+        admitted["may_publish"] is admitted["released_publication_admitted"] is True
+    )
+
+
 @pytest.mark.parametrize(
     ("verdict", "gate_value"), [("UNKNOWN", "UNKNOWN"), ("BLOCKED", "BLOCKED")]
 )

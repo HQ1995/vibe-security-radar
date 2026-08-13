@@ -123,11 +123,13 @@ def evaluate_publication_admission(
         and confidence == "HIGH"
         and all(map(_closed_gate, gates.values()))
     )
+    # Released publication is the countable contract: every one of the seven
+    # gates must be exactly PASS, never merely closed (NA).
     released_publication_admitted = (
         strict_confirmed
         and isinstance(publication_tier, str)
         and publication_tier in RELEASED_SOURCE_TIERS
-        and gates["release_gate"] == "PASS"
+        and all(value == "PASS" for value in gates.values())
     )
     if errors:
         admission, reason = "HOLD", "invalid_adjudication"
@@ -146,8 +148,10 @@ def evaluate_publication_admission(
         or publication_tier not in RELEASED_SOURCE_TIERS
     ):
         admission, reason = "HOLD", "commit_only_not_released"
-    elif strict_confirmed:
+    elif strict_confirmed and gates["release_gate"] != "PASS":
         admission, reason = "HOLD", "release_gate_must_pass"
+    elif strict_confirmed:
+        admission, reason = "HOLD", "all_gates_must_pass"
     else:
         admission, reason = "HOLD", "confirm_requires_high_confidence"
 

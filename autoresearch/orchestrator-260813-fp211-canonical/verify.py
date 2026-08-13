@@ -14,6 +14,9 @@ import build
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+EXPECTED_SOURCE_MANIFEST_SHA256 = (
+    "679dbac540bf2f8dad0a24a85d8fc309c613977a2b58a1ad44b40e5a85798ccb"
+)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 HAN = re.compile(r"[\u3400-\u9fff]")
 GATE_VALUES = {"PASS", "FAIL", "NARROW", "UNKNOWN", "BLOCKED", "NA"}
@@ -41,6 +44,7 @@ def sha256(path: Path) -> str:
 
 
 def verify() -> tuple[dict, list[dict]]:
+    assert sha256(HERE / "source_manifest.json") == EXPECTED_SOURCE_MANIFEST_SHA256
     manifest = load_json(HERE / "source_manifest.json")
     hashes = {item["path"]: item["sha256"] for item in manifest["sources"]}
     assert len(hashes) == len(manifest["sources"])
@@ -62,6 +66,7 @@ def verify() -> tuple[dict, list[dict]]:
     dispositions = load_jsonl(ROOT / build.AUDIT_DISPOSITIONS)
     assert len(ledger) == len(base) == 273
     assert len(audits) == len(audit_manifest) == 211
+    build.assert_semantic_controls(audits)
 
     base_canonical = [
         row
@@ -130,15 +135,9 @@ def verify() -> tuple[dict, list[dict]]:
             assert embedded[field] == sorted(set(embedded[field]))
             assert all(SHA_RE.fullmatch(value) for value in embedded[field])
 
-        strict = (
-            audit["verdict"] == "CONFIRM"
-            and audit["confidence"] == "HIGH"
-            and all(audit[field] in {"PASS", "NA"} for field in GATE_FIELDS)
-        )
-        released_admitted = (
-            strict
-            and row["source_tier"].endswith("_RELEASED")
-            and audit["release_gate"] == "PASS"
+        strict = build.strict_confirmed(audit)
+        released_admitted = build.released_publication_admitted(
+            audit, row["source_tier"]
         )
         assert row["counting"]["fp211_strict_confirmed"] is strict
         assert (
@@ -191,6 +190,9 @@ def verify() -> tuple[dict, list[dict]]:
         assert row["row_state"] == "REJECT"
         assert row["fp211_adjudication"]["verdict"] == "FALSE_POSITIVE"
         assert row["fp211_adjudication"]["duplicate_of"] in canonical_keys
+
+    assert canonical[164]["row_key"] == "post:filebrowser-delete-scope@canonical"
+    assert canonical[165]["row_key"] == "post:filebrowser-dangling-write@canonical"
 
     assert (
         summary["fp211_absorbed"] is True and summary["canonical_overlay_ready"] is True

@@ -2,6 +2,7 @@
 """Focused regression checks for the fp211 canonical admission overlay."""
 
 import unittest
+from copy import deepcopy
 
 import verify
 
@@ -28,12 +29,74 @@ class Fp211CanonicalTest(unittest.TestCase):
             audit = row["fp211_adjudication"]
             self.assertEqual(
                 row["counting"]["fp211_released_publication_admitted"],
-                audit["verdict"] == "CONFIRM"
-                and audit["confidence"] == "HIGH"
-                and all(audit[field] in {"PASS", "NA"} for field in verify.GATE_FIELDS)
-                and row["source_tier"].endswith("_RELEASED")
-                and audit["release_gate"] == "PASS",
+                verify.build.released_publication_admitted(audit, row["source_tier"]),
             )
+
+    def test_filebrowser_semantic_controls_do_not_dedupe_shared_edge(self) -> None:
+        negative = self.by_key["post:filebrowser-delete-scope@canonical"]
+        positive = self.by_key["post:filebrowser-dangling-write@canonical"]
+        self.assertEqual(negative["fp211_adjudication"]["verdict"], "FALSE_POSITIVE")
+        self.assertEqual(negative["fp211_adjudication"]["causal_class"], "WRONG_EDGE")
+        for field in ("ai_hunk_gate", "but_for_gate", "fix_reversal_gate"):
+            self.assertEqual(negative["fp211_adjudication"][field], "FAIL")
+        self.assertFalse(negative["counting"]["fp211_released_publication_admitted"])
+        self.assertEqual(positive["fp211_adjudication"]["verdict"], "CONFIRM")
+        self.assertEqual(
+            positive["fp211_adjudication"]["causal_class"],
+            "AI_INCOMPLETE_REMEDIATION",
+        )
+        self.assertTrue(positive["counting"]["fp211_released_publication_admitted"])
+        self.assertTrue(positive["source_tier"].endswith("_RELEASED"))
+        self.assertEqual(
+            negative["fp211_adjudication"]["candidate_set"],
+            positive["fp211_adjudication"]["candidate_set"],
+        )
+        self.assertEqual(
+            negative["fp211_adjudication"]["minimum_fix_set"],
+            positive["fp211_adjudication"]["minimum_fix_set"],
+        )
+
+    def test_na_released_is_hold_and_balanced_swap_is_rejected(self) -> None:
+        positive = deepcopy(
+            self.rows[165]["fp211_adjudication"]
+        )
+        positive["release_gate"] = "NA"
+        self.assertTrue(verify.build.strict_confirmed(positive))
+        self.assertFalse(
+            verify.build.released_publication_admitted(positive, "STRICT_RELEASED")
+        )
+
+        audits = verify.load_jsonl(verify.ROOT / verify.build.AUDIT_ROWS)
+        swapped = deepcopy(audits)
+        semantic_fields = (
+            "verdict",
+            "causal_class",
+            "confidence",
+            *verify.GATE_FIELDS,
+            "candidate_set",
+            "carrier_set",
+            "minimum_fix_set",
+            "duplicate_of",
+            "false_positive_class",
+            "baseline_state",
+            "public_ids_keep",
+            "public_ids_remove",
+        )
+        for field in semantic_fields:
+            swapped[164][field], swapped[165][field] = (
+                swapped[165][field],
+                swapped[164][field],
+            )
+        self.assertEqual(swapped[164]["ordinal"], 165)
+        self.assertEqual(
+            swapped[164]["row_key"], "post:filebrowser-delete-scope@canonical"
+        )
+        self.assertEqual(swapped[165]["ordinal"], 166)
+        self.assertEqual(
+            swapped[165]["row_key"], "post:filebrowser-dangling-write@canonical"
+        )
+        with self.assertRaises(AssertionError):
+            verify.build.assert_semantic_controls(swapped)
 
     def test_ten_polluted_ids_are_removed_but_declared(self) -> None:
         removed = {

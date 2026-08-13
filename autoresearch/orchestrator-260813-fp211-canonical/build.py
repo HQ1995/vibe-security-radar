@@ -13,6 +13,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+EXPECTED_SOURCE_MANIFEST_SHA256 = (
+    "679dbac540bf2f8dad0a24a85d8fc309c613977a2b58a1ad44b40e5a85798ccb"
+)
 BASE_LEDGER = "autoresearch/orchestrator-260812-posthold-canonical/ledger.jsonl"
 BASE_SUMMARY = "autoresearch/orchestrator-260812-posthold-canonical/summary.json"
 AUDIT_META = "autoresearch/orchestrator-260813-fp211-audit/manifest.json"
@@ -82,21 +85,55 @@ def fp211_source_ref(audit: dict, hashes: dict[str, str]) -> dict:
     }
 
 
+def strict_confirmed(audit: dict) -> bool:
+    return (
+        audit["verdict"] == "CONFIRM"
+        and audit["confidence"] == "HIGH"
+        and all(audit[field] in {"PASS", "NA"} for field in GATE_FIELDS)
+    )
+
+
+def released_publication_admitted(audit: dict, source_tier: str) -> bool:
+    return (
+        strict_confirmed(audit)
+        and source_tier.endswith("_RELEASED")
+        and all(audit[field] == "PASS" for field in GATE_FIELDS)
+    )
+
+
+def assert_semantic_controls(audits: list[dict]) -> None:
+    assert audits[164]["ordinal"] == 165
+    assert audits[164]["row_key"] == "post:filebrowser-delete-scope@canonical"
+    assert audits[165]["ordinal"] == 166
+    assert audits[165]["row_key"] == "post:filebrowser-dangling-write@canonical"
+    by_key = {audit["row_key"]: audit for audit in audits}
+    negative = by_key["post:filebrowser-delete-scope@canonical"]
+    positive = by_key["post:filebrowser-dangling-write@canonical"]
+    assert negative["ordinal"] == 165
+    assert negative["verdict"] == "FALSE_POSITIVE"
+    assert negative["causal_class"] == "WRONG_EDGE"
+    assert negative["ai_hunk_gate"] == "FAIL"
+    assert negative["but_for_gate"] == "FAIL"
+    assert negative["fix_reversal_gate"] == "FAIL"
+    assert not released_publication_admitted(negative, "STRICT_RELEASED")
+    assert positive["ordinal"] == 166
+    assert positive["verdict"] == "CONFIRM"
+    assert positive["causal_class"] == "AI_INCOMPLETE_REMEDIATION"
+    assert all(positive[field] == "PASS" for field in GATE_FIELDS)
+    assert released_publication_admitted(positive, "STRICT_RELEASED")
+    assert negative["row_key"] != positive["row_key"]
+    assert negative["duplicate_of"] is None and positive["duplicate_of"] is None
+    assert negative["candidate_set"] == positive["candidate_set"]
+    assert negative["minimum_fix_set"] == positive["minimum_fix_set"]
+
+
 def apply_fp211(row: dict, audit: dict, hashes: dict[str, str]) -> None:
     baseline_causal_class = row.get("causal_class")
     baseline_ids = list(row["public_ids"])
     source_ref = fp211_source_ref(audit, hashes)
     state = VERDICT_TO_STATE[audit["verdict"]]
-    strict_confirmed = (
-        audit["verdict"] == "CONFIRM"
-        and audit["confidence"] == "HIGH"
-        and all(audit[field] in {"PASS", "NA"} for field in GATE_FIELDS)
-    )
-    released_admitted = (
-        strict_confirmed
-        and row["source_tier"].endswith("_RELEASED")
-        and audit["release_gate"] == "PASS"
-    )
+    strict_confirmed_value = strict_confirmed(audit)
+    released_admitted = released_publication_admitted(audit, row["source_tier"])
 
     adjudication = dict(audit)
     adjudication.update(
@@ -126,7 +163,7 @@ def apply_fp211(row: dict, audit: dict, hashes: dict[str, str]) -> None:
         {
             "fp211_causal_valid": audit["verdict"] in {"CONFIRM", "NARROW"},
             "fp211_released_publication_admitted": released_admitted,
-            "fp211_strict_confirmed": strict_confirmed,
+            "fp211_strict_confirmed": strict_confirmed_value,
         }
     )
     row["state_axes"].update(
@@ -141,6 +178,7 @@ def apply_fp211(row: dict, audit: dict, hashes: dict[str, str]) -> None:
 def load_sources() -> tuple[
     dict, dict[str, str], list[dict], list[dict], list[dict], dict
 ]:
+    assert sha256_file(HERE / "source_manifest.json") == EXPECTED_SOURCE_MANIFEST_SHA256
     manifest = load_json(HERE / "source_manifest.json")
     hashes = source_hashes(manifest)
     assert len(hashes) == len(manifest["sources"])
@@ -182,6 +220,7 @@ def build_outputs() -> dict[Path, str]:
     assert len(canonical) == len(audits) == 211
     assert [row["row_key"] for row in canonical] == [row["row_key"] for row in audits]
     assert [row["ordinal"] for row in audits] == list(range(1, 212))
+    assert_semantic_controls(audits)
 
     for row, audit in zip(canonical, audits, strict=True):
         apply_fp211(row, audit, hashes)
