@@ -11,6 +11,18 @@ Pinned input:
 
 Independently falsify every current case. The current row state, prior reports, OSV `introduced`, commit references, ancestry intersections, and model votes are hypotheses or routing evidence, never proof.
 
+## Public case counting
+
+Audit rows remain mechanism-level evidence units. User-facing cases are counted by verified public-advisory identity groups:
+
+- prefer a first-party `GHSA-*` as `case_id`; use `CVE-*` only when no GHSA exists;
+- a GHSA and its formal CVE alias count once, with the CVE retained in `aliases`;
+- multiple mechanisms described by one GHSA remain one public case with mechanism children;
+- multiple GHSAs merge only when first-party identity evidence proves formal alias or duplicate publication; same repository, fix, or mechanism alone is insufficient;
+- any removed, polluted, or unresolved public ID remains explicit and cannot silently inflate the case count.
+
+Therefore the 211 audit rows are not themselves a final case count. The public case ledger is rebuilt only after causal verdicts and identity closure.
+
 ## Required gates per row
 
 1. **Identity:** verify the first-party GHSA/CVE object and whether all public IDs belong to this exact mechanism. Preserve missing/404 and polluted alias evidence.
