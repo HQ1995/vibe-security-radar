@@ -77,7 +77,14 @@ def compare_contains(repo: str, ancestor: str, tag: str) -> bool:
     return comparison["status"] in {"ahead", "identical"} and comparison["behind_by"] == 0
 
 
-def verify_structural() -> tuple[dict, list[dict], list[dict]]:
+def verify_result_hashes(summary: dict) -> None:
+    result = load_json(HERE / "result.json")
+    assert result["ledger_sha256"] == summary["ledger_sha256"] == sha256(HERE / "ledger.jsonl")
+    assert result["source_manifest_sha256"] == summary["source_manifest_sha256"] == sha256(HERE / "source_manifest.json")
+    assert result["summary_sha256"] == sha256(HERE / "summary.json")
+
+
+def verify_structural(*, check_result: bool = True) -> tuple[dict, list[dict], list[dict]]:
     manifest = load_json(HERE / "source_manifest.json")
     adjudications = load_json(HERE / "adjudications.json")
     corrections = load_json(HERE / "inherited_corrections.json")
@@ -96,6 +103,8 @@ def verify_structural() -> tuple[dict, list[dict], list[dict]]:
     assert summary["source_manifest_sha256"] == sha256(HERE / "source_manifest.json")
     assert summary["adjudications_sha256"] == sha256(HERE / "adjudications.json")
     assert summary["inherited_corrections_sha256"] == sha256(HERE / "inherited_corrections.json")
+    if check_result:
+        verify_result_hashes(summary)
 
     assert len(ledger) == 271
     assert len({row["row_key"] for row in ledger}) == len(ledger)
@@ -1078,7 +1087,7 @@ def main() -> None:
     parser.add_argument("--live", action="store_true", help="also replay Git containment and first-party advisory status")
     parser.add_argument("--write-result", action="store_true")
     args = parser.parse_args()
-    summary, additions, controls = verify_structural()
+    summary, additions, controls = verify_structural(check_result=not args.write_result)
     live_counts = verify_live(additions) if args.live else None
     inherited_live = verify_inherited_live() if args.live else None
     batch_i_live = verify_batch_i_live() if args.live else None
@@ -1091,6 +1100,8 @@ def main() -> None:
         "integration_ready": False,
         "validated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "ledger_sha256": summary["ledger_sha256"],
+        "source_manifest_sha256": summary["source_manifest_sha256"],
+        "summary_sha256": sha256(HERE / "summary.json"),
         "structural_counts": summary["counts"],
         "live_counts": live_counts,
         "inherited_live": inherited_live,
@@ -1111,6 +1122,7 @@ def main() -> None:
     }
     if args.write_result:
         (HERE / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        verify_result_hashes(summary)
     live_suffix = "" if live_counts is None else (
         f", {live_counts['release_edges'] + inherited_live['admitted_alias_release_rows'] + inherited_live['corrected_strict_fix_edges']} admitted release rows live-replayed"
         f", batch-I {batch_i_live['state_changing_rows_replayed']} targeted rows replayed"
