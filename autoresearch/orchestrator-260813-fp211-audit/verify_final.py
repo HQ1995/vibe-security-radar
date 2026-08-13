@@ -2,14 +2,26 @@
 """Fail closed on final mechanism, case, and public-ID conservation."""
 
 import json
+import re
 import subprocess
 from collections import Counter
 
 from verify import HERE, load_jsonl, verify_row
 
 
+HAN = re.compile(r"[\u3400-\u9fff]")
+
+
 def main() -> None:
     subprocess.run(["python3", str(HERE / "build_final.py"), "--check"], check=True)
+    for path in HERE.rglob("*"):
+        if not path.is_file() or "__pycache__" in path.parts:
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        assert not HAN.search(text), f"Han characters remain in {path.relative_to(HERE)}"
     manifest = {row["ordinal"]: row for row in load_jsonl(HERE / "manifest.jsonl")}
     mechanisms = load_jsonl(HERE / "final_mechanisms.jsonl")
     cases = load_jsonl(HERE / "public_cases.jsonl")
