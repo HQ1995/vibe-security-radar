@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "audit_contract_recovery",
+  "intake_split_id": "audit-debt-contract-recovery-20260801-v1",
+  "cve_id": "GHSA-gc24-px2r-5qmf",
+  "audit_verdict": "TRUE_POSITIVE",
+  "ai_authored_vulnerability": true,
+  "confidence": 0.99,
+  "audited": "2026-08-01",
+  "repository": "https://github.com/maziggy/bambuddy",
+  "vulnerability_summary": "Optional authentication left API routes unprotected and used a hardcoded JWT secret; an AI-generated change added another unauthenticated state-changing debug endpoint.",
+  "causality": "Human commit f8857ba66643eb3ce97116dd90c0e75a9474f924 introduced optional auth with a hardcoded JWT secret and incomplete route enforcement. Claude-generated commit a7319f0e7087cee59f1aa658c52c6408f1fb71e8 later added POST /{printer_id}/debug/simulate-print-complete without an authentication dependency, directly enlarging the affected surface. Primary advisory fix c31f2968889c855f1ffacb700c2c9970deb2a6fb adds global API authentication middleware and replaces the static secret. Descendant hardening a82f9278d2d587b7042a0858aab79fd8b6e3add9 adds explicit permission dependencies to 200+ endpoints, including the AI-added debug route. Both fixes are descendants of the AI origin and remain required fix roots.",
+  "evidence": {
+    "path": "backend/app/api/routes/printers.py",
+    "atomic_ai_origin": "a7319f0e7087cee59f1aa658c52c6408f1fb71e8",
+    "atomic_ai_signal": "Generated with Claude Code; Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "context_human_origin_commit": "f8857ba66643eb3ce97116dd90c0e75a9474f924",
+    "fix_commits": [
+      "c31f2968889c855f1ffacb700c2c9970deb2a6fb",
+      "a82f9278d2d587b7042a0858aab79fd8b6e3add9"
+    ],
+    "fix_roles": {
+      "c31f2968889c855f1ffacb700c2c9970deb2a6fb": "primary global middleware and JWT-secret fix",
+      "a82f9278d2d587b7042a0858aab79fd8b6e3add9": "descendant route-level permission hardening covering the AI endpoint"
+    }
+  },
+  "history_verification": {
+    "method": "local full-history commit, patch, parent, and merge-base inspection",
+    "ai_origin_to_primary_fix": "reachable_ancestor",
+    "ai_origin_to_route_hardening": "reachable_ancestor",
+    "primary_fix_to_route_hardening": "reachable_ancestor",
+    "shared_path_with_route_hardening": "backend/app/api/routes/printers.py"
+  },
+  "claim_boundary": "The target is the AI-added causal endpoint, not the full human-authored root cause. The two fixes make this a MULTI_FIX structural control.",
+  "auditor": "prospective-contract-recovery-local-history-audit"
+}

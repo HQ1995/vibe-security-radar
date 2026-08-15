@@ -19,7 +19,7 @@ that was absent from all prior research state:
   uncovered-surface roots.
 
 The canonical machine-readable v7 result is
-[`final_result.json`](../scripts/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/final_result.json).
+[`final_result.json`](../archives/legacy-web-data-campaign/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/final_result.json).
 
 ### Freshness and review protocol
 
@@ -128,7 +128,7 @@ It does **not** provide a fresh method-independent positive denominator and does
 **not** certify zero population misses.
 
 The canonical machine-readable result is
-[`final_result.json`](../scripts/heldout_studies/prospective-origin-heldout-20260803-v6-reserved/final_result.json).
+[`final_result.json`](../archives/legacy-web-data-campaign/heldout_studies/prospective-origin-heldout-20260803-v6-reserved/final_result.json).
 
 ## What changed
 

@@ -75,6 +75,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="only scan this canonical repository identity (repeatable)",
     )
     parser.add_argument(
+        "--frame",
+        type=Path,
+        default=None,
+        help="scan only repository identities in this cohort_advisory_repo_index",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=0,
@@ -92,6 +98,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="write artifacts here instead of a timestamped cohort-v1 directory",
     )
     return parser.parse_args(argv)
+
+
+def _frame_identities(path: Path) -> set[str]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"cannot read frame {path}: {exc}") from exc
+    repositories = payload.get("repositories") if isinstance(payload, dict) else None
+    if payload.get("artifact_kind") != "cohort_advisory_repo_index" or not isinstance(
+        repositories, dict
+    ):
+        raise SystemExit(f"invalid cohort frame: {path}")
+    return {str(identity).strip().casefold() for identity in repositories}
 
 
 def _parent_shas(repo_path: Path, shas: list[str]) -> dict[str, list[str]]:
@@ -500,6 +519,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Discovering local clones...", flush=True)
     repositories, unresolved = discover_local_clone_groups(_REPO_ROOT)
+    if args.frame is not None:
+        frame = _frame_identities(args.frame)
+        repositories = {
+            identity: paths
+            for identity, paths in repositories.items()
+            if identity.casefold() in frame
+        }
     if args.repo:
         wanted = {identity.strip().casefold() for identity in args.repo}
         repositories = {k: v for k, v in repositories.items() if k.casefold() in wanted}
@@ -543,6 +569,10 @@ def main(argv: list[str] | None = None) -> int:
     rows = [row for result in results for row in _commit_rows(result)]
     rows.sort(key=lambda row: (row["repository_identity"], str(row["sha"])))
     summary = _build_summary(results, rows, unresolved, elapsed, since)
+    if args.frame is not None:
+        summary["frame_path"] = str(args.frame)
+        summary["frame_sha256"] = hashlib.sha256(args.frame.read_bytes()).hexdigest()
+        summary["frame_repository_count"] = len(_frame_identities(args.frame))
 
     output_dir = args.output_dir or (
         _REPO_ROOT

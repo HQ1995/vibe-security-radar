@@ -39,15 +39,14 @@ uv run cve-analyzer batch --all --since 2025-05-01 --llm-verify \
 # cve-analyzer/README.md.
 uv run cve-analyzer analyze CVE-2024-27304 --llm-verify --coding-agent codex
 
-# 3. Generate a formally certified Web release and preview
-python scripts/generate_web_data.py \
-  --heldout-selection scripts/heldout_studies/selection-<sha256>.json \
-  --heldout-labels scripts/heldout_studies/labels-<sha256>.json \
-  --recall-selection scripts/heldout_studies/recall-selection-<sha256>.json \
-  --recall-labels scripts/heldout_studies/recall-labels-<sha256>.json \
-  --recall-report .ai-slop/state/data-refresh/end-to-end-recall-current.json
+# 3. Publish the 168-case research ledger and preview
+python3 scripts/publish_research_ledger.py   # → web/src/generated/research-data.json
 cd web && npm install && npm run dev
 ```
+
+The old certified 36-case Web release path (generate_web_data.py →
+web/data/) is archived under archives/legacy-36-web-catalog/, and the whole
+frozen data-refresh campaign lives under archives/legacy-web-data-campaign/.no longer feed the site.
 
 Run `uv run cve-analyzer --help` for full CLI reference.
 

@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import random
+import re
 import shutil
 import statistics
 import sys
@@ -50,10 +51,22 @@ DEFAULT_OSV_DIR = Path.home() / ".cache" / "cve-analyzer" / "osv-bulk"
 DEFAULT_DISK_FLOOR_GB = 150.0
 DEFAULT_MAX_REPO_GB = 8.0
 DEFAULT_SIZE_SAMPLE = 300
+_PUBLIC_ID_RE = re.compile(r"^(?:CVE-\d{4}-\d+|GHSA-[0-9A-Za-z-]+)$", re.IGNORECASE)
 
 
-def _index_path(state_root: Path, cutoff: str) -> Path:
-    return state_root / f"advisory-repos-since-{cutoff}.json"
+def _index_path(state_root: Path, cutoff: str, until: str = "") -> Path:
+    suffix = f"-through-{until}" if until else ""
+    return state_root / f"advisory-repos-since-{cutoff}{suffix}.json"
+
+
+def _public_ids(record: dict[str, Any]) -> list[str]:
+    return sorted(
+        {
+            str(value).upper()
+            for value in (record.get("id"), *(record.get("aliases") or []))
+            if _PUBLIC_ID_RE.fullmatch(str(value or ""))
+        }
+    )
 
 
 # ---------------------------------------------------------------- enumerate
@@ -116,6 +129,7 @@ def cmd_enumerate(args: argparse.Namespace) -> int:
     repo_advisories: dict[str, set[str]] = {}
     scanned = 0
     unreadable: list[str] = []
+    missing_publication_date = 0
     for archive in archives:
         try:
             handle = zipfile.ZipFile(archive)
@@ -133,14 +147,17 @@ def cmd_enumerate(args: argparse.Namespace) -> int:
                 if not isinstance(record, dict):
                     continue
                 scanned += 1
-                published = str(record.get("published") or record.get("modified") or "")[:10]
-                if not published or published < args.cutoff:
+                public_ids = _public_ids(record)
+                if not public_ids:
                     continue
-                advisory_id = str(record.get("id") or "")
-                if not advisory_id:
+                published = str(record.get("published") or "")[:10]
+                if not published:
+                    missing_publication_date += 1
+                    continue
+                if published < args.cutoff or (args.until and published > args.until):
                     continue
                 for identity in _record_repositories(record):
-                    repo_advisories.setdefault(identity, set()).add(advisory_id)
+                    repo_advisories.setdefault(identity, set()).update(public_ids)
         print(f"  scanned {archive.name}", flush=True)
 
     payload = {
@@ -148,11 +165,13 @@ def cmd_enumerate(args: argparse.Namespace) -> int:
         "artifact_kind": "cohort_advisory_repo_index",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "cutoff": args.cutoff,
+        "until": args.until,
         "osv_records_scanned": scanned,
+        "public_records_missing_publication_date": missing_publication_date,
         "unreadable_archives": unreadable,
         "repositories": {k: sorted(v) for k, v in sorted(repo_advisories.items())},
     }
-    out = _index_path(args.state_root, args.cutoff)
+    out = _index_path(args.state_root, args.cutoff, args.until)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -170,8 +189,8 @@ def cmd_enumerate(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------- plan
 
 
-def _load_frame(state_root: Path, cutoff: str) -> dict[str, list[str]]:
-    path = _index_path(state_root, cutoff)
+def _load_frame(state_root: Path, cutoff: str, until: str = "") -> dict[str, list[str]]:
+    path = _index_path(state_root, cutoff, until)
     if not path.is_file():
         raise SystemExit(f"advisory index missing: {path}\nRun `enumerate` first.")
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -193,7 +212,7 @@ def _ranked_targets(
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
-    frame = _load_frame(args.state_root, args.cutoff)
+    frame = _load_frame(args.state_root, args.cutoff, args.until)
     cloned, unresolved = discover_local_clones(_REPO_ROOT)
 
     # A random sample is enough to estimate median/mean size; walking every
@@ -249,7 +268,7 @@ def _clone_one(identity: str, advisories: int, max_repo_gb: float) -> dict[str, 
 
 
 def cmd_clone(args: argparse.Namespace) -> int:
-    frame = _load_frame(args.state_root, args.cutoff)
+    frame = _load_frame(args.state_root, args.cutoff, args.until)
     cloned, _unresolved = discover_local_clones(_REPO_ROOT)
     targets = _ranked_targets(frame, cloned, args.min_advisories)
     if args.limit > 0:
@@ -320,6 +339,7 @@ def cmd_clone(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--cutoff", default=DEFAULT_CUTOFF, help="advisory publication cutoff")
+    parser.add_argument("--until", default="", help="inclusive advisory publication end date")
     parser.add_argument(
         "--state-root",
         type=Path,

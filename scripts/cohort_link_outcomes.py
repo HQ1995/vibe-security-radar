@@ -44,6 +44,11 @@ from typing import Any
 import data_refresh_paths
 
 from cohort.outcomes import fixes_trailer_shas, reverted_shas
+from cohort.populations import (
+    PopulationContractError,
+    load_exposure_population_contract,
+    sha256_file,
+)
 from cohort.repos import discover_local_clones
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -221,6 +226,7 @@ def _summarise(
     repo_stats: list[dict[str, Any]],
     elapsed: float,
     args: argparse.Namespace,
+    population_contract: dict[str, object],
 ) -> dict[str, Any]:
     outcomes: Counter[str] = Counter()
     by_route: dict[str, Counter[str]] = defaultdict(Counter)
@@ -248,6 +254,8 @@ def _summarise(
         "artifact_kind": "cohort_stated_outcomes",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "exposure_dir": str(args.exposure_dir),
+        "exposure_summary_sha256": sha256_file(args.exposure_dir / "summary.json"),
+        "population_contract": population_contract,
         "window_days": args.window_days,
         "elapsed_seconds": round(elapsed, 1),
         "units": len(units),
@@ -314,6 +322,10 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     workers = max(1, args.workers)
     args.exposure_dir = args.exposure_dir or _latest_exposure_dir()
+    try:
+        population_contract = load_exposure_population_contract(args.exposure_dir)
+    except PopulationContractError as exc:
+        raise SystemExit(f"population contract failed: {exc}") from exc
 
     wanted = {identity.strip() for identity in args.repo}
     print(f"Reading {args.exposure_dir / 'exposure.jsonl'}...", flush=True)
@@ -382,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     elapsed = time.monotonic() - started
 
     linked.sort(key=lambda unit: (unit["repository_identity"], str(unit["sha"])))
-    summary = _summarise(linked, repo_stats, elapsed, args)
+    summary = _summarise(linked, repo_stats, elapsed, args, population_contract)
 
     output_dir = args.output_dir or (
         _REPO_ROOT

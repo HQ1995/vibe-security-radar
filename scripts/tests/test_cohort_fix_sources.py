@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from types import SimpleNamespace
 
 import cohort.fix_sources as sources
@@ -134,6 +135,23 @@ def test_converted_version_boundary_is_retained_but_not_public_exact() -> None:
     assert observations[0]["evidence_kind"] == sources.PUBLIC_VERSION_BOUNDARY
 
 
+def test_abbreviated_public_reference_is_retained_as_carrier() -> None:
+    observations = sources.public_fix_observations(
+        [
+            {
+                "repository_identity": REPOSITORY,
+                "advisory": "CVE-2026-1000",
+                "fix_sha": FIRST_FIX[:12],
+                "published": "2026-01-01T00:00:00Z",
+                "reference_kind": "commit_url",
+            }
+        ]
+    )
+
+    assert observations[0]["fix_ref"] == FIRST_FIX[:12]
+    assert observations[0]["evidence_kind"] == sources.PUBLIC_REFERENCE_CARRIER
+
+
 def test_repository_reference_scan_is_unbounded_and_retains_every_match(
     monkeypatch,
     tmp_path,
@@ -173,11 +191,20 @@ def test_repository_reference_scan_is_unbounded_and_retains_every_match(
 
 
 def test_source_resolution_conserves_unavailable_refs(monkeypatch, tmp_path) -> None:
-    def fake_run_git(command: list[str], **_kwargs: object) -> SimpleNamespace:
-        ref = command[-1].removesuffix("^{commit}")
-        if ref == FIRST_FIX[:12]:
-            return SimpleNamespace(returncode=0, stdout=f"{FIRST_FIX}\n")
-        return SimpleNamespace(returncode=128, stdout="")
+    commands: list[list[str]] = []
+
+    def fake_run_git(command: list[str], **kwargs: object) -> SimpleNamespace:
+        commands.append(command)
+        refs = [line.removesuffix("^{commit}") for line in str(kwargs["input"]).splitlines()]
+        return SimpleNamespace(
+            returncode=0,
+            stdout="".join(
+                f"{FIRST_FIX} commit 1\n"
+                if ref == FIRST_FIX[:12]
+                else f"{ref}^{{commit}} missing\n"
+                for ref in refs
+            ),
+        )
 
     monkeypatch.setattr(sources, "run_git", fake_run_git)
     observations = [
@@ -214,6 +241,33 @@ def test_source_resolution_conserves_unavailable_refs(monkeypatch, tmp_path) -> 
         FIRST_FIX,
         SECOND_FIX[:12],
     }
+    assert len(commands) == 1
+    assert commands[0][-2:] == ["cat-file", "--batch-check"]
+
+
+def test_batch_commit_resolution_uses_real_git(tmp_path) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "commit", "--allow-empty", "-qm", "root"],
+        check=True,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "GIT_AUTHOR_NAME": "test",
+            "GIT_AUTHOR_EMAIL": "test@example.invalid",
+            "GIT_COMMITTER_NAME": "test",
+            "GIT_COMMITTER_EMAIL": "test@example.invalid",
+        },
+    )
+    sha = subprocess.check_output(
+        ["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True
+    ).strip()
+
+    resolved = sources.resolve_commit_refs(
+        tmp_path, [sha, "f" * 40], timeout=30
+    )
+
+    assert resolved[sha] == (sha, "")
+    assert resolved["f" * 40][0] == ""
 
 
 def test_repository_recall_floor_keeps_every_unit_without_fabricating_fix_sha() -> None:

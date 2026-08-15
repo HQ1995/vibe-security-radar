@@ -512,22 +512,20 @@ def collect_origin_signals(
             )
 
         for path, points in history_points.items():
-            for point in sorted(points):
-                output = _optional_git_text(
-                    repo,
-                    global_arguments,
-                    [
-                        "log",
-                        f"-L{point},{point}:{path}",
-                        "--format=%H",
-                        parent,
-                        "--",
-                    ],
-                    timeout=timeout,
-                    lane="enclosing_function_history",
-                    coverage_gaps=coverage_gaps,
-                )
-                function_history.update(_extract_shas(output))
+            arguments = ["log", "--no-patch"]
+            arguments.extend(
+                f"-L{point},{point}:{path}" for point in sorted(points)
+            )
+            arguments.extend(["--format=%H", parent, "--"])
+            output = _optional_git_text(
+                repo,
+                global_arguments,
+                arguments,
+                timeout=timeout,
+                lane="enclosing_function_history",
+                coverage_gaps=coverage_gaps,
+            )
+            function_history.update(_extract_shas(output))
 
         for path, text_lines in token_text.items():
             tokens = history_search_tokens("\n".join(text_lines))

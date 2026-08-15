@@ -576,9 +576,20 @@ def _squash_internal_fix_context(
     patch_cache: dict[str, str],
     file_cache: dict[tuple[str, str], list[str]],
     blame_cache: dict[tuple[int, str], list[dict[str, object]]],
+    match_index_cache: dict[
+        tuple[int, str],
+        tuple[
+            dict[str, list[dict[str, object]]],
+            dict[str, list[dict[str, object]]],
+            dict[frozenset[str], list[dict[str, object]]],
+        ],
+    ]
+    | None = None,
 ) -> dict[str, list[dict[str, object]]]:
     """Map pre-fix hunk context back to the real member that owns it on the PR head."""
     evidence: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
+    if match_index_cache is None:
+        match_index_cache = {}
     for context in _fix_context_lines(
         repo,
         fix_sha,
@@ -603,25 +614,32 @@ def _squash_internal_fix_context(
         content = str(context["content"])
         tokens = context["tokens"]
         assert isinstance(tokens, frozenset)
-        exact = [row for row in pull_rows if row["content"] == content]
+        indexes = match_index_cache.get(blame_key)
+        if indexes is None:
+            exact_index: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
+            stripped_index: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
+            token_index: defaultdict[
+                frozenset[str], list[dict[str, object]]
+            ] = defaultdict(list)
+            for row in pull_rows:
+                row_content = str(row["content"])
+                exact_index[row_content].append(row)
+                stripped_index[row_content.strip()].append(row)
+                token_index[_line_tokens(row_content)].append(row)
+            indexes = (dict(exact_index), dict(stripped_index), dict(token_index))
+            match_index_cache[blame_key] = indexes
+        exact_index, stripped_index, token_index = indexes
+        exact = exact_index.get(content, [])
         if exact:
             matches = exact
             quality = "exact_line"
         else:
-            stripped = [
-                row
-                for row in pull_rows
-                if str(row["content"]).strip() == content.strip()
-            ]
+            stripped = stripped_index.get(content.strip(), [])
             if stripped:
                 matches = stripped
                 quality = "whitespace_normalized_line"
             else:
-                matches = [
-                    row
-                    for row in pull_rows
-                    if _line_tokens(str(row["content"])) == tokens
-                ]
+                matches = token_index.get(tokens, [])
                 quality = "token_signature_fail_open"
         ambiguity = len(matches)
         for row in matches:

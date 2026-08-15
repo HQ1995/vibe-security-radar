@@ -1,5 +1,5 @@
 -- Canonical report-row materialization for the v4 final result.
--- Source JSON: scripts/heldout_studies/prospective-origin-heldout-20260803-v4-final/result.json
+-- Source JSON: archives/legacy-web-data-campaign/heldout_studies/prospective-origin-heldout-20260803-v4-final/result.json
 -- Source JSON SHA-256: f3ec4ccf614c61c2e397ab811e1eaf38a3d44eb68d169849cd0872da18c56f48
 -- Engine: SQLite 3 with JSON1.
 WITH report_rows(dataset_name, row_order, row_json) AS (

@@ -38,6 +38,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -51,6 +52,14 @@ from typing import Any
 import data_refresh_paths
 
 from cohort.repos import discover_local_clones
+from cohort.populations import (
+    ESTIMATION_POPULATION,
+    POPULATION_ROLES,
+    PopulationContractError,
+    build_exposure_population_contract,
+    validate_population_parameters,
+)
+from cohort.pull_refs import MAX_PR_MEMBERS, fetch_pull_refs, pull_members
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
@@ -59,15 +68,7 @@ DEFAULT_WORKERS = 12
 DEFAULT_MIN_FOLLOWUP_DAYS = 180
 DEFAULT_FETCH_BATCH = 150
 DEFAULT_REPO_TIMEOUT = 900
-# A "PR" with more members than this is a long-lived integration branch rather
-# than a reviewable change; decomposing it would dominate the runtime and its
-# dose would be meaningless anyway.
-MAX_PR_MEMBERS = 500
 COHORT_STATE_RELATIVE = Path(data_refresh_paths.PROJECT_RUNTIME_DIRECTORY) / "state" / "cohort-v1"
-
-# Our own ref namespace: fetching into refs/pull/* would be indistinguishable
-# from refs a user fetched themselves, and these are disposable.
-COHORT_PULL_NAMESPACE = "refs/cohort/pull"
 
 TIER_NO_DECOMPOSITION = "A_no_decomposition_needed"
 TIER_DECOMPOSED = "B_decomposed"
@@ -101,8 +102,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             f" (default: {DEFAULT_MIN_FOLLOWUP_DAYS}; 0 = all)"
         ),
     )
+    parser.add_argument(
+        "--population-role",
+        choices=POPULATION_ROLES,
+        default=ESTIMATION_POPULATION,
+        help=(
+            "scientific role for this slice; all_age_discovery requires zero follow-up,"
+            " while the default mature_outcome_estimation requires a positive threshold"
+        ),
+    )
     parser.add_argument("--as-of", default=None, help="follow-up reference date (default: today)")
     parser.add_argument("--repo", action="append", default=[], help="restrict to this identity")
+    parser.add_argument(
+        "--frame",
+        type=Path,
+        default=None,
+        help="advisory repo frame used to choose a canonical home for duplicate SHAs",
+    )
     parser.add_argument("--limit-repos", type=int, default=0, help="decompose at most N repositories")
     parser.add_argument(
         "--no-fetch",
@@ -149,93 +165,6 @@ def _run_git(args: list[str], *, timeout: int) -> subprocess.CompletedProcess[st
     return subprocess.run(
         args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
     )
-
-
-def _fetch_pull_refs(
-    repo_path: Path, pr_numbers: list[int], *, batch: int, timeout: int
-) -> tuple[int, str]:
-    """Fetch the PR tips we need.  Returns (refs fetched, error)."""
-
-    fetched = 0
-    for start in range(0, len(pr_numbers), batch):
-        chunk = pr_numbers[start : start + batch]
-        refspecs = [
-            f"+refs/pull/{number}/head:{COHORT_PULL_NAMESPACE}/{number}" for number in chunk
-        ]
-        try:
-            completed = _run_git(
-                [
-                    "git",
-                    "-C",
-                    str(repo_path),
-                    "fetch",
-                    "--no-tags",
-                    "--no-write-fetch-head",
-                    "--quiet",
-                    "origin",
-                    *refspecs,
-                ],
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired:
-            return fetched, "fetch_timeout"
-        except (OSError, subprocess.SubprocessError) as exc:
-            return fetched, f"fetch_exception:{type(exc).__name__}"
-        if completed.returncode != 0:
-            # A deleted or never-published PR ref fails the whole batch, so fall
-            # back to one refspec at a time rather than losing the good ones.
-            for refspec in refspecs:
-                single = _run_git(
-                    [
-                        "git",
-                        "-C",
-                        str(repo_path),
-                        "fetch",
-                        "--no-tags",
-                        "--no-write-fetch-head",
-                        "--quiet",
-                        "origin",
-                        refspec,
-                    ],
-                    timeout=timeout,
-                )
-                if single.returncode == 0:
-                    fetched += 1
-            continue
-        fetched += len(chunk)
-    return fetched, ""
-
-
-def _pr_members(repo_path: Path, squash_sha: str, pr_number: int, *, timeout: int) -> list[str] | None:
-    """Return the PR's own commits, or None when the ref is not usable.
-
-    The squash commit's first parent is the base branch as it stood at merge
-    time, which makes it the exact cut-off: everything reachable from the PR tip
-    but not from that parent is the PR's own work.
-    """
-
-    ref = f"{COHORT_PULL_NAMESPACE}/{pr_number}"
-    try:
-        completed = _run_git(
-            [
-                "git",
-                "-C",
-                str(repo_path),
-                "rev-list",
-                "--no-merges",
-                f"--max-count={MAX_PR_MEMBERS + 1}",
-                ref,
-                "--not",
-                f"{squash_sha}^",
-            ],
-            timeout=timeout,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if completed.returncode != 0:
-        return None
-    members = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    return members or None
 
 
 def _commit_records(repo_path: Path, shas: list[str], *, timeout: int) -> dict[str, Any]:
@@ -297,7 +226,7 @@ def _decompose_repository(
     }
     pr_numbers = sorted({int(unit["pr_number"]) for unit in units})
     if not no_fetch:
-        fetched, error = _fetch_pull_refs(
+        fetched, error = fetch_pull_refs(
             repo_path, pr_numbers, batch=fetch_batch, timeout=timeout
         )
         stats["refs_fetched"] = fetched
@@ -305,7 +234,7 @@ def _decompose_repository(
 
     results: list[dict[str, Any]] = []
     for unit in units:
-        members = _pr_members(
+        members = pull_members(
             repo_path, str(unit["sha"]), int(unit["pr_number"]), timeout=timeout
         )
         if members is None:
@@ -327,20 +256,26 @@ def _decompose_repository(
                 {**unit, "tier": TIER_UNRESOLVED, "unresolved_reason": "member_read_incomplete"}
             )
             continue
-        ai_members = 0
+        ai_member_shas: list[str] = []
+        member_ai_tools: dict[str, list[str]] = {}
         member_tools: set[str] = set()
         for sha in members:
             matched = matches_for_commit(records[sha])
             if matched:
-                ai_members += 1
-                member_tools.update(match.tool for match in matched)
+                ai_member_shas.append(sha)
+                tools = sorted({match.tool for match in matched})
+                member_ai_tools[sha] = tools
+                member_tools.update(tools)
         results.append(
             {
                 **unit,
                 "tier": TIER_DECOMPOSED,
                 "n_members": len(members),
-                "n_ai_members": ai_members,
-                "ai_ratio": round(ai_members / len(members), 6),
+                "n_ai_members": len(ai_member_shas),
+                "ai_ratio": round(len(ai_member_shas) / len(members), 6),
+                "member_shas": members,
+                "ai_member_shas": ai_member_shas,
+                "member_ai_tools": member_ai_tools,
                 "member_tools": sorted(member_tools),
                 # The squash was credited to an AI but no member commit carries
                 # the attribution — the trailer was added when the PR was
@@ -349,7 +284,7 @@ def _decompose_repository(
                 # "no AI": it means the dose could not be localised, and
                 # letting it pass as a plain 0.0 would file an exposed change
                 # among the controls.
-                "squash_attribution_only": ai_members == 0,
+                "squash_attribution_only": not ai_member_shas,
             }
         )
     stats["elapsed_seconds"] = round(time.monotonic() - started, 2)
@@ -358,20 +293,32 @@ def _decompose_repository(
     return results, stats
 
 
-def _frame_identities() -> set[str]:
+def _frame_identities(frame_path: Path | None = None) -> set[str]:
     """Repositories that earned their way into the sampling frame."""
 
-    frame_path = (
+    explicit = frame_path is not None
+    frame_path = frame_path or (
         _REPO_ROOT / COHORT_STATE_RELATIVE / "advisory-repos-since-2025-05-01.json"
     )
     try:
         payload = json.loads(frame_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError) as exc:
+        if explicit:
+            raise SystemExit(f"cannot read frame {frame_path}: {exc}") from exc
         return set()
-    return set(payload.get("repositories") or ())
+    repositories = payload.get("repositories") if isinstance(payload, dict) else None
+    if payload.get("artifact_kind") != "cohort_advisory_repo_index" or not isinstance(
+        repositories, dict
+    ):
+        if explicit:
+            raise SystemExit(f"invalid cohort frame: {frame_path}")
+        return set()
+    return set(repositories)
 
 
-def _canonical_repositories(scan_dir: Path) -> tuple[dict[str, str], int]:
+def _canonical_repositories(
+    scan_dir: Path, frame_path: Path | None = None
+) -> tuple[dict[str, str], int]:
     """Pick one home repository per commit SHA.
 
     Forks and vendor mirrors republish the same commits verbatim: cal.com and
@@ -387,7 +334,7 @@ def _canonical_repositories(scan_dir: Path) -> tuple[dict[str, str], int]:
     always the busier tree), then lexicographic order so that reruns agree.
     """
 
-    frame = _frame_identities()
+    frame = _frame_identities(frame_path)
     sha_repos: dict[str, set[str]] = defaultdict(set)
     repo_size: Counter[str] = Counter()
     with (scan_dir / "commits.jsonl").open(encoding="utf-8") as handle:
@@ -504,6 +451,7 @@ def _summarise(
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "scan_dir": str(args.scan_dir),
         "min_followup_days": args.min_followup_days,
+        "population_contract": args.population_contract,
         "as_of": str(args.as_of),
         "fetch_disabled": bool(args.no_fetch),
         "elapsed_seconds": round(elapsed, 1),
@@ -596,10 +544,19 @@ def main(argv: list[str] | None = None) -> int:
     args.scan_dir = args.scan_dir or _latest_scan_dir()
     as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(timezone.utc).date()
     args.as_of = as_of
+    try:
+        validate_population_parameters(args.population_role, args.min_followup_days)
+        args.population_contract = build_exposure_population_contract(
+            args.scan_dir,
+            role=args.population_role,
+            min_followup_days=args.min_followup_days,
+        )
+    except PopulationContractError as exc:
+        raise SystemExit(f"population contract failed: {exc}") from exc
 
     wanted = {identity.strip() for identity in args.repo}
     print(f"Reading {args.scan_dir / 'commits.jsonl'}...", flush=True)
-    canonical, duplicated = _canonical_repositories(args.scan_dir)
+    canonical, duplicated = _canonical_repositories(args.scan_dir, args.frame)
     print(f"  {duplicated:,} commit SHAs live in more than one repository", flush=True)
     units, dropped = _load_units(
         args.scan_dir, args.min_followup_days, as_of, wanted, canonical
@@ -688,6 +645,9 @@ def main(argv: list[str] | None = None) -> int:
 
     classified.sort(key=lambda unit: (unit["repository_identity"], str(unit["sha"])))
     summary = _summarise(classified, dropped, repo_stats, elapsed, args)
+    if args.frame is not None:
+        summary["frame_path"] = str(args.frame)
+        summary["frame_sha256"] = hashlib.sha256(args.frame.read_bytes()).hexdigest()
 
     output_dir = args.output_dir or (
         _REPO_ROOT

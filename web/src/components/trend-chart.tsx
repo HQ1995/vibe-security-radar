@@ -1,250 +1,255 @@
-"use client";
+import { formatMonthShort } from "@/lib/month-utils";
+import type { ResearchMonth } from "@/lib/research-data";
 
-import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  getToolDisplayName,
-  getToolColor,
-} from "@/lib/constants";
-import { formatMonthShort, isValidMonthKey } from "@/lib/month-utils";
-
-const VISIBLE_MONTHS = 8;
-const COUNT_KEY = "__count__";
-
-interface MonthEntry {
-  readonly month: string;
-  readonly count: number;
-  readonly by_tool: Readonly<Record<string, number>>;
-}
+const VISIBLE_MONTHS = 12;
+const WIDTH = 720;
+const HEIGHT = 260;
+const LEFT = 36;
+const RIGHT = 30;
+const TOP = 24;
+const BOTTOM = 42;
 
 export interface TrendChartProps {
-  readonly data: readonly MonthEntry[];
+  readonly data: readonly ResearchMonth[];
+  readonly caseCount: number;
+  readonly datedCount: number;
+  readonly unknownDateCount: number;
+  readonly sourceCutoff: string;
 }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ dataKey: string; value: number; color: string }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-
-  const entries = payload.filter(
-    (p) => p.value > 0 && p.dataKey !== COUNT_KEY,
-  );
-  // Use the real CVE count, not sum of tool credits (a CVE can have multiple tools)
-  const countEntry = payload.find((p) => p.dataKey === COUNT_KEY);
-  const total = countEntry?.value ?? entries.reduce((sum, p) => sum + p.value, 0);
-
-  return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
-      <p className="mb-1 text-sm font-semibold text-card-foreground">
-        {label && isValidMonthKey(label) ? formatMonthShort(label) : label}
-      </p>
-      {entries.map((entry) => (
-        <div
-          key={entry.dataKey}
-          className="flex items-center gap-2 text-xs text-card-foreground"
-        >
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-sm"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span>{getToolDisplayName(entry.dataKey)}</span>
-          <span className="ml-auto font-mono">{entry.value}</span>
-        </div>
-      ))}
-      <div className="mt-1 border-t border-border pt-1 text-xs font-semibold text-card-foreground">
-        Total: {total}
-      </div>
-    </div>
-  );
+function shortMonth(month: string): string {
+  const year = month.slice(2, 4);
+  return `${formatMonthShort(month).slice(0, 3)} '${year}`;
 }
 
-export function TrendChart({ data }: TrendChartProps) {
-  const router = useRouter();
-
-  // Exclude non-YYYY-MM buckets (e.g. "2026" from year-only published dates)
-  const months = useMemo(
-    () => data.filter((entry) => isValidMonthKey(entry.month)),
-    [data],
+export function TrendChart({
+  data,
+  caseCount,
+  datedCount,
+  unknownDateCount,
+  sourceCutoff,
+}: TrendChartProps) {
+  const visible = data.slice(-VISIBLE_MONTHS);
+  const plotWidth = WIDTH - LEFT - RIGHT;
+  const plotHeight = HEIGHT - TOP - BOTTOM;
+  const maxCount = Math.max(1, ...visible.map((entry) => entry.count));
+  const points = visible.map((entry, index) => ({
+    ...entry,
+    x: LEFT + (index * plotWidth) / Math.max(1, visible.length - 1),
+    y: TOP + plotHeight - (entry.count / maxCount) * plotHeight,
+  }));
+  const line = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
+    .join(" ");
+  const area = points.length
+    ? `${line} L${points.at(-1)!.x},${TOP + plotHeight} L${points[0].x},${TOP + plotHeight} Z`
+    : "";
+  const yTicks = [...new Set([0, Math.ceil(maxCount / 2), maxCount])].sort(
+    (a, b) => a - b,
   );
-  const unknownMonthCount = useMemo(
-    () =>
-      data.reduce(
-        (sum, entry) => (isValidMonthKey(entry.month) ? sum : sum + entry.count),
-        0,
-      ),
-    [data],
-  );
-
-  // Collect all unique tool names across all months
-  const allTools = useMemo(() => {
-    const toolSet = new Set<string>();
-    for (const entry of months) {
-      for (const tool of Object.keys(entry.by_tool)) {
-        toolSet.add(tool);
-      }
-    }
-    return Array.from(toolSet).sort();
-  }, [months]);
-
-  // Default: show most recent months
-  const maxStart = Math.max(0, months.length - VISIBLE_MONTHS);
-  const [startIndex, setStartIndex] = useState(maxStart);
-
-  const canScrollLeft = startIndex > 0;
-  const canScrollRight = startIndex < maxStart;
-
-  const visibleData = useMemo(() => {
-    const sliced = months.slice(startIndex, startIndex + VISIBLE_MONTHS);
-    // Flatten by_tool into top-level keys for recharts; include real count
-    return sliced.map((entry) => {
-      const flat: Record<string, string | number> = {
-        month: entry.month,
-        [COUNT_KEY]: entry.count,
-      };
-      for (const tool of allTools) {
-        flat[tool] = entry.by_tool[tool] ?? 0;
-      }
-      return flat;
-    });
-  }, [months, startIndex, allTools]);
-
-  // Legend: only tools present in visible data
-  const visibleTools = useMemo(() => {
-    return allTools.filter((tool) =>
-      visibleData.some((d) => (d[tool] as number) > 0),
-    );
-  }, [allTools, visibleData]);
-
-  const handleBarClick = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => {
-      const month = data?.payload?.month;
-      if (month) {
-        router.push(`/cves/month/${month}`);
-      }
-    },
-    [router],
-  );
+  const cutoffMonth = sourceCutoff.slice(0, 7);
+  const [cutoffYear, cutoffMonthNumber, cutoffDay] = sourceCutoff
+    .slice(0, 10)
+    .split("-")
+    .map(Number);
+  const cutoffIsPartial =
+    visible.some((entry) => entry.month === cutoffMonth) &&
+    cutoffDay <
+    new Date(Date.UTC(cutoffYear, cutoffMonthNumber, 0)).getUTCDate();
 
   return (
-    <section>
-      <div className="mb-4 flex items-end justify-between gap-4">
+    <section
+      id="disclosure-trend"
+      className="scroll-mt-20 border-y border-border py-5"
+    >
+      <div>
         <div>
-          <h2 className="text-xl font-semibold">Vulnerabilities by Month</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Click a bar to browse that month
+          <p className="section-kicker">Disclosure trend</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em]">
+            Disclosures over time
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            When first-party advisories for these cases were published.
           </p>
         </div>
-        {months.length > VISIBLE_MONTHS && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setStartIndex(Math.max(0, startIndex - 1))}
-              disabled={!canScrollLeft}
-              className="rounded-md border border-border px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Show earlier months"
-            >
-              &larr;
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setStartIndex(Math.min(maxStart, startIndex + 1))
-              }
-              disabled={!canScrollRight}
-              className="rounded-md border border-border px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Show later months"
-            >
-              &rarr;
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="h-72 w-full rounded-xl border border-border bg-card p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={visibleData}
-            margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="var(--color-border)"
-            />
-            <XAxis
-              dataKey="month"
-              tickFormatter={(value: string) => formatMonthShort(value)}
-              tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-              axisLine={{ stroke: "var(--color-border)" }}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
-              isAnimationActive={false}
-            />
-            {allTools.map((tool) => (
-              <Bar
-                key={tool}
-                dataKey={tool}
-                stackId="tools"
-                fill={getToolColor(tool)}
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={false}
-                style={{ cursor: "pointer" }}
-                onClick={handleBarClick}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Inline legend for visible tools */}
-      {visibleTools.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-          {visibleTools.map((tool) => (
-            <div key={tool} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{
-                  backgroundColor:
-                    getToolColor(tool),
-                }}
-              />
-              <span>{getToolDisplayName(tool)}</span>
-            </div>
-          ))}
+      <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-y border-border py-2.5 font-mono text-[10px]">
+        <div className="flex gap-2">
+          <dt className="text-muted-foreground">Dated</dt>
+          <dd>{datedCount}/{caseCount}</dd>
         </div>
-      )}
+        <div className="flex gap-2">
+          <dt className="text-muted-foreground">Unavailable</dt>
+          <dd>{unknownDateCount}</dd>
+        </div>
+        {visible.length ? (
+          <div className="flex gap-2">
+            <dt className="text-muted-foreground">Range</dt>
+            <dd>
+              {formatMonthShort(visible[0].month)}–
+              {formatMonthShort(visible.at(-1)!.month)}
+            </dd>
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <dt className="text-muted-foreground">Cadence</dt>
+          <dd>Monthly</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="text-muted-foreground">Through</dt>
+          <dd>{sourceCutoff.slice(0, 10)}</dd>
+        </div>
+      </dl>
 
-      {unknownMonthCount > 0 && (
-        <p className="mt-2 text-xs text-muted-foreground/70">
-          {unknownMonthCount} CVE{unknownMonthCount === 1 ? "" : "s"} with
-          unknown month not shown
+      {points.length ? (
+        <div className="mt-4">
+          <div
+            className="sm:hidden"
+            role="img"
+            aria-label={points
+              .map(
+                (point) =>
+                  `${formatMonthShort(point.month)}: ${point.count} cases`,
+              )
+              .join(", ")}
+          >
+            <div className="flex h-28 items-end gap-1 border-b border-border px-1">
+              {points.map((point) => (
+                <div
+                  key={point.month}
+                  className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                >
+                  <span className="mb-1 font-mono text-[8px] tabular-nums">
+                    {point.count}
+                  </span>
+                  <span
+                    className="w-full bg-primary"
+                    style={{
+                      height: `${Math.max(2, (point.count / maxCount) * 78)}px`,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-6 font-mono text-[8px] text-muted-foreground">
+              {points
+                .filter((_, index) => index % 2 === 0)
+                .map((point) => (
+                  <span key={point.month}>{shortMonth(point.month)}</span>
+                ))}
+            </div>
+          </div>
+          <svg
+            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            className="hidden h-auto w-full sm:block"
+            role="img"
+            aria-label={points
+              .map(
+                (point) =>
+                  `${formatMonthShort(point.month)}: ${point.count} cases`,
+              )
+              .join(", ")}
+          >
+            <defs>
+              <linearGradient id="trend-area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {yTicks.map((tick) => {
+              const y = TOP + plotHeight - (tick / maxCount) * plotHeight;
+              return (
+                <g key={tick}>
+                  <line
+                    x1={LEFT}
+                    x2={WIDTH - RIGHT}
+                    y1={y}
+                    y2={y}
+                    stroke="var(--border)"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={LEFT - 10}
+                    y={y + 4}
+                    textAnchor="end"
+                    className="fill-muted-foreground font-mono text-[11px]"
+                  >
+                    {tick}
+                  </text>
+                </g>
+              );
+            })}
+            <path d={area} fill="url(#trend-area)" />
+            <path
+              d={line}
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {points.map((point) => (
+              <g key={point.month}>
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r="4.5"
+                  fill="var(--card)"
+                  stroke="var(--primary)"
+                  strokeWidth="3"
+                >
+                  <title>{`${formatMonthShort(point.month)}: ${point.count} cases`}</title>
+                </circle>
+                <text
+                  x={point.x}
+                  y={Math.max(14, point.y - 12)}
+                  textAnchor="middle"
+                  className="fill-foreground font-mono text-[11px] font-semibold"
+                >
+                  {point.count}
+                </text>
+                <text
+                  x={point.x}
+                  y={HEIGHT - 18}
+                  textAnchor="middle"
+                  className="fill-muted-foreground font-mono text-[10px]"
+                >
+                  {shortMonth(point.month)}
+                  {cutoffIsPartial && point.month === cutoffMonth ? "*" : ""}
+                </text>
+              </g>
+            ))}
+          </svg>
+          <table className="sr-only">
+            <caption>Canonical advisory disclosures by month</caption>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Cases</th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.map((point) => (
+                <tr key={point.month}>
+                  <td>{formatMonthShort(point.month)}</td>
+                  <td>{point.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="py-10 text-sm text-muted-foreground">
+          No exact first-party advisory dates are available.
         </p>
       )}
+
+      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+        Exact GHSA dates; {unknownDateCount} case
+        {unknownDateCount === 1 ? " lacks" : "s lack"} a publication date.
+        {cutoffIsPartial ? ` * ${formatMonthShort(cutoffMonth)} is partial.` : ""}
+      </p>
     </section>
   );
 }

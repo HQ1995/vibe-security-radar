@@ -25,14 +25,16 @@ export function EntityCard({
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg min-w-0">
             {icon}
-            <span className="truncate" title={label}>{label}</span>
+            <span className="truncate" title={label}>
+              {label}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-3xl font-bold tabular-nums">
             {count}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
-              {count === 1 ? "vulnerability" : "vulnerabilities"}
+              {count === 1 ? "catalog page" : "catalog pages"}
             </span>
           </p>
           <div className="flex flex-wrap gap-1.5">

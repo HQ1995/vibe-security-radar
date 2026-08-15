@@ -1,7 +1,6 @@
 "use client";
 
 import { DistributionPieChart } from "@/components/distribution-pie-chart";
-import { THEMED_ICONS } from "@/components/tool-icon";
 import { getToolDisplayName, getToolColor } from "@/lib/constants";
 
 interface ToolDistributionChartProps {
@@ -9,16 +8,18 @@ interface ToolDistributionChartProps {
   readonly totalCves?: number;
 }
 
-export function ToolDistributionChart({ data, totalCves }: ToolDistributionChartProps) {
+export function ToolDistributionChart({
+  data,
+  totalCves,
+}: ToolDistributionChartProps) {
   return (
     <DistributionPieChart
-      title="Tool Distribution"
+      title="Tool signals on catalog pages"
       data={data}
       getColor={getToolColor}
       getName={getToolDisplayName}
       getHref={(key) => `/cves?tool=${encodeURIComponent(key)}`}
       iconDir="/icons/tools"
-      themedIcons={THEMED_ICONS}
       totalOverride={totalCves}
     />
   );

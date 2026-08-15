@@ -2,7 +2,11 @@ import Image from "next/image";
 import { getToolDisplayName } from "@/lib/constants";
 
 /** Tools that have separate light/dark SVGs (e.g. foo.svg + foo_dark.svg). */
-export const THEMED_ICONS = new Set(["github_copilot", "cursor", "unknown_ai"]);
+export const THEMED_ICONS = new Set([
+  "github_copilot",
+  "cursor",
+  "unknown_ai",
+]);
 
 /** Intrinsic SVG width/height ratios for the non-square tool marks. */
 const ICON_ASPECT_RATIOS: Readonly<Record<string, number>> = {
@@ -71,6 +75,10 @@ interface ToolIconProps {
 export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
   const displayName = getToolDisplayName(tool);
   const dimensions = getIconDimensions(tool, size);
+  const source =
+    tool === "openai_codex"
+      ? "/icons/tools/chatgpt.png"
+      : `/icons/tools/${tool}.svg`;
 
   if (!TOOLS_WITH_ICONS.has(tool)) {
     return (
@@ -87,7 +95,7 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
     return (
       <>
         <Image
-          src={`/icons/tools/${tool}.svg`}
+          src={source}
           alt={displayName}
           title={displayName}
           {...dimensions}
@@ -106,7 +114,7 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
 
   return (
     <Image
-      src={`/icons/tools/${tool}.svg`}
+      src={source}
       alt={displayName}
       title={displayName}
       {...dimensions}

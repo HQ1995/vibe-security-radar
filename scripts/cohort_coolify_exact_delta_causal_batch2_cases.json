@@ -1,0 +1,181 @@
+{
+  "cases": [
+    {
+      "key": "sentinel_status_runtime_debug_payload",
+      "candidate_prefix": "747a48b93379",
+      "fix_prefix": "14bba8ba86a2",
+      "adjudication": "CONFIRMED_DIRECT_AI_RUNTIME_DEBUG_INSTRUMENTATION",
+      "mechanism_group": "sentinel_status_runtime_debug_payload",
+      "causal_role": "DIRECT_ORIGIN",
+      "claim": "the AI candidate added production-path logging and Ray dumps containing raw Sentinel container arrays, labels, and aggregation state; those exact diagnostics survived to the repair parent, and the follow-up explicitly removed them as non-production debug instrumentation",
+      "fix_message_fragments": [
+        "remove debug logging",
+        "code is now production-ready"
+      ],
+      "exact_line_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ],
+      "candidate_diff_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ],
+      "fix_diff_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ],
+      "parent_source_path": "app/Jobs/PushServerUpdateJob.php",
+      "parent_source_forbidden_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ],
+      "candidate_source_path": "app/Jobs/PushServerUpdateJob.php",
+      "candidate_source_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ],
+      "fix_parent_source_path": "app/Jobs/PushServerUpdateJob.php",
+      "fix_parent_source_fragments": [
+        "[STATUS-DEBUG] Raw Sentinel data received",
+        "ray('Raw Sentinel containers:'"
+      ]
+    },
+    {
+      "key": "hetzner_create_server_ray_payload",
+      "candidate_prefix": "e055c3b10159",
+      "fix_prefix": "9b060958aad7",
+      "adjudication": "CONFIRMED_DIRECT_AI_RUNTIME_DEBUG_INSTRUMENTATION",
+      "mechanism_group": "hetzner_create_server_ray_payload",
+      "causal_role": "DIRECT_ORIGIN",
+      "claim": "the AI candidate added Ray calls that emitted the complete Hetzner server-creation request parameters and API response on a runtime path; both calls survived to the repair parent and were removed by the repository-wide runtime Ray cleanup",
+      "fix_message_fragments": [
+        "remove Ray debug hooks from runtime"
+      ],
+      "exact_line_fragments": [
+        "Hetzner createServer request",
+        "Hetzner createServer response"
+      ],
+      "candidate_diff_fragments": [
+        "Hetzner createServer request",
+        "'params' => $params",
+        "Hetzner createServer response",
+        "'response' => $response"
+      ],
+      "fix_diff_fragments": [
+        "Hetzner createServer request",
+        "Hetzner createServer response"
+      ],
+      "parent_source_path": "app/Services/HetznerService.php",
+      "parent_source_forbidden_fragments": [
+        "Hetzner createServer request",
+        "Hetzner createServer response"
+      ],
+      "candidate_source_path": "app/Services/HetznerService.php",
+      "candidate_source_fragments": [
+        "Hetzner createServer request",
+        "'params' => $params",
+        "Hetzner createServer response",
+        "'response' => $response"
+      ],
+      "fix_parent_source_path": "app/Services/HetznerService.php",
+      "fix_parent_source_fragments": [
+        "Hetzner createServer request",
+        "Hetzner createServer response"
+      ]
+    },
+    {
+      "key": "cloud_init_script_syntax_validation",
+      "candidate_prefix": "5463f4d4961c",
+      "fix_prefix": "d93a13eeee23",
+      "adjudication": "CONFIRMED_DIRECT_AI_INVALID_CONFIGURATION_ACCEPTANCE",
+      "mechanism_group": "cloud_init_script_syntax_validation",
+      "causal_role": "DIRECT_ORIGIN",
+      "claim": "the AI candidate created the cloud-init script management path with only required-string validation, allowing malformed cloud-config to be persisted; that permissive rule survived to the repair parent, and the follow-up added a validator that preserves shebang scripts while rejecting malformed YAML",
+      "fix_message_fragments": [
+        "add YAML validation for cloud-init scripts",
+        "Bash scripts"
+      ],
+      "exact_line_fragments": [
+        "'script' => 'required|string'"
+      ],
+      "candidate_diff_fragments": [
+        "'script' => 'required|string'",
+        "CloudInitScript::create"
+      ],
+      "fix_diff_fragments": [
+        "new \\App\\Rules\\ValidCloudInitYaml",
+        "rejects invalid YAML format",
+        "accepts valid bash script with shebang"
+      ],
+      "candidate_source_path": "app/Livewire/Security/CloudInitScriptForm.php",
+      "candidate_source_fragments": [
+        "'script' => 'required|string'",
+        "CloudInitScript::create"
+      ],
+      "candidate_source_forbidden_fragments": [
+        "ValidCloudInitYaml"
+      ],
+      "fix_parent_source_path": "app/Livewire/Security/CloudInitScriptForm.php",
+      "fix_parent_source_fragments": [
+        "'script' => 'required|string'",
+        "CloudInitScript::create"
+      ],
+      "fix_parent_source_forbidden_fragments": [
+        "ValidCloudInitYaml"
+      ]
+    },
+    {
+      "key": "manual_webhook_missing_secret_identifier_oracle",
+      "candidate_prefix": "bafb9a5a8baf",
+      "fix_prefix": "c1518ba1c0be",
+      "adjudication": "CONFIRMED_DIRECT_AI_UNAUTHENTICATED_IDENTIFIER_DISCLOSURE",
+      "mechanism_group": "manual_webhook_missing_secret_identifier_oracle",
+      "causal_role": "DIRECT_ORIGIN",
+      "claim": "the pre-existing substring repository matcher is not attributed to this candidate; the AI security refactor directly added an unauthenticated empty-secret branch that returned the matched application name and a distinct secret-not-configured message across four providers, that branch survived to the repair parent, and the follow-up replaced it with a generic failure payload",
+      "fix_message_fragments": [
+        "match manual webhook repositories exactly",
+        "generic webhook failure payload"
+      ],
+      "exact_line_fragments": [
+        "'application' => $application->name",
+        "'message' => 'Webhook secret not configured.'"
+      ],
+      "candidate_diff_fragments": [
+        "if (empty($webhook_secret))",
+        "'application' => $application->name",
+        "'message' => 'Webhook secret not configured.'"
+      ],
+      "fix_diff_fragments": [
+        "unauthenticatedManualWebhookFailurePayload",
+        "'message' => 'Webhook secret not configured.'"
+      ],
+      "parent_source_path": "app/Http/Controllers/Webhook/Github.php",
+      "parent_source_fragments": [
+        "Application::where('git_repository', 'like', \"%$full_name%\")"
+      ],
+      "parent_source_forbidden_fragments": [
+        "Webhook secret not configured."
+      ],
+      "candidate_source_path": "app/Http/Controllers/Webhook/Github.php",
+      "candidate_source_fragments": [
+        "Application::where('git_repository', 'like', \"%$full_name%\")",
+        "if (empty($webhook_secret))",
+        "'application' => $application->name",
+        "'message' => 'Webhook secret not configured.'"
+      ],
+      "candidate_source_forbidden_fragments": [
+        "unauthenticatedManualWebhookFailurePayload"
+      ],
+      "fix_parent_source_path": "app/Http/Controllers/Webhook/Github.php",
+      "fix_parent_source_fragments": [
+        "Application::where('git_repository', 'like', \"%$full_name%\")",
+        "if (empty($webhook_secret))",
+        "'application' => $application->name",
+        "'message' => 'Webhook secret not configured.'"
+      ],
+      "fix_parent_source_forbidden_fragments": [
+        "unauthenticatedManualWebhookFailurePayload"
+      ]
+    }
+  ]
+}

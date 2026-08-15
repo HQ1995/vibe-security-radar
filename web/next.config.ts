@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["127.0.0.1", "swoop.gtisc.gatech.edu"],
+  devIndicators: false,
   images: {
     remotePatterns: [
       {
@@ -9,15 +11,6 @@ const nextConfig: NextConfig = {
         hostname: "github.com",
         pathname: "/*.png",
       },
-    ],
-  },
-  // Per-CVE artifacts are read through fs during static generation and ISR.
-  outputFileTracingIncludes: {
-    "/*": [
-      "./data/index.json",
-      "./data/stats.json",
-      "./data/release-receipt.json",
-      "./data/cves/**/*.json",
     ],
   },
   headers: async () => [

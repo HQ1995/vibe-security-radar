@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavHeader } from "@/components/nav-header";
 import { SiteFooter } from "@/components/site-footer";
-import { getDataGenerationId } from "@/lib/data";
+import { getResearchSnapshot } from "@/lib/research-data";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,17 +18,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://vibe-radar-ten.vercel.app"),
   title: "Vibe Security Radar",
-  description: "Tracking the security cost of vibe coding",
+  description:
+    "Mechanism-level research tracing publicly disclosed vulnerabilities to AI-authored code changes.",
   openGraph: {
     title: "Vibe Security Radar",
-    description: "Tracking the security cost of vibe coding",
+    description:
+      "Mechanism-level research tracing publicly disclosed vulnerabilities to AI-authored code changes.",
     siteName: "Vibe Security Radar",
     type: "website",
   },
   twitter: {
     card: "summary",
     title: "Vibe Security Radar",
-    description: "Tracking the security cost of vibe coding",
+    description:
+      "Mechanism-level research tracing publicly disclosed vulnerabilities to AI-authored code changes.",
   },
 };
 
@@ -37,13 +40,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const generationId = getDataGenerationId();
+  const snapshot = getResearchSnapshot().snapshot;
+  const generationId = snapshot.case_set + "@" + snapshot.source_cutoff;
   return (
-    <html
-      lang="en"
-      className="dark"
-      data-publication-generation={generationId}
-    >
+    <html lang="en" data-publication-generation={generationId}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

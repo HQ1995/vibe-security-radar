@@ -1,31 +1,30 @@
-import { getStats } from "@/lib/data";
-import { formatPublished } from "@/lib/commit-utils";
+import { getResearchSnapshot } from "@/lib/research-data";
 
 export function SiteFooter() {
-  const stats = getStats();
-  const generatedAt = formatPublished(stats.generated_at);
-  const coverageFrom = formatPublished(stats.coverage_from);
-  const coverageTo = formatPublished(stats.coverage_to);
+  const research = getResearchSnapshot();
 
   return (
-    <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="space-y-1">
-          <p className="font-medium text-foreground/80">Vibe Security Radar</p>
-          <p>Data from OSV &middot; GitHub Advisory Database &middot; NVD</p>
-          {generatedAt && (
-            <p className="tabular-nums">
-              Data as of {generatedAt}
-              {coverageFrom && coverageTo && (
-                <>
-                  {" "}
-                  &middot; Coverage {coverageFrom} &ndash; {coverageTo}
-                </>
-              )}
-            </p>
-          )}
+    <footer className="border-t border-border/70 bg-card/35">
+      <div className="mx-auto grid w-full max-w-[96rem] gap-8 px-4 py-10 text-xs text-muted-foreground sm:px-6 md:grid-cols-[1fr_auto] md:items-end 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+        <div className="max-w-2xl space-y-2">
+          <p className="text-sm font-semibold tracking-tight text-foreground">
+            Vibe Security Radar
+          </p>
+          <p className="leading-5">
+            A mechanism-level study of vulnerabilities contributed by AI-written
+            code. Case pages connect advisories to the relevant change, residual
+            vulnerability, and security fix.
+          </p>
+          <p>
+            Sources: first-party security advisories &middot; public Git history
+            &middot; release artifacts
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] tabular-nums">
+            Advisory-date source cutoff{" "}
+            {research.snapshot.source_cutoff.slice(0, 10)}
+          </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5 md:justify-end">
           <a
             href="https://github.com/HQ1995/vibe-security-radar"
             target="_blank"

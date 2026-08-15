@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "key": "deployment_log_display_limit",
+      "candidate_prefix": "d9762e0310c7",
+      "fix_prefix": "b484c0cc253f",
+      "adjudication": "CONFIRMED_DIRECT_AI_LOG_DISPLAY_TRUNCATION_REGRESSION",
+      "mechanism_group": "deployment_log_hardcoded_display_limit",
+      "claim": "the AI candidate added a second hard-coded 2,000-line rendering cap even when the backend supplied more logs; the follow-up removes that cap and bounds the requested source log count at 50,000",
+      "fix_message_fragments": [
+        "remove hardcoded 2000 line display limit"
+      ],
+      "exact_line_fragments": [
+        "$maxDisplayLines = 2000;",
+        "$allLines->slice(-$maxDisplayLines)"
+      ],
+      "candidate_diff_fragments": [
+        "$maxDisplayLines = 2000;",
+        "Showing last {{ number_format($maxDisplayLines) }}"
+      ],
+      "fix_diff_fragments": [
+        "public const MAX_LOG_LINES = 50000;",
+        "max=\"50000\"",
+        "$displayLines = collect(explode"
+      ]
+    },
+    {
+      "key": "dirty_indicator_border_layout_preservation",
+      "candidate_prefix": "a5c6f53b583c",
+      "fix_prefix": "bc39c2caa83b",
+      "adjudication": "CONFIRMED_AI_LAYOUT_SHIFT_PRESERVATION_CONTRIBUTOR",
+      "mechanism_group": "dirty_indicator_border_layout_shift_preservation",
+      "claim": "while narrowing dirty-state binding, the AI candidate rewrote and retained the border-width indicator on every bound field; the follow-up replaces that preserved box-model mutation with an inset shadow",
+      "fix_message_fragments": [
+        "eliminate layout shift on input border indicator using box-shadow"
+      ],
+      "exact_line_fragments": [
+        "wire:dirty.class=\"dark:border-l-warning border-l-coollabs border-l-4\""
+      ],
+      "candidate_diff_fragments": [
+        "wire:dirty.class=\"dark:border-l-warning border-l-coollabs border-l-4\""
+      ],
+      "fix_diff_fragments": [
+        "wire:dirty.class=\"[box-shadow:inset_4px_0_0_#6b16ed"
+      ],
+      "parent_source_path": "resources/views/components/forms/input.blade.php",
+      "parent_source_fragments": [
+        "wire:dirty.class=\"dark:border-l-warning border-l-coollabs border-l-4\""
+      ]
+    },
+    {
+      "key": "compose_control_build_pack_reactivity",
+      "candidate_prefix": "fb4f12fcb8ab",
+      "fix_prefix": "b9ea89d52886",
+      "adjudication": "CONFIRMED_DIRECT_AI_NONREACTIVE_UI_PATH_EXTENSION",
+      "mechanism_group": "compose_control_build_pack_reactivity",
+      "claim": "the AI feature added compose reload and raw/deployable controls under database-model build-pack conditions even though the form changes a live buildPack property; the follow-up switches those conditions to the reactive properties",
+      "fix_message_fragments": [
+        "make build pack ui reactivity work properly"
+      ],
+      "exact_line_fragments": [
+        "@if ($application->build_pack === 'dockercompose')"
+      ],
+      "candidate_diff_fragments": [
+        "Reload Compose File",
+        "x-data=\"{ showRaw: true }\"",
+        "@if ($application->build_pack === 'dockercompose')"
+      ],
+      "fix_diff_fragments": [
+        "@if ($buildPack === 'dockercompose')",
+        "@if ($isStatic || $buildPack === 'static')"
+      ]
+    },
+    {
+      "key": "file_mount_parent_segment_hardening",
+      "candidate_prefix": "3fdce06b654f",
+      "fix_prefix": "a06c1a7bf5e3",
+      "adjudication": "CONFIRMED_DIRECT_AI_INCOMPLETE_PATH_TRAVERSAL_HARDENING",
+      "mechanism_group": "file_mount_parent_segment_confinement",
+      "claim": "the AI path-safety repair routed user mount paths through a shell-metacharacter validator that accepts parent segments before concatenating them with managed roots; the follow-up rejects dot segments and confines the normalized result to the resource directory",
+      "fix_message_fragments": [
+        "improve storage mount path handling"
+      ],
+      "exact_line_fragments": [
+        "validateShellSafePath($mountPath, 'file storage path');"
+      ],
+      "candidate_diff_fragments": [
+        "validateShellSafePath($mountPath, 'file storage path');",
+        "$fsPath = application_configuration_dir().'/'.$application->uuid.$mountPath;"
+      ],
+      "fix_diff_fragments": [
+        "validateFileMountPath",
+        "confineFileMountPath",
+        "relative path segments ('.' or '..') are not allowed",
+        "parent segment to etc"
+      ],
+      "candidate_source_path": "bootstrap/helpers/shared.php",
+      "candidate_source_fragments": [
+        "function validateShellSafePath",
+        "return $input;"
+      ],
+      "candidate_source_forbidden_fragments": [
+        "function validateFileMountPath",
+        "relative path segments ('.' or '..') are not allowed"
+      ]
+    }
+  ]
+}

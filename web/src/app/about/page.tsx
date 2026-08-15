@@ -1,401 +1,166 @@
 import type { Metadata } from "next";
-import { getStats } from "@/lib/data";
-import { DataFreshness } from "@/components/data-freshness";
-import { TOOL_DISPLAY_NAMES, TOOL_URLS } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "About - Vibe Security Radar",
+  title: "Method — Vibe Security Radar",
   description:
-    "How Vibe Security Radar finds and verifies vulnerabilities introduced by AI coding tools.",
+    "How Vibe Security Radar verifies AI-contributed vulnerabilities.",
 };
 
-/** Derive the tool list from the single source of truth, excluding the catch-all. */
-const AI_TOOLS = Object.entries(TOOL_DISPLAY_NAMES)
-  .filter(([key]) => key !== "unknown_ai")
-  .map(([key, name]) => ({ key, name, url: TOOL_URLS[key] }));
-
-const DATA_SOURCES = [
+const STEPS = [
   {
-    name: "OSV.dev (bulk + API)",
-    url: "https://osv.dev",
-    description:
-      "Open-source vulnerability database. Bulk data dumps power batch scans; the REST API fills in gaps for individual lookups.",
+    number: "01",
+    title: "Match the advisory",
+    detail: "Confirm the advisory, repository, package, and vulnerability.",
   },
   {
-    name: "GitHub Advisory Database (local clone)",
-    url: "https://github.com/github/advisory-database",
-    description:
-      "Full git clone of reviewed and unreviewed advisories, queried locally with no API calls required.",
+    number: "02",
+    title: "Locate the AI change",
+    detail: "Bind AI evidence to the exact commit and relevant code hunk.",
   },
   {
-    name: "Gemnasium DB",
-    url: "https://gitlab.com/gitlab-org/security-products/gemnasium-db",
-    description:
-      "GitLab's vulnerability database. Supplies fix commit URLs and fixed-version data that other sources often lack.",
+    number: "03",
+    title: "Prove cause and fix",
+    detail:
+      "Compare the parent, AI change, and minimum fix on the same attack path.",
   },
   {
-    name: "NVD",
-    url: "https://nvd.nist.gov",
-    description:
-      "NIST's National Vulnerability Database. Reference URLs are parsed to extract commit and pull request links.",
+    number: "04",
+    title: "Confirm the release",
+    detail:
+      "Verify the vulnerable and fixed releases, then remove true duplicates.",
   },
 ] as const;
 
-const LIMITATION_CATEGORIES = [
+const BOUNDARIES = [
   {
-    title: "Detection blind spots",
-    items: [
-      "Our detection relies entirely on metadata signals: co-author trailers, bot emails, commit message markers. Code written with AI assistance but committed without these markers is invisible to us. This is the single biggest limitation: many developers use AI tools in ways that leave no trace (copy-pasting from ChatGPT, using tools that don't add co-author trailers, or stripping markers before pushing). Our numbers represent a strict lower bound on AI-linked vulnerabilities.",
-      "Different AI tools leave varying amounts of metadata. Claude Code and GitHub Copilot have well-established co-author conventions; others are harder to detect. This creates uneven coverage across tools.",
-      "The current quality study measures recall only after an advisory reaches the discovered AI-signal candidate population. Advisory-discovery and signature-discovery recall remain separate, unmeasured boundaries.",
-    ],
+    title: "What counts",
+    body: "AI introduced the flaw, exposed the vulnerable path, or left a security fix incomplete.",
   },
   {
-    title: "Attribution accuracy",
-    items: [
-      "Git blame tracks line authorship, not semantic causality. A line may be blamed on commit X even when the real root cause is a design decision in commit Y. The deep investigator's CVE-level analysis catches most of these cases, but not all.",
-      "Squash-merge decomposition depends on the GitHub API returning sub-commits. Force-pushed PRs or rebased branches may lose the original commit history, making per-commit attribution impossible.",
-      "The investigator is a single LLM with constrained, receipt-backed git tools. Borderline cases where causality is genuinely ambiguous can go either way. We do not claim 100% accuracy on any individual case.",
-    ],
+    title: "What does not count",
+    body: "An AI marker, Git blame, or model verdict alone. The code change must affect the same mechanism.",
   },
   {
-    title: "Coverage scope",
-    items: [
-      "We cover publicly disclosed vulnerabilities (CVEs, GHSAs, RustSec, etc.) in public repositories, including CI/CD configuration issues like GitHub Actions injection. When advisory databases lack a fix commit, the pipeline uses LLM-assisted search (version-tag ranking and description-based git log matching) to discover one. Closed-source bugs and unpatched vulnerabilities remain out of scope.",
-      "Our analysis starts from May 2025. Vulnerabilities disclosed or fixed before that date are not covered, even if AI tools were involved.",
-      "We do not analyze whether AI tools are more or less likely to introduce vulnerabilities than human developers. This project measures incidence, not relative risk.",
-    ],
-  },
-  {
-    title: "Methodological constraints",
-    items: [
-      "Our approach is inherently retrospective: we find AI-authored vulnerabilities after they are reported and fixed. We cannot predict which AI-generated code will become vulnerable.",
-      "The pipeline is conservative by design: we would rather miss a true positive than report a false positive. This means our count underestimates the real number of AI-linked vulnerabilities.",
-      "We use LLMs to judge whether AI-authored code caused a vulnerability, which creates an inherent circularity. Exact-model provenance, per-subject evidence receipts, independent held-out labels, and fail-closed publication reduce this risk.",
-      "The independent quality gate measures precision and conditional recall inside the discovered AI-signal candidate population. Metadata-only detection still leaves total population recall unknown.",
-    ],
+    title: "What we do not claim",
+    body: "This is not a census of every AI bug and does not compare AI and human defect rates.",
   },
 ] as const;
 
-const PIPELINE_STEPS = [
-  {
-    tier: "Phase A",
-    title: "Fix commit discovery",
-    summary:
-      "Pull fix commit SHAs from advisory databases and reference URLs, with LLM-assisted search as a last resort.",
-    details:
-      "Advisory sources are queried in priority order: OSV bulk data and the local GitHub Advisory Database clone first (no API calls), then Gemnasium DB commit URLs and fixed-version tag resolution, followed by NVD reference URL parsing for GitHub commits and PRs. If none yield a fix commit and LLM mode is enabled, two additional strategies are attempted: a multi-version tag search that uses an LLM to rank candidate commits between version tags, and a description-based search that extracts terms from the CVE description and scores git log matches. Earlier tiers short-circuit later ones.",
-  },
-  {
-    tier: "Phase B",
-    title: "Bug-introducing commit discovery",
-    summary:
-      "Clone the repo, diff each fix commit, and run SZZ-style git blame to trace who introduced the vulnerable code.",
-    details:
-      "Four blame strategies run in parallel on each fix commit: (1) Deleted-line blame: when a fix removes or modifies code, blame those lines to find who wrote them (strongest causal signal). (2) Context blame: for add-only fixes, blame the surrounding lines in the parent commit. (3) Function history: when context blame finds nothing, trace function-level history via git log -L. (4) Pickaxe search: when vulnerability analysis identifies a dangerous pattern (e.g., a specific function call), search git history with git log -S to find who first introduced it. Before blaming, an LLM identifies which files in the fix are security-relevant, so blame runs only on those rather than every file the fix touched.",
-  },
-  {
-    tier: "Phase B+",
-    title: "Squash-merge decomposition",
-    summary:
-      "Large squash-merge commits get broken apart via the GitHub API to find which specific sub-commit introduced the vulnerable code.",
-    details:
-      "When a fix or bug-introducing commit is a squash-merge (detected by the (#NNN) pattern in the commit message) with over 30 changed files, the pipeline fetches the original PR sub-commits via the GitHub API. Each sub-commit is scored by file relevance to the CVE. For fix commits, only CVE-relevant files are blamed instead of all 1000+ files. For bug-introducing commits, the pipeline identifies which sub-commit actually touched the blamed file and records it as the culprit. This matters for AI attribution: if a PR has 17 commits and only one carries a Copilot co-author trailer, but that commit never touched the vulnerable file, the AI signal is dropped.",
-  },
-  {
-    tier: "Phase C",
-    title: "AI signal detection",
-    summary:
-      "Check each bug-introducing commit for AI coding tool signatures. CI/CD bots are filtered out.",
-    details:
-      "The pipeline scans commit metadata for co-author trailers (e.g., Co-Authored-By: Copilot), author and committer email domains, commit message keywords, and tool-specific patterns. Associated PR bodies are also checked for attribution text. For squash-merged BICs, individual sub-commits are inspected separately and confidence is scaled by the proportion of AI-authored commits in the PR. A lone Copilot commit in a 20-commit PR yields lower confidence than one where every commit carries AI signatures. Known CI/CD bots (Dependabot, Renovate, GitHub Actions, etc.) are excluded, and an anachronism filter rejects signals where the commit predates the tool's public release.",
-  },
-  {
-    tier: "Phase D",
-    title: "Screening verification",
-    summary:
-      "A lightweight LLM screen decides whether AI-signaled commits are plausibly related to the vulnerability, gating the expensive deep investigation.",
-    details:
-      "Rather than sending every AI-signaled CVE to the deep investigator, a lightweight LLM screen runs first. It receives the vulnerability description, the fix diff, and a summary of all AI-signaled bug-introducing commits (including decomposed sub-commits and blamed files). The screener asks one question: could any of these AI commits have contributed to this vulnerability? If not (say the AI commits touched frontend auth code but the vulnerability is a backend SSRF), the CVE is filtered out without incurring a full investigation. CVEs that pass proceed to Phase E. Final detector quality is measured only by the precommitted independent held-out gate.",
-  },
-  {
-    tier: "Phase E",
-    title: "Deep investigation",
-    summary:
-      "A single LLM investigator sees the entire vulnerability at once, runs a multi-step investigation with constrained git tools, and answers a CVE-level question: did AI-authored code contribute to introducing this vulnerability?",
-    details:
-      "The investigator receives all fix commits, all blame candidates, and the CVE description. Its receipt-backed tools provide bounded git log, file read, blame, exact diff, and pickaxe evidence, with up to 50 tool calls per investigation. It can trace chains of related commits, follow code across renames, and discover bug-introducing commits that blame missed entirely. Rather than rating individual commits, it answers a vulnerability-level question: was AI-authored code part of the causal chain? This verdict determines what appears on the site. Per-commit assessments are retained as supporting evidence but do not drive the final call.",
-  },
-  {
-    tier: "Phase F",
-    title: "Failure diagnostics",
-    summary:
-      "After every deep-investigation model fails, an optional external coding agent can review a bounded evidence bundle without changing the published verdict.",
-    details:
-      "The deep investigator (Phase E) exhausts its configured API-model chain first. An explicitly enabled Codex, Claude Code, or Kimi Code CLI can then review evidence extracted by the pipeline's constrained git tools. The provider receives no repository checkout, runs with its own tools disabled, and must return strict per-subject JSON with local evidence references. The result is retained as a diagnostic artifact and cannot create or replace a bug-introducing-commit verdict.",
-  },
+const SOURCES = [
+  ["GitHub advisories", "https://github.com/advisories"],
+  ["CVEList V5", "https://github.com/CVEProject/cvelistV5"],
+  ["Git history", "https://github.com"],
+  ["OSV routing", "https://osv.dev"],
 ] as const;
-
-function ExpandableStep({
-  step,
-}: {
-  step: (typeof PIPELINE_STEPS)[number];
-}) {
-  return (
-    <li className="flex gap-4">
-      <span className="mt-0.5 shrink-0 rounded bg-muted px-2 py-0.5 font-mono text-xs font-medium text-muted-foreground">
-        {step.tier}
-      </span>
-      <details className="group w-full">
-        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-          <h3 className="inline font-medium">{step.title}</h3>
-          <span className="ml-2 text-xs text-muted-foreground group-open:hidden">
-            ▸ details
-          </span>
-          <span className="ml-2 text-xs text-muted-foreground hidden group-open:inline">
-            ▾ less
-          </span>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            {step.summary}
-          </p>
-        </summary>
-        <div className="mt-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {step.details}
-          </p>
-        </div>
-      </details>
-    </li>
-  );
-}
 
 export default function AboutPage() {
-  const stats = getStats();
-
   return (
-    <main className="mx-auto max-w-3xl space-y-14 px-4 py-10 sm:px-6">
-      {/* Hero */}
-      <section className="space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">
-          About Vibe Security Radar
+    <main className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 sm:py-14 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+      <header className="border-b border-border pb-8">
+        <p className="section-kicker">Method</p>
+        <h1 className="mt-3 text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+          Evidence before attribution.
         </h1>
-        <p className="text-lg leading-relaxed text-muted-foreground">
-          AI coding tools are writing a growing share of production code.
-          Some of it ships with security vulnerabilities. We track the
-          cases where vulnerable code in public advisories (CVEs, GHSAs,
-          RustSec, and others) was authored by an AI tool.
+        <p className="mt-4 max-w-3xl text-lg leading-7 text-muted-foreground">
+          We publish a case only when the advisory, AI-written change, root
+          cause, fix, and released versions all agree.
         </p>
-        <p className="leading-relaxed text-muted-foreground">
-          This is a research project from{" "}
+        <p className="mt-3 text-sm text-muted-foreground">
+          Real disclosed vulnerabilities from{" "}
           <a
             href="https://gts3.org"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
+            className="text-primary hover:underline"
           >
             Georgia Tech SSLab
-          </a>{" "}
-          (Systems Software &amp; Security Lab, School of Cybersecurity and
-          Privacy).
-          Our goal is to understand how AI-assisted development affects
-          software security, not through benchmarks or synthetic tasks,
-          but by studying real vulnerabilities that were reported and
-          fixed in the wild.
+          </a>
+          —not synthetic benchmarks.
         </p>
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-          <span>{stats.total_cves} independently verified AI-causal vulnerabilities</span>
-          {stats.inventory ? (
-            <span>{stats.inventory.detector_candidate_count.toLocaleString()} detector candidates</span>
-          ) : null}
-          <span>{stats.total_analyzed.toLocaleString()} advisories analyzed</span>
-          <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
-        </div>
-      </section>
+      </header>
 
-      {/* Core methodology */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-semibold tracking-tight">Core methodology</h2>
-        <p className="leading-relaxed text-muted-foreground">
-          Our approach has three steps: <strong>find the fix</strong>,{" "}
-          <strong>trace the blame</strong>, and{" "}
-          <strong>verify the cause</strong>.
-        </p>
-        <div className="space-y-4 rounded-lg border border-border bg-muted/20 px-5 py-4">
-          <div className="space-y-1">
-            <h3 className="font-medium">1. Find the fix commit</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              We aggregate vulnerability data from four advisory databases
-              (OSV, GitHub Advisory Database, Gemnasium, NVD) and extract
-              the commit that fixed each vulnerability. Reproducible refreshes
-              use content-addressed local snapshots of every campaign source.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-medium">2. Trace who introduced the bug</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Using SZZ-style git blame on the fix commit, we trace backward
-              to the commit that introduced the vulnerable code.
-              Squash-merged PRs are decomposed into individual sub-commits
-              so attribution is per-commit, not per-PR. Each
-              bug-introducing commit is then scanned for AI tool
-              signatures: co-author trailers, bot emails, and commit
-              message markers from{" "}
-              {AI_TOOLS.length}+ tools.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-medium">3. Verify causality</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              An AI signature in a commit is not enough. First, a
-              screening pass checks whether the blamed commit is plausibly
-              related to the security issue. Then a deep investigator with
-              constrained, receipt-backed git tools examine the entire vulnerability (all
-              fix commits, all blame candidates), running up to 50 tool
-              calls per case. Rather than rating each commit in isolation,
-              it answers one question: did AI-authored code contribute to
-              causing this vulnerability? This catches patterns that
-              per-commit analysis misses: an AI commit that altered a
-              calling convention, making previously safe code exploitable,
-              or a squash-merge where the AI-tagged sub-commit never
-              touched the vulnerable file. If every configured model fails,
-              an optional external coding agent can inspect a bounded evidence
-              bundle. Its output is diagnostic-only, so failed investigation
-              never turns into a negative or confirmed attribution.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Pipeline details */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-semibold tracking-tight">Pipeline details</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Click any phase to see the algorithm in detail.
-        </p>
-        <ol className="space-y-4">
-          {PIPELINE_STEPS.map((step) => (
-            <ExpandableStep key={step.tier} step={step} />
+      <section className="py-10 sm:py-12" aria-labelledby="method-steps">
+        <p className="section-kicker">Four steps</p>
+        <h2 id="method-steps" className="mt-3 text-2xl font-semibold">
+          From disclosure to verified case
+        </h2>
+        <ol className="mt-7 grid border-y border-border lg:grid-cols-4">
+          {STEPS.map((step) => (
+            <li
+              key={step.number}
+              className="border-b border-border py-5 last:border-b-0 lg:border-r lg:border-b-0 lg:px-5 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0"
+            >
+              <span className="font-mono text-xs text-primary">
+                {step.number}
+              </span>
+              <h3 className="mt-3 font-semibold">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {step.detail}
+              </p>
+            </li>
           ))}
         </ol>
       </section>
 
-      {/* Attribution principle */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          How we attribute vulnerabilities to AI
+      <section
+        className="border-t border-border py-10 sm:py-12"
+        aria-labelledby="claim-boundary"
+      >
+        <p className="section-kicker">Claim boundary</p>
+        <h2 id="claim-boundary" className="mt-3 text-2xl font-semibold">
+          What the dataset means
         </h2>
-        <p className="leading-relaxed text-muted-foreground">
-          An AI signature in a bug-introducing commit is not enough. We ask
-          the question at the vulnerability level: did AI-authored code help
-          cause this? That could mean the AI wrote the vulnerable lines
-          directly, altered a calling convention that made existing code
-          exploitable, or added a feature without the security checks it
-          needed. If the AI commits were not part of the causal chain, we
-          drop the attribution.
-        </p>
-        <p className="leading-relaxed text-muted-foreground">
-          This matters especially for squash-merged PRs. Suppose a PR has
-          20 commits and one carries a Copilot co-author trailer, but that
-          commit only updated a README, while a different human-written
-          commit in the same PR introduced the vulnerability. We check
-          file-level overlap between each sub-commit and the blamed file,
-          and the deep investigator independently verifies whether
-          AI-authored code was actually part of the causal chain.
-        </p>
-      </section>
-
-      {/* AI tools monitored */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          AI tools monitored
-        </h2>
-        <p className="leading-relaxed text-muted-foreground">
-          We detect signatures from {AI_TOOLS.length} AI coding tools via
-          co-author trailers, bot email addresses, and commit message markers.
-          CI/CD bots (Dependabot, Renovate, etc.) are filtered out.
-        </p>
-        <ul className="flex flex-wrap gap-2">
-          {AI_TOOLS.map((tool) => (
-            <li key={tool.key}>
-              {tool.url ? (
-                <a
-                  href={tool.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block rounded-md border border-border bg-muted/50 px-3 py-1 text-sm transition-colors hover:bg-muted hover:text-primary"
-                >
-                  {tool.name}
-                </a>
-              ) : (
-                <span className="inline-block rounded-md border border-border bg-muted/50 px-3 py-1 text-sm">
-                  {tool.name}
-                </span>
-              )}
-            </li>
+        <div className="mt-7 grid gap-7 sm:grid-cols-3">
+          {BOUNDARIES.map((boundary) => (
+            <div
+              key={boundary.title}
+              className="border-l-2 border-primary pl-4"
+            >
+              <h3 className="font-semibold">{boundary.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {boundary.body}
+              </p>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
-      {/* Data sources */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Data sources</h2>
-        <ul className="space-y-3">
-          {DATA_SOURCES.map((source) => (
-            <li key={source.name} className="flex items-baseline gap-2">
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
-              >
-                {source.name}
-              </a>
-              <span className="text-sm text-muted-foreground">
-                {source.description}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Limitations */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Limitations &amp; what we miss
+      <section
+        className="border-y border-border py-6"
+        aria-labelledby="sources"
+      >
+        <h2 id="sources" className="font-semibold">
+          Sources
         </h2>
-        <p className="leading-relaxed text-muted-foreground">
-          This is an observational study with inherent blind spots. We are
-          transparent about what we can and cannot measure.
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          {SOURCES.map(([label, href]) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              {label} →
+            </a>
+          ))}
+        </div>
+        <p className="mt-4 max-w-3xl text-xs leading-5 text-muted-foreground">
+          Advisory indexes help find candidates. Git history and released
+          artifacts decide whether a case belongs in the dataset.
         </p>
-        {LIMITATION_CATEGORIES.map((category) => (
-          <div key={category.title} className="space-y-2">
-            <h3 className="font-medium">{category.title}</h3>
-            <ul className="list-inside list-disc space-y-2 text-muted-foreground">
-              {category.items.map((item) => (
-                <li key={item} className="leading-relaxed">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
       </section>
 
-      {/* Contact */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Contact</h2>
-        <p className="leading-relaxed text-muted-foreground">
-          Found a false positive? Think we missed something? Have a
-          question about our methodology? Email{" "}
-          <a
-            href="mailto:hanqing@gatech.edu"
-            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
-          >
-            hanqing@gatech.edu
-          </a>
-          .
-        </p>
-      </section>
+      <p className="py-8 text-sm text-muted-foreground">
+        Found a false positive? Email{" "}
+        <a
+          href="mailto:hanqing@gatech.edu"
+          className="text-primary hover:underline"
+        >
+          hanqing@gatech.edu
+        </a>
+        .
+      </p>
     </main>
   );
 }

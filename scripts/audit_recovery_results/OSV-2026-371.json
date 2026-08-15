@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "audit_contract_recovery",
+  "intake_split_id": "audit-debt-contract-recovery-20260801-v1",
+  "cve_id": "OSV-2026-371",
+  "audit_verdict": "TRUE_POSITIVE",
+  "ai_authored_vulnerability": true,
+  "confidence": 0.99,
+  "audited": "2026-08-01",
+  "repository": "https://github.com/tinyobjloader/tinyobjloader",
+  "vulnerability_summary": "A parser rewrite exposed legacy floating-point parsing to non-null-terminated byte buffers, making missing end checks exploitable as a heap-buffer over-read.",
+  "causality": "Copilot-authored and Claude-coauthored commit f27721f3c9cd20af4d4eee789431b92d0e0c4477 replaced line-buffered parsing with StreamReader over raw (buffer, length) data and routed values through legacy tryParseDouble assumptions. OSS-Fuzz identifies that rewrite as the introducing change. Descendant fix 966edceaf8cdca7996c4e9a1c5ced2938de63366 replaces the active parser with bounded fast_float::from_chars over [s, s_end), directly restoring the missing boundary contract. Both commits change tiny_obj_loader.h and are separated by two descendant commits.",
+  "evidence": {
+    "path": "tiny_obj_loader.h",
+    "atomic_ai_origin": "f27721f3c9cd20af4d4eee789431b92d0e0c4477",
+    "atomic_ai_signal": "Author: Copilot; Co-authored-by: copilot-swe-agent[bot], Copilot, and Claude Opus 4.6",
+    "fix_commit": "966edceaf8cdca7996c4e9a1c5ced2938de63366",
+    "external_bisection": "OSS-Fuzz introduced-commit attribution"
+  },
+  "history_verification": {
+    "method": "local full-history commit, patch, parent, and merge-base inspection plus frozen OSS-Fuzz audit evidence",
+    "origin_to_fix": "reachable_ancestor",
+    "shared_path": "tiny_obj_loader.h"
+  },
+  "claim_boundary": "The causal mechanism is a calling-context safety-contract change, not authorship of every pre-existing instruction inside tryParseDouble.",
+  "auditor": "prospective-contract-recovery-local-history-audit"
+}

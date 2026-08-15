@@ -14,11 +14,22 @@ Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 
 ## Data Flow
 
+The site has one data source: the 168-case research pipeline.
+
 ```
-cd cve-analyzer && uv run cve-analyzer batch --all --since 2025-05-01
-python scripts/generate_web_data.py   # → web/data/index.json + cves/<ID>.json + stats.json
+python3 scripts/publish_research_ledger.py   # → web/src/generated/research-data.json
 cd web && npm run build
 ```
+
+npm run dev / npm run build in web/ run the generator automatically
+(predev/prebuild). Legacy artifacts:
+
+- The old curated-CVE web catalog is archived at
+  archives/legacy-36-web-catalog/ (was web/data/).
+- The frozen data-refresh campaign (generate_web_data.py, web_data/,
+  run_data_refresh.py, quality gates, tests, web release gates) is archived
+  under archives/legacy-web-data-campaign/. Nothing in the live pipeline
+  reads it.nothing in the site reads them.
 
 ## Key Commands
 
@@ -36,9 +47,9 @@ Default batch start date: **May 2025**. Always pass `--since 2025-05-01` to batc
 
 ## Research Direction (2026-07-26)
 
-The formal data-refresh campaign is **frozen**: `scripts/run_data_refresh.py`, the
-release gate, and the no-token pilot get no further investment. Their on-disk
-state stays where it is — do not delete it. The CVE→blame→AI direction proved
+The formal data-refresh campaign is **archived** under
+archives/legacy-web-data-campaign/ (`scripts/run_data_refresh.py`, the release
+gate, and the no-token pilot get no further investment). The CVE→blame→AI direction provedCVE→blame→AI direction proved
 structurally expensive on large repos and can never produce a denominator.
 
 New main line: a **forward cohort study** — enumerate AI-attributed commits,

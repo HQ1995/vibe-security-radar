@@ -32,7 +32,6 @@ import json
 import os
 import subprocess
 import time
-import zipfile
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -41,6 +40,7 @@ from typing import Any
 
 import data_refresh_paths
 
+from cohort.advisories import index_advisory_fixes as _index_advisory_fixes
 from cohort.repos import discover_local_clones
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -86,94 +86,6 @@ def _latest_outcomes_dir() -> Path:
     if not candidates:
         raise SystemExit(f"no outcomes run under {root}")
     return candidates[-1]
-
-
-def _commit_refs_from_record(record: dict[str, Any]) -> list[tuple[str, str]]:
-    """Return (repo_identity, fix_sha) pairs an advisory names as fixes.
-
-    Two independent places carry them, and both are used because neither is
-    reliably populated: the GIT range events, and plain commit URLs among the
-    references.
-    """
-
-    from cohort.commit_urls import parse_foreign_commit_url
-    from cve_analyzer.git_url import parse_commit_url, parse_repo_url
-
-    pairs: list[tuple[str, str]] = []
-    for affected in record.get("affected") or []:
-        for entry in affected.get("ranges") or []:
-            if entry.get("type") != "GIT":
-                continue
-            parsed = parse_repo_url(str(entry.get("repo") or ""))
-            if not parsed:
-                continue
-            identity = "/".join(str(part) for part in parsed).lower()
-            for event in entry.get("events") or []:
-                fixed = str(event.get("fixed") or "").strip().lower()
-                if len(fixed) == 40 and all(c in "0123456789abcdef" for c in fixed):
-                    pairs.append((identity, fixed))
-    for reference in record.get("references") or []:
-        url = str(reference.get("url") or "")
-        if not url:
-            continue
-        resolved = None
-        try:
-            parsed = parse_commit_url(url)
-            if parsed:
-                resolved = ("/".join(str(p) for p in parsed[:-1]).lower(), str(parsed[-1]).lower())
-        except Exception:  # noqa: BLE001 - a malformed URL is not fatal
-            resolved = None
-        if resolved is None:
-            foreign = parse_foreign_commit_url(url)
-            if foreign:
-                resolved = (foreign[0].lower(), foreign[1].lower())
-        if resolved and len(resolved[1]) >= 7:
-            pairs.append(resolved)
-    return pairs
-
-
-def _index_advisory_fixes(
-    osv_dir: Path, cohort_repos: set[str], cutoff: str
-) -> tuple[dict[str, list[dict[str, str]]], dict[str, Any]]:
-    """Scan every OSV archive for fix commits landing in cohort repositories."""
-
-    by_repo: dict[str, list[dict[str, str]]] = defaultdict(list)
-    stats = Counter()
-    archives = sorted(osv_dir.glob("*.zip"))
-    for archive in archives:
-        try:
-            handle = zipfile.ZipFile(archive)
-        except (OSError, zipfile.BadZipFile):
-            stats["unreadable_archives"] += 1
-            continue
-        with handle:
-            for name in handle.namelist():
-                if not name.endswith(".json"):
-                    continue
-                try:
-                    record = json.loads(handle.read(name))
-                except (ValueError, OSError, KeyError):
-                    continue
-                stats["records"] += 1
-                published = str(record.get("published") or "")
-                if published and published < cutoff:
-                    continue
-                stats["in_window"] += 1
-                pairs = _commit_refs_from_record(record)
-                if pairs:
-                    stats["with_fix_commit"] += 1
-                for identity, sha in pairs:
-                    if identity in cohort_repos:
-                        by_repo[identity].append(
-                            {
-                                "advisory": str(record.get("id") or ""),
-                                "fix_sha": sha,
-                                "published": published,
-                            }
-                        )
-                        stats["landing_in_cohort"] += 1
-    stats["archives"] = len(archives)
-    return dict(by_repo), dict(stats)
 
 
 def _run_git(args: list[str], *, timeout: int) -> subprocess.CompletedProcess[str]:

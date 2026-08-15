@@ -1,0 +1,538 @@
+[
+ {
+  "key": "Basekick-Labs__arc",
+  "url": "https://github.com/Basekick-Labs/arc.git",
+  "sha": "c069b3515406b09ac616e8a629735ebba56ede80",
+  "ok": true,
+  "marker": false,
+  "msg": "feat(database): wire arcx storage_root + denylist arc_partition_agg in user SQL (#435)\n\n* feat(database): wire arcx storage_root + denylist arc_partition_agg in user SQL\n\nCompanion to arcx PR Basekick-Labs/arcX#1, which adds the first real\noperator: arc_partition_agg(database, measurement, unit). This change\nmakes the operator usable from Arc's DuckDB pool and closes the RBAC\nbypass that direct user-SQL access to the function would create.\n\nWhat lands here:\n\n- internal/database/duckdb.go: new Config.ArcxStorageRoot field. The\n  arcx connInitFn now runs `SET arcx.storage_root = '<path>'`\n  immediately after the existing `LOAD '<extension>'`, on every\n  pooled connection. Folded into the same ExecContext call so both\n  statements share the arcxLoadTimeout budget. SET is omitted when\n  ArcxStorageRoot is empty, so OSS connInit is unchanged.\n\n- cmd/arc/main.go: populates ArcxStorageRoot from cfg.Storage.LocalPath\n  only when the arcx loader is enabled (same guard as ArcxExtensionPath).\n\n- internal/api/query.go: adds userSQLArcPartitionAggPattern denylist\n  regex to ValidateSQLRequest, matching the existing read_parquet\n  denylist (C3 regression pattern). Without this, an authenticated\n  user scoped to db1 could call arc_partition_agg('db2', 'mem',\n  'hour') directly and learn row counts in db2 \u2014 the function takes\n  raw db/measurement strings and globs the filesystem. Only Arc's\n  query rewriter (which has the user identity) may emit calls to\n  arc_partition_agg.\n\n- internal/api/"
+ },
+ {
+  "key": "FlowiseAI__Flowise",
+  "url": "https://github.com/FlowiseAI/Flowise.git",
+  "sha": "42d593f8ca854471059051a7fdd89bf8d8ab7c12",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "FlowiseAI__Flowise",
+  "url": "https://github.com/FlowiseAI/Flowise.git",
+  "sha": "840d2ae14d25230579a58aa4305f8506672a0a45",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "FlowiseAI__Flowise",
+  "url": "https://github.com/FlowiseAI/Flowise.git",
+  "sha": "b5f7fac0155a13122fe85e6ee46f6204d087cb27",
+  "ok": true,
+  "marker": true,
+  "msg": "Add workspaceId in options if not already there. (#5503)\n\n* Add workspaceId in options if not already there.\n\n* Update packages/components/nodes/tools/MCP/CustomMCP/CustomMCP.ts\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n\n---------\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>"
+ },
+ {
+  "key": "FlowiseAI__Flowise",
+  "url": "https://github.com/FlowiseAI/Flowise.git",
+  "sha": "e135b2943362da036a6942d931b9de76094874af",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "FlowiseAI__Flowise",
+  "url": "https://github.com/FlowiseAI/Flowise.git",
+  "sha": "e47d9466af998b814d9c2b385ebc0182737785f4",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "HKUDS__LightRAG",
+  "url": "https://github.com/HKUDS/LightRAG.git",
+  "sha": "df68d75f9dc29dd340ffb6794b48f48c4fdc9a2d",
+  "ok": true,
+  "marker": true,
+  "msg": "fix(api): detect wildcard CORS origin by membership, not exact match\n\nA mixed config such as CORS_ORIGINS=\"*,https://app.example.com\" (or an\naccidental trailing comma \"*,\") produced a list that contained \"*\" but was not\nexactly [\"*\"], so the previous equality check re-enabled credentials. Starlette\ntreats any allow_origins list containing \"*\" as allow-all, so those configs\nreintroduced the arbitrary-origin credentialed CORS behavior this fix prevents.\n\nTest \"*\" membership instead of list equality, and drop empty origin entries in\nget_cors_origins() (falling back to [\"*\"] if nothing remains). Add regression\ntests for the mixed-wildcard and trailing-comma cases.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_017ZwddG56G4QwLcbEsYLxmd"
+ },
+ {
+  "key": "JanDeDobbeleer__oh-my-posh",
+  "url": "https://github.com/JanDeDobbeleer/oh-my-posh.git",
+  "sha": "367ec8331b4c00429fd7148a5cd367ff125d54e0",
+  "ok": true,
+  "marker": true,
+  "msg": "feat(transient): support right-aligned template\n\nAdds a right_template option to the transient prompt, rendered\nright-aligned at the end of the line. Supported in zsh (via RPROMPT)\nand pwsh (via cursor save/restore, mirroring writePrimaryRightPrompt).\nWhen a filler is configured it now fills the gap between both parts.\n\nAlso guards shouldFill against a negative padding length which would\npanic in strings.Repeat.\n\nresolves #4822\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+ },
+ {
+  "key": "MontFerret__ferret",
+  "url": "https://github.com/MontFerret/ferret.git",
+  "sha": "a252ad8edcf8d4b9d5c64f509a0c4588454effa7",
+  "ok": true,
+  "marker": true,
+  "msg": "Feat/modules (#884)\n\n* feat: add context decorators and closers to ModuleRegistry for extended functionality and cleanup\n\n* refactor: replace environment merging logic with new ExtendEnvironment helper function\n\n* refactor: simplify initialization structures and add extensibility hooks for engine and session lifecycle\n\n* refactor: split `Parse` into `Parse` and `ParseStrict` for improved error handling and type safety\n\n* refactor: replace `RootNamespace` with `Library`, introduce hooks, and refactor parameter handling\n\n* refactor: add plan lifecycle hooks, improve error handling, and consolidate session options\n\n* feat: add `WithModules` option to simplify appending modules to configurations\n\n* refactor: initialize hooks in `newBootstrap` with support for custom or default registry\n\n* chore: remove `params_test.go` to clean up unused or redundant test cases\n\n* refactor: simplify error handling in `compiler_concurrency_test` by inlining returns\n\n* refactor: replace `map[string]runtime.Value` with `runtime.Params` and update `Compile` to accept context\n\n* Update engine.go\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\n\n* chore: update build workflow to include `make install-tools` step\n\n* chore: remove unused E2E workflow steps from build configuration\n\n* refactor: remove unused engine tests and enhance lifecycle hook documentation\n\n* Update module.go\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\n\n* Update options.go\n\nCo-authored-b"
+ },
+ {
+  "key": "OpenC3__cosmos",
+  "url": "https://github.com/OpenC3/cosmos.git",
+  "sha": "9957a9fa460c0c0cf5cdbf6a5931bbdd025246a5",
+  "ok": true,
+  "marker": true,
+  "msg": "Prevent path traversal in tool config names\n\nReject tool and config names containing /, \\, or .. in ToolConfigModel\nto prevent writing arbitrary files within the shared /plugins directory.\nAdded client-side validation in SaveConfigDialog.vue and backend\nvalidation in both Ruby and Python models with corresponding specs.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+ },
+ {
+  "key": "OpenListTeam__OpenList",
+  "url": "https://github.com/OpenListTeam/OpenList.git",
+  "sha": "016ed90efa8c5438fdf191be9774b72504eef3b4",
+  "ok": true,
+  "marker": true,
+  "msg": "feat(stream): fast buffer freeing for large cache (#1053)\n\nSigned-off-by: j2rong4cn <36783515+j2rong4cn@users.noreply.github.com>\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>"
+ },
+ {
+  "key": "aegra__aegra",
+  "url": "https://github.com/aegra/aegra.git",
+  "sha": "044d0273343d514a92e3abd726c91be7fdfe0456",
+  "ok": true,
+  "marker": true,
+  "msg": "fix: address code review findings for worker architecture\n\n- Remove session.commit() from set_thread_status and update_thread_metadata\n  so _prepare_run uses a single atomic commit for thread + run creation\n- Fix lease reaper race: reset runs before checking retry limits so only\n  the reaper that claims ownership charges retries\n- Add error_message when marking runs with missing execution_params\n- Remove broad except Exception in wait_for_run so Redis/DB failures\n  surface as 500s instead of silent 200s with empty output\n- Remove 6 dead noqa:F401 re-exports from api/runs.py, update all test\n  imports and remove dead patches referencing them\n- Fix Makefile e2e targets: fail on health timeout, guaranteed container\n  cleanup on test failure, correct compose flags for dev teardown\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+ },
+ {
+  "key": "anthropic-experimental__sandbox-runtime",
+  "url": "https://github.com/anthropic-experimental/sandbox-runtime.git",
+  "sha": "23e9e226225fc41b0ba3bb58659c57f46c25800d",
+  "ok": true,
+  "marker": true,
+  "msg": "Add BPF/seccomp integration for Linux unix socket blocking and comprehensive testing infrastructure\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"
+ },
+ {
+  "key": "babylonlabs-io__babylon",
+  "url": "https://github.com/babylonlabs-io/babylon.git",
+  "sha": "2bd9585607bd7b1c0905d21b92bcdb6d4c03bf36",
+  "ok": true,
+  "marker": true,
+  "msg": "chore: backport #1707 costaking (#1755)\n\n- Original PR #1707 \n- upgrade V1 removed (The tests were complaining for the incentives\nparam)\n- Removal of parameter in finality hook that defined if the finality\nprovider was securing babylon (all the fps secure babylon)\n- e2ev2 backported as there was a few imports from this PR\n- Rename incentives `DecimalAccumulatedRewards` to `DecimalRewards`\n- Important files to look:\n  - `x/costaking/*`\n  - `x/finality/keeper/gov.go`\n  - `x/finality/keeper/power_dist_change.go`\n  - `x/finality/types/finality.go`\n  - `x/incentive/keeper/btc_staking_gauge.go`\n  - `x/incentive/keeper/finality_hooks.go`\n  - `x/incentive/migrations/v2/store.go`\n  - `x/incentive/module.go`\n- Withdraw costaker rewards if the type is btc staker \n- Apply inflation and default parameters as mainnet\n```go\nBtcStakingPortion        = \"0.181818182\"  // incentives, 1% of 5.5%\nFpPortion                = \"0.013636364\"  // incentives, 0.075% of 5.5%\nDefaultCostakingPortion  = \"0.530612245\"  // co-staking, 2.35% of 5.5%\nDefaultValidatorsPortion = \"0.016949153\"  // validators, 0.075% of 5.5%\n// remainder (\u22480.4524386) \u2192 distribution = 2% of 5.5%\n```\n> Note: incentives (BtcStakingPortion, FpPortion) goes first than\ncostaking values (DefaultCostakingPortion, DefaultValidatorsPortion)\n\n---------\n\nCo-authored-by: Filippos Malandrakis <35352222+filippos47@users.noreply.github.com>\nCo-authored-by: Tom <54514587+GAtom22@users.noreply.github.com>\nCo-authored-by: Copilot <175728472+Copilot@"
+ },
+ {
+  "key": "coder__coder",
+  "url": "https://github.com/coder/coder.git",
+  "sha": "e5a74a775db34d6be3276d7d4f0ab5e7e1c07ec9",
+  "ok": true,
+  "marker": true,
+  "msg": "chore: pull in cherry picks for v2.24 (#18674)\n\nCo-authored-by: Danny Kopping <danny@coder.com>\nCo-authored-by: Steven Masley <Emyrk@users.noreply.github.com>\nCo-authored-by: Bruno Quaresma <bruno@coder.com>\nCo-authored-by: Sas Swart <sas.swart.cdk@gmail.com>\nCo-authored-by: Susana Ferreira <susana@coder.com>\nCo-authored-by: Danielle Maywood <danielle@themaywoods.com>\nCo-authored-by: Mathias Fredriksson <mafredri@gmail.com>\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\nCo-authored-by: Asher <ash@coder.com>\nCo-authored-by: Hugo Dutka <hugo@coder.com>"
+ },
+ {
+  "key": "dep0we__atomic-agents-stack",
+  "url": "https://github.com/dep0we/atomic-agents-stack.git",
+  "sha": "08c5f6abbcbeb1805b78146b2d3caf124a788d71",
+  "ok": true,
+  "marker": true,
+  "msg": "feat(dashboard): add 4 visibility tabs \u2014 Activity, Quality, Memory, Goals (#49)\n\nExtends the dashboard from cost-only to a 5-tab observability surface,\nreading from existing JSONL run logs, eval logs, memory dirs, dream\nmanifests, goal files, and outcome run records.\n\n- Activity Pulse (activity.html): last 50 runs, recent failures, recent\n  captures/tool_calls/delegations/dreams, lock state. Daily check-in.\n- Quality Trends (quality.html): eval score trends per agent, hard-fail\n  occurrences, factual accuracy, pending tuning proposals queue, helper\n  provenance health. Weekly review.\n- Memory Snapshot (memory.html): note counts by type per agent,\n  staleness candidates, orphan check, version-churn leaders, dream\n  history, memory size + growth ratio. Monthly review.\n- Goals & Outcomes (goals.html): active goals, sub-goal grid,\n  blocked-sub-goal operator queue, recent outcome runs, iteration\n  histogram. Conditionally rendered \u2014 only if any agent has a goal.md.\n\nAll tabs match the existing dashboard's visual vocabulary: self-contained\nHTML, inline CSS, no JS deps, no external assets. Nav bar at the top of\nevery page links the five tabs (Goals omitted when empty).\n\nNew: atomic_agents/dashboard/{activity,quality,memory,goals,_shared}.py.\nrender.py + serve.py extended to wire nav and routes. CLI gains --tab\nfilter for fast single-tab regen during iteration.\n\nSpec/09 extended with \"The five tabs\" section.\n\n55 new tests, 557 total, all green.\n\nCo-authored-by: Dan Powers <dep0we@gm"
+ },
+ {
+  "key": "electron__electron",
+  "url": "https://github.com/electron/electron.git",
+  "sha": "0ef056130cde0c19c81ccfbc2932df6911765849",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "electron__electron",
+  "url": "https://github.com/electron/electron.git",
+  "sha": "fe477ce3aa65316f4e63b0907d117723a1d4c8bc",
+  "ok": true,
+  "marker": true,
+  "msg": "chore: bump chromium to 145.0.7568.0 (main) (#49145)\n\n* chore: bump chromium in DEPS to 145.0.7562.0\n\n* fix(patch-conflict): update code cache patch for PersistentCache refactor\n\nUpstream refactored code cache to use PersistentCache with new class-based\nimplementation (NoopCodeCacheHost, LocalCodeCacheHost, CodeCacheWithPersistentCacheHost).\nUpdated patch to integrate custom scheme support into the new structure while\npreserving ProcessLockURLIsCodeCacheScheme checks for embedder-registered schemes.\n\nRef: https://chromium-review.googlesource.com/c/chromium/src/+/7044986\n\nCo-Authored-By: Claude <svc-devxp-claude@slack-corp.com>\n\n* fix(patch-conflict): update dialog patch for RequestXdgDesktopPortal API\n\nUpstream changed from SetSystemdScopeUnitNameForXdgPortal to RequestXdgDesktopPortal\nAPI pattern. Updated OnServiceStarted signature and kept OnSystemdUnitStarted callback\nthat calls Electron's file_dialog::StartPortalAvailabilityTestInBackground().\n\nRef: https://chromium-review.googlesource.com/c/chromium/src/+/7204285\n\nCo-Authored-By: Claude <svc-devxp-claude@slack-corp.com>\n\n* fix(patch-conflict): remove reference to deleted AbortByPlaceholderLayout flag\n\nUpstream removed the AbortByPlaceholderLayout runtime flag from\nruntime_enabled_features.json5. Updated patch to only add ElectronCSSCornerSmoothing\nwithout the removed flag reference.\n\nRef: https://chromium-review.googlesource.com/c/chromium/src/+/7226494\n\nCo-Authored-By: Claude <svc-devxp-claude@slack-corp.com>\n\n* chore: "
+ },
+ {
+  "key": "ethyca__fides",
+  "url": "https://github.com/ethyca/fides.git",
+  "sha": "ae74363d3fd979a05be8e779a8454d8fd0142269",
+  "ok": true,
+  "marker": true,
+  "msg": "Add pre-approval webhook statuses, audit logs, and management UI (#7399)\n\nCo-authored-by: Adrian Galvan <galvana@uci.edu>\nCo-authored-by: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+ },
+ {
+  "key": "external-secrets__external-secrets",
+  "url": "https://github.com/external-secrets/external-secrets.git",
+  "sha": "472acbb5307d7f1633a30da219b95984bee35418",
+  "ok": true,
+  "marker": true,
+  "msg": "chore(license): add automated license header checking using Apache SkyWalking Eyes GitHub Action (#5290)\n\n* Initial plan\n\n* Add license header check scripts and workflow\n\n* Add test Go files for license header validation\n\n* Complete license header check implementation with CI integration\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Add license header requirements to developer guide\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Replace bash scripts with Apache SkyWalking Eyes GitHub Action for license header checking\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Replace spdx-id with content matching hack/boilerplate.go.txt in .licenserc.yaml\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Update .licenserc.yaml content to match updated hack/boilerplate.go.txt\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Replace paths-ignore with language configuration to only check Go files\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* Replace language configuration with paths to only check Go files using **/*.go pattern\n\nCo-authored-by: Skarlso <182850+Skarlso@users.noreply.github.com>\n\n* fix: license header format on all files\n\nSigned-off-by: Gergely Brautigam <182850+Skarlso@users.noreply.github.com>\n\nOn-behalf-of: Gergely Brautigam <gergely.brautigam@sap.com>\n\n* a bunch of more fixes for files\n\nSigned-off-by: Gergely Brautigam <182850+Skarlso@users"
+ },
+ {
+  "key": "go-gitea__gitea",
+  "url": "https://github.com/go-gitea/gitea.git",
+  "sha": "0724344a8a0c2772b7f925e31014d37eaba1dab8",
+  "ok": true,
+  "marker": true,
+  "msg": "Fix CodeQL code scanning alerts (#36858)\n\nFixes 10 CodeQL code scanning alerts:\n\n- Change `NewPagination`/`SetLinkHeader` to accept `int64` for total\ncount, clamping internally to fix incorrect-integer-conversion alerts\n([#110](https://github.com/go-gitea/gitea/security/code-scanning/110),\n[#114](https://github.com/go-gitea/gitea/security/code-scanning/114),\n[#115](https://github.com/go-gitea/gitea/security/code-scanning/115),\n[#116](https://github.com/go-gitea/gitea/security/code-scanning/116))\n- Use `strconv.Atoi()` in `htmlrenderer.go` to avoid int64 intermediate\n([#105](https://github.com/go-gitea/gitea/security/code-scanning/105),\n[#106](https://github.com/go-gitea/gitea/security/code-scanning/106))\n- Clamp regex match indices in `escape_stream.go` to fix\nallocation-size-overflow\n([#161](https://github.com/go-gitea/gitea/security/code-scanning/161),\n[#162](https://github.com/go-gitea/gitea/security/code-scanning/162),\n[#163](https://github.com/go-gitea/gitea/security/code-scanning/163))\n- Cap slice pre-allocation in `GetIssueDependencies`\n([#181](https://github.com/go-gitea/gitea/security/code-scanning/181))\n\n---------\n\nCo-authored-by: Claude (Opus 4.6) <noreply@anthropic.com>\nCo-authored-by: wxiaoguang <wxiaoguang@gmail.com>"
+ },
+ {
+  "key": "go-gitea__gitea",
+  "url": "https://github.com/go-gitea/gitea.git",
+  "sha": "45809c8f5479e167ac79221c7480b2d7b94ff03d",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "go-gitea__gitea",
+  "url": "https://github.com/go-gitea/gitea.git",
+  "sha": "db7eb4d51b00e3df9b564df49f71d8058f540199",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "go-gitea__gitea",
+  "url": "https://github.com/go-gitea/gitea.git",
+  "sha": "f2a1271f164569264c378fad720b0c000fff3336",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "go-vikunja__vikunja",
+  "url": "https://github.com/go-vikunja/vikunja.git",
+  "sha": "5f795bb531eefb1ada2d4597a47074af0e8fbc90",
+  "ok": true,
+  "marker": true,
+  "msg": "fix: self-assignment notification to use \"themselves\" instead of repeating username (#1836)\n\nWhen a user assigns a task to themselves, notifications to other users now\ncorrectly say \"User A assigned Task #123 to themselves\" instead of\n\"User A assigned Task #123 to User A\"\n\nCo-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>\nCo-authored-by: kolaente <13721712+kolaente@users.noreply.github.com>"
+ },
+ {
+  "key": "gofiber__fiber",
+  "url": "https://github.com/gofiber/fiber.git",
+  "sha": "27d359e8d0d33738e15cbf0d74e6a0be3501aea4",
+  "ok": true,
+  "marker": true,
+  "msg": "\ud83d\udc1b bug: address cache middleware review feedback\n\nAgent-Logs-Url: https://github.com/gofiber/fiber/sessions/4d59616d-e436-43a7-901e-b82f34511b2b\n\nCo-authored-by: gaby <835733+gaby@users.noreply.github.com>"
+ },
+ {
+  "key": "gogs__gogs",
+  "url": "https://github.com/gogs/gogs.git",
+  "sha": "36d56d5525972d9a87a136a490469a997efdcd66",
+  "ok": true,
+  "marker": true,
+  "msg": "all: rename packages ending with \"util\" to end with \"x\" (#8182)\n\nCo-authored-by: JSS <jss@unknwon.dev>\nCo-authored-by: Claude Opus 4.6 <noreply@anthropic.com>"
+ },
+ {
+  "key": "gogs__gogs",
+  "url": "https://github.com/gogs/gogs.git",
+  "sha": "441c64d7bd8893b2f4e48660a8be3a7472e14291",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "gogs__gogs",
+  "url": "https://github.com/gogs/gogs.git",
+  "sha": "a1fa62b270bd87dc63a280b6eba98aa9cf9db845",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "google__clasp",
+  "url": "https://github.com/google/clasp.git",
+  "sha": "9c141469c5be3310d335dd33b1872bcbbeb24df1",
+  "ok": true,
+  "marker": true,
+  "msg": "chore: Improve internal docs (#1067)\n\n* Jules was unable to complete the task in time. Please review the work done so far and provide feedback for Jules to continue.\n\n* docs: Improve internal documentation for src and test files\n\nThis commit adds comprehensive internal documentation to .ts files\nacross your `src` and `test` directories.\n\nThe following improvements were made:\n- Added file-level comments explaining the purpose of each file.\n- Added JSDoc comments to classes, explaining their responsibilities.\n- Added JSDoc comments to public methods in classes, detailing their\n  purpose, parameters, and return values.\n- Added JSDoc comments to other exported functions and interfaces,\n  explaining their usage and properties/parameters.\n- Added inline comments to complex or non-obvious logic blocks within\n  functions and methods to improve code readability and maintainability.\n- Reviewed and added clarifying comments to test suites (`describe`\n  blocks) and test cases (`it` blocks) where needed.\n\nAll changes were linted and tested to ensure no regressions or style issues were introduced.\n\n---------\n\nCo-authored-by: google-labs-jules[bot] <161369871+google-labs-jules[bot]@users.noreply.github.com>"
+ },
+ {
+  "key": "gradio-app__gradio",
+  "url": "https://github.com/gradio-app/gradio.git",
+  "sha": "029034f7853ea018d110efe9b7e2ef7d1407091c",
+  "ok": true,
+  "marker": true,
+  "msg": "[No Merge] Gradio 6.0  (#11908)\n\n* Add code\n\n* Fix\n\n* version numbers\n\n* Remove `crop_size` parameter from `ImageEditor` component (#12007)\n\n* Remove crop_size parameter from ImageEditor __init__ function and docstring description\n\n* Remove conversion code and deprecation warning message\n\n* Fix docstring typo\n\n* Remove deprecated ImageEditor crop_size references from demo files\n\n* Remove crop_size parameters and variable assignments in super().__init__() calls for Sketchpad, Paint, and ImageMask classes that inherit from ImageEditor\n\n* Regenerated notebook files\n\n---------\n\nCo-authored-by: pngwn <hello@pngwn.io>\n\n* add changeset\n\n* Fix (#12014)\n\n* Remove tuples format from the chatbot (#12012)\n\n* First draft\n\n* Fix tests\n\n* add changeset\n\n* format\n\n* Fix reload test\n\n* Fix chatbot unit tests\n\n* lint\n\n* lint2\n\n* Python unit tests\n\n* Fix code\n\n* Fix notebook\n\n---------\n\nCo-authored-by: gradio-pr-bot <gradio-pr-bot@users.noreply.github.com>\n\n* fix: enable padding by default in Markdown component (#12010)\n\n* fix: enable padding by default in Markdown component\n\n* add changeset\n\n* add changeset\n\n* Fix: set the padding to false for both HTML and Markup\n\n* Enable padding by default in HTML component\n\n* fix: Fixed failing unit test and a docstring\n\n---------\n\nCo-authored-by: Abubakar Abid <abubakar@huggingface.co>\nCo-authored-by: gradio-pr-bot <gradio-pr-bot@users.noreply.github.com>\nCo-authored-by: Freddy Boulton <41651716+freddyaboulton@users.noreply.github.com>\n\n* Make allow_tags="
+ },
+ {
+  "key": "hubuum__hubuum-client-rust",
+  "url": "https://github.com/hubuum/hubuum-client-rust.git",
+  "sha": "5d7af9fd90feea302817e6aba939a3a69fe5b366",
+  "ok": true,
+  "marker": false,
+  "msg": "feat(client): adopt principal-centric identity, service accounts, remote targets\n\nSync the client to the current backend (main + PR #94/#93/#95), accepting\nbreaking API changes. Version stays at 0.0.3 (unreleased).\n\nIdentity model (principal-centric, PR #94):\n- User.username -> name; add proper_name; password write-only with set_password()\n- login body {name,password}; Credentials::new(name, password)\n- tokens moved to /iam/principals/{id}/tokens; UserToken -> PrincipalTokenMetadata;\n  scoped tokens_create() (raw one-time token), token_revoke(), NewTokenRequest\n- Group::add_user/remove_user -> add_member/remove_member; members() -> PrincipalMember\n- Namespace::user_permissions* -> principal_permissions*\n- logout endpoints corrected to POST; logout_token now sends a {token} body\n\nNew resources:\n- service accounts: CRUD + disable() + token helpers (service_accounts())\n- remote targets: CRUD + invoke() -> TaskResponse, tagged auth/subject unions\n  (remote_targets())\n- unauthenticated healthz()/readyz() probes\n\n\"me\" endpoints (PR #95): me(), me_groups/_tokens/_permissions(+_request); adds\nMeResponse, CurrentTokenMetadata, PrincipalNamespacePermissions, GroupGrant.\n\nEnum/field growth: Permissions +5 remote-target variants; Permission(Result)\n+5 booleans; TaskKind::RemoteCall.\n\nselect() resolves service accounts and remote targets via their by-id endpoints.\nTests updated across endpoint tables, parity contract, and httpmock suites; new\ncoverage for SA create/disable, scoped token m"
+ },
+ {
+  "key": "jahlives__openssl_encrypt",
+  "url": "https://github.com/jahlives/openssl_encrypt.git",
+  "sha": "990c09c4f33649b9120d4995c385151652bc5cd9",
+  "ok": true,
+  "marker": true,
+  "msg": "Refactor: Extract steganography module into plugin architecture\n\nMigrated steganography from monolithic module to modular plugin system:\n\n- Moved from modules/steganography/ to plugins/steganography/\n- Organized into focused submodules:\n  - core/: Base classes, config, utilities, exceptions, analysis\n  - formats/: Image (PNG, JPEG, TIFF, WEBP) and audio (WAV, FLAC, MP3) handlers\n  - error_correction/: Reed-Solomon and simple error correction\n  - transport.py: Format detection and routing\n  - stego_plugin.py: Plugin interface implementation\n\n- Updated CLI integration in crypt_cli.py to use plugin system\n- Added get_plugin() method to PluginManager for direct plugin access\n- Updated plugin discovery to include steganography directory\n- Fixed test imports: modules.steganography \u2192 plugins.steganography\n- Removed secure_memory dependencies throughout codebase\n\nTesting:\n- All 62 steganography tests passing (16 core + 46 format-specific)\n- 100% backward compatibility maintained for CLI arguments\n- All format handlers operational (JPEG, TIFF, WEBP, WAV, FLAC, MP3)\n\nBenefits:\n- Improved modularity and code organization\n- Clear separation of concerns\n- Easier to extend with new formats\n- Plugin sandboxing capabilities available\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+ },
+ {
+  "key": "jwt__ruby-jwt",
+  "url": "https://github.com/jwt/ruby-jwt.git",
+  "sha": "3a31a200a8af8aeaee5e113e54185838f51ddf46",
+  "ok": true,
+  "marker": true,
+  "msg": "Fix compatibility with ruby-head (#706)\n\n* Fix compatibility with openssl\n\n* Changelog and versions\n\n* Update CHANGELOG.md\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\n\n* Update CHANGELOG.md\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>"
+ },
+ {
+  "key": "koxudaxi__datamodel-code-generator",
+  "url": "https://github.com/koxudaxi/datamodel-code-generator.git",
+  "sha": "f6d4cbd3440a84e801566fa758ab2bf483322082",
+  "ok": true,
+  "marker": true,
+  "msg": "Add --allow-remote-refs to disable HTTP fetching of $ref by default (#3051)\n\n* Add --allow-remote-refs flag to gate HTTP fetching of $ref targets\n\nRemote $ref fetching over HTTP/HTTPS is now disabled by default.\nWhen a $ref resolves to an HTTP(S) URL and --allow-remote-refs is not set,\na clear error message is shown instead of silently fetching remote content.\n\nfile:// URLs are still allowed without the flag since they are local.\n--url input implicitly enables --allow-remote-refs.\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>\n\n* Improve error message for missing local $ref files\n\nWhen a $ref points to a local file that doesn't exist, the error now\nclearly states \"$ref file not found: <path>\" instead of raising a raw\nFileNotFoundError.\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>\n\n* Validate HTTP responses before parsing as schema content\n\nCheck status codes and Content-Type headers when fetching remote $ref\ntargets over HTTP. Returns clear error messages for HTTP errors (4xx/5xx)\nand unexpected HTML responses instead of cryptic YAML parse errors.\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>\n\n* Remove redundant local `import json` in test functions\n\nThe module-level import already covers these usages.\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>\n\n* Add @pytest.mark.cli_doc marker for --allow-remote-refs\n\nCLI reference docs will be auto-generated by CI from this marker.\n\nCo-Author"
+ },
+ {
+  "key": "lin-snow__Ech0",
+  "url": "https://github.com/lin-snow/Ech0.git",
+  "sha": "2a5b03a7e9f73c377cdcfd6f2c790dc94ac226d3",
+  "ok": true,
+  "marker": true,
+  "msg": "chore: prepend SPDX/Copyright headers to source files\n\nMechanical batch addition of a 2-line SPDX-License-Identifier +\nCopyright header to every .go / .ts / .vue source file in the repo\n(backend, web frontend, hub frontend, site, scripts, tests). Headers\nlook like:\n\n  // SPDX-License-Identifier: AGPL-3.0-or-later\n  // Copyright (C) 2025-2026 lin-snow\n\n(or the equivalent <!-- ... --> form for .vue SFCs).\n\nSkipped:\n- internal/swagger/* and internal/di/wire_gen.go (generated)\n- web/src/components/icons/* (SVG icons carry their own upstream\n  attributions)\n- node_modules / template/dist / web/dist / .git / etc.\n\nA new tooling script \u2014 scripts/add-spdx-headers.mjs \u2014 drives the\naddition. It is idempotent (skips files that already contain\n\"SPDX-License-Identifier\") and supports three modes: default write,\n--dry-run, and --check (CI-friendly: exits 1 if any source file is\nmissing a header).\n\nThe Go variant correctly handles //go:build constraints by inserting\nthe SPDX block AFTER the build tag's blank-line separator, so files\nlike internal/di/wire.go remain valid build-tagged files (verified\nby make wire-check).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+ },
+ {
+  "key": "lobehub__lobehub",
+  "url": "https://github.com/lobehub/lobehub.git",
+  "sha": "e67bcb257138254a04adee6da8359e7737853eda",
+  "ok": true,
+  "marker": true,
+  "msg": "\u2728 feat(cli): add generate command for text/image/video/tts/asr (#12799)\n\n* \u2728 feat(cli): add generate command for text/image/video/tts/asr\n\nLOBE-5711\n\n- `lh generate text <prompt>` \u2014 LLM text completion with SSE streaming\n  - Supports --model (provider/model format), --system, --temperature, --pipe\n- `lh generate image <prompt>` \u2014 Image generation via async task\n- `lh generate video <prompt>` \u2014 Video generation via async task\n- `lh generate tts <text>` \u2014 Text-to-speech (openai/microsoft/edge backends)\n- `lh generate asr <file>` \u2014 Speech-to-text via OpenAI Whisper\n- `lh generate status` \u2014 Check async generation task status\n- `lh generate list` \u2014 List generation topics\n- Add shared HTTP auth helper (api/http.ts) for webapi endpoints\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* update info\n\n* \u267b\ufe0f refactor(cli): split generate command into submodules, text defaults non-streaming\n\n- Split monolithic generate.ts into generate/{index,text,image,video,tts,asr}.ts\n- Text subcommand now defaults to non-streaming (use --stream to opt in)\n- Text subcommand supports --json for full JSON response output\n- Video subcommand uses requiredOption for --model and --provider\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* \ud83d\udc1b fix(cli): read generation data from result.data and add required X-lobe-chat-auth header\n\nImage/video mutations return { success, data: { ... } }, read IDs from data.\nWebAPI endpoints require X-lobe-chat-auth (XOR-encrypted) alongside Oidc-Auth.\n\nCo-Au"
+ },
+ {
+  "key": "locutusjs__locutus",
+  "url": "https://github.com/locutusjs/locutus.git",
+  "sha": "042af9ca7fde2ff599120783e720a17f335bb01c",
+  "ok": true,
+  "marker": true,
+  "msg": "fix: Harden parse_str prototype pollution guard against includes() bypass (#533)\n\n* fix: Harden parse_str prototype pollution guard against includes() bypass\n\nThe existing prototype pollution fix used String.prototype.includes() to\ncheck for forbidden keys (__proto__, constructor, prototype). An attacker\ncan override String.prototype.includes = () => false before calling\nparse_str, completely bypassing the guard.\n\nReplace with a regex test which is not vulnerable to String prototype\ntampering.\n\nFixes GHSA-rxrv-835q-v5mh\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\n\n* fix: Sort imports to satisfy linter\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\n\n* docs: Add changelog entry for prototype pollution fix\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 4.5 <noreply@anthropic.com>"
+ },
+ {
+  "key": "mermaid-js__mermaid",
+  "url": "https://github.com/mermaid-js/mermaid.git",
+  "sha": "dea0572457f903295d41c92efcaf1f52a6a377d9",
+  "ok": true,
+  "marker": true,
+  "msg": "test: enforce -beta suffix policy for new diagrams\n\nAdd a beta-policy test requiring new diagram types to use `-beta` syntax,\nwith frozen NEVER_BETA_DIAGRAMS and GRADUATED_DIAGRAMS allowlists. Align\nunreleased railroad and swimlane diagrams to `-beta` keywords across\ndetectors, grammars, docs, examples, fixtures, and tests.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>"
+ },
+ {
+  "key": "microsoft__kiota",
+  "url": "https://github.com/microsoft/kiota.git",
+  "sha": "dee8b673dcd7377c3084b24cf4be3fb81075b7c8",
+  "ok": true,
+  "marker": true,
+  "msg": "feat: map confirmation isNonConsequential in AI capabilities extension (#7857)\n\n* feat: map confirmation isNonConsequential in AI capabilities extension\n\nThe x-ai-capabilities confirmation object supports isNonConsequential\n(plugin manifest 2.4), but Kiota dropped it: the ExtensionConfirmation\nparser only read type/title/body and the generated manifest confirmation\nwas never populated with it. Parse, write, and map isNonConsequential to\nthe manifest Confirmation.IsNonConsequential property.\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\n\n* docs: add PR reference to changelog entry\n\n* test: assert exact isNonConsequential JSON fragment in capabilities serialization\n\nAssert the serialized output contains \"isNonConsequential\":true rather than just\nthe property name, so the test fails if the value is emitted incorrectly.\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\nCo-authored-by: Vincent Biret <vibiret@microsoft.com>"
+ },
+ {
+  "key": "modelcontextprotocol__go-sdk",
+  "url": "https://github.com/modelcontextprotocol/go-sdk.git",
+  "sha": "3cf9f9908d3f44cf9fd75d134c378687e6fb7996",
+  "ok": true,
+  "marker": false,
+  "msg": "mcp: implement sampling with tools (#699)\n\nSummary\n\nAdd support for tool use within sampling requests, as described in the\nMCP 2025-11-25 spec's sampling.tools capability.\n  New types\n\n  Content types:\n- ToolUseContent \u2014 represents a tool invocation request from the\nassistant\n- ToolResultContent \u2014 represents the result of a tool invocation, with\nnested []Content for the result blocks\n\n  Capability types:\n  - SamplingCapabilities gains Tools and Context sub-fields\n  - SamplingToolsCapabilities, SamplingContextCapabilities\n\n  Tool-enabled sampling (parallel tool calls):\n- CreateMessageWithToolsParams with SamplingMessageV2 (supports array\ncontent)\n  - CreateMessageWithToolsResult (supports array content)\n  - ToolChoice \u2014 controls tool invocation mode (auto, required, none)\n  - ServerSession.CreateMessageWithTools\n  - ClientOptions.CreateMessageWithToolsHandler\n\n  Design\n\nFollowing the TypeScript SDK's pattern, tool-enabled sampling uses\nseparate types from basic sampling to avoid breaking the existing API.\nThe basic CreateMessage/CreateMessageResult path\n   is unchanged.\n\nBoth paths share the same wire method (sampling/createMessage) and go\nthrough the method info table. The table uses the broader\nCreateMessageWithToolsResult type internally;\nCreateMessage downconverts (erroring if multiple content blocks are\nreturned). This is documented as a rough edge to unify in v2.\n\nSetting CreateMessageWithToolsHandler automatically infers the\nsampling.tools capability. It is a panic to s"
+ },
+ {
+  "key": "modelcontextprotocol__python-sdk",
+  "url": "https://github.com/modelcontextprotocol/python-sdk.git",
+  "sha": "2210c1be18d66ecf5553ee8915ad1338dc3aecb9",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "modelcontextprotocol__python-sdk",
+  "url": "https://github.com/modelcontextprotocol/python-sdk.git",
+  "sha": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
+  "ok": true,
+  "marker": true,
+  "msg": "Fix #201: Move incoming message stream from BaseSession to ServerSession (#325)\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+ },
+ {
+  "key": "modelcontextprotocol__python-sdk",
+  "url": "https://github.com/modelcontextprotocol/python-sdk.git",
+  "sha": "7901552eba29d68d1227f2976b8d114b9712abce",
+  "ok": true,
+  "marker": true,
+  "msg": "send errors to pending requests if server closes (#333)\n\nCo-authored-by: ihrpr <inna@anthropic.com>"
+ },
+ {
+  "key": "nodejs__undici",
+  "url": "https://github.com/nodejs/undici.git",
+  "sha": "90775009148e5956ac58ace0eb493001db8b2b7c",
+  "ok": true,
+  "marker": true,
+  "msg": "fix(cache): only apply 1-year deleteAt for immutable responses (#4913)\n\n* fix(cache): only apply 1-year deleteAt for immutable responses\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* test(cache): add tests for determineDeleteAt behavior\n\nVerify that:\n- max-age responses get deleteAt proportional to freshness lifetime (not 1 year)\n- immutable responses get deleteAt of ~1 year\n- stale-while-revalidate correctly extends deleteAt beyond staleAt\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 4.6 <noreply@anthropic.com>"
+ },
+ {
+  "key": "nodejs__undici",
+  "url": "https://github.com/nodejs/undici.git",
+  "sha": "f601c1a14eac9338ebbfb6a3aa255e6417fa62e5",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "open-webui__open-webui",
+  "url": "https://github.com/open-webui/open-webui.git",
+  "sha": "087878ce848a4d828012068b5997dac480f43656",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "open-webui__open-webui",
+  "url": "https://github.com/open-webui/open-webui.git",
+  "sha": "823b9a6dd96e51d6bbb5e162d13ae043fcf59408",
+  "ok": true,
+  "marker": true,
+  "msg": "chore/perf: Remove old SRC level log env vars with no impact (#20045)\n\n* Update openai.py\n\n* Update env.py\n\n* Merge pull request open-webui#19030 from open-webui/dev (#119)\n\nCo-authored-by: Tim Baek <tim@openwebui.com>\nCo-authored-by: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Tim Baek <tim@openwebui.com>\nCo-authored-by: Claude <noreply@anthropic.com>"
+ },
+ {
+  "key": "open-webui__open-webui",
+  "url": "https://github.com/open-webui/open-webui.git",
+  "sha": "a66477b7104c5d141ce7bffaea424b43e7666ef1",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "oscal-compass__compliance-trestle",
+  "url": "https://github.com/oscal-compass/compliance-trestle.git",
+  "sha": "f85944cf7a544e0073fb66f64725422712494c90",
+  "ok": true,
+  "marker": true,
+  "msg": "feat: migrate to hatch for build process (#2005)\n\n* feat: transition to hatch\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: clean up dependency maps\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: move dmcg to dev dependencies\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: move gitpython to dev dependencies\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: move pre-commit\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: clean up bdist\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: ensure coverag fiels are generated\n\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: install mypy in binary distribution test\n\nThe mypy test requires mypy to be available. Add mypy to the test\ndependencies installed in the isolated binary test environment.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* refactor: use Makefile abstractions in CI pipeline\n\n- Use make docs-validate instead of direct hatch command\n- Remove duplicate \"Don't mess with line endings\" steps in bdist, sonar, and snyk jobs\n- Add test-cov-xml target to Makefile for coverage report generation\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nSigned-off-by: Chris Butler <chris.butler@redhat.com>\n\n* fix: run utility scripts through"
+ },
+ {
+  "key": "pionxzh__wakaru",
+  "url": "https://github.com/pionxzh/wakaru.git",
+  "sha": "9ef95b54e8492d13ab4f0fae26c605b7b97ed604",
+  "ok": true,
+  "marker": true,
+  "msg": "refactor: split monolith into workspace with core/cli/wasm crates\n\nFlatten wakaru-rs/ into repo root and split the single crate into three:\n\n- wakaru-core: pure transform logic, WASM-safe by design. Parallelism\n  opt-in via `parallel` Cargo feature (gates rayon). Sourcemap accepted\n  as Option<Vec<u8>> instead of file path.\n- wakaru-cli: clap + rayon + filesystem I/O. Enables core's parallel\n  feature for native performance.\n- wakaru-wasm: thin wasm-bindgen bindings over core with hand-written\n  TypeScript definitions. Skeleton ready for wasm-pack build.\n\nKey changes:\n- DecompileOptions.sourcemap_path -> sourcemap (raw bytes)\n- Sourcemap parsed once before Phase 2 loop (was per-module)\n- extract_sources split: pure extract_source_entries in core,\n  fs writes in CLI\n- Two-phase unpack pipeline stays in core with cfg-gated par_iter\n- Renamed tests/fixtures -> tests/bundles\n- Updated CI workflows, docs, npm package, generate scripts\n\nAll 987 tests pass.\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+ },
+ {
+  "key": "psd-tools__psd-tools",
+  "url": "https://github.com/psd-tools/psd-tools.git",
+  "sha": "f871f5274c410600d1282eaeee57e2201069e406",
+  "ok": true,
+  "marker": false,
+  "msg": "docs: Enhance package and module docstrings with comprehensive documentation\n\nThis commit significantly expands the documentation throughout the codebase\nto provide comprehensive guidance for developers working with psd-tools.\n\n## Contributing Guide Updates\n\n- Expanded package design section to describe all four subpackages:\n  - psd_tools.psd (low-level binary structures)\n  - psd_tools.api (high-level user-facing API)\n  - psd_tools.composite (rendering and blending engine)\n  - psd_tools.compression (compression codecs)\n- Updated testing and documentation commands to use `uv` instead of `pip`\n\n## Package-Level Docstrings\n\n**psd_tools/__init__.py:**\n- Added comprehensive package overview with usage examples\n- Documented four-subpackage architecture\n- Provided guidance on entry points for users and developers\n\n**psd_tools/api/__init__.py:**\n- Created new docstring explaining the high-level API\n- Listed key modules and their purposes\n- Included usage examples for common operations\n\n**psd_tools/composite/__init__.py:**\n- Enhanced with installation instructions for optional dependencies\n- Documented key modules (blend, effects, vector, paint)\n- Added performance considerations and blend mode support details\n\n**psd_tools/compression/__init__.py:**\n- Expanded to document all four compression methods\n- Explained Cython optimization with fallback behavior\n- Added detailed usage examples and performance notes\n\n## Module-Level Docstrings\n\n**psd_tools/psd/layer_and_mask.py:**\n- Enhanced w"
+ },
+ {
+  "key": "quic-go__quic-go",
+  "url": "https://github.com/quic-go/quic-go.git",
+  "sha": "b7886d5c901700febc41c739bd93851eac5d315e",
+  "ok": true,
+  "marker": true,
+  "msg": "update qpack to v0.6.0 (#5434)\n\n* update qpack to v0.6.0\n\n* qlog invalid trailers\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>"
+ },
+ {
+  "key": "rustfs__rustfs",
+  "url": "https://github.com/rustfs/rustfs.git",
+  "sha": "0da943a6a4006222ddeda87b5b3a9225e41d9b4e",
+  "ok": true,
+  "marker": true,
+  "msg": "build(deps): bump s3s from 0.12.0-rc.4 to 0.12.0-rc.5 in the s3s group (#1046)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: loverustfs <hello@rustfs.com>\nCo-authored-by: houseme <housemecn@gmail.com>\nCo-authored-by: Copilot <198982749+Copilot@users.noreply.github.com>\nCo-authored-by: houseme <4829346+houseme@users.noreply.github.com>"
+ },
+ {
+  "key": "seaweedfs__seaweedfs",
+  "url": "https://github.com/seaweedfs/seaweedfs.git",
+  "sha": "10a30a83e1bdfca25c19506ef4d0d39d22e17628",
+  "ok": true,
+  "marker": true,
+  "msg": "s3api: add GetObjectAttributes API support (#8504)\n\n* s3api: add error code and header constants for GetObjectAttributes\n\nAdd ErrInvalidAttributeName error code and header constants\n(X-Amz-Object-Attributes, X-Amz-Max-Parts, X-Amz-Part-Number-Marker,\nX-Amz-Delete-Marker) needed by the S3 GetObjectAttributes API.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* s3api: implement GetObjectAttributes handler\n\nAdd GetObjectAttributesHandler that returns selected object metadata\n(ETag, Checksum, StorageClass, ObjectSize, ObjectParts) without\nreturning the object body. Follows the same versioning and conditional\nheader patterns as HeadObjectHandler.\n\nThe handler parses the X-Amz-Object-Attributes header to determine\nwhich attributes to include in the XML response, and supports\nObjectParts pagination via X-Amz-Max-Parts and X-Amz-Part-Number-Marker.\n\nRef: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObjectAttributes.html\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* s3api: register GetObjectAttributes route\n\nRegister the GET /{object}?attributes route for the\nGetObjectAttributes API, placed before other object query\nroutes to ensure proper matching.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\n\n* s3api: add integration tests for GetObjectAttributes\n\nTest coverage:\n- Basic: simple object with all attribute types\n- MultipartObject: multipart upload with parts pagination\n- SelectiveAttributes: requesting only specific attributes\n- InvalidAt"
+ },
+ {
+  "key": "shopware__shopware",
+  "url": "https://github.com/shopware/shopware.git",
+  "sha": "543eb637fd76deb37490aa60534388627b41a010",
+  "ok": true,
+  "marker": true,
+  "msg": "test: add snapshot tests for documents (#11825)\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>"
+ },
+ {
+  "key": "silverbucket__webfinger.js",
+  "url": "https://github.com/silverbucket/webfinger.js.git",
+  "sha": "ff1abb866971fd6b9c2216b7f0e8559abd7f2124",
+  "ok": true,
+  "marker": true,
+  "msg": "Enhance testing infrastructure with integration and browser testing (#95)\n\n* Enhance testing infrastructure with integration and browser testing\n\n## Summary\n- Add comprehensive browser testing using Web Test Runner with Puppeteer\n- Add integration testing with real WebFinger servers\n- Add controlled testing with mock WebFinger server\n- Improve build system to properly handle UMD exports\n- Reorganize test scripts for better separation of concerns\n\n## New Testing Capabilities\n- **Browser Tests**: Validate WebFinger works in actual browser environment\n- **Integration Tests**: Test against real WebFinger servers like silverbucket.net\n- **Controlled Tests**: Mock server for predictable testing scenarios\n- **Improved Unit Tests**: Better timeout handling and error scenarios\n\n## Technical Changes\n- Install @web/test-runner and @web/test-runner-puppeteer for browser testing\n- Install @esm-bundle/chai and mocha for browser-compatible assertions\n- Fix build script to properly remove ES module exports from UMD build\n- Add TypeScript support for test server with @types/node\n- Create WebFinger test server for controlled testing scenarios\n\n## Test Scripts Added\n- `test:browser` - Run tests in actual browser environment\n- `test:integration` - Test with real WebFinger servers\n- `test:unit` - Run existing TypeScript/JavaScript unit tests\n- `test:all` - Run complete test suite (strict mode)\n- `test` - Run all tests (non-strict mode for development)\n\n\ud83e\udd16 Generated with [Claude Code](https://claud"
+ },
+ {
+  "key": "sipsorcery-org__sipsorcery",
+  "url": "https://github.com/sipsorcery-org/sipsorcery.git",
+  "sha": "aebe49c58ff01857fa800e1ae323b0503eda4fb7",
+  "ok": true,
+  "marker": false,
+  "msg": "Consolidating all projects into a single repo (#1524)\n\n* Updated to the latest stable Windows SDK target. Fixed invalid cast exception in test app.\n\n* Set correct default video extra encoder options (H264 or VP8/VP9)\n\n* Allow to set a specific folder to register FFmpeg binaries\nAvoid to register them if already done\n\n* Allow to use a file as audio only, video only or audio+video.\n\n* Replace FileSourceDecoder by FFmpegVideoDecoder and FFmpegAudioDecoder.\nAdd FFmpegCameraSource\nAdd new test project allowing to stream Audio only (from file) , Video only (from file or camera), Audio+Video (using only one file, two files [one for audio and other one for video] or one file for audio + the camera)\n\n* Bumped version to v0.0.32.\n\n* FFmpegAudioDecoder / FFmpegVideoDecoder: manage eagain error, don' use av_usleep when microphone/camera is used\nFFmpegAudioDecoder: check channel_layout default value\nAdd FFmpegMicrophoneSource to manage audio input\nUpdate FFmpegFileAndDevicesTest projet to test microphone\n\n* Change target to .net6-windows*. This is the latest approach Microsoft suggest to target Windows Runtime APIs from .NET.\n\n* Update appveyor CI image to VS 2022.\n\n* Fixed invalid cast exception acquiring webcam frames (properly this time, not just in test app).\n\n* Update nuget api key.\n\n* Update nuget api key.\n\n* Update nuget api key.\n\n* Update FFmpeg binaries to 4.4.1 (cf. https://www.gyan.dev/ffmpeg/builds/#release-builds)\nBump FFmpeg.AutoGen dependency to 4.4.1.1\nModify code to suppo"
+ },
+ {
+  "key": "stellar__rs-soroban-sdk",
+  "url": "https://github.com/stellar/rs-soroban-sdk.git",
+  "sha": "ecad5addcae1dfc3b9bd9865ea5977aef5f16843",
+  "ok": true,
+  "marker": true,
+  "msg": "Add bn254 support and expose poseidon/poseidon2 host functions (#1667)\n\n### What\n\n* Add bn254 support (#1615, #1628)\n- A new module `crypto/bn254.rs` with Bn254 point and field types, and\nexpose\u00a0related host operations.\n  - Implement `Neg` trait for `G1Affine` (#1630)\n- Update bn254 typenames and add mapping (#1645), also updated bls12-381\ntype names for consistency\n* Add raw Poseidon, Poseidon2 support in `CryptoHazmat`, gated by\n\"hazmat-crypto\" feature\n\n\n### Why\n\nExpose new crypto functions for protocol 25\n\n### Known limitations\n\nOnly the raw host function exposure for Poseidon/Poseidon2 has been\nadded in this PR. The more elaborate setup for sponge, parameters, hash\nfunction wrappers will be done in a separate repo\n[here](https://github.com/stellar/rs-soroban-poseidon)\n\n---------\n\nCo-authored-by: Jay Geng <jay@stellar.org>\nCo-authored-by: Siddharth Suresh <siddharth@stellar.org>\nCo-authored-by: Leigh <351529+leighmcculloch@users.noreply.github.com>\nCo-authored-by: Matteo Lisotto <matteo.lisotto@gmail.com>\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\nCo-authored-by: Nando Vieira <me@fnando.com>"
+ },
+ {
+  "key": "surrealdb__surrealdb",
+  "url": "https://github.com/surrealdb/surrealdb.git",
+  "sha": "0bf1a5196fd4783e90772affde5a5c035bd63281",
+  "ok": true,
+  "marker": true,
+  "msg": "Improve error communication and serialisation (#6893)\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\nCo-authored-by: Micha de Vries <micha@devrie.sh>"
+ },
+ {
+  "key": "surrealdb__surrealdb",
+  "url": "https://github.com/surrealdb/surrealdb.git",
+  "sha": "54efe74759d22b2f3fe1982e5b935dc26f17dad1",
+  "ok": true,
+  "marker": true,
+  "msg": "perf(kvs/rocksdb): caller-owned scan cursors + zero-copy for_each callback (#185)\n\nCo-authored-by: Claude Opus 4.7 (1M context) <noreply@anthropic.com>\nCo-authored-by: Emmanuel Keller <emmanuel.keller@surrealdb.com>"
+ },
+ {
+  "key": "thephpleague__commonmark",
+  "url": "https://github.com/thephpleague/commonmark.git",
+  "sha": "84870f31dc41a36039f6bc86ca0ed7eac2c9d63f",
+  "ok": true,
+  "marker": true,
+  "msg": "Allow disabling of inline footnotes + documentation on inline footnotes (#1112)\n\n* Add config to disable inline footnotes + documentation for inline footnotes\n\nCo-authored-by: chillbram <7299762+chillbram@users.noreply.github.com>\nCo-authored-by: Colin O'Dell <colinodell@gmail.com>\nCo-authored-by: Copilot Autofix powered by AI <175728472+Copilot@users.noreply.github.com>\nCo-authored-by: Claude Opus 4.8 <noreply@anthropic.com>"
+ },
+ {
+  "key": "thephpleague__commonmark",
+  "url": "https://github.com/thephpleague/commonmark.git",
+  "sha": "ba637f65e8ca98c419a46503fd2dd52b3c13589d",
+  "ok": false,
+  "marker": false,
+  "msg": ""
+ },
+ {
+  "key": "vercel__workflow",
+  "url": "https://github.com/vercel/workflow.git",
+  "sha": "02681dce4a504ff236c81a1ee976d2b04d1a5774",
+  "ok": true,
+  "marker": false,
+  "msg": "feat(core): add hook.dispose() method to release hook tokens early (#1181)\n\n* feat(core): add hook.dispose() method to release hook tokens early\n\nAdd a `dispose()` method to the Hook interface that allows workflows to\nexplicitly release hook tokens for reuse by other workflows while the\ncurrent workflow is still running. This enables handoff patterns where\none workflow can transfer a hook token to another workflow.\n\n- Add `dispose()` method to Hook interface in create-hook.ts\n- Implement dispose functionality in workflow/hook.ts\n- Add HookDisposedInvocationQueueItem to global.ts\n- Handle hook_disposed events in suspension-handler.ts\n- Update documentation in hooks.mdx and create-hook.mdx\n- Add e2e test for hook token reuse after explicit disposal\n\nhttps://claude.ai/code/session_01AkvrXduyFTbtV2joTPHrDH\n\n* feat(core): implement TypeScript Disposable spec for hooks\n\nAdd Symbol.dispose to Hook interface to support the TC39 Explicit Resource\nManagement proposal. This allows hooks to be used with the `using` keyword\nfor automatic disposal when exiting scope.\n\nhttps://claude.ai/code/session_01AkvrXduyFTbtV2joTPHrDH\n\n* docs: prefer `using` keyword for hooks and webhooks\n\nUpdate all documentation and e2e tests to use the `using` keyword as the\nrecommended approach for creating hooks and webhooks. This leverages the\nTC39 Explicit Resource Management proposal for automatic disposal.\n\n- Update e2e tests to use `using` syntax\n- Update foundational hooks guide to recommend `using`\n- Updat"
+ },
+ {
+  "key": "vllm-project__vllm",
+  "url": "https://github.com/vllm-project/vllm.git",
+  "sha": "ebf862c351dc4bcaf65de34c3caebe6df6e9e214",
+  "ok": true,
+  "marker": true,
+  "msg": "Add system_fingerprint field to OpenAI-compatible API responses (#40537)\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+ },
+ {
+  "key": "withastro__astro",
+  "url": "https://github.com/withastro/astro.git",
+  "sha": "336b003351d79708d71f54f14bf86f733a74d04c",
+  "ok": true,
+  "marker": true,
+  "msg": "Merge main into next (#15348)\n\nCo-authored-by: renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>\nCo-authored-by: Emanuele Stoppa <my.burning@gmail.com>\nCo-authored-by: Matt Kane <m@mk.gg>\nCo-authored-by:  Matthew Phillips <matthew@skypack.dev>\nCo-authored-by: Matthew Phillips <matthew@skypack.dev>\nCo-authored-by: Florian Lefebvre <contact@florian-lefebvre.dev>\nCo-authored-by: Erika <3019731+Princesseuh@users.noreply.github.com>\nCo-authored-by: Sarah Rainsberger <5098874+sarah11918@users.noreply.github.com>\nCo-authored-by: Armand Philippot <git@armand.philippot.eu>\nCo-authored-by: matthewp <361671+matthewp@users.noreply.github.com>\nCo-authored-by: florian-lefebvre <69633530+florian-lefebvre@users.noreply.github.com>\nCo-authored-by: ematipico <602478+ematipico@users.noreply.github.com>\nCo-authored-by: Luiz Ferraz <luiz@lferraz.com>\nCo-authored-by: HiDeoo <494699+HiDeoo@users.noreply.github.com>\nCo-authored-by: Princesseuh <3019731+Princesseuh@users.noreply.github.com>\nCo-authored-by: Chris Swithinbank <swithinbank@gmail.com>\nCo-authored-by: Claude Opus 4.5 <noreply@anthropic.com>\nCo-authored-by: Antony Faris <acp325@gmail.com>\nCo-authored-by: Erika <Princesseuh@users.noreply.github.com>\nCo-authored-by: Houston (Bot) <108291165+astrobot-houston@users.noreply.github.com>\nCo-authored-by: Florian Lefebvre <florian-lefebvre@users.noreply.github.com>\nCo-authored-by: Volpeon <7615"
+ },
+ {
+  "key": "zitadel__zitadel",
+  "url": "https://github.com/zitadel/zitadel.git",
+  "sha": "8fc11a7366dcaf24a11d3c4fd26e86f5e61d4d1f",
+  "ok": true,
+  "marker": true,
+  "msg": "feat: user api requests to resource API (#9794)\n\n# Which Problems Are Solved\n\nThis pull request addresses a significant gap in the user service v2\nAPI, which currently lacks methods for managing machine users.\n\n# How the Problems Are Solved\n\nThis PR adds new API endpoints to the user service v2 to manage machine\nusers including their secret, keys and personal access tokens.\nAdditionally, there's now a CreateUser and UpdateUser endpoints which\nallow to create either a human or machine user and update them. The\nexisting `CreateHumanUser` endpoint has been deprecated along the\ncorresponding management service endpoints. For details check the\nadditional context section.\n\n# Additional Context\n\n- Closes https://github.com/zitadel/zitadel/issues/9349\n\n## More details\n- API changes: https://github.com/zitadel/zitadel/pull/9680\n- Implementation: https://github.com/zitadel/zitadel/pull/9763\n- Tests: https://github.com/zitadel/zitadel/pull/9771\n\n## Follow-ups\n\n- Metadata: support managing user metadata using resource API\nhttps://github.com/zitadel/zitadel/pull/10005\n- Machine token type: support managing the machine token type (migrate\nto new enum with zero value unspecified?)\n\n---------\n\nCo-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>\nCo-authored-by: Livio Spring <livio.a@gmail.com>"
+ }
+]

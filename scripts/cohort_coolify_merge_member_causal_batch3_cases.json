@@ -1,0 +1,99 @@
+{
+  "cases": [
+    {
+      "key": "deployment_log_morph_hook_navigation_lifecycle",
+      "candidate_prefix": "9493398b58ac",
+      "fix_prefix": "5e0e6772d5aa",
+      "adjudication": "CONFIRMED_DIRECT_AI_GLOBAL_LIFECYCLE_HOOK_REGRESSION",
+      "mechanism_group": "deployment_log_morph_hook_navigation_lifecycle",
+      "causal_role": "DIRECT_ORIGIN",
+      "claim": "the AI candidate replaced scoped debounced deployment-log update handling with a global morph.updated callback that had neither component-root scoping nor teardown guards; that exact unsafe state survived to the repair parent, and the follow-up made the callback inert after navigation and cleaned up the associated listeners and timers",
+      "fix_message_fragments": [
+        "load realtime assets without Vite"
+      ],
+      "exact_line_fragments": [
+        "if (el.id === 'logs') {"
+      ],
+      "candidate_diff_fragments": [
+        "Livewire.hook('morph.updated'",
+        "if (el.id === 'logs') {"
+      ],
+      "fix_diff_fragments": [
+        "Livewire.hook() has no deregister API",
+        "if (this.destroyed) return;",
+        "!this.$root.contains(el)",
+        "destroy() {",
+        "this.deploymentFinishedCleanup()"
+      ],
+      "parent_source_path": "resources/views/livewire/project/application/deployment/show.blade.php",
+      "parent_source_fragments": [
+        "document.addEventListener('livewire:navigated'",
+        "Livewire.hook('commit'"
+      ],
+      "candidate_source_path": "resources/views/livewire/project/application/deployment/show.blade.php",
+      "candidate_source_fragments": [
+        "Livewire.hook('morph.updated'",
+        "if (el.id === 'logs') {"
+      ],
+      "candidate_source_forbidden_fragments": [
+        "destroyed: false",
+        "!this.$root.contains(el)"
+      ],
+      "fix_parent_source_path": "resources/views/livewire/project/application/deployment/show.blade.php",
+      "fix_parent_source_fragments": [
+        "Livewire.hook('morph.updated'",
+        "if (el.id === 'logs') {"
+      ],
+      "fix_parent_source_forbidden_fragments": [
+        "destroyed: false",
+        "!this.$root.contains(el)"
+      ]
+    },
+    {
+      "key": "activity_monitor_hydration_lifecycle",
+      "candidate_prefix": "f2a017a0636a",
+      "fix_prefix": "aa18c4882350",
+      "adjudication": "CONFIRMED_AI_LIFECYCLE_HOOK_REMOVAL_COMPOSITIONAL_CONTRIBUTOR",
+      "mechanism_group": "activity_monitor_hydration_lifecycle",
+      "causal_role": "COMPOSITIONAL_CONTRIBUTOR",
+      "claim": "the AI event-dispatch refactor removed ActivityMonitor's updatedActivityId hydration hook; the deletion survived unchanged until a later persistent slide-over path exposed stale component state, and the modal repair restored the exact hook while adding null-state and close cleanup",
+      "fix_message_fragments": [
+        "uncloseable database restore modal",
+        "proper lifecycle hooks"
+      ],
+      "exact_line_fragments": [
+        "public function updatedActivityId($value)"
+      ],
+      "candidate_diff_fragments": [
+        "public function updatedActivityId($value)",
+        "$this->hydrateActivity();",
+        "$this->isPollingActive = true;"
+      ],
+      "fix_diff_fragments": [
+        "public function updatedActivityId($value)",
+        "if ($this->activityId === null)",
+        "self::$eventDispatched = false;",
+        "slideOverClosed"
+      ],
+      "parent_source_path": "app/Livewire/ActivityMonitor.php",
+      "parent_source_fragments": [
+        "public function updatedActivityId($value)",
+        "$this->hydrateActivity();"
+      ],
+      "candidate_source_path": "app/Livewire/ActivityMonitor.php",
+      "candidate_source_fragments": [
+        "protected $listeners = ['activityMonitor' => 'newMonitorActivity']"
+      ],
+      "candidate_source_forbidden_fragments": [
+        "public function updatedActivityId($value)"
+      ],
+      "fix_parent_source_path": "app/Livewire/ActivityMonitor.php",
+      "fix_parent_source_fragments": [
+        "protected $listeners = ['activityMonitor' => 'newMonitorActivity']"
+      ],
+      "fix_parent_source_forbidden_fragments": [
+        "public function updatedActivityId($value)"
+      ]
+    }
+  ]
+}

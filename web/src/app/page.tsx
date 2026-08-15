@@ -1,78 +1,366 @@
-import { getCves, getStats } from "@/lib/data";
-import { StatsCards } from "@/components/stats-cards";
-import { RecentCvesTable } from "@/components/recent-cves-table";
-import { DataFreshness } from "@/components/data-freshness";
-import { compareCves } from "@/lib/sort";
+import Image from "next/image";
+import Link from "next/link";
+import { CalendarDays } from "lucide-react";
+
+import { AiToolBaseRate } from "@/components/ai-tool-base-rate";
+import { DistributionBars } from "@/components/distribution-bars";
+import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
-import { MonthArchive } from "@/components/month-archive";
-import { Star, GitPullRequest } from "lucide-react";
+import { formatMonthShort } from "@/lib/month-utils";
+import {
+  formatContributionClass,
+  getAiFamilyIconKey,
+  getAiToolDistribution,
+  getCauseDistribution,
+  getCauseCategoryLabel,
+  getLanguageDistribution,
+  getRepositoryDistribution,
+  getResearchCases,
+  getResearchSnapshot,
+  getResearchTimeline,
+} from "@/lib/research-data";
+import { RESEARCH_SNAPSHOT } from "@/lib/research-status";
+
+const MEDIA_COVERAGE = [
+  {
+    source: "Infosecurity Magazine",
+    date: "Mar 26, 2026",
+    title:
+      "Researchers sound the alarm on vulnerabilities in AI-generated code",
+    href: "https://www.infosecurity-magazine.com/news/ai-generated-code-vulnerabilities/",
+  },
+  {
+    source: "Georgia Tech Research News",
+    date: "Apr 13, 2026",
+    title: "Bad vibes: AI-generated code is vulnerable, researchers warn",
+    href: "https://news.research.gatech.edu/2026/04/13/bad-vibes-ai-generated-code-vulnerable-researchers-warn",
+  },
+  {
+    source: "Def Method",
+    date: "Apr 13, 2026",
+    title: "Detection won't save you",
+    href: "https://www.defmethod.com/essential-complexity/detection-wont-save-you",
+  },
+] as const;
+
+const FAQS = [
+  {
+    question: "What counts as an AI-contributed vulnerability?",
+    answer:
+      "The vulnerable behavior must depend on an AI-authored code change and be reversed by a real security fix.",
+  },
+  {
+    question: "Is every AI-related commit shown?",
+    answer:
+      "No. Case pages show the contributing change and minimum fix, not unrelated search candidates.",
+  },
+  {
+    question: "Is this the total number of AI security bugs?",
+    answer:
+      "No. It is a lower bound from public advisories and AI signatures that can be verified in Git history.",
+  },
+  {
+    question: "Can a case be corrected?",
+    answer:
+      "Yes. Open a GitHub issue with the advisory, commit, or release evidence that changes the conclusion.",
+  },
+] as const;
 
 export default function HomePage() {
-  const stats = getStats();
-  const cves = getCves();
-
-  const recentCves = [...cves.cves]
-    .sort((a, b) => compareCves(a, b, { key: "published", direction: "desc" }))
-    .slice(0, 10);
+  const research = getResearchSnapshot();
+  const timeline = getResearchTimeline();
+  const aiTools = getAiToolDistribution();
+  const causes = getCauseDistribution();
+  const languages = getLanguageDistribution();
+  const repositories = getRepositoryDistribution();
+  const featuredCases = (() => {
+    const pool = [...getResearchCases()]
+      .filter((item) => item.code_evidence)
+      .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+    const picked: typeof pool = [];
+    const classOrder = [
+      "AI_INCOMPLETE_REMEDIATION",
+      "AI_DIRECT_ROOT",
+      "AI_CAUSAL_CONTRIBUTOR",
+      "AI_NEW_SURFACE_CONTRIBUTOR",
+      "AI_ROOT_NEW_COMPONENT",
+    ];
+    for (const cls of classOrder) {
+      const hit = pool.find((item) => item.contribution_class === cls);
+      if (hit) picked.push(hit);
+    }
+    for (const item of pool) {
+      if (picked.length >= 6) break;
+      if (!picked.includes(item)) picked.push(item);
+    }
+    return picked;
+  })();
+  const peak = timeline.reduce(
+    (best, item) => (item.count > best.count ? item : best),
+    timeline[0] ?? { month: "", count: 0 },
+  );
+  const topTool = aiTools.items[0];
+  const topRepository = repositories[0];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6">
-      <section className="pb-8 pt-10 sm:pt-12">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Vibe Security Radar
-        </h1>
-        <p className="mt-2 max-w-xl text-base leading-relaxed text-muted-foreground">
-          Real CVEs where AI-generated code introduced the vulnerability.
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          by{" "}
-          <a
-            href="https://gts3.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary/80"
-          >
-            Georgia Tech SSLab
-          </a>
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground/70">
-          Actively developed. Results may contain errors or omissions.{" "}
-          <a href="/about" className="underline underline-offset-2 hover:text-muted-foreground">
-            How it works
-          </a>
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <a
-            href="https://github.com/HQ1995/vibe-security-radar"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-          >
-            <Star className="h-4 w-4" />
-            Star on GitHub
-          </a>
-          <a
-            href="https://github.com/HQ1995/vibe-security-radar/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border-2 border-foreground/20 px-4 py-2 text-sm font-semibold transition-colors hover:border-foreground/40 hover:text-primary"
-          >
-            <GitPullRequest className="h-4 w-4" />
-            Contribute
-          </a>
+    <main>
+      <header className="border-b border-border">
+        <div className="mx-auto w-full max-w-[96rem] px-4 py-5 sm:px-6 sm:py-7 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+          <div className="grid gap-7 xl:grid-cols-[minmax(24rem,0.72fr)_minmax(0,1.28fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(27rem,0.68fr)_minmax(0,1.32fr)] 2xl:gap-14">
+            <div className="md:grid md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)] md:gap-8 xl:block xl:py-5">
+              <div>
+                <p className="section-kicker">
+                  Georgia Tech SSLab · security research
+                </p>
+                <h1 className="mt-3 text-balance text-[clamp(2rem,1.6rem_+_1.8vw,3rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
+                  Vibe Security Radar
+                </h1>
+                <p className="mt-3 max-w-xl text-lg font-medium leading-7 tracking-[-0.02em] sm:text-xl sm:leading-8">
+                  Tracking vulnerabilities contributed by AI-written code—from
+                  the AI change to the root cause and fix.
+                </p>
+              </div>
+              <div className="mt-6 md:mt-0 xl:mt-6">
+                <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
+                  <Link
+                    href="/cves"
+                    className="inline-flex min-h-10 w-full items-center justify-center bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90 sm:w-auto"
+                  >
+                    Browse {research.snapshot.case_count} cases →
+                  </Link>
+                  <a
+                    href="https://github.com/HQ1995/vibe-security-radar"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-10 w-full items-center justify-center border border-foreground px-4 font-semibold text-foreground hover:bg-foreground hover:text-background sm:w-auto"
+                  >
+                    Star on GitHub ↗
+                  </a>
+                  <Link
+                    href="/about"
+                    className="px-1 text-muted-foreground hover:text-foreground"
+                  >
+                    Method
+                  </Link>
+                </div>
+                <dl className="mt-6 divide-y divide-border border-y border-border text-sm">
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="flex items-center gap-2 text-muted-foreground">
+                      Research ledger
+                    </dt>
+                    <dd className="text-right font-semibold">
+                      {RESEARCH_SNAPSHOT.unionUniqueGhsa} unique
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {RESEARCH_SNAPSHOT.allPass} all-pass ·{" "}
+                        {RESEARCH_SNAPSHOT.scopedContribution} scoped ·{" "}
+                        {RESEARCH_SNAPSHOT.status}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="flex items-center gap-2 text-muted-foreground">
+                      <CalendarDays
+                        className="h-4 w-4 shrink-0 text-primary"
+                        aria-hidden
+                      />
+                      Peak advisory month
+                    </dt>
+                    <dd className="text-right font-semibold">
+                      {peak.month
+                        ? formatMonthShort(peak.month)
+                        : "Unavailable"}
+                      {" · "}
+                      {peak.count} cases
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="flex items-center gap-2 text-muted-foreground">
+                      {topTool ? (
+                        <ToolIcon
+                          tool={getAiFamilyIconKey(topTool.key)}
+                          size={16}
+                        />
+                      ) : null}
+                      Most common AI tool
+                    </dt>
+                    <dd className="text-right font-semibold">
+                      {topTool?.label ?? "Unavailable"}
+                      {" · "}
+                      {topTool?.count ?? 0} of {research.snapshot.case_count}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="flex items-center gap-2 text-muted-foreground">
+                      {topRepository ? (
+                        <Image
+                          src={`https://github.com/${topRepository.label.split("/")[0]}.png?size=40`}
+                          alt=""
+                          width={18}
+                          height={18}
+                          className="shrink-0 rounded-full"
+                        />
+                      ) : null}
+                      Most represented project
+                    </dt>
+                    <dd className="text-right font-semibold">
+                      {topRepository?.label ?? "Unavailable"}
+                      <span className="block whitespace-nowrap 2xl:inline">
+                        <span className="hidden 2xl:inline"> · </span>
+                        {topRepository?.count ?? 0} of{" "}
+                        {research.snapshot.case_count}
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            <TrendChart
+              data={timeline}
+              caseCount={research.snapshot.case_count}
+              datedCount={research.snapshot.exact_publication_dates}
+              unknownDateCount={research.snapshot.unknown_publication_dates}
+              sourceCutoff={research.snapshot.source_cutoff}
+            />
+          </div>
         </div>
-        <div className="mt-3">
-          <DataFreshness generatedAt={stats.generated_at} coverageFrom={stats.coverage_from} coverageTo={stats.coverage_to} />
-        </div>
-      </section>
+      </header>
 
-      <div className="space-y-12 pb-16">
-        <StatsCards stats={stats} />
-        <div className="space-y-3">
-          <TrendChart data={stats.by_month} />
-          <MonthArchive data={stats.by_month} />
-        </div>
-        <RecentCvesTable cves={recentCves} />
+      <div className="mx-auto w-full max-w-[96rem] px-4 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+        <section className="py-9 sm:py-11">
+          <p className="section-kicker">Case patterns</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em]">
+            Who, where, and why
+          </h2>
+          <div className="mt-7 grid gap-8 sm:grid-cols-2 2xl:grid-cols-6">
+            <div className="grid min-w-0 gap-8 sm:col-span-2 sm:grid-cols-2 2xl:col-span-3">
+              <DistributionBars
+                eyebrow="AI tooling"
+                title="Who appears on the candidate change"
+                description={`${aiTools.coverage.complete} of ${aiTools.total} cases name a tool on every candidate commit.`}
+                items={aiTools.items.map((item) => ({
+                  ...item,
+                  iconKey: getAiFamilyIconKey(item.key),
+                }))}
+              />
+              <AiToolBaseRate />
+            </div>
+            <DistributionBars
+              eyebrow="Root causes"
+              title="What went wrong"
+              description="One root-cause category per case."
+              items={causes.map((item) => ({
+                ...item,
+                muted: item.key === "other_ambiguous",
+              }))}
+            />
+            <DistributionBars
+              eyebrow="Languages"
+              title="Where the vulnerable code lives"
+              description="Top languages; all remain available in Cases."
+              iconMode="language"
+              items={languages.slice(0, 6)}
+            />
+            <DistributionBars
+              eyebrow="Projects"
+              title="Repositories with the most cases"
+              description="Top repositories; filter the full index in Cases."
+              items={repositories.slice(0, 6)}
+            />
+          </div>
+        </section>
+
+        <section
+          id="cases"
+          className="scroll-mt-20 border-t border-border py-9 sm:py-11"
+        >
+          <div className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p className="section-kicker">Featured cases</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em]">
+                See the vulnerable code and fix
+              </h2>
+            </div>
+            <Link href="/cves" className="text-sm text-primary hover:underline">
+              Browse all {research.snapshot.case_count} cases →
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {featuredCases.map((item) => {
+              const id =
+                item.aliases.find((alias) => alias.startsWith("CVE-")) ??
+                item.case_id;
+              return (
+                <article
+                  key={item.case_id}
+                  className="border border-border bg-card p-5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-mono text-xs text-primary">{id}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {item.published_at?.slice(0, 10) ?? "Date unavailable"}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {item.repository ?? "Repository not recorded"}
+                  </p>
+                  <h3 className="mt-3 text-lg font-semibold leading-7">
+                    {item.code_evidence?.summary}
+                  </h3>
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    {getCauseCategoryLabel(item.cause_category)} ·{" "}
+                    {formatContributionClass(item.contribution_class)}
+                  </p>
+                  <Link
+                    href={`/cves/${id}`}
+                    className="mt-5 inline-block text-sm font-medium text-primary hover:underline"
+                  >
+                    See root cause and fix →
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="border-t border-border py-9 sm:py-11">
+          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <p className="section-kicker">Media coverage</p>
+              <div className="mt-5 divide-y divide-border border-y border-border">
+                {MEDIA_COVERAGE.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block py-4 hover:text-primary"
+                  >
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {item.source} · {item.date}
+                    </p>
+                    <p className="mt-1.5 text-sm font-medium leading-6">
+                      {item.title} ↗
+                    </p>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="section-kicker">Q&amp;A</p>
+              <dl className="mt-5 divide-y divide-border border-y border-border">
+                {FAQS.map((item) => (
+                  <div key={item.question} className="py-4">
+                    <dt className="text-sm font-medium">{item.question}</dt>
+                    <dd className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                      {item.answer}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

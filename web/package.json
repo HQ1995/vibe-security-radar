@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+  "predev": "python3 ../scripts/publish_research_ledger.py",
     "dev": "next dev",
-    "prebuild": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
+  "prebuild": "python3 ../scripts/publish_research_ledger.py && node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
     "build": "next build",
-    "postbuild": "node scripts/verify-static-release.mjs && npm run quality",
-    "verify:formal-release": "node scripts/verify-static-release.mjs --require-formal-evidence",
-    "quality": "uv run --project ../cve-analyzer python ../scripts/evaluate_publication_quality.py",
+    "postbuild": "npm run research:data:check",
     "start": "next start",
+    "research:data": "python3 ../scripts/publish_research_ledger.py",
+    "research:data:check": "vitest run src/lib/__tests__/research-data.test.ts src/lib/__tests__/research-status.test.ts",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -22,7 +23,6 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^2.15.4",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

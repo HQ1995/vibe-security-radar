@@ -13,6 +13,7 @@ import json
 import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from cohort.relations import canonical_repository_identity
 from cve_analyzer.git_ops import run_git
@@ -23,6 +24,7 @@ from cve_analyzer.models import (
 
 PUBLIC_EXACT = "public_exact"
 PUBLIC_VERSION_BOUNDARY = "public_version_boundary"
+PUBLIC_REFERENCE_CARRIER = "public_reference_carrier"
 ENRICHED_SELECTED = "enriched_selected"
 RANKED_SEARCH_CARRIER = "ranked_search_carrier"
 REPOSITORY_REFERENCE_CARRIER = "repository_reference_carrier"
@@ -95,6 +97,51 @@ def _valid_commit_ref(value: object) -> str:
     return ref
 
 
+def resolve_commit_refs(
+    repo_path: Path,
+    refs: Iterable[str],
+    *,
+    timeout: int,
+) -> dict[str, tuple[str, str]]:
+    """Resolve commit refs in bounded batches without one Git process per ref."""
+
+    resolved: dict[str, tuple[str, str]] = {}
+    ordered = sorted(set(refs))
+    for start in range(0, len(ordered), 500):
+        chunk = ordered[start : start + 500]
+        try:
+            completed = run_git(
+                ["git", "-C", str(repo_path), "cat-file", "--batch-check"],
+                input="".join(f"{ref}^{{commit}}\n" for ref in chunk),
+                capture_output=True,
+                encoding="ascii",
+                errors="replace",
+                timeout=timeout,
+                no_lazy_fetch=True,
+            )
+        except Exception as exc:  # noqa: BLE001 - every ref remains BLOCKED
+            for ref in chunk:
+                resolved[ref] = ("", f"cat_file_batch_exception:{type(exc).__name__}")
+            continue
+        lines = str(completed.stdout or "").splitlines()
+        if completed.returncode != 0 or len(lines) != len(chunk):
+            for ref in chunk:
+                resolved[ref] = ("", "cat_file_batch_incomplete")
+            continue
+        for ref, line in zip(chunk, lines):
+            fields = line.split()
+            if (
+                len(fields) >= 2
+                and len(fields[0]) == 40
+                and all(character in _HEX for character in fields[0])
+                and fields[1] == "commit"
+            ):
+                resolved[ref] = (fields[0].lower(), "")
+            else:
+                resolved[ref] = ("", "fix_object_unavailable_or_ambiguous")
+    return resolved
+
+
 def _canonical_url_identity(
     value: object,
     aliases: Mapping[str, str],
@@ -161,13 +208,13 @@ def public_fix_observations(
         identity = str(raw.get("repository_identity") or "").strip().lower()
         advisory = str(raw.get("advisory") or "").strip()
         fix_ref = _valid_commit_ref(raw.get("fix_sha"))
-        if not identity or not advisory or len(fix_ref) != 40:
+        if not identity or not advisory or not fix_ref:
             raise FixSourceContractError("public fix reference is malformed")
         reference_kind = str(raw.get("reference_kind") or "").strip()
         evidence_kind = (
             PUBLIC_VERSION_BOUNDARY
-            if reference_kind == "converted_version_boundary"
-            else PUBLIC_EXACT
+            if len(fix_ref) == 40 and reference_kind == "converted_version_boundary"
+            else PUBLIC_EXACT if len(fix_ref) == 40 else PUBLIC_REFERENCE_CARRIER
         )
         observation = _source_observation(
             repository_identity=identity,
@@ -520,59 +567,52 @@ def resolve_source_observations(
     repositories: Mapping[str, Path],
     *,
     timeout: int,
+    workers: int = 1,
 ) -> tuple[list[dict[str, object]], dict[str, list[dict[str, str]]], dict[str, object]]:
     """Resolve every source reference from local objects and conserve failures."""
 
-    resolution_cache: dict[tuple[str, str], tuple[str, str]] = {}
-    resolved_rows: list[dict[str, object]] = []
-    fixes_by_repo: dict[str, list[dict[str, str]]] = defaultdict(list)
-    stats = Counter[str]()
+    prepared: list[tuple[Mapping[str, object], str, str, str]] = []
+    refs_by_identity: dict[str, set[str]] = defaultdict(set)
     for raw in observations:
         identity = str(raw.get("repository_identity") or "").strip().lower()
         advisory = str(raw.get("advisory") or "").strip()
         fix_ref = _valid_commit_ref(raw.get("fix_ref"))
         if not identity or not advisory or not fix_ref:
             raise FixSourceContractError("fix source observation is malformed")
+        prepared.append((raw, identity, advisory, fix_ref))
+        refs_by_identity[identity].add(fix_ref)
+
+    resolution_cache: dict[tuple[str, str], tuple[str, str]] = {}
+    jobs: dict[str, set[str]] = {}
+    for identity, refs in sorted(refs_by_identity.items()):
+        repo_path = repositories.get(identity)
+        if repo_path is None:
+            resolution_cache.update(
+                {(identity, ref): ("", "no_local_clone") for ref in refs}
+            )
+            continue
+        jobs[identity] = refs
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(
+                resolve_commit_refs,
+                repositories[identity],
+                refs,
+                timeout=timeout,
+            ): identity
+            for identity, refs in jobs.items()
+        }
+        for future in as_completed(futures):
+            identity = futures[future]
+            resolution_cache.update(
+                {(identity, ref): result for ref, result in future.result().items()}
+            )
+
+    resolved_rows: list[dict[str, object]] = []
+    fixes_by_repo: dict[str, list[dict[str, str]]] = defaultdict(list)
+    stats = Counter[str]()
+    for raw, identity, advisory, fix_ref in prepared:
         key = (identity, fix_ref)
-        if key not in resolution_cache:
-            repo_path = repositories.get(identity)
-            if repo_path is None:
-                resolution_cache[key] = ("", "no_local_clone")
-            else:
-                try:
-                    completed = run_git(
-                        [
-                            "git",
-                            "-C",
-                            str(repo_path),
-                            "rev-parse",
-                            "--verify",
-                            f"{fix_ref}^{{commit}}",
-                        ],
-                        capture_output=True,
-                        encoding="ascii",
-                        errors="replace",
-                        timeout=timeout,
-                        no_lazy_fetch=True,
-                    )
-                except Exception as exc:  # noqa: BLE001 - preserved as BLOCKED
-                    resolution_cache[key] = (
-                        "",
-                        f"rev_parse_exception:{type(exc).__name__}",
-                    )
-                else:
-                    sha = str(completed.stdout or "").strip().lower()
-                    if (
-                        completed.returncode == 0
-                        and len(sha) == 40
-                        and all(character in _HEX for character in sha)
-                    ):
-                        resolution_cache[key] = (sha, "")
-                    else:
-                        resolution_cache[key] = (
-                            "",
-                            "fix_object_unavailable_or_ambiguous",
-                        )
         fix_sha, reason = resolution_cache[key]
         row = dict(raw)
         row["resolution_status"] = "RESOLVED" if fix_sha else "BLOCKED"
@@ -757,7 +797,11 @@ def evaluate_fix_source_recall(
         public = PUBLIC_EXACT in kinds
         selected = ENRICHED_SELECTED in kinds
         carrier = any(
-            kind in {RANKED_SEARCH_CARRIER, REPOSITORY_REFERENCE_CARRIER}
+            kind in {
+                PUBLIC_REFERENCE_CARRIER,
+                RANKED_SEARCH_CARRIER,
+                REPOSITORY_REFERENCE_CARRIER,
+            }
             for kind in kinds
         )
         fallback_matches = [
