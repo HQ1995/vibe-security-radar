@@ -5,33 +5,30 @@ Last updated: 2026-08-16.
 
 ## Global denominator (official census, local mirror)
 
-- Distinct advisory alias-classes (CVE+GHSA deduped): **84,798**
-- Excluding WITHDRAWN (375) and REJECTED (356, incl. 7 dual-flagged): **84,060**
-  usable ACTIVE/PUBLISHED advisory classes
-- Subject rows (advisory x repo/pkg associations): 159,714
+- Distinct advisory alias-classes (CVE+GHSA deduped): 84,798
+- Excluding WITHDRAWN/REJECTED: **84,060** usable classes
+- Subject rows (advisory x repo/pkg): 159,714
 
-## Our research pool (what we actually hold)
+## Repo-level AI-commit scan (deterministic set)
 
-- Advisories in pool: **10,083** = 12.0% of the usable denominator
-  - fixrefs pool: 5,964
-  - nofix pool: 4,119
-- Distinct repos in pool: 5,824
-- AI-commit scan coverage: 39 / 5,824 repos (observation bound, not population)
+- current-ai-scan (2026-08-09): 8,909 scanned / 8,455 complete;
+  **2,992 repos HAVE_AI**, 5,463 complete-with-zero (NO_AI), 454 incomplete
+- 411-queue completion sweep (2026-08-16, treeless shallow fetch, no API):
+  **210 HAS_AI_COMMIT / 77 NO_AI_COMMIT / 124 UNSCANNABLE**
+- Total verified HAS_AI repos: **3,202**
+- Total verified NO_AI repos: **5,540**
+- UNSCANNABLE: 454 + 124 = 578 (no repo / failed fetch / cgit+gerrit hosts)
+- Repos resolvable to a clone target: ~9.5k of the 84,060 classes' universe
 
-## AI-causality buckets (derived from artifacts/ledger.jsonl, ledger-row口径)
+## Our research pool
 
-| Bucket | Count | Meaning |
-|---|---|---|
-| B1_AI_FAULT | 41 | AI introduced the flaw (verified) |
-| B2_NOT_AI | 1,951 | studied, not AI's fault |
-| B3_BLOCKED | 664 | unresolved / evidence missing |
-| fix recovered, pending review | 3,867 | fix found, dossier not yet done |
-| unreviewed rows | 2,735 | no verdict at all yet |
+- Advisories in pool: 10,083 = 12.0% of usable denominator
+- AI-causality buckets (ledger rows): B1 41 / B2 1,951 / B3 664 /
+  fix-recovered-pending 3,867 / unreviewed 2,735
 
 ## Rules
 
-- This file is derived; regenerate with scripts/build_ledger_summary.py.
-- All numbers are lower bounds: unstudied advisories are never assumed clean.
+- Derived file; regenerate with scripts/build_ledger_summary.py.
+- Lower bounds only; UNSCANNABLE is never assumed clean.
 - Never present pool coverage as global coverage.
-- WITHDRAWN and REJECTED classes are excluded from the denominator.
 
