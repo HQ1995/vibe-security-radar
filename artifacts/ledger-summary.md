@@ -8,11 +8,17 @@ Window: 2025-05-01 .. 2026-08-14 (advisory publication date). Last updated: 2026
   - fixrefs pool (advisory -> fix known): 5,964
   - nofix pool (frozen with no fix at freeze time): 4,119
   - overlap: 0
-- Distinct repositories behind those advisories: 2,442 (fixrefs+nofix repos)
-- AI-commit census: 66 repos scanned, 66/66 have >=1 AI-marked commit
-  - AI-marked commits: 23,977 / 160,719
+- Distinct repositories behind those advisories: **5,824**
 
-## AI-causality buckets (derived from artifacts/ledger.jsonl)
+## AI-commit observation coverage (NOT the true total)
+
+- Repos with an AI-commit scan: **39** of 5,824 (0.7%)
+- Repos never scanned for AI commits: **5,785**
+- In the scanned 39: 23,977 AI-marked commits / 160,719 total
+- So the true number of AI commits across all 5,824 repos is UNKNOWN;
+  every unscanned repo is a potential AI-causality source.
+
+## AI-causality buckets (derived from artifacts/ledger.jsonl, ledger-row口径)
 
 | Bucket | Count | Meaning |
 |---|---|---|
@@ -22,12 +28,12 @@ Window: 2025-05-01 .. 2026-08-14 (advisory publication date). Last updated: 2026
 | fix recovered, pending review | 3,867 | fix found, dossier not yet done |
 | unreviewed rows | 2,735 | no verdict at all yet |
 
-> Note: ledger rows and advisory ids do not map 1:1 (aliases, per-edge rows).
-> The denominator 10,083 is advisories; the buckets are ledger rows. A
-> strict advisory-level account is the next derivation step.
+> Ledger rows and advisory ids are not 1:1 (aliases, per-edge rows).
+> Advisory-level account is the next derivation step.
 
 ## Rules
 
 - This file is derived; regenerate with scripts/build_ledger_summary.py.
 - All numbers are lower bounds: unstudied advisories are never assumed clean.
+- The 39-repo AI scan is an observation bound, never a population claim.
 
