@@ -6,13 +6,13 @@ Last updated: 2026-08-16.
 ## Global denominator (official census, local mirror)
 
 - Distinct advisory alias-classes (CVE+GHSA deduped): **84,798**
-  - states: PUBLISHED 79,808 / ACTIVE 79,161 / WITHDRAWN 382 / REJECTED 363
-  - source: autoresearch/orchestrator-260809-0539/current-official-census/alias_classes.jsonl
+- Excluding WITHDRAWN (375) and REJECTED (356, incl. 7 dual-flagged): **84,060**
+  usable ACTIVE/PUBLISHED advisory classes
 - Subject rows (advisory x repo/pkg associations): 159,714
 
 ## Our research pool (what we actually hold)
 
-- Advisories in pool: **10,083** = 11.9% of the global denominator
+- Advisories in pool: **10,083** = 12.0% of the usable denominator
   - fixrefs pool: 5,964
   - nofix pool: 4,119
 - Distinct repos in pool: 5,824
@@ -33,4 +33,5 @@ Last updated: 2026-08-16.
 - This file is derived; regenerate with scripts/build_ledger_summary.py.
 - All numbers are lower bounds: unstudied advisories are never assumed clean.
 - Never present pool coverage as global coverage.
+- WITHDRAWN and REJECTED classes are excluded from the denominator.
 
