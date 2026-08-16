@@ -13,7 +13,8 @@ candidate_sha (optional), fix_sha (optional), public_ids, hint.
 ## Per vulnerability
 
 1. UNDERSTAND THE VULNERABILITY
-   - Fetch the advisory text (GHSA api / OSV / NVD) and read it fully.
+   - Fetch the advisory text from OSV (https://api.osv.dev/v1/vulns/<GHSA-id>)
+     or local cvelistV5. NEVER use api.github.com - it is rate limited.
    - Write the mechanism in one sentence: source (untrusted input), guard
      (validation/auth), sink (dangerous operation).
    - Note affected and fixed versions.
@@ -25,6 +26,9 @@ candidate_sha (optional), fix_sha (optional), public_ids, hint.
    - contributors: other commits that changed the mechanism afterwards.
    - fixed_by: the minimum fix (from the fix patch); state whether the fix
      fully reverses the mechanism.
+2b. For commit history walks: git clone --filter=blob:none the repo once, then
+   git log -- <file> locally. NEVER use api.github.com repos/commits endpoints.
+
 3. JUDGE AI'S ROLE
    For the introducer commit (and each contributor): author email, commit
    message, trailers, bot/agent markers. Decide: AI introduced / AI

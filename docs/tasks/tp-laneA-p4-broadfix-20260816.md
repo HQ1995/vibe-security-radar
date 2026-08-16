@@ -12,7 +12,7 @@ advisory was published; find it in ANY form. Budget: max 10 network calls/row.
 2. Merge commit: if the referenced sha is a merge commit, it is still the fix;
    verify with the .patch endpoint and record it (form=merge).
 3. Release/tag range: advisory/OSV has a fixed version -> find the repo tag
-   via "https://api.github.com/repos/<repo>/tags?per_page=30", pick the tag
+   via `git ls-remote --tags https://github.com/<repo>.git` (no API), pick the tag
    matching the fixed version, then
    "https://github.com/<repo>/compare/<prev-tag>...<fixed-tag>.patch" and
    record form=range with the range string.

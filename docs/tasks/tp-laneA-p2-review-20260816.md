@@ -15,7 +15,7 @@ public_ids, repo, candidate_sha, fix_sha, mechanism.
 
 1. If mechanism is empty, fetch the advisory summary first:
    curl -sS -m 25 -H "Authorization: Bearer $GITHUB_TOKEN"
-   "https://api.github.com/advisories/<GHSA-id>"
+   "https://api.osv.dev/v1/vulns/<GHSA-id>"
 2. Fetch candidate patch and fix patch:
    curl -sS -m 40 -H "Authorization: Bearer $GITHUB_TOKEN"
    "https://github.com/<repo>/commit/<sha>.patch"

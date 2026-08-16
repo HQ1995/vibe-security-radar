@@ -16,7 +16,7 @@ public_ids, reason_code, optional mechanism, and edges: list of
 
 1. Fetch the advisory summary once if mechanism is unclear:
    curl -sS -H "Authorization: Bearer $GITHUB_TOKEN"
-   "https://api.github.com/advisories/<GHSA-id>"
+   "https://api.osv.dev/v1/vulns/<GHSA-id>"
 2. For each edge, fetch candidate patch and fix patch:
    curl -sS -H "Authorization: Bearer $GITHUB_TOKEN"
    "https://github.com/<owner/repo>/commit/<sha>.patch"

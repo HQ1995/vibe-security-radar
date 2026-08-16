@@ -20,7 +20,7 @@ repo, fix_sha, note (mechanism hint).
 2. For the top 3 mechanism-looking files (skip docs/locks/tests first pass),
    list commits that touched the file before the fix:
    curl -sS -m 30 -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json"
-   "https://api.github.com/repos/<repo>/commits?path=<file>&per_page=30"
+   git clone --filter=blob:none the repo once, then git log -- <file> locally (no GitHub API).
 3. Look at each commit's message + author for AI markers:
    Co-Authored-By, "[AI]", agent emails (anthropic/openai/cursor/copilot/
    claude/codex), or agent-typical subjects. Also check whether the commit

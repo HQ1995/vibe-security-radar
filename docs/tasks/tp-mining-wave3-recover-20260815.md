@@ -13,12 +13,11 @@ ai_commits) or l3-<N>.json (rows: id, public_ids, reason_code, reason).
 
 ## Recovery protocol (per row, budget: max 5 network calls, then stop)
 
-1. Advisory: curl -sS -H "Authorization: Bearer $GITHUB_TOKEN"
-   "https://api.github.com/advisories/<GHSA-id>" (try the CVE id if no GHSA).
+1. Advisory: curl -sS -m 25 "https://api.osv.dev/v1/vulns/<GHSA-id>" (try the CVE id if no GHSA).
    Read affected package, fixed version, references, description.
 2. Repo: from the advisory affected[0].package or references.
 3. Fix commit: look in references and the advisory text for a commit link;
-   fallback: curl "https://api.github.com/repos/<repo>/commits?until=<published>&per_page=5"
+   fallback: git ls-remote the repo and walk tags/commits locally (no GitHub API).
    and pick the security fix touching the mechanism files. Do not guess:
    missing evidence -> stop with B3.
 4. AI candidate: if the row already lists ai_commits, use them. Otherwise

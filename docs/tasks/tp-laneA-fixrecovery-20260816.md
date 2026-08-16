@@ -18,7 +18,7 @@ reason_code, reason.
    (19k rows). If edges exist, take candidate_sha/fix_sha/repository_identity
    from the first RESOLVED edge and skip to step 4.
 2. Advisory lookup: curl -sS -m 25 -H "Authorization: Bearer $GITHUB_TOKEN"
-   "https://api.github.com/advisories/<GHSA-id>". Read fixed version and
+   "https://api.osv.dev/v1/vulns/<GHSA-id>". Read fixed version and
    references (fix commit links).
 3. Fallbacks: OSV https://api.osv.dev/v1/vulns/<GHSA-or-CVE> ; then NVD
    https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=<CVE>. Extract
