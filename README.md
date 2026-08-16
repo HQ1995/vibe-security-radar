@@ -46,7 +46,7 @@ cd web && npm install && npm run dev
 
 The old certified 36-case Web release path (generate_web_data.py →
 web/data/) is archived under archives/legacy-36-web-catalog/, and the whole
-frozen data-refresh campaign lives under archives/legacy-web-data-campaign/.no longer feed the site.
+frozen data-refresh campaign lives under archives/legacy-web-data-campaign/.
 
 Run `uv run cve-analyzer --help` for full CLI reference.
 
@@ -77,38 +77,6 @@ boundaries and the negative v4 held-out result.
 4. **Screen** — per-CVE LLM triage removes cases where the AI-attributed commit is unrelated to the vulnerability
 5. **Deep investigate** — LLM agent with git tool access (50 tool calls) answers: did AI-authored code help cause this vulnerability?
 6. **Failure diagnostics** — optional Codex, Claude Code, or Kimi Code CLI review of a bounded evidence bundle after the model chain fails; diagnostics are audited separately from BIC verdicts
-
-## Publication curation and independent quality gates
-
-Independent CVE-level adjudications control both audited inclusions and known
-false-positive exclusions. This command checks that the published allowlist is
-consistent with those same curation inputs:
-
-```bash
-uv run --project cve-analyzer python scripts/evaluate_publication_quality.py
-```
-
-The schema-2 report calls these values `curation_precision` and
-`curation_recall`. They measure publication-curation implementation consistency,
-including complete coverage of every page and zero known-negative,
-inconclusive, or unadjudicated leaks. Their scope is publication-curation
-implementation consistency. Independent held-out evidence supplies the
-detector-accuracy claim. The generator publishes only source-alias equivalence
-classes adjudicated as `AI_CAUSAL`.
-
-Detector quality comes from the precommitted independent workflow in
-[`scripts/HELDOUT_QUALITY.md`](scripts/HELDOUT_QUALITY.md). Formal generation
-requires the sealed selection and its independently created labels, replays the
-held-out evaluator in process, and requires precision and conditional recall
-point estimates plus both one-sided 95% exact lower bounds to reach 0.95.
-Inconclusive labels, infrastructure failures, unresolved cases, campaign/source/
-contract drift, selection or label drift, and incomplete denominators all block
-promotion. Conditional recall covers the discovered raw AI-signal candidate
-population; advisory discovery and signature discovery remain separate study
-boundaries.
-
-The reproducible Luna/max refresh, source-freeze, staged-result, and full
-campaign proof contract is documented in [`scripts/DATA_REFRESH.md`](scripts/DATA_REFRESH.md).
 
 ## Contributing
 

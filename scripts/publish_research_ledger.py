@@ -367,9 +367,9 @@ for c in cases:
 
 all_pass=sum(1 for c in cases if c.get('tier')=='all_pass')
 scoped=sum(1 for c in cases if c.get('tier')=='scoped_contribution')
-fb = load_date_fallbacks()
-enr = load_enrichments()
-ce = load_code_evidence()
+fb = {k.lower(): v for k, v in load_date_fallbacks().items()}
+enr = {k.lower(): v for k, v in load_enrichments().items()}
+ce = {k.lower(): v for k, v in load_code_evidence().items()}
 for c in cases:
     if (c.get('contribution_class') or '').startswith('AI_INCOMPLETE_REMEDIATION') and not c.get('ir_chain'):
         ch2 = chains.get(c.get('case_id','').upper())
@@ -387,11 +387,12 @@ for c in cases:
                 'residual_bypass': ov2.get('residual_bypass'),
                 'final_closure': ch2.get('final_closure') or ov2.get('final_closure') or None,
             }
-    if not c.get('published_at') and c.get('case_id') in fb:
-        c['published_at'] = fb[c['case_id']]
-    e = enr.get(c.get('case_id'))
+    if not c.get('published_at') and (c.get('case_id') or '').lower() in fb:
+        c['published_at'] = fb[(c.get('case_id') or '').lower()]
+    e = enr.get((c.get('case_id') or '').lower())
     if e:
-        for k in ('repository','mechanism','scope_statement','cause_category'):
+        for k in ('repository','mechanism','scope_statement','cause_category',
+                  'description','severity','cwes','aliases','references','published_at'):
             if not c.get(k) and e.get(k):
                 c[k] = e[k]
         if not (c.get('repository_metadata') or {}).get('language') and e.get('language'):
@@ -400,8 +401,8 @@ for c in cases:
         if not ap.get('family') and e.get('family'):
             ap['family'] = e['family']
             ap['coverage'] = 'complete'
-    if not c.get('code_evidence') and ce.get(c.get('case_id')):
-        c['code_evidence'] = ce[c['case_id']]
+    if not c.get('code_evidence') and ce.get((c.get('case_id') or '').lower()):
+        c['code_evidence'] = ce[(c.get('case_id') or '').lower()]
 # Infer missing language from local code-hunk file extensions (deterministic,
 # no GitHub API). Leave empty when there is no code evidence to derive from.
 EXT_LANG={'php':'PHP','ts':'TypeScript','tsx':'TypeScript','js':'JavaScript','jsx':'JavaScript','mjs':'JavaScript',

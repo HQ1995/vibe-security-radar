@@ -1,4 +1,5 @@
 import researchData from "@/generated/research-data.json";
+import { stripMarkdown } from "@/lib/markdown-utils";
 
 export interface ResearchGateSet {
   readonly identity: string;
@@ -182,6 +183,19 @@ export function getResearchCaseById(id: string): ResearchCase | null {
         item.case_id.toUpperCase() === normalized ||
         item.aliases.some((alias) => alias.toUpperCase() === normalized),
     ) ?? null
+  );
+}
+
+/** Reader-facing one-line summary: first-party advisory prose first, never internal audit notes. */
+export function getCaseSummary(item: ResearchCase): string {
+  const desc = stripMarkdown(item.description);
+  const lines = desc.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  const generic = /^(summary|details|description|overview):?$/i;
+  const first = lines.find((l) => !generic.test(l));
+  if (first) return first.length > 160 ? first.slice(0, 157) + "..." : first;
+  return (
+    formatContributionClass(item.contribution_class) +
+    (item.repository ? " in " + item.repository : "")
   );
 }
 

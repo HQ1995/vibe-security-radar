@@ -10,10 +10,11 @@ import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
   getAiFamilyIconKey,
-  getAiToolDistribution,
-  getCauseDistribution,
-  getCauseCategoryLabel,
-  getLanguageDistribution,
+ getAiToolDistribution,
+ getCauseDistribution,
+ getCauseCategoryLabel,
+  getCaseSummary,
+ getLanguageDistribution,
   getRepositoryDistribution,
   getResearchCases,
   getResearchSnapshot,
@@ -304,7 +305,7 @@ export default function HomePage() {
                     {item.repository ?? "Repository not recorded"}
                   </p>
                   <h3 className="mt-3 text-lg font-semibold leading-7">
-                    {item.code_evidence?.summary}
+                    {getCaseSummary(item)}
                   </h3>
                   <p className="mt-3 text-xs leading-5 text-muted-foreground">
                     {getCauseCategoryLabel(item.cause_category)} ·{" "}

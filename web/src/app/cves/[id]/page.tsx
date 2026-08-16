@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import { stripMarkdown } from "@/lib/markdown-utils";
+import { getProseSummary } from "@/lib/markdown-utils";
 
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import { LanguageBadge } from "@/components/language-badge";
@@ -35,12 +37,10 @@ export async function generateMetadata({
   const item = getResearchCaseById(id);
   if (!item) return { title: "Case not found" };
 
-  const description =
-    item.code_evidence?.summary ??
-    item.description ??
-    item.mechanism ??
-    item.scope_statement ??
-    `Mechanism-level evidence for ${id}.`;
+  const description = stripMarkdown(
+     "Mechanism-level evidence for " + id + ".",
+    item.description ?? "Mechanism-level evidence for " + id + ".",
+  ).slice(0, 200);
   return {
     title: `${id} — AI contribution evidence`,
     description,
@@ -50,9 +50,11 @@ export async function generateMetadata({
 function PageHeader({
   id,
   item,
+  summary,
 }: {
   readonly id: string;
   readonly item: ResearchCase;
+  readonly summary: string | null;
 }) {
   const repository = item.repository;
   const owner = repository?.split("/")[0];
@@ -81,6 +83,11 @@ function PageHeader({
           {id.toUpperCase() !== item.case_id.toUpperCase() ? (
             <p className="mt-2 font-mono text-xs text-muted-foreground">
               First-party advisory: {item.case_id}
+            </p>
+          ) : null}
+          {summary ? (
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {summary}
             </p>
           ) : null}
           {repoUrl ? (
@@ -217,23 +224,11 @@ export default async function CveDetailPage({
   if (!item) notFound();
 
   const references = item.references ?? [];
-  const summary = item.description;
+  const summary = getProseSummary(item.description);
 
   return (
     <main className="mx-auto w-full max-w-[96rem] space-y-8 px-4 py-10 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
-      <PageHeader id={id} item={item} />
-
-      {summary ? (
-        <section aria-labelledby="advisory-summary">
-          <p className="section-kicker">Advisory summary</p>
-          <h2 id="advisory-summary" className="sr-only">
-            Advisory summary
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-            {summary}
-          </p>
-        </section>
-      ) : null}
+      <PageHeader id={id} item={item} summary={summary} />
 
       <CanonicalCaseEvidence item={item} />
 

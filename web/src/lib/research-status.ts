@@ -1,7 +1,7 @@
 export const RESEARCH_SNAPSHOT = {
-  unionUniqueGhsa: 168,
+  unionUniqueGhsa: 191,
   allPass: 94,
-  scopedContribution: 74,
+  scopedContribution: 97,
   strictReleasedGhsa: 94,
   replayedOn: "2026-08-15",
   ledger: "canonical94",
