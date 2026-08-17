@@ -61,6 +61,29 @@ only. For each class we still owe: locate introduce commit -> check whether
 that commit/author is AI -> locate fix -> adjudicate. Kernel classes are the
 biggest method question (wide-marker noise on 100k-commit repos).
 
+
+
+## TP reconciliation (2026-08-17)
+
+Two parallel TP books existed and never merged - the source of the number confusion:
+
+- Website "191 cases" = ghsa200-canvas foundation.jsonl curated showcase set
+  (fp211 tiers: CONFIRM 12 / STRICT 84 / NARROW 95). Only 8 of them are
+  ledger-B1.
+- Ledger B1_AI_FAULT = 118 unique case ids (167 verdict rows) from the mining
+  waves (tp-mining-wave1, laneA/B, repo-batch dossiers).
+
+Unified registry artifacts/tp-registry-20260817.jsonl:
+- union = 301 unique case ids
+  - ledger-B1 only: 110
+  - foundation STRICT only: 68
+  - foundation NARROW only: 66
+  - CONFIRM only: 6
+  - overlapping/mixed: ~51
+- 248 of 301 map inside the 23,868 funnel classes; 53 outside (window/no-repo).
+- Class-level inside 23,868: 104 classes carry a B1; a class-level tiered count
+  is in artifacts/funnel-account-20260817.jsonl.
+
 ## Open work (honest gaps)
 
 - 87,364 - 41,990 = 45,374 classes with no repo mapping: mostly closed-source,
