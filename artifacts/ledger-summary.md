@@ -41,15 +41,15 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI根源: 127 (AI commit 直接是漏洞根源/删防线/激活休眠漏洞)
-- AI代码有缺陷: 16 (AI 写了有问题的代码但不是唯一根源: 照抄缺陷惯例等)
-- 待补证据: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
-- 早期判定AI有责: 87 (早期挖矿阶段判定)
+- AI_ROOT_CAUSE: 127 (AI commit 直接是漏洞根源/删防线/激活休眠漏洞)
+- AI_CODE_FLAWED: 16 (AI 写了有问题的代码但不是唯一根源: 照抄缺陷惯例等)
+- EVIDENCE_GAP: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
+- AI_FAULT_LEGACY: 87 (early ledger B1 adjudications) (早期挖矿阶段判定)
   -> TP 合计: 231
-- 与AI无关: 1,392 (确认不是 AI 的问题)
-- 卡住: 535 (证据不足)
-- 半成品: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
-- 未开始: 17,430 (只有仓库级 AI 验证)
+- NOT_AI: 1,392 (确认不是 AI 的问题)
+- BLOCKED: 535 (证据不足)
+- PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
+- UNANALYZED: 17,430 (只有仓库级 AI 验证)
 
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
@@ -96,3 +96,12 @@ Artifacts:
 - artifacts/code-writer-repos-20260816.json
 - artifacts/host-reasons-20260816.txt
 - artifacts/chromium-ai-scan-20260817.jsonl
+
+## Status codes (meaningful English, human-readable)
+
+AI_ROOT_CAUSE | AI_CODE_FLAWED | EVIDENCE_GAP | AI_FAULT_LEGACY |
+NOT_AI | BLOCKED | PARTIALLY_ANALYZED | UNANALYZED
+
+Gates: AI_AUTHORSHIP_GATE, INTRODUCER_GATE, VULN_PATH_GATE,
+NECESSITY_GATE, FIX_REVERSAL_GATE, RELEASE_GATE, UNIQUENESS_GATE
+-> PASS | FAIL | MISSING_EVIDENCE
