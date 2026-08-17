@@ -35,33 +35,22 @@ tracked in artifacts/chromium-ai-scan-20260817.jsonl.
 
 
 
-## Funnel account: analysis status of the 23,868 classes (2026-08-17)
+## Funnel account: unified status of the 23,868 classes (2026-08-17)
 
-One row per class in artifacts/funnel-account-20260817.jsonl.
+Absorbs website foundation research (fp211 gates), ledger verdicts, and
+dossiers into one per-class status. One row per class in
+artifacts/funnel-account-20260817.jsonl.
 
-- DOSSIER (deep causal dossier exists): 88
-  - B2_NOT_AI 84, B3_BLOCKED 4
-- LEDGER_TOUCHED (some member has ledger research, not necessarily causal):
-  6,350
-  - RECOVERED_VERSION 2,996 (fix version found, no causal AI verdict)
-  - B2_NOT_AI 1,298 (adjudicated not-AI)
-  - SKIP 697, REVIEW 624
-  - B3_BLOCKED 535 (analysis attempted, evidence blocked)
-  - B1_AI_FAULT 104 (AI at fault)
-  - NONE 96
-- PENDING (repo found, repo verified AI code-writing, vuln-level analysis not
-  started): 17,430
-  - 7,795 of them git.kernel.org (stable/linux wide-marker repo: per-vuln
-    introduce-commit -> AI blame tracing still to be done)
-  - 193 android/codelinaro googlesource repos
-  - remainder across ~1,000 other repos
-
-Honest gaps inside PENDING: the AI-commit link is established at repo level
-only. For each class we still owe: locate introduce commit -> check whether
-that commit/author is AI -> locate fix -> adjudicate. Kernel classes are the
-biggest method question (wide-marker noise on 100k-commit repos).
-
-
+- TP_SITE_STRICT: 81 (website fp211 STRICT/CONFIRM, all gates PASS)
+- TP_SITE_NARROW: 70 (website fp211 NARROW, scoped contribution)
+- TP_B1: 87 (ledger B1_AI_FAULT only)
+  -> TP total: 238 classes (151 from website research, 87 ledger-only)
+- NOT_AI: 1,385 (B2_NOT_AI / dossier verdicts - confirmed unrelated to AI)
+- BLOCKED: 535 (B3_BLOCKED, evidence insufficient)
+- PARTIAL: 4,280 (RECOVERED_VERSION 2,976, SKIP 690, REVIEW 614)
+- PENDING: 17,430 (repo-level AI verified only, vuln-level analysis not started)
+- 1 conflict: GitPython GHSA-539m (site STRICT AI_INCOMPLETE_REMEDIATION vs
+  ledger B2 narrow-scope; kept site verdict, noted in the account row)
 
 ## TP reconciliation (2026-08-17)
 
