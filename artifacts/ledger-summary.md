@@ -41,14 +41,20 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- TP_SITE_STRICT: 81 (website fp211 STRICT/CONFIRM, all gates PASS)
-- TP_SITE_NARROW: 70 (website fp211 NARROW, scoped contribution)
+- TP_SITE_STRICT: 127 (was 81; +46 from narrow70 deep-dive 2026-08-17)
+- TP_SITE_NARROW: 19 (was 70; 46 promoted, 5 downgraded to NOT_AI)
 - TP_B1: 87 (ledger B1_AI_FAULT only)
-  -> TP total: 238 classes (151 from website research, 87 ledger-only)
-- NOT_AI: 1,385 (B2_NOT_AI / dossier verdicts - confirmed unrelated to AI)
+  -> TP total: 233 classes
+- NOT_AI: 1,390 (was 1,385; +5 from narrow70 deep-dive)
 - BLOCKED: 535 (B3_BLOCKED, evidence insufficient)
 - PARTIAL: 4,280 (RECOVERED_VERSION 2,976, SKIP 690, REVIEW 614)
 - PENDING: 17,430 (repo-level AI verified only, vuln-level analysis not started)
+
+narrow70 deep-dive (2026-08-17): all 70 NARROW cases re-analyzed with full
+lineage + AI-code judgment (results in .ai-slop/state/narrow70/results/).
+46 promoted STRICT, 19 stayed NARROW, 5 downgraded B2_NOT_AI. Two sample
+verdicts independently re-verified against local git (openclaw GHSA-2HFG
+candidate removes guard; GHSA-2QRV vulnerable file missing at candidate).
 - 1 conflict: GitPython GHSA-539m (site STRICT AI_INCOMPLETE_REMEDIATION vs
   ledger B2 narrow-scope; kept site verdict, noted in the account row)
 
