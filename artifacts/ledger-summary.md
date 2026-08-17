@@ -33,6 +33,34 @@ android pdfium/cts). Record verdicts: 111 CODE_AI, 103 NO_AI.
 2025+ records: 8 -> 6 CODE_AI. These OSV ids are not census alias members,
 tracked in artifacts/chromium-ai-scan-20260817.jsonl.
 
+
+
+## Funnel account: analysis status of the 23,868 classes (2026-08-17)
+
+One row per class in artifacts/funnel-account-20260817.jsonl.
+
+- DOSSIER (deep causal dossier exists): 88
+  - B2_NOT_AI 84, B3_BLOCKED 4
+- LEDGER_TOUCHED (some member has ledger research, not necessarily causal):
+  6,350
+  - RECOVERED_VERSION 2,996 (fix version found, no causal AI verdict)
+  - B2_NOT_AI 1,298 (adjudicated not-AI)
+  - SKIP 697, REVIEW 624
+  - B3_BLOCKED 535 (analysis attempted, evidence blocked)
+  - B1_AI_FAULT 104 (AI at fault)
+  - NONE 96
+- PENDING (repo found, repo verified AI code-writing, vuln-level analysis not
+  started): 17,430
+  - 7,795 of them git.kernel.org (stable/linux wide-marker repo: per-vuln
+    introduce-commit -> AI blame tracing still to be done)
+  - 193 android/codelinaro googlesource repos
+  - remainder across ~1,000 other repos
+
+Honest gaps inside PENDING: the AI-commit link is established at repo level
+only. For each class we still owe: locate introduce commit -> check whether
+that commit/author is AI -> locate fix -> adjudicate. Kernel classes are the
+biggest method question (wide-marker noise on 100k-commit repos).
+
 ## Open work (honest gaps)
 
 - 87,364 - 41,990 = 45,374 classes with no repo mapping: mostly closed-source,
