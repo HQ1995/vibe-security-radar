@@ -1,60 +1,47 @@
 # Vibe Security Radar — research total account
 
-Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-08-16.
+Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-08-17.
 
 ## Funnel: all CVE+GHSA -> open-source repo -> code-writing AI commits
 
 1. Total deduped CVE+GHSA (ACTIVE/PUBLISHED, WITHDRAWN/REJECTED excluded):
-   84,060 census + 3,304 tail (08-10..16) = 87,364
-   (caveat: tail not yet alias-deduped against census members)
-2. With an open-source repo: 40,709
-3. Repo has 2025+ code-writing AI commits (bot-excluded): **3,580 repos**
-   (was 2,903; +677 verified in the 08-16 failed-repo re-scan)
-4. Narrowed advisory classes: **23,705** (was 14,068; +9,637)
+   84,060 census + 3,304 tail (08-10..16) = **87,364**
+2. With an open-source repo (GHSA+CVE+OSV identity union): **41,990**
+   (9,512 distinct repos; mapping includes CVE-reference repos, some of which are
+   PoC/writeup repos rather than the project itself - quality refinement open)
+3. Repo has 2025+ code-writing AI commits (bot-excluded): **3,683 repos**
+4. Narrowed advisory classes: **23,868**
 
-The +9,637 delta is dominated by git.kernel.org (7,804 classes): the code-writer
-set had always contained verified kernel.org/stable/linux, torvalds/linux,
-android kernel/common and codelinaro kernels, but the class->repo join previously
-matched github.com references only, so non-github classes could never join.
-The join now uses the full host/owner/repo identity map (GHSA+CVE+OSV).
+## Screening coverage (all repos in the class map now have verdicts)
 
-## Failed-repo re-scan (2,138 repos that were previously unresolved)
+- Repos with a verdict: 9,512/9,512 (100%). Of these:
+  - CODE_AI verified: 3,683 (stage-2 code-file check, bot emails excluded)
+  - excluded, no AI-marker commits since 2025-05-01: ~7,5xx (incl. empty/frozen repos)
+  - unreachable over git, each with a host-level reason: 283 (deleted/private/moved
+    github repos, dead gitlab instances, unmappable reference URLs)
+- Stage-2 totals across all rescan waves: 784 CODE_AI, 543 NO_HITS, 86 DOCS_ONLY
+- Per-repo audit trail: artifacts/host-reasons-20260816.txt (no UNKNOWN verdicts)
 
-- 1,236 marker hits -> stage-2 code-file verification:
-  - 681 CODE_AI -> added to code-writer repos
-  - 521 NO_HITS, 73 DOCS_ONLY -> excluded with reason
-- 816 RESOLVED_NO_MARKER: repo reachable, no AI-marker commits since 2025-05-01
-  (mostly empty repos / repos frozen before the window)
-- 86 NO_GIT_HOST, each with a host-level reason: 48 github ls-remote 404
-  (deleted/private/moved; git redirects renames, so 404 means gone), 21 gerrit
-  + 11 googlesource case-mismatches resolved via official directory listings
-  (37 re-scanned, 16 marker hits -> stage 2), remainder: private gitlab
-  instances / dead hosts
-- FETCH_FAIL: 0 after the treeless fallback ladder (shallow-info-broken hosts
-  like git.drupalcode.org resolved via full treeless fetch)
+## Chromium dedicated scan (2026-08-17)
 
-Evidence: artifacts/host-reasons-20260816.txt (one row per repo, per-identity
-reason; no UNKNOWN verdicts).
+214 chromium-family records (CVE+GHSA+OSV) -> 21 canonical chromium repos.
+11 repos have verified 2025+ AI code commits (chromium/src 3,246 marker commits,
+chromiumos kernel, v8, angle, pdfium, boringssl, infra, ffmpeg, webm/libvpx,
+android pdfium/cts). Record verdicts: 111 CODE_AI, 103 NO_AI.
+2025+ records: 8 -> 6 CODE_AI. These OSV ids are not census alias members,
+tracked in artifacts/chromium-ai-scan-20260817.jsonl.
+
+## Open work (honest gaps)
+
+- 87,364 - 41,990 = 45,374 classes with no repo mapping: mostly closed-source,
+  but GHSA records should be deterministically repo-matched (many still have
+  package/reference URLs we have not fully mined). Next major block.
+- PoC-noise cleanup: classes whose only repos are researcher PoC repos should be
+  re-classified as no-project-repo rather than with-repo.
+- Tail (08-10..16) not yet alias-deduped against census members.
 
 Artifacts:
 - artifacts/funnel-narrowed-20260816.jsonl
 - artifacts/code-writer-repos-20260816.json
 - artifacts/host-reasons-20260816.txt
-
-## Chromium dedicated scan (2026-08-17)
-
-All chromium-family records (CVE+GHSA+OSV references to chromium/webm/pdfium/
-angle/v8/boringssl etc.): 214 records across 21 canonical chromium repos.
-
-- Repos with verified 2025+ code-writing AI commits: chromium/src (3,246 marker
-  commits), chromiumos/third_party/kernel, v8/v8, infra/infra,
-  third_party/ffmpeg, angle/angle, boringssl, pdfium, webm/libvpx,
-  android/external/pdfium, android/platform/cts
-- Record verdicts: 111 CODE_AI, 103 NO_AI (no AI-marker commits in their repo
-  since 2025-05-01)
-- 2025+ published records: 8 -> 6 CODE_AI, 2 NO_AI. These OSV ids
-  (BIT-*/JLSEC-*/PYSEC-*) are not census alias-class members, so they are
-  tracked in the dedicated artifact rather than the main funnel.
-
-Artifact: artifacts/chromium-ai-scan-20260817.jsonl (per-record repo mapping
-and verdicts); repo verdicts: .ai-slop/state/scan411/chromium-repo-verdicts.json
+- artifacts/chromium-ai-scan-20260817.jsonl
