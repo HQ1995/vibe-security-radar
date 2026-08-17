@@ -40,3 +40,21 @@ Artifacts:
 - artifacts/funnel-narrowed-20260816.jsonl
 - artifacts/code-writer-repos-20260816.json
 - artifacts/host-reasons-20260816.txt
+
+## Chromium dedicated scan (2026-08-17)
+
+All chromium-family records (CVE+GHSA+OSV references to chromium/webm/pdfium/
+angle/v8/boringssl etc.): 214 records across 21 canonical chromium repos.
+
+- Repos with verified 2025+ code-writing AI commits: chromium/src (3,246 marker
+  commits), chromiumos/third_party/kernel, v8/v8, infra/infra,
+  third_party/ffmpeg, angle/angle, boringssl, pdfium, webm/libvpx,
+  android/external/pdfium, android/platform/cts
+- Record verdicts: 111 CODE_AI, 103 NO_AI (no AI-marker commits in their repo
+  since 2025-05-01)
+- 2025+ published records: 8 -> 6 CODE_AI, 2 NO_AI. These OSV ids
+  (BIT-*/JLSEC-*/PYSEC-*) are not census alias-class members, so they are
+  tracked in the dedicated artifact rather than the main funnel.
+
+Artifact: artifacts/chromium-ai-scan-20260817.jsonl (per-record repo mapping
+and verdicts); repo verdicts: .ai-slop/state/scan411/chromium-repo-verdicts.json
