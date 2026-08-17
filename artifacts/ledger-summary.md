@@ -41,12 +41,12 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 127 (AI commit 直接是漏洞根源/删防线/激活休眠漏洞)
-- AI_CODE_FLAWED: 16 (AI 写了有问题的代码但不是唯一根源: 照抄缺陷惯例等)
+- AI_ROOT_CAUSE: 146 (was 127; +19 from legacy87 re-review)
+- AI_CODE_FLAWED: 25 (was 16; +9 from legacy87 re-review)
 - EVIDENCE_GAP: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
-- AI_FAULT_LEGACY: 87 (early ledger B1 adjudications) (早期挖矿阶段判定)
-  -> TP 合计: 231
-- NOT_AI: 1,392 (确认不是 AI 的问题)
+- AI_FAULT_LEGACY: 0 (87 legacy B1s re-reviewed: 19 root, 9 flawed, 59 not-AI) (早期挖矿阶段判定)
+  -> TP 合计: 171
+- NOT_AI: 1,452 (确认不是 AI 的问题)
 - BLOCKED: 535 (证据不足)
 - PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
