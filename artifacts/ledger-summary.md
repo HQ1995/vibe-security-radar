@@ -41,10 +41,13 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- TP_SITE_STRICT: 114 (narrow70 deep-dive + grok4.6/gemini-3.7-flash second opinions)
-- TP_SITE_NARROW: 31 (includes 2 attribution-unresolved: mruby Matz+Rovo, feishu sync)
+- TP_SITE_STRICT: 116 (narrow70 deep-dive + second opinions + settled co-author policy)
+- TP_SITE_NARROW: 29 (remaining gate gaps, not attribution debates)
 - TP_B1: 87 (ledger B1_AI_FAULT only)
   -> TP total: 232 classes
+
+Settled policy 2026-08-17: commit carrying co-authored-by/assisted-by/AI-author
+markers counts as AI-written (see docs/tasks/ai-pattern-methods-20260817.md).
 - NOT_AI: 1,391 (narrow70 second opinions downgraded 1 more)
 - BLOCKED: 535 (B3_BLOCKED, evidence insufficient)
 - PARTIAL: 4,280 (RECOVERED_VERSION 2,976, SKIP 690, REVIEW 614)
