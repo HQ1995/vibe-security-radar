@@ -44,38 +44,37 @@ artifacts/funnel-account-20260817.jsonl.
 - AI根源: 127 (AI commit 直接是漏洞根源/删防线/激活休眠漏洞)
 - AI代码有缺陷: 16 (AI 写了有问题的代码但不是唯一根源: 照抄缺陷惯例等)
 - 待补证据: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
-- AI有责(B1): 87 (早期 ledger B1 判定)
+- 早期判定AI有责: 87 (早期挖矿阶段判定)
   -> TP 合计: 231
 - 与AI无关: 1,392 (确认不是 AI 的问题)
-- 卡住: 535 (B3, 证据不足)
+- 卡住: 535 (证据不足)
 - 半成品: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
 - 未开始: 17,430 (只有仓库级 AI 验证)
 
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
 gemini-3.7-flash second opinions (per-case, evidence packs). Adjudicated:
-46 STRICT, 16 TP_SITE_SCOPED, 1 NARROW, 7 B2_NOT_AI. Manual verification on the 18 reviewer
+46 AI根源, 16 AI代码有缺陷, 1 待补证据, 7 与AI无关. Manual verification on the 18 reviewer
 disagreements: openclaw guard-removal and guard-simplification commits
 confirmed; mruby (Matz primary author, Rovo co-author only) and feishu
-(sync of pre-existing upstream code) downgraded to NARROW.
+(sync of pre-existing upstream code) downgraded to 待补证据.
 Evidence: .ai-slop/state/narrow70/review/adjudicated.jsonl
-- 1 conflict: GitPython GHSA-539m (site STRICT AI_INCOMPLETE_REMEDIATION vs
-  ledger B2 narrow-scope; kept site verdict, noted in the account row)
+- 1 conflict: GitPython GHSA-539m (网站判定 AI根源+AI修复不完整 vs
+  ledger 判定与AI无关(窄口径); 保留网站判定, 已记入账本行)
 
 ## TP reconciliation (2026-08-17)
 
 Two parallel TP books existed and never merged - the source of the number confusion:
 
 - Website "191 cases" = ghsa200-canvas foundation.jsonl curated showcase set
-  (fp211 tiers: CONFIRM 12 / STRICT 84 / NARROW 95). Only 8 of them are
-  ledger-B1.
+  (网站三层: 确认 12 / 严格 84 / 收窄 95). 其中只有 8 个是账本早期AI有责。
 - Ledger B1_AI_FAULT = 118 unique case ids (167 verdict rows) from the mining
   waves (tp-mining-wave1, laneA/B, repo-batch dossiers).
 
 Unified registry artifacts/tp-registry-20260817.jsonl:
 - union = 301 unique case ids
-  - ledger-B1 only: 110
-  - foundation STRICT only: 68
+  - 仅账本早期AI有责: 110
+  - 仅网站严格: 68
   - foundation NARROW only: 66
   - CONFIRM only: 6
   - overlapping/mixed: ~51
