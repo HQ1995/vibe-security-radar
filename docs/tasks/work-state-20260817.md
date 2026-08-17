@@ -1,5 +1,10 @@
 # Work state checkpoint — 2026-08-17
 
+## 核心原则（最高优先级）
+把每个漏洞理解透，不机械。所有判定必须建立在对漏洞语义、
+缺陷代码来源、AI commit 语义角色的真实理解上。禁止按 diff
+反转/gate 翻转机械归因。判定证据必须是读代码读出来的。
+
 ## Canonical book
 artifacts/funnel-account-20260817.jsonl (23,868 classes, one row each).
 Old books frozen in git at 649505a, removed at 4778fae.
