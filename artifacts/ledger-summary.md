@@ -41,18 +41,15 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- TP_SITE_STRICT: 127 (narrow70 understanding-first final adjudication)
-- TP_SITE_SCOPED: 16 (AI wrote new code carrying/copying a flaw it did not recognize)
-- TP_SITE_NARROW: 1 (pydantic-ai DocumentUrl: mechanism live since v0.0.26, before the AI commit)
-- TP_B1: 87 (ledger B1_AI_FAULT only)
-  -> TP total: 231 classes
-
-Settled policy 2026-08-17: commit carrying co-authored-by/assisted-by/AI-author
-markers counts as AI-written (see docs/tasks/ai-pattern-methods-20260817.md).
-- NOT_AI: 1,392
-- BLOCKED: 535 (B3_BLOCKED, evidence insufficient)
-- PARTIAL: 4,280 (RECOVERED_VERSION 2,976, SKIP 690, REVIEW 614)
-- PENDING: 17,430 (repo-level AI verified only, vuln-level analysis not started)
+- AI根源: 127 (AI commit 直接是漏洞根源/删防线/激活休眠漏洞)
+- AI代码有缺陷: 16 (AI 写了有问题的代码但不是唯一根源: 照抄缺陷惯例等)
+- 待补证据: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
+- AI有责(B1): 87 (早期 ledger B1 判定)
+  -> TP 合计: 231
+- 与AI无关: 1,392 (确认不是 AI 的问题)
+- 卡住: 535 (B3, 证据不足)
+- 半成品: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
+- 未开始: 17,430 (只有仓库级 AI 验证)
 
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
