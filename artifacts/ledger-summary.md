@@ -41,14 +41,15 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- TP_SITE_STRICT: 116 (narrow70 deep-dive + second opinions + settled co-author policy)
-- TP_SITE_NARROW: 29 (remaining gate gaps, not attribution debates)
+- TP_SITE_STRICT: 127 (narrow70 understanding-first final adjudication)
+- TP_SITE_SCOPED: 16 (AI wrote new code carrying/copying a flaw it did not recognize)
+- TP_SITE_NARROW: 1 (pydantic-ai DocumentUrl: mechanism live since v0.0.26, before the AI commit)
 - TP_B1: 87 (ledger B1_AI_FAULT only)
-  -> TP total: 232 classes
+  -> TP total: 231 classes
 
 Settled policy 2026-08-17: commit carrying co-authored-by/assisted-by/AI-author
 markers counts as AI-written (see docs/tasks/ai-pattern-methods-20260817.md).
-- NOT_AI: 1,391 (narrow70 second opinions downgraded 1 more)
+- NOT_AI: 1,392
 - BLOCKED: 535 (B3_BLOCKED, evidence insufficient)
 - PARTIAL: 4,280 (RECOVERED_VERSION 2,976, SKIP 690, REVIEW 614)
 - PENDING: 17,430 (repo-level AI verified only, vuln-level analysis not started)
@@ -56,7 +57,7 @@ markers counts as AI-written (see docs/tasks/ai-pattern-methods-20260817.md).
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
 gemini-3.7-flash second opinions (per-case, evidence packs). Adjudicated:
-33 STRICT, 31 NARROW, 6 B2_NOT_AI. Manual verification on the 18 reviewer
+46 STRICT, 16 TP_SITE_SCOPED, 1 NARROW, 7 B2_NOT_AI. Manual verification on the 18 reviewer
 disagreements: openclaw guard-removal and guard-simplification commits
 confirmed; mruby (Matz primary author, Rovo co-author only) and feishu
 (sync of pre-existing upstream code) downgraded to NARROW.
