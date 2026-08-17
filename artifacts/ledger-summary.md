@@ -16,7 +16,9 @@ Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-
 
 - Repos with a verdict: 9,512/9,512 (100%). Of these:
   - CODE_AI verified: 3,683 (stage-2 code-file check, bot emails excluded)
-  - excluded, no AI-marker commits since 2025-05-01: ~7,5xx (incl. empty/frozen repos)
+  - excluded with reason in the rescan waves: 1,783 NO_MARKER + 521 NO_HITS
+    + 73 DOCS_ONLY (the remainder of the 9,512 was excluded by the original
+    2026-08 AI scan: repos scanned with no marker hits)
   - unreachable over git, each with a host-level reason: 283 (deleted/private/moved
     github repos, dead gitlab instances, unmappable reference URLs)
 - Stage-2 totals across all rescan waves: 784 CODE_AI, 543 NO_HITS, 86 DOCS_ONLY
