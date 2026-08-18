@@ -42,11 +42,11 @@ dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
 - AI_ROOT_CAUSE: 157 (was 146; +11 from blocked535 attack)
-- AI_CODE_FLAWED: 26 (was 25; +1 from blocked106 attack: oneflow CVE-2025-65886 Copilot co-author)
+- AI_CODE_FLAWED: 25 (blocked106 的 oneflow CVE-2025-65886 复核后推翻: 漏洞是 flow.eye+list 段错误, Copilot commit 只改 interpolate_like 无关文件, 判 NOT_AI)
 - EVIDENCE_GAP: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
 - AI_FAULT_LEGACY: 0 (87 legacy B1s re-reviewed: 19 root, 9 flawed, 59 not-AI) (早期挖矿阶段判定)
-  -> TP 合计: 183
-- NOT_AI: 1,974 (确认不是 AI 的问题; +104 from blocked106)
+  -> TP 合计: 182
+- NOT_AI: 1,975 (确认不是 AI 的问题; +104 from blocked106, +1 oneflow CVE-2025-65886 复核推翻)
 - BLOCKED: 1 (arnold-usd CVE-2026-0659: 漏洞在闭源 Arnold core, 开源仓库无缺陷行可归因)
 - PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
@@ -71,6 +71,17 @@ AI_CODE_FLAWED (oneflow CVE-2025-65886 interpolate_like, PR #10644 with
 Co-authored-by: Copilot trailer), 1 remaining BLOCKED (arnold-usd
 CVE-2026-0659: closed-source core, no defect line in the open repo).
 Evidence: .ai-slop/state/blocked106/shard-*-out.jsonl (106 verdict lines)
+
+POST-HOC VERIFICATION (2026-08-17): the single new TP (oneflow
+CVE-2025-65886) was re-checked against the actual vuln semantics and
+overturned. NVD references issue #10666 "Segmentation fault in flow.eye +
+diag"; repro is flow.eye(3) + [1.0,2.0,3.0] (python list -> Tensor.__add__
+-> PythonArg::TypeCheck rejects list, then PyTensor_Unpack does an
+unchecked cast on non-Tensor -> UB segfault). The Copilot co-authored
+commit b5cd55b (PR #10644) only edits interpolate.py (1 line) and never
+touches the defect path. Defect line traced to 157f825b (PR #7985,
+Houjiang Chen, 2022-04-24, no AI marker); upstream issue still OPEN.
+Verdict corrected: AI_CODE_FLAWED -> NOT_AI. TP back to 182.
 
 ## TP reconciliation (2026-08-17)
 
