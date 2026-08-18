@@ -41,15 +41,21 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 157 (was 146; +11 from blocked535 attack)
-- AI_CODE_FLAWED: 25 (blocked106 的 oneflow CVE-2025-65886 复核后推翻: 漏洞是 flow.eye+list 段错误, Copilot commit 只改 interpolate_like 无关文件, 判 NOT_AI)
-- EVIDENCE_GAP: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
-- AI_FAULT_LEGACY: 0 (87 legacy B1s re-reviewed: 19 root, 9 flawed, 59 not-AI) (早期挖矿阶段判定)
-  -> TP 合计: 182
-- NOT_AI: 1,975 (确认不是 AI 的问题; +104 from blocked106, +1 oneflow CVE-2025-65886 复核推翻)
-- BLOCKED: 1 (arnold-usd CVE-2026-0659: 漏洞在闭源 Arnold core, 开源仓库无缺陷行可归因)
+- AI_ROOT_CAUSE: 133
+- AI_CODE_FLAWED: 11
+- EVIDENCE_GAP: 0 (pydantic-ai DocumentUrl 保持 NOT_AI: 机制在 AI commit 之前已 live)
+- AI_FAULT_LEGACY: 0
+  -> TP 合计: 144 (was 182)
+- NOT_AI: 2,013 (+38 squash-audit OVERTURN)
+- BLOCKED: 1 (arnold-usd CVE-2026-0659: 闭源 core, 无缺陷行可归因)
 - PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
+
+squash-audit (2026-08-18): 182 TP 全量拆解审计收尾。171 个未拆 case 全部
+完成: 133 CONFIRM / 38 OVERTURN / 0 BLOCKED; 52 个 squash commit 通过
+PR ref fetch 拆到写缺陷行的独立 commit, AI marker 落在缺陷行 commit 上
+才维持 TP。结果已并入账本 (squash_audit 块 + squash_audit_verdict 字段),
+证据: .ai-slop/state/squash-audit/results/shard-*-out.jsonl。
 
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
