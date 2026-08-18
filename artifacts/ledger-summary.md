@@ -1,6 +1,6 @@
 # Vibe Security Radar — research total account
 
-Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-08-17.
+Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-08-18.
 
 ## Funnel: all CVE+GHSA -> open-source repo -> code-writing AI commits
 
@@ -48,8 +48,22 @@ artifacts/funnel-account-20260817.jsonl.
   -> TP 合计: 144 (was 182)
 - NOT_AI: 2,013 (+38 squash-audit OVERTURN)
 - BLOCKED: 1 (arnold-usd CVE-2026-0659: 闭源 core, 无缺陷行可归因)
-- PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
+- PARTIALLY_ANALYZED: 1,304 (skip 690 / review 614) + partial-wave 2,976 adjudicated (below)
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
+
+partial-wave (2026-08-18): PARTIALLY_ANALYZED 中"只找回 fix 版本"的 2,976
+class 全量深挖完成（120 shard，grok-4.6 主力 + luna，每 case 研究漏洞来龙去脉
+并判定 AI 角色）。判定分布：
+- NOT_AI: 1,957
+- UNKNOWN: 521（worker 给的宽口径，待复核）
+- EVIDENCE_GAP: 421（有仓库有 fix 但拆不到引入 commit / 作者不明）
+- AI_ROOT_CAUSE: 24
+- AI_CODE_FLAWED: 14
+- AI_ASSISTED: 1
+- BLOCKED: 38（仓库不可达/闭源）
+  -> 本波新增 AI 有责 39（24 root + 14 flawed + 1 assisted）
+结果已并入账本（partial_wave 块 + partial_wave_verdict 字段），
+证据: .ai-slop/state/partial-wave/results/shard-*-out.jsonl（2976 行）
 
 squash-audit (2026-08-18): 182 TP 全量拆解审计收尾。171 个未拆 case 全部
 完成: 133 CONFIRM / 38 OVERTURN / 0 BLOCKED; 52 个 squash commit 通过
