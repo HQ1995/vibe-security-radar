@@ -31,3 +31,9 @@ identity / ai_hunk / topology / but_for / fix_reversal / release /
 uniqueness. STRICT = all PASS. NARROW = gate gaps with evidence missing.
 Settled rulings: co-author trailer counts as ai_hunk PASS; sync commits of
 upstream code still need topology/identity evidence on the vulnerable lines.
+
+## 6. Squash 拆分（2026-08-17 定）
+blame 只是线索。squash commit（(#NNNN)/Apply suggestions/多主题大 diff）必须拆：
+git fetch origin refs/pull/N/head（git 协议，非 GitHub API），逐个单独提交找
+缺陷行的真实写入者，AI marker 必须落在写了缺陷行的那个 commit 上。
+拆不开 -> BLOCKED，不许把 squash trailer 当缺陷行作者。

@@ -42,12 +42,12 @@ dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
 - AI_ROOT_CAUSE: 157 (was 146; +11 from blocked535 attack)
-- AI_CODE_FLAWED: 25 (was 16; +9 from legacy87 re-review)
+- AI_CODE_FLAWED: 26 (was 25; +1 from blocked106 attack: oneflow CVE-2025-65886 Copilot co-author)
 - EVIDENCE_GAP: 1 (pydantic-ai DocumentUrl: 机制在 AI commit 之前已 live)
 - AI_FAULT_LEGACY: 0 (87 legacy B1s re-reviewed: 19 root, 9 flawed, 59 not-AI) (早期挖矿阶段判定)
-  -> TP 合计: 182
-- NOT_AI: 1,870 (确认不是 AI 的问题)
-- BLOCKED: 106 (证据不足)
+  -> TP 合计: 183
+- NOT_AI: 1,974 (确认不是 AI 的问题; +104 from blocked106)
+- BLOCKED: 1 (arnold-usd CVE-2026-0659: 漏洞在闭源 Arnold core, 开源仓库无缺陷行可归因)
 - PARTIALLY_ANALYZED: 4,280 (只找回 fix 版本 2,976 / skip 690 / review 614)
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
 
@@ -61,6 +61,16 @@ confirmed; mruby (Matz primary author, Rovo co-author only) and feishu
 Evidence: .ai-slop/state/narrow70/review/adjudicated.jsonl
 - 1 conflict: GitPython GHSA-539m (网站判定 AI根源+AI修复不完整 vs
   ledger 判定与AI无关(窄口径); 保留网站判定, 已记入账本行)
+
+
+blocked106 attack (2026-08-17): all 106 BLOCKED classes re-analyzed with
+understanding-first protocol (local clones, git log -S/blame for the defect
+line, squash decomposition, AI-marker check incl co-authored-by). Result:
+104 NOT_AI (mostly upstream-declined/unfixed human-introduced code), 1
+AI_CODE_FLAWED (oneflow CVE-2025-65886 interpolate_like, PR #10644 with
+Co-authored-by: Copilot trailer), 1 remaining BLOCKED (arnold-usd
+CVE-2026-0659: closed-source core, no defect line in the open repo).
+Evidence: .ai-slop/state/blocked106/shard-*-out.jsonl (106 verdict lines)
 
 ## TP reconciliation (2026-08-17)
 
