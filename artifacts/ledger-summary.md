@@ -65,6 +65,15 @@ class 全量深挖完成（120 shard，grok-4.6 主力 + luna，每 case 研究�
 结果已并入账本（partial_wave 块 + partial_wave_verdict 字段），
 证据: .ai-slop/state/partial-wave/results/shard-*-out.jsonl（2976 行）
 
+partial-wave re-audit (2026-08-18): 首轮 980 个结论不理想的 case
+（UNKNOWN 521 / EVIDENCE_GAP 421 / BLOCKED 38）全部复审（40 shard）。
+结果：NOT_AI 90（UNKNOWN->NOT_AI 61, EVIDENCE_GAP->NOT_AI 28,
+BLOCKED->NOT_AI 1），AI_CODE_FLAWED +2（UNKNOWN 1, EVIDENCE_GAP 1），
+余下保持 EVIDENCE_GAP 811 / BLOCKED 77（多为闭源或 advisory 镜像仓库，
+evidence 有说明）。AI 有责总计 41（24 root + 16 flawed + 1 assisted）。
+账本带 partial_wave_reaudited + revised_from 审计轨迹。
+证据: .ai-slop/state/partial-wave/reaudit/results/reaudit-*-out.jsonl
+
 squash-audit (2026-08-18): 182 TP 全量拆解审计收尾。171 个未拆 case 全部
 完成: 133 CONFIRM / 38 OVERTURN / 0 BLOCKED; 52 个 squash commit 通过
 PR ref fetch 拆到写缺陷行的独立 commit, AI marker 落在缺陷行 commit 上
