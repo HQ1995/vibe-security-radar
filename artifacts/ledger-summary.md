@@ -41,14 +41,14 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 158 (AI 直接引入缺陷或作为 Co-Author 引入根因)
-- AI_CODE_FLAWED: 44 (含 8 行因“照搬人类脆弱模式 / 不完整修复未堵死漏洞”重归类入 TP)
+- AI_ROOT_CAUSE: 153 (AI 直接引入缺陷或作为 Co-Author 引入根因)
+- AI_CODE_FLAWED: 49 (含不完整修复与照搬人类脆弱逻辑漏洞)
 - AI_ASSISTED: 0 (已全部归并，不保留单独桶)
 - EVIDENCE_GAP: 0
 - AI_FAULT_LEGACY: 0
-  -> TP 账本行合计: 202 rows (158 AI_ROOT_CAUSE + 44 AI_CODE_FLAWED)
-  -> 真正独立 TP 漏洞数: 195 unique vulnerabilities (解绑批量 PR 中的独立漏洞；仅保留 7 行 CVE/GHSA 双重登记的纯元数据重复)
-  -> 11 个 blocked535 占位行已全部补齐完整结构化分析块 (modelcontextprotocol, openssl_encrypt, apm, mlflow, n8n-mcp, openclaw)
+  -> TP 账本行合计: 202 rows (153 AI_ROOT_CAUSE + 49 AI_CODE_FLAWED)
+  -> 真正独立 TP 漏洞数: 195 unique vulnerabilities (全量 1 对 1 定向解绑，每个漏洞拥有独立受影响文件、单 introducer SHA 与缺陷成因；仅保留 7 行 CVE/GHSA 双重登记的纯元数据重复)
+  -> 11 个 blocked535 占位行与 23 个批量合并行已全部完成 1 对 1 深度解绑重写
 - NOT_AI: 4,043
 - BLOCKED: 78
 - PARTIALLY_ANALYZED: 2,115
