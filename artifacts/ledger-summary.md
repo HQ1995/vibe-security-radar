@@ -41,15 +41,15 @@ Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 158 (含 1 行由原 AI_ASSISTED 按 Co-authored 规则归并入 AI_ROOT_CAUSE)
-- AI_CODE_FLAWED: 36 (34 unique cases; scriban 6Q7J+Q6RR 双 alias 行 = 1 case)
+- AI_ROOT_CAUSE: 158 (AI 直接引入缺陷或作为 Co-Author 引入根因)
+- AI_CODE_FLAWED: 44 (含 8 行因“照搬人类脆弱模式 / 不完整修复未堵死漏洞”重归类入 TP)
 - AI_ASSISTED: 0 (已全部归并，不保留单独桶)
-- EVIDENCE_GAP: 0 (pydantic-ai DocumentUrl 保持 NOT_AI: 机制在 AI commit 之前已 live)
+- EVIDENCE_GAP: 0
 - AI_FAULT_LEGACY: 0
-  -> TP 账本行合计: 194 rows (158 AI_ROOT_CAUSE + 36 AI_CODE_FLAWED)
-  -> 唯一 Canonical TP 缺陷数: 152 unique cases (42 行同源重复/批量提交已标注 duplicate_of/is_duplicate，保留行但不重复计入独立缺陷)
+  -> TP 账本行合计: 202 rows (158 AI_ROOT_CAUSE + 44 AI_CODE_FLAWED)
+  -> 唯一 Canonical TP 缺陷数: 160 unique cases (42 行同源重复/批量提交已标注 duplicate_of/is_duplicate，保留行但不重复计入独立缺陷)
   -> 11 个 blocked535 占位行已全部补齐完整结构化分析块 (modelcontextprotocol, openssl_encrypt, apm, mlflow, n8n-mcp, openclaw)
-- NOT_AI: 4,051
+- NOT_AI: 4,043
 - BLOCKED: 78
 - PARTIALLY_ANALYZED: 2,115
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
