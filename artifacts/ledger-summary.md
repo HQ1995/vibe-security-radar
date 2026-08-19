@@ -47,7 +47,7 @@ artifacts/funnel-account-20260817.jsonl.
 - EVIDENCE_GAP: 0
 - AI_FAULT_LEGACY: 0
   -> TP 账本行合计: 202 rows (158 AI_ROOT_CAUSE + 44 AI_CODE_FLAWED)
-  -> 唯一 Canonical TP 缺陷数: 160 unique cases (42 行同源重复/批量提交已标注 duplicate_of/is_duplicate，保留行但不重复计入独立缺陷)
+  -> 真正独立 TP 漏洞数: 195 unique vulnerabilities (解绑批量 PR 中的独立漏洞；仅保留 7 行 CVE/GHSA 双重登记的纯元数据重复)
   -> 11 个 blocked535 占位行已全部补齐完整结构化分析块 (modelcontextprotocol, openssl_encrypt, apm, mlflow, n8n-mcp, openclaw)
 - NOT_AI: 4,043
 - BLOCKED: 78
