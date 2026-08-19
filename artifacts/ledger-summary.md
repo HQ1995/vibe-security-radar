@@ -35,20 +35,21 @@ tracked in artifacts/chromium-ai-scan-20260817.jsonl.
 
 
 
-## Funnel account: unified status of the 23,868 classes (2026-08-17)
+## Funnel account: unified status of the 23,868 classes (2026-08-18)
 
 Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 133
-- AI_CODE_FLAWED: 11
+- AI_ROOT_CAUSE: 157
+- AI_CODE_FLAWED: 36 (34 unique cases; scriban 6Q7J+Q6RR 双 alias 行 = 1 case)
+- AI_ASSISTED: 1
 - EVIDENCE_GAP: 0 (pydantic-ai DocumentUrl 保持 NOT_AI: 机制在 AI commit 之前已 live)
 - AI_FAULT_LEGACY: 0
-  -> TP 合计: 144 (was 182)
-- NOT_AI: 2,013 (+38 squash-audit OVERTURN)
-- BLOCKED: 1 (arnold-usd CVE-2026-0659: 闭源 core, 无缺陷行可归因)
-- PARTIALLY_ANALYZED: 1,304 (skip 690 / review 614) + partial-wave 2,976 adjudicated (below)
+  -> TP 合计: 194 rows / 192 unique cases
+- NOT_AI: 4,051
+- BLOCKED: 78
+- PARTIALLY_ANALYZED: 2,115
 - UNANALYZED: 17,430 (只有仓库级 AI 验证)
 
 partial-wave (2026-08-18): PARTIALLY_ANALYZED 中"只找回 fix 版本"的 2,976
@@ -79,6 +80,18 @@ squash-audit (2026-08-18): 182 TP 全量拆解审计收尾。171 个未拆 case 
 PR ref fetch 拆到写缺陷行的独立 commit, AI marker 落在缺陷行 commit 上
 才维持 TP。结果已并入账本 (squash_audit 块 + squash_audit_verdict 字段),
 证据: .ai-slop/state/squash-audit/results/shard-*-out.jsonl。
+
+incomplete-fix reclassification (2026-08-18): 用户裁定——AI commit 写了
+"不完整的修复"（修复没堵上、后续 advisory 重开/绕过）也算 AI 写的问题代码
+=> AI_CODE_FLAWED。gemini-3.7-flash-high 独立复核（antigravity, agent
+geminirc3, done）全部 AGREE：翻案 F38V（PraisonAI, Cursor 复制的 default-open
+守卫）、6Q7J+Q6RR（scriban, 7.0.0 修补两处 DoS 均未堵上）、2HFG（openclaw,
+[AI-assisted] 只补 pressKey/type 漏掉 sibling 路径）；维持 NOT_AI：RFR2
+（datamodel-code-generator, SSRF 由人类 2021 引入、AI commit 只是 $ref 门控）。
+账本翻案 4 行 / 3 unique case（scriban 双行同一 case），行内加
+ai_incomplete_fix_reclassified + ai_incomplete_fix_reclassify_note（证据 +
+gemini 复核引用）。证据: .ai-slop/state/incomplete-fix-review/
+gemini-verdict-20260818.json + reclassify-20260818.json。
 
 narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
 AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
