@@ -10,7 +10,7 @@ Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-
    (9,512 distinct repos; mapping includes CVE-reference repos, some of which are
    PoC/writeup repos rather than the project itself - quality refinement open)
 3. Repo has 2025+ code-writing AI commits (bot-excluded): **3,683 repos**
-4. Narrowed advisory classes: **23,868**
+4. Narrowed advisory classes: **23,861** (完成全量 CVE/GHSA 物理融合去重，1 行 = 1 个唯一真实漏洞)
 
 ## Screening coverage (all repos in the class map now have verdicts)
 
@@ -35,19 +35,18 @@ tracked in artifacts/chromium-ai-scan-20260817.jsonl.
 
 
 
-## Funnel account: unified status of the 23,868 classes (2026-08-18)
+## Funnel account: unified status of the 23,861 classes (2026-08-19)
 
 Absorbs website foundation research (fp211 gates), ledger verdicts, and
 dossiers into one per-class status. One row per class in
 artifacts/funnel-account-20260817.jsonl.
 
-- AI_ROOT_CAUSE: 153 (AI 直接引入缺陷或作为 Co-Author 引入根因)
+- AI_ROOT_CAUSE: 146 (AI 直接引入缺陷或作为 Co-Author 引入根因)
 - AI_CODE_FLAWED: 49 (含不完整修复与照搬人类脆弱逻辑漏洞)
 - AI_ASSISTED: 0 (已全部归并，不保留单独桶)
 - EVIDENCE_GAP: 0
 - AI_FAULT_LEGACY: 0
-  -> TP 账本行合计: 202 rows (153 AI_ROOT_CAUSE + 49 AI_CODE_FLAWED)
-  -> 真正独立 TP 漏洞数: 195 unique vulnerabilities (全量 1 对 1 定向解绑，每个漏洞拥有独立受影响文件、单 introducer SHA 与缺陷成因；仅保留 7 行 CVE/GHSA 双重登记的纯元数据重复)
+  -> TP 纯净总计: 195 行 = 195 个真正独立 TP 漏洞 (全量 1 对 1 定向解绑，物理合并 7 行 CVE/GHSA 纯元数据重复，实现 1 行 = 1 漏洞，无任何重复行)
   -> 11 个 blocked535 占位行与 23 个批量合并行已全部完成 1 对 1 深度解绑重写
 - NOT_AI: 4,043
 - BLOCKED: 78
