@@ -1,171 +1,94 @@
-# Vibe Security Radar — research total account
+# Vibe Security Radar - canonical research ledger summary
 
-Window: 2025-05-01 .. 2026-08-16 (census + live GHSA tail merged). Updated 2026-08-18.
+The JSONL ledger is the source of truth. Refreshed 2026-08-20 after the BLOCKED boundary review, direct Git rechecks for the remaining stale NOT_AI attributions, and final evidence reconciliation.
 
-## Funnel: all CVE+GHSA -> open-source repo -> code-writing AI commits
+## Canonical status
 
-1. Total deduped CVE+GHSA (ACTIVE/PUBLISHED, WITHDRAWN/REJECTED excluded):
-   84,060 census + 3,304 tail (08-10..16) = **87,364**
-2. With an open-source repo (GHSA+CVE+OSV identity union): **41,990**
-   (9,512 distinct repos; mapping includes CVE-reference repos, some of which are
-   PoC/writeup repos rather than the project itself - quality refinement open)
-3. Repo has 2025+ code-writing AI commits (bot-excluded): **3,683 repos**
-4. Narrowed advisory classes: **23,861** (完成全量 CVE/GHSA 物理融合去重，1 行 = 1 个唯一真实漏洞)
+| Status | Classes | Meaning |
+|---|---:|---|
+| AI_ROOT_CAUSE | 148 | AI code directly introduced or enabled the vulnerability mechanism. |
+| AI_CODE_FLAWED | 52 | AI-written code was flawed, including incomplete fixes and copied vulnerable logic. |
+| NOT_AI | 39 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
+| PARTIALLY_ANALYZED | 6170 | Some evidence exists, but the complete causal chain is not closed. |
+| BLOCKED | 22 | A required implementation, fix, ownership, or history boundary is unavailable. |
+| UNANALYZED | 17430 | No individual causal research has been completed. |
+| Total | 23861 | One row per canonical advisory class. |
 
-## Screening coverage (all repos in the class map now have verdicts)
+## NOT_AI causal review
 
-- Repos with a verdict: 9,512/9,512 (100%). Of these:
-  - CODE_AI verified: 3,683 (stage-2 code-file check, bot emails excluded)
-  - excluded with reason in the rescan waves: 1,783 NO_MARKER + 521 NO_HITS
-    + 73 DOCS_ONLY (the remainder of the 9,512 was excluded by the original
-    2026-08 AI scan: repos scanned with no marker hits)
-  - unreachable over git, each with a host-level reason: 283 (deleted/private/moved
-    github repos, dead gitlab instances, unmappable reference URLs)
-- Stage-2 totals across all rescan waves: 784 CODE_AI, 543 NO_HITS, 86 DOCS_ONLY
-- Per-repo audit trail: artifacts/host-reasons-20260816.txt (no UNKNOWN verdicts)
+The current 39 NOT_AI classes were reviewed at the semantic-causality level. NOT_AI is an attribution result, not a claim that remediation is complete.
 
-## Chromium dedicated scan (2026-08-17)
+- Second review coverage: 39/39.
+- Attribution conclusion: 39/39 have a semantic attribution record.
+- Evidence gate: 39/39 have mechanism, introducer, AI-role, and fix-or-no-fix evidence.
+- Remediation dimensions: 36 FIX_VERIFIED; 1 FIXED_AFTER_INCOMPLETE_INTERMEDIATE_FIX; 1 FIX_WITH_KNOWN_DNS_REBINDING_RESIDUAL; 1 NO_FIX_HEAD_STILL_VULNERABLE.
+- Lineage dimensions: 3 ROOT_OR_IMPORT_BOUNDARY; 1 PUBLIC_SOURCE_MOVE_BOUNDARY; 28 MULTI_INTRODUCER_BOUNDARY; 7 PARENT_VERIFIED.
+- Causal review dimensions: 33 MECHANISM_AND_ATTRIBUTION_CLOSED; 3 history boundary; 2 remediation boundary; 1 no-fix.
+- Local and remote Git lineage, root/import boundaries, and multi-introducer parent maps are materialized for all 39 rows.
+- The ciguard symlink case is recorded separately as AI_ROOT_CAUSE because its introducer carries a Claude co-author marker and creates the vulnerable walker.
+- Multi-introducer and aggregate-fix boundaries remain explicit; they are not collapsed into a fake single BIC.
+- Direct Git recheck: 9/39 NOT_AI rows are now routed through `.ai-slop/state/notai-review/notai-direct-recheck-20260819.jsonl`; this corrected stale package-import/dependency/release SHAs for SVGO, Kubewarden, Hatchet, OpenAM, and five MotionEye advisories.
+- Independent raw-source manifest: 39/39 `SOURCE_COMPLETE`, 0 identity mismatches.
+- Ledger projection reconciliation: 39/39 NOT_AI rows now project the canonical causal fields; the 9 direct rechecks override only non-empty fields, so they cannot erase canonical mechanism or closure evidence with nulls. Projection conflict audit: 0.
+- OpenAM retains an explicit public source-move boundary; MotionEye retains separate atomic introducers for media preview/delete, movie playback, config permissions, restore/action execution, and filename validation.
+- Explicit no-fix cases: 1.
+- Canonical reconciliation: .ai-slop/state/notai-review/notai-causal-canonical-20260819.jsonl.
+- Per-row semantic provenance: .ai-slop/state/notai-review/notai-provenance-audit-20260819.jsonl (39/39 matched semantic and second-review manifests).
+- Detailed second review: .ai-slop/state/notai-review/notai-second-review-20260819.jsonl.
+- Final second-review manifest: 39/39 rows. Attribution evidence is closed; remediation and lineage dimensions remain visible above.
+- Legacy closure dossier: .ai-slop/state/notai-review/legacy-9router-causal-20260819.jsonl.
+- ciguard causal dossier: .ai-slop/state/notai-review/ciguard-causal-20260819.jsonl.
+- Kiota causal dossier: .ai-slop/state/notai-review/kiota-causal-20260819.jsonl.
+- AI-role adversarial review: 39/39 rows passed. It found no AI introducer evidence: 30 rows have no causal AI marker, 5 have AI only on a complete fix, 1 has AI only in a PR documentation summary, and 3 have remediation caveats without causal AI evidence. Artifact: .ai-slop/state/notai-review/notai-ai-role-adversarial-20260820.jsonl.
+- The 5 AI-fix-only rows remain NOT_AI because the vulnerable behavior was introduced by a human commit and the AI-assisted fixes are complete; this is distinct from AI_CODE_FLAWED. Incomplete or residual remediation is recorded separately and is not silently treated as fixed.
 
-214 chromium-family records (CVE+GHSA+OSV) -> 21 canonical chromium repos.
-11 repos have verified 2025+ AI code commits (chromium/src 3,246 marker commits,
-chromiumos kernel, v8, angle, pdfium, boringssl, infra, ffmpeg, webm/libvpx,
-android pdfium/cts). Record verdicts: 111 CODE_AI, 103 NO_AI.
-2025+ records: 8 -> 6 CODE_AI. These OSV ids are not census alias members,
-tracked in artifacts/chromium-ai-scan-20260817.jsonl.
+## Final NOT_AI re-audit correction - 2026-08-20
 
+- Three prior NOT_AI rows were requeued to PARTIALLY_ANALYZED: two ciguard cases whose available root/aggregate metadata does not resolve the introducer AI role, and the Nexent case whose 199-file Code-transfer import root hides pre-import authorship and AI provenance.
+- Two ImageMagick cases were retained after correcting their causal boundaries against the real repository: the MIFF allocation-failure leak starts at the 2009 import root; the LZMA writer flaw starts at 263771792, not the later 330af6c refactor.
+- MasterGo was retained after correcting its immediate parent to dd3169bbf2fd8bace8393035d42bf7ec83b35ccb; the head remains unfixed, and the human GetC2d addition is now parent-verified.
+- Correction log: .ai-slop/state/notai-review/notai-reaudit-corrections-20260820.jsonl.
 
+## BLOCKED boundary review - 2026-08-19
 
-## Funnel account: unified status of the 23,861 classes (2026-08-19)
+All 22 current BLOCKED rows carry a deduplicated boundary dossier. The dossiers establish mechanism and ownership boundary, but do not promote a case without atomic introducer, parent absence, direct fix hunk, squash decomposition, and causal AI evidence.
 
-Absorbs website foundation research (fp211 gates), ledger verdicts, and
-dossiers into one per-class status. One row per class in
-artifacts/funnel-account-20260817.jsonl.
+- Claude Code: 20 cases; 19/20 have an exact published npm/platform fixed-version transition with a changed bundled artifact. Within those 19, CVE-2026-54316 now has a real Linux x64 target-context diff confirming the vulnerable bare `huggingface.co` allowlist was narrowed to `huggingface.co/docs`; one fixed version is no longer retrievable from npm. These package transitions close published behavior, but not the atomic Git introducer, direct fix hunk, squash decomposition, or AI authorship.
+- NestJS devtools: 1 case; npm 0.0.1--0.2.0 vulnerable behavior and 0.2.1 remediation are closed from local tarballs. The package has no reachable public Git object history, so introducer/fix lineage and AI role remain unverified.
+- Arnold USD: 1 case; affected importer is closed Autodesk code, while arnold-usd is a carrier.
 
-- AI_ROOT_CAUSE: 146 (AI 直接引入缺陷或作为 Co-Author 引入根因)
-- AI_CODE_FLAWED: 49 (含不完整修复与照搬人类脆弱逻辑漏洞)
-- AI_ASSISTED: 0 (已全部归并，不保留单独桶)
-- EVIDENCE_GAP: 0
-- AI_FAULT_LEGACY: 0
-  -> TP 纯净总计: 195 行 = 195 个真正独立 TP 漏洞 (全量 1 对 1 定向解绑，物理合并 7 行 CVE/GHSA 纯元数据重复，实现 1 行 = 1 漏洞，无任何重复行)
-  -> 11 个 blocked535 占位行与 23 个批量合并行已全部完成 1 对 1 深度解绑重写
-- NOT_AI: 4,043
-- BLOCKED: 78
-- PARTIALLY_ANALYZED: 2,115
-- UNANALYZED: 17,430 (只有仓库级 AI 验证)
+Status remains BLOCKED for all 22 rows; missing causal history is not evidence for NOT_AI.
+- Final machine-readable boundary fields are present on 22/22 rows: implementation boundary, causal status, fix status, AI-role status, and evidence reference.
+- Boundary evidence index: .ai-slop/state/blocked-deepwave/blocked-boundary-evidence-index-20260819.jsonl (22/22 rows, no GitHub API).
+- Evidence integrity: 22/22 second-review dossiers have concrete mechanisms, conclusions, remaining gaps, next boundaries, and evidence references; 65 references resolve to local artifacts and 1 is an explicitly recorded Autodesk advisory URL.
+- Interpretation boundary: BLOCKED means the vulnerability mechanism is understood where stated, but atomic introducer/fix lineage and AI causality remain unavailable; it is not equivalent to a completed causal review.
 
-partial-wave (2026-08-18): PARTIALLY_ANALYZED 中"只找回 fix 版本"的 2,976
-class 全量深挖完成（120 shard，grok-4.6 主力 + luna，每 case 研究漏洞来龙去脉
-并判定 AI 角色）。判定分布：
-- NOT_AI: 1,957
-- UNKNOWN: 521（worker 给的宽口径，待复核）
-- EVIDENCE_GAP: 421（有仓库有 fix 但拆不到引入 commit / 作者不明）
-- AI_ROOT_CAUSE: 24
-- AI_CODE_FLAWED: 14
-- AI_ASSISTED: 1
-- BLOCKED: 38（仓库不可达/闭源）
-  -> 本波新增 AI 有责 39（24 root + 14 flawed + 1 assisted）
-结果已并入账本（partial_wave 块 + partial_wave_verdict 字段），
-证据: .ai-slop/state/partial-wave/results/shard-*-out.jsonl（2976 行）
+## BLOCKED second boundary reconciliation - 2026-08-20
 
-partial-wave re-audit (2026-08-18): 首轮 980 个结论不理想的 case
-（UNKNOWN 521 / EVIDENCE_GAP 421 / BLOCKED 38）全部复审（40 shard）。
-结果：NOT_AI 90（UNKNOWN->NOT_AI 61, EVIDENCE_GAP->NOT_AI 28,
-BLOCKED->NOT_AI 1），AI_CODE_FLAWED +2（UNKNOWN 1, EVIDENCE_GAP 1），
-余下保持 EVIDENCE_GAP 811 / BLOCKED 77（多为闭源或 advisory 镜像仓库，
-evidence 有说明）。AI 有责总计 41（24 root + 16 flawed + 1 assisted）。
-账本带 partial_wave_reaudited + revised_from 审计轨迹。
-证据: .ai-slop/state/partial-wave/reaudit/results/reaudit-*-out.jsonl
+- Reconciled all 22 current BLOCKED rows against the canonical boundary audit and evidence index; coverage is 22/22 unique class IDs.
+- Second-review summary: `.ai-slop/state/blocked-deepwave/blocked-second-review-summary-20260820.jsonl`.
+- All 22 remain `RETAIN_BLOCKED`: 20 private/closed Claude Code implementation-history boundaries, 1 NestJS public-package-history boundary, and 1 closed Autodesk Arnold implementation boundary.
+- NestJS is now classified as `SOURCE_UNAVAILABLE` rather than `CAUSAL_CHAIN_OPEN`: the package mechanism and 0.2.1 fix are understood; only commit-level provenance and AI-role evidence remain unavailable.
+- Claude Code cli.js.map snapshot evidence is recorded separately in .ai-slop/state/blocked-deepwave/claude-code-source-map-evidence-20260820.jsonl. Its 20 records have null class_id values and broad keyword matches, so it is retained as raw material only and excluded from per-case mechanism/lineage acceptance. The authoritative mechanism evidence is the canonical semantic dossier plus the 20 case-specific deep reviews; none of these proves the vulnerable-line introducer, parent absence, direct fix, squash members, or AI role.
+- The second reconciliation produced no new causal Git lineage and did not change ledger bucket counts.
+- Claude Code cached before/fixed bundle comparison is recorded in .ai-slop/state/blocked-deepwave/claude-code-bundle-diff-20260820.jsonl: 18/20 cases show mechanism-related keyword context changes, 1/20 has the fixed artifact unavailable (0.2.111), and the former 1/20 platform-binary result for CVE-2026-54316 was a Windows placeholder comparison and is superseded by the real Linux x64 targeted evidence below. These are published-artifact behavior signals only, not Git fix commits or AI attribution.
+- All 20 Claude tarballs were checked for source/history material; they contain bundled CLI/platform members but no parented Git history, atomic source lineage, squash members, or causal AI metadata. They therefore remain BLOCKED.
+- The 20 Claude bundle signals are projected into the BLOCKED boundary index as supplemental evidence; the primary causal boundary remains SOURCE_UNAVAILABLE.
+- CVE-2026-54316 targeted binary evidence: `.ai-slop/state/blocked-deepwave/claude-code-54316-linux-bundle-evidence-20260820.jsonl`; the Windows placeholder comparison was discarded as invalid evidence.
 
-squash-audit (2026-08-18): 182 TP 全量拆解审计收尾。171 个未拆 case 全部
-完成: 133 CONFIRM / 38 OVERTURN / 0 BLOCKED; 52 个 squash commit 通过
-PR ref fetch 拆到写缺陷行的独立 commit, AI marker 落在缺陷行 commit 上
-才维持 TP。结果已并入账本 (squash_audit 块 + squash_audit_verdict 字段),
-证据: .ai-slop/state/squash-audit/results/shard-*-out.jsonl。
+## Integrity
 
-incomplete-fix reclassification (2026-08-18): 用户裁定——AI commit 写了
-"不完整的修复"（修复没堵上、后续 advisory 重开/绕过）也算 AI 写的问题代码
-=> AI_CODE_FLAWED。gemini-3.7-flash-high 独立复核（antigravity, agent
-geminirc3, done）全部 AGREE：翻案 F38V（PraisonAI, Cursor 复制的 default-open
-守卫）、6Q7J+Q6RR（scriban, 7.0.0 修补两处 DoS 均未堵上）、2HFG（openclaw,
-[AI-assisted] 只补 pressKey/type 漏掉 sibling 路径）；维持 NOT_AI：RFR2
-（datamodel-code-generator, SSRF 由人类 2021 引入、AI commit 只是 $ref 门控）。
-账本翻案 4 行 / 3 unique case（scriban 双行同一 case），行内加
-ai_incomplete_fix_reclassified + ai_incomplete_fix_reclassify_note（证据 +
-gemini 复核引用）。证据: .ai-slop/state/incomplete-fix-review/
-gemini-verdict-20260818.json + reclassify-20260818.json。
+- JSONL rows: 23861/23861 parse successfully.
+- Unique class_id: 23861/23861.
+- Status counts: {"AI_CODE_FLAWED": 52, "AI_ROOT_CAUSE": 148, "BLOCKED": 22, "NOT_AI": 39, "PARTIALLY_ANALYZED": 6170, "UNANALYZED": 17430}.
+- BLOCKED boundary dossiers: 22/22 unique class_ids.
+- NOT_AI evidence audit: 39/39 passed; no row is counted as fully remediated unless remediation_status is FIX_VERIFIED.
+- NOT_AI dimension fields: notai_attribution_status, notai_remediation_status, notai_lineage_status, notai_causal_review_status.
+- Ledger backup: funnel-account-20260817.jsonl.bak-final-reconcile-20260819.
 
-narrow70 deep-dive (2026-08-17): 70 cases re-analyzed with full lineage +
-AI-code judgment (flash workers), then double-reviewed by grok-4.6 and
-gemini-3.7-flash second opinions (per-case, evidence packs). Adjudicated:
-46 AI根源, 16 AI代码有缺陷, 1 待补证据, 7 与AI无关. Manual verification on the 18 reviewer
-disagreements: openclaw guard-removal and guard-simplification commits
-confirmed; mruby (Matz primary author, Rovo co-author only) and feishu
-(sync of pre-existing upstream code) downgraded to 待补证据.
-Evidence: .ai-slop/state/narrow70/review/adjudicated.jsonl
-- 1 conflict: GitPython GHSA-539m (网站判定 AI根源+AI修复不完整 vs
-  ledger 判定与AI无关(窄口径); 保留网站判定, 已记入账本行)
-
-
-blocked106 attack (2026-08-17): all 106 BLOCKED classes re-analyzed with
-understanding-first protocol (local clones, git log -S/blame for the defect
-line, squash decomposition, AI-marker check incl co-authored-by). Result:
-104 NOT_AI (mostly upstream-declined/unfixed human-introduced code), 1
-AI_CODE_FLAWED (oneflow CVE-2025-65886 interpolate_like, PR #10644 with
-Co-authored-by: Copilot trailer), 1 remaining BLOCKED (arnold-usd
-CVE-2026-0659: closed-source core, no defect line in the open repo).
-Evidence: .ai-slop/state/blocked106/shard-*-out.jsonl (106 verdict lines)
-
-POST-HOC VERIFICATION (2026-08-17): the single new TP (oneflow
-CVE-2025-65886) was re-checked against the actual vuln semantics and
-overturned. NVD references issue #10666 "Segmentation fault in flow.eye +
-diag"; repro is flow.eye(3) + [1.0,2.0,3.0] (python list -> Tensor.__add__
--> PythonArg::TypeCheck rejects list, then PyTensor_Unpack does an
-unchecked cast on non-Tensor -> UB segfault). The Copilot co-authored
-commit b5cd55b (PR #10644) only edits interpolate.py (1 line) and never
-touches the defect path. Defect line traced to 157f825b (PR #7985,
-Houjiang Chen, 2022-04-24, no AI marker); upstream issue still OPEN.
-Verdict corrected: AI_CODE_FLAWED -> NOT_AI. TP back to 182.
-
-## TP reconciliation (2026-08-17)
-
-Two parallel TP books existed and never merged - the source of the number confusion:
-
-- Website "191 cases" = ghsa200-canvas foundation.jsonl curated showcase set
-  (网站三层: 确认 12 / 严格 84 / 收窄 95). 其中只有 8 个是账本早期AI有责。
-- Ledger B1_AI_FAULT = 118 unique case ids (167 verdict rows) from the mining
-  waves (tp-mining-wave1, laneA/B, repo-batch dossiers).
-
-Unified registry artifacts/tp-registry-20260817.jsonl:
-- union = 301 unique case ids
-  - 仅账本早期AI有责: 110
-  - 仅网站严格: 68
-  - foundation NARROW only: 66
-  - CONFIRM only: 6
-  - overlapping/mixed: ~51
-- 248 of 301 map inside the 23,868 funnel classes; 53 outside (window/no-repo).
-- Class-level inside 23,868: 104 classes carry a B1; a class-level tiered count
-  is in artifacts/funnel-account-20260817.jsonl.
-
-## Open work (honest gaps)
-
-- 87,364 - 41,990 = 45,374 classes with no repo mapping: mostly closed-source,
-  but GHSA records should be deterministically repo-matched (many still have
-  package/reference URLs we have not fully mined). Next major block.
-- PoC-noise cleanup: classes whose only repos are researcher PoC repos should be
-  re-classified as no-project-repo rather than with-repo.
-- Tail (08-10..16) not yet alias-deduped against census members.
-
-Artifacts:
-- artifacts/funnel-narrowed-20260816.jsonl
-- artifacts/code-writer-repos-20260816.json
-- artifacts/host-reasons-20260816.txt
-- artifacts/chromium-ai-scan-20260817.jsonl
-
-## Status codes (meaningful English, human-readable)
-
-AI_ROOT_CAUSE | AI_CODE_FLAWED | EVIDENCE_GAP | AI_FAULT_LEGACY |
-NOT_AI | BLOCKED | PARTIALLY_ANALYZED | UNANALYZED
-
-Gates: AI_AUTHORSHIP_GATE, INTRODUCER_GATE, VULN_PATH_GATE,
-NECESSITY_GATE, FIX_REVERSAL_GATE, RELEASE_GATE, UNIQUENESS_GATE
--> PASS | FAIL | MISSING_EVIDENCE
+- Canonical manifest repair: 39/39 records rebuilt from ledger causal_research; direct_fix_sha/fix_sha unified and explicit no-fix preserved.
+- Direct-recheck overrides: 9; each retains newer targeted Git evidence while preserving canonical fields not covered by that recheck.
+- Multi-introducer causal boundaries: 9 projected review states (8 multi-introducer cases plus 1 explicit source-move boundary); each retains separate introducer roles and is not collapsed into a fake single BIC.
+- Projection repair script: reconcile_notai_projection_20260820.py; it applies canonical evidence first and non-empty direct-recheck fields second.
+- Direct Git recheck artifact: `.ai-slop/state/notai-review/notai-direct-recheck-20260819.jsonl`; generator: `reconcile_notai_direct_recheck_20260820.py`.
+- ImageMagick squash evidence: short 9d72f1a800 resolved to 9d72f1a800b88a59673d77b1da69d047daa88523 with parent b9cfe27bef51dbbd1f05aef89c767749d7e37864.

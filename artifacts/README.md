@@ -1,14 +1,15 @@
 # Artifact ledger
 
-Single source of truth for the 23,868-class research account (window
+Single source of truth for the 23,861-class research account (window
 2025-05-01 .. 2026-08-16, CVE+GHSA deduped, withdrawn/rejected excluded).
 
 ## Files
 
 - funnel-account-20260817.jsonl — THE book. One row per advisory class:
   class_id, repo, advisory count, and unified status
-  (TP_SITE_STRICT / TP_SITE_NARROW / TP_B1 / NOT_AI / BLOCKED / PARTIAL /
-  PENDING), with site tier/scope, ledger best verdict, dossier best verdict.
+  (AI_ROOT_CAUSE / AI_CODE_FLAWED / NOT_AI / BLOCKED /
+  PARTIALLY_ANALYZED / UNANALYZED), with site tier/scope, ledger best verdict,
+  dossier best verdict.
 - code-writer-repos-20260816.json — verified repos with 2025+ code-writing AI
   commits (bot-excluded).
 - host-reasons-20260816.txt — per-repo scan audit trail: one reason per repo,
