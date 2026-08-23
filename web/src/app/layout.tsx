@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vibe-radar-ten.vercel.app"),
+  metadataBase: new URL("https://vibe-security-radar.pages.dev"),
   title: "Vibe Security Radar",
   description:
     "Mechanism-level research tracing publicly disclosed vulnerabilities to AI-authored code changes.",
@@ -43,7 +43,11 @@ export default function RootLayout({
   const snapshot = getResearchSnapshot().snapshot;
   const generationId = snapshot.case_set + "@" + snapshot.source_cutoff;
   return (
-    <html lang="en" data-publication-generation={generationId}>
+    <html
+      lang="en"
+      data-publication-generation={generationId}
+      data-scroll-behavior="smooth"
+    >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

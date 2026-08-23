@@ -9,18 +9,21 @@ import { TrendChart } from "@/components/trend-chart";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
+  formatLedgerStatus,
   getAiFamilyIconKey,
- getAiToolDistribution,
- getCauseDistribution,
- getCauseCategoryLabel,
+  getAiToolDistribution,
+  getCauseDistribution,
+  getCauseCategoryLabel,
+  formatCaseLabel,
+  formatCount,
   getCaseSummary,
- getLanguageDistribution,
+  preferredCaseId,
+  getLanguageDistribution,
   getRepositoryDistribution,
   getResearchCases,
   getResearchSnapshot,
   getResearchTimeline,
 } from "@/lib/research-data";
-import { RESEARCH_SNAPSHOT } from "@/lib/research-status";
 
 const MEDIA_COVERAGE = [
   {
@@ -44,40 +47,45 @@ const MEDIA_COVERAGE = [
   },
 ] as const;
 
-const FAQS = [
-  {
-    question: "What counts as an AI-contributed vulnerability?",
-    answer:
-      "The vulnerable behavior must depend on an AI-authored code change and be reversed by a real security fix.",
-  },
-  {
-    question: "Is every AI-related commit shown?",
-    answer:
-      "No. Case pages show the contributing change and minimum fix, not unrelated search candidates.",
-  },
-  {
-    question: "Is this the total number of AI security bugs?",
-    answer:
-      "No. It is a lower bound from public advisories and AI signatures that can be verified in Git history.",
-  },
-  {
-    question: "Can a case be corrected?",
-    answer:
-      "Yes. Open a GitHub issue with the advisory, commit, or release evidence that changes the conclusion.",
-  },
-] as const;
+function faqs(caseCount: number) {
+  return [
+    {
+      question: "What counts as an AI-contributed vulnerability?",
+      answer:
+        "The vulnerable behavior must depend on an AI-authored code change and be reversed by a real security fix.",
+    },
+    {
+      question: "Is every AI-related commit shown?",
+      answer:
+        "No. Each finding shows the contributing change and minimum fix, not unrelated search candidates.",
+    },
+    {
+      question: "Is this the total number of AI security bugs?",
+      answer: `No. These ${caseCount} findings are confirmed true positives from public advisories whose Git history binds the flaw to an AI-authored change. They are a lower bound, not a census.`,
+    },
+    {
+      question: "Can a finding be corrected?",
+      answer:
+        "Yes. Open a GitHub issue with the advisory, commit, or release evidence that changes the conclusion.",
+    },
+  ] as const;
+}
 
 export default function HomePage() {
   const research = getResearchSnapshot();
+  const caseCount = research.snapshot.case_count;
+  const faqItems = faqs(caseCount);
   const timeline = getResearchTimeline();
   const aiTools = getAiToolDistribution();
   const causes = getCauseDistribution();
   const languages = getLanguageDistribution();
   const repositories = getRepositoryDistribution();
   const featuredCases = (() => {
-    const pool = [...getResearchCases()]
-      .filter((item) => item.code_evidence)
-      .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+    const pool = [...getResearchCases()].sort((a, b) => {
+      const evidence = Number(Boolean(b.code_evidence)) - Number(Boolean(a.code_evidence));
+      if (evidence !== 0) return evidence;
+      return (b.published_at ?? "").localeCompare(a.published_at ?? "");
+    });
     const picked: typeof pool = [];
     const classOrder = [
       "AI_INCOMPLETE_REMEDIATION",
@@ -102,6 +110,11 @@ export default function HomePage() {
   );
   const topTool = aiTools.items[0];
   const topRepository = repositories[0];
+  const coveredFrom = (research.snapshot.coverage_from ?? "2025-05-01").slice(
+    0,
+    7,
+  );
+  const coveredTo = (research.snapshot.coverage_to ?? "2026-08-16").slice(0, 7);
 
   return (
     <main>
@@ -117,8 +130,8 @@ export default function HomePage() {
                   Vibe Security Radar
                 </h1>
                 <p className="mt-3 max-w-xl text-lg font-medium leading-7 tracking-[-0.02em] sm:text-xl sm:leading-8">
-                  Tracking vulnerabilities contributed by AI-written code—from
-                  the AI change to the root cause and fix.
+                  {caseCount} confirmed vulnerabilities where AI-written code
+                  introduced, enabled, or failed to close the flaw.
                 </p>
               </div>
               <div className="mt-6 md:mt-0 xl:mt-6">
@@ -127,7 +140,7 @@ export default function HomePage() {
                     href="/cves"
                     className="inline-flex min-h-10 w-full items-center justify-center bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90 sm:w-auto"
                   >
-                    Browse {research.snapshot.case_count} cases →
+                    Browse {research.snapshot.case_count} true positives →
                   </Link>
                   <a
                     href="https://github.com/HQ1995/vibe-security-radar"
@@ -141,20 +154,33 @@ export default function HomePage() {
                     href="/about"
                     className="px-1 text-muted-foreground hover:text-foreground"
                   >
-                    Method
+                    How we verify
                   </Link>
                 </div>
                 <dl className="mt-6 divide-y divide-border border-y border-border text-sm">
                   <div className="flex items-start justify-between gap-4 py-2.5">
                     <dt className="flex items-center gap-2 text-muted-foreground">
-                      Research ledger
+                      Confirmed true positives
                     </dt>
                     <dd className="text-right font-semibold">
-                      {RESEARCH_SNAPSHOT.unionUniqueGhsa} unique
+                      {formatCount(research.snapshot.case_count)} cases
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="text-muted-foreground">
+                      Covered advisories
+                      <span className="block text-xs font-normal">
+                        {coveredFrom} – {coveredTo}
+                      </span>
+                    </dt>
+                    <dd className="text-right font-semibold">
+                      {formatCount(research.snapshot.ledger_total ?? 0)}{" "}
+                      advisories
                       <span className="block text-xs font-normal text-muted-foreground">
-                        {RESEARCH_SNAPSHOT.allPass} all-pass ·{" "}
-                        {RESEARCH_SNAPSHOT.scopedContribution} scoped ·{" "}
-                        {RESEARCH_SNAPSHOT.status}
+                        {formatCount(research.snapshot.ledger_reviewed ?? 0)}{" "}
+                        reviewed ·{" "}
+                        {formatCount(research.snapshot.ledger_not_started ?? 0)}{" "}
+                        under analysis
                       </span>
                     </dd>
                   </div>
@@ -228,7 +254,7 @@ export default function HomePage() {
 
       <div className="mx-auto w-full max-w-[96rem] px-4 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
         <section className="py-9 sm:py-11">
-          <p className="section-kicker">Case patterns</p>
+          <p className="section-kicker">Patterns</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em]">
             Who, where, and why
           </h2>
@@ -237,7 +263,7 @@ export default function HomePage() {
               <DistributionBars
                 eyebrow="AI tooling"
                 title="Who appears on the candidate change"
-                description={`${aiTools.coverage.complete} of ${aiTools.total} cases name a tool on every candidate commit.`}
+                description={`${aiTools.coverage.complete} of ${aiTools.total} findings name a tool on every candidate commit.`}
                 items={aiTools.items.map((item) => ({
                   ...item,
                   iconKey: getAiFamilyIconKey(item.key),
@@ -248,7 +274,7 @@ export default function HomePage() {
             <DistributionBars
               eyebrow="Root causes"
               title="What went wrong"
-              description="One root-cause category per case."
+              description="One root-cause category per finding."
               items={causes.map((item) => ({
                 ...item,
                 muted: item.key === "other_ambiguous",
@@ -257,14 +283,14 @@ export default function HomePage() {
             <DistributionBars
               eyebrow="Languages"
               title="Where the vulnerable code lives"
-              description="Top languages; all remain available in Cases."
+              description="Top languages; all remain available in Findings."
               iconMode="language"
               items={languages.slice(0, 6)}
             />
             <DistributionBars
               eyebrow="Projects"
-              title="Repositories with the most cases"
-              description="Top repositories; filter the full index in Cases."
+              title="Repositories with the most findings"
+              description="Top repositories; filter the full index in Findings."
               items={repositories.slice(0, 6)}
             />
           </div>
@@ -276,27 +302,27 @@ export default function HomePage() {
         >
           <div className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="section-kicker">Featured cases</p>
+              <p className="section-kicker">Featured findings</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em]">
                 See the vulnerable code and fix
               </h2>
             </div>
             <Link href="/cves" className="text-sm text-primary hover:underline">
-              Browse all {research.snapshot.case_count} cases →
+              Browse all {research.snapshot.case_count} true positives →
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {featuredCases.map((item) => {
-              const id =
-                item.aliases.find((alias) => alias.startsWith("CVE-")) ??
-                item.case_id;
+              const id = preferredCaseId(item);
               return (
                 <article
                   key={item.case_id}
                   className="border border-border bg-card p-5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-mono text-xs text-primary">{id}</p>
+                    <p className="font-mono text-xs text-primary">
+                      {formatCaseLabel(item, id)}
+                    </p>
                     <p className="font-mono text-[10px] text-muted-foreground">
                       {item.published_at?.slice(0, 10) ?? "Date unavailable"}
                     </p>
@@ -308,6 +334,7 @@ export default function HomePage() {
                     {getCaseSummary(item)}
                   </h3>
                   <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    {formatLedgerStatus(item.ledger_status)} ·{" "}
                     {getCauseCategoryLabel(item.cause_category)} ·{" "}
                     {formatContributionClass(item.contribution_class)}
                   </p>
@@ -350,7 +377,7 @@ export default function HomePage() {
             <div>
               <p className="section-kicker">Q&amp;A</p>
               <dl className="mt-5 divide-y divide-border border-y border-border">
-                {FAQS.map((item) => (
+                {faqItems.map((item) => (
                   <div key={item.question} className="py-4">
                     <dt className="text-sm font-medium">{item.question}</dt>
                     <dd className="mt-1.5 text-sm leading-6 text-muted-foreground">

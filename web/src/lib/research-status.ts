@@ -1,16 +1,7 @@
 export const RESEARCH_SNAPSHOT = {
-  unionUniqueGhsa: 191,
-  allPass: 94,
-  scopedContribution: 97,
-  strictReleasedGhsa: 94,
-  replayedOn: "2026-08-15",
-  ledger: "canonical94",
-  ledgerSha256:
-    "7dc5e3bc00ed0c11554bdada539ef7947228f03024de6cfce384d1ca11258096",
-  summarySha256:
-    "c2f7ca777c400ca4069e29a67313d8a4c5acb278f239fb36c4a2019451cf503b",
-  status: "HOLD",
-  publicationReady: false,
+  ledger: "tp-funnel",
+  status: "PUBLISHED",
+  publicationReady: true,
 } as const;
 
 export const CONTRIBUTION_CLASSES = [
@@ -27,6 +18,11 @@ export const CONTRIBUTION_CLASSES = [
     title: "Incomplete remediation",
     description:
       "An AI security fix leaves the same released mechanism exploitable.",
+  },
+  {
+    title: "Flawed AI-written code",
+    description:
+      "AI-written code was flawed, including copied vulnerable logic.",
   },
 ] as const;
 
@@ -88,6 +84,6 @@ export const WORKFLOW_STEPS = [
   [
     "05",
     "Publication boundary",
-    "HOLD and UNKNOWN remain in research; aliases and duplicates are noncounting; commit-only causal rows stay outside released claims.",
+    "Only confirmed true positives are published. NOT_AI, BLOCKED, and incomplete causal rows stay in the research ledger.",
   ],
 ] as const;

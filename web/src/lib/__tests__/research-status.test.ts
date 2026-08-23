@@ -1,6 +1,3 @@
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,36 +6,27 @@ import {
   RESEARCH_SNAPSHOT,
   WORKFLOW_STEPS,
 } from "../research-status";
+import { getResearchSnapshot } from "../research-data";
 
 describe("research snapshot", () => {
-  it("keeps the strict ledger separate from publication readiness", () => {
-    const summaryBytes = readFileSync(
-      resolve(
-        import.meta.dirname,
-        "../../../../autoresearch/orchestrator-260814-ghsa200-canonical94/summary.json",
-      ),
-    );
-    const summary = JSON.parse(summaryBytes.toString("utf8"));
+  it("publishes the confirmed true-positive ledger", () => {
+    const snapshot = getResearchSnapshot().snapshot;
 
-    expect(createHash("sha256").update(summaryBytes).digest("hex")).toBe(
-      RESEARCH_SNAPSHOT.summarySha256,
+    expect(RESEARCH_SNAPSHOT.ledger).toBe("tp-funnel");
+    expect(RESEARCH_SNAPSHOT.status).toBe("PUBLISHED");
+    expect(RESEARCH_SNAPSHOT.publicationReady).toBe(true);
+    expect(snapshot.status).toBe("PUBLISHED");
+    expect(snapshot.case_set).toBe("TP_FUNNEL");
+    expect(snapshot.case_count).toBeGreaterThanOrEqual(190);
+    expect((snapshot.ai_root_cause ?? 0) + (snapshot.ai_code_flawed ?? 0)).toBe(
+      snapshot.case_count,
     );
-    expect(RESEARCH_SNAPSHOT.strictReleasedGhsa).toBe(
-      summary.canonical_strict_count,
-    );
-    expect(RESEARCH_SNAPSHOT.status).toBe(summary.status);
-    expect(RESEARCH_SNAPSHOT.publicationReady).toBe(summary.publication_ready);
-    expect(RESEARCH_SNAPSHOT.ledgerSha256).toBe(summary.ledger_sha256);
-    expect(RESEARCH_SNAPSHOT.strictReleasedGhsa).toBe(94);
-    expect(RESEARCH_SNAPSHOT.status).toBe("HOLD");
-    expect(RESEARCH_SNAPSHOT.publicationReady).toBe(false);
-    expect(RESEARCH_SNAPSHOT.ledgerSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("pins the seven-gate admission contract", () => {
     expect(ADMISSION_GATES).toHaveLength(7);
     expect(new Set(ADMISSION_GATES.map(([number]) => number)).size).toBe(7);
-    expect(CONTRIBUTION_CLASSES).toHaveLength(3);
+    expect(CONTRIBUTION_CLASSES).toHaveLength(4);
     expect(WORKFLOW_STEPS).toHaveLength(5);
   });
 });

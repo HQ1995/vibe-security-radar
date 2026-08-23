@@ -12,8 +12,8 @@ export function SiteFooter() {
           </p>
           <p className="leading-5">
             A mechanism-level study of vulnerabilities contributed by AI-written
-            code. Case pages connect advisories to the relevant change, residual
-            vulnerability, and security fix.
+            code. Each finding connects an advisory to the relevant change,
+            residual vulnerability, and security fix.
           </p>
           <p>
             Sources: first-party security advisories &middot; public Git history

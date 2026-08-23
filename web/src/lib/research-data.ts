@@ -45,6 +45,7 @@ export interface ResearchRelease {
 
 export interface ResearchCase {
   readonly case_id: string;
+  readonly class_id?: string;
   readonly aliases: readonly string[];
   readonly repository: string | null;
   readonly repository_metadata: {
@@ -53,6 +54,7 @@ export interface ResearchCase {
     readonly archived: boolean;
   };
   readonly contribution_class: string;
+  readonly ledger_status?: "AI_ROOT_CAUSE" | "AI_CODE_FLAWED";
   readonly candidate_set: readonly string[];
   readonly carrier_set: readonly string[];
   readonly minimum_fix_set: readonly string[];
@@ -141,10 +143,20 @@ const snapshot = researchData as {
     readonly status: string;
     readonly case_set: string;
     readonly case_count: number;
+    readonly ai_root_cause?: number;
+    readonly ai_code_flawed?: number;
+    readonly ledger_total?: number;
+    readonly ledger_reviewed?: number;
+    readonly ledger_in_progress?: number;
+    readonly ledger_not_started?: number;
     readonly exact_publication_dates: number;
     readonly unknown_publication_dates: number;
     readonly date_policy: string;
+    readonly coverage_from?: string;
+    readonly coverage_to?: string;
     readonly source_cutoff: string;
+    readonly generated_at?: string;
+    readonly ledger?: string;
   };
   readonly cause_categories: Readonly<
     Record<string, { readonly label: string; readonly definition: string }>
@@ -175,14 +187,48 @@ export function getResearchCases(): readonly ResearchCase[] {
   return snapshot.cases;
 }
 
+function officialIds(item: ResearchCase): {
+  readonly cve: string | null;
+  readonly ghsa: string | null;
+} {
+  const ids = [item.case_id, ...item.aliases];
+  return {
+    cve: ids.find((value) => value.toUpperCase().startsWith("CVE-")) ?? null,
+    ghsa: ids.find((value) => value.toUpperCase().startsWith("GHSA-")) ?? null,
+  };
+}
+
+export function preferredCaseId(item: ResearchCase): string {
+  const { cve, ghsa } = officialIds(item);
+  return cve ?? ghsa ?? item.case_id;
+}
+
+/** Page title / in-page label: keep one ID, put the other in parentheses. */
+export function formatCaseLabel(item: ResearchCase, displayId?: string): string {
+  const shown = displayId ?? preferredCaseId(item);
+  const { cve, ghsa } = officialIds(item);
+  const other = shown.toUpperCase().startsWith("CVE-")
+    ? ghsa
+    : shown.toUpperCase().startsWith("GHSA-")
+      ? cve
+      : null;
+  if (other && other.toUpperCase() !== shown.toUpperCase()) {
+    return `${shown} (${other})`;
+  }
+  return shown;
+}
+
 export function getResearchCaseById(id: string): ResearchCase | null {
   const normalized = id.toUpperCase();
   return (
+    snapshot.cases.find((item) => item.case_id.toUpperCase() === normalized) ??
     snapshot.cases.find(
-      (item) =>
-        item.case_id.toUpperCase() === normalized ||
-        item.aliases.some((alias) => alias.toUpperCase() === normalized),
-    ) ?? null
+      (item) => item.class_id?.toUpperCase() === normalized,
+    ) ??
+    snapshot.cases.find((item) =>
+      item.aliases.some((alias) => alias.toUpperCase() === normalized),
+    ) ??
+    null
   );
 }
 
@@ -191,7 +237,8 @@ export function getCaseSummary(item: ResearchCase): string {
   const desc = stripMarkdown(item.description);
   const lines = desc.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
   const generic = /^(summary|details|description|overview):?$/i;
-  const first = lines.find((l) => !generic.test(l));
+  const cjk = /[\u4e00-\u9fff]/;
+  const first = lines.find((l) => !generic.test(l) && !cjk.test(l));
   if (first) return first.length > 160 ? first.slice(0, 157) + "..." : first;
   return (
     formatContributionClass(item.contribution_class) +
@@ -265,7 +312,9 @@ function countLabels(values: readonly string[]): ResearchDistributionItem[] {
 
 export function getLanguageDistribution(): ResearchDistributionItem[] {
   return countLabels(
-    snapshot.cases.map((item) => item.repository_metadata.language),
+    snapshot.cases
+      .map((item) => item.repository_metadata.language)
+      .filter((name) => Boolean(name)),
   );
 }
 
@@ -391,6 +440,10 @@ export function getAiToolBaseRate(): {
   };
 }
 
+export function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
 export function formatContributionClass(value: string): string {
   return (
     {
@@ -399,6 +452,17 @@ export function formatContributionClass(value: string): string {
       AI_INCOMPLETE_REMEDIATION: "Incomplete remediation",
       AI_NEW_SURFACE_CONTRIBUTOR: "New attack surface",
       AI_ROOT_NEW_COMPONENT: "New vulnerable component",
+      AI_CODE_FLAWED: "Flawed AI-written code",
+      AI_ROOT_CAUSE: "AI root cause",
     }[value] ?? value.replaceAll("_", " ").toLowerCase()
+  );
+}
+
+export function formatLedgerStatus(value: string | undefined): string {
+  return (
+    {
+      AI_ROOT_CAUSE: "AI root cause",
+      AI_CODE_FLAWED: "AI-written code was flawed",
+    }[value ?? ""] ?? "Confirmed true positive"
   );
 }

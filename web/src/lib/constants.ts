@@ -97,7 +97,7 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   codeium: "Codeium",
   amazon_q: "Amazon Q",
   sweep: "Sweep",
-  openai_codex: "OpenAI Codex",
+  openai_codex: "ChatGPT/Codex",
   google_gemini: "Google Gemini",
   google_jules: "Google Jules",
   tabnine: "Tabnine",

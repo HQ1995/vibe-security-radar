@@ -69,7 +69,7 @@ export function TrendChart({
             Disclosures over time
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            When first-party advisories for these cases were published.
+            When these cases were publicly disclosed.
           </p>
         </div>
       </div>
@@ -79,10 +79,12 @@ export function TrendChart({
           <dt className="text-muted-foreground">Dated</dt>
           <dd>{datedCount}/{caseCount}</dd>
         </div>
-        <div className="flex gap-2">
-          <dt className="text-muted-foreground">Unavailable</dt>
-          <dd>{unknownDateCount}</dd>
-        </div>
+        {unknownDateCount ? (
+          <div className="flex gap-2">
+            <dt className="text-muted-foreground">Unavailable</dt>
+            <dd>{unknownDateCount}</dd>
+          </div>
+        ) : null}
         {visible.length ? (
           <div className="flex gap-2">
             <dt className="text-muted-foreground">Range</dt>
@@ -226,7 +228,7 @@ export function TrendChart({
             <thead>
               <tr>
                 <th>Month</th>
-                <th>Cases</th>
+                <th>Findings</th>
               </tr>
             </thead>
             <tbody>
@@ -245,11 +247,11 @@ export function TrendChart({
         </p>
       )}
 
-      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-        Exact GHSA dates; {unknownDateCount} case
-        {unknownDateCount === 1 ? " lacks" : "s lack"} a publication date.
-        {cutoffIsPartial ? ` * ${formatMonthShort(cutoffMonth)} is partial.` : ""}
-      </p>
+      {cutoffIsPartial ? (
+        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+          * {formatMonthShort(cutoffMonth)} is partial.
+        </p>
+      ) : null}
     </section>
   );
 }

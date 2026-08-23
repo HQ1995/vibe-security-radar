@@ -1,18 +1,65 @@
 # Vibe Security Radar - canonical research ledger summary
 
-The JSONL ledger is the source of truth. Refreshed 2026-08-20 after the BLOCKED boundary review, direct Git rechecks for the remaining stale NOT_AI attributions, and final evidence reconciliation.
+The JSONL ledger is the source of truth. Refreshed 2026-08-23 after folding seven duplicate TP class rows that share an official GHSA with another TP. Previous refresh: 2026-08-23 site class/identity reconciliation.
 
 ## Canonical status
 
+Counts below treat `site_publication.publish: false` TP rows as folded duplicates, not extra findings.
+
 | Status | Classes | Meaning |
 |---|---:|---|
-| AI_ROOT_CAUSE | 148 | AI code directly introduced or enabled the vulnerability mechanism. |
-| AI_CODE_FLAWED | 52 | AI-written code was flawed, including incomplete fixes and copied vulnerable logic. |
-| NOT_AI | 39 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
-| PARTIALLY_ANALYZED | 6170 | Some evidence exists, but the complete causal chain is not closed. |
-| BLOCKED | 22 | A required implementation, fix, ownership, or history boundary is unavailable. |
+| AI_ROOT_CAUSE | 143 | Unique official IDs where AI code introduced or enabled the vulnerability. |
+| AI_CODE_FLAWED | 52 | Unique official IDs where AI-written code was flawed. |
+| FOLDED_DUPLICATE_TP | 7 | Extra class rows for the same GHSA as another TP; kept in the book, not extra TPs. |
+| NOT_AI | 209 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
+| PARTIALLY_ANALYZED | 5993 | Some evidence exists, but the complete causal chain is not closed. |
+| BLOCKED | 27 | A required implementation, fix, ownership, or history boundary is unavailable. |
 | UNANALYZED | 17430 | No individual causal research has been completed. |
-| Total | 23861 | One row per canonical advisory class. |
+| Total | 23861 | One row per class_id. Unique confirmed TPs: 195. |
+
+## Duplicate TP fold - 2026-08-23
+
+Seven TP class rows were the same official GHSA as another TP. Two SpecifyJS squash aliases were already `publish: false`. The other five were only merged at site publish time; they are now folded on the canonical rows as well. Unique TPs are 195 (143 + 52), matching the public catalog.
+
+| class_id | Folded into | Kept class |
+|---|---|---|
+| alias-4fdb74a9ca3848a9fc21e342 | GHSA-5C7W-4WM3-85VW | existing GHSA-5C7W row |
+| alias-302ce3ba91db5b1f0e1a21b7 | GHSA-2944-57XV-2682 | existing GHSA-2944 row |
+| alias-33047e254a1af181f23c0c53 | GHSA-7JM2-G593-4QRC | alias-ef917a24bf7209fd1f889026 |
+| alias-f8d8e53edbeacc7b689a133b | GHSA-8G7G-HMWM-6RV2 | alias-c5a7e76e9787edf4ea076555 |
+| alias-945d447820a8998f330f65d1 | GHSA-G39V-CVJH-8FPF | alias-02fb7aeb21b9f4e1ab18fbce |
+| alias-ca062bdf2a1afef0fdfe5205 | GHSA-PV2J-RGHR-V5R9 | alias-adaf8ed9e0a157cba9b63805 |
+| alias-3a0294dfd1f9cff8531aacfd | GHSA-W28W-GP39-M4P6 | alias-50a179b091fae05cd3c940e9 |
+
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-fold-dupes-20260823-222447`.
+
+## Site publication reconciliation - 2026-08-23
+
+Eight published TPs were Incomplete on the site without an `ir_chain`. Research was written back onto the canonical rows (`site_publication`, `site_scope`, `repo`, `advisory_identity`, `ir_chain`). Two SpecifyJS squash aliases were marked `publish: false` here; five more same-GHSA TP pairs were folded in the section above. Unique TPs are 195.
+
+| class_id | Change |
+|---|---|
+| alias-23266042a88424523b7b8f48 | GHSA-8JQH: `site_scope` AI_ROOT_CAUSE (direct `send_webhook` intro). |
+| alias-c5a7e76e9787edf4ea076555 | GHSA-8G7G: `site_scope` AI_ROOT_CAUSE (path-join intro, not sibling SSRF). |
+| alias-9f69684e62a2b96f144d613f | GHSA-8359: `site_scope` AI_CODE_FLAWED (HTTP `$ref` gate, not a file:// fix). |
+| alias-afc1d67fcdd491fd6884883e | GHSA-5RV5: repo `lostisland/faraday`, chain residual of GHSA-33MH. |
+| alias-7224ab612b76b7dd1c18d614 | Residual is GHSA-FRVJ / CVE-2026-59221, not CVE-2026-54017. |
+| alias-203bff3ee3277cd64f94c6bc | Official id GHSA-J5QP-P44G-2M49 with chain. |
+| alias-4fdb74a9ca3848a9fc21e342 | `publish: false`; gql half is GHSA-5C7W. |
+| alias-302ce3ba91db5b1f0e1a21b7 | `publish: false`; PT-005 is GHSA-2944. |
+
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-site-class-identity-20260823-163418`.
+
+## Round3 causal research archive - 2026-08-21
+
+Round3 completed 50 causal audits over the previous partial-top-50 selection, with full 18-field causal records archived into the canonical ledger.
+
+- Verdicts: 28 NOT_AI, 1 AI_ROOT_CAUSE, 17 EVIDENCE_GAP, 4 BLOCKED.
+- Reclassification: alias-fe248dd6926bbcefe1459a8b (PrestaShop multi-sink stored XSS) was NOT_AI in the round3 file, but the advisory is a multi-sink class and the original vulnerable template writer predates reachable upstream history; it is retained as PARTIALLY_ANALYZED / EVIDENCE_GAP.
+- The one new AI_ROOT_CAUSE is alias-303ca6a3bcd91ac79f484238 (wevm/mppx), introducer 2566a1a0c2d9b8b2a80a4afbc1a95c9f6b7e56ba with AI marker on the vulnerable writer.
+- Canonical fields: round3_research (full record), round3_verdict, round3_research_source, round3_reclassification where applicable; statuses were updated in place.
+- Deferred bucket: round4-pending.jsonl now contains 22 rows (17 EVIDENCE_GAP + 4 BLOCKED + 1 reclassified) for future deep research; old selection manifest was marked completed.
+- Backup: artifacts/funnel-account-20260817.jsonl.bak-round3-20260821.
 
 ## NOT_AI causal review
 

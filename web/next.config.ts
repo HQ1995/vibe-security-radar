@@ -1,9 +1,19 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  output: "export",
+  outputFileTracingRoot: appRoot,
+  turbopack: {
+    root: appRoot,
+  },
   allowedDevOrigins: ["127.0.0.1", "swoop.gtisc.gatech.edu"],
   devIndicators: false,
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         // GitHub owner avatars used by RepoCard
@@ -13,18 +23,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  headers: async () => [
-    {
-      // HTML pages: revalidate every 10 minutes, serve stale while revalidating
-      source: "/((?!_next/).*)",
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "public, s-maxage=600, stale-while-revalidate=60",
-        },
-      ],
-    },
-  ],
 };
 
 export default nextConfig;

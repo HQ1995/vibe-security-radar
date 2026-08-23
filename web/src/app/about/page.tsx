@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { getResearchSnapshot } from "@/lib/research-data";
+
 export const metadata: Metadata = {
-  title: "Method — Vibe Security Radar",
+  title: "How we verify — Vibe Security Radar",
   description:
     "How Vibe Security Radar verifies AI-contributed vulnerabilities.",
 };
@@ -54,16 +56,18 @@ const SOURCES = [
 ] as const;
 
 export default function AboutPage() {
+  const caseCount = getResearchSnapshot().snapshot.case_count;
   return (
     <main className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 sm:py-14 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
       <header className="border-b border-border pb-8">
-        <p className="section-kicker">Method</p>
+        <p className="section-kicker">How we verify</p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
           Evidence before attribution.
         </h1>
         <p className="mt-4 max-w-3xl text-lg leading-7 text-muted-foreground">
-          We publish a case only when the advisory, AI-written change, root
-          cause, fix, and released versions all agree.
+          This public index covers {caseCount} confirmed true positives: findings
+          where AI-written code introduced the flaw, exposed the vulnerable
+          path, or left a security fix incomplete.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
           Real disclosed vulnerabilities from{" "}
@@ -82,7 +86,7 @@ export default function AboutPage() {
       <section className="py-10 sm:py-12" aria-labelledby="method-steps">
         <p className="section-kicker">Four steps</p>
         <h2 id="method-steps" className="mt-3 text-2xl font-semibold">
-          From disclosure to verified case
+          From disclosure to a verified finding
         </h2>
         <ol className="mt-7 grid border-y border-border lg:grid-cols-4">
           {STEPS.map((step) => (
@@ -147,7 +151,7 @@ export default function AboutPage() {
         </div>
         <p className="mt-4 max-w-3xl text-xs leading-5 text-muted-foreground">
           Advisory indexes help find candidates. Git history and released
-          artifacts decide whether a case belongs in the dataset.
+          artifacts decide whether a finding belongs in the dataset.
         </p>
       </section>
 

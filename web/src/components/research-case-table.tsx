@@ -3,16 +3,14 @@ import Link from "next/link";
 import { LanguageBadge } from "@/components/language-badge";
 import { ToolIcon } from "@/components/tool-icon";
 import {
+  formatCaseLabel,
   formatContributionClass,
   getAiFamilyIconKey,
   getAiToolLabel,
   getCauseCategoryLabel,
+  preferredCaseId,
   type ResearchCase,
 } from "@/lib/research-data";
-
-function routeId(item: ResearchCase): string {
-  return item.aliases.find((alias) => alias.startsWith("CVE-")) ?? item.case_id;
-}
 
 export function ResearchCaseTable({
   cases,
@@ -23,7 +21,7 @@ export function ResearchCaseTable({
     <>
       <ul className="grid gap-3 border-y border-border py-4 sm:grid-cols-2 xl:hidden">
         {cases.map((item) => {
-          const id = routeId(item);
+          const id = preferredCaseId(item);
           return (
             <li key={item.case_id} className="border border-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -32,13 +30,8 @@ export function ResearchCaseTable({
                     href={`/cves/${id}`}
                     className="font-mono text-sm font-semibold text-primary hover:underline"
                   >
-                    {id}
+                    {formatCaseLabel(item, id)}
                   </Link>
-                  {id !== item.case_id ? (
-                    <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                      {item.case_id}
-                    </p>
-                  ) : null}
                 </div>
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                   {item.published_at?.slice(0, 10) ?? "Date unavailable"}
@@ -86,7 +79,7 @@ export function ResearchCaseTable({
       <div className="hidden overflow-x-auto border-y border-border xl:block">
         <table className="w-full min-w-[1080px] text-left">
           <caption className="sr-only">
-            All {cases.length} research cases
+            All {cases.length} findings
           </caption>
           <thead>
             <tr className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -101,7 +94,7 @@ export function ResearchCaseTable({
           </thead>
           <tbody>
             {cases.map((item) => {
-              const id = routeId(item);
+              const id = preferredCaseId(item);
               return (
                 <tr
                   key={item.case_id}
@@ -112,13 +105,8 @@ export function ResearchCaseTable({
                       href={`/cves/${id}`}
                       className="font-mono text-sm font-medium text-primary hover:underline"
                     >
-                      {id}
+                      {formatCaseLabel(item, id)}
                     </Link>
-                    {id !== item.case_id ? (
-                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                        {item.case_id}
-                      </p>
-                    ) : null}
                   </td>
                   <td className="px-4 py-4 text-sm">
                     {item.repository ?? "Not recorded"}

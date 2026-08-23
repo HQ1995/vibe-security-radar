@@ -6,6 +6,7 @@ import { ResearchCaseTable } from "@/components/research-case-table";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
+  formatLedgerStatus,
   getAiToolLabel,
   getCauseCategoryLabel,
   type ResearchCase,
@@ -15,6 +16,7 @@ export interface ResearchCaseFilters {
   readonly query: string;
   readonly cause: string;
   readonly contribution: string;
+  readonly status?: string;
   readonly tool: string;
   readonly language: string;
   readonly repository: string;
@@ -59,6 +61,7 @@ export function filterResearchCases(
       (!filters.cause || item.cause_category === filters.cause) &&
       (!filters.contribution ||
         item.contribution_class === filters.contribution) &&
+      (!filters.status || item.ledger_status === filters.status) &&
       (!filters.tool || tool === filters.tool) &&
       (!filters.language ||
         item.repository_metadata.language === filters.language) &&
@@ -81,6 +84,7 @@ const EMPTY_FILTERS: ResearchCaseFilters = {
   query: "",
   cause: "",
   contribution: "",
+  status: "",
   tool: "",
   language: "",
   repository: "",
@@ -104,9 +108,14 @@ export function ResearchCaseExplorer({
     cases.flatMap((item) => (item.cause_category ? [item.cause_category] : [])),
   );
   const contributions = unique(cases.map((item) => item.contribution_class));
+  const statuses = unique(
+    cases.flatMap((item) => (item.ledger_status ? [item.ledger_status] : [])),
+  );
   const tools = unique(cases.map(getAiToolLabel));
   const languages = unique(
-    cases.map((item) => item.repository_metadata.language),
+    cases
+      .map((item) => item.repository_metadata.language)
+      .filter((language) => Boolean(language)),
   );
   const repositories = unique(
     cases
@@ -128,7 +137,7 @@ export function ResearchCaseExplorer({
   };
 
   return (
-    <section aria-label="Case search and filters">
+    <section aria-label="Finding search and filters">
       <div className="grid gap-3 border-y border-border py-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-muted-foreground lg:col-span-2">
           Search
@@ -166,6 +175,21 @@ export function ResearchCaseExplorer({
             {contributions.map((contribution) => (
               <option key={contribution} value={contribution}>
                 {formatContributionClass(contribution)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Verdict
+          <select
+            value={filters.status ?? ""}
+            onChange={(event) => update("status", event.target.value)}
+            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="">All verdicts</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {formatLedgerStatus(status)}
               </option>
             ))}
           </select>
@@ -249,7 +273,7 @@ export function ResearchCaseExplorer({
           <ResearchCaseTable cases={visible} />
           {pageCount > 1 ? (
             <nav
-              aria-label="Case pages"
+              aria-label="Finding pages"
               className="flex items-center justify-between gap-4 border-b border-border py-4 text-sm"
             >
               <button

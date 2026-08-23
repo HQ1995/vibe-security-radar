@@ -80,6 +80,8 @@ describe("server-rendered charts", () => {
     expect(trend).toContain("Feb 2026: 5 cases");
     expect(trend).toContain("Mar 2026: 23 cases");
     expect(trend).toContain("Disclosures over time");
+    expect(trend).not.toContain("Exact GHSA dates");
+    expect(trend).not.toContain("Unavailable");
     expect(distribution).toContain("3 · 60%");
     expect(distribution).toContain("chatgpt.png");
     expect(trend + distribution).not.toContain("recharts");
@@ -93,32 +95,57 @@ describe("homepage hierarchy", () => {
 
     expect(html).toContain("Vibe Security Radar");
     expect(html).toContain("See the vulnerable code and fix");
-    expect(html).toContain("Browse all 168 cases");
+    expect(html).toContain(
+      `${getResearchCases().length} confirmed vulnerabilities`,
+    );
+    expect(html).toContain(
+      `Browse all ${getResearchCases().length} true positives`,
+    );
     expect(html).toContain("Star on GitHub");
+    expect(html).toContain("Confirmed true positives");
+    expect(html).toContain("Covered advisories");
+    expect(html).toContain("2025-05 – 2026-08");
+    expect(html).not.toContain("Covered Advisories (2025-05-01");
+    expect(html).not.toContain("Research ledger");
+    expect(html).toContain("reviewed");
+    expect(html).toContain("under analysis");
+    expect(html).not.toContain("not started");
+    expect(html).not.toContain("analysed");
+    expect(html).not.toContain("flawed AI code");
+    expect(html).not.toContain(" · PUBLISHED");
     expect(html).toContain("Peak advisory month");
     expect(html).toContain("Most common AI tool");
     expect(html).toContain("Most represented project");
     expect(html).toContain("Media coverage");
     expect(html).toContain("Where the vulnerable code lives");
-    expect(html).toContain("Repositories with the most cases");
+    expect(html).toContain("Repositories with the most findings");
+    expect(html).toContain("How we verify");
+    expect(html).toContain("Featured findings");
     expect(html).toContain("/icons/tools/claude_code.svg");
     expect(html).toContain("/icons/tools/github_copilot.svg");
     expect(html).toContain("chatgpt.png");
     expect(html).not.toContain("/icons/tools/openai_codex_dark.svg");
     expect(html).toContain("What counts as an AI-contributed vulnerability?");
-    expect(html).not.toContain("All 168 research cases");
+    expect(html).not.toContain(
+      `All ${getResearchCases().length} research cases`,
+    );
+    expect(html).not.toContain(`All ${getResearchCases().length} findings`);
   });
 });
 
-describe("method page", () => {
-  it("keeps the public method short and scannable", () => {
+describe("how we verify page", () => {
+  it("keeps the public verification page short and scannable", () => {
     const html = renderToStaticMarkup(<AboutPage />);
 
+    expect(html).toContain("How we verify");
     expect(html).toContain("Evidence before attribution");
     expect(html).toContain("Match the advisory");
     expect(html).toContain("Locate the AI change");
     expect(html).toContain("Prove cause and fix");
     expect(html).toContain("Confirm the release");
+    expect(html).toContain(
+      `This public index covers ${getResearchCases().length} confirmed true positives`,
+    );
     expect(html).not.toContain("AI provenance signals");
     expect(html).not.toContain("Stage 6");
     expect(html).not.toContain("details");
@@ -146,7 +173,9 @@ describe("canonical case evidence", () => {
     expect(html).toContain("All languages");
     expect(html).toContain("All repositories");
     expect(html).toContain("All months");
-    expect(html).toContain("Page 1 of 9");
+    expect(html).toContain(
+      `Page 1 of ${Math.ceil(getResearchCases().length / 20)}`,
+    );
     expect(filtered.map((item) => item.case_id)).toEqual([
       "GHSA-HC8V-WWC9-VGXM",
     ]);
@@ -159,12 +188,12 @@ describe("canonical case evidence", () => {
 
     expect(
       html.match(/class="border-t border-border align-top"/g),
-    ).toHaveLength(168);
+    ).toHaveLength(getResearchCases().length);
     expect(html).toContain("sm:grid-cols-2 xl:hidden");
     expect(html).toContain(
       "hidden overflow-x-auto border-y border-border xl:block",
     );
-    expect(html).toContain("All 168 research cases");
+    expect(html).toContain(`All ${getResearchCases().length} findings`);
     expect(html).toContain("CVE-2026-71556");
     expect(html).toContain("/icons/languages/go.svg");
     expect(html).toContain("/icons/tools/claude_code.svg");
@@ -214,7 +243,6 @@ describe("canonical case evidence", () => {
 
     expect(search("kind")).toHaveLength(0);
     expect(search("2026-08-07").length).toBeGreaterThan(0);
-    expect(search("Date unavailable")).toHaveLength(0);
     expect(
       filterResearchCases(cases, {
         query: "",
@@ -224,8 +252,8 @@ describe("canonical case evidence", () => {
         language: "",
         repository: "",
         month: "undated",
-      }),
-    ).toHaveLength(0);
+      }).length,
+    ).toBe(0);
     expect(formatContributionClass("AI_NEW_SURFACE_CONTRIBUTOR")).toBe(
       "New attack surface",
     );
@@ -248,9 +276,8 @@ describe("canonical case evidence", () => {
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
 
-    expect(html).toContain("What AI did");
+    expect(html).toContain("How AI contributed");
     expect(html).toContain("Startup ordering drops the merged rules");
-    expect(html).toContain("5a887953c4");
     expect(html).toContain("56d617b778");
     expect(html).toContain("-server.applyPolicyToFilter()");
     expect(html).toContain("+server.applyPolicyToFilter()");
@@ -259,18 +286,30 @@ describe("canonical case evidence", () => {
     expect(html).toContain("AI-assisted fix: Claude Code");
     expect(html).not.toContain("ddfdacb263");
     expect(html).not.toContain("Verified by");
+    expect(html).not.toContain("cand=");
+  });
+
+  it("does not put internal research notes in the contribution headline", () => {
+    const dump = getResearchCaseById("GHSA-8JQH-598V-RFXC");
+    expect(dump).not.toBeNull();
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={dump!} />);
+    expect(html).toContain("How AI contributed");
+    expect(html).not.toContain("cand=b7b362");
+    expect(html).toContain("AI introduced the vulnerable behavior.");
   });
 
   it("shows audited fix authorship without unknown labels", () => {
-    const humanMarked = getResearchCaseById("CVE-2026-18446");
-    const aiMarked = getResearchCaseById("GHSA-JM78-9FVV-MHGR");
+    const humanMarked = getResearchCaseById("GHSA-7P8R-X3MC-P8W7");
+    const aiMarked = getResearchCaseById("GHSA-5XXX-QHH7-9287");
 
+    expect(humanMarked).not.toBeNull();
+    expect(aiMarked).not.toBeNull();
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={humanMarked!} />),
     ).toContain("Fix by Matteo Collina · no AI marker found");
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={aiMarked!} />),
-    ).toContain("AI-assisted fix: OpenAI GPT/Codex · Byron");
+    ).toContain("AI-assisted fix: ChatGPT/Codex · Byron");
   });
 
   it("explains incomplete remediation without exposing an internal mechanism key", () => {
@@ -279,17 +318,77 @@ describe("canonical case evidence", () => {
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
 
-    expect(html).toContain("AI change");
-    expect(html).toContain("wrapped six worktree write operations");
-    expect(html).toContain("s/config");
+    expect(html).toContain("This advisory");
+    expect(html).toContain("AI tried to fix this");
+    expect(html).toContain("Missed:");
+    expect(html).toContain("leading symlink");
+    expect(html).toContain("Fixed again");
     expect(html).toContain("validWritePath");
     expect(html).toContain("AI-assisted fix: Claude Code");
-    expect(html).toContain(
-      "/blob/d83871ed0314f604e417f40733f762acfdcbc35c/worktree_fs.go",
-    );
+    expect(html).toContain("worktree_fs.go");
     expect(html).not.toContain(
       "go-git.worktreeFilesystem.validPath.symlink-follow",
     );
+  });
+
+  it("renders the GitPython incomplete-fix chain as original, AI attempt, and later fix", () => {
+    const item = getResearchCaseById("GHSA-3WXW-XV34-2FRG");
+    expect(item).not.toBeNull();
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain("Original flaw");
+    expect(html).toContain("Earlier advisory");
+    expect(html).toContain("GHSA-3F7W-8RR8-F37F");
+    expect(html).toContain("This advisory");
+    expect(html).toContain("AI tried to fix this");
+    expect(html).toContain("positional");
+    expect(html).toContain("Fixed again");
+    expect(html).toContain("3af0c2516c");
+    expect(html).toContain("1b0d2d9b91");
+    expect(html).not.toContain("Security fix");
+  });
+
+  it("shows researched hunks and an annotation for previously empty comparisons", () => {
+    const item = getResearchCaseById("GHSA-WVPP-8HX9-P66J");
+    expect(item).not.toBeNull();
+    expect(item?.code_evidence?.comparison_hunks.length).toBeGreaterThan(0);
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain("Vulnerable code and fix");
+    expect(html).not.toContain(
+      "A line-by-line code comparison has not been prepared",
+    );
+    expect(html).toMatch(/AI introduced this behavior:|The fix adds:|Unsafe git option/);
+  });
+
+  it("never ships the empty comparison placeholder", () => {
+    for (const item of getResearchCases()) {
+      const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+      expect(html, item.case_id).not.toContain(
+        "A line-by-line code comparison has not been prepared",
+      );
+      expect(
+        item.code_evidence?.comparison_hunks?.length ||
+          item.code_evidence?.candidate_hunks?.length,
+        item.case_id,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("omits empty release rows instead of showing not recorded", () => {
+    const withRelease = getResearchCaseById("GHSA-5XXX-QHH7-9287");
+    const withoutRelease = getResearchCaseById("GHSA-C7RR-QHWX-6Q49");
+    expect(withRelease?.vulnerable_release).toBeTruthy();
+    expect(withoutRelease?.vulnerable_release).toBeNull();
+
+    expect(
+      renderToStaticMarkup(<CanonicalCaseEvidence item={withRelease!} />),
+    ).toContain("Releases");
+    expect(
+      renderToStaticMarkup(<CanonicalCaseEvidence item={withoutRelease!} />),
+    ).not.toContain("Not recorded");
   });
 });
 
