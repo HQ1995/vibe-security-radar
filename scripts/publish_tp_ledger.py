@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path("/home/hanqing/agents/ai-slop")
+ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
 OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"

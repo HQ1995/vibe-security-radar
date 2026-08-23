@@ -13,7 +13,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/hanqing/agents/ai-slop")
+ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA = ROOT / "web/src/generated/research-data.json"
 ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 GHSA_RE = re.compile(r"^GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$", re.I)

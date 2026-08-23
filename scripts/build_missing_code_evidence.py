@@ -12,7 +12,7 @@ import re
 import subprocess
 from pathlib import Path
 
-ROOT = Path("/home/hanqing/agents/ai-slop")
+ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "web/src/generated/research-data.json"
 OUT = ROOT / "scripts/generated-code-evidence.json"
 FETCH_OVERRIDES = ROOT / "scripts/evidence_fetch_overrides.json"
