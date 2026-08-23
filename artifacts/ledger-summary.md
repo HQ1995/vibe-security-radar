@@ -1,6 +1,6 @@
 # Vibe Security Radar - canonical research ledger summary
 
-The JSONL ledger is the source of truth. Refreshed 2026-08-23 after folding seven duplicate TP class rows that share an official GHSA with another TP. Previous refresh: 2026-08-23 site class/identity reconciliation.
+The JSONL ledger is the source of truth. Refreshed 2026-08-23 after closing the three remaining Gogs causal chains (shard-042 NOT_AI verdicts). Previous refresh: 2026-08-23 duplicate TP fold and site class/identity reconciliation.
 
 ## Canonical status
 
@@ -11,11 +11,23 @@ Counts below treat `site_publication.publish: false` TP rows as folded duplicate
 | AI_ROOT_CAUSE | 143 | Unique official IDs where AI code introduced or enabled the vulnerability. |
 | AI_CODE_FLAWED | 52 | Unique official IDs where AI-written code was flawed. |
 | FOLDED_DUPLICATE_TP | 7 | Extra class rows for the same GHSA as another TP; kept in the book, not extra TPs. |
-| NOT_AI | 209 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
-| PARTIALLY_ANALYZED | 5993 | Some evidence exists, but the complete causal chain is not closed. |
+| NOT_AI | 212 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
+| PARTIALLY_ANALYZED | 5990 | Some evidence exists, but the complete causal chain is not closed. |
 | BLOCKED | 27 | A required implementation, fix, ownership, or history boundary is unavailable. |
 | UNANALYZED | 17430 | No individual causal research has been completed. |
 | Total | 23861 | One row per class_id. Unique confirmed TPs: 195. |
+
+## Gogs causal closure - 2026-08-23
+
+Three Gogs partial-wave rows carried complete NOT_AI research in `shard-042-out.jsonl` but were not yet closed in the ledger. Each now has a canonical `causal_research` dossier (atomic introducer, parent boundary, direct fix, AI-marker inspection) and `CONFIRMED_NOT_AI` review state.
+
+| class_id | Advisory | Introducer | Fix | Verdict |
+|---|---|---|---|---|
+| alias-771f47230669a59d649529ec | CVE-2026-52797 (git diff option injection) | 01c8df01ec0 (Joe Chen, 2019) | 68b3c8f339b (#7871) | NOT_AI |
+| alias-da4217b7b50e1d96c772489d | CVE-2025-64111 (symlink path RCE) | 3650b32ec58 (2024) | c3eca1fca3a (#8082) | NOT_AI |
+| alias-df15c3c07b638f9f46d9acc0 | GHSA-6vxv-wg6j-5qwp (ipynb XSS) | 9af0dd23dd6 (Herbert, 2017) | f6b8c5847de (#8330) | NOT_AI |
+
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-gogs-remaining-20260823`.
 
 ## Duplicate TP fold - 2026-08-23
 
