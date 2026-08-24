@@ -14,6 +14,11 @@ read this before editing anything outside its own output dir.
   that created each dir. Never edit another lane's dir.
 - Shared ledgers (foundation.jsonl, canonical*/ledger.jsonl) : leader-only
   writes; lanes read.
+- artifacts/funnel-account-*.jsonl : single-writer = the leader, via
+  scripts/merge_funnel_lane.py ONLY (atomic write + schema check; conflict
+  aborts with nothing written). Lanes never edit it directly; they commit
+  their per-lane result files and the leader merges. Commit checkpoints
+  only at round milestones, not per merge.
 
 Conflict rule: if two lanes need the same file, the leader arbitrates; no
 lane re-does or reverts another lane's committed-in-progress work.
