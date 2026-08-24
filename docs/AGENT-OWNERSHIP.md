@@ -8,9 +8,8 @@ read this before editing anything outside its own output dir.
   agent runs git checkout on it.
 - web/src/app, web/src/components, web/src/lib : owned by the site-fix2 lane.
   Other lanes treat them as read-only.
-- archives/legacy-36-web-catalog/ : frozen 36-page catalog (was web/data/).
-  Do not edit. The legacy generator campaign is under
-  archives/legacy-web-data-campaign/.
+- archives/legacy-web-data-campaign/ : frozen legacy campaign evidence.
+  Do not edit.
 - autoresearch/orchestrator-*/ and autoresearch/herdr-*/ : owned by the lane
   that created each dir. Never edit another lane's dir.
 - Shared ledgers (foundation.jsonl, canonical*/ledger.jsonl) : leader-only

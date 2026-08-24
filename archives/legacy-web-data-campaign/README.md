@@ -15,7 +15,6 @@ This archive holds the old 36-case web release path and its quality gates:
 - `tests/` - pytest suite for the above.
 - `web-scripts/` - publication-contract.mjs, verify-static-release.mjs.
 
-The 36-case output catalog itself lives in archives/legacy-36-web-catalog/.
 Nothing in the live pipeline imports any of this. To resurrect, move the
 entries back to their original paths (scripts/, scripts/tests/, web/scripts/);
 git history also retains the last tracked state. The git-ignored runtime state
