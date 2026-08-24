@@ -10,6 +10,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -235,8 +236,80 @@ def build_case(case: dict, override: dict | None = None) -> dict | None:
     return evidence
 
 
+def ledger_cases(path: Path) -> list[dict]:
+    """Build case dicts for round-N TP rows that carry commit shas.
+
+    These rows are confirmed TPs not yet in the published catalog; their
+    roundN_research holds introducer/fix shas and the mechanism prose.
+    """
+    out: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("status") not in ("AI_ROOT_CAUSE", "AI_CODE_FLAWED"):
+            continue
+        rec = None
+        for key in (
+            "round9_research",
+            "round8_research",
+            "round7_research",
+            "round6_research",
+            "round5_research",
+            "round4_research",
+            "round3_research",
+            "causal_research",
+        ):
+            value = row.get(key)
+            if isinstance(value, dict) and value:
+                rec = value
+                break
+        if not rec or not (rec.get("introducer_sha") or rec.get("fix_sha")):
+            continue
+        ids = [str(i) for i in (rec.get("advisory_ids") or [])]
+        ghsas = [i for i in ids if str(i).upper().startswith("GHSA-")]
+        cves = [i for i in ids if str(i).upper().startswith("CVE-")]
+        case_id = (ghsas or cves or [row.get("class_id")])[0]
+        mechanism = " ".join(
+            str(rec.get(k) or "")
+            for k in ("flaw_origin", "bug_semantics", "reasoning")
+        ).strip() or row.get("class_id", "")
+        out.append(
+            {
+                "case_id": case_id,
+                "class_id": row.get("class_id"),
+                "aliases": [case_id, *(cves or ghsas)],
+                "repository": row.get("repo"),
+                "mechanism": mechanism[:400],
+                "candidate_set": [
+                    str(rec["introducer_sha"])
+                ]
+                if rec.get("introducer_sha")
+                else [],
+                "minimum_fix_set": [
+                    str(rec.get("direct_fix_sha") or rec.get("fix_sha"))
+                ]
+                if rec.get("direct_fix_sha") or rec.get("fix_sha")
+                else [],
+            }
+        )
+    return out
+
+
 def main() -> None:
-    cases = json.loads(DATA.read_text())["cases"]
+    ledger_arg = next(
+        (arg for arg in sys.argv[1:] if not arg.startswith("-")),
+        None,
+    )
+    if ledger_arg:
+        cases = ledger_cases(Path(ledger_arg))
+    else:
+        cases = json.loads(DATA.read_text())["cases"]
+    if not ledger_arg and "FORCE_IDS" not in os.environ:
+        cases = [
+            c for c in cases
+            if not (c.get("code_evidence") or {}).get("comparison_hunks")
+        ]
     existing = {}
     if OUT.exists():
         try:
