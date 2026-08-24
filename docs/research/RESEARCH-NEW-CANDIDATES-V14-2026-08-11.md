@@ -45,7 +45,7 @@ AI signal=Claude Code generation marker + Claude Sonnet 4.5 co-author trailer
 
 ```zsh
 ROOT=/home/hanqing/agents/ai-slop
-REPOS="$ROOT/autoresearch/orchestrator-260811-atomic150/global-batch-v14-repositories.json"
+REPOS="$ROOT/research/orchestrator-260811-atomic150/global-batch-v14-repositories.json"
 
 repo=$(jq -r '.[] | select(.slug=="mail-mcp-bridge") | .repository_path' "$REPOS")
 git -C "$repo" diff 26be5ccb^ 26be5ccb -- extract_attachments.py cleanup_attachments.py mail_mcp_server.py

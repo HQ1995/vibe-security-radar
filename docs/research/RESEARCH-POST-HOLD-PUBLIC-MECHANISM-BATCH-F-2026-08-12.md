@@ -152,8 +152,8 @@ gh api repos/openclaw/openclaw/security-advisories/GHSA-2hfg-4fh4-qp7f \
 
 # Frozen-ledger public-ID and candidate collision screen.
 rg -i 'CVE-2026-44547|GHSA-CWP8-RM8G-Q5C9|GHSA-2HFG-4FH4-QP7F' \
-  autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
-  autoresearch/herdr-260812-b2-unified-ledger/ledger.jsonl
+  research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
+  research/herdr-260812-b2-unified-ledger/ledger.jsonl
 ```
 
 批量重放结果：18/18 candidate/carrier 均被各自 vulnerable witness 包含；18/18 exact closure 均不在该 witness；18/18 closure 均被 fixed witness 包含。18/18 repository advisories 当前均 `published` 且 `withdrawn_at=null`；其中的 CVE/GHSA 映射合计为 21 个 public IDs。

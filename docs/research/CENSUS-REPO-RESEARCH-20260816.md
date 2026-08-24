@@ -147,7 +147,7 @@ The 66-repo canvas census is **not** the largest scan.
 
 | artifact | repos | what it is | reuse? |
 |---|---:|---|---|
-| `autoresearch/orchestrator-260809-0539/current-ai-scan/` | **8,909 scanned / 8,455 complete / 454 incomplete / 2,992 HAS_AI** | Source v3 `cohort_ai_commit_scan`, `since=2025-05-01`, 434,422 AI commits | **primary reuse** |
+| `research/orchestrator-260809-0539/current-ai-scan/` | **8,909 scanned / 8,455 complete / 454 incomplete / 2,992 HAS_AI** | Source v3 `cohort_ai_commit_scan`, `since=2025-05-01`, 434,422 AI commits | **primary reuse** |
 | same dir `commits.jsonl` | 434,422 rows | per-commit tools/signals/shas | reuse as HAS_AI evidence |
 | `CURRENT_OSV_FIX_INDEX.json` | 2,992 AI repos indexed; 2,367 matched | OSV fixes intersecting the AI-repo set | reuse for fix join, not a scan |
 | `current-unified-fix-index/` | 1,506 repos / 13,138 classes with a public fix-ref | **filtered to the 2,992 AI repos** | not a census-wide repo list |

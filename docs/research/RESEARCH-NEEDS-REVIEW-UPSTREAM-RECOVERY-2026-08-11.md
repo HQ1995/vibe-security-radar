@@ -69,7 +69,7 @@ ai_signal=PR #14876: AI-assisted: yes; Model: GPT-5.3-Codex
 ROOT=/home/hanqing/agents/ai-slop
 UP="$ROOT/.ai-slop/cache/cve-analyzer/repos/v2_github.com_clawdbot-feishu_f25c435dc88d86d445a87247b170272688547b364c53338716dbbc464a40122d"
 OC="$ROOT/.ai-slop/cache/cve-analyzer/repos/v2_github.com_openclaw_c2e21135e2e4d103a91f04425616aa5d7d8c5dd28582aa10a12b6898fde51b0f"
-PACKETS="$ROOT/autoresearch/orchestrator-260811-atomic150/openclaw-feature-review-packets-v1/packets.jsonl"
+PACKETS="$ROOT/research/orchestrator-260811-atomic150/openclaw-feature-review-packets-v1/packets.jsonl"
 
 # 一方 advisory objects
 jq -c 'select(any(.advisories[]?; ((.aliases // []) | index("CVE-2026-22171")))) | .advisories[] | select((.aliases // []) | index("CVE-2026-22171")) | {id,aliases,summary,details}' "$PACKETS"

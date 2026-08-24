@@ -49,7 +49,7 @@ packet 的 advisory source 全部是本地 CVEList/GitHub Advisory Database 一�
 
 ```zsh
 ROOT=/home/hanqing/agents/ai-slop
-REPOS="$ROOT/autoresearch/orchestrator-260811-atomic150/global-batch-v13-repositories.json"
+REPOS="$ROOT/research/orchestrator-260811-atomic150/global-batch-v13-repositories.json"
 
 repo=$(jq -r '.[] | select(.slug=="bytebot") | .repository_path' "$REPOS")
 git -c gc.auto=0 -C "$repo" log --all --reverse -S computer_write_file -- packages/bytebotd/src/mcp/computer-use.tools.ts

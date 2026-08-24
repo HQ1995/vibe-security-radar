@@ -58,7 +58,7 @@ The two exact-mechanism duplicates are both counted at the pinned base; hardened
 
 ```zsh
 HEAD=20b795ccaa2cbbe22723998e931d1200f043c865
-git show "$HEAD":autoresearch/orchestrator-260812-posthold-canonical/ledger.jsonl | sha256sum
+git show "$HEAD":research/orchestrator-260812-posthold-canonical/ledger.jsonl | sha256sum
 
 for f in \
   /tmp/herdr-ai-slop-identity-closure-final/result.json \
@@ -76,13 +76,13 @@ for f in \
 done
 
 # Assert the three proposed identities are absent from the pinned ledger.
-git show "$HEAD":autoresearch/orchestrator-260812-posthold-canonical/ledger.jsonl |
+git show "$HEAD":research/orchestrator-260812-posthold-canonical/ledger.jsonl |
   rg -i 'RJG7-R26H-CFP2|PFVM-W89X-94JW|JV46-XFWM-36J7|CVE-2026-54494|CVE-2026-49454' || true
 
 # Recheck the accepted verifier patch already present in the dirty worktree.
 git diff --binary "$HEAD" -- \
-  autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py \
-  autoresearch/orchestrator-260812-posthold-canonical/verify.py | sha256sum
+  research/orchestrator-260812-posthold-canonical/test_canonical.py \
+  research/orchestrator-260812-posthold-canonical/verify.py | sha256sum
 ```
 
 Terminal result package hashes, in the order above:

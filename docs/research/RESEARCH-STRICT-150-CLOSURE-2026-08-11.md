@@ -29,10 +29,10 @@ OSV `introduced`、模型票、same-file、subject/token overlap 只用于 recal
 
 | 产物 | 作用 | 校验值 |
 |---|---|---|
-| `autoresearch/orchestrator-260811-atomic150/strict-ledger-audited-v4/ledger.jsonl` | 冻结 92 组件基线 | byte SHA-256 `437cec14c55e1ba0dfde0492c0952497bfea306194c2b2e184f63d247b7d421b` |
-| `autoresearch/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json` | 26 个补充组件、50 个标识、全部 accepted edges | SHA-256 `7a196290fcd0a8d81f347c2172d13d8e842cd4e5df9e1a536e1a0ae259035fa9` |
-| `autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl` | 118 行合并账本 | canonical SHA-256 `990974f2446c8f4a617f439d2f99e53ac08baa8e9ef9310fb9d64e132ce5c8fe` |
-| `autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/summary.json` | 118 / 207 / 108 / 99 计数与输入绑定 | `minimum_met=true` |
+| `research/orchestrator-260811-atomic150/strict-ledger-audited-v4/ledger.jsonl` | 冻结 92 组件基线 | byte SHA-256 `437cec14c55e1ba0dfde0492c0952497bfea306194c2b2e184f63d247b7d421b` |
+| `research/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json` | 26 个补充组件、50 个标识、全部 accepted edges | SHA-256 `7a196290fcd0a8d81f347c2172d13d8e842cd4e5df9e1a536e1a0ae259035fa9` |
+| `research/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl` | 118 行合并账本 | canonical SHA-256 `990974f2446c8f4a617f439d2f99e53ac08baa8e9ef9310fb9d64e132ce5c8fe` |
+| `research/orchestrator-260811-atomic150/strict-ledger-union-v1/summary.json` | 118 / 207 / 108 / 99 计数与输入绑定 | `minimum_met=true` |
 | `scripts/merge_strict_ai_causal_supplement.py` | fail-closed 合并/校验 | 检查格式、去重、Git 对象、候选 AI marker 与 ancestry |
 
 合并器实际对 26/26 行检查了 candidate、carrier、fix 是否为本地真实 commit；对 direct edge 检查 candidate→fix ancestry，对 squash edge 检查 carrier→fix ancestry；还检查补充 50 个公开标识与基线 157 个标识零重叠。
@@ -93,14 +93,14 @@ OSV `introduced`、模型票、same-file、subject/token overlap 只用于 recal
 cd /home/hanqing/agents/ai-slop
 
 uv run --project cve-analyzer python scripts/merge_strict_ai_causal_supplement.py \
-  --supplement autoresearch/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json \
-  --output-dir autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1
+  --supplement research/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json \
+  --output-dir research/orchestrator-260811-atomic150/strict-ledger-union-v1
 
 jq '{semantic_component_count,public_id_count,cve_count,ghsa_count,minimum_met,ledger_sha256}' \
-  autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/summary.json
+  research/orchestrator-260811-atomic150/strict-ledger-union-v1/summary.json
 
-wc -l autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl
-sha256sum autoresearch/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json
+wc -l research/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl
+sha256sum research/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json
 ```
 
 预期核心输出：

@@ -1,7 +1,7 @@
 # 118 个 semantic component 的因果准确率复核
 
 日期：2026-08-11
-审计对象：`autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl`
+审计对象：`research/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl`
 对象 SHA-256：`996e81f5298bf695a7d91bc0b2646a314146aaad97aa417fbc4fa5b255ab078c`
 冻结规模：118 个 semantic component、207 个唯一 public ID；其中 base 92、supplement 26。
 
@@ -34,7 +34,7 @@
 - `VALID_CONTRIBUTOR`：更早的共享缺陷仍在，但 candidate 新增了真实 caller、route、provider、模型配置、平台分支或生产 API；删除 candidate 会消除该新增攻击面，但不消除更广的旧根因。等价重构本身不算贡献；重写只有同时新增可达 surface 才成立。
 - `FALSE_POSITIVE`：candidate 与机制无关、只是等价重构，或 candidate 是净减风险的不完整 hardening。尤其是：若删除 candidate 会回到同样或更严重的漏洞状态，则它不满足 actual but-for contribution。
 - `NEEDS_REVIEW`：本地一方对象、parent 或最小 fix 不可读，无法闭合。此次 118 项所需对象均可读，因此为 0。
-- AI marker 只用于回答“该 commit 是否可归入 AI-contributed 候选”，不用于回答“它是否导致漏洞”。完整 SHA、aliases 和原始 evidence 索引在 union ledger；base 的定位索引为 `autoresearch/orchestrator-260811-atomic150/strict-audit-20260811/class_adjudications_v4.json`，supplement 的一方 repo 路径、机制与 edge 为 `autoresearch/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json`。表内短 SHA 在冻结 repo 中唯一解析。
+- AI marker 只用于回答“该 commit 是否可归入 AI-contributed 候选”，不用于回答“它是否导致漏洞”。完整 SHA、aliases 和原始 evidence 索引在 union ledger；base 的定位索引为 `research/orchestrator-260811-atomic150/strict-audit-20260811/class_adjudications_v4.json`，supplement 的一方 repo 路径、机制与 edge 为 `research/orchestrator-260811-atomic150/strict-supplement-v1/adjudications.json`。表内短 SHA 在冻结 repo 中唯一解析。
 
 ## 高风险边界的独立反证
 

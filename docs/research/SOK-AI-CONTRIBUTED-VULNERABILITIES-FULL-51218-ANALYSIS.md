@@ -135,27 +135,27 @@ DeepSeek's `SUPPORTED` sensitivity on the 16 controls was 15/16 (93.75%); one co
 
 ## Reproducibility nucleus
 
-- [`inventory-freeze.json`](../autoresearch/orchestrator-260809-1424/inventory-freeze.json)
-- [`triage-inference-profile.json`](../autoresearch/orchestrator-260809-1424/triage-inference-profile.json)
-- [`public-candidate-patches.jsonl`](../autoresearch/orchestrator-260809-1424/public-candidate-patches.jsonl)
-- [`deep-review-policy-v2.json`](../autoresearch/orchestrator-260809-1424/deep-review-policy-v2.json)
-- [`deep-review-inference-profile.json`](../autoresearch/orchestrator-260809-1424/deep-review-inference-profile.json)
-- [`model-response-manifest.json`](../autoresearch/orchestrator-260809-1424/model-response-manifest.json)
-- [`pre-unblind-analysis-freeze.json`](../autoresearch/orchestrator-260809-1424/pre-unblind-analysis-freeze.json)
-- [`positive-control-scorecard.json`](../autoresearch/orchestrator-260809-1424/positive-control-scorecard.json)
-- [`full-analysis-ledger.jsonl`](../autoresearch/orchestrator-260809-1424/full-analysis-ledger.jsonl)
+- [`inventory-freeze.json`](../research/orchestrator-260809-1424/inventory-freeze.json)
+- [`triage-inference-profile.json`](../research/orchestrator-260809-1424/triage-inference-profile.json)
+- [`public-candidate-patches.jsonl`](../research/orchestrator-260809-1424/public-candidate-patches.jsonl)
+- [`deep-review-policy-v2.json`](../research/orchestrator-260809-1424/deep-review-policy-v2.json)
+- [`deep-review-inference-profile.json`](../research/orchestrator-260809-1424/deep-review-inference-profile.json)
+- [`model-response-manifest.json`](../research/orchestrator-260809-1424/model-response-manifest.json)
+- [`pre-unblind-analysis-freeze.json`](../research/orchestrator-260809-1424/pre-unblind-analysis-freeze.json)
+- [`positive-control-scorecard.json`](../research/orchestrator-260809-1424/positive-control-scorecard.json)
+- [`full-analysis-ledger.jsonl`](../research/orchestrator-260809-1424/full-analysis-ledger.jsonl)
 
 ```sh
-python3 autoresearch/orchestrator-260809-1424/prepare_full_inventory.py
-python3 autoresearch/orchestrator-260809-1424/run_deepseek_full_triage.py
-python3 autoresearch/orchestrator-260809-1424/prepare_public_patches.py
-python3 autoresearch/orchestrator-260809-1424/build_deep_review_queue.py
-python3 autoresearch/orchestrator-260809-1424/run_deepseek_deep_review.py
-python3 autoresearch/orchestrator-260809-1424/build_model_response_manifest.py
-python3 autoresearch/orchestrator-260809-1424/freeze_pre_unblind.py
-python3 autoresearch/orchestrator-260809-1424/build_final_ledger.py
-python3 autoresearch/orchestrator-260809-1424/write_full_report.py
-python3 autoresearch/orchestrator-260809-1424/verify_full_analysis.py
+python3 research/orchestrator-260809-1424/prepare_full_inventory.py
+python3 research/orchestrator-260809-1424/run_deepseek_full_triage.py
+python3 research/orchestrator-260809-1424/prepare_public_patches.py
+python3 research/orchestrator-260809-1424/build_deep_review_queue.py
+python3 research/orchestrator-260809-1424/run_deepseek_deep_review.py
+python3 research/orchestrator-260809-1424/build_model_response_manifest.py
+python3 research/orchestrator-260809-1424/freeze_pre_unblind.py
+python3 research/orchestrator-260809-1424/build_final_ledger.py
+python3 research/orchestrator-260809-1424/write_full_report.py
+python3 research/orchestrator-260809-1424/verify_full_analysis.py
 ```
 
 The model endpoint and raw response envelopes are locally frozen; authentication material is not embedded in research artifacts.

@@ -9,9 +9,9 @@ repo-less remainder with a closed-source vs parse-miss breakdown.
 
 ## Inputs (local, no api.github.com)
 
-- autoresearch/orchestrator-260809-0539/current-official-census/alias_classes.jsonl
+- research/orchestrator-260809-0539/current-official-census/alias_classes.jsonl
   (class_id, member_ids, sources, states; filter: no WITHDRAWN/REJECTED, in window)
-- autoresearch/orchestrator-260809-0539/current-official-census/subjects.jsonl
+- research/orchestrator-260809-0539/current-official-census/subjects.jsonl
   (id, lane, path, source; lane: cve_list_v5 / unreviewed / github-reviewed)
 - current-source-snapshots/ (advisory-database tar.gz, cvelistV5 tar.gz, osv/*.zip)
 - Existing parsers to reuse: cve_analyzer.git_url.parse_repo_url/parse_commit_url,

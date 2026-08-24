@@ -17,7 +17,7 @@
 
 | 对象 | 冻结值 |
 |---|---|
-| 接受账本 | `autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl` |
+| 接受账本 | `research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl` |
 | 账本 SHA256 | `282d2975d0ee24e9949cc4d108ad5a1ffd9b045ad8548cc6b1661aaf2c18392e` |
 | 账本 census | 107 JSONL rows / 107 components / 190 case-normalized unique `public_ids` |
 | CVE List V5 | `/home/hanqing/.cache/cve-analyzer/cvelistV5` @ `8ca64b5ad6b84d3cd5741b023610b8494800f174` |
@@ -125,13 +125,13 @@ c3f8a8396d5094fba760885a860823d6e74fc64b00abfb4cbcedbbfbae8b278f
 ### Census、ID/semantic dedup 与官方状态
 
 ```zsh
-ledger='autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl'
+ledger='research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl'
 
 jq -s '{rows:length,components:([.[].component_id]|unique|length),ids:([.[].public_ids[]]|map(ascii_upcase)|unique|length)}' "$ledger"
 sha256sum "$ledger"
 
 # V15 中 20 个非空 class / 22 candidate occurrences / 38 CVE-or-GHSA IDs。
-find autoresearch/orchestrator-260811-atomic150/global-same-file-v15 \
+find research/orchestrator-260811-atomic150/global-same-file-v15 \
   -name same-file-candidates.jsonl -type f -size +0c -print0 \
   | sort -z | xargs -0 cat \
   | jq -s '{classes:([.[].analysis_subject]|unique|length),pairs:length,ids:([.[].member_ids[]]|map(ascii_upcase)|unique|length)}'
@@ -139,7 +139,7 @@ find autoresearch/orchestrator-260811-atomic150/global-same-file-v15 \
 # 另加 AutoBangumi 两个 IDs 后，以 jq/comm 对 baseline public_ids 做大小写归一化差集；预期 overlap=[]、candidate_ids=40。
 jq -r '.public_ids[]|ascii_upcase' "$ledger" | sort -u > /tmp/ai-slop-v2-ids.txt
 {
-  find autoresearch/orchestrator-260811-atomic150/global-same-file-v15 \
+  find research/orchestrator-260811-atomic150/global-same-file-v15 \
     -name same-file-candidates.jsonl -type f -size +0c -print0 \
     | sort -z | xargs -0 cat | jq -r '.member_ids[]|ascii_upcase'
   print -r -- CVE-2026-59101 GHSA-P8RR-9CVG-CX5J

@@ -2,7 +2,7 @@
 
 日期：2026-08-11
 
-范围：`autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl`、其两个 builder，以及 initial 10-component exclusion 后仍为 multi-edge 的 10 个 component。本文只记录一手复核、证据契约与预期 census，不修改 ledger、JSON 或代码。
+范围：`research/orchestrator-260811-atomic150/strict-ledger-union-v1/ledger.jsonl`、其两个 builder，以及 initial 10-component exclusion 后仍为 multi-edge 的 10 个 component。本文只记录一手复核、证据契约与预期 census，不修改 ledger、JSON 或代码。
 
 ## 结论
 
@@ -342,7 +342,7 @@ git -C "$prompty_repo" show 88ac9948d7d37995edbb2f6d36913436626c39e1 -- runtime/
 4. 只用 `carrier → fix` 证明 mainline 可达性；fix reversal 仍必须对准 member 建立/重开的 exact mechanism；
 5. 若只能找到 squash carrier，找不到 atomic member 或 member-parent，则 `NEEDS_REVIEW`，不能用 carrier 顶替。
 
-现有 relation closure 可从 `autoresearch/orchestrator-260811-atomic150/squash-assistant-single-relation-v2/` 重放；`docs/RESEARCH-SQUASH-SINGLE-MEMBER-2026-08-11.md` 是索引，不替代 relation artifact、member Git objects 和官方 advisory。
+现有 relation closure 可从 `research/orchestrator-260811-atomic150/squash-assistant-single-relation-v2/` 重放；`RESEARCH-SQUASH-SINGLE-MEMBER-2026-08-11.md` 是索引，不替代 relation artifact、member Git objects 和官方 advisory。
 
 ## 迁移验收
 
@@ -363,7 +363,7 @@ v2 重建只有同时满足下列条件才可替代冻结 union：
 可重放 census：
 
 ```zsh
-v2_dir=autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2
+v2_dir=research/orchestrator-260811-atomic150/strict-ledger-union-v2
 jq -s '{components:length,public_ids:([.[].public_ids[]]|unique|length),cves:([.[].public_ids[]|select(startswith("CVE-"))]|unique|length),ghsas:([.[].public_ids[]|select(startswith("GHSA-"))]|unique|length)}' "$v2_dir/ledger.jsonl"
 jq -s '{accepted_occurrences:([.[]|.evidence[]?.accepted_edges[]?]|length),unique_pairs:([.[]|.evidence[]?.accepted_edges[]?|(.candidate_sha+"->"+.fix_sha)]|unique|length)}' "$v2_dir/ledger.jsonl"
 wc -l "$v2_dir/rejected.jsonl" "$v2_dir/rejected_edges.jsonl"

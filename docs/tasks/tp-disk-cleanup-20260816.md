@@ -20,7 +20,7 @@ Everything else is read-only analysis.
 - /home/hanqing/agents/ai-slop/.ai-slop/state/  (all mining artifacts)
 - /home/hanqing/agents/ai-slop/.ai-slop/repos/
 - /home/hanqing/agents/ai-slop/artifacts/
-- /home/hanqing/agents/ai-slop/autoresearch/  (11.7GB manifested pools)
+- /home/hanqing/agents/ai-slop/research/  (11.7GB manifested pools)
 - /home/hanqing/agents/ai-slop/web/ (except web/.next)
 - /home/hanqing/.cache/  (advisory-database, cvelistV5 used by publish)
 - anything not in the allowlist

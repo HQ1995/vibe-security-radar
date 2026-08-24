@@ -333,7 +333,7 @@ public_ids=(
 )
 for id in $public_ids; do
   jq -r '.public_ids[]?' \
-    /home/hanqing/agents/ai-slop/autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
+    /home/hanqing/agents/ai-slop/research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
     | tr '[:lower:]' '[:upper:]' | rg -x "$id"
 done
 ```

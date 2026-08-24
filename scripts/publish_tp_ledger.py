@@ -18,12 +18,12 @@ ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
 OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
-IR_CHAINS = ROOT / "autoresearch/orchestrator-260814-irchains-sol/ir-chains.jsonl"
+IR_CHAINS = ROOT / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
 ADVISORY_RELEASES = ROOT / "scripts/first-party-advisory-releases.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 DATE_FALLBACK = (
-    ROOT / "autoresearch/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
+    ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}

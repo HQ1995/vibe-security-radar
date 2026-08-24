@@ -45,11 +45,11 @@ No single signal is sufficient. Advisory text rarely records code authorship, co
 
 | Lane | Frozen input | Result | Local evidence |
 |---|---|---|---|
-| Official Advisory Census | CVE List V5 plus GitHub Advisory Database | 84798 alias classes; 5789 date-missing records retained as BLOCKED | [summary.json](../autoresearch/orchestrator-260809-0539/current-official-census/summary.json) |
-| Advisory To Repository History | 111855 public fix references and 37390 full-SHA roots | 10850 local fix roots; 515461 conserved AI-attributed ancestry edges; missing history remains BLOCKED or DEFER | [summary.json](../autoresearch/orchestrator-260809-0539/current-advisory-candidates/summary.json) |
-| Ai Commit To Advisory Reverse Linkage | 434422 public AI-attributed repository commits | 28 exact OSV introduced-SHA intersections screened by deepseek-v4-flash: 2 HIGH, 2 MEDIUM, 24 LOW; Ciguard/Mail-MCP/Mysti included, Termix carrier excluded, no unresolved HIGH | [deepseek-osv-introduced-screen.json](../autoresearch/orchestrator-260809-1127/deepseek-osv-introduced-screen.json) |
-| Public Web And Literature Snowballing | six frozen query families over public CVE/GHSA, tool-attribution and AI-generated-code language | CVE-2025-48757/GHSA-773X-PXJG-GXGX added at evidence grade B; supplier dispute preserved | [web-literature-adjudications.json](../autoresearch/orchestrator-260809-1127/web-literature-adjudications.json) |
-| Known Project And Tool Identity Search | CVE List, GHSA, NVD and OSV term scan for Claude Code, Copilot, Cursor, Jules, Rovo, Devin, Codex and vibe-coding phrases | 289 source hits collapsed to 104 alias packets; deepseek screen yielded 66 AI_PRODUCT, 31 AMBIGUOUS, 4 GENERIC_RISK, 3 apparent ORIGIN_EVIDENCE; manual scope review excluded all three because they concern discovery assistance or runtime-generated content | [deepseek-official-term-screen.json](../autoresearch/orchestrator-260809-1127/deepseek-official-term-screen.json) |
+| Official Advisory Census | CVE List V5 plus GitHub Advisory Database | 84798 alias classes; 5789 date-missing records retained as BLOCKED | [summary.json](../research/orchestrator-260809-0539/current-official-census/summary.json) |
+| Advisory To Repository History | 111855 public fix references and 37390 full-SHA roots | 10850 local fix roots; 515461 conserved AI-attributed ancestry edges; missing history remains BLOCKED or DEFER | [summary.json](../research/orchestrator-260809-0539/current-advisory-candidates/summary.json) |
+| Ai Commit To Advisory Reverse Linkage | 434422 public AI-attributed repository commits | 28 exact OSV introduced-SHA intersections screened by deepseek-v4-flash: 2 HIGH, 2 MEDIUM, 24 LOW; Ciguard/Mail-MCP/Mysti included, Termix carrier excluded, no unresolved HIGH | [deepseek-osv-introduced-screen.json](../research/orchestrator-260809-1127/deepseek-osv-introduced-screen.json) |
+| Public Web And Literature Snowballing | six frozen query families over public CVE/GHSA, tool-attribution and AI-generated-code language | CVE-2025-48757/GHSA-773X-PXJG-GXGX added at evidence grade B; supplier dispute preserved | [web-literature-adjudications.json](../research/orchestrator-260809-1127/web-literature-adjudications.json) |
+| Known Project And Tool Identity Search | CVE List, GHSA, NVD and OSV term scan for Claude Code, Copilot, Cursor, Jules, Rovo, Devin, Codex and vibe-coding phrases | 289 source hits collapsed to 104 alias packets; deepseek screen yielded 66 AI_PRODUCT, 31 AMBIGUOUS, 4 GENERIC_RISK, 3 apparent ORIGIN_EVIDENCE; manual scope review excluded all three because they concern discovery assistance or runtime-generated content | [deepseek-official-term-screen.json](../research/orchestrator-260809-1127/deepseek-official-term-screen.json) |
 
 The forward lane starts from all official numbered advisories and walks public fix references and repository ancestry. The reverse lane starts from public commits carrying known AI identities/trailers and intersects their exact SHAs with OSV introduced ranges and numbered aliases. The public-web lane catches closed-platform and prose-only attribution. The identity lane searches official descriptions and references for Claude Code, GitHub Copilot, Cursor, Google Jules, Atlassian Rovo, Devin, OpenAI Codex, and vibe-coding terms.
 
@@ -57,7 +57,7 @@ The term scan produced 289 source hits, collapsed to 104 alias packets. Model-as
 
 ### Model use and adjudication boundary
 
-The requested local `deepseek-v4-flash` endpoint (`http://127.0.0.1:8317/v1`) made 19 successful structured-triage calls consuming 189,428 recorded tokens. It ranked exact-SHA intersections, classified term hits, and proposed a descriptive taxonomy. It did **not** decide inclusion. Inclusion remained a deterministic contract over public identifiers, public attribution, and case-level causal evidence, followed by manual review of high-priority candidates. Request and response digests are preserved in the [model receipt](../autoresearch/orchestrator-260809-1127/deepseek-v4-flash-receipt.json).
+The requested local `deepseek-v4-flash` endpoint (`http://127.0.0.1:8317/v1`) made 19 successful structured-triage calls consuming 189,428 recorded tokens. It ranked exact-SHA intersections, classified term hits, and proposed a descriptive taxonomy. It did **not** decide inclusion. Inclusion remained a deterministic contract over public identifiers, public attribution, and case-level causal evidence, followed by manual review of high-priority candidates. Request and response digests are preserved in the [model receipt](../research/orchestrator-260809-1127/deepseek-v4-flash-receipt.json).
 
 ### Recall stopping rule
 
@@ -138,7 +138,7 @@ Each row is one alias class; linked IDs point to the official CVE or GitHub Advi
 
 | # | CVE/GHSA aliases | Published | Project | AI tool(s) | Severity | Contribution | Vulnerability / AI failure | Evidence |
 |---:|---|---|---|---|---|---|---|---|
-| 1 | [CVE-2025-48757](https://www.cve.org/CVERecord?id=CVE-2025-48757)<br>[GHSA-773X-PXJG-GXGX](https://github.com/advisories/GHSA-773X-PXJG-GXGX) | 2025-05-30 | hosted-service/lovable/lovable | Lovable | HIGH | Autonomous Agent | Access Control<br>Unsafe Default | B: [public](https://gist.github.com/lhchavez/625ee42a6c408a850d35e50f8e649de9), [audit](../autoresearch/orchestrator-260809-1127/web-literature-adjudications.json)<br>Supplier Disputed Hosted Service |
+| 1 | [CVE-2025-48757](https://www.cve.org/CVERecord?id=CVE-2025-48757)<br>[GHSA-773X-PXJG-GXGX](https://github.com/advisories/GHSA-773X-PXJG-GXGX) | 2025-05-30 | hosted-service/lovable/lovable | Lovable | HIGH | Autonomous Agent | Access Control<br>Unsafe Default | B: [public](https://gist.github.com/lhchavez/625ee42a6c408a850d35e50f8e649de9), [audit](../research/orchestrator-260809-1127/web-literature-adjudications.json)<br>Supplier Disputed Hosted Service |
 | 2 | [GHSA-8G98-M4J9-QWW5](https://github.com/advisories/GHSA-8G98-M4J9-QWW5) | 2025-06-18 | [tailot/taylored](https://github.com/tailot/taylored) | Google Jules | CRITICAL | Autonomous Agent | Data Validation<br>Incomplete Validation | A: [public](https://github.com/tailot/taylored/commit/57b7634391959dbbdb39b387ac4dc68157cd58a1), [audit](../scripts/audit_adjudications.json) |
 | 3 | [GHSA-VH5J-5FHQ-9XWG](https://github.com/advisories/GHSA-VH5J-5FHQ-9XWG) | 2025-06-27 | [tailot/taylored](https://github.com/tailot/taylored) | Google Jules | LOW | Autonomous Agent | Access Control<br>State Or Context Confusion | A: [public](https://github.com/tailot/taylored/commit/45b69f6becd298e7bb7a15b5c57a7de007771d7b), [audit](../scripts/audit_adjudications.json) |
 | 4 | [CVE-2025-55526](https://www.cve.org/CVERecord?id=CVE-2025-55526)<br>[GHSA-C7RR-QHWX-6Q49](https://github.com/advisories/GHSA-C7RR-QHWX-6Q49) | 2025-08-26 | [zie619/n8n-workflows](https://github.com/zie619/n8n-workflows) | Claude Code | CRITICAL | Direct Code Generation | Path Or File<br>Incomplete Validation | A: [public](https://github.com/Zie619/n8n-workflows/commit/64f9f86f87c23705fda6faa9947a947bf48b12c2), [audit](../scripts/audit_adjudications.json) |
@@ -174,10 +174,10 @@ Each row is one alias class; linked IDs point to the official CVE or GitHub Advi
 | 34 | [CVE-2026-33632](https://www.cve.org/CVERecord?id=CVE-2026-33632) | 2026-03-26 | [craigjbass/clearancekit](https://github.com/craigjbass/clearancekit) | Claude Code | HIGH | Direct Code Generation | Access Control<br>Missing Guard | A: [public](https://github.com/craigjbass/clearancekit/commit/56cf8aabd3d6f33e39749e27b135106878cbb7fc), [audit](../scripts/audit_adjudications.json) |
 | 35 | [CVE-2026-33890](https://www.cve.org/CVERecord?id=CVE-2026-33890) | 2026-03-27 | [franklioxygen/mytube](https://github.com/franklioxygen/mytube) | Claude Code, Cursor | HIGH | Direct Code Generation | Access Control<br>Missing Guard | A: [public](https://github.com/franklioxygen/mytube/commit/941035909ee3f96a6f80f38acf70cbc3e66b5098), [audit](../scripts/audit_adjudications.json) |
 | 36 | [CVE-2026-34218](https://www.cve.org/CVERecord?id=CVE-2026-34218) | 2026-03-31 | [craigjbass/clearancekit](https://github.com/craigjbass/clearancekit) | Claude Code, Github Copilot | MEDIUM | Direct Code Generation | Access Control<br>State Or Context Confusion | A: [public](https://github.com/craigjbass/clearancekit/commit/31c617c8286a0707e1c7e65ec6469013d40b3ff1), [audit](../scripts/audit_adjudications.json) |
-| 37 | [CVE-2026-7386](https://www.cve.org/CVERecord?id=CVE-2026-7386) | 2026-04-29 | [fatbobman/mail-mcp-bridge](https://github.com/fatbobman/mail-mcp-bridge) | Claude Code | UNKNOWN | Direct Code Generation | Path Or File<br>Incomplete Validation | A: [public](https://github.com/fatbobman/mail-mcp-bridge/commit/26be5ccbf17501852e98f7699d77ec4f63128ece), [audit](../autoresearch/orchestrator-260809-0539/current-mail-mcp-witness/adjudication.json) |
-| 38 | [CVE-2026-44219](https://www.cve.org/CVERecord?id=CVE-2026-44219)<br>[GHSA-XW8C-RRVX-F7XQ](https://github.com/advisories/GHSA-XW8C-RRVX-F7XQ) | 2026-05-05 | [jo-jo98/ciguard](https://github.com/jo-jo98/ciguard) | Claude Code | UNKNOWN | Direct Code Generation | Resource Exhaustion<br>Missing Guard | A: [public](https://github.com/jo-jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b), [audit](../autoresearch/orchestrator-260809-0539/current-ciguard-witness/adjudication.json) |
-| 39 | [CVE-2026-10281](https://www.cve.org/CVERecord?id=CVE-2026-10281)<br>[GHSA-Q6QC-XP4Q-RJQ5](https://github.com/advisories/GHSA-Q6QC-XP4Q-RJQ5) | 2026-06-01 | [enderfga/claw-orchestrator](https://github.com/enderfga/claw-orchestrator) | Claude Code | UNKNOWN | Assistant Coauthorship | Access Control<br>Missing Guard | A: [public](https://github.com/enderfga/claw-orchestrator/commit/d0b02a800aa0689d9428cc4cc170e0b6589fb2c3), [audit](../autoresearch/orchestrator-260809-0539/current-claw-orchestrator-witness/adjudication.json) |
-| 40 | [CVE-2026-13591](https://www.cve.org/CVERecord?id=CVE-2026-13591) | 2026-06-29 | [deepmyst/mysti](https://github.com/deepmyst/mysti) | Claude Code | UNKNOWN | Assistant Coauthorship | Data Validation<br>State Or Context Confusion | A: [public](https://github.com/deepmyst/mysti/commit/94e14d9d30e2b9bf0b9d67ae6d459dbf263b9d99), [audit](../autoresearch/orchestrator-260809-0539/current-mysti-witness/adjudication.json) |
+| 37 | [CVE-2026-7386](https://www.cve.org/CVERecord?id=CVE-2026-7386) | 2026-04-29 | [fatbobman/mail-mcp-bridge](https://github.com/fatbobman/mail-mcp-bridge) | Claude Code | UNKNOWN | Direct Code Generation | Path Or File<br>Incomplete Validation | A: [public](https://github.com/fatbobman/mail-mcp-bridge/commit/26be5ccbf17501852e98f7699d77ec4f63128ece), [audit](../research/orchestrator-260809-0539/current-mail-mcp-witness/adjudication.json) |
+| 38 | [CVE-2026-44219](https://www.cve.org/CVERecord?id=CVE-2026-44219)<br>[GHSA-XW8C-RRVX-F7XQ](https://github.com/advisories/GHSA-XW8C-RRVX-F7XQ) | 2026-05-05 | [jo-jo98/ciguard](https://github.com/jo-jo98/ciguard) | Claude Code | UNKNOWN | Direct Code Generation | Resource Exhaustion<br>Missing Guard | A: [public](https://github.com/jo-jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b), [audit](../research/orchestrator-260809-0539/current-ciguard-witness/adjudication.json) |
+| 39 | [CVE-2026-10281](https://www.cve.org/CVERecord?id=CVE-2026-10281)<br>[GHSA-Q6QC-XP4Q-RJQ5](https://github.com/advisories/GHSA-Q6QC-XP4Q-RJQ5) | 2026-06-01 | [enderfga/claw-orchestrator](https://github.com/enderfga/claw-orchestrator) | Claude Code | UNKNOWN | Assistant Coauthorship | Access Control<br>Missing Guard | A: [public](https://github.com/enderfga/claw-orchestrator/commit/d0b02a800aa0689d9428cc4cc170e0b6589fb2c3), [audit](../research/orchestrator-260809-0539/current-claw-orchestrator-witness/adjudication.json) |
+| 40 | [CVE-2026-13591](https://www.cve.org/CVERecord?id=CVE-2026-13591) | 2026-06-29 | [deepmyst/mysti](https://github.com/deepmyst/mysti) | Claude Code | UNKNOWN | Assistant Coauthorship | Data Validation<br>State Or Context Confusion | A: [public](https://github.com/deepmyst/mysti/commit/94e14d9d30e2b9bf0b9d67ae6d459dbf263b9d99), [audit](../research/orchestrator-260809-0539/current-mysti-witness/adjudication.json) |
 
 ## Taxonomy
 
@@ -247,22 +247,22 @@ Adjacent work studies agent-generated software, AI-code prevalence, benchmarks, 
 
 ## Reproducibility
 
-The frozen run is `autoresearch/orchestrator-260809-1127/`. Its machine-readable nucleus is:
+The frozen run is `research/orchestrator-260809-1127/`. Its machine-readable nucleus is:
 
-- [`goal_contract.json`](../autoresearch/orchestrator-260809-1127/goal_contract.json): scope, inclusion contract, lanes, and success predicate;
-- [`corpus.json`](../autoresearch/orchestrator-260809-1127/corpus.json): all 40 alias classes and case-level sources;
-- [`screening-ledger.json`](../autoresearch/orchestrator-260809-1127/screening-ledger.json): lane inputs, outputs, and queue state;
-- [`official-ai-term-hits.json`](../autoresearch/orchestrator-260809-1127/official-ai-term-hits.json): frozen official-source term hits;
-- [`deepseek-osv-introduced-screen.json`](../autoresearch/orchestrator-260809-1127/deepseek-osv-introduced-screen.json) and [`deepseek-official-term-screen.json`](../autoresearch/orchestrator-260809-1127/deepseek-official-term-screen.json): structured model triage;
-- [`web-literature-adjudications.json`](../autoresearch/orchestrator-260809-1127/web-literature-adjudications.json): inclusions and manual exclusions from prose search;
-- [`deepseek-v4-flash-receipt.json`](../autoresearch/orchestrator-260809-1127/deepseek-v4-flash-receipt.json): model, endpoint, request/response digests, and token accounting.
+- [`goal_contract.json`](../research/orchestrator-260809-1127/goal_contract.json): scope, inclusion contract, lanes, and success predicate;
+- [`corpus.json`](../research/orchestrator-260809-1127/corpus.json): all 40 alias classes and case-level sources;
+- [`screening-ledger.json`](../research/orchestrator-260809-1127/screening-ledger.json): lane inputs, outputs, and queue state;
+- [`official-ai-term-hits.json`](../research/orchestrator-260809-1127/official-ai-term-hits.json): frozen official-source term hits;
+- [`deepseek-osv-introduced-screen.json`](../research/orchestrator-260809-1127/deepseek-osv-introduced-screen.json) and [`deepseek-official-term-screen.json`](../research/orchestrator-260809-1127/deepseek-official-term-screen.json): structured model triage;
+- [`web-literature-adjudications.json`](../research/orchestrator-260809-1127/web-literature-adjudications.json): inclusions and manual exclusions from prose search;
+- [`deepseek-v4-flash-receipt.json`](../research/orchestrator-260809-1127/deepseek-v4-flash-receipt.json): model, endpoint, request/response digests, and token accounting.
 
 From repository root, the deterministic final build and verification are:
 
 ```sh
-python3 autoresearch/orchestrator-260809-1127/build_sok_corpus.py
-python3 autoresearch/orchestrator-260809-1127/write_sok_manuscript.py
-python3 autoresearch/orchestrator-260809-1127/verify_sok.py
+python3 research/orchestrator-260809-1127/build_sok_corpus.py
+python3 research/orchestrator-260809-1127/write_sok_manuscript.py
+python3 research/orchestrator-260809-1127/verify_sok.py
 ```
 
 The last command succeeds only when all cases meet the identifier/evidence schema, all five lanes are complete, no high-priority candidate is pending, the requested model receipt is valid, the manuscript contains all required sections, and the embedded corpus SHA-256 matches the live corpus. Re-running network acquisition can produce a later snapshot; reproducing this paper means retaining the frozen artifacts and hashes above.

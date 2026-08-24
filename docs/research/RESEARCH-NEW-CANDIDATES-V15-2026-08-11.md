@@ -16,7 +16,7 @@ V15 冻结了 66 个 class、139 条 candidate/fix pair。DeepSeek 首轮仅作�
 
 ## 证据与边界
 
-- 冻结队列：`autoresearch/orchestrator-260811-atomic150/global-cross-file-v15/`。
+- 冻结队列：`research/orchestrator-260811-atomic150/global-cross-file-v15/`。
 - 模型路由：`global-cross-file-deepseek-v15/`；严格重跑：`global-cross-file-strict-deepseek-v15/`。
 - 机器裁决：`global-cross-file-strict-v15/adjudications.json`。
 - CVEList/GitHub Advisory Database 只提供 advisory 对象、机制和上游引用；最终判断来自本地 Git 的 parent→delta、真实 fix 与 blame。

@@ -14,7 +14,7 @@ reason_code, reason.
 ## Protocol (per row, budget max 6 network calls)
 
 1. LOCAL FIRST: grep the class_id in
-   autoresearch/orchestrator-260810-0613/audit-review/prioritized-ai-edges.jsonl
+   research/orchestrator-260810-0613/audit-review/prioritized-ai-edges.jsonl
    (19k rows). If edges exist, take candidate_sha/fix_sha/repository_identity
    from the first RESOLVED edge and skip to step 4.
 2. Advisory lookup: curl -sS -m 25 -H "Authorization: Bearer $GITHUB_TOKEN"

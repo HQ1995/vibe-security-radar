@@ -24,10 +24,10 @@
 
 ## 证据与快照边界
 
-- 选择源：`docs/AUDIT-STRICT-LEDGER-156-2026-08-11.md`，SHA-256 `e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`。
+- 选择源：`AUDIT-STRICT-LEDGER-156-2026-08-11.md`，SHA-256 `e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`。
 - CVEList checkout：`/home/hanqing/.cache/cve-analyzer/cvelistV5`，HEAD `8ca64b5ad6b84d3cd5741b023610b8494800f174`。
 - GitHub Advisory Database checkout：`/home/hanqing/.cache/cve-analyzer/advisory-database`，HEAD `39d8887723797efc1804585dd06585c9fd751226`。
-- row 24 的 reviewed GHSA 已不在当前 advisory checkout，但存在于冻结的一方 tar：`autoresearch/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz`。
+- row 24 的 reviewed GHSA 已不在当前 advisory checkout，但存在于冻结的一方 tar：`research/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz`。
 - 本轮未以实时网页内容定案。结论限于当前本地 CVEList/GHSA 一方 JSON、冻结一方 tar 和本地完整 git objects；未来 advisory 撤回、alias 修订、强推或新披露不在覆盖内。
 
 ## 20 行裁决
@@ -73,7 +73,7 @@ CB="$V/v2_github.com_codexbar_33118aaca129ca3c666f8cce2b0c2f27fef12501e76700a9e2
 ### row 24
 
 ```zsh
-TAR="$W/autoresearch/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz"
+TAR="$W/research/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz"
 tar -xOzf "$TAR" 'advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a/advisories/github-reviewed/2026/07/GHSA-gh4h-34gr-87r7/GHSA-gh4h-34gr-87r7.json' | jq -r '.summary,.details'
 git -C "$R/budibase_budibase" show -s --format=fuller 700ff33db7470d4d2dd9674e9e29dc5e6392daa4 1e6bf7f4 bca426de7dc36d680285295655dc640dea2aab21
 git -C "$R/budibase_budibase" diff 700ff33d^ 700ff33d -- packages/server/src/sdk/users/utils.ts packages/server/src/automations

@@ -23,7 +23,7 @@ not claim 150 independent vulnerability mechanisms.
 
 The accepted ledger is:
 
-`autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
+`research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
 
 Every row contains its complete public-ID set and accepted atomic edge evidence.
 
@@ -47,7 +47,7 @@ review.
 
 The exhaustive causal adjudication and all negative controls are recorded in:
 
-`docs/RESEARCH-CAUSAL-LEDGER-V2-2026-08-11.md`
+`RESEARCH-CAUSAL-LEDGER-V2-2026-08-11.md`
 
 ## First-party public-ID closure
 
@@ -71,7 +71,7 @@ NEEDS_REVIEW**. This closes all 190 current ledger IDs.
 
 The per-ID evidence is in:
 
-`docs/RESEARCH-PUBLIC-ID-FIRST-PARTY-CLOSURE-2026-08-11.md`
+`RESEARCH-PUBLIC-ID-FIRST-PARTY-CLOSURE-2026-08-11.md`
 
 Important precision boundaries:
 
@@ -124,14 +124,14 @@ audit_tmp=$(mktemp -d)
 uv run --project cve-analyzer python \
   scripts/apply_strict_causal_adjudications.py \
   --adjudications \
-  autoresearch/orchestrator-260811-atomic150/strict-causal-v2/adjudications.json \
+  research/orchestrator-260811-atomic150/strict-causal-v2/adjudications.json \
   --output-dir "$audit_tmp"
 cmp -s "$audit_tmp/ledger.jsonl" \
-  autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl
+  research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl
 cmp -s "$audit_tmp/rejected_edges.jsonl" \
-  autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/rejected_edges.jsonl
+  research/orchestrator-260811-atomic150/strict-ledger-union-v2/rejected_edges.jsonl
 cmp -s "$audit_tmp/summary.json" \
-  autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/summary.json
+  research/orchestrator-260811-atomic150/strict-ledger-union-v2/summary.json
 ```
 
 All three comparisons returned zero. The emitted census was exactly 107

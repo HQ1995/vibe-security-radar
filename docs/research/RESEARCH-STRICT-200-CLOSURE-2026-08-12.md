@@ -4,7 +4,7 @@ Date: 2026-08-12
 
 Repository: `/home/hanqing/agents/ai-slop`
 
-Base ledger: `autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
+Base ledger: `research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
 
 ## Result
 
@@ -82,9 +82,9 @@ The following tempting cases were not used to reach 200:
 
 ## Artifacts
 
-- Supplement and alias amendments: `autoresearch/orchestrator-260811-atomic150/strict-200-v3/supplement.json`
-- Final ledger: `autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl`
-- Machine summary: `autoresearch/orchestrator-260811-atomic150/strict-200-v3/summary.json`
+- Supplement and alias amendments: `research/orchestrator-260811-atomic150/strict-200-v3/supplement.json`
+- Final ledger: `research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl`
+- Machine summary: `research/orchestrator-260811-atomic150/strict-200-v3/summary.json`
 
 SHA-256:
 
@@ -99,8 +99,8 @@ Generate the final ledger from the frozen 190-ID base:
 
 ```zsh
 uv run --project cve-analyzer python scripts/merge_strict_ai_causal_supplement.py \
-  --supplement autoresearch/orchestrator-260811-atomic150/strict-200-v3/supplement.json \
-  --output-dir autoresearch/orchestrator-260811-atomic150/strict-200-v3
+  --supplement research/orchestrator-260811-atomic150/strict-200-v3/supplement.json \
+  --output-dir research/orchestrator-260811-atomic150/strict-200-v3
 ```
 
 Check the accounting invariants:
@@ -119,7 +119,7 @@ jq -s '
     accepted_unique_pairs: (edges | map([.candidate_sha,.fix_sha] | join("->")) | unique | length),
     alias_amendments: ([.[].evidence[]? | select(.kind == "public_id_alias_amendment")] | length)
   }
-' autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
+' research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
 ```
 
 Expected result:

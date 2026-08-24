@@ -27,7 +27,7 @@
 冻结基线文件：
 
 ```text
-autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
+research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
 110 components / 200 case-normalized public IDs
 SHA-256 0cc19a49406c57026d58a064987f50579f2c47ac016881746c73ccd6c2470a81
 ```
@@ -74,7 +74,7 @@ SHA-256 0cc19a49406c57026d58a064987f50579f2c47ac016881746c73ccd6c2470a81
 前三项的完整一方证据、member/carrier 分离、ancestry 与去重见：
 
 ```text
-docs/RESEARCH-ALIASFREE-NEW-COMPONENTS-BATCH-A-2026-08-12.md
+RESEARCH-ALIASFREE-NEW-COMPONENTS-BATCH-A-2026-08-12.md
 SHA-256 a7dd3db373af0fae98c10f8c96c58180cf80fc132fb6fb53fedbd44f3aae22c2
 ```
 
@@ -96,7 +96,7 @@ Hermes 与 Coolify 的结论使用本地 first-party Git、CVEList CNA、repo ad
 | 9 | GHSA-XH72-V6V9-MWHC / GHSA-G353-MGV3-8PCJ：Feishu webhook，同一机制组件 | `b0c67ea… -> 7844bc89… / c8003f1b…` |
 | 10 | GHSA-2Q7J-2VHX-56G8 / GHSA-W8WF-3QVJ-6XQF：Feishu account tool gate，同一机制组件 | `5f6e1c19… -> d4f11d30…` |
 
-完整逐项证据见 `docs/RESEARCH-OPENCLAW-FRONTIER-12-CLOSURE-2026-08-12.md`（SHA-256 `f0e9655bc724b1aac4bfc075ec1441400c3b2e8fa672e70a474977a983acd6f6`）。不得把 merge/squash carrier 当成 AI 原子 origin。
+完整逐项证据见 `RESEARCH-OPENCLAW-FRONTIER-12-CLOSURE-2026-08-12.md`（SHA-256 `f0e9655bc724b1aac4bfc075ec1441400c3b2e8fa672e70a474977a983acd6f6`）。不得把 merge/squash carrier 当成 AI 原子 origin。
 
 ## 48 个发布级 `AI_INCOMPLETE_REMEDIATION`，另有 13 个 commit-only
 
@@ -167,7 +167,7 @@ Repo advisory API 于 2026-08-12 返回七项均 `state=published`、`withdrawn_
 
 发布级新增为 n8n-mcp CVE-2026-42449 / GHSA-56C3-VFP2-5QQJ，以及 Prospero CVE-2026-59233、CVE-2026-59234、CVE-2026-59240。commit-only 新增为 Dynatrace GHSA-P7W7-4929-VPJ5、WACRM CVE-2026-49141、MISP CVE-2026-56422、OmniFaces GHSA-FP43-VJ7G-PG92 四个 incomplete-remediation 组件，以及 Prospero CVE-2026-59237 一个 strict origin 组件。
 
-完整 candidate/parent/fix、release tag 和反例见 `docs/RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-B-2026-08-12.md`（SHA-256 `318912fbc789ef7f0708044d2041c24fa69198f878c2c668b04af86031d4616e`）。
+完整 candidate/parent/fix、release tag 和反例见 `RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-B-2026-08-12.md`（SHA-256 `318912fbc789ef7f0708044d2041c24fa69198f878c2c668b04af86031d4616e`）。
 
 ## Batch C：再确认 1 个发布级 contributor、3 个 commit-only incomplete remediation
 
@@ -176,7 +176,7 @@ Repo advisory API 于 2026-08-12 返回七项均 `state=published`、`withdrawn_
 - Mistune CVE-2026-59923 / GHSA-8C25-4J27-2RV3：Claude partial 把 image directive 接入 `safe_url`，但 percent-encoded scheme 仍绕过；`c7101fcb...` 补 decode-before-check。
 - Mistune CVE-2026-59929 / GHSA-QFRW-5RXM-MHH2：同一 partial 留下独立的 legacy/chained-scheme denylist gap；同一 closure 扩充策略。两者与 partial 都首次在 `v3.3.0` 发布。
 
-完整代码差分、first-party advisory、tag gate 与 attribution 反例见 `docs/RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-C-2026-08-12.md`（SHA-256 `b1e03cb193003ebbba83b73b8d8bbcbcd72f02148ba00812967a2721e60a8ffd`）。
+完整代码差分、first-party advisory、tag gate 与 attribution 反例见 `RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-C-2026-08-12.md`（SHA-256 `b1e03cb193003ebbba83b73b8d8bbcbcd72f02148ba00812967a2721e60a8ffd`）。
 
 ## Batch D：再确认 7 个发布级 incomplete remediation
 
@@ -188,7 +188,7 @@ Repo advisory API 于 2026-08-12 返回七项均 `state=published`、`withdrawn_
 - File Browser CVE-2026-55667 / GHSA-FMM7-X4GX-8JHR：symlink-scope remediation 链漏 `Remove` / `RemoveAll` guard，failed-upload cleanup 可越 scope 删除且绕过 Delete permission。
 - File Browser CVE-2026-55668 / GHSA-8WC8-HF36-MJH9：同一链另漏 dangling-symlink write，`OpenFile(O_CREATE)` 可在 scope 外创建文件。它与删除项的 sink、权限、PoC 和 public IDs 独立，故不按 alias 合并。
 
-完整 parent/candidate/fix、release tags、一方 advisory、去重负控与 replay 命令见 `docs/RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-D-2026-08-12.md`（SHA-256 `3a8482a6badb0b8bff5dbf64adc18b37493c68dc56a25598be91ee3be7e727cd`）。其中 File Browser archive/backslash 的 CVE-2026-62843 已存在于 frozen strict ledger，本批明确排除重复。
+完整 parent/candidate/fix、release tags、一方 advisory、去重负控与 replay 命令见 `RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-D-2026-08-12.md`（SHA-256 `3a8482a6badb0b8bff5dbf64adc18b37493c68dc56a25598be91ee3be7e727cd`）。其中 File Browser archive/backslash 的 CVE-2026-62843 已存在于 frozen strict ledger，本批明确排除重复。
 
 ## Batch E：再确认 17 个发布级、2 个 commit-only incomplete remediation
 
@@ -197,7 +197,7 @@ Repo advisory API 于 2026-08-12 返回七项均 `state=published`、`withdrawn_
 - GitPython 新增 12 项均有独立 first-party GHSA、具体 API/option/sink 和 later closure；不是把同一 alias 或同一 PoC 拆行。Scriban 两项分别是 parser recursion 与 lazy range multiplication，也不是重复。
 - PraisonAI CVE-2026-62181 被保留为反例：一方虽标 `>=4.6.78` patched，但代码只挡 1/4 实现中的字面 `-exec`，不能准入。
 
-完整原子 candidate、PR member/carrier、release topology、19 项 advisory 状态和负控见 `docs/RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-E-2026-08-12.md`（SHA-256 `f889a12dbdace54f678b2c4cb8b203e76a57583f778d83a7b29052e7a99c27ad`）。
+完整原子 candidate、PR member/carrier、release topology、19 项 advisory 状态和负控见 `RESEARCH-POST135-INCOMPLETE-REMEDIATION-BATCH-E-2026-08-12.md`（SHA-256 `f889a12dbdace54f678b2c4cb8b203e76a57583f778d83a7b29052e7a99c27ad`）。
 
 ## 关键排除项
 
@@ -227,10 +227,10 @@ Repo advisory API 于 2026-08-12 返回七项均 `state=published`、`withdrawn_
 cd /home/hanqing/agents/ai-slop
 
 # Frozen baseline shape and digest.
-wc -l autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
-jq -r '.public_ids[]' autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
+wc -l research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
+jq -r '.public_ids[]' research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl \
   | tr '[:lower:]' '[:upper:]' | sort -u | wc -l
-sha256sum autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
+sha256sum research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl
 
 # GitPython release topology; partial fixes really shipped before later closure.
 gitpython_repo=/home/hanqing/agents/ai-slop/.ai-slop/cache/cve-analyzer/repos/v2_github.com_gitpython_c572da6f272ffa3a525231f03f831cb57d014c35a0987b3e1e11b8ec7575b6f1

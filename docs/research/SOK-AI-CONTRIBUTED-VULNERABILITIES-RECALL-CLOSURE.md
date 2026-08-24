@@ -5,7 +5,7 @@ Pipeline complete: **false**
 研究窗口：2025-05-01 至 2026-08-09（UTC）  
 总体单位：CVE/GHSA alias class
 
-> 本报告取代 `autoresearch/orchestrator-260809-1127` 的 `CONVERGED` 结论。旧结论只证明既有工件生成完毕，未证明候选总体被覆盖、阻塞项被界定或召回率达到停止阈值。本轮只研究已经公开编号漏洞的 advisory、patch 与历史，不进行新漏洞挖掘。
+> 本报告取代 `research/orchestrator-260809-1127` 的 `CONVERGED` 结论。旧结论只证明既有工件生成完毕，未证明候选总体被覆盖、阻塞项被界定或召回率达到停止阈值。本轮只研究已经公开编号漏洞的 advisory、patch 与历史，不进行新漏洞挖掘。
 
 ## 1. 可证伪的结束条件
 
@@ -50,7 +50,7 @@ Pipeline complete: **false**
 | `TERM_SCREENED_NONORIGIN` | 62 |
 | `SCOPE_EXCLUDED` | 6 |
 
-工件：[population ledger](../autoresearch/orchestrator-260809-1305/population-ledger.jsonl)、[summary](../autoresearch/orchestrator-260809-1305/population-ledger-summary.json)、[explicit-ID matches](../autoresearch/orchestrator-260809-1305/explicit-id-ai-commit-matches.jsonl)、[audit sample](../autoresearch/orchestrator-260809-1305/audit-sample.jsonl)。
+工件：[population ledger](../research/orchestrator-260809-1305/population-ledger.jsonl)、[summary](../research/orchestrator-260809-1305/population-ledger-summary.json)、[explicit-ID matches](../research/orchestrator-260809-1305/explicit-id-ai-commit-matches.jsonl)、[audit sample](../research/orchestrator-260809-1305/audit-sample.jsonl)。
 
 ## 3. DeepSeek 排序轮次与人工裁决
 
@@ -62,7 +62,7 @@ Pipeline complete: **false**
 | MEDIUM | 21 |
 | LOW | 241 |
 
-第一次并发运行在第 6 batch 遇到 HTTP 503；降为单 worker 后完整退出 0。失败运行首 batch 记录 4 个 HIGH，而稳定重跑为 3 个，因此额外保留并人工审查 CrowdSec 的另一个 branch counterpart，未让排序波动删除它。模型回执和完整结果分别见 [receipt](../autoresearch/orchestrator-260809-1305/deepseek-ranked-receipt.json) 与 [screen](../autoresearch/orchestrator-260809-1305/deepseek-ranked-screen.json)。
+第一次并发运行在第 6 batch 遇到 HTTP 503；降为单 worker 后完整退出 0。失败运行首 batch 记录 4 个 HIGH，而稳定重跑为 3 个，因此额外保留并人工审查 CrowdSec 的另一个 branch counterpart，未让排序波动删除它。模型回执和完整结果分别见 [receipt](../research/orchestrator-260809-1305/deepseek-ranked-receipt.json) 与 [screen](../research/orchestrator-260809-1305/deepseek-ranked-screen.json)。
 
 ### 3.1 所有最终 HIGH 均已逐例裁决
 
@@ -77,7 +77,7 @@ Pipeline complete: **false**
 | Guzzle Services / `73d4e126 → 2edaddc4` | NOT_AI_CAUSAL | CDATA sink 起源于 2014 `fecd548c`；AI-bound candidate 只加 null guard |
 | Rancher Fleet / `b6115302 → 9cc729f7` | **AI_CAUSAL, grade B** | grouped version boundary 混了三条 advisory；纠正到真实 fix `c967a3c1` 后，仅 CVE-2026-44937/GHSA-jmf4-m7j9-g72r 成立 |
 
-额外保守审查的 CrowdSec `d8b922d5 → 3d5c4d9b` 也为 `NOT_AI_CAUSAL`。完整四合同（AI binding、Reachability、Violation、History Boundary）、证据路径与逐例理由见 [ranked adjudications](../autoresearch/orchestrator-260809-1305/ranked-adjudications.json)。
+额外保守审查的 CrowdSec `d8b922d5 → 3d5c4d9b` 也为 `NOT_AI_CAUSAL`。完整四合同（AI binding、Reachability、Violation、History Boundary）、证据路径与逐例理由见 [ranked adjudications](../research/orchestrator-260809-1305/ranked-adjudications.json)。
 
 ### 3.2 新增 strict case：Rancher Fleet
 
@@ -94,7 +94,7 @@ candidate_regex_matches_unrelated_repo=true
 patched_regex_matches_unrelated_repo=false
 ```
 
-模型把 CVE-2026-44935、CVE-2026-44936、CVE-2026-44937 合在一个错误的 version-boundary root 上；只有 44937 的 `pkg/webhook/webhook.go` mechanism 被纳入，另外两条从该 edge 排除。证据包与 SHA-256 清单见 [rancher-fleet](../autoresearch/orchestrator-260809-1305/rancher-fleet/)。
+模型把 CVE-2026-44935、CVE-2026-44936、CVE-2026-44937 合在一个错误的 version-boundary root 上；只有 44937 的 `pkg/webhook/webhook.go` mechanism 被纳入，另外两条从该 edge 排除。证据包与 SHA-256 清单见 [rancher-fleet](../research/orchestrator-260809-1305/rancher-fleet/)。
 
 ## 4. 为什么仍然不能写 converged
 
@@ -112,7 +112,7 @@ patched_regex_matches_unrelated_repo=false
 | same-repository fallback candidates | 5,606,121 |
 | unresolved clone directories | 12 |
 
-源工件明确写有 `campaign_complete=false`、`coverage_complete=false`。当前 [blocked-bound-analysis](../autoresearch/orchestrator-260809-1305/blocked-bound-analysis.json) 的状态为 `UNBOUNDED`；这些行保持 unknown。
+源工件明确写有 `campaign_complete=false`、`coverage_complete=false`。当前 [blocked-bound-analysis](../research/orchestrator-260809-1305/blocked-bound-analysis.json) 的状态为 `UNBOUNDED`；这些行保持 unknown。
 
 ### 4.2 已知 positives 暴露 lane 缺口
 
@@ -120,7 +120,7 @@ patched_regex_matches_unrelated_repo=false
 
 ### 4.3 Capture–recapture 只能诊断
 
-forward 与 explicit-ID 的 Chapman 点估计为 59，近似区间为 `[26, 109.35]`；但 discovery systems 依赖、case ascertainment 非随机，且 13/40 没被当前系统捕获，所以 `usable_for_claim=false`。它提示仍有未观察总体，不能转换成 recall 声明。详见 [capture-recapture](../autoresearch/orchestrator-260809-1305/capture-recapture.json)。
+forward 与 explicit-ID 的 Chapman 点估计为 59，近似区间为 `[26, 109.35]`；但 discovery systems 依赖、case ascertainment 非随机，且 13/40 没被当前系统捕获，所以 `usable_for_claim=false`。它提示仍有未观察总体，不能转换成 recall 声明。详见 [capture-recapture](../research/orchestrator-260809-1305/capture-recapture.json)。
 
 ### 4.4 Fresh-repository recall 下界不足
 
@@ -128,7 +128,7 @@ forward 与 explicit-ID 的 Chapman 点估计为 59，近似区间为 `[26, 109.
 
 ### 4.5 饱和停止规则被本轮新 case 重置
 
-本轮 270-edge expansion 新增 1 个 verified alias class，因此是 `YIELD_CONTINUE`，连续 zero-yield rounds 为 **0**，不是 2。详见 [saturation rounds](../autoresearch/orchestrator-260809-1305/saturation-rounds.json)。
+本轮 270-edge expansion 新增 1 个 verified alias class，因此是 `YIELD_CONTINUE`，连续 zero-yield rounds 为 **0**，不是 2。详见 [saturation rounds](../research/orchestrator-260809-1305/saturation-rounds.json)。
 
 ## 5. 当前 gate 状态
 
@@ -162,14 +162,14 @@ forward 与 explicit-ID 的 Chapman 点估计为 59，近似区间为 `[26, 109.
 
 ```bash
 # 重新构建总体 ledger（会重写冻结抽样，正式复现时使用相同 selection_seed）
-python3 autoresearch/orchestrator-260809-1305/build_recall_ledger.py
+python3 research/orchestrator-260809-1305/build_recall_ledger.py
 
 # DeepSeek 排序：模型只排优先级，不决定 membership
-python3 autoresearch/orchestrator-260809-1305/run_deepseek_ranked_screen.py
+python3 research/orchestrator-260809-1305/run_deepseek_ranked_screen.py
 
 # 已公开 patch 的最小 differential
-(cd autoresearch/orchestrator-260809-1305/rancher-fleet && go run regex-differential.go)
+(cd research/orchestrator-260809-1305/rancher-fleet && go run regex-differential.go)
 
 # 独立 recall gate；当前预期退出 1，因为七个召回门尚未闭合
-python3 autoresearch/orchestrator-260809-1305/verify_recall_closure.py
+python3 research/orchestrator-260809-1305/verify_recall_closure.py
 ```

@@ -6,7 +6,7 @@ with its own name when cited.
 
 ## L0 - Frozen ground truth (the only claim source)
 
-- autoresearch/orchestrator-260814-ghsa200-canonical84/ledger.jsonl
+- research/orchestrator-260814-ghsa200-canonical84/ledger.jsonl
   - ledger.jsonl sha256: a9b23a7ca39104f851b684a4089fa58f43887bb379895b68f6306c47d969ec06
   - 84 strict released first-party GHSA identities; status HOLD;
     causal/publication/integration admission all false; greater-than-200
@@ -17,9 +17,9 @@ with its own name when cited.
 
 ## L1 - Source layer (input, never a standalone claim)
 
-- autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl (211 hypotheses)
-- autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl (212 cases)
-- autoresearch/orchestrator-260813-fp211-audit/experience.json (54 FP class census)
+- research/orchestrator-260813-fp211-audit/final_mechanisms.jsonl (211 hypotheses)
+- research/orchestrator-260813-fp211-audit/public_cases.jsonl (212 cases)
+- research/orchestrator-260813-fp211-audit/experience.json (54 FP class census)
 - 65 CONFIRM / 84 NARROW / 54 FALSE_POSITIVE / 9 UNKNOWN; 149 causal-valid.
 
 ## L2 - Presentation layer (display contract, not data)
@@ -33,9 +33,9 @@ with its own name when cited.
 
 ## L3 - Worker proposals (never truth until leader replay)
 
-- autoresearch/herdr-260814-final-unknown9-grok46-high/ (9 UNKNOWN ordinals)
-- autoresearch/herdr-260814-sample12-iaa-grok46-high/ (12-row blind re-review)
-- autoresearch/orchestrator-260814-closure-sol/ (taxonomy + estimate + closure)
+- research/herdr-260814-final-unknown9-grok46-high/ (9 UNKNOWN ordinals)
+- research/herdr-260814-sample12-iaa-grok46-high/ (12-row blind re-review)
+- research/orchestrator-260814-closure-sol/ (taxonomy + estimate + closure)
 - Worker PASS/CONFIRM is a proposal. Agreement with L0 is measured, not assumed.
 
 ## Stale / superseded (never cite as current)
@@ -46,6 +46,6 @@ with its own name when cited.
 
 ## Quarantine
 
-- autoresearch/.leader-quarantine-260814/ holds four stray root-level temp
+- research/.leader-quarantine-260814/ holds four stray root-level temp
   artifacts moved out of the way on 2026-08-14 (three ANC hash files and
   .tmp_compute_output.py). Nothing frozen was deleted.

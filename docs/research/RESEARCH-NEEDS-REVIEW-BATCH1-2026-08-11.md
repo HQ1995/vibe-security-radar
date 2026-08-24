@@ -23,18 +23,18 @@
 
 ## 证据与快照边界
 
-- 选择源：`docs/AUDIT-STRICT-LEDGER-156-2026-08-11.md`，SHA-256 `e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`。
+- 选择源：`AUDIT-STRICT-LEDGER-156-2026-08-11.md`，SHA-256 `e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`。
 - CVEList checkout：`/home/hanqing/.cache/cve-analyzer/cvelistV5`，HEAD `8ca64b5ad6b84d3cd5741b023610b8494800f174`。
 - GitHub Advisory Database checkout：`/home/hanqing/.cache/cve-analyzer/advisory-database`，HEAD `39d8887723797efc1804585dd06585c9fd751226`。
-- 固定来源 tar：`autoresearch/orchestrator-260809-0539/current-source-snapshots/cvelistV5-11ff8d6bde24923d36a0f18758aa2ffaaac220d6.tar.gz` 与 `advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz`。tar 仅用于重放一方快照，不提供 AI 因果。
+- 固定来源 tar：`research/orchestrator-260809-0539/current-source-snapshots/cvelistV5-11ff8d6bde24923d36a0f18758aa2ffaaac220d6.tar.gz` 与 `advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz`。tar 仅用于重放一方快照，不提供 AI 因果。
 - 本轮未实时联网；结论限于当前本地一方 JSON、完整 git objects 和缓存的 `mcp-go@v0.31.0` 源码。后续 advisory 撤回、alias 修订、强推或新披露不在本轮覆盖内。
 
 冻结快照可先这样查；下面逐案命令则读取当前本地 checkout：
 
 ```zsh
 W=/home/hanqing/agents/ai-slop
-tar -tzf "$W/autoresearch/orchestrator-260809-0539/current-source-snapshots/cvelistV5-11ff8d6bde24923d36a0f18758aa2ffaaac220d6.tar.gz" | rg 'CVE-2026-32247.json|CVE-2025-59829.json'
-tar -tzf "$W/autoresearch/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz" | rg 'GHSA-gg5m-55jj-8m5g|GHSA-66m2-gx93-v996'
+tar -tzf "$W/research/orchestrator-260809-0539/current-source-snapshots/cvelistV5-11ff8d6bde24923d36a0f18758aa2ffaaac220d6.tar.gz" | rg 'CVE-2026-32247.json|CVE-2025-59829.json'
+tar -tzf "$W/research/orchestrator-260809-0539/current-source-snapshots/advisory-database-71ca7b6916b1fb164168b4bb6050d2676e5a8d6a.tar.gz" | rg 'GHSA-gg5m-55jj-8m5g|GHSA-66m2-gx93-v996'
 ```
 
 ## 20 行裁决

@@ -19,7 +19,7 @@ from cohort.publication_admission import evaluate_publication_admission
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent
-_FP211_DIR = _REPO_ROOT / "autoresearch" / "orchestrator-260813-fp211-audit"
+_FP211_DIR = _REPO_ROOT / "research" / "orchestrator-260813-fp211-audit"
 _DEFAULT_BASE = _SCRIPT_DIR / "audit_adjudications.json"
 _DEFAULT_FINAL = _FP211_DIR / "final_mechanisms.jsonl"
 _DEFAULT_MANIFEST = _FP211_DIR / "manifest.jsonl"
@@ -259,7 +259,7 @@ def build_publication_corpus(
                 "label": _label(final, admission),
                 "aliases": list(case.get("aliases", [])),
                 "excluded_aliases": list(final["public_ids_remove"]),
-                "source": "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+                "source": "research/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
                 "fp211": {
                     "ordinal": ordinal,
                     "row_key": final["row_key"],
@@ -353,13 +353,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         inputs = {
             "scripts/audit_adjudications.json": _sha256(args.base),
-            "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl": _sha256(
+            "research/orchestrator-260813-fp211-audit/final_mechanisms.jsonl": _sha256(
                 args.final
             ),
-            "autoresearch/orchestrator-260813-fp211-audit/manifest.jsonl": _sha256(
+            "research/orchestrator-260813-fp211-audit/manifest.jsonl": _sha256(
                 args.manifest
             ),
-            "autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl": _sha256(
+            "research/orchestrator-260813-fp211-audit/public_cases.jsonl": _sha256(
                 args.public_cases
             ),
             "scripts/build_publication_adjudications.py": _sha256(Path(__file__)),

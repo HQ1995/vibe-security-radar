@@ -2,7 +2,7 @@
 
 Date: 2026-08-11 (UTC)
 
-Frozen accepted ledger: `autoresearch/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
+Frozen accepted ledger: `research/orchestrator-260811-atomic150/strict-ledger-union-v2/ledger.jsonl`
 
 Ledger SHA-256: `282d2975d0ee24e9949cc4d108ad5a1ffd9b045ad8548cc6b1661aaf2c18392e`
 

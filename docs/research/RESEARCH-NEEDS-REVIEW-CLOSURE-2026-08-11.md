@@ -52,7 +52,7 @@
 
 - [OpenClaw GHSA-xwcj-hwhf-h378](https://github.com/advisories/GHSA-xwcj-hwhf-h378) 明确点名 `src/media/fetch.ts` 的 Telegram token-bearing URL error 与 fix `7a53eb7e`。
 - [9router GHSA-6g2f-w7g3-77vf](https://github.com/decolua/9router/security/advisories/GHSA-6g2f-w7g3-77vf) 明确点名 `src/dashboardGuard.js` 的 Host/Origin trust 与 fix references；这反证 IFlow candidate。
-- 其余一方 advisory 文本冻结在 `autoresearch/orchestrator-260811-atomic150/*review-packets*/packets.jsonl`，alias membership 冻结在 `autoresearch/orchestrator-260809-0539/current-official-census/alias_classes.jsonl`。
+- 其余一方 advisory 文本冻结在 `research/orchestrator-260811-atomic150/*review-packets*/packets.jsonl`，alias membership 冻结在 `research/orchestrator-260809-0539/current-official-census/alias_classes.jsonl`。
 
 ## 可复核命令
 

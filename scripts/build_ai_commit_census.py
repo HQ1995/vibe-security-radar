@@ -14,7 +14,7 @@ from pathlib import Path
 from research_lib import git, find_clones
 
 ROOT = Path('/home/hanqing/agents/ai-slop')
-OUT = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/ai-commit-census.json'
+OUT = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/ai-commit-census.json'
 SINCE = '2025-05-01'
 UNTIL = '2026-08-16'
 

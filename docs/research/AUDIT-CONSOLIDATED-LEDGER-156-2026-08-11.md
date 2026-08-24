@@ -23,10 +23,10 @@
 
 ## 输入与快照边界
 
-- `docs/AUDIT-STRICT-LEDGER-156-2026-08-11.md`：`e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`
-- `docs/RESEARCH-NEEDS-REVIEW-BATCH1-2026-08-11.md`：`9f3a36e42c0ee076e6158acc2229b9a5f67c6cae8181075fcffd94e40b299476`
-- `docs/RESEARCH-NEEDS-REVIEW-BATCH2-2026-08-11.md`：`76ebe794b33f86de6e3a51c715353667c066dbf4fde1090f97fd12f3cc3b03c8`
-- `autoresearch/orchestrator-260811-atomic150/strict-ledger-final/ledger.jsonl`：`af4aef068de6cf4699423cd37e859aa6cdbb6d3b00c1746089781ea82bb23a49`
+- `AUDIT-STRICT-LEDGER-156-2026-08-11.md`：`e95059199f35756a0c95970c5c2950e9c846ffd701c810126a58ff808baf98bb`
+- `RESEARCH-NEEDS-REVIEW-BATCH1-2026-08-11.md`：`9f3a36e42c0ee076e6158acc2229b9a5f67c6cae8181075fcffd94e40b299476`
+- `RESEARCH-NEEDS-REVIEW-BATCH2-2026-08-11.md`：`76ebe794b33f86de6e3a51c715353667c066dbf4fde1090f97fd12f3cc3b03c8`
+- `research/orchestrator-260811-atomic150/strict-ledger-final/ledger.jsonl`：`af4aef068de6cf4699423cd37e859aa6cdbb6d3b00c1746089781ea82bb23a49`
 - CVEList HEAD：`8ca64b5ad6b84d3cd5741b023610b8494800f174`
 - GitHub Advisory Database HEAD：`39d8887723797efc1804585dd06585c9fd751226`
 - 未用实时网页定案；结论限于上述本地/冻结一方快照与本地 git objects。模型产物仅保留为路由 provenance。

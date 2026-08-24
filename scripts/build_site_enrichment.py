@@ -10,8 +10,8 @@ from pathlib import Path
 from research_lib import git, find_clones, clone_with_commit, commit_text
 
 ROOT = Path('/home/hanqing/agents/ai-slop')
-OUT_ENR = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/enrichment-fixes.json'
-OUT_CE = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/code-evidence.json'
+OUT_ENR = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/enrichment-fixes.json'
+OUT_CE = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/code-evidence.json'
 
 CAUSE = [('ssrf', r'ssrf|server-side request|outbound (url|dial)|private (ip|address)'),
          ('injection', r'xss|cross-site|injection|command|exec|sqli|ssti|rce|deserializ'),

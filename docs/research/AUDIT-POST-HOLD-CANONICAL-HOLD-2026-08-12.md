@@ -372,10 +372,10 @@ Batch III 定向 live 检查：row 1 Synology fail-open/`v2026.2.22`/`v2026.2.24
 ## 可重放命令
 
 ```zsh
-python3 autoresearch/orchestrator-260812-posthold-canonical/build.py --check
-python3 autoresearch/orchestrator-260812-posthold-canonical/verify.py
-python3 autoresearch/orchestrator-260812-posthold-canonical/verify.py --live
-python3 autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py
+python3 research/orchestrator-260812-posthold-canonical/build.py --check
+python3 research/orchestrator-260812-posthold-canonical/verify.py
+python3 research/orchestrator-260812-posthold-canonical/verify.py --live
+python3 research/orchestrator-260812-posthold-canonical/test_canonical.py
 ```
 
 `--live` 只读取本地一方 Git clones，并通过 `gh api` 读取公开 advisory；命令不打印 credential。结构 verifier 与 test 不需要网络。Batch II 定向 replay 另读 `.ai-slop/cache` 下的 fission v2 clone。Batch III 定向 replay 另读 OpenClaw/garminconnect v2 clone，并对 taylored 做 npm tarball 404 检查。Batch IV 定向 replay 另读 OpenClaw/mruby/MISP/claw-orchestrator/9router/WACRM clones。
@@ -415,14 +415,14 @@ Batch IV 定向 live 检查：row 2 nickname/`v2026.3.2`/`v2026.3.22`、row 8 Em
 
 ## Durable artifacts
 
-- `autoresearch/orchestrator-260812-posthold-canonical/ledger.jsonl`
-- `autoresearch/orchestrator-260812-posthold-canonical/summary.json`
-- `autoresearch/orchestrator-260812-posthold-canonical/result.json`
-- `autoresearch/orchestrator-260812-posthold-canonical/adjudications.json`
-- `autoresearch/orchestrator-260812-posthold-canonical/inherited_corrections.json`
-- `autoresearch/orchestrator-260812-posthold-canonical/source_manifest.json`
-- `autoresearch/orchestrator-260812-posthold-canonical/build.py`
-- `autoresearch/orchestrator-260812-posthold-canonical/verify.py`
-- `autoresearch/orchestrator-260812-posthold-canonical/test_canonical.py`
+- `research/orchestrator-260812-posthold-canonical/ledger.jsonl`
+- `research/orchestrator-260812-posthold-canonical/summary.json`
+- `research/orchestrator-260812-posthold-canonical/result.json`
+- `research/orchestrator-260812-posthold-canonical/adjudications.json`
+- `research/orchestrator-260812-posthold-canonical/inherited_corrections.json`
+- `research/orchestrator-260812-posthold-canonical/source_manifest.json`
+- `research/orchestrator-260812-posthold-canonical/build.py`
+- `research/orchestrator-260812-posthold-canonical/verify.py`
+- `research/orchestrator-260812-posthold-canonical/test_canonical.py`
 
 本报告没有改写 Batch 2 的冻结 artifact。它在单一新账本中显式接纳、收窄或拒绝 post-hold 行与 Batch I/II/III/IV 的 96 个抽样行，并保留所有未闭合项。Batch H 没有提供补位项；Batch I 把发布级 PASS 从 191 降到 181；Batch II 再降到 159；Batch III 再降到 142；Batch IV 再降到 126，并增加 REJECT/UNKNOWN/NARROW。仍需替换 23 个 released REJECT、闭合 7 个 released UNKNOWN 并新增无重复组件；四十三条 NARROW 仍只能按各自窄口径使用，不能作为“200 已完成”的依据。

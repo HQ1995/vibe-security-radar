@@ -32,7 +32,7 @@
 
 ## 产物与模型边界
 
-- relation closure：`autoresearch/orchestrator-260811-atomic150/squash-assistant-single-relation-v2/`。
+- relation closure：`research/orchestrator-260811-atomic150/squash-assistant-single-relation-v2/`。
 - member screen：`squash-assistant-all-member-same-file-v2/`。
 - packets/model routing：`squash-assistant-all-member-packets-v2/`、`squash-assistant-all-member-deepseek-v2/`。
 - 机器裁决：`squash-assistant-strict-v1/adjudications.json`。

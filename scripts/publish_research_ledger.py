@@ -11,14 +11,14 @@ from pathlib import Path
 from research_lib import git, find_clones, clone_with_commit, commit_text
 
 ROOT = Path('/home/hanqing/agents/ai-slop')
-FOUNDATION = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/foundation.jsonl'
-CHAINS = ROOT/'autoresearch/orchestrator-260814-irchains-sol/ir-chains.jsonl'
+FOUNDATION = ROOT/'research/orchestrator-260814-ghsa200-canvas/foundation.jsonl'
+CHAINS = ROOT/'research/orchestrator-260814-irchains-sol/ir-chains.jsonl'
 OUT = ROOT/'web/src/generated/research-data.json'
 BASE_BACKUP = ROOT/'web/src/generated/research-data.base84.json'
-DATE_FALLBACK = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json'
-ENRICH = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/enrichment-fixes.json'
-CODE_EVIDENCE = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/code-evidence.json'
-AI_CENSUS = ROOT/'autoresearch/orchestrator-260814-ghsa200-canvas/sweep/ai-commit-census.json'
+DATE_FALLBACK = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json'
+ENRICH = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/enrichment-fixes.json'
+CODE_EVIDENCE = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/code-evidence.json'
+AI_CENSUS = ROOT/'research/orchestrator-260814-ghsa200-canvas/sweep/ai-commit-census.json'
 ADB = '/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/advisory-database'
 POOL = '/home/hanqing/.cache/ghsa200-sweep-fetch'
 CVE_REPOS = '/home/hanqing/.cache/cve-analyzer/repos'

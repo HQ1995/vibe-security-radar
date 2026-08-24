@@ -2,7 +2,7 @@
 
 ## 结论先行
 
-以 `autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl` 为冻结基线，本批重新从一方 advisory、PR member 和本地 Git parent delta 出发核验了 5 个候选组件。结果是：
+以 `research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl` 为冻结基线，本批重新从一方 advisory、PR member 和本地 Git parent delta 出发核验了 5 个候选组件。结果是：
 
 - **PASS 3 个语义组件 / 6 个 public IDs**；
 - **FAIL 2 个组件 / 4 个 public IDs**；
@@ -291,8 +291,8 @@ reversal: environment data + single-quoted heredoc source separation
 ### 1. 冻结基线、official alias 与零交集
 
 ```zsh
-ledger_file='autoresearch/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl'
-official_classes='autoresearch/orchestrator-260809-0539/current-official-census/alias_classes.jsonl'
+ledger_file='research/orchestrator-260811-atomic150/strict-200-v3/ledger.jsonl'
+official_classes='research/orchestrator-260809-0539/current-official-census/alias_classes.jsonl'
 
 sha256sum "$ledger_file"
 jq -s '{rows:length,components:([.[].component_id]|unique|length),ids:([.[].public_ids[]|ascii_upcase]|unique|length)}' "$ledger_file"

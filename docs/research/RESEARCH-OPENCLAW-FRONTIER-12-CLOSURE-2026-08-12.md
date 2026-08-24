@@ -317,4 +317,4 @@ git -C "$R" tag --contains 0b4d0733 --sort=creatordate | rg '^v2026\.[0-9]+\.[0-
 
 - 正文前缀 SHA-256（`sed '/^## Artifact integrity$/,$d' <file> | sha256sum`）：`f7c36abc2f9628a0bfcc1ec1302f4f3484d39cc6a1c6cd6995f76d37a0ff3c26`
 - 完整文件 SHA-256 无法无悖论地自嵌；在交接消息中另行给出并由 `sha256sum` 复算。
-- whitespace gate：`git diff --no-index --check /dev/null docs/RESEARCH-OPENCLAW-FRONTIER-12-CLOSURE-2026-08-12.md`（最终运行无诊断）。
+- whitespace gate：`git diff --no-index --check /dev/null RESEARCH-OPENCLAW-FRONTIER-12-CLOSURE-2026-08-12.md`（最终运行无诊断）。
