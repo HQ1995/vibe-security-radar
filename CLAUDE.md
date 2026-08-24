@@ -6,18 +6,19 @@ Detect AI-introduced vulnerabilities by analyzing CVE fix commits for AI co-auth
 
 | Directory | What | Stack |
 |-----------|------|-------|
-| `cve-analyzer/` | CLI tool — 7-tier fix discovery, git blame, AI signal detection | Python 3.13, uv |
-| `web/` | Dashboard — CVE browser, analytics, tool pages | Next.js 16, React 19, TailwindCSS |
-| `scripts/` | Data pipeline, audit, and regression test scripts |
+| `web/` | Public catalog (Cloudflare Pages) | Next.js 16, React 19, TailwindCSS |
+| `artifacts/` | Canonical funnel ledger | JSONL |
+| `scripts/` | Publisher, preflight, research helpers | Python 3 |
+| `cve-analyzer/` | Older CVE → blame CLI; not the live catalog source | Python 3.13, uv |
 
 Analyzer source: `cve-analyzer/src/cve_analyzer/`. Tests: `cve-analyzer/tests/`.
 
 ## Data Flow
 
-The site has one data source: the 168-case research pipeline.
+The site has one data source: confirmed TPs from the funnel ledger.
 
 ```
-python3 scripts/publish_research_ledger.py   # → web/src/generated/research-data.json
+python3 scripts/publish_tp_ledger.py   # → web/src/generated/research-data.json
 cd web && npm run build
 ```
 
@@ -29,7 +30,7 @@ npm run dev / npm run build in web/ run the generator automatically
 - The frozen data-refresh campaign (generate_web_data.py, web_data/,
   run_data_refresh.py, quality gates, tests, web release gates) is archived
   under archives/legacy-web-data-campaign/. Nothing in the live pipeline
-  reads it.nothing in the site reads them.
+  reads them.
 
 ## Key Commands
 

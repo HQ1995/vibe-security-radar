@@ -4,7 +4,7 @@ Updated 2026-08-15 after repeated web-data conflicts. Every live agent must
 read this before editing anything outside its own output dir.
 
 - web/src/generated/research-data.json : single-writer = the leader, via
-  scripts/publish_research_ledger.py ONLY. No agent edits it by hand and no
+  scripts/publish_tp_ledger.py ONLY. No agent edits it by hand and no
   agent runs git checkout on it.
 - web/src/app, web/src/components, web/src/lib : owned by the site-fix2 lane.
   Other lanes treat them as read-only.
