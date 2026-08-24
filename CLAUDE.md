@@ -7,7 +7,7 @@ Public catalog of confirmed AI-introduced vulnerabilities. Live site: https://vi
 | Path | Role |
 |------|------|
 | `web/` | Next.js 16 static catalog (Cloudflare Pages) |
-| `artifacts/funnel-account-20260817.jsonl` | Canonical research ledger |
+| `artifacts/funnel-account-20260817.jsonl` | Canonical research ledger (schema: `docs/DATA-SCHEMA.md`) |
 | `scripts/publish_tp_ledger.py` | Builds `web/src/generated/research-data.json` |
 | `scripts/site_preflight.py` | Publication gates before `web/` build |
 | `cve-analyzer/` | Older CVE → blame CLI; not the live catalog source |
