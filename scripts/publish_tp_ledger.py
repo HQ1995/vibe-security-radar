@@ -223,6 +223,7 @@ def research_records(row: dict) -> list[dict]:
     records: list[dict] = []
     for key in (
         "causal_research",
+        "round6_research",
         "round5_research",
         "round4_research",
         "round3_research",
@@ -230,6 +231,15 @@ def research_records(row: dict) -> list[dict]:
         value = row.get(key)
         if isinstance(value, dict) and value:
             records.append(value)
+    for key, value in row.items():
+        if key.startswith("round") and key.endswith("_research") and key not in (
+            "round3_research",
+            "round4_research",
+            "round5_research",
+            "round6_research",
+        ):
+            if isinstance(value, dict) and value:
+                records.append(value)
     for key in ("squash_audit", "partial_wave", "blocked535", "blocked106"):
         value = row.get(key)
         if isinstance(value, list):
