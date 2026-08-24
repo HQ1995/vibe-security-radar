@@ -1,0 +1,76 @@
+Merge commit from fork
+
+* security: fail closed when multi-tenant requests omit tenant headers (v2.51.2)
+
+GHSA-jxx9-px88-pj69 -- when ENABLE_MULTI_TENANT=true, requests without
+both x-n8n-url and x-n8n-key silently fell back to the process-level
+N8N_API_URL/N8N_API_KEY, allowing one authenticated MCP tenant to
+operate on the operator's n8n instance.
+
+Two-layer fix:
+- HTTP edge in src/http-server-single-session.ts now rejects header-less
+  multi-tenant requests with 400 / JSON-RPC -32602 / "Multi-tenant
+  headers required" before any handler runs.
+- getN8nApiClient in src/mcp/handlers-n8n-manager.ts refuses to construct
+  an env-fallback client when ENABLE_MULTI_TENANT=true, protecting every
+  caller of the factory.
+
+Single-tenant mode (ENABLE_MULTI_TENANT=false or unset) is unchanged.
+
+Regression tests in tests/unit/http-server/ssrf-gate.test.ts and
+tests/unit/mcp/handlers-n8n-manager.test.ts.
+
+Reported by @u-ktdi.
+
+Conceived by Romuald Cz?onkowski - https://www.aiadvisors.pl/en
+
+* security: close two operator-leak gaps surfaced by GHSA-jxx9-px88-pj69 review
+
+Defense-in-depth follow-up to the previous commit. The reviewer flagged
+two paths where the operator's process-env config still reached tenant
+callers in multi-tenant mode, even though the original two-layer fix
+made them unreachable through documented codepaths:
+
+- Trigger handlers (src/triggers/handlers/base-handler.ts) had their own
+  context-or-env fallback in getBaseUrl() / getApiKey(). In multi-tenant
+  mode without a tenant context they now return undefined instead of
+  the operator's URL / key. Closes the latent footgun any future caller
+  that instantiates a handler outside ensureApiConfigured() would
+  otherwise reintroduce.
+
+- handleHealthCheck, handleDiagnostic, handleDeployTemplate, and
+  handleAuditInstance previously surfaced getN8nApiConfig()?.baseUrl in
+  their responses. In multi-tenant mode with a tenant context this would
+  leak the operator's URL where the tenant URL was the correct answer;
+  with no tenant context it would also leak the operator's URL. A new
+  resolveN8nApiConfigForResponse(context) helper now centralizes the
+  decision: prefer context, fall back to env only in single-tenant mode.
+
+Regression tests:
+- tests/unit/triggers/handlers/base-handler.test.ts -- 4 new tests for
+  the env-fallback short-circuit (negative + context-preserved cases).
+- tests/unit/mcp/handlers-n8n-manager.test.ts -- 2 new tests asserting
+  handleHealthCheck and handleDiagnostic responses do not contain the
+  operator URL in multi-tenant mode without context.
+
+Single-tenant mode is unchanged.
+
+Conceived by Romuald Cz?onkowski - https://www.aiadvisors.pl/en
+
+* security: mask env credentials in handleDiagnostic envVars (GHSA-jxx9-px88-pj69)
+
+Reviewer caught a third leak path the prior commit (f3c9371) missed:
+handleDiagnostic's response includes a verbatim copy of
+process.env.N8N_API_URL and a boolean derived from N8N_API_KEY under
+data.environment.*, separate from data.apiConfiguration.* that the
+helper already covers. In multi-tenant mode this surfaces the
+operator's env config to tenants regardless of their context.
+
+Now masked to null in multi-tenant mode. Single-tenant mode unchanged.
+
+The existing regression test only stringified data.apiConfiguration and
+therefore missed this leak. Strengthened it to stringify the full
+result.data and to assert against both 'https://n8n.test.com' and
+'***configured***'.
+
+Conceived by Romuald Cz?onkowski - https://www.aiadvisors.pl/en

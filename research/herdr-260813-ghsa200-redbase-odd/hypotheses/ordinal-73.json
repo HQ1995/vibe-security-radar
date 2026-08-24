@@ -1,0 +1,77 @@
+{
+  "ordinal": 73,
+  "row_key": "strict-200-v3:alias-d15c3d1da6dab91042d63c2e",
+  "primary_id": "CVE-2026-10855",
+  "public_ids": [
+    "CVE-2026-10855",
+    "GHSA-243V-5F97-VFQ3"
+  ],
+  "ghsa": [
+    "GHSA-243V-5F97-VFQ3"
+  ],
+  "repository": "MISP/MISP",
+  "mechanism": "CIRCL CVE-2026-10855 names Event Template Importer overwrite without org check and patch 7c2200d1. Unreviewed GHSA-243v-5f97-vfq3 has cve_id=CVE-2026-10855. Parent of 41450bdb has no EventTemplateImporter.php. Member 41450bdb (Claude Opus 4.7) adds overwrite that preserves org_id/creator and states auth is the caller's responsibility. Controller 0efb4e00a (also Claude) POSTs mode=overwrite into that lib with only perm_template ACL. Fix 7c2200d1 adds org_id!==existing.org_id && !perm_site_admin throw. v2.5.36 lacks candidate. Published GitHub v2.5.37/v2.5.38 contain 41450bdb without the fix and still lack the org throw. v2.5.39 contains 7c2200d1.",
+  "mechanism_key": "misp.EventTemplateImporter.overwrite.missing-org-ownership",
+  "mechanism_fingerprint": "22d70fed60a4c34e44eab98589593c7a9eaf5453dbfac41250c1b41f6d9c31d4",
+  "causal_class": "AI_DIRECT_ROOT",
+  "source_tier": "STRICT_RELEASED",
+  "candidate_set": [
+    "41450bdb5d31ab017e147ccc921951ee6a70e134"
+  ],
+  "carrier_set": [],
+  "minimum_fix_set": [
+    "7c2200d143bef86aaf58d701b6968a843097db69"
+  ],
+  "top_candidate_set": [
+    {
+      "candidate_sha": "41450bdb5d31ab017e147ccc921951ee6a70e134",
+      "fix_sha": "7c2200d143bef86aaf58d701b6968a843097db69",
+      "origin_kind": "direct_commit"
+    }
+  ],
+  "ai_provenance": {
+    "marker": "Claude Opus",
+    "marker_sha": "41450bdb5d31ab017e147ccc921951ee6a70e134",
+    "scope": "ATOMIC_COMMIT"
+  },
+  "release_evidence": {
+    "candidate_sha": "41450bdb5d31ab017e147ccc921951ee6a70e134",
+    "fix_sha": "7c2200d143bef86aaf58d701b6968a843097db69",
+    "fixed_tag": "v2.5.39",
+    "kind": "git_tag",
+    "repo_cache": "misp_misp",
+    "vulnerable_tag": "v2.5.37"
+  },
+  "proposed_fixes": [],
+  "notes": [
+    "Batch IV: Same-day controller 0efb4e00a exposes the HTTP import path but does not add the org check; the named overwrite sink is the importer lib. Unrelated EventTemplatesController::delete / CRUD-precedence sibling (CVE-2026-10860) shares the later controller file, not this overwrite mechanism."
+  ],
+  "duplicate_of": null,
+  "identity_relation": "FORMAL_ALIAS",
+  "adj_lesson": "A brand-new importer that documents auth is the caller's responsibility is still AI-direct-root when the CNA names that overwrite path and the atomic fix is the missing org check.",
+  "adj_decisive": [
+    "gh api advisories/GHSA-243v-5f97-vfq3: unreviewed identifiers include CVE-2026-10855; keep both IDs with input casing GHSA-243V-5F97-VFQ3",
+    "git log 41450bdb: Co-Authored-By Claude Opus 4.7; new EventTemplateImporter.php overwrite preserves org_id; message states Auth is the caller's responsibility; parent lacks the file",
+    "fix 7c2200d1 adds org_id!==existing.org_id && !perm_site_admin throw in the importer only",
+    "merge-base: cand not in v2.5.36, in v2.5.37; fix not in v2.5.37/v2.5.38, in v2.5.39",
+    "uniqueness vs ord 50/61/153: different MISP template mechanisms"
+  ],
+  "adj_counter": [],
+  "adj_replay": [
+    "git -C /tmp/fp211-cross-06/clones/misp log -1 --format='%H%n%B' 41450bdb5d31ab017e147ccc921951ee6a70e134",
+    "git -C /tmp/fp211-cross-06/clones/misp show 7c2200d143bef86aaf58d701b6968a843097db69 -- app/Lib/Tools/EventTemplateImporter.php",
+    "git -C /tmp/fp211-cross-06/clones/misp merge-base --is-ancestor 41450bdb5d31ab017e147ccc921951ee6a70e134 v2.5.37"
+  ],
+  "adj_false_positive_class": null,
+  "adj_experience_tags": [
+    "new_file_origin",
+    "lib_auth_deferred_to_caller"
+  ],
+  "adj_public_ids_keep": [
+    "CVE-2026-10855",
+    "GHSA-243V-5F97-VFQ3"
+  ],
+  "adj_public_ids_remove": [],
+  "source_instance": "strict-200-v3",
+  "source_layer": "STRICT_200_BASELINE"
+}

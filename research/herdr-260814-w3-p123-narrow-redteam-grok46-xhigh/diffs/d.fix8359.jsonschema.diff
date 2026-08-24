@@ -1,0 +1,140 @@
+diff --git a/src/datamodel_code_generator/parser/jsonschema.py b/src/datamodel_code_generator/parser/jsonschema.py
+index 065b4896..71a78c96 100644
+--- a/src/datamodel_code_generator/parser/jsonschema.py
++++ b/src/datamodel_code_generator/parser/jsonschema.py
+@@ -4799,55 +4799,83 @@ class JsonSchemaParser(Parser["JSONSchemaParserConfig", "JsonSchemaFeatures"]):
+                 )
+             ],
+             custom_base_class=self._resolve_base_class(reference.name, obj.custom_base_path),
+             custom_template_dir=self.custom_template_dir,
+             extra_template_data=self.extra_template_data,
+             path=self.current_source_path,
+             default=obj.default if obj.has_default else UNDEFINED,
+             nullable=obj.type_has_null,
+             treat_dot_as_module=self.treat_dot_as_module,
+         )
+         self.generation_store.register_model(data_model_root_type)
+         return self.data_type(reference=reference)
+ 
+     def _get_ref_body(self, resolved_ref: str) -> dict[str, YamlValue]:
+         """Get the body of a reference from URL or remote file."""
+         if is_url(resolved_ref):
+-            if not resolved_ref.startswith("file://") and self.http_local_ref_path is None:
++            url_scheme = urlparse(resolved_ref).scheme
++            uses_local_http_path = url_scheme in {"http", "https"} and self.http_local_ref_path is not None
++            if not uses_local_http_path:
+                 if self.allow_remote_refs is False:
+                     msg = (
+                         f"Fetching remote $ref is disabled: {resolved_ref}\n"
+-                        "Reason: --no-allow-remote-refs was set, so HTTP(S) $ref targets are not fetched.\n"
++                        "Reason: --no-allow-remote-refs was set, so external $ref targets are not fetched.\n"
+                         "If this schema and all of its remote references are trusted, pass --allow-remote-refs. "
+                         "If a trusted remote reference points to an internal schema registry, also pass "
+                         "--allow-private-network."
+                     )
+                     raise Error(msg)
+-                if self.allow_remote_refs is None:
++                if self.allow_remote_refs is None and url_scheme in {"http", "https"}:
+                     warn_deprecated(
+                         "behavior.remote-ref-default",
+                         details=(
+                             f"Reference: {resolved_ref}. Pass --allow-remote-refs for trusted remote schemas, "
+                             "or --no-allow-remote-refs to block HTTP(S) $ref fetching. Internal network targets "
+                             "also require --allow-private-network."
+                         ),
+                         stacklevel=2,
+                     )
+             return self._get_ref_body_from_url(resolved_ref)
+         return self._get_ref_body_from_remote(resolved_ref)
+ 
++    def _resolve_local_ref_path(self, path: Path, ref: str) -> Path:
++        base_path = self.base_path.resolve()
++        resolved_path = path.resolve()
++        if resolved_path.is_relative_to(base_path) or self.allow_remote_refs is True:
++            return resolved_path
++
++        details = (
++            f"Reference: {ref}. Reason: the resolved file is outside the input base path. "
++            f"Base path: {base_path}. Resolved path: {resolved_path}. "
++            "Move trusted referenced schemas under the input directory, pass --allow-remote-refs to allow this "
++            "external local file reference without a warning, or pass --no-allow-remote-refs to block it."
++        )
++        if self.allow_remote_refs is None:
++            warn_deprecated("behavior.remote-ref-default", details=details, stacklevel=3)
++            return resolved_path
++
++        msg = (
++            f"Blocked unsafe local $ref: {ref}\n"
++            "Reason: --no-allow-remote-refs was set and the resolved file is outside the input base path.\n"
++            f"Base path: {base_path}\n"
++            f"Resolved path: {resolved_path}\n"
++            "Move trusted referenced schemas under the input directory, or pass --allow-remote-refs only when the "
++            "schema and referenced files are trusted."
++        )
++        raise Error(msg)
++
+     def _get_ref_body_from_local_http_path(self, ref: str) -> dict[str, YamlValue]:
+         assert self.http_local_ref_path is not None
+         parsed = urlparse(ref)
+         if parsed.scheme not in {"http", "https"}:  # pragma: no cover
+             msg = f"Unsupported local HTTP $ref URL: {ref}"
+             raise Error(msg)
+ 
+         parts = [unquote(part) for part in parsed.path.split("/") if part]
+         if not parsed.netloc or any(part in {".", ".."} or "/" in part or "\\" in part for part in parts):
+             msg = f"Unsupported local HTTP $ref URL path: {ref}"
+             raise Error(msg)
+ 
+         base_path = self.http_local_ref_path.resolve()
+         relative_path = Path(parsed.netloc, *parts)
+         file_paths = [(base_path / relative_path).resolve()]
+         if not parts or not Path(parts[-1]).suffix:
+@@ -4865,45 +4893,45 @@ class JsonSchemaParser(Parser["JSONSchemaParserConfig", "JsonSchemaFeatures"]):
+                 )
+ 
+         msg = f"$ref local file not found for {ref}: tried {', '.join(str(path) for path in file_paths)}"
+         raise Error(msg)
+ 
+     def _get_ref_body_from_url(self, ref: str) -> dict[str, YamlValue]:
+         """Get reference body from a URL (HTTP, HTTPS, or file scheme)."""
+         if ref.startswith("file://"):
+             from urllib.request import url2pathname  # noqa: PLC0415
+ 
+             parsed = urlparse(ref)
+             # url2pathname handles percent-decoding and Windows drive letters
+             path = url2pathname(parsed.path)
+             # Handle UNC paths (file://server/share/path)
+             if parsed.netloc:
+                 path = f"//{parsed.netloc}{path}"
+-            file_path = Path(path)
++            file_path = self._resolve_local_ref_path(Path(path), ref)
+             return self.remote_object_cache.get_or_put(
+-                ref, default_factory=lambda _: load_data_from_path(file_path, self.encoding)
++                str(file_path), default_factory=lambda _: load_data_from_path(file_path, self.encoding)
+             )
+         if self.http_local_ref_path is not None and urlparse(ref).scheme in {"http", "https"}:
+             return self._get_ref_body_from_local_http_path(ref)
+         return self.remote_object_cache.get_or_put(
+             ref, default_factory=lambda key: load_data(self._get_text_from_url(key))
+         )
+ 
+     def _get_ref_body_from_remote(self, resolved_ref: str) -> dict[str, YamlValue]:
+         """Get reference body from a remote file path."""
+-        full_path = self.base_path / resolved_ref
++        full_path = self._resolve_local_ref_path(self.base_path / resolved_ref, resolved_ref)
+ 
+         try:
+             return self.remote_object_cache.get_or_put(
+                 str(full_path),
+                 default_factory=lambda _: load_data_from_path(full_path, self.encoding),
+             )
+         except FileNotFoundError:
+             msg = f"$ref file not found: {full_path}"
+             raise Error(msg) from None
+ 
+     def resolve_ref(self, object_ref: str) -> Reference:
+         """Resolve a reference by loading and parsing the referenced schema."""
+         # If the ref is mapped to an external package, mark as loaded and skip parsing
+         if self._resolve_external_ref_mapping(object_ref) is not None:
+             reference = self.model_resolver.add_ref(object_ref)
+             reference.loaded = True

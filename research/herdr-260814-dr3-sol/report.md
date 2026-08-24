@@ -1,0 +1,45 @@
+# Direct-root adjudication: dr-slice-3
+
+## Verdict
+
+All 25 assigned rows are terminal `FALSE_POSITIVE` proposals; this lane proposes zero countable cases. Twenty-one candidates are wrong causal edges. The other four are a Keras patch-release squash whose Gemini marker is localized to a sibling member, a human pnpm security-fix member, an AI-marked n8n release carrier with no source hunk, and a causal Apache SCRAM origin with only human attribution.
+
+The matrix uses gate order `identity / AI hunk / topology / but-for / fix reversal / release / uniqueness`. `UNKNOWN` is retained where local evidence did not close a non-decisive release gate.
+
+## Row-by-row adjudication
+
+| # | GHSA | Gates | Verdict and causal comparison |
+|---:|---|---|---|
+| 1 | `GHSA-26C4-7VV6-867J` | `PASS / FAIL / FAIL / FAIL / PASS / PASS / PASS` | `FALSE_POSITIVE (squash_marker_on_sibling_member)`. `f704c887` adds `value.external` guards but omits `value.is_virtual`; `460ec47e` adds the adjacent VDS check and `d338a452` carries it into 3.12.3. This is incomplete-remediation-shaped, but the Gemini trailers are localized to a TFSMLayer member in the multi-change squash, not the HDF5 hunk, so carrier attribution cannot transfer. |
+| 2 | `GHSA-2GCV-3QPF-C5QR` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. `6545614a` updates Kubernetes and Go dependencies; `67281c36` disables chaosctl/GraphQL exposure by default. Dependency and install-file overlap does not author the `cleanIptables` command construction. |
+| 3 | `GHSA-2GG8-85M5-8R2P` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. The dependency/toolchain bump neither creates nor authenticates the pre-existing GraphQL debug server; the fix changes deployment defaults. |
+| 4 | `GHSA-369H-6J28-WWCG` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. Kubernetes dependency updates and release plumbing do not author the `cleanTcs` shell-command hunk; the mitigation disables chaosctl by default. |
+| 5 | `GHSA-XV9F-728H-9JGV` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. The dependency/toolchain candidate is unrelated to `killProcesses` argument handling; shared workflow, changelog, and install paths are routing only. |
+| 6 | `GHSA-QR9H-X63W-VQFM` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. The candidate adds a forward-secure exporter; the fix changes `process_message` persistence and the message-secret tree. Group-module overlap is not the vulnerable persistence hunk. |
+| 7 | `GHSA-379Q-355J-W6RJ` | `PASS / FAIL / PASS / FAIL / FAIL / FAIL / PASS` | `FALSE_POSITIVE (non_ai_security_fix_member)`. The candidate is itself a human security fix blocking git prepare scripts, not an AI origin. The same-day assigned commit adds `blockExoticSubdeps`, does not reverse the candidate, and no vulnerable release separates them. |
+| 8 | `GHSA-248R-7H7Q-CR24` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. `46cbbdde` rejects contradictory NodeVM nesting/require options in `lib/nodevm.js`; the fix adds async-generator sanitizers in `lib/setup-sandbox.js`. The mechanisms and production files are disjoint. |
+| 9 | `GHSA-6J2X-VHQR-QR7Q` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. AI-marked `093494c0` appends async-generator sanitizers. The advisory concerns the pre-existing WebAssembly JSPI `Promise.finally` surface, which `6915fa4a` removes. |
+| 10 | `GHSA-76W7-J9CQ-RX2J` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. The async-generator block is appended after the existing Promise hardening and never changes the `localPromise` swallow-tail; `a462655f` adds the missing species reset at that older call site. |
+| 11 | `GHSA-M5Q2-4FM3-VFQP` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. The advisory identifies older `setup-sandbox.js` symbol handling and bridge write traps. `093494c0` appends unrelated code near line 983 and never touches `bridge.js`; the final fix changes both older boundaries. |
+| 12 | `GHSA-Q3FM-4WCW-G57X` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. The vulnerable stack-formatter array writes around lines 605/607 predate `093494c0`'s block after line 983. `ad31adc5` replaces the older formatter container; same-file ancestry is not causality. |
+| 13 | `GHSA-V6MX-MF47-R5WG` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. `093494c0` does not touch `lib/bridge.js`; `27c525f9` blocks prototype-mutator functions in bridge apply traps. Shared release and documentation paths do not create that invariant. |
+| 14 | `GHSA-5PWR-322W-8JR4` | `PASS / FAIL / PASS / FAIL / FAIL / FAIL / PASS` | `FALSE_POSITIVE (wrong_edge)`. `d41a8146` handles SNI callback exceptions around `SSL.py` line 1753; the child fix bounds the DTLS cookie callback around line 717. Same file and callback vocabulary are sibling paths. |
+| 15 | `GHSA-5P9G-J988-PCWV` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. `ba543083` validates Host and Origin against DNS rebinding. `35466605` adds session ownership checks; origin consistency is defense in depth, not client authentication or ownership. |
+| 16 | `GHSA-H669-8M4G-R2HC` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. Host/Origin validation is unrelated to unbounded `request.body.read`; the fix adds `max_request_bytes`, bounded reads, and parsing limits in the same transport file. |
+| 17 | `GHSA-JXX9-PX88-PJ69` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (release_carrier_not_hunk)`. AI-marked `b7ad5284` changes only package and changelog files. The vulnerable environment fallback was authored earlier in `f237fad1`; `853015d0` changes HTTP and n8n-client source. Carrier attribution cannot transfer. |
+| 18 | `GHSA-V468-QCJX-R72W` | `PASS / FAIL / PASS / PASS / PASS / PASS / PASS` | `FALSE_POSITIVE (non_ai_direct_root)`. `5e73e17b` introduces the SCRAM implementation released in 5.6-alpha1, including `ScramScheme`; `726eac2f` adds final-response verification in the same state machine. The causal edge is direct but has only human attribution. |
+| 19 | `GHSA-58CW-G322-P94V` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. The 2024 candidate is a repository-wide type-hint cleanup and the affected range begins at 0; the 2026 fix adds `escape_text` to `figclass`/`figwidth`. Annotation overlap is not sink origin. |
+| 20 | `GHSA-G97X-GVCM-X72H` | `PASS / FAIL / PASS / FAIL / FAIL / PASS / PASS` | `FALSE_POSITIVE (wrong_edge)`. The candidate is a mypy/type-hint cleanup; the fix escapes the pre-existing raw class concatenation. The affected range begins at 0 and no AI marker exists. |
+| 21 | `GHSA-2FMP-9RVW-HC96` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. The candidate changes publish CI, plugin manifests, and package metadata. The fix changes manifest validation and deletion-target computation in `lib/env-manager.ts`; no vulnerable production file overlaps. |
+| 22 | `GHSA-48X2-6PR9-2JJF` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. Publish workflow and plugin-description changes do not touch `EnvironmentManager.restore`; the fix adds backup-ID and containment validation. |
+| 23 | `GHSA-6X2M-P4XP-WG22` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. CI/plugin metadata is unrelated to `_collectBackupFiles`; the fix replaces stat-following traversal with symlink-aware traversal in `lib/env-manager.ts`. |
+| 24 | `GHSA-JVCM-F35G-W78P` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. The candidate changes CI and package/plugin metadata; the fix adds separator-anchored containment in `lib/agent-runtime.ts`, a path absent from the candidate. |
+| 25 | `GHSA-MXJX-28VX-XJJJ` | `PASS / FAIL / PASS / FAIL / FAIL / UNKNOWN / PASS` | `FALSE_POSITIVE (wrong_edge)`. Publish CI and plugin-description edits do not touch `lib/approval-inbox.ts`; the fix adds its secret/authentication boundary and changes CORS behavior. |
+
+## Evidence and controls
+
+- First-party advisory JSON came from the local advisory-database clone at `a42c436870111aa3f221257c9d56126a93173ccc`.
+- Candidate/fix metadata, diffs, paths, and ancestry came from local commit pools and read-only worker clones. Every candidate is an ancestor of its assigned fix.
+- The canonical84 ledger was searched by advisory identity and mechanism; none of these 25 rows collides. Its observed SHA-256 is `a9b23a7ca39104f851b684a4089fa58f43887bb895379b68f6306c47d969ec06`.
+- No row receives `AI_INCOMPLETE_REMEDIATION`, so no `original_vulnerability` block is applicable.
+- No GitHub API was used, and no write was made outside this lane.

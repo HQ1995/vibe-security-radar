@@ -1,0 +1,26 @@
+commit 96b68fd6f46c5693c5670fda97334ab50d752ced
+Author:     Brant Burnett <bburnett@centeredgesoftware.com>
+AuthorDate: Tue Apr 28 10:14:22 2026 -0400
+Commit:     GitHub <noreply@github.com>
+CommitDate: Tue Apr 28 10:14:22 2026 -0400
+
+    Handle undersized data blocks in framed stream decompression (#147)
+    
+    Motivation
+    ----------
+    A malformed block in the framed stream format can cause an infinite loop
+    when decompressing the stream. This could be used for a DoS attack if an
+    attacker can control the data.
+    
+    Modifications
+    -------------
+    Short-circuit with an InvalidDataException if the block runs out of data
+    before the decompressor has reached the end of the block.
+    
+    ---------
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+ Snappier.Tests/SnappyStreamTests.cs           | 15 +++++++++++++++
+ Snappier/Internal/SnappyStreamDecompressor.cs |  7 ++++++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)

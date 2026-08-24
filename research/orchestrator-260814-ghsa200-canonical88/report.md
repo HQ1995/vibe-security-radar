@@ -1,0 +1,15 @@
+# Canonical88 HOLD snapshot
+
+Verdict first: this directory is an immutable HOLD snapshot of canonical strict count 88 first-party GHSA identities. It extends the frozen canonical87 snapshot in orchestrator-260814-ghsa200-canonical87 by appending exactly one leader-accepted identity. Integration_ready is false. Publication_ready is false. Causal admission is false. Global HOLD fields keep the inherited canonical87 meaning and are not flipped by counting GHSA-8RW6. This packet does not support a greater-than-200 claim.
+
+Composition: every canonical87 ledger row is preserved byte-for-byte and in order. The prior 87 counted rows stay byte-identical. Terminal hostile red-team KEEP GHSA-8RW6-P7M8-63JP is appended at ordinal 88. Count is by first-party GHSA identity once. CVE aliases are stored and never counted. This identity has no CVE alias.
+
+The admitted identity at ordinal 88 is GHSA-8RW6-P7M8-63JP, repository surrealdb/surrealdb, class AI_NEW_SURFACE_CONTRIBUTOR. leader_strict_case_accepted is true. That flag is strict-set inclusion after leader replay; it does not flip global causal_admission. Counted surface is only surrealdb/core/src/exec/operators/scan/pipeline.rs filter_fields_by_permission. Parent ce74c027 used HashMap top-level remove. Candidate 15579bd2 adds Value::each plus forward value.cut. carrier_set is empty. minimum_fix_set is 8f89b260, parent 11430e25. Whole-GHSA direct root is excluded. Older human pluck_select and later human doc/output.rs and doc/reduce.rs siblings are excluded. Default production planner is best-effort; record-id scans reuse the pipeline. All seven contract gates are PASS. Public GitHub tag v3.1.3 and crates.io surrealdb-core 3.1.3 contain the forward loop. Public tag v3.1.4 and crates.io surrealdb-core 3.1.4 contain the closer pipeline bytes even though 8f89 is not a tag ancestor. Mechanism key and fingerprint are unique versus canonical87.
+
+Admission source is the compact hostile packet herdr-260814-surrealdb-8rw6-hostile-grok46-xhigh after leader replay. Inherited negative controls remain rejected and absent from strict rows.
+
+Source conservation is separate from the counted set: 211 fp211 hypotheses and 212 source GHSA cases remain in the source layer. Same-id upgrades still do not append. GHSA-8RW6 is a new identity (in_fp211_212=false, action=APPEND). Conservation prior_append_identities stays the prior 17. new_append_identities is exactly GHSA-8RW6-P7M8-63JP. append_identities is the prior 17 followed by that one (18). new_identities_append is true. same_id_source_layer_promoted is false. The hostile red-team packet admits this row at authority rank 46. Discovery tabs and worker-only PASS are not loaded. Raw pages, crates, and owned clones are not committed; the builder consumes 8rw6_acceptance.json plus immutable canonical87 tracked artifacts.
+
+Every counted row has all seven contract gates equal to the string PASS. Null and NA fail closed. Candidate, carrier, and minimum-fix sets are sorted unique 40-hex SHAs. Cartesian candidate times fix pairs are not invented.
+
+Status HOLD until leader review.

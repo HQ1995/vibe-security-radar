@@ -1,0 +1,45 @@
+# Replay for the bounded 19-ID reviewed set. 0 PASS.
+# Cross-review routes and screened rows are not seven-gate consumable.
+
+set -euo pipefail
+ROOT=/home/hanqing/agents/ai-slop
+LANE=$ROOT/autoresearch/herdr-260813-ghsa200-remediation
+CLONES=/tmp/ghsa200-worker-clones/remediation
+
+echo "===== freeze hashes ====="
+sha256sum \
+  $ROOT/autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl \
+  $ROOT/autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl \
+  $ROOT/autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl
+
+echo "===== schema: 19 reviewed vs 15 routes vs 5 screened ====="
+python3 - <<'PY'
+import json
+from pathlib import Path
+lane=Path("/home/hanqing/agents/ai-slop/autoresearch/herdr-260813-ghsa200-remediation")
+res=json.loads((lane/"result.json").read_text())
+rows=[json.loads(l) for l in (lane/"cases.jsonl").read_text().splitlines()]
+assert res["status"]=="COMPLETE"
+assert res["completeness_scope"]=="bounded_adjudicated_new_ids"
+assert res["ecosystem_coverage_claimed"] is False
+assert res["counts"]["reviewed_rows"]==19
+assert res["counts"]["cross_review_routes"]==15
+assert res["proposed_pass_count"]==0
+roles={}
+for r in rows:
+    roles.setdefault(r["row_role"], 0)
+    roles[r["row_role"]] += 1
+    if r["row_role"]!="ADJUDICATED_NEW_ID":
+        assert r["seven_gate_row"] is False
+        for g in ("identity_gate","ai_hunk_gate","topology_gate","but_for_gate","fix_reversal_gate","release_gate","uniqueness_gate"):
+            assert g not in r
+    else:
+        assert r["verdict"]!="PASS"
+print("roles", roles)
+print("adjudicated", res["adjudicated_new_ids"])
+PY
+
+echo "===== created-residual ROUTE_CONFLICT (still REJECT) ====="
+git -C $CLONES/GitPython show -s --format='%an %s' e8d0fbf774d1f6baa3b481adfe48bd262e43b453
+git -C $CLONES/scriban show dde661d^:src/Scriban/Functions/ArrayFunctions.cs | rg -n InsertAt | head
+git -C $CLONES/PraisonAI show -s --format='%an %s' 68cc9427ffca2f5f844051f8b90f94367bcd5689

@@ -46,4 +46,4 @@ Default analyzer batch start: `--since 2025-05-01`. CVEs before 2025-05 are outs
 
 ## Local-only (gitignored)
 
-`.ai-slop/` (cloned-repo cache), `research/` lane captures except the two tracked canvases, root `*.py` one-offs, `.tmp_*`, and agent worktrees. Do not commit them.
+`.ai-slop/` (cloned-repo cache), `research/` dump dirs (work/, clones/, api-cache/, ...), root `*.py` one-offs, `.tmp_*`, and agent worktrees. Do not commit them. Lane evidence files (result.json, report.md, cases.jsonl, manifests) ARE committed at round close.

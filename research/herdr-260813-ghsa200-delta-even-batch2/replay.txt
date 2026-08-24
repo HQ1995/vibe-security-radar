@@ -1,0 +1,34 @@
+# Replay: herdr-260813-ghsa200-delta-even-batch2
+# New clones only under /home/hanqing/.cache/ghsa200-worker-clones/delta-even-batch2
+# Do not modify autoresearch/herdr-260813-ghsa200-delta-even/
+# CONTRACT.md SHA-256 must be cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+# Rem rows use patch-delta but-for; origin/contributor but-for is unchanged.
+
+python3 autoresearch/herdr-260813-ghsa200-delta-even-batch2/freeze_assignment.py
+# Expect 80 unique even IDs, 0 declared overlap, 0 prior deep overlap
+
+python3 autoresearch/herdr-260813-ghsa200-delta-even-batch2/extract_advisories.py
+# Reads existing official reviewed JSON; does not clone advisory-database
+
+bash autoresearch/herdr-260813-ghsa200-delta-even-batch2/clone_repos.sh
+# Remaining large repos were cloned with: git clone --filter=blob:none --no-checkout
+
+cd cve-analyzer && uv run python ../autoresearch/herdr-260813-ghsa200-delta-even-batch2/review_origins.py
+
+# Manual first-party checks for the four AI-detector hits
+export GIT_OPTIONAL_LOCKS=0
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/delta-even-batch2
+git -C $CACHE/HKUDS__nanobot log -1 --format='%B' 5dc96505e87b
+git -C $CACHE/nodejs__undici log -1 --format='%an %s' 4fe5bc5fefe5
+git -C $CACHE/nodejs__undici log -1 --format='%an %s' de01babccb69
+git -C $CACHE/py-pdf__pypdf log -1 --format='%s' b5fc5aa714f4
+git -C $CACHE/py-pdf__pypdf log -1 --format='%s' 4d8ebcec00d8
+git -C $CACHE/FlowiseAI__Flowise log --format='%H %an %s' -n 8 -S '...overrideConfig' 23b997ee5ef9^ -- packages/server/src/utils/buildChatflow.ts
+
+# DOMPurify recovered closer
+gh api repos/cure53/DOMPurify/pulls/1557 --jq .merge_commit_sha
+git -C $CACHE/cure53__DOMPurify log -1 --format='%an %s' 2c8ca25ef3cec05e12a50bd456f57a816eaa5998
+
+python3 autoresearch/herdr-260813-ghsa200-delta-even-batch2/emit_outputs.py
+python3 autoresearch/herdr-260813-ghsa200-delta-even-batch2/apply_contract_revision.py
+# Expect: 80 terminal rows, 0 PASS, contract hash cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3

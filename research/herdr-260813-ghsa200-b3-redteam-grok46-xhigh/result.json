@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "ghsa200_redteam_b3_narrow_recovery_b_pass3",
+  "language": "en",
+  "status": "REDTEAM_COMPLETE",
+  "causal_admission": false,
+  "publication_status": "HOLD",
+  "worker_pass_is_proposal_only": true,
+  "note": "Independent red-team of the three narrow-recovery-b PASS hypotheses. KEEP is a proposal, never leader admission. This packet does not rebuild the 48-case strict-released lower bound and does not support a more-than-200 claim.",
+  "owned_directory": "autoresearch/herdr-260813-ghsa200-b3-redteam-grok46-xhigh",
+  "scope": {
+    "source_packet": "autoresearch/herdr-260813-ghsa200-narrow-recovery-b-grok46-high",
+    "source_field": "pass_proposals",
+    "reviewed": 3,
+    "hostile_hypothesis": "PASS",
+    "case_ids": [
+      "GHSA-G3XQ-3GMV-QQ8G",
+      "GHSA-F38V-77QJ-H4JQ",
+      "GHSA-PV2J-RGHR-V5R9"
+    ]
+  },
+  "verdicts": {
+    "KEEP": 2,
+    "NARROW": 1,
+    "REJECT": 0,
+    "UNKNOWN": 0,
+    "BLOCKED": 0
+  },
+  "per_case": {
+    "GHSA-G3XQ-3GMV-QQ8G": "KEEP",
+    "GHSA-F38V-77QJ-H4JQ": "NARROW",
+    "GHSA-PV2J-RGHR-V5R9": "KEEP"
+  },
+  "narrow_cases": [
+    {
+      "case_id": "GHSA-F38V-77QJ-H4JQ",
+      "ordinal": 169,
+      "failed_gates": [
+        "but_for_gate",
+        "fix_reversal_gate",
+        "release_gate",
+        "remediation_patch_delta_gate"
+      ],
+      "reason": "First-party GHSA PoC is _verify_token of a forged JWT. Parent already default-opens PLATFORM_ENV at import. Cursor 179cab02 duplicates that predicate into _issue_token. e0fb8e7 cites GHSA-3qg8, rewrites import-time JWT_SECRET, and deletes the AI issuance guard. PyPI 0.1.6 maps to git v4.6.62 (pyproject 0.1.5), not e0fb8e7. Residual is the parent hole, not an omitted case in the AI-added boundary.",
+      "vulnerable_artifact_maps_to_candidate": true,
+      "fixed_artifact_maps_to_claimed_minimum_fix": false,
+      "countable": false
+    }
+  ],
+  "keep_cases": [
+    {
+      "case_id": "GHSA-G3XQ-3GMV-QQ8G",
+      "ordinal": 113,
+      "contribution_class": "AI_DIRECT_ROOT",
+      "counted_sha": "7b9322a86a5cae3230c30943bd659d7f67b0387c",
+      "parent_count": 1,
+      "own_ai_marker": true,
+      "first_parent_introduces_hunk": true,
+      "authorship_transfer": false,
+      "package_to_source": "npm 3.5.0 tarball quota-statusline.sh git hash-object 626f3494 equals candidate; npm 3.5.2 equals 613e4df3 853af306",
+      "hostile_correction": "minimum_fix_set drops non-ancestor member 0a3e3c13; keep released squash 613e4df3"
+    },
+    {
+      "case_id": "GHSA-PV2J-RGHR-V5R9",
+      "ordinal": 188,
+      "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+      "counted_sha": "179cab02dbec0c1e9b601507a65908e079876004",
+      "fix_sha": "2adfe7e8323f6deec66925cf15a885b6238895e9",
+      "parent_count": 1,
+      "own_ai_marker": true,
+      "first_parent_introduces_hunk": true,
+      "remediation_patch_delta_gate": "PASS",
+      "package_to_source": "wheel 1.6.52 python_tools.py git hash-object 83c5d833 equals 179cab02; wheel 1.6.59 fd8d68b7 equals 2adfe7e8",
+      "uniqueness": "Distinct from countable GHSA-4MR5 __self__ ATTRS on the same origin SHA"
+    }
+  ],
+  "hostile_hypothesis_corrections": [
+    {
+      "case_id": "GHSA-G3XQ-3GMV-QQ8G",
+      "verdict": "KEEP",
+      "correction": "PASS listed minimum_fix_set 0a3e3c13 and 613e4df3. Member 0a3e3c13 is not a v3.5.2 ancestor. Independent KEEP rebinds minimum_fix_set to Claude-marked released squash 613e4df3, whose first-parent diff introduces CC_INPUT. npm 3.5.0 gitHead 379da7ec equals peeled annotated tag v3.5.0^{commit}, not the tag object 52e44d31."
+    },
+    {
+      "case_id": "GHSA-F38V-77QJ-H4JQ",
+      "verdict": "NARROW",
+      "correction": "PASS treated hashed 0.1.4/0.1.6 wheels as seven-gate closure. 0.1.4 does map to 179cab02 by exact blob, but patch-delta fails and 0.1.6 maps to v4.6.62 rather than claimed e0fb8e7."
+    }
+  ],
+  "attacks": {
+    "carrier_own_marker_first_parent": {
+      "GHSA-G3XQ-3GMV-QQ8G": "failed_to_break: counted squash has own Claude trailer and first-parent introduces interpolation",
+      "GHSA-F38V-77QJ-H4JQ": "not_the_failing_attack: 179cab02 is single-parent with Cursor trailer",
+      "GHSA-PV2J-RGHR-V5R9": "not_the_failing_attack: same SHA, CALLS list is first-parent introduced"
+    },
+    "wheel_maps_to_claimed_git_candidate": {
+      "praisonai-platform-0.1.4": "maps: auth_service.py git hash-object 061846a9 equals 179cab02; content sha256 cc29d43c matches first-party GHSA sdist claim",
+      "praisonaiagents-1.6.52": "maps: python_tools.py git hash-object 83c5d833 equals 179cab02"
+    },
+    "later_wheel_maps_to_minimum_fix": {
+      "praisonai-platform-0.1.6": "does_not_map_to_e0fb8e7: auth_service.py a4caa2bf and jwt_secret.py 9b1481e9 equal v4.6.62; git pyproject 0.1.5; claimed fix blob 26cde645 absent",
+      "praisonaiagents-1.6.59": "maps: python_tools.py fd8d68b7 equals 2adfe7e8 and v4.6.59"
+    },
+    "incomplete_remediation_sibling_hole": {
+      "GHSA-F38V-77QJ-H4JQ": "sticks: named residual is parent import-time default plus _verify_token; AI _issue_token copy is unused by the GHSA PoC; later fix deletes that copy",
+      "GHSA-PV2J-RGHR-V5R9": "failed_to_break: later fix appends format/format_map to the AI-added CALLS frozenset named by the GHSA"
+    },
+    "same_sha_different_ghsa": {
+      "179cab02": "not_duplication: 169 JWT vs 188 format CALLS vs countable 4MR5 __self__ ATTRS vs 5C6W SSRF fix hunk"
+    },
+    "advisory_range_and_release_dates": {
+      "GHSA-G3XQ-3GMV-QQ8G": "npm 3.5.0 time 2026-05-05T19:18:19Z after carrier 19:04Z and release commit 19:16Z",
+      "GHSA-F38V-77QJ-H4JQ": "global first_patched 0.1.6 vs repo >=0.1.5 vs git v4.6.62 pyproject 0.1.5 vs missing PyPI 0.1.5",
+      "GHSA-PV2J-RGHR-V5R9": "global <1.6.59 vs repo <=1.6.52; 1.6.52 is inside both; 1.6.59 upload matches v4.6.59"
+    },
+    "source_string_equality_refused_without_blob_proof": true
+  },
+  "replay_run": {
+    "shell": "zsh",
+    "command": "zsh autoresearch/herdr-260813-ghsa200-b3-redteam-grok46-xhigh/replay.txt",
+    "git_invocation": "git_cmd=(/usr/bin/git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false); \"${git_cmd[@]}\" -C ...",
+    "command_string_used": false,
+    "rc": 0,
+    "stderr_empty": true,
+    "stdout_sha256": "3b829cdaa138b6be7150653514501fa4c1ed72b6eb960c2462cdb14445625746",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rc_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "last_line": "REPLAY_OK reviewed=3 KEEP_proposal=2 NARROW=1 REJECT=0 UNKNOWN=0 BLOCKED=0",
+    "conclusions_unchanged": {
+      "KEEP": 2,
+      "NARROW": 1,
+      "REJECT": 0,
+      "UNKNOWN": 0,
+      "BLOCKED": 0
+    }
+  },
+  "input_hashes": {
+    "CONTRACT.md": "cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3",
+    "baseline.json": "d92b1f93adcbc519dc335ca7ab07f90d9e64103a0cd6e0cb7b8fdf334f7c3132",
+    "final_mechanisms.jsonl": "0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2",
+    "public_cases.jsonl": "e20d4ba5b7fdf43d338af6f7ecb8e1abfe43cc02396332091eee3689688ed257",
+    "narrow_recovery_b_cases.jsonl": "8dc5b5744ed5ce61a8feda9a6737cc81ab0b4dfa2915f3390ca3d7859bbb886b",
+    "narrow_recovery_b_result.json": "4914cf54c526564186941680d9e11d4f68cd008151df94af029e723603e04dfa",
+    "ghsa-g3xq-3gmv-qq8g.json": "38d623393ec1114bc3e207295aeefcf5a3a5928a3ff494589f5d95960d21e7e6",
+    "ghsa-f38v-77qj-h4jq.json": "0362fac74c88918f3fddadf83024410cc57aaab970e4233ef4e40e1f96e07f8f",
+    "ghsa-pv2j-rghr-v5r9.json": "004df53734052249518358f24eb5ad27e0fdac6d0ac4bb7cbae6e3cd449f51c1"
+  },
+  "artifact_hashes": {
+    "cases.jsonl": "b423591122de906c65c49ac62ba581ffcd3442880eae638e8de773c90bc689dd",
+    "report.md": "56b5c4aaad26c87a5765bd0cbacfedf2912e29bd863b54dc8dc93358a4d8129a",
+    "replay.txt": "ca6362fcdd53f2f790fec73e6e8996f8fdb5a3c653bc894ac53aa8f50755fe70",
+    "notes/package-to-source.json": "95d87d3ae5aa9b1a5a6e98b65ac6bf7af27cdb5b4c8916f85f58f7f06766e416",
+    "snapshot/replay_run.stdout.txt": "3b829cdaa138b6be7150653514501fa4c1ed72b6eb960c2462cdb14445625746",
+    "snapshot/replay_run.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "snapshot/replay_run.rc.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "snapshot/artifacts/claude-code-cache-fix-3.5.0.tgz": "332785048cb11b1ba04d78650ccd8f0be299de881b1617120d4cdfbe88c39ca9",
+    "snapshot/artifacts/claude-code-cache-fix-3.5.1.tgz": "f1c9bf4697444f16d95d897326cb02db781dbc22e6da6d157206343e15f2a798",
+    "snapshot/artifacts/claude-code-cache-fix-3.5.2.tgz": "ba8da2018c66838cd7ec512fbca00ea9a70b49b7cd347fc95a01b4b88a5078c3",
+    "snapshot/artifacts/praisonai_platform-0.1.4-py3-none-any.whl": "6c64b97add99510856506ce052155099dd03f89ceb2d9d5b1a849ee89fbc5882",
+    "snapshot/artifacts/praisonai_platform-0.1.4.tar.gz": "3a50be4bdf33d5440e25fa8307faf0fbf0a783f9de4fd8fbff39401c92c1c808",
+    "snapshot/artifacts/praisonai_platform-0.1.6-py3-none-any.whl": "a4e909ba1e6784cac45510b30a0a24b3f89dbc64d775c8f9e08560fa49bcfc8d",
+    "snapshot/artifacts/praisonaiagents-1.6.52-py3-none-any.whl": "28e09b51976a02c566e2a99b23ca9570aae8d41b44f5c37eb400d490ddaf4869",
+    "snapshot/artifacts/praisonaiagents-1.6.59-py3-none-any.whl": "30e70d4f0dfdf9604183d631350c47681dc93ba07c0e3176f6728050d47a0c31"
+  },
+  "cases_jsonl_rows": 3,
+  "clone_root": "/tmp/ghsa200-worker-clones/upgrade-b/clones",
+  "claim_boundary": "No worker or red-team proposal changes the count. Only leader-reviewed rows with all seven gates PASS enter the strict released lower bound.",
+  "english_only": true,
+  "did_not_edit_tracked_or_canonical": true,
+  "did_not_commit_or_push": true,
+  "did_not_print_credentials": true
+}

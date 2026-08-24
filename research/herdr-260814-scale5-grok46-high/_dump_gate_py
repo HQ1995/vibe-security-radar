@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Acceptance gate for worker proposals (mechanical checks only, zero-FP).
+
+usage: gate.py proposals.jsonl
+Emits per-row verdict:
+  ACCEPT_CANDIDATE : all mechanical checks pass; still needs a human confirm.
+  REJECT           : duplicate identity OR no explicit AI identity on the candidate.
+  UNVERIFIED       : any required evidence missing locally; never counted.
+"""
+import json, os, re, subprocess, sys
+from pathlib import Path
+
+POOL = '/home/hanqing/.cache/ghsa200-sweep-fetch'
+FOUNDATION = 'autoresearch/orchestrator-260814-ghsa200-canvas/foundation.jsonl'
+AI = re.compile(r'co-authored-by:\s*[^<\n]*<noreply@anthropic\.com>|co-authored-by:\s*[^<\n]*<\d+\+copilot@users\.noreply\.github\.com>|assisted-by:|generated with (claude|codex|copilot|cursor|grok)|claude code|claude opus|claude sonnet|github copilot|cursor|openwork|qoder|coderabbit|qwen code|copilot-swe-agent|claude-swe-agent', re.I)
+
+found = set()
+for l in open(FOUNDATION):
+    r = json.loads(l)
+    if r.get('case_id'): found.add(r['case_id'])
+
+def git(path, *args, timeout=30):
+    try:
+        return subprocess.run(['git','--no-optional-locks','-C',path]+list(args),
+                              capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
+
+def pool_path(repo):
+    return os.path.join(POOL, repo.replace('/', '__'))
+
+def check(row):
+    cid = row.get('case_id'); repo = row.get('repository')
+    cand = (row.get('candidate_set') or [None])[0]
+    fix = (row.get('minimum_fix_set') or [None])[0]
+    out = {'case_id': cid, 'repository': repo, 'candidate': cand, 'fix': fix}
+    if cid in found:
+        out['verdict'] = 'REJECT'; out['reason'] = 'duplicate_identity'; return out
+    path = pool_path(repo) if repo else None
+    if not path or not os.path.isdir(path) or not cand:
+        out['verdict'] = 'UNVERIFIED'; out['reason'] = 'no_pool_or_candidate'; return out
+    m = git(path, 'log', '-1', '--format=%B', cand)
+    if m is None or m.returncode != 0:
+        out['verdict'] = 'UNVERIFIED'; out['reason'] = 'candidate_unresolvable'; return out
+    out['ai_identity'] = bool(AI.search(m.stdout))
+    if not out['ai_identity']:
+        out['verdict'] = 'REJECT'; out['reason'] = 'no_ai_identity'; return out
+    if fix:
+        e = git(path, 'cat-file', '-e', fix + '^{commit}')
+        anc = git(path, 'merge-base', '--is-ancestor', cand, fix)
+        if e is None or e.returncode != 0 or anc is None or anc.returncode != 0:
+            # deepen once, bounded
+            git(path, 'fetch', '-q', '--filter=blob:none', '--deepen=200',
+                f'https://github.com/{repo}.git', timeout=90)
+            anc = git(path, 'merge-base', '--is-ancestor', cand, fix)
+        out['fix_ancestor'] = bool(anc and anc.returncode == 0)
+        cf = git(path, 'diff-tree', '--no-commit-id', '--name-only', '-r', cand)
+        ff = git(path, 'diff-tree', '--no-commit-id', '--name-only', '-r', fix)
+        ca = set(cf.stdout.splitlines()) if cf else set()
+        fa = set(ff.stdout.splitlines()) if ff else set()
+        out['reversal_overlap'] = bool(ca & fa)
+        if not (out['fix_ancestor'] and out['reversal_overlap']):
+            out['verdict'] = 'UNVERIFIED'; out['reason'] = 'fix_evidence_weak'; return out
+    else:
+        out['verdict'] = 'UNVERIFIED'; out['reason'] = 'no_fix_ref'; return out
+    out['verdict'] = 'ACCEPT_CANDIDATE'
+    return out
+
+if __name__ == '__main__':
+    rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+    results = [check(r) for r in rows]
+    print(json.dumps(results, indent=1))
+    from collections import Counter
+    print(dict(Counter(r['verdict'] for r in results)), file=sys.stderr)
+

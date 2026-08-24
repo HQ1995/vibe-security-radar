@@ -1,0 +1,104 @@
+{
+  "ordinal": 46,
+  "row_key": "strict-200-v3:alias-948cde45baab136c086accc3",
+  "repository": "openclaw/openclaw",
+  "public_ids": [
+    "CVE-2026-41345",
+    "GHSA-68V4-HMWV-F43H"
+  ],
+  "ghsa": [
+    "GHSA-68V4-HMWV-F43H"
+  ],
+  "primary_id": "CVE-2026-41345",
+  "mechanism_key": "openclaw.media.store.downloadToFile.cross_origin_redirect_auth_header_forwarding",
+  "mechanism": "downloadToFile follows redirects while forwarding original Authorization-bearing headers; invariant: cross-origin redirects must drop unsafe headers.",
+  "mechanism_fingerprint": "10422c103051cb6fdea51050a57cb58454e481457562df9d951b7c1e2a5cb8a8",
+  "causal_class": "AI_DIRECT_ROOT",
+  "row_state": "PASS",
+  "ai_provenance": {
+    "marker": "Co-Authored-By: Claude",
+    "marker_sha": "06dd9b8ed864eb6668d42c497f0615e743da483a",
+    "scope": "ATOMIC_COMMIT"
+  },
+  "candidate_fix_edges": [
+    {
+      "candidate_sha": "06dd9b8ed864eb6668d42c497f0615e743da483a",
+      "fix_sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566",
+      "origin_kind": "direct_commit"
+    }
+  ],
+  "atomic_fix_members": [
+    "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
+  ],
+  "proposed_fixes": [],
+  "release_evidence": {
+    "candidate_sha": "06dd9b8ed864eb6668d42c497f0615e743da483a",
+    "fix_sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566",
+    "fixed_version": "2026.3.31",
+    "kind": "npm_githead",
+    "repo_cache": "openclaw_openclaw",
+    "vulnerable_version": "2026.3.28"
+  },
+  "source_refs": [
+    {
+      "locator": "46",
+      "path": "snapshot/strict/ledger.jsonl",
+      "sha256": "0cc19a49406c57026d58a064987f50579f2c47ac016881746c73ccd6c2470a81"
+    },
+    {
+      "locator": "11-25",
+      "path": "snapshot/strict/RESEARCH-STRICT-200-CLOSURE-2026-08-12.md",
+      "sha256": "e255c227967b921dd1b69e740edf0dccb5de4df655b73029ec204b51755e458b"
+    },
+    {
+      "locator": "batch-I-row-15",
+      "path": "docs/AUDIT-POST-HOLD-CANONICAL-HOLD-2026-08-12.md",
+      "sha256": "d59ad63c5e06aecf37befcf693235b47390d885f51903826b884c9272b0d2721"
+    },
+    {
+      "locator": "ordinal:46",
+      "path": "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+      "sha256": "0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2"
+    }
+  ],
+  "notes": [
+    "Batch I packet marked NARROW because proposed fix e704323f only moves retainSafeHeadersForCrossOriginRedirectHeaders into redirect-headers.ts. First same-sink repair is earlier squash f865a545. Origin of header-forwarding redirects holds, so this ledger keeps PASS after substituting the minimum fix.",
+    "npm 2026.3.28 contains 06dd9b8e and neither fix; 2026.3.31 contains both. Packet NARROW is recorded as a resolved conflict, not as a remaining NARROW row."
+  ],
+  "fp211_adjudication": {
+    "ordinal": 46,
+    "verdict": "CONFIRM",
+    "confidence": "HIGH",
+    "causal_class": "AI_DIRECT_ROOT",
+    "candidate_set": [
+      "06dd9b8ed864eb6668d42c497f0615e743da483a"
+    ],
+    "carrier_set": [],
+    "minimum_fix_set": [
+      "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
+    ],
+    "identity_gate": "PASS",
+    "ai_hunk_gate": "PASS",
+    "topology_gate": "PASS",
+    "but_for_gate": "PASS",
+    "fix_reversal_gate": "PASS",
+    "release_gate": "PASS",
+    "uniqueness_gate": "PASS",
+    "public_ids_keep": [
+      "CVE-2026-41345",
+      "GHSA-68V4-HMWV-F43H"
+    ],
+    "public_ids_remove": [],
+    "lesson": "Adding redirect-follow that forwards Authorization is a new mechanism even when downloadToFile already existed.",
+    "counterevidence": [],
+    "experience_tags": [
+      "new_redirect_follow_on_existing_downloader"
+    ],
+    "duplicate_of": null,
+    "replay_commands": [
+      "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw grep -n redirect 06dd9b8ed864 -- src/media/store.ts",
+      "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw merge-base --is-ancestor f865a5455ee0 e704323ff388",
+      "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw merge-base --is-ancestor 06dd9b8ed864 v2026.3.28; git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw merge-base --is-ancestor f865a5455ee0 v2026.3.31"
+    ]
+  }
+}

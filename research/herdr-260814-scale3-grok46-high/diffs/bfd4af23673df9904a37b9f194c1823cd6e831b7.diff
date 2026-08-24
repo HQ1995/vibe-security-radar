@@ -1,0 +1,3088 @@
+diff --git a/dev-docs/docs/codebase/transactions.mdx b/dev-docs/docs/codebase/transactions.mdx
+index f6d4e60..5d6f472 100644
+--- a/dev-docs/docs/codebase/transactions.mdx
++++ b/dev-docs/docs/codebase/transactions.mdx
+@@ -5,117 +5,86 @@
+ This system lets many canvas mutations over a time window (for example AI streaming patch/action/create) render immediately, while still producing a single undoable durable history entry.
+ 
+ - AI streaming typically emits many `NEVER` updates (for real-time visual feedback).
+-- `NEVER` updates store snapshots, but does not write undo/redo history.
++- `NEVER` updates advance Store snapshots, but do not write undo/redo history.
+ - If we only do a final "one IMMEDIATELY at the end", we often miss the intended delta because snapshots may already be aligned.
+ - Transaction + Ledger creates synthetic logical before/after snapshots, then commits one durable increment with correct undo semantics.
+ 
+ ## Key Files
+ 
+-### `packages/excalidraw/transaction/manager.ts`
++### `packages/excalidraw/transaction.ts`
+ 
+-- `TransactionManager`: session entry point.
+-- `TransactionSession`:
+-  - `apply()`: runs a mutation and records before/after diff automatically.
+-  - `capture()`: records caller-provided before/after snapshots.
+-  - `setAppStatePatch()`: optional appState before/after patch for synthetic history.
+-  - `commit()` / `cancel()`: finalize session and return an idempotent summary.
+-
+-### `packages/element/src/transaction/ledger.ts`
+-
+-- `TransactionLedger` keeps net mutation state across steps.
+-- `recordStep()`: folds multiple updates into per-element baseline/target/touchedProps.
+-- `buildSyntheticSnapshots()`: reconciles ledger state with live scene under merge policy and returns `logicalBefore` / `logicalAfter` for history commit.
+-
+-### `packages/excalidraw/components/App.tsx`
+-
+-- `commitSyntheticHistoryEntry()` converts `logicalBefore/logicalAfter` into `StoreSnapshot -> StoreChange -> StoreDelta`.
+-- It does not mutate the live scene; it only commits a synthetic durable increment.
+-- `appStateBefore/After` are overlaid on top of current observed appState baseline, so only provided keys participate in synthetic diff.
++- `TransactionLedger`: keeps net mutation state across steps.
++  - `recordStep()`: folds multiple updates into per-element baseline/target/touchedProps.
++  - `buildSyntheticSnapshots()`: reconciles ledger state with live scene under merge policy and returns `elementsBefore` / `elementsAfter` for history commit.
++- `TransactionManager`: thin factory holding the app reference. `create(options?)` returns a `Transaction`.
++- `Transaction` (class):
++  - `tx.updateScene(data)`: wraps `app.updateScene` with `captureUpdate: NEVER`. Snapshots elements before/after and records the diff into the ledger. Accumulates appState intent.
++  - `tx.commit()`: builds synthetic before/after snapshots from the ledger, calls `store.commitSyntheticIncrement()`, returns a summary.
++  - `tx.cancel()`: finalizes without committing history.
++- Merge-policy types (`ConflictWinner`, `ConflictScope`, `TransactionMergePolicy`) and defaults.
+ 
+ ### `packages/element/src/store.ts`
+ 
+-- `enqueueIsolatedIncrement()` / `flushIsolatedIncrements()` / `requestIsolatedIncrementFlush()`.
+-- Adds an isolated lane/queue for synthetic durable increments outside regular micro/macro capture flow.
+-- Flush runs only when store is idle (`isIdle()`); otherwise it defers and retries next frame.
+-
+-### `packages/excalidraw/types.ts` + `packages/element/src/transaction/types.ts` + `packages/excalidraw/transaction/types.ts`
+-
+-- App/type wiring and merge-policy types used by the transaction system.
++- `store.commitSyntheticIncrement()`: builds `StoreSnapshot -> StoreChange -> StoreDelta` from logical before/after element maps and optional appState patches. Schedules a micro IMMEDIATELY so the delta is flushed on the next `componentDidUpdate -> store.commit()`.
+ 
+ ## How They Work Together
+ 
+-1. Caller opens a session (`app.transactionManager.open()`).
+-2. AI steps keep rendering in real time (commonly via `NEVER`).
+-3. Session records diffs continuously via `apply()` / `capture()` into ledger.
+-4. On session `commit()`:
+-   - ledger builds `logicalBefore/logicalAfter`
+-   - `App.commitSyntheticHistoryEntry()` computes change/delta
+-   - `store.enqueueIsolatedIncrement()` pushes to isolated queue
+-5. Store flushes isolated queue when idle and emits durable increment to undo stack.
++1. Caller creates a transaction (`excalidrawAPI.createTransaction()` or `app.transactionManager.create()`).
++2. `tx.updateScene()` applies mutations with `NEVER` for real-time visual feedback.
++3. Ledger records element diffs on each `updateScene()` call; appState intent is auto-accumulated.
++4. On `tx.commit()`:
++   - Ledger builds `logicalBefore/logicalAfter` reconciled against live scene
++   - `store.commitSyntheticIncrement()` computes change/delta and schedules micro IMMEDIATELY
++5. Next `componentDidUpdate -> store.commit()` flushes the micro and emits a durable increment to the undo stack.
+ 
+ Result:
+ 
+ - streaming visuals stay immediate;
+ - history remains one entry per transaction;
+-- synthetic durable commit stays isolated from ongoing regular capture batches.
+-
+-## Why Isolated Lane/Queue Matters
++- synthetic durable commit is scheduled via micro IMMEDIATELY, flushed naturally by the next commit cycle.
+ 
+-Without isolated lane, synthetic increments may interleave with normal editor flows (pointer interactions, macro captures, pending micro actions), causing:
++## AppState Strategy
+ 
+-- polluted undo boundaries,
+-- unstable commit timing,
+-- non-deterministic behavior due to shared capture channel contention.
++The ledger tracks elements per-id per-property. AppState cannot use the same snapshot approach because `setState` is batched.
+ 
+-Core value of isolated lane:
+-
+-- structural isolation from regular capture flow,
+-- timing control (flush only on idle),
+-- deferred retry when not idle.
++Instead, the transaction auto-accumulates caller intent: each `tx.updateScene({ appState })` call merges the passed `appState` patch into `accumulatedAppState`. The transaction saves `initialAppState` at creation time. At commit: `appStateBefore = initialAppState`, `appStateAfter = initialAppState + accumulatedAppState`.
+ 
+ ## Sample Usage
+ 
+-### AI Short Session (compact multi-step)
++### Short Session
+ 
+ ```ts
+-const { summary } = await app.transactionManager.run(async (tx) => {
+-  // run() auto-commits on success and auto-cancels on thrown errors.
+-  // Short session can still include multiple steps.
+-  await tx.apply(async () => executeUpdateStepA());
+-  await tx.apply(async () => executeUpdateStepB());
+-});
++const tx = app.transactionManager.create();
++
++tx.updateScene({ elements: updatedElementsA });
++tx.updateScene({ elements: updatedElementsB });
++
++tx.commit();
+ ```
+ 
+-### AI Long Session (multi-step mixed flow)
++### Long Session (multi-step with error handling)
+ 
+ ```ts
+-const session = app.transactionManager.open();
++const tx = app.transactionManager.create();
+ 
+ try {
+-  // step 1
+-  await session.apply(async () => executeUpdateStep1());
+-
+-  // step 2
+-  await session.apply(async () => executeCreateStep2());
+-
+-  // step 3
+-  await session.apply(async () => executeUpdateStep3());
+-
+-  // Optional: include selected appState keys in synthetic history
+-  session.setAppStatePatch({
+-    before: { selectedElementIds: prevSelectedIds },
+-    after: { selectedElementIds: nextSelectedIds },
++  tx.updateScene({ elements: step1Elements });
++  tx.updateScene({ elements: step2Elements });
++  tx.updateScene({
++    elements: step3Elements,
++    appState: { selectedElementIds: nextSelectedIds },
+   });
+ 
+-  session.commit();
++  tx.commit();
+ } catch (error) {
+-  session.cancel();
++  tx.cancel();
+   throw error;
+ }
+ ```
+ 
+ ## Notes
+ 
+-- `commit()` and `cancel()` are idempotent.
+-- merge policy currently uses `conflictWinner` + `conflictScope`.
+-- current implementation prioritizes semantic correctness and readability; fine-grained performance optimizations can be added later.
++- `commit()` and `cancel()` are idempotent (repeated calls return the same summary).
++- `updateScene()` throws after `commit()` or `cancel()`.
++- Merge policy uses `conflictWinner` + `conflictScope` to resolve live/transaction divergence.
++- Multi-transaction concurrency works naturally — each tx has its own ledger.
+diff --git a/packages/element/src/index.ts b/packages/element/src/index.ts
+index 15ac188..c55537d 100644
+--- a/packages/element/src/index.ts
++++ b/packages/element/src/index.ts
+@@ -95,8 +95,6 @@ export * from "./textMeasurements";
+ export * from "./textWrapping";
+ export * from "./transform";
+ export * from "./transformHandles";
+-export * from "./transaction/ledger";
+-export * from "./transaction/types";
+ export * from "./typeChecks";
+ export * from "./utils";
+ export * from "./zindex";
+diff --git a/packages/element/src/store.ts b/packages/element/src/store.ts
+index 2356bc8..216921b 100644
+--- a/packages/element/src/store.ts
++++ b/packages/element/src/store.ts
+@@ -71,12 +71,6 @@ export const CaptureUpdateAction = {
+ export type CaptureUpdateActionType = ValueOf<typeof CaptureUpdateAction>;
+ 
+ type MicroActionsQueue = (() => void)[];
+-// Dedicated queue for synthetic durable increments that must commit
+-// outside regular micro/macro capture batches.
+-type IsolatedIncrementsQueue = Array<{
+-  change: StoreChange;
+-  delta: StoreDelta;
+-}>;
+ 
+ /**
+  * Store which captures the observed changes and emits them as `StoreIncrement` events.
+@@ -91,9 +85,6 @@ export class Store {
+ 
+   private scheduledMacroActions: Set<CaptureUpdateActionType> = new Set();
+   private scheduledMicroActions: MicroActionsQueue = [];
+-  private isolatedIncrementsQueue: IsolatedIncrementsQueue = [];
+-  private isFlushingIsolatedIncrements = false;
+-  private cancelIsolatedFlushRetry: (() => void) | null = null;
+ 
+   private _snapshot = StoreSnapshot.empty();
+ 
+@@ -120,6 +111,76 @@ export class Store {
+     this.scheduleAction(CaptureUpdateAction.IMMEDIATELY);
+   }
+ 
++  /**
++   * Commits a synthetic durable history entry without changing the live scene.
++   *
++   * Builds StoreSnapshot → StoreChange → StoreDelta from the provided
++   * logical before/after element maps and optional appState patches, then
++   * flushes the resulting durable increment immediately (bypassing the
++   * normal componentDidUpdate → store.commit() cycle).
++   *
++   * appState patches are merged on top of the current observed appState
++   * baseline so only the provided keys participate in the synthetic diff.
++   */
++  public commitSyntheticIncrement(params: {
++    logicalBefore: {
++      elements: SceneElementsMap;
++      appState?: Partial<ObservedAppState>;
++    };
++    logicalAfter: {
++      elements: SceneElementsMap;
++      appState?: Partial<ObservedAppState>;
++    };
++  }): boolean {
++    const { logicalBefore, logicalAfter } = params;
++    const observedAppStateBaseline = this.snapshot.appState;
++    const syntheticAppStateBefore = logicalBefore.appState
++      ? { ...observedAppStateBaseline, ...logicalBefore.appState }
++      : observedAppStateBaseline;
++    const syntheticAppStateAfter = logicalAfter.appState
++      ? { ...observedAppStateBaseline, ...logicalAfter.appState }
++      : observedAppStateBaseline;
++    const didAppStateChange = Delta.isRightDifferent(
++      syntheticAppStateBefore,
++      syntheticAppStateAfter,
++    );
++    const prevSnapshot = StoreSnapshot.create(
++      logicalBefore.elements,
++      syntheticAppStateBefore,
++      {
++        didElementsChange: true,
++        didAppStateChange,
++      },
++    );
++    const nextSnapshot = StoreSnapshot.create(
++      logicalAfter.elements,
++      syntheticAppStateAfter,
++      {
++        didElementsChange: true,
++        didAppStateChange,
++      },
++    );
++    const change = StoreChange.create(prevSnapshot, nextSnapshot);
++    const delta = StoreDelta.calculate(prevSnapshot, nextSnapshot);
++
++    if (delta.isEmpty()) {
++      return false;
++    }
++
++    this.scheduleMicroAction({
++      action: CaptureUpdateAction.IMMEDIATELY,
++      change,
++      delta,
++    });
++
++    // Flush immediately so the durable increment is emitted without waiting
++    // for the next componentDidUpdate → store.commit() cycle. This is safe
++    // because commitSyntheticIncrement is never called from within commit().
++    this.flushMicroActions();
++
++    return true;
++  }
++
+   /**
+    * Schedule special "micro" actions, to-be executed before the next commit, before it executes a scheduled "macro" action.
+    */
+@@ -206,91 +267,6 @@ export class Store {
+       this.satisfiesScheduledActionsInvariant();
+       // defensively reset all scheduled "macro" actions, possibly cleans up other runtime garbage
+       this.scheduledMacroActions = new Set();
+-      if (this.hasPendingIsolatedIncrements()) {
+-        this.requestIsolatedIncrementFlush();
+-      }
+-    }
+-  }
+-
+-  /**
+-   * Returns true when no micro/macro actions are currently pending.
+-   */
+-  public isIdle() {
+-    return (
+-      this.scheduledMicroActions.length === 0 &&
+-      this.scheduledMacroActions.size === 0
+-    );
+-  }
+-
+-  /** Queues a durable increment to be committed through the isolated lane. */
+-  public enqueueIsolatedIncrement(params: {
+-    change: StoreChange;
+-    delta: StoreDelta;
+-  }) {
+-    this.isolatedIncrementsQueue.push(params);
+-    this.requestIsolatedIncrementFlush();
+-  }
+-
+-  public hasPendingIsolatedIncrements() {
+-    return this.isolatedIncrementsQueue.length > 0;
+-  }
+-
+-  /**
+-   * Flushes isolated increments only when the regular store queue is idle.
+-   * Returns whether at least one isolated increment was committed.
+-   */
+-  public flushIsolatedIncrements() {
+-    if (this.isFlushingIsolatedIncrements) {
+-      return false;
+-    }
+-    if (!this.hasPendingIsolatedIncrements() || !this.isIdle()) {
+-      return false;
+-    }
+-
+-    this.isFlushingIsolatedIncrements = true;
+-    let flushedAny = false;
+-    try {
+-      while (this.hasPendingIsolatedIncrements() && this.isIdle()) {
+-        const entry = this.isolatedIncrementsQueue.shift()!;
+-        this.scheduleMicroAction({
+-          action: CaptureUpdateAction.IMMEDIATELY,
+-          change: entry.change,
+-          delta: entry.delta,
+-        });
+-        this.commit(
+-          this.app.scene.getElementsMapIncludingDeleted(),
+-          this.app.state,
+-        );
+-        flushedAny = true;
+-      }
+-    } finally {
+-      this.isFlushingIsolatedIncrements = false;
+-    }
+-
+-    return flushedAny;
+-  }
+-
+-  /**
+-   * Retries isolated queue flushing once store queues are idle again.
+-   * This keeps isolated durable commits out of active micro/macro batches.
+-   */
+-  private scheduleDeferredIsolatedIncrementFlush() {
+-    if (this.cancelIsolatedFlushRetry) {
+-      return;
+-    }
+-
+-    // Store is used in the browser editor runtime; defer one frame and retry.
+-    const rafId = requestAnimationFrame(() => {
+-      this.cancelIsolatedFlushRetry = null;
+-      this.requestIsolatedIncrementFlush();
+-    });
+-    this.cancelIsolatedFlushRetry = () => cancelAnimationFrame(rafId);
+-  }
+-
+-  private requestIsolatedIncrementFlush() {
+-    const flushed = this.flushIsolatedIncrements();
+-    if (!flushed && this.hasPendingIsolatedIncrements()) {
+-      this.scheduleDeferredIsolatedIncrementFlush();
+     }
+   }
+ 
+@@ -298,15 +274,9 @@ export class Store {
+    * Clears the store instance.
+    */
+   public clear(): void {
+-    if (this.cancelIsolatedFlushRetry) {
+-      this.cancelIsolatedFlushRetry();
+-      this.cancelIsolatedFlushRetry = null;
+-    }
+     this.snapshot = StoreSnapshot.empty();
+     this.scheduledMacroActions = new Set();
+     this.scheduledMicroActions = [];
+-    this.isolatedIncrementsQueue = [];
+-    this.isFlushingIsolatedIncrements = false;
+   }
+ 
+   /**
+diff --git a/packages/element/src/transaction/ledger.ts b/packages/element/src/transaction/ledger.ts
+deleted file mode 100644
+index 007d316..0000000
+--- a/packages/element/src/transaction/ledger.ts
++++ /dev/null
+@@ -1,348 +0,0 @@
+-/**
+- * Transaction-scoped mutation ledger:
+- * - records net scene mutations across streamed steps
+- * - reconstructs synthetic logical before/after snapshots
+- * - feeds a single durable history entry at transaction end
+- */
+-import type { Mutable } from "@excalidraw/common/utility-types";
+-
+-import { deepCopyElement } from "../duplicate";
+-
+-import type {
+-  ExcalidrawElement,
+-  OrderedExcalidrawElement,
+-  SceneElementsMap,
+-} from "../types";
+-import type { TransactionLedgerEntry, TransactionMergePolicy } from "./types";
+-
+-const LEDGER_IGNORED_PROPS = new Set([
+-  "version",
+-  "versionNonce",
+-  "seed",
+-  "updated",
+-  "index",
+-]);
+-
+-type ElementRecord = Record<string, unknown>;
+-
+-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+-  !!value && typeof value === "object" && !Array.isArray(value);
+-
+-const getElementProp = (element: ExcalidrawElement, prop: string): unknown =>
+-  (element as ElementRecord)[prop];
+-
+-const setOrderedElementProp = (
+-  element: Mutable<OrderedExcalidrawElement>,
+-  prop: string,
+-  value: unknown,
+-) => {
+-  (element as ElementRecord)[prop] = value;
+-};
+-
+-/** Deep equality used by ledger conflict/touched-prop detection. */
+-const isLedgerValueEqual = (left: unknown, right: unknown): boolean => {
+-  if (Object.is(left, right)) {
+-    return true;
+-  }
+-
+-  if (Array.isArray(left) && Array.isArray(right)) {
+-    if (left.length !== right.length) {
+-      return false;
+-    }
+-    for (let index = 0; index < left.length; index += 1) {
+-      if (!isLedgerValueEqual(left[index], right[index])) {
+-        return false;
+-      }
+-    }
+-    return true;
+-  }
+-
+-  if (isPlainObject(left) && isPlainObject(right)) {
+-    const leftKeys = Object.keys(left);
+-    const rightKeys = Object.keys(right);
+-    if (leftKeys.length !== rightKeys.length) {
+-      return false;
+-    }
+-    for (const key of leftKeys) {
+-      if (!Object.prototype.hasOwnProperty.call(right, key)) {
+-        return false;
+-      }
+-      if (!isLedgerValueEqual(left[key], right[key])) {
+-        return false;
+-      }
+-    }
+-    return true;
+-  }
+-
+-  return false;
+-};
+-
+-/** Clones a scene map so synthetic before/after edits never mutate live elements. */
+-const cloneSceneElementsMap = (
+-  elements: ReadonlyMap<string, ExcalidrawElement>,
+-): SceneElementsMap =>
+-  new Map(
+-    [...elements.entries()].map(([id, element]) => [
+-      id,
+-      deepCopyElement(element) as OrderedExcalidrawElement,
+-    ]),
+-  ) as SceneElementsMap;
+-
+-/** Returns changed property names between two element snapshots. */
+-const collectTouchedProps = (
+-  before: ExcalidrawElement | null,
+-  after: ExcalidrawElement | null,
+-) => {
+-  if (!before || !after) {
+-    return new Set<string>(["*"]);
+-  }
+-
+-  const touchedProps = new Set<string>();
+-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+-
+-  for (const key of keys) {
+-    if (LEDGER_IGNORED_PROPS.has(key)) {
+-      continue;
+-    }
+-    if (
+-      !isLedgerValueEqual(
+-        getElementProp(before, key),
+-        getElementProp(after, key),
+-      )
+-    ) {
+-      touchedProps.add(key);
+-    }
+-  }
+-
+-  return touchedProps;
+-};
+-
+-/** Returns ids whose element snapshot changed between two points in time. */
+-export const collectChangedElementIds = (
+-  before: ReadonlyMap<string, ExcalidrawElement>,
+-  after: ReadonlyMap<string, ExcalidrawElement>,
+-) => {
+-  const changedIds = new Set<string>();
+-  const candidateIds = new Set<string>([...before.keys(), ...after.keys()]);
+-
+-  for (const id of candidateIds) {
+-    const beforeElement = before.get(id) ?? null;
+-    const afterElement = after.get(id) ?? null;
+-    if (collectTouchedProps(beforeElement, afterElement).size > 0) {
+-      changedIds.add(id);
+-    }
+-  }
+-
+-  return [...changedIds];
+-};
+-
+-/** Determines whether live conflicts should skip the whole updated element. */
+-const shouldSkipUpdateElementOnLiveConflict = (
+-  entry: TransactionLedgerEntry,
+-  liveElement: ExcalidrawElement,
+-  policy: TransactionMergePolicy,
+-) => {
+-  if (policy.conflictWinner === "transaction") {
+-    return false;
+-  }
+-  if (entry.touchedProps.has("*")) {
+-    return true;
+-  }
+-  return policy.conflictScope === "element";
+-};
+-
+-/**
+- * Keeps transaction-level scene mutations and materializes synthetic snapshots
+- * for a single durable history commit.
+- */
+-export class TransactionLedger {
+-  private readonly entries = new Map<string, TransactionLedgerEntry>();
+-
+-  /** Whether the transaction has any net mutations to commit. */
+-  hasEntries() {
+-    return this.entries.size > 0;
+-  }
+-
+-  /** Records one mutation step into a net per-element ledger entry. */
+-  recordStep(
+-    before: ReadonlyMap<string, ExcalidrawElement>,
+-    after: ReadonlyMap<string, ExcalidrawElement>,
+-  ) {
+-    for (const elementId of collectChangedElementIds(before, after)) {
+-      const beforeElement = before.get(elementId) ?? null;
+-      const afterElement = after.get(elementId) ?? null;
+-      const touchedProps = collectTouchedProps(beforeElement, afterElement);
+-
+-      if (touchedProps.size === 0) {
+-        continue;
+-      }
+-
+-      const existing = this.entries.get(elementId);
+-      if (!existing) {
+-        this.entries.set(elementId, {
+-          baselineElement: beforeElement
+-            ? deepCopyElement(beforeElement)
+-            : null,
+-          targetElement: afterElement ? deepCopyElement(afterElement) : null,
+-          touchedProps,
+-        });
+-        continue;
+-      }
+-
+-      existing.targetElement = afterElement
+-        ? deepCopyElement(afterElement)
+-        : null;
+-      if (existing.touchedProps.has("*") || touchedProps.has("*")) {
+-        existing.touchedProps = new Set(["*"]);
+-      } else {
+-        for (const prop of touchedProps) {
+-          existing.touchedProps.add(prop);
+-        }
+-      }
+-
+-      // Created then deleted inside one transaction leaves no durable footprint.
+-      if (!existing.baselineElement && !existing.targetElement) {
+-        this.entries.delete(elementId);
+-        continue;
+-      }
+-      if (!existing.baselineElement && existing.targetElement?.isDeleted) {
+-        this.entries.delete(elementId);
+-      }
+-    }
+-  }
+-
+-  /**
+-   * Builds logical before/after snapshots by reconciling transaction targets
+-   * with current live scene state under the selected merge policy.
+-   */
+-  buildSyntheticSnapshots(
+-    live: ReadonlyMap<string, ExcalidrawElement>,
+-    mergePolicy: TransactionMergePolicy,
+-  ) {
+-    const logicalBefore = cloneSceneElementsMap(live);
+-    const logicalAfter = cloneSceneElementsMap(live);
+-
+-    for (const [elementId, entry] of this.entries) {
+-      if (!entry.baselineElement) {
+-        const liveElement = live.get(elementId) ?? null;
+-        const targetElement = entry.targetElement;
+-        if (!targetElement) {
+-          continue;
+-        }
+-        if (
+-          mergePolicy.conflictWinner === "live" &&
+-          (!liveElement ||
+-            liveElement.isDeleted ||
+-            collectTouchedProps(targetElement, liveElement).size > 0)
+-        ) {
+-          continue;
+-        }
+-        logicalBefore.delete(elementId);
+-        logicalAfter.set(
+-          elementId,
+-          deepCopyElement(targetElement) as OrderedExcalidrawElement,
+-        );
+-        continue;
+-      }
+-
+-      if (!entry.targetElement) {
+-        const liveElement = live.get(elementId) ?? null;
+-        if (
+-          mergePolicy.conflictWinner === "live" &&
+-          liveElement &&
+-          !liveElement.isDeleted
+-        ) {
+-          continue;
+-        }
+-        logicalBefore.set(
+-          elementId,
+-          deepCopyElement(entry.baselineElement) as OrderedExcalidrawElement,
+-        );
+-        logicalAfter.delete(elementId);
+-        continue;
+-      }
+-
+-      const liveElement = live.get(elementId) ?? null;
+-      const targetElement = entry.targetElement;
+-      const baselineElement = entry.baselineElement;
+-      const logicalBeforeElement = logicalBefore.get(elementId);
+-      const logicalAfterElement = logicalAfter.get(elementId);
+-
+-      if (
+-        !liveElement ||
+-        !baselineElement ||
+-        !targetElement ||
+-        !logicalBeforeElement ||
+-        !logicalAfterElement
+-      ) {
+-        continue;
+-      }
+-
+-      if (entry.touchedProps.has("*")) {
+-        const hasLiveConflict =
+-          collectTouchedProps(targetElement, liveElement).size > 0;
+-        if (mergePolicy.conflictWinner === "live" && hasLiveConflict) {
+-          continue;
+-        }
+-        logicalBefore.set(
+-          elementId,
+-          deepCopyElement(baselineElement) as OrderedExcalidrawElement,
+-        );
+-        logicalAfter.set(
+-          elementId,
+-          deepCopyElement(targetElement) as OrderedExcalidrawElement,
+-        );
+-        continue;
+-      }
+-
+-      if (
+-        shouldSkipUpdateElementOnLiveConflict(entry, liveElement, mergePolicy)
+-      ) {
+-        let hasConflict = false;
+-        for (const prop of entry.touchedProps) {
+-          const liveValue = getElementProp(liveElement, prop);
+-          const targetValue = getElementProp(targetElement, prop);
+-          if (!isLedgerValueEqual(liveValue, targetValue)) {
+-            hasConflict = true;
+-            break;
+-          }
+-        }
+-        if (hasConflict) {
+-          continue;
+-        }
+-      }
+-
+-      const mutableBefore =
+-        logicalBeforeElement as Mutable<OrderedExcalidrawElement>;
+-      const mutableAfter =
+-        logicalAfterElement as Mutable<OrderedExcalidrawElement>;
+-
+-      let appliedProps = 0;
+-      for (const prop of entry.touchedProps) {
+-        const liveValue = getElementProp(liveElement, prop);
+-        const targetValue = getElementProp(targetElement, prop);
+-        const hasConflict = !isLedgerValueEqual(liveValue, targetValue);
+-        if (mergePolicy.conflictWinner === "live" && hasConflict) {
+-          continue;
+-        }
+-
+-        setOrderedElementProp(
+-          mutableBefore,
+-          prop,
+-          getElementProp(baselineElement, prop),
+-        );
+-        setOrderedElementProp(mutableAfter, prop, targetValue);
+-        appliedProps += 1;
+-      }
+-
+-      if (appliedProps > 0) {
+-        mutableBefore.version = baselineElement.version;
+-        mutableBefore.versionNonce = baselineElement.versionNonce;
+-        mutableAfter.version = targetElement.version;
+-        mutableAfter.versionNonce = targetElement.versionNonce;
+-      }
+-    }
+-
+-    return { logicalBefore, logicalAfter };
+-  }
+-}
+diff --git a/packages/element/src/transaction/types.ts b/packages/element/src/transaction/types.ts
+deleted file mode 100644
+index d987c66..0000000
+--- a/packages/element/src/transaction/types.ts
++++ /dev/null
+@@ -1,25 +0,0 @@
+-import type { ExcalidrawElement } from "../types";
+-
+-/** Which side wins when transaction output and live scene diverge. */
+-export type ConflictWinner = "live" | "transaction";
+-
+-/** Conflict granularity used by the merge policy. */
+-export type ConflictScope = "prop" | "element";
+-
+-/** Merge policy used when building synthetic before/after snapshots. */
+-export type TransactionMergePolicy = {
+-  conflictWinner: ConflictWinner;
+-  conflictScope: ConflictScope;
+-};
+-
+-export const DEFAULT_TRANSACTION_MERGE_POLICY: TransactionMergePolicy = {
+-  conflictWinner: "live",
+-  conflictScope: "prop",
+-};
+-
+-/** Per-element ledger record captured during a transaction session. */
+-export type TransactionLedgerEntry = {
+-  baselineElement: ExcalidrawElement | null;
+-  targetElement: ExcalidrawElement | null;
+-  touchedProps: Set<string>;
+-};
+diff --git a/packages/element/tests/transactionLedger.test.ts b/packages/element/tests/transactionLedger.test.ts
+deleted file mode 100644
+index b280cdd..0000000
+--- a/packages/element/tests/transactionLedger.test.ts
++++ /dev/null
+@@ -1,179 +0,0 @@
+-import { arrayToMap } from "@excalidraw/common";
+-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
+-
+-import {
+-  DEFAULT_TRANSACTION_MERGE_POLICY,
+-  TransactionLedger,
+-  collectChangedElementIds,
+-} from "../src";
+-
+-import type { ExcalidrawElement } from "../src/types";
+-
+-describe("TransactionLedger", () => {
+-  it("ignores metadata-only changes when collecting changed ids", () => {
+-    const before = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-    });
+-    const after = {
+-      ...before,
+-      version: before.version + 1,
+-      versionNonce: before.versionNonce + 1,
+-      seed: before.seed + 1,
+-      updated: before.updated + 1,
+-      index: "a2" as ExcalidrawElement["index"],
+-    };
+-
+-    expect(
+-      collectChangedElementIds(arrayToMap([before]), arrayToMap([after])),
+-    ).toEqual([]);
+-  });
+-
+-  it("drops ledger entry when element is created and deleted in one transaction", () => {
+-    const ledger = new TransactionLedger();
+-    const created = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-    });
+-
+-    ledger.recordStep(new Map(), arrayToMap([created]));
+-    expect(ledger.hasEntries()).toBe(true);
+-
+-    ledger.recordStep(arrayToMap([created]), new Map());
+-    expect(ledger.hasEntries()).toBe(false);
+-  });
+-
+-  it("materializes create operation when live scene still matches target", () => {
+-    const ledger = new TransactionLedger();
+-    const created = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-      strokeColor: "#ff006e",
+-    });
+-
+-    ledger.recordStep(new Map(), arrayToMap([created]));
+-
+-    const { logicalBefore, logicalAfter } = ledger.buildSyntheticSnapshots(
+-      arrayToMap([created]),
+-      DEFAULT_TRANSACTION_MERGE_POLICY,
+-    );
+-
+-    expect(logicalBefore.has(created.id)).toBe(false);
+-    expect(logicalAfter.get(created.id)?.strokeColor).toBe("#ff006e");
+-  });
+-
+-  it("skips conflicting update when policy is live-wins", () => {
+-    const ledger = new TransactionLedger();
+-    const baseline = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-      strokeColor: "#000000",
+-    });
+-    const target = {
+-      ...baseline,
+-      strokeColor: "#ff006e",
+-      version: baseline.version + 1,
+-    };
+-    const live = {
+-      ...target,
+-      strokeColor: "#3a86ff",
+-      version: target.version + 1,
+-    };
+-
+-    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
+-
+-    const { logicalBefore, logicalAfter } = ledger.buildSyntheticSnapshots(
+-      arrayToMap([live]),
+-      DEFAULT_TRANSACTION_MERGE_POLICY,
+-    );
+-
+-    expect(logicalBefore.get(live.id)?.strokeColor).toBe("#3a86ff");
+-    expect(logicalAfter.get(live.id)?.strokeColor).toBe("#3a86ff");
+-  });
+-
+-  it("applies conflicting update when policy is transaction-wins", () => {
+-    const ledger = new TransactionLedger();
+-    const baseline = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-      strokeColor: "#000000",
+-    });
+-    const target = {
+-      ...baseline,
+-      strokeColor: "#ff006e",
+-      version: baseline.version + 1,
+-    };
+-    const live = {
+-      ...target,
+-      strokeColor: "#3a86ff",
+-      version: target.version + 1,
+-    };
+-
+-    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
+-
+-    const { logicalBefore, logicalAfter } = ledger.buildSyntheticSnapshots(
+-      arrayToMap([live]),
+-      {
+-        ...DEFAULT_TRANSACTION_MERGE_POLICY,
+-        conflictWinner: "transaction",
+-      },
+-    );
+-
+-    expect(logicalBefore.get(live.id)?.strokeColor).toBe("#000000");
+-    expect(logicalAfter.get(live.id)?.strokeColor).toBe("#ff006e");
+-  });
+-
+-  it("applies per-prop conflict handling and supports element-scope skip", () => {
+-    const ledger = new TransactionLedger();
+-    const baseline = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-      strokeColor: "#000000",
+-      backgroundColor: "#ffffff",
+-    });
+-    const target = {
+-      ...baseline,
+-      strokeColor: "#ff006e",
+-      backgroundColor: "#ffd8a8",
+-      version: baseline.version + 1,
+-    };
+-    const live = {
+-      ...target,
+-      strokeColor: "#3a86ff",
+-      backgroundColor: "#ffd8a8",
+-      version: target.version + 1,
+-    };
+-
+-    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
+-
+-    const propScope = ledger.buildSyntheticSnapshots(
+-      arrayToMap([live]),
+-      DEFAULT_TRANSACTION_MERGE_POLICY,
+-    );
+-    expect(propScope.logicalBefore.get(live.id)?.strokeColor).toBe("#3a86ff");
+-    expect(propScope.logicalAfter.get(live.id)?.strokeColor).toBe("#3a86ff");
+-    expect(propScope.logicalBefore.get(live.id)?.backgroundColor).toBe(
+-      "#ffffff",
+-    );
+-    expect(propScope.logicalAfter.get(live.id)?.backgroundColor).toBe(
+-      "#ffd8a8",
+-    );
+-
+-    const elementScope = ledger.buildSyntheticSnapshots(arrayToMap([live]), {
+-      ...DEFAULT_TRANSACTION_MERGE_POLICY,
+-      conflictScope: "element",
+-    });
+-    expect(elementScope.logicalBefore.get(live.id)?.strokeColor).toBe(
+-      "#3a86ff",
+-    );
+-    expect(elementScope.logicalAfter.get(live.id)?.strokeColor).toBe(
+-      "#3a86ff",
+-    );
+-    expect(elementScope.logicalBefore.get(live.id)?.backgroundColor).toBe(
+-      "#ffd8a8",
+-    );
+-    expect(elementScope.logicalAfter.get(live.id)?.backgroundColor).toBe(
+-      "#ffd8a8",
+-    );
+-  });
+-});
+diff --git a/packages/excalidraw/components/App.tsx b/packages/excalidraw/components/App.tsx
+index 6d040e9..cbde098 100644
+--- a/packages/excalidraw/components/App.tsx
++++ b/packages/excalidraw/components/App.tsx
+@@ -239,9 +239,7 @@ import {
+   hitElementBoundingBox,
+   isLineElement,
+   isSimpleArrow,
+-  StoreChange,
+   StoreDelta,
+-  StoreSnapshot,
+   type ApplyToOptions,
+   positionElementsOnGrid,
+   calculateFixedPointForNonElbowArrowBinding,
+@@ -363,7 +361,7 @@ import { restoreAppState, restoreElements } from "../data/restore";
+ import { getCenter, getDistance } from "../gesture";
+ import { History } from "../history";
+ import { defaultLang, getLanguage, languages, setLanguage, t } from "../i18n";
+-import { TransactionManager } from "../transaction/manager";
++import { TransactionManager } from "../transaction";
+ 
+ import {
+   calculateScrollCenter,
+@@ -491,7 +489,6 @@ import type {
+   CollaboratorPointer,
+   ToolType,
+   OnUserFollowedPayload,
+-  ObservedAppState,
+   UnsubscribeCallback,
+   EmbedsValidationStatus,
+   ElementsPendingErasure,
+@@ -642,7 +639,7 @@ class App extends React.Component<AppProps, AppState> {
+   public libraryItemsFromStorage: LibraryItems | undefined;
+   public id: string;
+   public transactionManager: TransactionManager;
+-  private store: Store;
++  public store: Store;
+   private history: History;
+   public excalidrawContainerValue: {
+     container: HTMLDivElement | null;
+@@ -4608,57 +4605,9 @@ class App extends React.Component<AppProps, AppState> {
+     );
+   };
+ 
+-  /**
+-   * Records a synthetic durable history entry without changing the live scene.
+-   * Useful for batching external streams into a single undoable entry after
+-   * their visual state has already been applied with NEVER.
+-   *
+-   * appState patches are merged on top of the current observed appState
+-   * baseline. This keeps unspecified observed fields stable while only the
+-   * provided appState keys participate in the synthetic before/after diff.
+-   */
+-  public commitSyntheticHistoryEntry = (params: {
+-    logicalBefore: SceneElementsMap;
+-    logicalAfter: SceneElementsMap;
+-    appStateBefore?: Partial<ObservedAppState>;
+-    appStateAfter?: Partial<ObservedAppState>;
+-  }): boolean => {
+-    const { logicalBefore, logicalAfter, appStateBefore, appStateAfter } =
+-      params;
+-    const observedAppStateBaseline = this.store.snapshot.appState;
+-    const syntheticAppStateBefore = appStateBefore
+-      ? { ...observedAppStateBaseline, ...appStateBefore }
+-      : observedAppStateBaseline;
+-    const syntheticAppStateAfter = appStateAfter
+-      ? { ...observedAppStateBaseline, ...appStateAfter }
+-      : observedAppStateBaseline;
+-    const didAppStateChange = Boolean(appStateBefore || appStateAfter);
+-    const prevSnapshot = StoreSnapshot.create(
+-      logicalBefore,
+-      syntheticAppStateBefore,
+-      {
+-        didElementsChange: true,
+-        didAppStateChange,
+-      },
+-    );
+-    const nextSnapshot = StoreSnapshot.create(
+-      logicalAfter,
+-      syntheticAppStateAfter,
+-      {
+-        didElementsChange: true,
+-        didAppStateChange,
+-      },
+-    );
+-    const change = StoreChange.create(prevSnapshot, nextSnapshot);
+-    const delta = StoreDelta.calculate(prevSnapshot, nextSnapshot);
+-
+-    if (delta.isEmpty()) {
+-      return false;
+-    }
+-
+-    this.store.enqueueIsolatedIncrement({ change, delta });
+-
+-    return true;
++  /** Creates a new transaction for batching mutations into a single undo entry. */
++  public createTransaction: TransactionManager["create"] = (options) => {
++    return this.transactionManager.create(options);
+   };
+ 
+   public mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
+diff --git a/packages/excalidraw/package.json b/packages/excalidraw/package.json
+index 1d01b82..87393f2 100644
+--- a/packages/excalidraw/package.json
++++ b/packages/excalidraw/package.json
+@@ -83,13 +83,13 @@
+     "@codemirror/language": "^6.0.0",
+     "@codemirror/state": "^6.0.0",
+     "@codemirror/view": "^6.0.0",
+-    "@lezer/highlight": "^1.0.0",
+     "@excalidraw/common": "0.18.0",
+     "@excalidraw/element": "0.18.0",
+     "@excalidraw/laser-pointer": "1.3.1",
+     "@excalidraw/math": "0.18.0",
+     "@excalidraw/mermaid-to-excalidraw": "2.2.2",
+     "@excalidraw/random-username": "1.1.0",
++    "@lezer/highlight": "^1.0.0",
+     "browser-fs-access": "0.38.0",
+     "canvas-roundrect-polyfill": "0.0.1",
+     "clsx": "1.1.1",
+diff --git a/packages/excalidraw/tests/transaction.test.tsx b/packages/excalidraw/tests/transaction.test.tsx
+new file mode 100644
+index 0000000..4920d15
+--- /dev/null
++++ b/packages/excalidraw/tests/transaction.test.tsx
+@@ -0,0 +1,577 @@
++import React from "react";
++
++import { arrayToMap } from "@excalidraw/common";
++import { CaptureUpdateAction, newElementWith } from "@excalidraw/element";
++
++import type { ExcalidrawElement } from "@excalidraw/element/types";
++
++import { Excalidraw } from "../index";
++import {
++  TransactionLedger,
++  DEFAULT_TRANSACTION_MERGE_POLICY,
++  collectChangedElementIds,
++} from "../transaction";
++
++import { API } from "./helpers/api";
++import { Keyboard } from "./helpers/ui";
++import { act, render, unmountComponent, waitFor } from "./test-utils";
++
++import type { Transaction, TransactionSummary } from "../transaction";
++
++const { h } = window;
++
++const getElement = (id: string) =>
++  h.app.scene.getNonDeletedElementsMap().get(id) ?? null;
++
++const applyElementUpdate = (
++  id: string,
++  updates: Partial<ExcalidrawElement>,
++  captureUpdate: keyof typeof CaptureUpdateAction,
++) => {
++  const nextElements = h.app.scene
++    .getElementsIncludingDeleted()
++    .map((element) =>
++      element.id === id
++        ? (newElementWith(element as any, updates as any) as ExcalidrawElement)
++        : element,
++    );
++
++  API.updateScene({
++    elements: nextElements,
++    captureUpdate: CaptureUpdateAction[captureUpdate],
++  });
++};
++
++const setSceneBaseline = (elements: readonly ExcalidrawElement[]) => {
++  API.updateScene({
++    elements,
++    captureUpdate: CaptureUpdateAction.NEVER,
++  });
++};
++
++const commitTransaction = (tx: Transaction) => {
++  let summary!: TransactionSummary;
++  act(() => {
++    summary = tx.commit();
++  });
++  return summary;
++};
++
++// ---------------------------------------------------------------------------
++// TransactionLedger (unit tests — no React render needed)
++// ---------------------------------------------------------------------------
++
++describe("TransactionLedger", () => {
++  it("ignores metadata-only changes when collecting changed ids", () => {
++    const before = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++    });
++    const after = {
++      ...before,
++      version: before.version + 1,
++      versionNonce: before.versionNonce + 1,
++      seed: before.seed + 1,
++      updated: before.updated + 1,
++      index: "a2" as ExcalidrawElement["index"],
++    };
++
++    expect(
++      collectChangedElementIds(arrayToMap([before]), arrayToMap([after])),
++    ).toEqual([]);
++  });
++
++  it("drops ledger entry when element is created and deleted in one transaction", () => {
++    const ledger = new TransactionLedger();
++    const created = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++    });
++
++    ledger.recordStep(new Map(), arrayToMap([created]));
++    expect(ledger.hasEntries()).toBe(true);
++
++    ledger.recordStep(arrayToMap([created]), new Map());
++    expect(ledger.hasEntries()).toBe(false);
++  });
++
++  it("materializes create operation when live scene still matches target", () => {
++    const ledger = new TransactionLedger();
++    const created = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++      strokeColor: "#ff006e",
++    });
++
++    ledger.recordStep(new Map(), arrayToMap([created]));
++
++    const { elementsBefore, elementsAfter } = ledger.buildSyntheticSnapshots(
++      arrayToMap([created]),
++      DEFAULT_TRANSACTION_MERGE_POLICY,
++    );
++
++    expect(elementsBefore.has(created.id)).toBe(false);
++    expect(elementsAfter.get(created.id)?.strokeColor).toBe("#ff006e");
++  });
++
++  it("skips conflicting update when policy is live-wins", () => {
++    const ledger = new TransactionLedger();
++    const baseline = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++      strokeColor: "#000000",
++    });
++    const target = {
++      ...baseline,
++      strokeColor: "#ff006e",
++      version: baseline.version + 1,
++    };
++    const live = {
++      ...target,
++      strokeColor: "#3a86ff",
++      version: target.version + 1,
++    };
++
++    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
++
++    const { elementsBefore, elementsAfter } = ledger.buildSyntheticSnapshots(
++      arrayToMap([live]),
++      DEFAULT_TRANSACTION_MERGE_POLICY,
++    );
++
++    expect(elementsBefore.get(live.id)?.strokeColor).toBe("#3a86ff");
++    expect(elementsAfter.get(live.id)?.strokeColor).toBe("#3a86ff");
++  });
++
++  it("applies conflicting update when policy is transaction-wins", () => {
++    const ledger = new TransactionLedger();
++    const baseline = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++      strokeColor: "#000000",
++    });
++    const target = {
++      ...baseline,
++      strokeColor: "#ff006e",
++      version: baseline.version + 1,
++    };
++    const live = {
++      ...target,
++      strokeColor: "#3a86ff",
++      version: target.version + 1,
++    };
++
++    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
++
++    const { elementsBefore, elementsAfter } = ledger.buildSyntheticSnapshots(
++      arrayToMap([live]),
++      {
++        ...DEFAULT_TRANSACTION_MERGE_POLICY,
++        conflictWinner: "transaction",
++      },
++    );
++
++    expect(elementsBefore.get(live.id)?.strokeColor).toBe("#000000");
++    expect(elementsAfter.get(live.id)?.strokeColor).toBe("#ff006e");
++  });
++
++  it("applies per-prop conflict handling and supports element-scope skip", () => {
++    const ledger = new TransactionLedger();
++    const baseline = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++      strokeColor: "#000000",
++      backgroundColor: "#ffffff",
++    });
++    const target = {
++      ...baseline,
++      strokeColor: "#ff006e",
++      backgroundColor: "#ffd8a8",
++      version: baseline.version + 1,
++    };
++    const live = {
++      ...target,
++      strokeColor: "#3a86ff",
++      backgroundColor: "#ffd8a8",
++      version: target.version + 1,
++    };
++
++    ledger.recordStep(arrayToMap([baseline]), arrayToMap([target]));
++
++    const propScope = ledger.buildSyntheticSnapshots(
++      arrayToMap([live]),
++      DEFAULT_TRANSACTION_MERGE_POLICY,
++    );
++    expect(propScope.elementsBefore.get(live.id)?.strokeColor).toBe("#3a86ff");
++    expect(propScope.elementsAfter.get(live.id)?.strokeColor).toBe("#3a86ff");
++    expect(propScope.elementsBefore.get(live.id)?.backgroundColor).toBe(
++      "#ffffff",
++    );
++    expect(propScope.elementsAfter.get(live.id)?.backgroundColor).toBe(
++      "#ffd8a8",
++    );
++
++    const elementScope = ledger.buildSyntheticSnapshots(arrayToMap([live]), {
++      ...DEFAULT_TRANSACTION_MERGE_POLICY,
++      conflictScope: "element",
++    });
++    expect(elementScope.elementsBefore.get(live.id)?.strokeColor).toBe(
++      "#3a86ff",
++    );
++    expect(elementScope.elementsAfter.get(live.id)?.strokeColor).toBe(
++      "#3a86ff",
++    );
++    expect(elementScope.elementsBefore.get(live.id)?.backgroundColor).toBe(
++      "#ffd8a8",
++    );
++    expect(elementScope.elementsAfter.get(live.id)?.backgroundColor).toBe(
++      "#ffd8a8",
++    );
++  });
++});
++
++// ---------------------------------------------------------------------------
++// createTransaction (integration tests — requires full Excalidraw render)
++// ---------------------------------------------------------------------------
++
++describe("createTransaction", () => {
++  beforeEach(async () => {
++    unmountComponent();
++    vi.restoreAllMocks();
++    await render(<Excalidraw handleKeyboardGlobally={true} />);
++  });
++
++  it("commits a single undo entry after tx.updateScene() calls", async () => {
++    const element = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++    });
++    setSceneBaseline([element]);
++
++    const commitSpy = vi
++      .spyOn(h.store, "commitSyntheticIncrement")
++      .mockReturnValue(true);
++
++    const tx = h.app.createTransaction();
++
++    tx.updateScene({
++      elements: h.app.scene
++        .getElementsIncludingDeleted()
++        .map((el) =>
++          el.id === element.id
++            ? newElementWith(el as any, { strokeColor: "#ff006e" } as any)
++            : el,
++        ),
++    });
++
++    const summary = commitTransaction(tx);
++
++    expect(summary.status).toBe("committed");
++    expect(summary.historyCommitted).toBe(true);
++    expect(commitSpy).toHaveBeenCalledTimes(1);
++  });
++
++  it("cancel() does not commit history", () => {
++    const commitSpy = vi.spyOn(h.store, "commitSyntheticIncrement");
++    const tx = h.app.createTransaction();
++
++    const summary = tx.cancel();
++
++    expect(summary.status).toBe("canceled");
++    expect(summary.historyCommitted).toBe(false);
++    expect(commitSpy).not.toHaveBeenCalled();
++  });
++
++  it("commit() is idempotent and skips empty transactions", () => {
++    const commitSpy = vi.spyOn(h.store, "commitSyntheticIncrement");
++    const tx = h.app.createTransaction();
++
++    const first = tx.commit();
++    const second = tx.commit();
++
++    expect(second).toBe(first);
++    expect(first.status).toBe("committed");
++    expect(first.historyCommitted).toBe(false);
++    expect(commitSpy).not.toHaveBeenCalled();
++  });
++
++  it("throws on updateScene after commit", () => {
++    const tx = h.app.createTransaction();
++    tx.commit();
++
++    expect(() => tx.updateScene({ elements: [] })).toThrow(/already committed/);
++  });
++
++  it("throws on updateScene after cancel", () => {
++    const tx = h.app.createTransaction();
++    tx.cancel();
++
++    expect(() => tx.updateScene({ elements: [] })).toThrow(/already canceled/);
++  });
++
++  it("forwards appState intent to commitSyntheticIncrement", async () => {
++    const element = API.createElement({
++      type: "rectangle",
++      id: "rect-1",
++    });
++    setSceneBaseline([element]);
++
++    const commitSpy = vi
++      .spyOn(h.store, "commitSyntheticIncrement")
++      .mockReturnValue(true);
++
++    const tx = h.app.createTransaction();
++
++    tx.updateScene({
++      elements: h.app.scene
++        .getElementsIncludingDeleted()
++        .map((el) =>
++          el.id === element.id
++            ? newElementWith(el as any, { backgroundColor: "#ffbe0b" } as any)
++            : el,
++        ),
++      appState: { selectedElementIds: { [element.id]: true } },
++    });
++
++    act(() => {
++      tx.commit();
++    });
++
++    expect(commitSpy).toHaveBeenCalledTimes(1);
++    const call = commitSpy.mock.calls[0]![0];
++    expect(call.logicalAfter.appState).toBeDefined();
++    expect((call.logicalAfter.appState as any).selectedElementIds).toEqual({
++      [element.id]: true,
++    });
++  });
++
++  it("keeps interleaved user edits and transaction history entries separated", async () => {
++    const transactionElement = API.createElement({
++      type: "rectangle",
++      id: "tx-rect",
++      x: 0,
++      y: 0,
++      strokeColor: "#1e1e1e",
++      opacity: 100,
++    });
++    const userElement = API.createElement({
++      type: "rectangle",
++      id: "user-rect",
++      x: 300,
++      y: 0,
++      backgroundColor: "#ffe8cc",
++    });
++
++    setSceneBaseline([transactionElement, userElement]);
++    expect(API.getUndoStack().length).toBe(0);
++
++    const tx = h.app.createTransaction();
++
++    // First tx mutation
++    tx.updateScene({
++      elements: h.app.scene.getElementsIncludingDeleted().map((el) =>
++        el.id === transactionElement.id
++          ? newElementWith(
++              el as any,
++              {
++                x: 180,
++                strokeColor: "#ff006e",
++              } as any,
++            )
++          : el,
++      ),
++    });
++
++    // User edit interleaved
++    applyElementUpdate(
++      userElement.id,
++      { backgroundColor: "#00f5d4" },
++      "IMMEDIATELY",
++    );
++
++    // Second tx mutation
++    tx.updateScene({
++      elements: h.app.scene
++        .getElementsIncludingDeleted()
++        .map((el) =>
++          el.id === transactionElement.id
++            ? newElementWith(el as any, { opacity: 60 } as any)
++            : el,
++        ),
++    });
++
++    // Another user edit
++    applyElementUpdate(userElement.id, { y: 220 }, "IMMEDIATELY");
++
++    expect(API.getUndoStack().length).toBe(2);
++    const summary = commitTransaction(tx);
++    expect(summary.historyCommitted).toBe(true);
++
++    await waitFor(() => {
++      expect(API.getUndoStack().length).toBe(3);
++    });
++
++    let liveTxElement = getElement(transactionElement.id)!;
++    let liveUserElement = getElement(userElement.id)!;
++    expect(liveTxElement.x).toBe(180);
++    expect(liveTxElement.strokeColor).toBe("#ff006e");
++    expect(liveTxElement.opacity).toBe(60);
++    expect(liveUserElement.backgroundColor).toBe("#00f5d4");
++    expect(liveUserElement.y).toBe(220);
++
++    // Undo transaction entry
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      liveTxElement = getElement(transactionElement.id)!;
++      expect(liveTxElement.x).toBe(transactionElement.x);
++      expect(liveTxElement.strokeColor).toBe(transactionElement.strokeColor);
++      expect(liveTxElement.opacity).toBe(transactionElement.opacity);
++    });
++    liveUserElement = getElement(userElement.id)!;
++    expect(liveUserElement.backgroundColor).toBe("#00f5d4");
++    expect(liveUserElement.y).toBe(220);
++
++    // Undo user edit
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      liveUserElement = getElement(userElement.id)!;
++      expect(liveUserElement.y).toBe(userElement.y);
++      expect(liveUserElement.backgroundColor).toBe("#00f5d4");
++    });
++
++    // Undo another user edit
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      liveUserElement = getElement(userElement.id)!;
++      expect(liveUserElement.backgroundColor).toBe(userElement.backgroundColor);
++      expect(liveUserElement.y).toBe(userElement.y);
++    });
++  });
++
++  it("undoes transaction-created elements without rolling back user history", async () => {
++    const base = API.createElement({
++      type: "rectangle",
++      id: "base",
++      x: 0,
++      y: 0,
++    });
++    const txCreated = API.createElement({
++      type: "ellipse",
++      id: "tx-created",
++      x: 420,
++      y: 100,
++      backgroundColor: "#b197fc",
++    });
++
++    setSceneBaseline([base]);
++    expect(getElement(txCreated.id)).toBeNull();
++
++    const tx = h.app.createTransaction();
++
++    tx.updateScene({
++      elements: [...h.app.scene.getElementsIncludingDeleted(), txCreated],
++    });
++
++    applyElementUpdate(base.id, { x: 120 }, "IMMEDIATELY");
++    expect(API.getUndoStack().length).toBe(1);
++
++    const summary = commitTransaction(tx);
++    expect(summary.historyCommitted).toBe(true);
++
++    await waitFor(() => {
++      expect(API.getUndoStack().length).toBe(2);
++    });
++    expect(getElement(txCreated.id)).not.toBeNull();
++
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      expect(getElement(txCreated.id)).toBeNull();
++      expect(getElement(base.id)?.x).toBe(120);
++    });
++
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      expect(getElement(base.id)?.x).toBe(base.x);
++    });
++  });
++
++  it("keeps same-element user edits separated from transaction rollback", async () => {
++    const element = API.createElement({
++      type: "rectangle",
++      id: "shared",
++      x: 0,
++      y: 0,
++      strokeColor: "#1e1e1e",
++      backgroundColor: "#ffe8cc",
++    });
++
++    setSceneBaseline([element]);
++    expect(API.getUndoStack().length).toBe(0);
++
++    const tx = h.app.createTransaction();
++
++    tx.updateScene({
++      elements: h.app.scene.getElementsIncludingDeleted().map((el) =>
++        el.id === element.id
++          ? newElementWith(
++              el as any,
++              {
++                strokeColor: "#ff006e",
++                x: 200,
++              } as any,
++            )
++          : el,
++      ),
++    });
++
++    applyElementUpdate(
++      element.id,
++      { backgroundColor: "#00f5d4" },
++      "IMMEDIATELY",
++    );
++
++    const summary = commitTransaction(tx);
++    expect(summary.historyCommitted).toBe(true);
++
++    await waitFor(() => {
++      expect(API.getUndoStack().length).toBe(2);
++    });
++
++    let live = getElement(element.id)!;
++    expect(live.strokeColor).toBe("#ff006e");
++    expect(live.x).toBe(200);
++    expect(live.backgroundColor).toBe("#00f5d4");
++
++    // Undo transaction
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      live = getElement(element.id)!;
++      expect(live.strokeColor).toBe(element.strokeColor);
++      expect(live.x).toBe(element.x);
++      expect(live.backgroundColor).toBe("#00f5d4");
++    });
++
++    // Undo user edit
++    act(() => {
++      Keyboard.undo();
++    });
++    await waitFor(() => {
++      live = getElement(element.id)!;
++      expect(live.backgroundColor).toBe(element.backgroundColor);
++      expect(live.strokeColor).toBe(element.strokeColor);
++      expect(live.x).toBe(element.x);
++    });
++  });
++});
+diff --git a/packages/excalidraw/tests/transactionManager.test.tsx b/packages/excalidraw/tests/transactionManager.test.tsx
+deleted file mode 100644
+index 5f4f8d7..0000000
+--- a/packages/excalidraw/tests/transactionManager.test.tsx
++++ /dev/null
+@@ -1,473 +0,0 @@
+-import React from "react";
+-
+-import { CaptureUpdateAction, newElementWith } from "@excalidraw/element";
+-
+-import type { ExcalidrawElement } from "@excalidraw/element/types";
+-
+-import { Excalidraw } from "../index";
+-
+-import { API } from "./helpers/api";
+-import { Keyboard } from "./helpers/ui";
+-import { act, render, unmountComponent, waitFor } from "./test-utils";
+-
+-import type { ObservedAppState } from "../types";
+-import type { TransactionSummary } from "../transaction/types";
+-
+-const { h } = window;
+-
+-const getElement = (id: string) =>
+-  h.app.scene.getNonDeletedElementsMap().get(id) ?? null;
+-
+-const applyElementUpdate = (
+-  id: string,
+-  updates: Partial<ExcalidrawElement>,
+-  captureUpdate: keyof typeof CaptureUpdateAction,
+-) => {
+-  const nextElements = h.app.scene
+-    .getElementsIncludingDeleted()
+-    .map((element) =>
+-      element.id === id
+-        ? (newElementWith(element as any, updates as any) as ExcalidrawElement)
+-        : element,
+-    );
+-
+-  API.updateScene({
+-    elements: nextElements,
+-    captureUpdate: CaptureUpdateAction[captureUpdate],
+-  });
+-};
+-
+-const setSceneBaseline = (elements: readonly ExcalidrawElement[]) => {
+-  API.updateScene({
+-    elements,
+-    captureUpdate: CaptureUpdateAction.NEVER,
+-  });
+-};
+-
+-const appendElement = (
+-  element: ExcalidrawElement,
+-  captureUpdate: keyof typeof CaptureUpdateAction,
+-) => {
+-  const nextElements = [...h.app.scene.getElementsIncludingDeleted(), element];
+-
+-  API.updateScene({
+-    elements: nextElements,
+-    captureUpdate: CaptureUpdateAction[captureUpdate],
+-  });
+-};
+-
+-const commitSession = (session: { commit: () => TransactionSummary }) => {
+-  let summary!: TransactionSummary;
+-  act(() => {
+-    summary = session.commit();
+-  });
+-  return summary;
+-};
+-
+-describe("TransactionManager", () => {
+-  beforeEach(async () => {
+-    unmountComponent();
+-    vi.restoreAllMocks();
+-    await render(<Excalidraw handleKeyboardGlobally={true} />);
+-  });
+-
+-  it("run() commits on success and returns summary", async () => {
+-    const element = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-    });
+-    setSceneBaseline([element]);
+-
+-    const commitSyntheticHistoryEntry = vi
+-      .spyOn(h.app, "commitSyntheticHistoryEntry")
+-      .mockReturnValue(true);
+-
+-    const { result, summary } = await h.app.transactionManager.run(
+-      async (tx) => {
+-        return tx.apply(async () => {
+-          const current = h.app.scene
+-            .getElementsMapIncludingDeleted()
+-            .get(element.id)!;
+-          API.updateElement(current, {
+-            strokeColor: "#ff006e",
+-          });
+-          return "updated";
+-        });
+-      },
+-    );
+-
+-    expect(result.applied).toBe(true);
+-    expect(result.value).toBe("updated");
+-    expect(summary.state).toBe("finalized");
+-    expect(summary.appliedMutations).toBe(1);
+-    expect(summary.touchedElementIds).toEqual([element.id]);
+-    expect(summary.historyCommitted).toBe(true);
+-    expect(commitSyntheticHistoryEntry).toHaveBeenCalledTimes(1);
+-  });
+-
+-  it("run() preserves original error when cancel path fails", async () => {
+-    const originalError = new Error("work failed");
+-    const cancelError = new Error("cancel failed");
+-    const consoleErrorSpy = vi
+-      .spyOn(console, "error")
+-      .mockImplementation(() => {});
+-    const session = h.app.transactionManager.open();
+-
+-    vi.spyOn(session, "cancel").mockImplementation(() => {
+-      throw cancelError;
+-    });
+-    vi.spyOn(h.app.transactionManager, "open").mockReturnValue(session);
+-
+-    await expect(
+-      h.app.transactionManager.run(async () => {
+-        throw originalError;
+-      }),
+-    ).rejects.toBe(originalError);
+-    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+-
+-    consoleErrorSpy.mockRestore();
+-  });
+-
+-  it("commit() is idempotent and does not commit history when there are no entries", () => {
+-    const commitSyntheticHistoryEntry = vi.spyOn(
+-      h.app,
+-      "commitSyntheticHistoryEntry",
+-    );
+-    const session = h.app.transactionManager.open();
+-
+-    const first = session.commit();
+-    const second = session.commit();
+-
+-    expect(second).toBe(first);
+-    expect(first.state).toBe("finalized");
+-    expect(first.historyCommitted).toBe(false);
+-    expect(commitSyntheticHistoryEntry).not.toHaveBeenCalled();
+-  });
+-
+-  it("forwards appState patch to commitSyntheticHistoryEntry()", async () => {
+-    const element = API.createElement({
+-      type: "rectangle",
+-      id: "rect-1",
+-    });
+-    setSceneBaseline([element]);
+-
+-    const commitSyntheticHistoryEntry = vi
+-      .spyOn(h.app, "commitSyntheticHistoryEntry")
+-      .mockReturnValue(true);
+-
+-    const session = h.app.transactionManager.open();
+-
+-    await session.apply(async () => {
+-      const current = h.app.scene
+-        .getElementsMapIncludingDeleted()
+-        .get(element.id)!;
+-      API.updateElement(current, {
+-        backgroundColor: "#ffbe0b",
+-      });
+-    });
+-
+-    const appStatePatch: {
+-      before: Partial<ObservedAppState>;
+-      after: Partial<ObservedAppState>;
+-    } = {
+-      before: { selectedElementIds: {} },
+-      after: { selectedElementIds: { [element.id]: true } },
+-    };
+-    session.setAppStatePatch(appStatePatch);
+-
+-    act(() => {
+-      session.commit();
+-    });
+-
+-    expect(commitSyntheticHistoryEntry).toHaveBeenCalledWith(
+-      expect.objectContaining({
+-        appStateBefore: appStatePatch.before,
+-        appStateAfter: appStatePatch.after,
+-      }),
+-    );
+-  });
+-
+-  it("returns inactive reason for capture/apply after cancel()", async () => {
+-    const session = h.app.transactionManager.open();
+-
+-    session.cancel();
+-
+-    const captureResult = session.capture(new Map(), new Map());
+-    const applyResult = await session.apply(async () => undefined);
+-
+-    expect(captureResult.applied).toBe(false);
+-    expect(captureResult.reason).toContain("canceled");
+-    expect(applyResult.applied).toBe(false);
+-    expect(applyResult.reason).toContain("canceled");
+-  });
+-
+-  it("keeps interleaved user edits and transaction history entries separated", async () => {
+-    const transactionElement = API.createElement({
+-      type: "rectangle",
+-      id: "tx-rect",
+-      x: 0,
+-      y: 0,
+-      strokeColor: "#1e1e1e",
+-      opacity: 100,
+-    });
+-    const userElement = API.createElement({
+-      type: "rectangle",
+-      id: "user-rect",
+-      x: 300,
+-      y: 0,
+-      backgroundColor: "#ffe8cc",
+-    });
+-
+-    setSceneBaseline([transactionElement, userElement]);
+-    expect(API.getUndoStack().length).toBe(0);
+-
+-    const session = h.app.transactionManager.open();
+-
+-    await session.apply(async () => {
+-      applyElementUpdate(
+-        transactionElement.id,
+-        { x: 180, strokeColor: "#ff006e" },
+-        "NEVER",
+-      );
+-    });
+-
+-    applyElementUpdate(
+-      userElement.id,
+-      { backgroundColor: "#00f5d4" },
+-      "IMMEDIATELY",
+-    );
+-
+-    await session.apply(async () => {
+-      applyElementUpdate(transactionElement.id, { opacity: 60 }, "NEVER");
+-    });
+-
+-    applyElementUpdate(userElement.id, { y: 220 }, "IMMEDIATELY");
+-
+-    expect(API.getUndoStack().length).toBe(2);
+-    const summary = commitSession(session);
+-    expect(summary.historyCommitted).toBe(true);
+-
+-    await waitFor(() => {
+-      expect(API.getUndoStack().length).toBe(3);
+-    });
+-
+-    let liveTxElement = getElement(transactionElement.id)!;
+-    let liveUserElement = getElement(userElement.id)!;
+-    expect(liveTxElement.x).toBe(180);
+-    expect(liveTxElement.strokeColor).toBe("#ff006e");
+-    expect(liveTxElement.opacity).toBe(60);
+-    expect(liveUserElement.backgroundColor).toBe("#00f5d4");
+-    expect(liveUserElement.y).toBe(220);
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      liveTxElement = getElement(transactionElement.id)!;
+-      expect(liveTxElement.x).toBe(transactionElement.x);
+-      expect(liveTxElement.strokeColor).toBe(transactionElement.strokeColor);
+-      expect(liveTxElement.opacity).toBe(transactionElement.opacity);
+-    });
+-    liveUserElement = getElement(userElement.id)!;
+-    expect(liveUserElement.backgroundColor).toBe("#00f5d4");
+-    expect(liveUserElement.y).toBe(220);
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      liveUserElement = getElement(userElement.id)!;
+-      expect(liveUserElement.y).toBe(userElement.y);
+-      expect(liveUserElement.backgroundColor).toBe("#00f5d4");
+-    });
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      liveUserElement = getElement(userElement.id)!;
+-      expect(liveUserElement.backgroundColor).toBe(userElement.backgroundColor);
+-      expect(liveUserElement.y).toBe(userElement.y);
+-    });
+-  });
+-
+-  it("defers isolated transaction commit until store is idle", async () => {
+-    const transactionElement = API.createElement({
+-      type: "rectangle",
+-      id: "tx-idle",
+-      x: 0,
+-      y: 0,
+-    });
+-    const userElement = API.createElement({
+-      type: "rectangle",
+-      id: "user-idle",
+-      x: 300,
+-      y: 0,
+-    });
+-    const store = h.store as {
+-      scheduleAction: (
+-        action: (typeof CaptureUpdateAction)[keyof typeof CaptureUpdateAction],
+-      ) => void;
+-      hasPendingIsolatedIncrements: () => boolean;
+-    };
+-
+-    setSceneBaseline([transactionElement, userElement]);
+-    expect(API.getUndoStack().length).toBe(0);
+-
+-    const session = h.app.transactionManager.open();
+-    await session.apply(async () => {
+-      applyElementUpdate(transactionElement.id, { x: 180 }, "NEVER");
+-    });
+-
+-    // Keep store non-idle so isolated increment cannot flush immediately.
+-    act(() => {
+-      store.scheduleAction(CaptureUpdateAction.EVENTUALLY);
+-    });
+-
+-    const summary = commitSession(session);
+-    expect(summary.historyCommitted).toBe(true);
+-    expect(store.hasPendingIsolatedIncrements()).toBe(true);
+-    expect(API.getUndoStack().length).toBe(0);
+-
+-    applyElementUpdate(userElement.id, { y: 220 }, "IMMEDIATELY");
+-
+-    await waitFor(() => {
+-      expect(store.hasPendingIsolatedIncrements()).toBe(false);
+-      expect(API.getUndoStack().length).toBe(2);
+-    });
+-
+-    let liveTxElement = getElement(transactionElement.id)!;
+-    let liveUserElement = getElement(userElement.id)!;
+-    expect(liveTxElement.x).toBe(180);
+-    expect(liveUserElement.y).toBe(220);
+-
+-    // Latest entry should still be the isolated transaction increment.
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      liveTxElement = getElement(transactionElement.id)!;
+-      expect(liveTxElement.x).toBe(transactionElement.x);
+-      expect(getElement(userElement.id)?.y).toBe(220);
+-    });
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      liveUserElement = getElement(userElement.id)!;
+-      expect(liveUserElement.y).toBe(userElement.y);
+-    });
+-  });
+-
+-  it("undoes transaction-created elements without rolling back user history entries", async () => {
+-    const base = API.createElement({
+-      type: "rectangle",
+-      id: "base",
+-      x: 0,
+-      y: 0,
+-    });
+-    const txCreated = API.createElement({
+-      type: "ellipse",
+-      id: "tx-created",
+-      x: 420,
+-      y: 100,
+-      backgroundColor: "#b197fc",
+-    });
+-
+-    setSceneBaseline([base]);
+-    expect(getElement(txCreated.id)).toBeNull();
+-
+-    const session = h.app.transactionManager.open();
+-
+-    await session.apply(async () => {
+-      appendElement(txCreated, "NEVER");
+-    });
+-
+-    applyElementUpdate(base.id, { x: 120 }, "IMMEDIATELY");
+-    expect(API.getUndoStack().length).toBe(1);
+-    const summary = commitSession(session);
+-    expect(summary.historyCommitted).toBe(true);
+-
+-    await waitFor(() => {
+-      expect(API.getUndoStack().length).toBe(2);
+-    });
+-    expect(getElement(txCreated.id)).not.toBeNull();
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      expect(getElement(txCreated.id)).toBeNull();
+-      expect(getElement(base.id)?.x).toBe(120);
+-    });
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      expect(getElement(base.id)?.x).toBe(base.x);
+-    });
+-  });
+-
+-  it("keeps same-element user edits separated from transaction rollback", async () => {
+-    const element = API.createElement({
+-      type: "rectangle",
+-      id: "shared",
+-      x: 0,
+-      y: 0,
+-      strokeColor: "#1e1e1e",
+-      backgroundColor: "#ffe8cc",
+-    });
+-
+-    setSceneBaseline([element]);
+-    expect(API.getUndoStack().length).toBe(0);
+-
+-    const session = h.app.transactionManager.open();
+-
+-    await session.apply(async () => {
+-      applyElementUpdate(
+-        element.id,
+-        { strokeColor: "#ff006e", x: 200 },
+-        "NEVER",
+-      );
+-    });
+-
+-    applyElementUpdate(
+-      element.id,
+-      { backgroundColor: "#00f5d4" },
+-      "IMMEDIATELY",
+-    );
+-    const summary = commitSession(session);
+-    expect(summary.historyCommitted).toBe(true);
+-
+-    await waitFor(() => {
+-      expect(API.getUndoStack().length).toBe(2);
+-    });
+-
+-    let live = getElement(element.id)!;
+-    expect(live.strokeColor).toBe("#ff006e");
+-    expect(live.x).toBe(200);
+-    expect(live.backgroundColor).toBe("#00f5d4");
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      live = getElement(element.id)!;
+-      expect(live.strokeColor).toBe(element.strokeColor);
+-      expect(live.x).toBe(element.x);
+-      expect(live.backgroundColor).toBe("#00f5d4");
+-    });
+-
+-    act(() => {
+-      Keyboard.undo();
+-    });
+-    await waitFor(() => {
+-      live = getElement(element.id)!;
+-      expect(live.backgroundColor).toBe(element.backgroundColor);
+-      expect(live.strokeColor).toBe(element.strokeColor);
+-      expect(live.x).toBe(element.x);
+-    });
+-  });
+-});
+diff --git a/packages/excalidraw/transaction.ts b/packages/excalidraw/transaction.ts
+new file mode 100644
+index 0000000..d244345
+--- /dev/null
++++ b/packages/excalidraw/transaction.ts
+@@ -0,0 +1,644 @@
++import { randomId } from "@excalidraw/common";
++import { CaptureUpdateAction, deepCopyElement } from "@excalidraw/element";
++
++import type { Mutable } from "@excalidraw/common/utility-types";
++import type {
++  ExcalidrawElement,
++  OrderedExcalidrawElement,
++  SceneElementsMap,
++} from "@excalidraw/element/types";
++
++import type {
++  AppClassProperties,
++  AppState,
++  ObservedAppState,
++  SceneData,
++} from "./types";
++
++// ---------------------------------------------------------------------------
++// Ledger types
++// ---------------------------------------------------------------------------
++
++/** Which side wins when transaction output and live scene diverge. */
++export type ConflictWinner = "live" | "transaction";
++
++/** Conflict granularity used by the merge policy. */
++export type ConflictScope = "prop" | "element";
++
++/** Merge policy used when building synthetic before/after snapshots. */
++export type TransactionMergePolicy = {
++  conflictWinner: ConflictWinner;
++  conflictScope: ConflictScope;
++};
++
++export const DEFAULT_TRANSACTION_MERGE_POLICY: TransactionMergePolicy = {
++  conflictWinner: "live",
++  conflictScope: "prop",
++};
++
++/** Per-element ledger record captured during a transaction session. */
++export type TransactionLedgerEntry = {
++  baselineElement: ExcalidrawElement | null;
++  targetElement: ExcalidrawElement | null;
++  touchedProps: Set<string>;
++};
++
++// ---------------------------------------------------------------------------
++// Ledger helpers
++// ---------------------------------------------------------------------------
++
++const LEDGER_IGNORED_PROPS = new Set([
++  "version",
++  "versionNonce",
++  "seed",
++  "updated",
++  "index",
++]);
++
++type ElementRecord = Record<string, unknown>;
++
++const isPlainObject = (value: unknown): value is Record<string, unknown> =>
++  !!value && typeof value === "object" && !Array.isArray(value);
++
++const getElementProp = (element: ExcalidrawElement, prop: string): unknown =>
++  (element as ElementRecord)[prop];
++
++const setOrderedElementProp = (
++  element: Mutable<OrderedExcalidrawElement>,
++  prop: string,
++  value: unknown,
++) => {
++  (element as ElementRecord)[prop] = value;
++};
++
++/** Deep equality used by ledger conflict/touched-prop detection. */
++const isLedgerValueEqual = (left: unknown, right: unknown): boolean => {
++  if (Object.is(left, right)) {
++    return true;
++  }
++
++  if (Array.isArray(left) && Array.isArray(right)) {
++    if (left.length !== right.length) {
++      return false;
++    }
++    for (let index = 0; index < left.length; index += 1) {
++      if (!isLedgerValueEqual(left[index], right[index])) {
++        return false;
++      }
++    }
++    return true;
++  }
++
++  if (isPlainObject(left) && isPlainObject(right)) {
++    const leftKeys = Object.keys(left);
++    const rightKeys = Object.keys(right);
++    if (leftKeys.length !== rightKeys.length) {
++      return false;
++    }
++    for (const key of leftKeys) {
++      if (!Object.prototype.hasOwnProperty.call(right, key)) {
++        return false;
++      }
++      if (!isLedgerValueEqual(left[key], right[key])) {
++        return false;
++      }
++    }
++    return true;
++  }
++
++  return false;
++};
++
++/** Shallow-copies a scene map. Entries share references with the original. */
++const shallowCopySceneMap = (
++  elements: ReadonlyMap<string, ExcalidrawElement>,
++): SceneElementsMap => new Map(elements) as SceneElementsMap;
++
++/** Returns changed property names between two element snapshots. */
++const collectTouchedProps = (
++  before: ExcalidrawElement | null,
++  after: ExcalidrawElement | null,
++) => {
++  if (!before || !after) {
++    return new Set<string>(["*"]);
++  }
++
++  const touchedProps = new Set<string>();
++  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
++
++  for (const key of keys) {
++    if (LEDGER_IGNORED_PROPS.has(key)) {
++      continue;
++    }
++    if (
++      !isLedgerValueEqual(
++        getElementProp(before, key),
++        getElementProp(after, key),
++      )
++    ) {
++      touchedProps.add(key);
++    }
++  }
++
++  return touchedProps;
++};
++
++/** Returns ids whose element snapshot changed between two points in time. */
++export const collectChangedElementIds = (
++  before: ReadonlyMap<string, ExcalidrawElement>,
++  after: ReadonlyMap<string, ExcalidrawElement>,
++) => {
++  const changedIds = new Set<string>();
++  const candidateIds = new Set<string>([...before.keys(), ...after.keys()]);
++
++  for (const id of candidateIds) {
++    const beforeElement = before.get(id) ?? null;
++    const afterElement = after.get(id) ?? null;
++    if (collectTouchedProps(beforeElement, afterElement).size > 0) {
++      changedIds.add(id);
++    }
++  }
++
++  return [...changedIds];
++};
++
++/** Determines whether live conflicts should skip the whole updated element. */
++const shouldSkipUpdateElementOnLiveConflict = (
++  entry: TransactionLedgerEntry,
++  liveElement: ExcalidrawElement,
++  policy: TransactionMergePolicy,
++) => {
++  if (policy.conflictWinner === "transaction") {
++    return false;
++  }
++  if (entry.touchedProps.has("*")) {
++    return true;
++  }
++  return policy.conflictScope === "element";
++};
++
++// ---------------------------------------------------------------------------
++// TransactionLedger
++// ---------------------------------------------------------------------------
++
++/**
++ * Keeps transaction-level scene mutations and materializes synthetic snapshots
++ * for a single durable history commit.
++ */
++export class TransactionLedger {
++  private readonly entries = new Map<string, TransactionLedgerEntry>();
++
++  /** Whether the transaction has any net element mutations. */
++  hasEntries() {
++    return this.entries.size > 0;
++  }
++
++  /** Releases all ledger entries. */
++  clear() {
++    this.entries.clear();
++  }
++
++  /** Records one element mutation step into the ledger. */
++  recordStep(
++    before: ReadonlyMap<string, ExcalidrawElement>,
++    after: ReadonlyMap<string, ExcalidrawElement>,
++  ) {
++    for (const elementId of collectChangedElementIds(before, after)) {
++      const beforeElement = before.get(elementId) ?? null;
++      const afterElement = after.get(elementId) ?? null;
++      const touchedProps = collectTouchedProps(beforeElement, afterElement);
++
++      if (touchedProps.size === 0) {
++        continue;
++      }
++
++      const existing = this.entries.get(elementId);
++      if (!existing) {
++        this.entries.set(elementId, {
++          baselineElement: beforeElement
++            ? deepCopyElement(beforeElement)
++            : null,
++          targetElement: afterElement ? deepCopyElement(afterElement) : null,
++          touchedProps,
++        });
++        continue;
++      }
++
++      existing.targetElement = afterElement
++        ? deepCopyElement(afterElement)
++        : null;
++      if (existing.touchedProps.has("*") || touchedProps.has("*")) {
++        existing.touchedProps = new Set(["*"]);
++      } else {
++        for (const prop of touchedProps) {
++          existing.touchedProps.add(prop);
++        }
++      }
++
++      // Created then deleted inside one transaction leaves no durable footprint.
++      if (!existing.baselineElement && !existing.targetElement) {
++        this.entries.delete(elementId);
++        continue;
++      }
++      if (!existing.baselineElement && existing.targetElement?.isDeleted) {
++        this.entries.delete(elementId);
++      }
++    }
++  }
++
++  /**
++   * Builds synthetic element before/after snapshots by reconciling transaction
++   * targets with current live scene state under the selected merge policy.
++   */
++  buildSyntheticSnapshots(
++    live: ReadonlyMap<string, ExcalidrawElement>,
++    mergePolicy: TransactionMergePolicy,
++  ) {
++    // Shallow copy — untouched elements stay as live references.
++    // Only elements mutated in-place (prop-level updates) are deep-copied below.
++    const elementsBefore = shallowCopySceneMap(live);
++    const elementsAfter = shallowCopySceneMap(live);
++
++    for (const [elementId, entry] of this.entries) {
++      if (!entry.baselineElement) {
++        const liveElement = live.get(elementId) ?? null;
++        const targetElement = entry.targetElement;
++        if (!targetElement) {
++          continue;
++        }
++        if (
++          mergePolicy.conflictWinner === "live" &&
++          (!liveElement ||
++            liveElement.isDeleted ||
++            collectTouchedProps(targetElement, liveElement).size > 0)
++        ) {
++          continue;
++        }
++        elementsBefore.delete(elementId);
++        elementsAfter.set(
++          elementId,
++          deepCopyElement(targetElement) as OrderedExcalidrawElement,
++        );
++        continue;
++      }
++
++      if (!entry.targetElement) {
++        const liveElement = live.get(elementId) ?? null;
++        if (
++          mergePolicy.conflictWinner === "live" &&
++          liveElement &&
++          !liveElement.isDeleted
++        ) {
++          continue;
++        }
++        elementsBefore.set(
++          elementId,
++          deepCopyElement(entry.baselineElement) as OrderedExcalidrawElement,
++        );
++        elementsAfter.delete(elementId);
++        continue;
++      }
++
++      const liveElement = live.get(elementId) ?? null;
++      const targetElement = entry.targetElement;
++      const baselineElement = entry.baselineElement;
++      const beforeElement = elementsBefore.get(elementId);
++      const afterElement = elementsAfter.get(elementId);
++
++      if (
++        !liveElement ||
++        !baselineElement ||
++        !targetElement ||
++        !beforeElement ||
++        !afterElement
++      ) {
++        continue;
++      }
++
++      if (entry.touchedProps.has("*")) {
++        const hasLiveConflict =
++          collectTouchedProps(targetElement, liveElement).size > 0;
++        if (mergePolicy.conflictWinner === "live" && hasLiveConflict) {
++          continue;
++        }
++        elementsBefore.set(
++          elementId,
++          deepCopyElement(baselineElement) as OrderedExcalidrawElement,
++        );
++        elementsAfter.set(
++          elementId,
++          deepCopyElement(targetElement) as OrderedExcalidrawElement,
++        );
++        continue;
++      }
++
++      if (
++        shouldSkipUpdateElementOnLiveConflict(entry, liveElement, mergePolicy)
++      ) {
++        let hasConflict = false;
++        for (const prop of entry.touchedProps) {
++          const liveValue = getElementProp(liveElement, prop);
++          const targetValue = getElementProp(targetElement, prop);
++          if (!isLedgerValueEqual(liveValue, targetValue)) {
++            hasConflict = true;
++            break;
++          }
++        }
++        if (hasConflict) {
++          continue;
++        }
++      }
++
++      // Deep-copy before mutating so we never touch live elements.
++      const clonedBefore = deepCopyElement(
++        beforeElement,
++      ) as Mutable<OrderedExcalidrawElement>;
++      const clonedAfter = deepCopyElement(
++        afterElement,
++      ) as Mutable<OrderedExcalidrawElement>;
++      elementsBefore.set(elementId, clonedBefore as OrderedExcalidrawElement);
++      elementsAfter.set(elementId, clonedAfter as OrderedExcalidrawElement);
++
++      const mutableBefore = clonedBefore;
++      const mutableAfter = clonedAfter;
++
++      let appliedProps = 0;
++      for (const prop of entry.touchedProps) {
++        const liveValue = getElementProp(liveElement, prop);
++        const targetValue = getElementProp(targetElement, prop);
++        const hasConflict = !isLedgerValueEqual(liveValue, targetValue);
++        if (mergePolicy.conflictWinner === "live" && hasConflict) {
++          continue;
++        }
++
++        setOrderedElementProp(
++          mutableBefore,
++          prop,
++          getElementProp(baselineElement, prop),
++        );
++        setOrderedElementProp(mutableAfter, prop, targetValue);
++        appliedProps += 1;
++      }
++
++      if (appliedProps > 0) {
++        mutableBefore.version = baselineElement.version;
++        mutableBefore.versionNonce = baselineElement.versionNonce;
++        mutableAfter.version = targetElement.version;
++        mutableAfter.versionNonce = targetElement.versionNonce;
++      }
++    }
++
++    return { elementsBefore, elementsAfter };
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Transaction types
++// ---------------------------------------------------------------------------
++
++/** Lifecycle state of a transaction. */
++export type TransactionStatus = "active" | "committed" | "canceled";
++
++/** Final summary returned when a transaction is committed or canceled. */
++export type TransactionSummary = {
++  id: string;
++  status: TransactionStatus;
++  historyCommitted: boolean;
++};
++
++/** Three-way appState context provided to the resolver at commit time. */
++export type AppStateResolverContext = {
++  /** AppState snapshot captured when the transaction was created. */
++  initial: Partial<ObservedAppState>;
++  /** Merged appState intent from all updateScene calls during the transaction. */
++  accumulated: Partial<ObservedAppState>;
++  /** Current live appState at commit time. */
++  live: Partial<ObservedAppState>;
++};
++
++/**
++ * Caller-provided resolver that determines which appState changes are
++ * recorded in the history entry.
++ *
++ * Unlike elements — where per-property conflict detection works because
++ * element properties are largely independent — appState keys are often
++ * interdependent (e.g. selectedElementIds ↔ selectedGroupIds must stay
++ * consistent). The correct merge strategy therefore depends on the
++ * caller's semantic context, not on a generic policy.
++ *
++ * Return the appState delta to record in history, or undefined to skip
++ * appState changes entirely.
++ */
++export type AppStateResolver = (
++  context: AppStateResolverContext,
++) => Partial<ObservedAppState> | undefined;
++
++// ---------------------------------------------------------------------------
++// Helpers
++// ---------------------------------------------------------------------------
++
++/**
++ * Shallow-copies the scene's elements map so that in-place mutations
++ * (e.g. replaceAllElements clearing the map) don't affect our snapshot.
++ *
++ * Element references are shared — this is safe because:
++ * - updateScene creates new element objects for changed properties
++ * - syncInvalidIndices may mutate `index` in-place, but `index` is in
++ *   LEDGER_IGNORED_PROPS so the ledger never considers it
++ * - the ledger deep-copies only the elements it actually records
++ */
++const shallowSnapshotElements = (
++  elementsMap: Map<string, ExcalidrawElement>,
++): Map<string, ExcalidrawElement> => new Map(elementsMap);
++
++// ---------------------------------------------------------------------------
++// Transaction
++// ---------------------------------------------------------------------------
++
++/**
++ * A transaction that records mutations via `updateScene(NEVER)` and commits
++ * a single synthetic durable history entry at the end.
++ */
++export class Transaction {
++  public readonly id = `tx-${randomId()}`;
++
++  private readonly app: AppClassProperties;
++  private readonly mergePolicy: TransactionMergePolicy;
++  private readonly ledger = new TransactionLedger();
++  private readonly initialAppState: Partial<ObservedAppState>;
++
++  private accumulatedAppState: Record<string, unknown> = {};
++  private statusValue: TransactionStatus = "active";
++  private cachedSummary: TransactionSummary | null = null;
++
++  constructor(
++    app: AppClassProperties,
++    mergePolicy?: Partial<TransactionMergePolicy>,
++  ) {
++    this.app = app;
++    this.mergePolicy = {
++      ...DEFAULT_TRANSACTION_MERGE_POLICY,
++      ...mergePolicy,
++    };
++    this.initialAppState = { ...app.store.snapshot.appState };
++  }
++
++  get status(): TransactionStatus {
++    return this.statusValue;
++  }
++
++  private assertActive(action: string): void {
++    if (this.statusValue !== "active") {
++      throw new Error(
++        `Cannot ${action} — transaction ${this.id} is already ${this.statusValue}.`,
++      );
++    }
++  }
++
++  updateScene<K extends keyof AppState>(data: {
++    elements?: SceneData["elements"];
++    appState?: Pick<AppState, K> | null;
++  }): void {
++    this.assertActive("updateScene");
++
++    // Snapshot before (shallow copy — replaceAllElements mutates the map in-place)
++    const before = shallowSnapshotElements(
++      this.app.scene.getElementsMapIncludingDeleted(),
++    );
++
++    // Apply through the real updateScene with NEVER.
++    this.app.api.updateScene({
++      elements: data.elements,
++      appState: data.appState,
++      captureUpdate: CaptureUpdateAction.NEVER,
++    });
++
++    // Snapshot after
++    const after = this.app.scene.getElementsMapIncludingDeleted();
++
++    // Record element diff into ledger
++    this.ledger.recordStep(before, after);
++
++    // Accumulate appState intent
++    if (data.appState) {
++      this.accumulatedAppState = {
++        ...this.accumulatedAppState,
++        ...(data.appState as Record<string, unknown>),
++      };
++    }
++  }
++
++  commit(options?: {
++    /**
++     * Resolver that determines which appState changes are recorded in the
++     * history entry.
++     *
++     * AppState keys are often interdependent (e.g. selectedElementIds ↔
++     * selectedGroupIds) and the correct merge depends on the caller's
++     * semantic context — a generic conflict policy cannot cover these cases.
++     * The resolver receives all three states (initial, accumulated, live) so
++     * the caller can make an informed decision.
++     *
++     * When omitted, the accumulated appState from updateScene calls is used
++     * as-is — suitable when the caller has already ensured correctness at
++     * each updateScene step.
++     */
++    resolveAppState?: AppStateResolver;
++  }): TransactionSummary {
++    if (this.cachedSummary) {
++      return this.cachedSummary;
++    }
++
++    if (this.statusValue === "active") {
++      this.statusValue = "committed";
++    }
++
++    let historyCommitted = false;
++
++    const hasWork =
++      this.ledger.hasEntries() ||
++      Object.keys(this.accumulatedAppState).length > 0;
++
++    if (this.statusValue === "committed" && hasWork) {
++      const liveMap = this.app.scene.getElementsMapIncludingDeleted();
++      const { elementsBefore, elementsAfter } =
++        this.ledger.buildSyntheticSnapshots(liveMap, this.mergePolicy);
++
++      // Resolve appState for the history entry.
++      const hasAccumulatedAppState =
++        Object.keys(this.accumulatedAppState).length > 0;
++
++      let appStateDelta: Partial<ObservedAppState> | undefined;
++      if (hasAccumulatedAppState) {
++        if (options?.resolveAppState) {
++          const context: AppStateResolverContext = {
++            initial: this.initialAppState,
++            accumulated: this.accumulatedAppState as Partial<ObservedAppState>,
++            live: { ...this.app.store.snapshot.appState },
++          };
++          appStateDelta = options.resolveAppState(context);
++        } else {
++          appStateDelta = this.accumulatedAppState as Partial<ObservedAppState>;
++        }
++      }
++
++      const hasAppStateChanges =
++        !!appStateDelta && Object.keys(appStateDelta).length > 0;
++
++      historyCommitted = this.app.store.commitSyntheticIncrement({
++        logicalBefore: { elements: elementsBefore },
++        logicalAfter: {
++          elements: elementsAfter,
++          appState: hasAppStateChanges ? appStateDelta : undefined,
++        },
++      });
++    }
++
++    this.cachedSummary = {
++      id: this.id,
++      status: this.statusValue,
++      historyCommitted,
++    };
++    this.ledger.clear();
++    return this.cachedSummary;
++  }
++
++  cancel(): TransactionSummary {
++    if (this.cachedSummary) {
++      return this.cachedSummary;
++    }
++
++    if (this.statusValue === "active") {
++      this.statusValue = "canceled";
++    }
++
++    this.cachedSummary = {
++      id: this.id,
++      status: this.statusValue,
++      historyCommitted: false,
++    };
++    this.ledger.clear();
++    return this.cachedSummary;
++  }
++}
++
++// ---------------------------------------------------------------------------
++// TransactionManager
++// ---------------------------------------------------------------------------
++
++/**
++ * Thin factory that holds the app reference and creates Transaction instances.
++ */
++export class TransactionManager {
++  private readonly app: AppClassProperties;
++
++  constructor(app: AppClassProperties) {
++    this.app = app;
++  }
++
++  create(options?: {
++    mergePolicy?: Partial<TransactionMergePolicy>;
++  }): Transaction {
++    return new Transaction(this.app, options?.mergePolicy);
++  }
++}
+diff --git a/packages/excalidraw/transaction/manager.ts b/packages/excalidraw/transaction/manager.ts
+deleted file mode 100644
+index 87ec64b..0000000
+--- a/packages/excalidraw/transaction/manager.ts
++++ /dev/null
+@@ -1,241 +0,0 @@
+-import { randomId } from "@excalidraw/common";
+-import {
+-  DEFAULT_TRANSACTION_MERGE_POLICY,
+-  TransactionLedger,
+-  collectChangedElementIds,
+-} from "@excalidraw/element";
+-import { deepCopyElement } from "@excalidraw/element";
+-
+-import type { TransactionMergePolicy } from "@excalidraw/element";
+-import type { ExcalidrawElement } from "@excalidraw/element/types";
+-
+-import type { AppClassProperties } from "../types";
+-import type {
+-  TransactionAppStateSnapshot,
+-  TransactionMutationResult,
+-  TransactionStatus,
+-  TransactionSummary,
+-} from "./types";
+-
+-type ApplyOptions<T> = {
+-  isApplied?: (value: T, changedElementIds: readonly string[]) => boolean;
+-  reasonWhenSkipped?: (value: T) => string | undefined;
+-};
+-
+-type TransactionFinalState = "finalized" | "canceled";
+-
+-/** Takes a point-in-time deep snapshot so later mutation diffing stays stable. */
+-const snapshotSceneElementsById = (app: AppClassProperties) => {
+-  const snapshot = new Map<string, ExcalidrawElement>();
+-  for (const element of app.scene.getElementsIncludingDeleted()) {
+-    snapshot.set(element.id, deepCopyElement(element));
+-  }
+-  return snapshot;
+-};
+-
+-/** App-level transaction session that records mutations and commits one synthetic history entry. */
+-export class TransactionSession {
+-  public readonly id = `tx-${randomId()}`;
+-
+-  private readonly app: AppClassProperties;
+-  private readonly mergePolicy: TransactionMergePolicy;
+-  private readonly ledger = new TransactionLedger();
+-  private readonly touchedElementIds = new Set<string>();
+-
+-  private appStateSnapshot: TransactionAppStateSnapshot | null = null;
+-  private appliedMutations = 0;
+-  private historyCommitted = false;
+-  private statusValue: TransactionStatus = "active";
+-  private cachedSummary: TransactionSummary | null = null;
+-
+-  constructor(
+-    app: AppClassProperties,
+-    mergePolicy?: Partial<TransactionMergePolicy>,
+-  ) {
+-    this.app = app;
+-    this.mergePolicy = {
+-      ...DEFAULT_TRANSACTION_MERGE_POLICY,
+-      ...mergePolicy,
+-    };
+-  }
+-
+-  get status() {
+-    return this.statusValue;
+-  }
+-
+-  /** Returns a standardized skipped result once the session is no longer active. */
+-  private rejectIfInactive<T>(): TransactionMutationResult<T> | null {
+-    if (this.statusValue === "active") {
+-      return null;
+-    }
+-    return {
+-      applied: false,
+-      changedElementIds: [],
+-      reason: `Transaction already ${this.statusValue}.`,
+-    };
+-  }
+-
+-  /** Computes changed element ids between two snapshots. */
+-  private getChangedElementIds(
+-    before: ReadonlyMap<string, ExcalidrawElement>,
+-    after: ReadonlyMap<string, ExcalidrawElement>,
+-  ) {
+-    return collectChangedElementIds(before, after);
+-  }
+-
+-  /** Persists one mutation into ledger state and session-level counters. */
+-  private recordMutation(
+-    before: ReadonlyMap<string, ExcalidrawElement>,
+-    after: ReadonlyMap<string, ExcalidrawElement>,
+-    changedElementIds: readonly string[],
+-    applied: boolean,
+-  ) {
+-    if (applied) {
+-      for (const changedId of changedElementIds) {
+-        this.touchedElementIds.add(changedId);
+-      }
+-      this.ledger.recordStep(before, after);
+-      this.appliedMutations += 1;
+-    }
+-  }
+-
+-  /** Executes one mutation function and records the resulting scene diff. */
+-  async apply<T>(
+-    mutate: () => T | Promise<T>,
+-    options?: ApplyOptions<T>,
+-  ): Promise<TransactionMutationResult<T>> {
+-    const inactiveResult = this.rejectIfInactive<T>();
+-    if (inactiveResult) {
+-      return inactiveResult;
+-    }
+-
+-    const before = snapshotSceneElementsById(this.app);
+-    const value = await mutate();
+-    const after = this.app.scene.getElementsMapIncludingDeleted();
+-    const changedElementIds = this.getChangedElementIds(before, after);
+-    const applied = options?.isApplied
+-      ? options.isApplied(value, changedElementIds)
+-      : changedElementIds.length > 0;
+-
+-    this.recordMutation(before, after, changedElementIds, applied);
+-
+-    return {
+-      value,
+-      applied,
+-      changedElementIds,
+-      reason: !applied ? options?.reasonWhenSkipped?.(value) : undefined,
+-    };
+-  }
+-
+-  /** Records a caller-provided before/after snapshot pair into the session ledger. */
+-  capture(
+-    before: ReadonlyMap<string, ExcalidrawElement>,
+-    after: ReadonlyMap<string, ExcalidrawElement>,
+-  ): TransactionMutationResult<void> {
+-    const inactiveResult = this.rejectIfInactive<void>();
+-    if (inactiveResult) {
+-      return inactiveResult;
+-    }
+-
+-    const changedElementIds = this.getChangedElementIds(before, after);
+-    this.recordMutation(
+-      before,
+-      after,
+-      changedElementIds,
+-      changedElementIds.length > 0,
+-    );
+-
+-    return {
+-      applied: changedElementIds.length > 0,
+-      changedElementIds,
+-    };
+-  }
+-
+-  /** Stores optional observed appState before/after for synthetic history commit. */
+-  setAppStatePatch(snapshot: TransactionAppStateSnapshot | null) {
+-    this.appStateSnapshot = snapshot;
+-  }
+-
+-  /** Finalizes once and memoizes the resulting summary for idempotent calls. */
+-  private complete(state: TransactionFinalState): TransactionSummary {
+-    if (this.cachedSummary) {
+-      return this.cachedSummary;
+-    }
+-
+-    if (this.ledger.hasEntries()) {
+-      const liveMap = this.app.scene.getElementsMapIncludingDeleted();
+-      const { logicalBefore, logicalAfter } =
+-        this.ledger.buildSyntheticSnapshots(liveMap, this.mergePolicy);
+-      this.historyCommitted = this.app.commitSyntheticHistoryEntry({
+-        logicalBefore,
+-        logicalAfter,
+-        appStateBefore: this.appStateSnapshot?.before,
+-        appStateAfter: this.appStateSnapshot?.after,
+-      });
+-    }
+-
+-    this.statusValue = state;
+-    this.cachedSummary = {
+-      id: this.id,
+-      state,
+-      appliedMutations: this.appliedMutations,
+-      touchedElementIds: [...this.touchedElementIds],
+-      historyCommitted: this.historyCommitted,
+-    };
+-    return this.cachedSummary;
+-  }
+-
+-  /** Commits the session and returns a stable summary on repeated calls. */
+-  commit() {
+-    if (this.statusValue === "active") {
+-      return this.complete("finalized");
+-    }
+-    return this.complete(this.statusValue);
+-  }
+-
+-  /** Cancels the session while preserving already-applied visual mutations. */
+-  cancel() {
+-    if (this.statusValue === "active") {
+-      return this.complete("canceled");
+-    }
+-    return this.complete(this.statusValue);
+-  }
+-}
+-
+-/** Factory/executor facade used by app features to open and run transaction sessions. */
+-export class TransactionManager {
+-  private readonly app: AppClassProperties;
+-
+-  constructor(app: AppClassProperties) {
+-    this.app = app;
+-  }
+-
+-  /** Opens a new transaction session with optional merge-policy overrides. */
+-  open(input?: { mergePolicy?: Partial<TransactionMergePolicy> }) {
+-    return new TransactionSession(this.app, input?.mergePolicy);
+-  }
+-
+-  /** Runs work inside one session and always attempts cleanup on failure. */
+-  async run<TResult>(
+-    work: (session: TransactionSession) => TResult | Promise<TResult>,
+-    input?: { mergePolicy?: Partial<TransactionMergePolicy> },
+-  ) {
+-    const session = this.open(input);
+-    try {
+-      const result = await work(session);
+-      const summary = session.commit();
+-      return { result, summary };
+-    } catch (error) {
+-      // Preserve the original work() failure even if cancel path fails.
+-      try {
+-        session.cancel();
+-      } catch (cancelError) {
+-        console.error("Failed to cancel transaction after run() failure.", {
+-          error,
+-          cancelError,
+-        });
+-      }
+-      throw error;
+-    }
+-  }
+-}
+diff --git a/packages/excalidraw/transaction/types.ts b/packages/excalidraw/transaction/types.ts
+deleted file mode 100644
+index 301faab..0000000
+--- a/packages/excalidraw/transaction/types.ts
++++ /dev/null
+@@ -1,27 +0,0 @@
+-import type { ObservedAppState } from "../types";
+-
+-/** Lifecycle state of a transaction session. */
+-export type TransactionStatus = "active" | "finalized" | "canceled";
+-
+-/** Optional appState patch to include in synthetic history before/after snapshots. */
+-export type TransactionAppStateSnapshot = {
+-  before: Partial<ObservedAppState>;
+-  after: Partial<ObservedAppState>;
+-};
+-
+-/** Result returned by one recorded mutation attempt inside a transaction. */
+-export type TransactionMutationResult<T> = {
+-  value?: T;
+-  applied: boolean;
+-  changedElementIds: readonly string[];
+-  reason?: string;
+-};
+-
+-/** Final summary returned when a transaction is committed or canceled. */
+-export type TransactionSummary = {
+-  id: string;
+-  state: "finalized" | "canceled";
+-  appliedMutations: number;
+-  touchedElementIds: readonly string[];
+-  historyCommitted: boolean;
+-};
+diff --git a/packages/excalidraw/types.ts b/packages/excalidraw/types.ts
+index dcc56fe..6f55d19 100644
+--- a/packages/excalidraw/types.ts
++++ b/packages/excalidraw/types.ts
+@@ -796,9 +796,10 @@ export type AppClassProperties = {
+   files: BinaryFiles;
+   editorInterface: App["editorInterface"];
+   scene: App["scene"];
++  store: App["store"];
+   transactionManager: App["transactionManager"];
++  createTransaction: App["createTransaction"];
+   syncActionResult: App["syncActionResult"];
+-  commitSyntheticHistoryEntry: App["commitSyntheticHistoryEntry"];
+   fonts: App["fonts"];
+   pasteFromClipboard: App["pasteFromClipboard"];
+   id: App["id"];

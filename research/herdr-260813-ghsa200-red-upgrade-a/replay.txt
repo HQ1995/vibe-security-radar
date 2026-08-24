@@ -1,0 +1,52 @@
+# Red-team replay for upgrade-a PASS ordinals 1, 20, 92, 93
+# Independent clones and GHSA pages. Do not reset/clean/commit.
+
+BASE=/tmp/ghsa200-worker-clones/red-upgrade-a
+HA=$BASE/clones/ha-mcp
+CI=$BASE/clones/ciguard
+OC=$BASE/clones/openclaw
+GIT='git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false'
+
+# Advisories (already fetched 2026-08-13)
+# sha256sum $BASE/pages/*.json
+
+# 1 GHSA-fmfg-9g7c-3vq7
+$GIT -C "$HA" log -1 --format='%B' 39806871c9720bf8afdcf3e061095c0dd63dea7f
+$GIT -C "$HA" cat-file -e 39806871c9720bf8afdcf3e061095c0dd63dea7f^:src/ha_mcp/auth/provider.py; echo parent_provider:$?
+$GIT -C "$HA" merge-base --is-ancestor 39806871c9720bf8afdcf3e061095c0dd63dea7f v6.7.2; echo cand_in_672:$?
+$GIT -C "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v6.7.2; echo fix_in_672:$?
+$GIT -C "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v7.0.0; echo fix_in_700:$?
+$GIT -C "$HA" merge-base --is-ancestor aae7acba91dc21fc897ef6b78989b1f548c4083e v6.7.2; echo member_in_672:$?
+$GIT -C "$HA" rev-parse aae7acba:src/ha_mcp/auth/provider.py 39806871c9720bf8afdcf3e061095c0dd63dea7f:src/ha_mcp/auth/provider.py v6.7.2:src/ha_mcp/auth/provider.py
+$GIT -C "$HA" blame -L 527,548 v6.7.2 -- src/ha_mcp/auth/provider.py
+$GIT -C "$HA" grep -n ha_url v7.0.0 -- src/ha_mcp/auth/provider.py; echo v700_provider_ha_url:$?
+
+# 20 GHSA-xw8c-rrvx-f7xq
+$GIT -C "$CI" log -1 --format='%B' d42195e10be0d7d9bfb4ec45fecfb83521d3fc67
+$GIT -C "$CI" log -1 --format='%B' f08e654974f208f90ef6015928ef651982f3224a
+$GIT -C "$CI" merge-base --is-ancestor d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 v0.6.0; echo eol_in_060:$?
+$GIT -C "$CI" merge-base --is-ancestor f08e654974f208f90ef6015928ef651982f3224a v0.6.0; echo osv_in_060:$?
+$GIT -C "$CI" cat-file -e v0.6.0:src/ciguard/analyzer/sca/osv.py; echo osv_blob_060:$?
+$GIT -C "$CI" cat-file -e v0.8.1:src/ciguard/analyzer/sca/osv.py; echo osv_blob_081:$?
+$GIT -C "$CI" grep -n 'resp.read' v0.6.0 -- src/ciguard/analyzer/sca/endoflife.py
+$GIT -C "$CI" grep -n 'resp.read' v0.8.1 -- src/ciguard/analyzer/sca/osv.py
+$GIT -C "$CI" merge-base --is-ancestor 17a119fe43dd956ef463c1c575a463ffd9a8d95b v0.8.2; echo fix_in_082:$?
+
+# 92 GHSA-wv46-v6xc-2qhf
+$GIT -C "$OC" fetch origin ce12b9092f03d85603f0b6b8193d512260a65dab
+$GIT -C "$OC" log -1 --format='%B' 9a3800d8e6e69bc0a125dca5760d47515e746454
+$GIT -C "$OC" merge-base --is-ancestor 9a3800d8e6e69bc0a125dca5760d47515e746454 v2026.3.2; echo cand92:$?
+$GIT -C "$OC" merge-base --is-ancestor ce12b9092f03d85603f0b6b8193d512260a65dab v2026.3.2; echo member92:$?
+$GIT -C "$OC" rev-parse 9a3800d8e6e69bc0a125dca5760d47515e746454:extensions/synology-chat/src/client.ts v2026.3.2:extensions/synology-chat/src/client.ts ce12b9092f03d85603f0b6b8193d512260a65dab:extensions/synology-chat/src/client.ts
+$GIT -C "$OC" show 7ade3553b74ee3f461c4acd216653d5ba411f455 -- extensions/synology-chat/src/webhook-handler.ts
+$GIT -C "$OC" merge-base --is-ancestor 7ade3553b74ee3f461c4acd216653d5ba411f455 v2026.3.22; echo fix92:$?
+
+# 93 GHSA-rg8m-3943-vm6q
+$GIT -C "$OC" fetch origin fbfe2f15fc316904972711b3391031d6c99682b4
+$GIT -C "$OC" log -1 --format='%B' 49c60e9065d98a6848e62c717315eb91eeaa6038
+$GIT -C "$OC" merge-base --is-ancestor 49c60e9065d98a6848e62c717315eb91eeaa6038 v2026.2.12; echo cand93:$?
+$GIT -C "$OC" merge-base --is-ancestor fbfe2f15fc316904972711b3391031d6c99682b4 v2026.2.12; echo member93:$?
+$GIT -C "$OC" rev-parse 49c60e9065d98a6848e62c717315eb91eeaa6038:extensions/matrix/src/matrix/monitor/handler.ts v2026.2.12:extensions/matrix/src/matrix/monitor/handler.ts fbfe2f15fc316904972711b3391031d6c99682b4:extensions/matrix/src/matrix/monitor/handler.ts
+$GIT -C "$OC" blame -L 544,546 v2026.2.12 -- extensions/matrix/src/matrix/monitor/handler.ts
+$GIT -C "$OC" show 8a563d603b70ef6338915f0527bee87282c3bad5 -- extensions/matrix/src/matrix/monitor/handler.ts
+$GIT -C "$OC" merge-base --is-ancestor 8a563d603b70ef6338915f0527bee87282c3bad5 v2026.3.31; echo fix93:$?

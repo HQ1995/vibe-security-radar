@@ -1,0 +1,39 @@
+commit bfd4af23673df9904a37b9f194c1823cd6e831b7
+Author:     Ryan Di <ryan.weihao.di@gmail.com>
+AuthorDate: Fri Apr 17 21:59:11 2026 +1000
+Commit:     Ryan Di <ryan.weihao.di@gmail.com>
+CommitDate: Fri Apr 17 21:59:11 2026 +1000
+
+    refactor(transaction): consolidate ledger into single file, fix store API, and optimize snapshots
+    
+    - Move TransactionLedger + types from @excalidraw/element into
+      packages/excalidraw/transaction.ts (no external consumers)
+    - Move commitSyntheticIncrement from App passthrough to Store directly,
+      fix didAppStateChange to use Delta.isRightDifferent instead of
+      presence-check, and replace isolated increments queue with direct
+      scheduleMicroAction + flushMicroActions
+    - Remove commitSyntheticHistoryEntry from App, expose store and
+      createTransaction on AppClassProperties instead
+    - Replace O(N) deep-copy snapshot in updateScene with shallow map copy
+      (element refs are safe — ledger ignores index, the only in-place
+      mutated prop, and deep-copies only recorded elements)
+    - Merge ledger + manager tests into single transaction.test.tsx
+    - Update dev-docs to reflect new file structure
+    
+    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+
+ dev-docs/docs/codebase/transactions.mdx            | 117 ++--
+ packages/element/src/index.ts                      |   2 -
+ packages/element/src/store.ts                      | 170 +++---
+ packages/element/src/transaction/ledger.ts         | 348 -----------
+ packages/element/src/transaction/types.ts          |  25 -
+ packages/element/tests/transactionLedger.test.ts   | 179 ------
+ packages/excalidraw/components/App.tsx             |  61 +-
+ packages/excalidraw/package.json                   |   2 +-
+ packages/excalidraw/tests/transaction.test.tsx     | 577 ++++++++++++++++++
+ .../excalidraw/tests/transactionManager.test.tsx   | 473 ---------------
+ packages/excalidraw/transaction.ts                 | 644 +++++++++++++++++++++
+ packages/excalidraw/transaction/manager.ts         | 241 --------
+ packages/excalidraw/transaction/types.ts           |  27 -
+ packages/excalidraw/types.ts                       |   3 +-
+ 14 files changed, 1342 insertions(+), 1527 deletions(-)

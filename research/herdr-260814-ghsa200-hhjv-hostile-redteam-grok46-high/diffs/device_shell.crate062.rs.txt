@@ -1,0 +1,113 @@
+fn rm_invocation_args<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let first = token_basename(tokens[0]);
+    if first == "rm" {
+        return Some(&tokens[1..]);
+    }
+
+    if (first == "busybox" || first == "toybox")
+        && tokens.get(1).is_some_and(|sub| token_basename(sub) == "rm")
+    {
+        return Some(&tokens[2..]);
+    }
+
+    None
+}
+
+/// Check if a command invokes `rm` and contains both `-r` and `-f` flags
+/// in any order or combination (e.g., `rm -rf`, `rm -fr`, `rm -r -f`,
+/// `rm --recursive --force`, `rm -r --force`, etc.).
+fn is_rm_recursive_force(tokens: &[&str]) -> bool {
+    let Some(rm_args) = rm_invocation_args(tokens) else {
+        return false;
+    };
+    let mut has_r = false;
+    let mut has_f = false;
+    for &tok in rm_args {
+        if tok.starts_with("--") {
+            match tok {
+                "--recursive" => has_r = true,
+                "--force" => has_f = true,
+                _ => {}
+            }
+        } else if tok.starts_with('-') && !tok.starts_with("--") {
+            // Short flags: `-rf`, `-r`, `-f`, `-fr`, `-r -f`, etc.
+            let flags = &tok[1..];
+            if flags.contains('r') {
+                has_r = true;
+            }
+            if flags.contains('f') {
+                has_f = true;
+            }
+        }
+    }
+    has_r && has_f
+}
+
+/// Run an arbitrary shell command on the device.
+pub async fn device_shell(adb: &AdbExecutor, cmd: &str) -> Result<String> {
+    // Block shell metacharacters that enable command chaining.
+    // Check this FIRST — before normalization — to prevent bypass via
+    // metacharacters that the tokenizer would otherwise split on.
+    let dangerous_chars = [';', '|', '`', '$', '&', '\n'];
+    for ch in &dangerous_chars {
+        if cmd.contains(*ch) {
+            return Err(ZeptoError::Tool(format!(
+                "Blocked shell metacharacter '{}' in command. Use specific actions instead of raw shell.",
+                ch
+            )));
+        }
+    }
+
+    // Normalize whitespace for blocklist check
+    let tokens: Vec<&str> = cmd.split_whitespace().collect();
+    let normalized = tokens.join(" ");
+    let lower = normalized.to_lowercase();
+
+    // Flag-aware check for rm with recursive + force (any order/combination)
+    let lower_tokens: Vec<&str> = lower.split_whitespace().collect();
+    if is_rm_recursive_force(&lower_tokens) {
+        return Err(ZeptoError::Tool(
+            "Blocked dangerous command: rm with recursive + force flags".to_string(),
+        ));
+    }
+
+    // Also block `rm -r` without `-f` (still dangerous on a device)
+    if let Some(rm_args) = rm_invocation_args(&lower_tokens) {
+        let has_r = rm_args.iter().any(|t| {
+            *t == "--recursive" || (t.starts_with('-') && !t.starts_with("--") && t.contains('r'))
+        });
+        if has_r {
+            return Err(ZeptoError::Tool(
+                "Blocked dangerous command: rm with recursive flag".to_string(),
+            ));
+        }
+    }
+
+    // Literal keyword blocklist (whole-command substring match)
+    let blocked_keywords = [
+        "reboot",
+        "factory_reset",
+        "wipe",
+        "format",
+        "dd if=",
+        "mkfs",
+        "flash",
+        "fastboot",
+    ];
+    for pattern in &blocked_keywords {
+        if lower.contains(pattern) {
+            return Err(ZeptoError::Tool(format!(
+                "Blocked dangerous command containing '{}'",
+                pattern
+            )));
+        }
+    }
+
+    adb.shell(cmd).await
+}
+
+#[cfg(test)]

@@ -1,0 +1,86 @@
+490:}
+491:
+492:// worktreeDeny is a list of paths that are not allowed
+493:// to be used when resetting the worktree.
+494:var worktreeDeny = map[string]struct{}{
+495:	// .git
+496:	GitDirName: {},
+497:
+498:	// For other historical reasons, file names that do not conform to the 8.3
+499:	// format (up to eight characters for the basename, three for the file
+500:	// extension, certain characters not allowed such as `+`, etc) are associated
+501:	// with a so-called "short name", at least on the `C:` drive by default.
+502:	// Which means that `git~1/` is a valid way to refer to `.git/`.
+503:	"git~1": {},
+504:}
+505:
+506:// validPath checks whether paths are valid.
+507:// The rules around invalid paths could differ from upstream based on how
+508:// filesystems are managed within go-git, but they are largely the same.
+509://
+510:// For upstream rules:
+511:// https://github.com/git/git/blob/564d0252ca632e0264ed670534a51d18a689ef5d/read-cache.c#L946
+512:// https://github.com/git/git/blob/564d0252ca632e0264ed670534a51d18a689ef5d/path.c#L1383
+513:func validPath(paths ...string) error {
+514:	for _, p := range paths {
+515:		parts := strings.FieldsFunc(p, func(r rune) bool { return (r == '\\' || r == '/') })
+516:		if len(parts) == 0 {
+517:			return fmt.Errorf("invalid path: %q", p)
+518:		}
+519:
+520:		if _, denied := worktreeDeny[strings.ToLower(parts[0])]; denied {
+521:			return fmt.Errorf("invalid path prefix: %q", p)
+522:		}
+523:
+524:		if runtime.GOOS == "windows" {
+525:			// Volume names are not supported, in both formats: \\ and <DRIVE_LETTER>:.
+526:			if vol := filepath.VolumeName(p); vol != "" {
+527:				return fmt.Errorf("invalid path: %q", p)
+528:			}
+529:
+530:			if !windowsValidPath(parts[0]) {
+531:				return fmt.Errorf("invalid path: %q", p)
+532:			}
+533:		}
+534:
+535:		for _, part := range parts {
+536:			if part == ".." {
+537:				return fmt.Errorf("invalid path %q: cannot use '..'", p)
+538:			}
+539:		}
+540:	}
+541:	return nil
+542:}
+543:
+544:// windowsPathReplacer defines the chars that need to be replaced
+545:// as part of windowsValidPath.
+546:var windowsPathReplacer *strings.Replacer
+547:
+548:func init() {
+549:	windowsPathReplacer = strings.NewReplacer(" ", "", ".", "")
+550:}
+551:
+552:func windowsValidPath(part string) bool {
+553:	if len(part) > 3 && strings.EqualFold(part[:4], GitDirName) {
+554:		// For historical reasons, file names that end in spaces or periods are
+555:		// automatically trimmed. Therefore, `.git . . ./` is a valid way to refer
+556:		// to `.git/`.
+557:		if windowsPathReplacer.Replace(part[4:]) == "" {
+558:			return false
+559:		}
+560:
+561:		// For yet other historical reasons, NTFS supports so-called "Alternate Data
+562:		// Streams", i.e. metadata associated with a given file, referred to via
+563:		// `<filename>:<stream-name>:<stream-type>`. There exists a default stream
+564:		// type for directories, allowing `.git/` to be accessed via
+565:		// `.git::$INDEX_ALLOCATION/`.
+566:		//
+567:		// For performance reasons, _all_ Alternate Data Streams of `.git/` are
+568:		// forbidden, not just `::$INDEX_ALLOCATION`.
+569:		if len(part) > 4 && part[4:5] == ":" {
+570:			return false
+571:		}
+572:	}
+573:	return true
+574:}
+575:

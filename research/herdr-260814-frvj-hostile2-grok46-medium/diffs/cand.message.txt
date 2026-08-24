@@ -1,0 +1,11 @@
+03547759179672d216d2e1376dd1ae4fdad76a94
+d4030a8aa5d48c2a1cb06c461566844aca2530ab
+Classic298 <27028174+Classic298@users.noreply.github.com>
+GitHub <noreply@github.com>
+fix: decode terminal proxy path until stable to block multi-encoded traversal (#25157)
+fix: decode terminal proxy path until stable to block multi-encoded traversal (#25157)
+
+_sanitize_proxy_path decoded the proxy path once before the '..' check, so a double-encoded payload (%252e%252e) survived the check as %2e%2e and was then re-decoded into '..' by the upstream terminal server, defeating the traversal guard. Decode until stable so no encoded traversal sequence can reach the upstream. Single-encoded payloads were already rejected; this closes the double (and deeper) encoding bypass.
+
+Co-authored-by: sermikr0 <230672901+sermikr0@users.noreply.github.com>
+Co-authored-by: Claude Opus 4.7 (1M context) <noreply@anthropic.com>

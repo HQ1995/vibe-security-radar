@@ -1,0 +1,125 @@
+# Replay - third-review upgrade-a ordinals 1, 20, 92, 93
+# Read-only against canonical/baseline/publication artifacts. Writes only into
+# this lane directory and the fresh cache clones.
+
+ROOT=/home/hanqing/agents/ai-slop
+LANE=$ROOT/autoresearch/herdr-260813-ghsa200-third-review-upgrade-a
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/third-review-upgrade-a
+GIT='git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false'
+
+# 0. Fresh clones (independent of the red-team clones).
+mkdir -p "$CACHE/clones"
+git clone -q https://github.com/homeassistant-ai/ha-mcp.git "$CACHE/clones/ha-mcp"
+git clone -q https://github.com/Jo-Jo98/ciguard.git "$CACHE/clones/ciguard"
+git clone -q --filter=blob:none https://github.com/openclaw/openclaw.git "$CACHE/clones/openclaw"
+
+# 1. First-party advisory pages (identity + affected range + mechanism text).
+mkdir -p "$CACHE/pages"
+for id in fmfg-9g7c-3vq7 xw8c-rrvx-f7xq wv46-v6xc-2qhf rg8m-3943-vm6q; do
+  curl -s -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/advisories/GHSA-$id" -o "$CACHE/pages/GHSA-$id.json"
+done
+
+# 2. AI-marker evidence on candidate commits.
+$GIT -C "$CACHE/clones/ha-mcp" log -1 --format='%B' 39806871c9720bf8afdcf3e061095c0dd63dea7f
+$GIT -C "$CACHE/clones/ciguard" log -1 --format='%B' d42195e10be0d7d9bfb4ec45fecfb83521d3fc67
+$GIT -C "$CACHE/clones/ciguard" log -1 --format='%B' f08e654974f208f90ef6015928ef651982f3224a
+$GIT -C "$CACHE/clones/openclaw" log -1 --format='%B' 9a3800d8e6e69bc0a125dca5760d47515e746454
+$GIT -C "$CACHE/clones/openclaw" log -1 --format='%B' 49c60e9065d98a6848e62c717315eb91eeaa6038
+
+# 3. Tag containment (candidate in vulnerable, fix in fixed, fix not in vulnerable).
+$GIT -C "$CACHE/clones/ha-mcp" merge-base --is-ancestor 39806871c9720bf8afdcf3e061095c0dd63dea7f v6.7.2; echo ord1_cand_in_vuln:$?
+$GIT -C "$CACHE/clones/ha-mcp" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v7.0.0; echo ord1_fix_in_fixed:$?
+$GIT -C "$CACHE/clones/ha-mcp" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v6.7.2; echo ord1_fix_in_vuln:$?
+$GIT -C "$CACHE/clones/ciguard" merge-base --is-ancestor d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 v0.8.1; echo ord20_eol_in_vuln:$?
+$GIT -C "$CACHE/clones/ciguard" merge-base --is-ancestor f08e654974f208f90ef6015928ef651982f3224a v0.8.1; echo ord20_osv_in_vuln:$?
+$GIT -C "$CACHE/clones/ciguard" merge-base --is-ancestor 17a119fe43dd956ef463c1c575a463ffd9a8d95b v0.8.2; echo ord20_fix_in_fixed:$?
+$GIT -C "$CACHE/clones/ciguard" merge-base --is-ancestor 17a119fe43dd956ef463c1c575a463ffd9a8d95b v0.8.1; echo ord20_fix_in_vuln:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 9a3800d8e6e69bc0a125dca5760d47515e746454 v2026.3.2; echo ord92_cand_in_vuln:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 7ade3553b74ee3f461c4acd216653d5ba411f455 v2026.3.22; echo ord92_fix_in_fixed:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 7ade3553b74ee3f461c4acd216653d5ba411f455 v2026.3.2; echo ord92_fix_in_vuln:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 49c60e9065d98a6848e62c717315eb91eeaa6038 v2026.2.12; echo ord93_cand_in_vuln:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 8a563d603b70ef6338915f0527bee87282c3bad5 v2026.3.31; echo ord93_fix_in_fixed:$?
+$GIT -C "$CACHE/clones/openclaw" merge-base --is-ancestor 8a563d603b70ef6338915f0527bee87282c3bad5 v2026.2.12; echo ord93_fix_in_vuln:$?
+
+# 4. Fix-reversal evidence.
+$GIT -C "$CACHE/clones/ha-mcp" show dc8eaa16a8550f885614655f14b6fd9fe429b278 --stat
+$GIT -C "$CACHE/clones/ciguard" show 17a119fe43dd956ef463c1c575a463ffd9a8d95b -- src/ciguard/analyzer/sca/endoflife.py src/ciguard/analyzer/sca/osv.py
+$GIT -C "$CACHE/clones/openclaw" show 7ade3553b74ee3f461c4acd216653d5ba411f455 -- extensions/synology-chat/src/webhook-handler.ts
+$GIT -C "$CACHE/clones/openclaw" show 8a563d603b70ef6338915f0527bee87282c3bad5 -- extensions/matrix/src/matrix/monitor/handler.ts
+
+# 5. Ordinal 93 human sibling surface (reply-context origin).
+$GIT -C "$CACHE/clones/openclaw" log -1 --format='%an%n%B' c7fbd518909a562ccbca8346d4883c8fcfcd129e
+
+# 6. First-tag containment (first version tag containing each candidate).
+$GIT -C "$CACHE/clones/ha-mcp" tag --contains 39806871c9720bf8afdcf3e061095c0dd63dea7f | grep -E '^v6\.' | sort -V | head -1
+$GIT -C "$CACHE/clones/ciguard" tag --contains d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 | grep -E '^v0\.' | sort -V | head -1
+$GIT -C "$CACHE/clones/ciguard" tag --contains f08e654974f208f90ef6015928ef651982f3224a | grep -E '^v0\.' | sort -V | head -1
+$GIT -C "$CACHE/clones/openclaw" tag --contains 9a3800d8e6e69bc0a125dca5760d47515e746454 | grep -E '^v2026\.' | sort -V | head -1
+$GIT -C "$CACHE/clones/openclaw" tag --contains 49c60e9065d98a6848e62c717315eb91eeaa6038 | grep -E '^v2026\.' | sort -V | head -1
+
+# 7. Dedupe against the canonical overlay (proposals + reference built here).
+cd "$LANE"
+python3 - <<'PY'
+import json
+proposals = [
+  {"case_id":"GHSA-FMFG-9G7C-3VQ7","aliases":["CVE-2026-32111"],"repository":"homeassistant-ai/ha-mcp",
+   "mechanism_key":"ha-mcp-oauth-user-supplied-ha-url-ssrf",
+   "source":"unauthenticated user-supplied ha_url in OAuth consent form",
+   "sink":"server-side GET {ha_url}/api/config with no URL validation (error oracle)",
+   "invariant":"Home Assistant origin must be fixed by server config, not OAuth form input",
+   "candidate_set":["39806871c9720bf8afdcf3e061095c0dd63dea7f"],
+   "minimum_fix_set":["dc8eaa16a8550f885614655f14b6fd9fe429b278"],
+   "release_evidence":{"vulnerable_tag":"v6.7.2","fixed_tag":"v7.0.0"}},
+  {"case_id":"GHSA-XW8C-RRVX-F7XQ","aliases":["CVE-2026-44219"],"repository":"Jo-Jo98/ciguard",
+   "mechanism_key":"sca_http_unbounded_resp_read",
+   "source":"SCA HTTP client response body (endoflife.py and osv.py)",
+   "sink":"payload = json.loads(resp.read().decode()) without size cap",
+   "invariant":"HTTP response reads must be size-capped (MAX_RESPONSE_BYTES)",
+   "candidate_set":["d42195e10be0d7d9bfb4ec45fecfb83521d3fc67","f08e654974f208f90ef6015928ef651982f3224a"],
+   "minimum_fix_set":["17a119fe43dd956ef463c1c575a463ffd9a8d95b"],
+   "release_evidence":{"vulnerable_tag":"v0.8.1","fixed_tag":"v0.8.2"}},
+  {"case_id":"GHSA-WV46-V6XC-2QHF","aliases":["CVE-2026-35670"],"repository":"openclaw/openclaw",
+   "mechanism_key":"openclaw.reply-recipient.mutable-username-nickname",
+   "source":"Synology Chat webhook username/nickname resolution",
+   "sink":"resolveChatUserId nickname-then-username matching used for reply delivery",
+   "invariant":"reply delivery must bind to stable numeric user_id",
+   "candidate_set":["9a3800d8e6e69bc0a125dca5760d47515e746454"],
+   "minimum_fix_set":["7ade3553b74ee3f461c4acd216653d5ba411f455"],
+   "release_evidence":{"vulnerable_tag":"v2026.3.2","fixed_tag":"v2026.3.22"}},
+  {"case_id":"GHSA-RG8M-3943-VM6Q","aliases":["CVE-2026-41376"],"repository":"openclaw/openclaw",
+   "mechanism_key":"openclaw.matrix.thread-root-body.missing-sender-check",
+   "source":"Matrix room thread-root context sender",
+   "sink":"ThreadStarterBody injected via fetchEventSummary without sender allowlist",
+   "invariant":"thread/room context must respect sender allowlist",
+   "candidate_set":["49c60e9065d98a6848e62c717315eb91eeaa6038"],
+   "minimum_fix_set":["8a563d603b70ef6338915f0527bee87282c3bad5"],
+   "release_evidence":{"vulnerable_tag":"v2026.2.12","fixed_tag":"v2026.3.31"}},
+]
+with open('work/proposals.jsonl', 'w') as f:
+    for p in proposals:
+        f.write(json.dumps(p) + '\n')
+ledger = [json.loads(l) for l in open('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl')]
+comp = [r for r in ledger if r.get('record_kind') == 'COMPONENT_ROW']
+with open('work/reference.jsonl', 'w') as f:
+    for r in comp:
+        f.write(json.dumps(r) + '\n')
+print('proposals:', len(proposals), 'reference:', len(comp))
+PY
+python3 "$ROOT/autoresearch/herdr-260813-ghsa200-cross-dedupe/dedupe_checker.py" check \
+  --proposals work/proposals.jsonl \
+  --reference work/reference.jsonl \
+  --alias-map "$ROOT/autoresearch/orchestrator-260813-fp211-audit/public_id_dispositions.jsonl" \
+  --output work/check.json
+
+# 8. Negative controls (umbrella-fix / same-SHA policy).
+python3 "$ROOT/autoresearch/herdr-260813-ghsa200-cross-dedupe/dedupe_checker.py" self-test
+
+# 9. Regenerate terminal artifacts (deterministic).
+python3 build_outputs.py
+
+# 10. Determinism check.
+before=$(sha256sum cases.jsonl result.json)
+python3 build_outputs.py >/dev/null
+after=$(sha256sum cases.jsonl result.json)
+[ "$before" = "$after" ] && echo "DETERMINISM: identical" || echo "DETERMINISM: DIFFERS"

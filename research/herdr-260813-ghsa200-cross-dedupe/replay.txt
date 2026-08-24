@@ -1,0 +1,117 @@
+# Replay - cross-dedupe lane
+# Read-only against frozen baseline/canonical/publication artifacts. Nothing
+# below writes outside this lane directory.
+
+ROOT=/home/hanqing/agents/ai-slop
+LANE=$ROOT/autoresearch/herdr-260813-ghsa200-cross-dedupe
+AUDIT=$ROOT/autoresearch/orchestrator-260813-fp211-audit
+CANON=$ROOT/autoresearch/orchestrator-260813-fp211-canonical
+LEADER=$ROOT/autoresearch/orchestrator-260813-ghsa200-leader
+CANON_LEDGER=$CANON/ledger.jsonl
+
+# 0. Pin frozen inputs (must match baseline.json inputs block).
+sha256sum "$LEADER/CONTRACT.md" "$LEADER/baseline.json" \
+  "$AUDIT/final_mechanisms.jsonl" "$AUDIT/public_cases.jsonl" \
+  "$AUDIT/public_id_dispositions.jsonl" \
+  "$CANON/ledger.jsonl" \
+  "$ROOT/scripts/publication_adjudications.json"
+
+cd "$LANE"
+
+# 1. Negative controls (pins the acceptance correction).
+python3 dedupe_checker.py self-test
+
+# 2. Audit the frozen public-ID projection for the four collision classes.
+python3 dedupe_checker.py audit --root "$ROOT" > work/audit_result.json
+
+# 3. Split the canonical overlay into proposal + empty-reference files.
+python3 - <<'PY'
+import json
+ledger = [json.loads(l) for l in open('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl')]
+comp = [r for r in ledger if r.get('record_kind') == 'COMPONENT_ROW']
+with open('work/canonical.jsonl', 'w') as f:
+    for r in comp:
+        f.write(json.dumps(r) + '\n')
+open('work/empty.jsonl', 'w').close()
+print('canonical rows:', len(comp))
+PY
+
+# 4. Run the checker over the canonical overlay (216 component rows).
+python3 dedupe_checker.py check \
+  --proposals work/canonical.jsonl \
+  --reference work/empty.jsonl \
+  --output work/canonical_check.json
+
+# 5. Split the five batch1 terminal proposals and the canonical reference.
+python3 - <<'PY'
+import json
+ledger = [json.loads(l) for l in open('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl')]
+with open('work/proposals.jsonl', 'w') as f:
+    for r in ledger:
+        if r.get('record_kind') == 'BATCH1_PENDING_PROPOSAL':
+            f.write(json.dumps(r) + '\n')
+with open('work/reference.jsonl', 'w') as f:
+    for r in ledger:
+        if r.get('record_kind') == 'COMPONENT_ROW':
+            f.write(json.dumps(r) + '\n')
+PY
+
+# 6. Run the checker on batch1 proposals vs the canonical corpus.
+python3 dedupe_checker.py check \
+  --proposals work/proposals.jsonl \
+  --reference work/reference.jsonl \
+  --alias-map "$AUDIT/public_id_dispositions.jsonl" \
+  --output work/check.json
+
+# 7. Git release-containment verification (candidate in vulnerable_tag,
+#    fix in fixed_tag, fix not in vulnerable_tag) for every PASS row with a local clone.
+#    Clone roots: /tmp/fp211-cross-04/clones, /tmp/ghsa200-worker-clones/*/clones.
+python3 - <<'PY'
+import json, os, subprocess
+ledger = [json.loads(l) for l in open('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl')]
+roots = ['/tmp/fp211-cross-04/clones', '/tmp/ghsa200-worker-clones/upgrade-a/clones',
+         '/tmp/ghsa200-worker-clones/fresh-am/clones', '/tmp/ghsa200-worker-clones/remediation']
+clones = {}
+for root in roots:
+    if os.path.isdir(root):
+        for n in os.listdir(root):
+            p = os.path.join(root, n)
+            if os.path.isdir(p) and (os.path.isdir(p + '/.git') or os.path.isdir(p + '/objects')):
+                clones[n.lower()] = p
+
+def anc(c, s, t):
+    if not s or not t:
+        return None
+    return subprocess.run(['git', '-C', c, 'merge-base', '--is-ancestor', s, t]).returncode == 0
+
+out = []
+for r in ledger:
+    if not (r.get('record_kind') == 'COMPONENT_ROW' and r.get('row_state') == 'PASS' and r.get('release_evidence')):
+        continue
+    repo = r.get('repository')
+    slug = repo.lower().split('/')[-1] if repo else None
+    c = clones.get(slug)
+    if not c:
+        continue
+    ev = r['release_evidence']
+    vuln, fixed = ev.get('vulnerable_tag'), ev.get('fixed_tag')
+    if not vuln or not fixed:
+        continue
+    cand = ev.get('candidate_sha') or ev.get('candidate_member_sha')
+    fix = ev.get('fix_sha') or ev.get('minimum_security_closure_sha') or ev.get('fix_member_sha')
+    out.append({'row': r['row_key'], 'repo': repo, 'vulnerable_tag': vuln, 'fixed_tag': fixed,
+                'candidate_in_vulnerable': anc(c, cand, vuln),
+                'fix_in_fixed': anc(c, fix, fixed),
+                'fix_in_vulnerable': anc(c, fix, vuln)})
+json.dump(out, open('work/git_verify.json', 'w'), indent=2)
+print('verified', len(out), 'rows')
+PY
+
+# 8. Regenerate the terminal artifacts (deterministic).
+python3 build_outputs.py
+
+# 9. Determinism check: re-run and confirm byte-identical outputs.
+before=$(sha256sum cases.jsonl result.json)
+python3 build_outputs.py >/dev/null
+after=$(sha256sum cases.jsonl result.json)
+[ "$before" = "$after" ] && echo "DETERMINISM: identical" || echo "DETERMINISM: DIFFERS"

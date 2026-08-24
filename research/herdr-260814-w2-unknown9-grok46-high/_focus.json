@@ -1,0 +1,543 @@
+[
+  {
+    "i": 6,
+    "ghsa": "GHSA-J975-95F5-7WQH",
+    "repo": "modelcontextprotocol/python-sdk",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/modelcontextprotocol__python-sdk",
+    "ai": "7901552eba29d68d1227f2976b8d114b9712abce",
+    "fix": "7b420656de48cfdb90b39eb582e60b6d55c2f891",
+    "parent": "1eb1bba83c70c3121bce7fc0263e5fac2c3f0520",
+    "ai_subj": "send errors to pending requests if server closes (#333)",
+    "fix_subj": "Fix uncaught exception in MCP server (#967)",
+    "ai_hits": [
+      "anthropic"
+    ],
+    "fix_hits": [
+      "anthropic"
+    ],
+    "npar": 1,
+    "history": [
+      "src/mcp/shared/session.py"
+    ],
+    "blame": [
+      "src/mcp/shared/session.py"
+    ],
+    "blame_lines": 7,
+    "atomic": true,
+    "overlap": [
+      "src/mcp/shared/session.py"
+    ],
+    "ai_n": 3,
+    "fix_n": 2,
+    "hunks": [
+      {
+        "file": "src/mcp/shared/session.py",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "diff --git a/src/mcp/shared/session.py b/src/mcp/shared/session.py\nindex 294986ac..f5547ea0 100644\n--- a/src/mcp/shared/session.py\n+++ b/src/mcp/shared/session.py\n@@ -15,7 +15,6 @@ from mcp.shared.exceptions import McpError\n from mcp.shared.message import MessageMetadata, ServerMessageMetadata, SessionMessage\n from mcp.types import (\n     CONNECTION_CLOSED,\n-    INVALID_PARAMS,\n     CancelledNotification,\n     ClientNotification,\n     ClientRequest,\n@@ -38,7 +37,9 @@ SendResultT = TypeVar(\"SendResultT\", ClientResult, ServerResult)\n SendNotificationT = TypeVar(\"SendNotificationT\", ClientNotification, ServerNotification)\n ReceiveRequestT = TypeVar(\"ReceiveRequestT\", ClientRequest, ServerRequest)\n ReceiveResultT = TypeVar(\"ReceiveResultT\", bound=BaseModel)\n-ReceiveNotificationT = TypeVar(\"ReceiveNotificationT\", ClientNotification, ServerNotification)\n+ReceiveNotificationT = TypeVar(\n+    \"ReceiveNotificationT\", ClientNotification, ServerNotification\n+)\n \n RequestId = str | int\n \n@@ -46,7 +47,9 @@ RequestId = str | int\n class ProgressFnT(Protocol):\n     \"\"\"Protocol for progress notification callbacks.\"\"\"\n \n-    async def __call__(self, progress: float, total: float | None, message: str | None) -> None: ...\n+    async def __call__(\n+        self, progress: float, total: float | None, message: str | None\n+    ) -> None: ...\n \n \n class RequestResponder(Generic[ReceiveRequestT, SendResultT]):\n@@ -78,12 +81,10 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):\n             ReceiveNotificationT\n         ]\"\"\",\n         on_complete: Callable[[\"RequestResponder[ReceiveRequestT, SendResultT]\"], Any],\n-        message_metadata: MessageMetadata = None,\n     ) -> None:\n         self.request_id = request_id\n         self.request_meta = request_meta\n         self.request = request\n-        self.message_metadata = message_metadata\n         self._session = session\n         self._completed = False\n         self._cancel_scope = anyio.CancelScope()\n@@ -173,7 +174,9 @@ class BaseSession(\n     messages when entered.\n     \"\"\"\n \n-    _response_streams: dict[RequestId, MemoryObjectSendStream[JSONRPCResponse | JSONRPCError]]\n+    _response_streams: dict[\n+        RequestId, MemoryObjectSendStream[JSONRPCResponse | JSONRPCError]\n+    ]\n     _request_id: int\n     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]\n     _progress_callbacks: dict[RequestId, ProgressFnT]\n@@ -236,7 +239,9 @@ class BaseSession(\n         request_id = self._request_id\n    ",
+        "fix_diff": "diff --git a/src/mcp/shared/session.py b/src/mcp/shared/session.py\nindex 294986ac..6536272d 100644\n--- a/src/mcp/shared/session.py\n+++ b/src/mcp/shared/session.py\n@@ -333,90 +333,107 @@ class BaseSession(\n             self._read_stream,\n             self._write_stream,\n         ):\n-            async for message in self._read_stream:\n-                if isinstance(message, Exception):\n-                    await self._handle_incoming(message)\n-                elif isinstance(message.message.root, JSONRPCRequest):\n-                    try:\n-                        validated_request = self._receive_request_type.model_validate(\n-                            message.message.root.model_dump(by_alias=True, mode=\"json\", exclude_none=True)\n-                        )\n-                        responder = RequestResponder(\n-                            request_id=message.message.root.id,\n-                            request_meta=validated_request.root.params.meta if validated_request.root.params else None,\n-                            request=validated_request,\n-                            session=self,\n-                            on_complete=lambda r: self._in_flight.pop(r.request_id, None),\n-                            message_metadata=message.metadata,\n-                        )\n-                        self._in_flight[responder.request_id] = responder\n-                        await self._received_request(responder)\n-\n-                        if not responder._completed:  # type: ignore[reportPrivateUsage]\n-                            await self._handle_incoming(responder)\n-                    except Exception as e:\n-                        # For request validation errors, send a proper JSON-RPC error\n-                        # response instead of crashing the server\n-                        logging.warning(f\"Failed to validate request: {e}\")\n-                        logging.debug(f\"Message that failed validation: {message.message.root}\")\n-                        error_response = JSONRPCError(\n-                            jsonrpc=\"2.0\",\n-                            id=message.message.root.id,\n-                            error=ErrorData(\n-                                code=INVALID_PARAMS,\n-                                message=\"Invalid request parameters\",\n-                                data=\"\",\n-                            ),\n-                        )\n-                        session_message = SessionMessage(message=JSONRPCMessage(error_response))\n-          "
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2025-05-27 22:55:27 +0100",
+    "fix_date": "2025-06-16 17:04:51 -0700"
+  },
+  {
+    "i": 7,
+    "ghsa": "GHSA-3QHF-M339-9G5V",
+    "repo": "modelcontextprotocol/python-sdk",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/modelcontextprotocol__python-sdk",
+    "ai": "568cbd1a66eaa0aa8a2ceca7f5c84719d9210871",
+    "fix": "29c69e6a47d0104d0afcea6ac35e7ab02fde809a",
+    "parent": "1a9ead07f5319abf941b54668b911e3f3773a1cb",
+    "ai_subj": "Fix #201: Move incoming message stream from BaseSession to ServerSession (#325)",
+    "fix_subj": "Fix uncaught exception in MCP server (#822)",
+    "ai_hits": [
+      "Co-authored-by: Claude",
+      "anthropic"
+    ],
+    "fix_hits": [],
+    "npar": 1,
+    "history": [
+      "src/mcp/shared/session.py"
+    ],
+    "blame": [
+      "src/mcp/shared/session.py"
+    ],
+    "blame_lines": 2,
+    "atomic": true,
+    "overlap": [
+      "src/mcp/shared/session.py"
+    ],
+    "ai_n": 9,
+    "fix_n": 2,
+    "hunks": [
+      {
+        "file": "src/mcp/shared/session.py",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "diff --git a/src/mcp/shared/session.py b/src/mcp/shared/session.py\nindex 4b13709c..05fd3ce3 100644\n--- a/src/mcp/shared/session.py\n+++ b/src/mcp/shared/session.py\n@@ -3,18 +3,17 @@ from collections.abc import Callable\n from contextlib import AsyncExitStack\n from datetime import timedelta\n from types import TracebackType\n-from typing import Any, Generic, Protocol, TypeVar\n+from typing import Any, Generic, TypeVar\n \n import anyio\n+import anyio.lowlevel\n import httpx\n from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream\n from pydantic import BaseModel\n from typing_extensions import Self\n \n from mcp.shared.exceptions import McpError\n-from mcp.shared.message import MessageMetadata, ServerMessageMetadata, SessionMessage\n from mcp.types import (\n-    CONNECTION_CLOSED,\n     CancelledNotification,\n     ClientNotification,\n     ClientRequest,\n@@ -25,7 +24,6 @@ from mcp.types import (\n     JSONRPCNotification,\n     JSONRPCRequest,\n     JSONRPCResponse,\n-    ProgressNotification,\n     RequestParams,\n     ServerNotification,\n     ServerRequest,\n@@ -44,14 +42,6 @@ ReceiveNotificationT = TypeVar(\n RequestId = str | int\n \n \n-class ProgressFnT(Protocol):\n-    \"\"\"Protocol for progress notification callbacks.\"\"\"\n-\n-    async def __call__(\n-        self, progress: float, total: float | None, message: str | None\n-    ) -> None: ...\n-\n-\n class RequestResponder(Generic[ReceiveRequestT, SendResultT]):\n     \"\"\"Handles responding to MCP requests and manages request lifecycle.\n \n@@ -81,12 +71,10 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):\n             ReceiveNotificationT\n         ]\"\"\",\n         on_complete: Callable[[\"RequestResponder[ReceiveRequestT, SendResultT]\"], Any],\n-        message_metadata: MessageMetadata = None,\n     ) -> None:\n         self.request_id = request_id\n         self.request_meta = request_meta\n         self.request = request\n-        self.message_metadata = message_metadata\n         self._session = session\n         self._completed = False\n         self._cancel_scope = anyio.CancelScope()\n@@ -181,12 +169,11 @@ class BaseSession(\n     ]\n     _request_id: int\n     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]\n-    _progress_callbacks: dict[RequestId, ProgressFnT]\n \n     def __init__(\n         self,\n-        read_stream: MemoryObjectReceiveStream[SessionMessage | Exception],\n-        write_stream: MemoryObjectSendStream[SessionMessage],\n+        read_stream: MemoryObjectReceiveStr",
+        "fix_diff": "diff --git a/src/mcp/shared/session.py b/src/mcp/shared/session.py\nindex 4b13709c..c0345d6a 100644\n--- a/src/mcp/shared/session.py\n+++ b/src/mcp/shared/session.py\n@@ -15,6 +15,7 @@ from mcp.shared.exceptions import McpError\n from mcp.shared.message import MessageMetadata, ServerMessageMetadata, SessionMessage\n from mcp.types import (\n     CONNECTION_CLOSED,\n+    INVALID_PARAMS,\n     CancelledNotification,\n     ClientNotification,\n     ClientRequest,\n@@ -354,27 +355,47 @@ class BaseSession(\n                 if isinstance(message, Exception):\n                     await self._handle_incoming(message)\n                 elif isinstance(message.message.root, JSONRPCRequest):\n-                    validated_request = self._receive_request_type.model_validate(\n-                        message.message.root.model_dump(\n-                            by_alias=True, mode=\"json\", exclude_none=True\n+                    try:\n+                        validated_request = self._receive_request_type.model_validate(\n+                            message.message.root.model_dump(\n+                                by_alias=True, mode=\"json\", exclude_none=True\n+                            )\n                         )\n-                    )\n-                    responder = RequestResponder(\n-                        request_id=message.message.root.id,\n-                        request_meta=validated_request.root.params.meta\n-                        if validated_request.root.params\n-                        else None,\n-                        request=validated_request,\n-                        session=self,\n-                        on_complete=lambda r: self._in_flight.pop(r.request_id, None),\n-                        message_metadata=message.metadata,\n-                    )\n-\n-                    self._in_flight[responder.request_id] = responder\n-                    await self._received_request(responder)\n+                        responder = RequestResponder(\n+                            request_id=message.message.root.id,\n+                            request_meta=validated_request.root.params.meta\n+                            if validated_request.root.params\n+                            else None,\n+                            request=validated_request,\n+                            session=self,\n+                            on_complete=lambda r: self._in_flight.pop(\n+                                r.request_id, None),\n+                            message_metadata=message.metadata,\n+      "
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2025-03-24 14:14:14 +0000",
+    "fix_date": "2025-06-09 17:03:15 -0700"
+  },
+  {
+    "i": 17,
+    "ghsa": "GHSA-3W28-36P9-W929",
+    "repo": "gogs/gogs",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/gogs__gogs",
+    "ai": "441c64d7bd8893b2f4e48660a8be3a7472e14291",
+    "fix": "dd1bd9837aa196b3ed3a8ee21e5727b5d7a986a3",
+    "parent": "573eacdc658641487f8ad883da96b29ec8e2852d",
+    "ai_subj": "markup: restrict data URI scheme to safe image MIME types (#8174)",
+    "fix_subj": "security: restrict ipynb sanitizer to safe image data URIs (#8326)",
+    "ai_hits": [
+      "Co-authored-by: Claude",
+      "anthropic"
+    ],
+    "fix_hits": [],
+    "npar": 1,
+    "history": [
+      "internal/markup/sanitizer.go"
+    ],
+    "blame": [
+      "internal/markup/sanitizer.go"
+    ],
+    "blame_lines": 3,
+    "atomic": true,
+    "overlap": [
+      "internal/markup/sanitizer.go"
+    ],
+    "ai_n": 2,
+    "fix_n": 3,
+    "hunks": [
+      {
+        "file": "internal/markup/sanitizer.go",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "",
+        "fix_diff": "diff --git a/internal/markup/sanitizer.go b/internal/markup/sanitizer.go\nindex 9cad25b8..829b4f3b 100644\n--- a/internal/markup/sanitizer.go\n+++ b/internal/markup/sanitizer.go\n@@ -36,15 +36,15 @@ func NewSanitizer() {\n \n \t\t// Only allow data URIs with safe image MIME types to prevent XSS via\n \t\t// \"data:text/html\" payloads.\n-\t\tsanitizer.policy.AllowURLSchemeWithCustomPolicy(\"data\", isSafeDataURI)\n+\t\tsanitizer.policy.AllowURLSchemeWithCustomPolicy(\"data\", IsSafeDataURI)\n \n \t\t// Custom URL-Schemes\n \t\tsanitizer.policy.AllowURLSchemes(conf.Markdown.CustomURLSchemes...)\n \t})\n }\n \n-// isSafeDataURI returns whether the given data URI uses a safe image MIME type.\n-func isSafeDataURI(u *url.URL) bool {\n+// IsSafeDataURI returns whether the given data URI uses a safe image MIME type.\n+func IsSafeDataURI(u *url.URL) bool {\n \t// The opaque data of a data URI has the form \"mediatype;base64,data\" or\n \t// \"mediatype,data\". We only allow common image MIME types.\n \tmediatype, _, _ := strings.Cut(u.Opaque, \";\")\n"
+      }
+    ],
+    "ai_name_rev": "release-archive-testing~53",
+    "fix_name_rev": "latest-commit-build~28",
+    "ai_tags": [
+      "latest-commit-build",
+      "release-archive-testing"
+    ],
+    "fix_tags": [
+      "latest-commit-build"
+    ],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2026-02-10 22:26:31 -0500",
+    "fix_date": "2026-06-05 23:15:49 -0400"
+  },
+  {
+    "i": 19,
+    "ghsa": "GHSA-35HP-HQMV-8QG8",
+    "repo": "gofiber/fiber",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/gofiber__fiber",
+    "ai": "27d359e8d0d33738e15cbf0d74e6a0be3501aea4",
+    "fix": "9a0d12c07ed895b84c72987f9288b04137afe5de",
+    "parent": "047de6498f7e8a7a236f70b2994dc66f7231a704",
+    "ai_subj": "\ud83d\udc1b bug: address cache middleware review feedback",
+    "fix_subj": "bug: harden cache middleware key generation and restore Methods config",
+    "ai_hits": [
+      "Copilot",
+      "copilot"
+    ],
+    "fix_hits": [],
+    "npar": 1,
+    "history": [
+      "middleware/cache/cache.go",
+      "middleware/cache/cache_test.go",
+      "middleware/cache/config.go"
+    ],
+    "blame": [
+      "middleware/cache/cache.go"
+    ],
+    "blame_lines": 1,
+    "atomic": true,
+    "overlap": [
+      "docs/middleware/cache.md",
+      "middleware/cache/cache.go",
+      "middleware/cache/cache_test.go",
+      "middleware/cache/config.go"
+    ],
+    "ai_n": 4,
+    "fix_n": 6,
+    "hunks": [
+      {
+        "file": "middleware/cache/cache.go",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "diff --git a/middleware/cache/cache.go b/middleware/cache/cache.go\nindex 976dcfb3..4428c9e6 100644\n--- a/middleware/cache/cache.go\n+++ b/middleware/cache/cache.go\n@@ -33,9 +33,6 @@ const (\n \thexLen                       = sha256.Size * 2\n \tmaxKeyDimensionSegmentLength = 192\n \tdefaultKeyBufferCap          = 256\n-\tmaxQueryParams               = 128  // Maximum number of query parameters to parse\n-\tmaxVaryHeaders               = 32   // Maximum number of Vary headers to process\n-\tmaxQueryBufferSize           = 4096 // Maximum buffer size for query string canonicalization\n )\n \n // cache status\n@@ -563,8 +560,6 @@ func New(config ...Config) fiber.Handler {\n \t\t\treturn nil\n \t\t}\n \n-\t\t// RFC 9111 requires responses with Vary: * to remain uncacheable even when\n-\t\t// response-driven Vary partitioning is otherwise disabled.\n \t\tif hasPrivate || hasNoCache || varyHasStar {\n \t\t\tif e != nil {\n \t\t\t\tif err := deleteKey(reqCtx, key); err != nil {\n@@ -1287,28 +1282,23 @@ func defaultKeyGenerator(c fiber.Ctx, cfg *Config) string {\n \tbuf = append(buf, boundKeySegment(c.Path())...)\n \n \tif !cfg.DisableQueryKeys {\n-\t\tbuf = append(buf, '|', 'q', '=')\n+\t\tbuf = append(buf, []byte(\"|q=\")...)\n \t\tbuf = append(buf, canonicalQueryString(c.Request().URI())...)\n \t}\n \n \tif len(cfg.KeyHeaders) > 0 {\n-\t\tbuf = append(buf, '|', 'h', '=')\n+\t\tbuf = append(buf, []byte(\"|h=\")...)\n \t\tbuf = append(buf, canonicalHeaderSubset(&c.Request().Header, cfg.KeyHeaders)...)\n \t}\n \n \tif len(cfg.KeyCookies) > 0 {\n-\t\tbuf = append(buf, '|', 'c', '=')\n+\t\tbuf = append(buf, []byte(\"|c=\")...)\n \t\tbuf = append(buf, canonicalCookieSubset(c, cfg.KeyCookies)...)\n \t}\n \n \tresult := utils.CopyString(utils.UnsafeString(buf))\n-\n-\t// Reset buffer and return to pool, but discard if it grew too large\n-\t// to prevent pool from retaining oversized buffers\n-\tif cap(buf) <= defaultKeyBufferCap*4 {\n-\t\t*bufPtr = buf\n-\t\tkeyBufferPool.Put(bufPtr)\n-\t}\n+\t*bufPtr = buf\n+\tkeyBufferPool.Put(bufPtr)\n \n \treturn result\n }\n@@ -1318,50 +1308,18 @@ func canonicalQueryString(uri *fasthttp.URI) string {\n \tif query == \"\" {\n \t\treturn \"\"\n \t}\n-\n-\t// Pre-scan query string to detect excessive parameters before expensive parsing\n-\t// This prevents DoS via url.ParseQuery allocating large maps/slices\n-\tif len(query) > maxQueryBufferSize {\n-\t\treturn boundKeySegment(query)\n-\t}\n-\n-\t// Quick count of potential parameters (ampersands + 1)\n-\tparamCount := 1\n-\tfor i := 0; i < len(query); i++ {\n-\t\tif query[i] == '&' {\n-\t\t\tparamCount++\n-\t\t\tif paramCount > maxQueryParams ",
+        "fix_diff": "diff --git a/middleware/cache/cache.go b/middleware/cache/cache.go\nindex 976dcfb3..08a77439 100644\n--- a/middleware/cache/cache.go\n+++ b/middleware/cache/cache.go\n@@ -10,6 +10,7 @@ import (\n \t\"fmt\"\n \t\"math\"\n \t\"net/url\"\n+\t\"slices\"\n \t\"sort\"\n \t\"strings\"\n \t\"sync\"\n@@ -253,8 +254,8 @@ func New(config ...Config) fiber.Handler {\n \n \t\trequestMethod := c.Method()\n \n-\t\t// Cache only GET and HEAD requests.\n-\t\tif requestMethod != fiber.MethodGet && requestMethod != fiber.MethodHead {\n+\t\t// Only cache methods listed in cfg.Methods (default: GET, HEAD).\n+\t\tif !slices.Contains(cfg.Methods, requestMethod) {\n \t\t\tc.Set(cfg.CacheHeader, cacheUnreachable)\n \t\t\treturn c.Next()\n \t\t}\n@@ -1284,7 +1285,8 @@ func defaultKeyGenerator(c fiber.Ctx, cfg *Config) string {\n \t}\n \n \tbuf := (*bufPtr)[:0]\n-\tbuf = append(buf, boundKeySegment(c.Path())...)\n+\t// Escape delimiters in path to prevent crafted paths from injecting key structure\n+\tbuf = append(buf, boundKeySegment(escapeKeyDelimiters(c.Path()))...)\n \n \tif !cfg.DisableQueryKeys {\n \t\tbuf = append(buf, '|', 'q', '=')\n@@ -1301,7 +1303,7 @@ func defaultKeyGenerator(c fiber.Ctx, cfg *Config) string {\n \t\tbuf = append(buf, canonicalCookieSubset(c, cfg.KeyCookies)...)\n \t}\n \n-\tresult := utils.CopyString(utils.UnsafeString(buf))\n+\tresult := string(buf)\n \n \t// Reset buffer and return to pool, but discard if it grew too large\n \t// to prevent pool from retaining oversized buffers\n@@ -1314,17 +1316,24 @@ func defaultKeyGenerator(c fiber.Ctx, cfg *Config) string {\n }\n \n func canonicalQueryString(uri *fasthttp.URI) string {\n-\tquery := utils.CopyString(utils.UnsafeString(uri.QueryString()))\n-\tif query == \"\" {\n+\traw := uri.QueryString()\n+\tif len(raw) == 0 {\n \t\treturn \"\"\n \t}\n \n-\t// Pre-scan query string to detect excessive parameters before expensive parsing\n-\t// This prevents DoS via url.ParseQuery allocating large maps/slices\n+\tquery := utils.CopyString(utils.UnsafeString(raw))\n+\n+\t// Pre-scan query string to detect excessive parameters before expensive parsing.\n+\t// This prevents DoS via url.ParseQuery allocating large maps/slices.\n \tif len(query) > maxQueryBufferSize {\n \t\treturn boundKeySegment(query)\n \t}\n \n+\t// Fast path: single key=value pair needs no parsing or sorting\n+\tif strings.IndexByte(query, '&') < 0 {\n+\t\treturn boundKeySegment(query)\n+\t}\n+\n \t// Quick count of potential parameters (ampersands + 1)\n \tparamCount := 1\n \tfor i := 0; i < len(query); i++ {\n@@ -1357,10 +1366,15 @@ func canonicalQueryString(uri *fasthttp.URI) string {\n \t}\n \tsort.St"
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2026-04-21 02:00:48 +0000",
+    "fix_date": "2026-04-23 14:48:29 +0200"
+  },
+  {
+    "i": 22,
+    "ghsa": "GHSA-4JVX-93H3-F45H",
+    "repo": "OpenC3/cosmos",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/repos/OpenC3__cosmos",
+    "ai": "9957a9fa460c0c0cf5cdbf6a5931bbdd025246a5",
+    "fix": "e6efccbd148ba0e3361c5891027f2373aa140d42",
+    "parent": "c0728f0314b2fad0552e01af5bb1712bb0f01706",
+    "ai_subj": "Prevent path traversal in tool config names",
+    "fix_subj": "Use allowlist for tool config name validation instead of denylist",
+    "ai_hits": [
+      "Co-Authored-By: Claude",
+      "anthropic"
+    ],
+    "fix_hits": [
+      "Co-Authored-By: Claude",
+      "anthropic"
+    ],
+    "npar": 1,
+    "history": [
+      "openc3-cosmos-init/plugins/packages/openc3-vue-common/src/components/config/SaveConfigDialog.vue",
+      "openc3/lib/openc3/models/tool_config_model.rb",
+      "openc3/python/openc3/models/tool_config_model.py",
+      "openc3/spec/models/tool_config_model_spec.rb"
+    ],
+    "blame": [],
+    "blame_lines": 0,
+    "atomic": true,
+    "overlap": [
+      "openc3-cosmos-init/plugins/packages/openc3-vue-common/src/components/config/SaveConfigDialog.vue",
+      "openc3/lib/openc3/models/tool_config_model.rb",
+      "openc3/python/openc3/models/tool_config_model.py",
+      "openc3/spec/models/tool_config_model_spec.rb"
+    ],
+    "ai_n": 4,
+    "fix_n": 4,
+    "hunks": [
+      {
+        "file": "openc3-cosmos-init/plugins/packages/openc3-vue-common/src/components/config/SaveConfigDialog.vue",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/OpenC3/cosmos.git/': Could not resolve host: github.com\nfatal: could not fetch fadec749aadfe8b2ec6816d97f12f0222bfaa769 from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "openc3/lib/openc3/models/tool_config_model.rb",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/OpenC3/cosmos.git/': Could not resolve host: github.com\nfatal: could not fetch 63c361a2cfa15e22e2a5a4fc62265d53458d4e11 from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "openc3/python/openc3/models/tool_config_model.py",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/OpenC3/cosmos.git/': Could not resolve host: github.com\nfatal: could not fetch 6dd53c4b7e69d99660c07ec3f78e268576c23a8b from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "openc3/spec/models/tool_config_model_spec.rb",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/OpenC3/cosmos.git/': Could not resolve host: github.com\nfatal: could not fetch 60cab2f38c97173549a7821bffba6a8bc3843bff from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2026-03-03 15:58:01 -0700",
+    "fix_date": "2026-03-04 09:12:58 -0700"
+  },
+  {
+    "i": 23,
+    "ghsa": "GHSA-45Q4-X4R9-8FQJ",
+    "repo": "go-vikunja/vikunja",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/go-vikunja__vikunja",
+    "ai": "5f795bb531eefb1ada2d4597a47074af0e8fbc90",
+    "fix": "0f3730d045f20e261e3cdfc6d93c325653395b64",
+    "parent": "aa2b8c43f1bd9ed6ec8367ac03015069ff4e91e6",
+    "ai_subj": "fix: self-assignment notification to use \"themselves\" instead of repeating username (#1836)",
+    "fix_subj": "fix(notifications): escape markdown in user-controlled strings in email lines",
+    "ai_hits": [
+      "Copilot",
+      "copilot"
+    ],
+    "fix_hits": [],
+    "npar": 1,
+    "history": [
+      "pkg/models/notifications.go"
+    ],
+    "blame": [
+      "pkg/models/notifications.go"
+    ],
+    "blame_lines": 1,
+    "atomic": true,
+    "overlap": [
+      "pkg/models/notifications.go"
+    ],
+    "ai_n": 2,
+    "fix_n": 6,
+    "hunks": [
+      {
+        "file": "pkg/models/notifications.go",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "diff --git a/pkg/models/notifications.go b/pkg/models/notifications.go\nindex 252f754fb..bf61df46a 100644\n--- a/pkg/models/notifications.go\n+++ b/pkg/models/notifications.go\n@@ -18,41 +18,35 @@ package models\n \n import (\n \t\"fmt\"\n+\t\"net/url\"\n \t\"sort\"\n \t\"strconv\"\n \t\"time\"\n \n \t\"code.vikunja.io/api/pkg/config\"\n-\t\"code.vikunja.io/api/pkg/db\"\n \t\"code.vikunja.io/api/pkg/i18n\"\n-\t\"code.vikunja.io/api/pkg/mail\"\n-\t\"code.vikunja.io/api/pkg/modules/avatar\"\n \t\"code.vikunja.io/api/pkg/notifications\"\n \t\"code.vikunja.io/api/pkg/user\"\n \t\"code.vikunja.io/api/pkg/utils\"\n )\n \n-// getDoerAvatarDataURI returns the avatar data URI for a user, for use in email headers.\n-func getDoerAvatarDataURI(doer *user.User) string {\n-\tprovider := avatar.GetProvider(doer)\n-\tdataURI, err := provider.AsDataURI(doer, 20)\n-\tif err != nil {\n-\t\treturn \"\"\n-\t}\n-\treturn dataURI\n-}\n-\n // getThreadID generates a Message-ID format thread ID for a task\n func getThreadID(taskID int64) string {\n-\treturn fmt.Sprintf(\"<task-%d@%s>\", taskID, mail.GetMailDomain())\n+\tdomain := \"vikunja\"\n+\tpublicURL := config.ServicePublicURL.GetString()\n+\tif publicURL != \"\" {\n+\t\tif parsedURL, err := url.Parse(publicURL); err == nil && parsedURL.Hostname() != \"\" {\n+\t\t\tdomain = parsedURL.Hostname()\n+\t\t}\n+\t}\n+\treturn fmt.Sprintf(\"<task-%d@%s>\", taskID, domain)\n }\n \n // ReminderDueNotification represents a ReminderDueNotification notification\n type ReminderDueNotification struct {\n-\tUser         *user.User    `json:\"user,omitempty\"`\n-\tTask         *Task         `json:\"task\"`\n-\tProject      *Project      `json:\"project\"`\n-\tTaskReminder *TaskReminder `json:\"reminder\"`\n+\tUser    *user.User `json:\"user,omitempty\"`\n+\tTask    *Task      `json:\"task\"`\n+\tProject *Project   `json:\"project\"`\n }\n \n // ToMail returns the mail notification for ReminderDueNotification\n@@ -91,7 +85,6 @@ type TaskCommentNotification struct {\n \tTask      *Task        `json:\"task\"`\n \tComment   *TaskComment `json:\"comment\"`\n \tMentioned bool         `json:\"mentioned\"`\n-\tProject   *Project     `json:\"project\"`\n }\n \n func (n *TaskCommentNotification) SubjectID() int64 {\n@@ -100,38 +93,21 @@ func (n *TaskCommentNotification) SubjectID() int64 {\n \n // ToMail returns the mail notification for TaskCommentNotification\n func (n *TaskCommentNotification) ToMail(lang string) *notifications.Mail {\n-\ts := db.NewSession()\n-\tdefer s.Close()\n-\tformattedComment := formatMentionsForEmail(s, n.Comment.Comment)\n \n \tmail := notifications.NewMail().\n-\t\tConversational().\n \t\tFrom(n.Doer.GetNam",
+        "fix_diff": "diff --git a/pkg/models/notifications.go b/pkg/models/notifications.go\nindex 252f754fb..9e21e78db 100644\n--- a/pkg/models/notifications.go\n+++ b/pkg/models/notifications.go\n@@ -62,7 +62,7 @@ func (n *ReminderDueNotification) ToMail(lang string) *notifications.Mail {\n \t\tTo(n.User.Email).\n \t\tSubject(i18n.T(lang, \"notifications.task.reminder.subject\", n.Task.Title, n.Project.Title)).\n \t\tGreeting(i18n.T(lang, \"notifications.greeting\", n.User.GetName())).\n-\t\tLine(i18n.T(lang, \"notifications.task.reminder.message\", n.Task.Title, n.Project.Title)).\n+\t\tLine(i18n.T(lang, \"notifications.task.reminder.message\", notifications.EscapeMarkdown(n.Task.Title), notifications.EscapeMarkdown(n.Project.Title))).\n \t\tAction(i18n.T(lang, \"notifications.common.actions.open_task\"), config.ServicePublicURL.GetString()+\"tasks/\"+strconv.FormatInt(n.Task.ID, 10)).\n \t\tLine(i18n.T(lang, \"notifications.common.have_nice_day\"))\n }\n@@ -166,7 +166,7 @@ func (n *TaskAssignedNotification) ToMail(lang string) *notifications.Mail {\n \t\t\tFrom(n.Doer.GetNameAndFromEmail()).\n \t\t\tSubject(i18n.T(lang, \"notifications.task.assigned.subject_to_assignee\", n.Task.Title, n.Task.GetFullIdentifier())).\n \t\t\tGreeting(i18n.T(lang, \"notifications.greeting\", n.Target.GetName())).\n-\t\t\tLine(i18n.T(lang, \"notifications.task.assigned.message_to_assignee\", n.Doer.GetName(), n.Task.Title)).\n+\t\t\tLine(i18n.T(lang, \"notifications.task.assigned.message_to_assignee\", notifications.EscapeMarkdown(n.Doer.GetName()), notifications.EscapeMarkdown(n.Task.Title))).\n \t\t\tAction(i18n.T(lang, \"notifications.common.actions.open_task\"), n.Task.GetFrontendURL()).\n \t\t\tIncludeLinkToSettings(lang)\n \t}\n@@ -177,7 +177,7 @@ func (n *TaskAssignedNotification) ToMail(lang string) *notifications.Mail {\n \t\t\tFrom(n.Doer.GetNameAndFromEmail()).\n \t\t\tSubject(i18n.T(lang, \"notifications.task.assigned.subject_to_others_self\", n.Task.Title, n.Task.GetFullIdentifier(), n.Doer.GetName())).\n \t\t\tGreeting(i18n.T(lang, \"notifications.greeting\", n.Target.GetName())).\n-\t\t\tLine(i18n.T(lang, \"notifications.task.assigned.message_to_others_self\", n.Doer.GetName())).\n+\t\t\tLine(i18n.T(lang, \"notifications.task.assigned.message_to_others_self\", notifications.EscapeMarkdown(n.Doer.GetName()))).\n \t\t\tAction(i18n.T(lang, \"notifications.common.actions.open_task\"), n.Task.GetFrontendURL()).\n \t\t\tIncludeLinkToSettings(lang)\n \t}\n@@ -187,7 +187,7 @@ func (n *TaskAssignedNotification) ToMail(lang string) *notifications.Mail {\n \t\tFrom(n.Doer.GetNameAndFromEmail()).\n \t\tSubject(i18n.T"
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2025-11-17 23:07:48 +0000",
+    "fix_date": "2026-04-09 15:44:04 +0000"
+  },
+  {
+    "i": 24,
+    "ghsa": "GHSA-VFGX-5Q85-58Q3",
+    "repo": "jahlives/openssl_encrypt",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/jahlives__openssl_encrypt",
+    "ai": "990c09c4f33649b9120d4995c385151652bc5cd9",
+    "fix": "09e96e090417d34d2f533f6810d3cd4f77810101",
+    "parent": "c2692d7cba019da99558819acb40d10a606c6a5b",
+    "ai_subj": "Refactor: Extract steganography module into plugin architecture",
+    "fix_subj": "security: Replace non-crypto random with HMAC-SHA256 CSPRNG in steganography (GHSA-vfgx-5q85-58q3)",
+    "ai_hits": [
+      "Co-Authored-By: Claude",
+      "anthropic"
+    ],
+    "fix_hits": [
+      "Co-Authored-By: Claude",
+      "anthropic"
+    ],
+    "npar": 1,
+    "history": [
+      "openssl_encrypt/plugins/steganography/core/base.py",
+      "openssl_encrypt/plugins/steganography/core/utils.py",
+      "openssl_encrypt/plugins/steganography/formats/flac.py",
+      "openssl_encrypt/plugins/steganography/formats/image.py",
+      "openssl_encrypt/plugins/steganography/formats/mp3.py",
+      "openssl_encrypt/plugins/steganography/formats/tiff.py"
+    ],
+    "blame": [],
+    "blame_lines": 0,
+    "atomic": true,
+    "overlap": [
+      "openssl_encrypt/plugins/steganography/core/base.py",
+      "openssl_encrypt/plugins/steganography/core/utils.py",
+      "openssl_encrypt/plugins/steganography/formats/flac.py",
+      "openssl_encrypt/plugins/steganography/formats/image.py",
+      "openssl_encrypt/plugins/steganography/formats/mp3.py",
+      "openssl_encrypt/plugins/steganography/formats/tiff.py",
+      "openssl_encrypt/plugins/steganography/formats/wav.py",
+      "openssl_encrypt/plugins/steganography/formats/webp.py"
+    ],
+    "ai_n": 42,
+    "fix_n": 8,
+    "hunks": [
+      {
+        "file": "openssl_encrypt/plugins/steganography/core/base.py",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "",
+        "fix_diff": "diff --git a/openssl_encrypt/plugins/steganography/core/base.py b/openssl_encrypt/plugins/steganography/core/base.py\nindex 389ad5b..fb26904 100644\n--- a/openssl_encrypt/plugins/steganography/core/base.py\n+++ b/openssl_encrypt/plugins/steganography/core/base.py\n@@ -40,13 +40,20 @@ class SteganographyBase(abc.ABC):\n         self.security_level = security_level\n         self.eof_marker = b\"\\xFF\\xFF\\xFF\\xFE\"\n \n-        # Generate deterministic seed from password if provided\n+        # Generate deterministic key material from password for crypto shuffle\n         if password:\n-            # Simple password-to-seed conversion (no secure memory needed for plugin)\n+            import hmac as _hmac\n+\n             password_bytes = password.encode()\n+            # Use HMAC-SHA256 for proper key derivation instead of plain hash\n+            self.shuffle_key = _hmac.new(\n+                password_bytes, b\"stego-shuffle-key\", hashlib.sha256\n+            ).digest()\n+            # Keep integer seed for backward compatibility detection\n             hash_digest = hashlib.sha256(password_bytes).digest()\n             self.seed = int.from_bytes(hash_digest[:8], byteorder=\"big\")\n         else:\n+            self.shuffle_key = None\n             self.seed = None\n \n     @abc.abstractmethod\n"
+      },
+      {
+        "file": "openssl_encrypt/plugins/steganography/core/utils.py",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "",
+        "fix_diff": "diff --git a/openssl_encrypt/plugins/steganography/core/utils.py b/openssl_encrypt/plugins/steganography/core/utils.py\nindex f940455..c1f14e6 100644\n--- a/openssl_encrypt/plugins/steganography/core/utils.py\n+++ b/openssl_encrypt/plugins/steganography/core/utils.py\n@@ -5,8 +5,10 @@ Steganography Utility Functions\n Common utility functions for steganographic operations.\n \"\"\"\n \n+import hashlib\n+import hmac\n import math\n-import random\n+import struct\n from typing import List\n \n \n@@ -76,7 +78,8 @@ class SteganographyUtils:\n     @staticmethod\n     def generate_pseudorandom_sequence(seed: int, length: int, max_value: int) -> List[int]:\n         \"\"\"\n-        Generate pseudorandom sequence for pixel/sample selection\n+        Generate pseudorandom sequence for pixel/sample selection using\n+        HMAC-SHA256 as a deterministic CSPRNG.\n \n         Args:\n             seed: Random seed for reproducible sequence\n@@ -86,9 +89,61 @@ class SteganographyUtils:\n         Returns:\n             List of pseudorandom integers\n         \"\"\"\n-        random.seed(seed)\n-        sequence = random.sample(range(max_value), min(length, max_value))\n-        return sequence\n+        # Use HMAC-SHA256 based DRBG instead of random.seed()\n+        key = struct.pack(\">Q\", seed)\n+        indices = list(range(max_value))\n+        SteganographyUtils.crypto_seeded_shuffle(indices, key)\n+        return indices[: min(length, max_value)]\n+\n+    @staticmethod\n+    def crypto_seeded_shuffle(items: list, key: bytes) -> None:\n+        \"\"\"\n+        Deterministic cryptographic shuffle using HMAC-SHA256 as DRBG.\n+        Implements Fisher-Yates shuffle with HMAC-derived random indices.\n+\n+        Args:\n+            items: List to shuffle in-place\n+            key: Cryptographic key material for deterministic shuffling\n+        \"\"\"\n+        n = len(items)\n+        if n <= 1:\n+            return\n+\n+        # Generate enough random bytes for all swap decisions\n+        # Each swap needs log2(n) bits, but we use 4 bytes per swap for simplicity\n+        counter = 0\n+        for i in range(n - 1, 0, -1):\n+            # Generate deterministic random index using HMAC-SHA256\n+            hmac_input = struct.pack(\">I\", counter)\n+            h = hmac.new(key, hmac_input, hashlib.sha256).digest()\n+            # Use first 4 bytes as uint32, modulo (i+1) for unbiased index\n+            rand_val = struct.unpack(\">I\", h[:4])[0]\n+            j = rand_val % (i + 1)\n+            items[i], items[j] = items[j], items[i]\n+       "
+      },
+      {
+        "file": "openssl_encrypt/plugins/steganography/formats/flac.py",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/jahlives/openssl_encrypt.git/': Could not resolve host: github.com\nfatal: could not fetch 1b0bc7f588778e890d2b854511ce3160a1ea3829 from promisor remote\n",
+        "parent_show_rc": 0,
+        "ai_diff": "",
+        "fix_diff": "diff --git a/openssl_encrypt/plugins/steganography/formats/flac.py b/openssl_encrypt/plugins/steganography/formats/flac.py\nindex 11d1c61..641e82b 100644\n--- a/openssl_encrypt/plugins/steganography/formats/flac.py\n+++ b/openssl_encrypt/plugins/steganography/formats/flac.py\n@@ -576,11 +576,12 @@ class FLACSteganography(SteganographyBase):\n             original_shape = samples.shape\n             flat_samples = samples.flatten().copy()\n \n-            # Generate sample order (randomized if password provided)\n+            # Generate sample order (crypto shuffle if password provided)\n             sample_indices = list(range(len(flat_samples)))\n             if self.password:\n-                np.random.seed(hash(self.password) & 0xFFFFFFFF)\n-                np.random.shuffle(sample_indices)\n+                from ..core.utils import SteganographyUtils\n+\n+                SteganographyUtils.crypto_seeded_shuffle_np(sample_indices, self.shuffle_key)\n \n             # Hide data using LSB\n             bit_index = 0\n@@ -654,8 +655,9 @@ class FLACSteganography(SteganographyBase):\n             # Generate same sample order used during hiding\n             sample_indices = list(range(len(flat_samples)))\n             if self.password:\n-                np.random.seed(hash(self.password) & 0xFFFFFFFF)\n-                np.random.shuffle(sample_indices)\n+                from ..core.utils import SteganographyUtils\n+\n+                SteganographyUtils.crypto_seeded_shuffle_np(sample_indices, self.shuffle_key)\n \n             # Initialize extraction state\n             extracted_bits = []\n"
+      },
+      {
+        "file": "openssl_encrypt/plugins/steganography/formats/image.py",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "",
+        "fix_diff": "diff --git a/openssl_encrypt/plugins/steganography/formats/image.py b/openssl_encrypt/plugins/steganography/formats/image.py\nindex 685d530..4ca85d7 100644\n--- a/openssl_encrypt/plugins/steganography/formats/image.py\n+++ b/openssl_encrypt/plugins/steganography/formats/image.py\n@@ -216,13 +216,12 @@ class LSBImageStego(ImageSteganography):\n         pixels = self._get_image_pixels(image)\n         channels = len(image.getbands())\n \n-        # Generate pixel order (random if password provided)\n+        # Generate pixel order (crypto shuffle if password provided)\n         pixel_indices = list(range(len(pixels)))\n         if self.password and self.config.randomize_pixel_order:\n-            import random\n+            from ..core.utils import SteganographyUtils\n \n-            random.seed(self.seed)\n-            random.shuffle(pixel_indices)\n+            SteganographyUtils.crypto_seeded_shuffle(pixel_indices, self.shuffle_key)\n \n         # Hide data in pixels\n         modified_pixels = list(pixels)  # Copy pixel data\n@@ -280,10 +279,9 @@ class LSBImageStego(ImageSteganography):\n         # Generate same pixel order as hiding\n         pixel_indices = list(range(len(pixels)))\n         if self.password and self.config.randomize_pixel_order:\n-            import random\n+            from ..core.utils import SteganographyUtils\n \n-            random.seed(self.seed)\n-            random.shuffle(pixel_indices)\n+            SteganographyUtils.crypto_seeded_shuffle(pixel_indices, self.shuffle_key)\n \n         # Extract binary data\n         binary_bits = []\n"
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2025-12-28 17:32:41 +0100",
+    "fix_date": "2026-02-10 13:29:24 +0100"
+  },
+  {
+    "i": 25,
+    "ghsa": "GHSA-4MPH-V827-F877",
+    "repo": "locutusjs/locutus",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/locutusjs__locutus",
+    "ai": "042af9ca7fde2ff599120783e720a17f335bb01c",
+    "fix": "345a6211e1e6f939f96a7090bfeff642c9fcf9e4",
+    "parent": "9922b776adc2923bfa2157257161d87e45f8e668",
+    "ai_subj": "fix: Harden parse_str prototype pollution guard against includes() bypass (#533)",
+    "fix_subj": "fix: harden php prototype pollution sinks (#597)",
+    "ai_hits": [
+      "Co-Authored-By: Claude",
+      "Co-authored-by: Claude",
+      "anthropic"
+    ],
+    "fix_hits": [],
+    "npar": 1,
+    "history": [
+      "test/custom/parse_str-prototype-pollution.vitest.ts"
+    ],
+    "blame": [
+      "test/custom/parse_str-prototype-pollution.vitest.ts"
+    ],
+    "blame_lines": 8,
+    "atomic": true,
+    "overlap": [
+      "CHANGELOG.md",
+      "test/custom/parse_str-prototype-pollution.vitest.ts"
+    ],
+    "ai_n": 3,
+    "fix_n": 8,
+    "hunks": [
+      {
+        "file": "test/custom/parse_str-prototype-pollution.vitest.ts",
+        "ai_show_rc": 0,
+        "ai_err": "",
+        "parent_show_rc": 0,
+        "ai_diff": "diff --git a/test/custom/parse_str-prototype-pollution.vitest.ts b/test/custom/parse_str-prototype-pollution.vitest.ts\nindex 5d771e9c..bdbd4776 100644\n--- a/test/custom/parse_str-prototype-pollution.vitest.ts\n+++ b/test/custom/parse_str-prototype-pollution.vitest.ts\n@@ -6,7 +6,8 @@\n  */\n \n import { afterEach, describe, expect, it } from 'vitest'\n-import { parse_str } from '../../src/php/strings/parse_str.ts'\n+// @ts-expect-error - CJS module\n+import parse_str from '../../src/php/strings/parse_str.js'\n \n describe('parse_str prototype pollution resistance', () => {\n   const originalIncludes = String.prototype.includes\n",
+        "fix_diff": "diff --git a/test/custom/parse_str-prototype-pollution.vitest.ts b/test/custom/parse_str-prototype-pollution.vitest.ts\nindex 5d771e9c..c207d694 100644\n--- a/test/custom/parse_str-prototype-pollution.vitest.ts\n+++ b/test/custom/parse_str-prototype-pollution.vitest.ts\n@@ -1,6 +1,6 @@\n /**\n  * Tests that parse_str resists prototype pollution even when\n- * String.prototype.includes has been tampered with.\n+ * the regex guard path has been tampered with.\n  *\n  * See: https://github.com/locutusjs/locutus/issues/...\n  */\n@@ -9,25 +9,25 @@ import { afterEach, describe, expect, it } from 'vitest'\n import { parse_str } from '../../src/php/strings/parse_str.ts'\n \n describe('parse_str prototype pollution resistance', () => {\n-  const originalIncludes = String.prototype.includes\n+  const originalTest = RegExp.prototype.test\n \n   afterEach(() => {\n-    // Restore includes so other tests aren't affected\n-    String.prototype.includes = originalIncludes\n+    // Restore RegExp.prototype.test so other tests aren't affected\n+    RegExp.prototype.test = originalTest\n     // Clean up any pollution that occurred\n     // @ts-expect-error - cleaning up pollution\n     delete Object.prototype.polluted\n   })\n \n-  it('should block __proto__ pollution even when String.prototype.includes is overridden', () => {\n-    String.prototype.includes = () => false\n+  it('should block __proto__ pollution even when RegExp.prototype.test is overridden', () => {\n+    RegExp.prototype.test = () => false\n     const arr = {} as Record<string, unknown>\n     parse_str('__proto__[polluted]=yes', arr)\n     expect(({} as Record<string, unknown>).polluted).toBeUndefined()\n   })\n \n-  it('should block constructor.prototype pollution even when String.prototype.includes is overridden', () => {\n-    String.prototype.includes = () => false\n+  it('should block constructor.prototype pollution even when RegExp.prototype.test is overridden', () => {\n+    RegExp.prototype.test = () => false\n     const arr = {} as Record<string, unknown>\n     parse_str('constructor[prototype][polluted]=yes', arr)\n     expect(({} as Record<string, unknown>).polluted).toBeUndefined()\n"
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2026-02-02 17:28:00 +0100",
+    "fix_date": "2026-03-25 13:30:11 +0100"
+  },
+  {
+    "i": 29,
+    "ghsa": "GHSA-9R75-G2CR-3H76",
+    "repo": "vercel/workflow",
+    "clone": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/repos/vercel__workflow",
+    "ai": "02681dce4a504ff236c81a1ee976d2b04d1a5774",
+    "fix": "30e24d441e735635ffa4522198e6905d0e51e175",
+    "parent": "b68ed630ec2fadd9d6ed9935cafeead64aed5071",
+    "ai_subj": "feat(core): add hook.dispose() method to release hook tokens early (#1181)",
+    "fix_subj": "Merge commit from fork",
+    "ai_hits": [
+      "Co-Authored-By: Claude",
+      "Co-authored-by: Claude",
+      "Copilot",
+      "anthropic"
+    ],
+    "fix_hits": [
+      "Co-Authored-By: Claude",
+      "Co-authored-by: Claude",
+      "anthropic"
+    ],
+    "npar": 1,
+    "history": [
+      "packages/core/e2e/e2e.test.ts",
+      "packages/core/src/create-hook.ts",
+      "packages/core/src/workflow/hook.test.ts",
+      "workbench/example/workflows/99_e2e.ts"
+    ],
+    "blame": [],
+    "blame_lines": 0,
+    "atomic": true,
+    "overlap": [
+      "docs/content/docs/api-reference/workflow/create-hook.mdx",
+      "docs/content/docs/api-reference/workflow/create-webhook.mdx",
+      "docs/content/docs/foundations/hooks.mdx",
+      "packages/core/e2e/e2e.test.ts",
+      "packages/core/src/create-hook.ts",
+      "packages/core/src/workflow/hook.test.ts",
+      "workbench/example/workflows/99_e2e.ts"
+    ],
+    "ai_n": 14,
+    "fix_n": 11,
+    "hunks": [
+      {
+        "file": "packages/core/e2e/e2e.test.ts",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/vercel/workflow.git/': Could not resolve host: github.com\nfatal: could not fetch 65e2b0af65079770f3d61da1c56c3948f0567590 from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "packages/core/src/create-hook.ts",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/vercel/workflow.git/': Could not resolve host: github.com\nfatal: could not fetch 43e75cc95b1fa1efac630cca5ccebfd0ab85d362 from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "packages/core/src/workflow/hook.test.ts",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/vercel/workflow.git/': Could not resolve host: github.com\nfatal: could not fetch eb64cdc5e071af5df7d2b6489dd1343e9532eca4 from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      },
+      {
+        "file": "workbench/example/workflows/99_e2e.ts",
+        "ai_show_rc": 128,
+        "ai_err": "fatal: unable to access 'https://github.com/vercel/workflow.git/': Could not resolve host: github.com\nfatal: could not fetch 0f75f08d5146df9121141d0b4d3f7e95c6393f7c from promisor remote\n",
+        "parent_show_rc": 128,
+        "ai_diff": "",
+        "fix_diff": ""
+      }
+    ],
+    "ai_name_rev": "undefined",
+    "fix_name_rev": "undefined",
+    "ai_tags": [],
+    "fix_tags": [],
+    "ai_ancestor_of_fix": true,
+    "ai_date": "2026-02-27 12:59:54 -0800",
+    "fix_date": "2026-03-05 10:33:53 -0800"
+  }
+]

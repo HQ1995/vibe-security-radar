@@ -1,0 +1,23 @@
+## Reproduce worker adjudication (0 PASS proposals; verification-only commands)
+
+# 1. Advisory mechanisms (advisory-database unreviewed)
+cd /home/hanqing/.cache/ghsa200-worker-clones/commit-gn/advisory-database
+git fetch --filter=blob:none --depth=1 origin main
+git show FETCH_HEAD:advisories/unreviewed/<yyyy>/<mm>/<ghsa>/<ghsa>.json
+
+# 2. Missing repos fetched into sweep pool (git smart-HTTP blobless)
+cd /home/hanqing/.cache/ghsa200-sweep-fetch
+git clone --bare --filter=blob:none https://github.com/666ghj/BettaFish.git 666ghj__BettaFish
+git clone --bare --filter=blob:none https://github.com/mealie-recipes/mealie.git mealie-recipes__mealie
+git clone --bare --filter=blob:none https://github.com/npuwyw/PX4-Autopilot.git npuwyw__PX4-Autopilot
+git clone --bare --filter=blob:none https://github.com/tiddly-gittly/TidGi-Desktop.git tiddly-gittly__TidGi-Desktop
+git clone --bare --filter=blob:none https://github.com/zevorn/rt-claw.git zevorn__rt-claw
+
+# 3. Candidate changed-file lists + diffs (read-only)
+git -C <pool>/<owner>__<repo> diff-tree --no-commit-id --name-only -r <sha>
+git -C <pool>/<owner>__<repo> show <sha> -- <mechanism_file>
+
+# 4. Uniqueness vs foundation.jsonl
+grep -E 'GHSA-(QR7M-7592|V6HV-2P8R|7W79-PF8W|8QFV-2G3C|9HHJ-2JWX|72F8-2PFX|R7MX-568F|J255-R942|FCM7-V7R7|96G7-R737|CX65-RPP3|HWQ5-3473|R53Q-GCFW|G938-H978|H6QH-8R3C|94C3-8CQ4|VV7R-8584|P6C5-MJGJ|9GQ4-2485|3MC6-PQ7X|8V54-V28Q|QRH7-F8Q9|F2C6-8JG6|9869-2292|QC6R-FR26)' autoresearch/orchestrator-260814-ghsa200-canvas/foundation.jsonl
+
+# Result: 25/25 FALSE_POSITIVE, 0 countable, 0 PASS proposals.

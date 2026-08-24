@@ -1,0 +1,136 @@
+diff --git a/lib/nokogiri/xml/parse_options.rb b/lib/nokogiri/xml/parse_options.rb
+index bdf069e..a9a6b11 100644
+--- a/lib/nokogiri/xml/parse_options.rb
++++ b/lib/nokogiri/xml/parse_options.rb
+@@ -254,12 +254,15 @@ module Nokogiri
+       RECOVER     = 1 << 0
+ 
+       # Substitute entities. Off by default.
+-      #  ⚠ This option enables entity substitution, contrary to what the name implies.
+-      #  ⚠ <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
++      #
++      # ⚠ This option enables entity substitution, contrary to what the name implies.
++      #
++      # 🛡 <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
+       NOENT       = 1 << 1
+ 
+       # Load external subsets. On by default for XSLT::Stylesheet.
+-      #  ⚠ <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
++      #
++      # 🛡 <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
+       DTDLOAD     = 1 << 2
+ 
+       # Default DTD attributes. On by default for XSLT::Stylesheet.
+@@ -289,7 +292,8 @@ module Nokogiri
+       # Forbid network access.
+       # On by default for XML::Document, XML::DocumentFragment,
+       # HTML4::Document, HTML4::DocumentFragment, XSLT::Stylesheet, and XML::Schema.
+-      #  ⚠ <b>It is UNSAFE to unset this option</b> when parsing untrusted documents.
++      #
++      # 🛡 <b>It is UNSAFE to unset this option</b> when parsing untrusted documents.
+       NONET       = 1 << 11
+ 
+       # Do not reuse the context dictionary. Off by default.
+@@ -305,7 +309,8 @@ module Nokogiri
+       NOXINCNODE  = 1 << 15
+ 
+       # Compact small text nodes. Off by default.
+-      #  ⚠ No modification of the DOM tree is allowed after parsing.
++      #
++      # ⚠ No modification of the DOM tree is allowed after parsing.
+       COMPACT     = 1 << 16
+ 
+       # Parse using XML-1.0 before update 5. Off by default.
+@@ -315,7 +320,8 @@ module Nokogiri
+       NOBASEFIX   = 1 << 18
+ 
+       # Relax any hardcoded limit from the parser. Off by default.
+-      #  ⚠ <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
++      #
++      # 🛡 <b>It is UNSAFE to set this option</b> when parsing untrusted documents.
+       HUGE        = 1 << 19
+ 
+       # Support line numbers up to `long int` (default is a `short int`).
+@@ -329,6 +335,10 @@ module Nokogiri
+ 
+       # Shorthand options mask useful for parsing XSLT stylesheets:
+       # sets RECOVER, NONET, NOENT, DTDLOAD, DTDATTR, NOCDATA, BIG_LINES.
++      #
++      # 🛡 This option set includes `NOENT` and `DTDLOAD` which are unsafe for untrusted
++      # documents. <b>Do not parse untrusted XSLT stylesheets.</b> See Nokogiri::XSLT for more
++      # information.
+       DEFAULT_XSLT = RECOVER | NONET | NOENT | DTDLOAD | DTDATTR | NOCDATA | BIG_LINES
+ 
+       # Shorthand options mask useful for parsing HTML4:
+diff --git a/lib/nokogiri/xml/sax/document.rb b/lib/nokogiri/xml/sax/document.rb
+index a6acb68..c3b2bed 100644
+--- a/lib/nokogiri/xml/sax/document.rb
++++ b/lib/nokogiri/xml/sax/document.rb
+@@ -39,7 +39,7 @@ module Nokogiri
+       # of ParserContext#replace_entities. (Recall that the default value of
+       # ParserContext#replace_entities is `false`.)
+       #
+-      # ⚠ <b>It is UNSAFE to set ParserContext#replace_entities to `true`</b> when parsing untrusted
++      # 🛡 <b>It is UNSAFE to set ParserContext#replace_entities to `true`</b> when parsing untrusted
+       # documents.
+       #
+       # 💡 For more information on entity types, see [Wikipedia's page on
+diff --git a/lib/nokogiri/xslt.rb b/lib/nokogiri/xslt.rb
+index 00432b8..15e272f 100644
+--- a/lib/nokogiri/xslt.rb
++++ b/lib/nokogiri/xslt.rb
+@@ -10,8 +10,14 @@ module Nokogiri
+   end
+ 
+   ###
+-  # See Nokogiri::XSLT::Stylesheet for creating and manipulating
+-  # Stylesheet object.
++  # See Nokogiri::XSLT::Stylesheet for creating and manipulating Stylesheet objects.
++  #
++  # 🛡 <b>Do not use this module for untrusted stylesheet documents.</b> libxslt does not support
++  # safely processing untrusted stylesheets. Untrusted stylesheets may access the file system and
++  # network, consume large amounts of CPU, memory, or other system resources, and IO and file
++  # access are not restricted. Additionally, the stylesheet is parsed by libxml2 with +NOENT+ and
++  # +DTDLOAD+ enabled (see ParseOptions::DEFAULT_XSLT), meaning that <b>external entities will be
++  # resolved and external subsets will be loaded</b> during parsing.
+   module XSLT
+     class << self
+       # :call-seq:
+@@ -20,6 +26,9 @@ module Nokogiri
+       #
+       # Parse the stylesheet in +xsl+, registering optional +modules+ as custom class handlers.
+       #
++      # 🛡 <b>Do not pass untrusted stylesheet content to this method.</b> See Nokogiri::XSLT for more
++      # information.
++      #
+       # [Parameters]
+       # - +xsl+ (String) XSL content to be parsed into a stylesheet
+       # - +modules+ (Hash<String ⇒ Class>) A hash of URI-to-handler relations for linking a
+diff --git a/lib/nokogiri/xslt/stylesheet.rb b/lib/nokogiri/xslt/stylesheet.rb
+index da4d0a5..7cf8371 100644
+--- a/lib/nokogiri/xslt/stylesheet.rb
++++ b/lib/nokogiri/xslt/stylesheet.rb
+@@ -3,15 +3,20 @@
+ module Nokogiri
+   module XSLT
+     ###
+-    # A Stylesheet represents an XSLT Stylesheet object.  Stylesheet creation
+-    # is done through Nokogiri.XSLT.  Here is an example of transforming
+-    # an XML::Document with a Stylesheet:
++    # A Stylesheet represents an XSLT Stylesheet object. Stylesheet creation is done through
++    # Nokogiri::XSLT.parse (or the convenience method Nokogiri.XSLT). Here is an example of
++    # transforming an XML::Document with a Stylesheet:
+     #
+     #   doc   = Nokogiri::XML(File.read('some_file.xml'))
+     #   xslt  = Nokogiri::XSLT(File.read('some_transformer.xslt'))
+     #
+     #   xslt.transform(doc) # => Nokogiri::XML::Document
+     #
++    # 🛡 <b>This class does not support execution of untrusted stylesheets.</b> An untrusted
++    # stylesheet may consume a large amount of CPU, memory, or other system resources during
++    # transformation, and IO and file access are not restricted. See Nokogiri::XSLT for more
++    # information about the security implications of untrusted stylesheets.
++    #
+     # Many XSLT transformations include serialization behavior to emit a non-XML document. For these
+     # cases, please take care to invoke the #serialize method on the result of the transformation:
+     #

@@ -1,0 +1,117 @@
+{
+  "ai_hunk_gate": "PASS",
+  "ai_marker_evidence": "d83871ed is single-parent (parent c6d8721a). Subject: git: Add path-validating filesystem wrapper. Trailer: Assisted-by: Claude Opus 4.6 <noreply@anthropic.com>. The commit creates worktree_fs.go with validPath on Create/OpenFile/Remove/Rename/Symlink/MkdirAll. PR #2100 first member is this commit. Merge b1fab6cb is a two-parent merge, not a squash, and is the v5.19.1 first-parent carrier. d83871ed is an any-parent ancestor of v5.19.1 and is absent from git rev-list --first-parent 3c3be601. That is not authorship transfer. Parallel #2081 first member a0e19691 has the same Claude trailer and is not an ancestor of d83871ed or of v5.19.1. worktree_fs.go differs from a0e19691 only by billy v5 vs v6 and os.FileMode vs fs.FileMode. That is not a copy of human #2081 code.",
+  "aliases": [
+    "CVE-2026-71556"
+  ],
+  "authorship_transfer_from_human_2081": false,
+  "authorship_transfer_from_member_to_carrier": false,
+  "baseline_overlap_disposition": "Absent from canonical82 strict 82. Distinct from GHSA-3R9X and GHSA-CMW6.",
+  "but_for_gate": "PASS",
+  "candidate_any_parent": true,
+  "candidate_on_release_first_parent": false,
+  "candidate_parent": "c6d8721af933337e0ef616eba1920b195da27f67",
+  "candidate_set": [
+    "d83871ed0314f604e417f40733f762acfdcbc35c"
+  ],
+  "canonical_ledger_commit": "6800d2127c19532160cc88880115ae28cc446aa5",
+  "carrier_on_release_first_parent": true,
+  "carrier_set": [
+    "b1fab6cb0d33be2e084565bf04bb9222c8d1f419"
+  ],
+  "case_id": "GHSA-HC8V-WWC9-VGXM",
+  "causal_admission": false,
+  "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+  "countable": false,
+  "countable_proposal": true,
+  "counterevidence": [
+    "Commit message says Backport of #2081. Original #2081 first member a0e19691 is also Assisted-by Claude Opus 4.6, not an unmarked human member. v5 worktree_fs.go is that file with billy v5 / os.FileMode. a0e19691 is not an ancestor of v5.19.1. d83871ed independently creates the file on the PR #2100 second-parent line with its own trailer and is an any-parent ancestor of v5.19.1. Merge b1fab6cb is the first-parent carrier onto 3c3be601. Not GHSA-2MHJ authorship transfer.",
+    "v5.19.1 worktree_fs.go is not byte-identical to d83871ed; later same-day PR #2100 members add NTFS/HFS gates. Blame of type worktreeFilesystem still starts at d83871ed. Shipped v5.19.1 Create still calls sfs.validPath, not validWritePath or validNoLeadingSymlink.",
+    "Parent c6d8721a already has validPath on checkout From/To. Removing the candidate deletes the wrapper and returns that broader old path. Incomplete-remediation patch-delta allows reopening the older hole. The GHSA residual is the wrapper's omitted leading-symlink case, which the closer amends on the same type.",
+    "008a78f2 is also Assisted-by Claude Opus 4.8. That is the closer, not origin. Delta-even REJECT as AI_AS_FIXER looked only at official closer refs.",
+    "GitHub release target_commitish is the moving branch releases/v5.x. Local origin/releases/v5.x 2263fb5f contains the candidate and not the fix. Release proof uses immutable GitHub tags and source tarballs, not that branch.",
+    "GHSA also names v6, last known affected <= 6.0.0-alpha.4, closer 661d1c7f. One first-party GHSA case. v6 alpha is not the counted containment point.",
+    "OSV introduced 0 is routing. The wrapper did not create symlink following; it is the incomplete write-path boundary the GHSA describes."
+  ],
+  "current_leader_accepted_count": 82,
+  "distinct_from": [
+    "GHSA-3R9X-F23J-GC73",
+    "GHSA-CMW6-HCPP-C6JP"
+  ],
+  "english_only": true,
+  "failing_gates": [],
+  "first_party_source_refs": [
+    "https://github.com/advisories/GHSA-hc8v-wwc9-vgxm",
+    "https://github.com/go-git/go-git/security/advisories/GHSA-hc8v-wwc9-vgxm",
+    "https://github.com/go-git/go-git/pull/2081",
+    "https://github.com/go-git/go-git/pull/2100",
+    "https://github.com/go-git/go-git/pull/2277",
+    "https://github.com/go-git/go-git/releases/tag/v5.19.1",
+    "https://github.com/go-git/go-git/releases/tag/v5.19.2"
+  ],
+  "fix_reversal_gate": "PASS",
+  "fixed_release_evidence": {
+    "advisory_first_patched": "5.19.2",
+    "contains_candidate": true,
+    "contains_fix": true,
+    "git_tag": "v5.19.2",
+    "github_release_draft": false,
+    "github_release_prerelease": false,
+    "github_release_published_at": "2026-07-29T11:34:17Z",
+    "github_tag_commit": "3eeb238da61eb9c7a324f3ee04f990ce89175642",
+    "kind": "github_release_plus_git_tag_plus_source_tarball",
+    "tarball_sha256": "6c4524af67065f3b28708c3a3aa0931c43aa17c0cddd5762a38717e1286e8ed8",
+    "worktree_fs_equals_fix_blob": true,
+    "worktree_fs_sha256": "11d7a155bf28b8e86fc2e5833eb363ede45c13a941006199e813e4d03594cb46"
+  },
+  "gates": {
+    "ai_hunk_gate": "PASS",
+    "but_for_gate": "PASS",
+    "fix_reversal_gate": "PASS",
+    "identity_gate": "PASS",
+    "release_gate": "PASS",
+    "remediation_patch_delta_gate": "PASS",
+    "topology_gate": "PASS",
+    "uniqueness_gate": "PASS"
+  },
+  "hypothesized_candidate_set": [
+    "d83871ed0314f604e417f40733f762acfdcbc35c"
+  ],
+  "hypothesized_parent": "c6d8721af933337e0ef616eba1920b195da27f67",
+  "identity_gate": "PASS",
+  "lane": "herdr-260814-ghsa200-hc8v-hostile-redteam-grok46-xhigh",
+  "mechanism_key": "go-git.worktreeFilesystem.validPath.symlink-follow",
+  "minimal_counterexample": null,
+  "minimum_fix_set": [
+    "008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab"
+  ],
+  "note": "Red-team KEEP proposal. KEEP requires all seven gates plus remediation_patch_delta_gate PASS. This packet does not admit the row. Canonical82 remains 82. Publication and more-than-200 stay HOLD.",
+  "packet_delta": 0,
+  "patch_delta_proof": "d83871ed is an explicit security attempt: it introduces worktreeFilesystem and calls validPath on Create, OpenFile, Remove, Rename, Symlink, and MkdirAll. Parent c6d8721a has no wrapper; it only calls validPath on checkout From/To path strings. GHSA-HC8V names the residual inside that wrapper: a path that is safe as a string can still follow an existing symlink (s -> .git, write s/config). 008a78f2 amends the same wrapper so mutating ops call validWritePath, which is validPath plus validNoLeadingSymlink (Lstat of leading components, reject ModeSymlink). TestWorktreeFilesystemRejectsSymlinkTraversal requires operations on s/<name> to fail with is a symlink. Residual is the omitted leading-symlink case in the AI-added write-path boundary, not an untouched sibling. Reverting d83871ed removes the wrapper residual and reopens the broader pre-wrapper checkout validPath hole; that is allowed for AI_INCOMPLETE_REMEDIATION.",
+  "publication_status": "HOLD",
+  "release_gate": "PASS",
+  "remediation_patch_delta_gate": "PASS",
+  "repository": "go-git/go-git",
+  "row_kind": "hostile_redteam_single_case",
+  "schema_version": 1,
+  "scope_statement": "Count single-parent d83871ed, which creates worktree_fs.go worktreeFilesystem that calls validPath on mutating ops. Release first-parent carrier is PR #2100 merge b1fab6cb; candidate is an any-parent ancestor of v5.19.1 and is not on git rev-list --first-parent 3c3be601. That is not authorship transfer. GHSA residual is following existing leading symlinks through that wrapper. 008a78f2 amends the same wrapper so mutating ops call validWritePath, which adds validNoLeadingSymlink. Vulnerable public artifact is GitHub tag, release, and source tarball v5.19.1. Fixed public artifact is GitHub tag, release, and source tarball v5.19.2, whose worktree_fs.go equals 008a78f2.",
+  "topology_gate": "PASS",
+  "uniqueness_gate": "PASS",
+  "verdict": "KEEP",
+  "vulnerable_release_evidence": {
+    "advisory_last_known_affected": "<= 5.19.1",
+    "contains_candidate": true,
+    "contains_fix": false,
+    "git_tag": "v5.19.1",
+    "git_tag_commit": "3c3be601aa6c0fd0d536c0d1e4f898b4c60e65fe",
+    "github_release_draft": false,
+    "github_release_prerelease": false,
+    "github_release_published_at": "2026-05-18T20:48:48Z",
+    "has_validNoLeadingSymlink": false,
+    "has_validPath_wrapper": true,
+    "kind": "github_release_plus_git_tag_plus_source_tarball",
+    "tarball_sha256": "91b44587081b94cee4c379f7eaad28e660384f77c334da57cf53551e7e710596",
+    "worktree_fs_sha256": "bd304bf7a2b0836f14964bc36c23cebd15c57cef1c6293a410d199ab124ae528"
+  },
+  "worker_pass_is_proposal_only": true
+}

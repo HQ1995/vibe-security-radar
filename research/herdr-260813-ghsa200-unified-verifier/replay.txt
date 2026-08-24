@@ -1,0 +1,36 @@
+# Replay - unified fail-closed verifier
+# Read-only. Runs only against the leader contract/baseline and the manifest
+# input paths. Writes only into this lane directory.
+
+ROOT=/home/hanqing/agents/ai-slop
+LANE=$ROOT/autoresearch/herdr-260813-ghsa200-unified-verifier
+
+# 0. Pin the leader inputs.
+sha256sum "$ROOT/autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md" \
+          "$ROOT/autoresearch/orchestrator-260813-ghsa200-leader/baseline.json"
+
+# 1. Unit tests (10 fail-closed cases + superseded-edge positive control).
+cd "$LANE"
+python3 -m unittest test_verifier -v
+
+# 2. Run the verifier against the manifest.
+python3 verifier.py --manifest manifest.json --root "$ROOT" --output result.json
+
+# 3. Determinism check: re-run and confirm byte-identical result.json.
+before=$(sha256sum result.json)
+python3 verifier.py --manifest manifest.json --root "$ROOT" --output result.json
+after=$(sha256sum result.json)
+[ "$before" = "$after" ] && echo "DETERMINISM: identical" || echo "DETERMINISM: DIFFERS"
+
+# 4. Diff-check: assert HOLD is the only admissible terminal status while any
+#    blocker is present.
+python3 - <<'PY'
+import json
+r = json.load(open('result.json'))
+assert r['status'] == 'HOLD'
+assert r['integration_ready'] is False
+assert r['publication_ready'] is False
+assert r['fail_closed'] is True
+assert r['blocker_count'] > 0
+print('DIFF-CHECK: HOLD + blockers present, fail-closed asserted')
+PY

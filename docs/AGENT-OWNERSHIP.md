@@ -11,7 +11,11 @@ read this before editing anything outside its own output dir.
 - archives/legacy-web-data-campaign/ : frozen legacy campaign evidence.
   Do not edit.
 - research/orchestrator-*/ and research/herdr-*/ : owned by the lane
-  that created each dir. Never edit another lane's dir.
+  that created each dir. Never edit another lane's dir. Lane dirs are
+  tracked for evidence (result.json, report.md, cases.jsonl, manifests);
+  heavy dumps (work/, snapshot/, clones/, pages/, notes/, evidence/,
+  api-cache/) stay local-only via .gitignore. Commit your lane's evidence
+  files when the round closes; never force-add a dump dir.
 - Shared ledgers (foundation.jsonl, canonical*/ledger.jsonl) : leader-only
   writes; lanes read.
 - artifacts/funnel-account-*.jsonl : single-writer = the leader, via

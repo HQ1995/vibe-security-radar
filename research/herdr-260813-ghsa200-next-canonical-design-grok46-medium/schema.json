@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ghsa200-next-canonical-overlay.schema.json",
+  "title": "fp211 next canonical overlay (design schema, not a built ledger)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "overlay_name",
+    "counting_unit",
+    "conservation",
+    "countable_predicate",
+    "hash_roles",
+    "packet_authority",
+    "supersedes_edges",
+    "candidate_sets",
+    "append_policy",
+    "edge_policy",
+    "verification_layers",
+    "required_fields"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "overlay_name": { "const": "fp211-next-hold" },
+    "counting_unit": { "const": "first-party GHSA case" },
+    "conservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fp211_hypotheses",
+        "fp211_source_ghsa_cases",
+        "row_key_conservation",
+        "ordinal_conservation",
+        "cve_aliases_counted",
+        "upgrades_append",
+        "new_identities_append"
+      ],
+      "properties": {
+        "fp211_hypotheses": { "const": 211 },
+        "fp211_source_ghsa_cases": { "const": 212 },
+        "row_key_conservation": { "const": "immutable_for_ordinals_1_211" },
+        "ordinal_conservation": { "const": "immutable_1_through_211" },
+        "cve_aliases_counted": { "const": false },
+        "upgrades_append": { "const": false },
+        "new_identities_append": { "const": true }
+      }
+    },
+    "countable_predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seven_gates", "exact_value", "null_fails", "na_fails"],
+      "properties": {
+        "seven_gates": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "enum": [
+              "identity_gate",
+              "ai_hunk_gate",
+              "topology_gate",
+              "but_for_gate",
+              "fix_reversal_gate",
+              "release_gate",
+              "uniqueness_gate"
+            ]
+          }
+        },
+        "exact_value": { "const": "PASS" },
+        "null_fails": { "const": true },
+        "na_fails": { "const": true }
+      }
+    },
+    "hash_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frozen", "current", "overlap_check"],
+      "properties": {
+        "frozen": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "role"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "role": { "const": "frozen" }
+            }
+          }
+        },
+        "current": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "role"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "role": { "const": "current" }
+            }
+          }
+        },
+        "overlap_check": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "role"],
+            "properties": {
+              "path": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "role": { "const": "overlap_check" }
+            }
+          }
+        }
+      }
+    },
+    "packet_authority": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packet", "role", "terminal", "status", "authority_rank"],
+        "properties": {
+          "packet": { "type": "string", "minLength": 1 },
+          "role": {
+            "enum": [
+              "frozen_base",
+              "worker",
+              "independent_review",
+              "final_review",
+              "redteam",
+              "census",
+              "inventory"
+            ]
+          },
+          "terminal": { "type": "boolean" },
+          "status": { "type": "string", "minLength": 1 },
+          "authority_rank": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "supersedes_edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "edge_id",
+          "case_id",
+          "from_packet",
+          "to_packet",
+          "from_verdict",
+          "to_verdict",
+          "authority_rank",
+          "pending_until_to_packet_terminal",
+          "applies_now"
+        ],
+        "properties": {
+          "edge_id": { "type": "string", "minLength": 1 },
+          "case_id": { "type": "string", "pattern": "^GHSA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$" },
+          "from_packet": { "type": "string", "minLength": 1 },
+          "to_packet": { "type": "string", "minLength": 1 },
+          "from_verdict": { "type": "string", "minLength": 1 },
+          "to_verdict": { "enum": ["KEEP", "NARROW", "REJECT", "UNKNOWN", "BLOCKED"] },
+          "authority_rank": { "type": "integer", "minimum": 0 },
+          "pending_until_to_packet_terminal": { "type": "boolean" },
+          "applies_now": { "type": "boolean" },
+          "failed_gate": { "type": ["string", "null"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "candidate_sets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["KEEP", "NARROW", "PENDING"],
+      "properties": {
+        "KEEP": { "$ref": "#/$defs/candidateList" },
+        "NARROW": { "$ref": "#/$defs/candidateList" },
+        "PENDING": { "$ref": "#/$defs/candidateList" }
+      }
+    },
+    "append_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "only_absent_from_fp211_212",
+        "requires_terminal_keep_and_seven_pass",
+        "new_row_key_prefix",
+        "new_ordinal_start"
+      ],
+      "properties": {
+        "only_absent_from_fp211_212": { "const": true },
+        "requires_terminal_keep_and_seven_pass": { "const": true },
+        "new_row_key_prefix": { "const": "ghsa200-next:" },
+        "new_ordinal_start": { "const": 212 }
+      }
+    },
+    "edge_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority",
+        "sha_pattern",
+        "sets_must_be_sorted_unique",
+        "cartesian_candidate_fix_edges",
+        "legacy_top_level_edges"
+      ],
+      "properties": {
+        "authority": { "const": "candidate_set/carrier_set/minimum_fix_set" },
+        "sha_pattern": { "const": "^[0-9a-f]{40}$" },
+        "sets_must_be_sorted_unique": { "const": true },
+        "cartesian_candidate_fix_edges": { "const": false },
+        "legacy_top_level_edges": { "const": "PRESERVED_HISTORICAL_ROUTING_EVIDENCE" }
+      }
+    },
+    "verification_layers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "enum": ["structural", "git", "semantic"] }
+    },
+    "required_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "sha40": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "candidateRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "overlay_state",
+        "action",
+        "in_fp211_212",
+        "candidate_set",
+        "carrier_set",
+        "minimum_fix_set",
+        "unlock"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^GHSA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$" },
+        "overlay_state": { "enum": ["KEEP", "NARROW", "PENDING"] },
+        "action": { "enum": ["PRESERVE", "SUPERSEDE", "APPEND"] },
+        "in_fp211_212": { "type": "boolean" },
+        "ordinal": { "type": ["integer", "null"] },
+        "candidate_set": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha40" }
+        },
+        "carrier_set": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha40" }
+        },
+        "minimum_fix_set": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha40" }
+        },
+        "unlock": { "type": "string", "minLength": 1 }
+      }
+    },
+    "candidateList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidateRow" }
+    }
+  }
+}

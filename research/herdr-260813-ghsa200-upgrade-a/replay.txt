@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# Executable replay for upgrade-a. Run: bash replay.txt
+# English-only. Does not change proposal status. Uses on-disk first-party GHSA JSON
+# and clones under /tmp/ghsa200-worker-clones/upgrade-a.
+
+set -euo pipefail
+
+ROOT="/home/hanqing/agents/ai-slop"
+OWN="$ROOT/autoresearch/herdr-260813-ghsa200-upgrade-a"
+BASE="$ROOT/autoresearch/orchestrator-260813-ghsa200-leader/baseline.json"
+CONTRACT="$ROOT/autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md"
+MECH="$ROOT/autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl"
+CASES="$OWN/cases.jsonl"
+LANE="/tmp/ghsa200-worker-clones/upgrade-a"
+PAGES="$LANE/pages"
+
+g() {
+  git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false -C "$1" "${@:2}"
+}
+
+echo "=== artifact presence ==="
+for f in result.json cases.jsonl report.md replay.txt; do
+  test -s "$OWN/$f"
+  echo "present $f $(wc -c < "$OWN/$f") bytes"
+done
+
+echo "=== source hashes ==="
+python3 - <<'PY'
+import hashlib, json
+from pathlib import Path
+root = Path("/home/hanqing/agents/ai-slop")
+own = root / "autoresearch/herdr-260813-ghsa200-upgrade-a"
+files = {
+    "CONTRACT.md": root / "autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md",
+    "baseline.json": root / "autoresearch/orchestrator-260813-ghsa200-leader/baseline.json",
+    "final_mechanisms.jsonl": root / "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+    "public_cases.jsonl": root / "autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl",
+    "canonical_ledger.jsonl": root / "autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl",
+    "cases.jsonl": own / "cases.jsonl",
+    "result.json": own / "result.json",
+    "report.md": own / "report.md",
+    "replay.txt": own / "replay.txt",
+}
+want = {
+    "CONTRACT.md": "2dcf018d7fad06991c8fb5eb1c63758900207c2f85858ee6805d81041958058b",
+    "final_mechanisms.jsonl": "0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2",
+    "public_cases.jsonl": "e20d4ba5b7fdf43d338af6f7ecb8e1abfe43cc02396332091eee3689688ed257",
+    "canonical_ledger.jsonl": "1f0d15a82765c557b67efceaaf41a887c2d078a49f3da84d5f42458043e3e5e6",
+}
+for name, path in files.items():
+    h = hashlib.sha256(path.read_bytes()).hexdigest()
+    print(f"{name} {h}")
+    if name in want:
+        assert h == want[name], (name, h, want[name])
+print("source hash lock PASS")
+PY
+
+echo "=== ordinal set equals baseline upgrade_a ==="
+python3 - <<'PY'
+import json
+from pathlib import Path
+from collections import Counter
+root = Path("/home/hanqing/agents/ai-slop")
+base = json.loads((root / "autoresearch/orchestrator-260813-ghsa200-leader/baseline.json").read_text())
+want = base["upgrade_shards"]["upgrade_a"]["ordinals"]
+assert len(want) == 58 == base["upgrade_shards"]["upgrade_a"]["expected_rows"]
+rows = [json.loads(l) for l in (root / "autoresearch/herdr-260813-ghsa200-upgrade-a/cases.jsonl").read_text().splitlines() if l.strip()]
+have = [r["ordinal"] for r in rows]
+assert have == want, (have, want)
+assert len(rows) == 58
+assert len(set(have)) == 58
+vc = Counter(r["verdict"] for r in rows)
+assert vc["PASS"] == 4
+assert [r["ordinal"] for r in rows if r["verdict"] == "PASS"] == [1, 20, 92, 93]
+for r in rows:
+    if r["verdict"] == "PASS":
+        assert r.get("ghsa_fetch", {}).get("recovered_first_party") is True
+        for gname in ("identity_gate","ai_hunk_gate","topology_gate","but_for_gate","fix_reversal_gate","release_gate","uniqueness_gate"):
+            assert r[gname] == "PASS", (r["ordinal"], gname, r[gname])
+print("ordinal diff PASS", "verdicts", dict(vc))
+PY
+
+echo "=== on-disk first-party GHSA objects for four proposals ==="
+python3 - <<'PY'
+import json
+from pathlib import Path
+pages = Path("/tmp/ghsa200-worker-clones/upgrade-a/pages")
+
+def load_ok(path: Path):
+    d = json.loads(path.read_text())
+    assert isinstance(d, dict) and not d.get("error")
+    ghsa = (d.get("ghsa_id") or d.get("ghsaId") or d.get("id") or "").lower()
+    assert ghsa.startswith("ghsa-")
+    assert not (d.get("withdrawn_at") or d.get("withdrawnAt"))
+    return ghsa, d.get("cve_id") or d.get("cveId")
+
+pairs = [
+    ("ghsa/GHSA-fmfg-9g7c-3vq7.json", "ghsa-fmfg-9g7c-3vq7", "CVE-2026-32111"),
+    ("ghsa/GHSA-xw8c-rrvx-f7xq.json", "ghsa-xw8c-rrvx-f7xq", "CVE-2026-44219"),
+    ("ghsa/GHSA-wv46-v6xc-2qhf.json", "ghsa-wv46-v6xc-2qhf", "CVE-2026-35670"),
+    ("ghsa/GHSA-rg8m-3943-vm6q.json", "ghsa-rg8m-3943-vm6q", "CVE-2026-41376"),
+]
+for rel, expect, cve in pairs:
+    ghsa, got_cve = load_ok(pages / rel)
+    assert ghsa == expect, (ghsa, expect)
+    assert got_cve == cve, (got_cve, cve)
+    print("ok", rel, ghsa, got_cve)
+print("first-party GHSA objects PASS")
+PY
+
+echo "=== ordinal 1 ha-mcp git ==="
+HA="$LANE/clones/ha-mcp"
+test "$(g "$HA" rev-parse 39806871c9720bf8afdcf3e061095c0dd63dea7f)" = "39806871c9720bf8afdcf3e061095c0dd63dea7f"
+g "$HA" log -1 --format='%B' 39806871c9720bf8afdcf3e061095c0dd63dea7f | grep -q 'Co-Authored-By: Claude'
+if g "$HA" cat-file -e '39806871c9720bf8afdcf3e061095c0dd63dea7f^:src/ha_mcp/auth/provider.py' 2>/dev/null; then echo "FAIL parent provider exists"; exit 1; fi
+g "$HA" merge-base --is-ancestor 39806871c9720bf8afdcf3e061095c0dd63dea7f v6.7.2
+g "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v7.0.0
+if g "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v6.7.2; then echo "FAIL fix in vuln tag"; exit 1; fi
+test "$(g "$HA" rev-parse v6.7.2)" = "ce61f0040d7110be57f7b998ecefee0d2a6e69af"
+test "$(g "$HA" rev-parse v7.0.0)" = "77e86c21ab43977b52fba43632cdf831cf1082d8"
+g "$HA" grep -q ha_url v6.7.2 -- src/ha_mcp/auth/provider.py
+if g "$HA" grep -q 'form.get("ha_url")' v7.0.0 -- src/ha_mcp/auth/provider.py; then echo "FAIL v7 still has form ha_url"; exit 1; fi
+echo "ordinal 1 git PASS"
+
+echo "=== ordinal 20 ciguard git ==="
+CG="$LANE/clones/ciguard"
+g "$CG" log -1 --format='%B' d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 | grep -q 'Co-Authored-By: Claude'
+if g "$CG" cat-file -e 'd42195e10be0d7d9bfb4ec45fecfb83521d3fc67^:src/ciguard/analyzer/sca/endoflife.py' 2>/dev/null; then echo "FAIL parent endoflife"; exit 1; fi
+g "$CG" merge-base --is-ancestor d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 v0.6.0
+if g "$CG" merge-base --is-ancestor f08e654974f208f90ef6015928ef651982f3224a v0.6.0; then echo "FAIL osv in v0.6.0"; exit 1; fi
+if g "$CG" cat-file -e v0.6.0:src/ciguard/analyzer/sca/osv.py 2>/dev/null; then echo "FAIL osv.py in v0.6.0"; exit 1; fi
+g "$CG" merge-base --is-ancestor 17a119fe43dd956ef463c1c575a463ffd9a8d95b v0.8.2
+g "$CG" grep -q 'resp.read' v0.6.0 -- src/ciguard/analyzer/sca/endoflife.py
+g "$CG" grep -q MAX_RESPONSE v0.8.2 -- src/ciguard/analyzer/sca/endoflife.py
+test "$(g "$CG" rev-parse v0.6.0)" = "e7a41d4b7320a428868497914bde52d67b447659"
+test "$(g "$CG" rev-parse v0.8.2)" = "ca5accfeabb96028ec9a07295573ebeeeb09ae0f"
+echo "ordinal 20 git PASS"
+
+echo "=== ordinal 92 openclaw git ==="
+OC="$LANE/clones/openclaw"
+g "$OC" cat-file -t ce12b9092f03d85603f0b6b8193d512260a65dab >/dev/null
+g "$OC" log -1 --format='%B' 9a3800d8e6e69bc0a125dca5760d47515e746454 | grep -qi 'Co-Authored-By: Claude'
+g "$OC" merge-base --is-ancestor 9a3800d8e6e69bc0a125dca5760d47515e746454 v2026.3.2
+if g "$OC" merge-base --is-ancestor ce12b9092f03d85603f0b6b8193d512260a65dab v2026.3.2; then echo "FAIL member in tag"; exit 1; fi
+g "$OC" merge-base --is-ancestor 7ade3553b74ee3f461c4acd216653d5ba411f455 v2026.3.22
+MBLOB=$(g "$OC" rev-parse 9a3800d8e6e69bc0a125dca5760d47515e746454:extensions/synology-chat/src/client.ts)
+PBLOB=$(g "$OC" rev-parse ce12b9092f03d85603f0b6b8193d512260a65dab:extensions/synology-chat/src/client.ts)
+test "$MBLOB" != "$PBLOB"
+if g "$OC" grep -q resolveChatUserId 39afcee8649fa1fc02350ce07f80f5cfcd46779a -- extensions/synology-chat/src/client.ts; then echo "FAIL parent resolve"; exit 1; fi
+g "$OC" grep -q resolveChatUserId 9a3800d8e6e69bc0a125dca5760d47515e746454 -- extensions/synology-chat/src/client.ts
+g "$OC" grep -q dangerouslyAllowNameMatching 7ade3553b74ee3f461c4acd216653d5ba411f455 -- extensions/synology-chat/src/webhook-handler.ts
+test "$(g "$OC" rev-parse v2026.3.2)" = "85377a28175695c224f6589eb5c1460841ecd65c"
+test "$(g "$OC" rev-parse v2026.3.22)" = "4c016f51fc83865edfeda93e4f1e59118f6df0a8"
+echo "ordinal 92 git PASS"
+
+echo "=== ordinal 93 openclaw git ==="
+g "$OC" cat-file -t fbfe2f15fc316904972711b3391031d6c99682b4 >/dev/null
+g "$OC" log -1 --format='%B' 49c60e9065d98a6848e62c717315eb91eeaa6038 | grep -qi 'Co-authored-by: Claude'
+g "$OC" merge-base --is-ancestor 49c60e9065d98a6848e62c717315eb91eeaa6038 v2026.2.12
+if g "$OC" merge-base --is-ancestor fbfe2f15fc316904972711b3391031d6c99682b4 v2026.2.12; then echo "FAIL member in tag"; exit 1; fi
+g "$OC" merge-base --is-ancestor 8a563d603b70ef6338915f0527bee87282c3bad5 v2026.3.31
+CBLOB=$(g "$OC" rev-parse 49c60e9065d98a6848e62c717315eb91eeaa6038:extensions/matrix/src/matrix/monitor/handler.ts)
+MBLOB=$(g "$OC" rev-parse fbfe2f15fc316904972711b3391031d6c99682b4:extensions/matrix/src/matrix/monitor/handler.ts)
+test "$CBLOB" != "$MBLOB"
+if g "$OC" grep -q ThreadStarterBody '49c60e9065d98a6848e62c717315eb91eeaa6038^' -- extensions/matrix/src/matrix/monitor/handler.ts; then echo "FAIL parent thread"; exit 1; fi
+g "$OC" grep -q ThreadStarterBody 49c60e9065d98a6848e62c717315eb91eeaa6038 -- extensions/matrix/src/matrix/monitor/handler.ts
+g "$OC" grep -q shouldIncludeRoomContextSender 8a563d603b70ef6338915f0527bee87282c3bad5 -- extensions/matrix/src/matrix/monitor/handler.ts
+test "$(g "$OC" rev-parse v2026.2.12)" = "ed0a4cb3611d764773ee7c2ac6ee309750175192"
+test "$(g "$OC" rev-parse v2026.3.31)" = "ef21ed5a60e31e862db9776f023e84de1d4f4c20"
+echo "ordinal 93 git PASS"
+
+echo "ALL REPLAY CHECKS PASS"

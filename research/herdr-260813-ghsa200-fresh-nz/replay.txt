@@ -1,0 +1,83 @@
+# Replay commands for herdr-260813-ghsa200-fresh-nz
+# Mixed paths: existing active data stays under /tmp/ghsa200-worker-clones/fresh-nz
+# NEW clones and large objects go under /home/hanqing/.cache/ghsa200-worker-clones/fresh-nz
+# Do not move, copy, clean, or reset the /tmp tree. Do not print tokens.
+# Worker PASS is only a proposal; this shard proposes none.
+# Keyword/AI-marker co-occurrence is routing only.
+
+export GIT_OPTIONAL_LOCKS=0
+EXISTING=/tmp/ghsa200-worker-clones/fresh-nz
+NEW_CACHE=/home/hanqing/.cache/ghsa200-worker-clones/fresh-nz
+OBJREF=/home/hanqing/.cache/cve-analyzer/advisory-database
+# Existing freeze/replay uses $EXISTING in place.
+# mkdir -p "$NEW_CACHE/clones" "$NEW_CACHE/api-cache" before any new clone.
+
+# 1. ID freeze (read-only inputs; hashes in result.json)
+# freeze.json SHA-256 4260206f309c6cba55eef8369e3e84d5b86813f1c81d4fabc4c2fac91fa7824d
+
+# 2. Freeze current official advisory-database revision (independent origin/main fetch)
+git clone --no-checkout --filter=blob:none --reference "$OBJREF" \
+  https://github.com/github/advisory-database.git "$EXISTING/advisory-database"
+git -C "$EXISTING/advisory-database" fetch --filter=blob:none origin main
+git -C "$EXISTING/advisory-database" rev-parse origin/main
+git -C "$EXISTING/advisory-database" log -1 --format='%H %cI %s' origin/main
+# Expected frozen HEAD:
+# b5d749dd70bad2ed373a2524f3fdb34044512ea9 2026-08-13T20:54:24+00:00 Publish Advisories
+test "$(git -C "$EXISTING/advisory-database" rev-parse origin/main)" = "b5d749dd70bad2ed373a2524f3fdb34044512ea9"
+
+git -C "$EXISTING/advisory-database" sparse-checkout init --cone
+git -C "$EXISTING/advisory-database" sparse-checkout set \
+  advisories/github-reviewed/2025 advisories/github-reviewed/2026
+git -C "$EXISTING/advisory-database" checkout --detach origin/main
+
+git -C "$EXISTING/advisory-database" ls-tree -r --name-only HEAD -- advisories/github-reviewed | grep -c '\.json$'
+git -C "$EXISTING/advisory-database" ls-tree -r --name-only HEAD -- advisories/github-reviewed/2025 | grep -c '\.json$'
+git -C "$EXISTING/advisory-database" ls-tree -r --name-only HEAD -- advisories/github-reviewed/2026 | grep -c '\.json$'
+# Expected: 34388 / 3688 / 9128
+
+# 3. Rebuild the N-Z first-party denominator from that revision
+# First-party iff references URL matches github.com/{owner}/{repo}/security/advisories/GHSA-*
+# NZ iff owner initial is digit, non-letter, or N-Z
+# Campaign window: published date >= 2025-05-01
+# Expected: nz-denominator.jsonl 4482 rows; novel active 4190; keyword routing 624; PASS from keywords 0
+python3 - <<'PY'
+import json
+from pathlib import Path
+rows=[json.loads(l) for l in Path("autoresearch/herdr-260813-ghsa200-fresh-nz/nz-denominator.jsonl").read_text().splitlines()]
+print("rows", len(rows))
+print("active", sum(1 for r in rows if not r["withdrawn"]))
+print("novel_active", sum(1 for r in rows if not r["withdrawn"] and not r["in_id_freeze"]))
+print("keyword_routing_novel", sum(1 for r in rows if not r["withdrawn"] and not r["in_id_freeze"] and r["routing_ai_keywords"]))
+print("openclaw_novel", sum(1 for r in rows if r["repository"]=="openclaw/openclaw" and not r["withdrawn"] and not r["in_id_freeze"]))
+PY
+
+# 4. Near-miss: Pydantic AI GHSA-h7p7-w5gc-xj3w (origin fails; do not transfer squash trailer)
+gh api repos/pydantic/pydantic-ai/security-advisories/GHSA-h7p7-w5gc-xj3w
+gh api repos/pydantic/pydantic-ai/git/commits/272c92ac35b2ad81b6c9eddbda425b27de4b0762 --jq '{parents:[.parents[].sha],message:.message}'
+gh api repos/pydantic/pydantic-ai/pulls/3942/commits?per_page=100
+gh api repos/pydantic/pydantic-ai/commits/b6866b45bc42a63c29b5051640588c408e88f211 --jq '{message:.commit.message,author:.author.login,files:[.files[].filename]}'
+gh api repos/pydantic/pydantic-ai/commits/12508f1550e73b6ae78764212e51390c065b5025 --jq '{message:.commit.message,files:[.files[].filename]}'
+gh api repos/pydantic/pydantic-ai/compare/272c92ac35b2ad81b6c9eddbda425b27de4b0762...9af531667fc2b5f87b8f61145f8b14f97217a62a --jq '{status,ahead_by,behind_by,merge_base:.merge_base_commit.sha}'
+gh api repos/pydantic/pydantic-ai/compare/ed31bdd64e11ce1475916a398ee3312791ed2d38...1b42945de65b2816fed3cffa371671a2ac759241 --jq '{status,ahead_by,behind_by,merge_base:.merge_base_commit.sha}'
+
+# 5. Revision-new identity: NLTK GHSA-m42h-3232-vpv3 (introduced 0; REJECT)
+gh api repos/nltk/nltk/security-advisories/GHSA-m42h-3232-vpv3 --jq '{ghsa_id,cve_id,vulnerabilities}'
+gh api repos/nltk/nltk/commits/aec4fce1b84ad725b8975f7365b23a4f626572a9 --jq '{message:.commit.message,parents:[.parents[].sha]}'
+gh api repos/nltk/nltk/compare/aec4fce1b84ad725b8975f7365b23a4f626572a9...bd49f9011d7dc8c6a36b3c4ae71f04060c9b3fb9 --jq '{status,ahead_by,behind_by,merge_base:.merge_base_commit.sha}'
+
+# 6. Confirm freeze novelty
+python3 - <<'PY'
+import json
+from pathlib import Path
+ids=set(json.loads(Path("autoresearch/herdr-260813-ghsa200-fresh-nz/freeze.json").read_text())["unique_public_ids"])
+for i in ["GHSA-H7P7-W5GC-XJ3W","CVE-2026-54249","GHSA-M42H-3232-VPV3","CVE-2026-12243"]:
+    print(i, "IN_FREEZE" if i in ids else "novel")
+PY
+
+# 7. Existing origin clones remain under $EXISTING/clones (do not move)
+git -C "$EXISTING/clones/lara-mcp" rev-parse HEAD
+git -C "$EXISTING/clones/stata-mcp" rev-parse HEAD
+git -C "$EXISTING/clones/fastmcp" rev-parse HEAD
+
+# 8. Any NEW repository clone after the resource correction:
+# git clone --filter=blob:none https://github.com/OWNER/REPO.git "$NEW_CACHE/clones/REPO"

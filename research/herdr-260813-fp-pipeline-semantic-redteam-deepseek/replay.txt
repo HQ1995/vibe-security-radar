@@ -1,0 +1,140 @@
+Replay commands - semantic acceptance review, 2026-08-13
+Repo root: /home/hanqing/agents/ai-slop (dirty shared checkout, HEAD 1287ccd)
+Guards used everywhere: PYTHONDONTWRITEBYTECODE=1; pytest -p no:cacheprovider;
+all mutations and regenerated outputs in /tmp only. No shared pipeline file
+was modified, committed, or pushed. No credentials printed.
+
+--- 1. Contract and pins -------------------------------------------------
+sha256sum autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md
+# cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+python3 autoresearch/orchestrator-260813-ghsa200-leader/verify_baseline.py
+# PASS: frozen baseline=48 strict released; 106 disjoint upgrades; gap=153
+
+--- 2. fp211 canonical overlay replay (in place; --check is read-only) ----
+cd autoresearch/orchestrator-260813-fp211-canonical
+python3 build.py --check
+# PASS: fp211 canonical ledger, summary, and result are byte-identical
+python3 verify.py
+# PASS: fp211 absorbed for 211 hypotheses; verdicts CONFIRM:65 FALSE_POSITIVE:54 NARROW:83 UNKNOWN:9; publication=HOLD
+python3 -m unittest test_canonical -v
+# Ran 5 tests ... OK
+
+--- 3. Publication builder and helper replay ------------------------------
+cd /home/hanqing/agents/ai-slop
+python3 scripts/build_publication_adjudications.py --check
+# publication adjudications are current: scripts/publication_adjudications.json
+cve-analyzer/.venv/bin/python3.13 -m pytest \
+  scripts/tests/test_cohort_publication_admission.py \
+  scripts/tests/test_build_publication_adjudications.py \
+  scripts/tests/test_web_data_loader.py -p no:cacheprovider -q
+# 51 passed
+
+--- 4. Unified verifier and leader replay ---------------------------------
+cd autoresearch/herdr-260813-ghsa200-unified-verifier
+python3 verifier.py --manifest manifest.json --root ../.. --output /tmp/uverif-result.json
+diff /tmp/uverif-result.json result.json   # IDENTICAL (HOLD, blockers=5)
+python3 -m unittest test_verifier -v
+# Ran 12 tests ... OK
+cd ../orchestrator-260813-ghsa200-leader && python3 verify_baseline.py  # PASS
+
+--- 5. Live corpus semantic checks (all PASS) -----------------------------
+cd /home/hanqing/agents/ai-slop
+python3 - <<'PY'
+import json, collections
+c = json.load(open('scripts/publication_adjudications.json'))
+fp = [r for r in c['adjudications'] if 'fp211' in r]
+gates = ['identity_gate','ai_hunk_gate','topology_gate','but_for_gate','fix_reversal_gate','release_gate','uniqueness_gate']
+admit = [r for r in fp if r['fp211']['admission']=='ADMIT']
+assert len(admit)==48
+assert all(r['fp211']['verdict']=='CONFIRM' and r['fp211']['confidence']=='HIGH' for r in admit)
+assert all(all(r['fp211']['gates'][g] in ('PASS','NA') for g in gates) for r in admit)
+assert all(r['fp211']['gates']['release_gate']=='PASS' for r in admit)
+assert all(r['fp211']['source_tier'] in ('STRICT_RELEASED','INCOMPLETE_RELEASED') for r in admit)
+assert all(r['label']=='AI_CAUSAL' for r in admit)
+assert all(r['fp211']['verdict']=='FALSE_POSITIVE' for r in fp if r['fp211']['admission']=='EXCLUDE')
+assert all(r['label']!='AI_CAUSAL' for r in fp if r['fp211']['admission']!='ADMIT')
+assert all(r['fp211']['admission']=='HOLD' for r in fp if r['fp211']['verdict'] in ('UNKNOWN','BLOCKED'))
+assert all(r['fp211']['admission']=='HOLD' for r in fp if r['fp211']['confidence']=='MEDIUM')
+assert all(r['fp211']['admission']=='HOLD' for r in fp if r['fp211']['source_tier'].endswith('COMMIT_ONLY') and r['fp211']['verdict']!='FALSE_POSITIVE')
+# conservation + tombstones
+final = {r['ordinal']: r for r in [json.loads(l) for l in open('autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl') if l.strip()]}
+man = {r['ordinal']: r for r in [json.loads(l) for l in open('autoresearch/orchestrator-260813-fp211-audit/manifest.jsonl') if l.strip()]}
+for r in fp:
+    o = r['fp211']['ordinal']
+    kept = {s.upper() for s in final[o]['public_ids_keep']}
+    rem = {s.upper() for s in final[o]['public_ids_remove']}
+    assert kept | rem == {s.upper() for s in man[o]['public_ids']}
+    assert not kept & rem
+    assert {s.upper() for s in r['excluded_aliases']} == rem
+kept_all = {s.upper() for o,f in final.items() for s in f['public_ids_keep']}
+rem_all = {s.upper() for o,f in final.items() for s in f['public_ids_remove']}
+assert len(kept_all)==371 and len(rem_all)==10 and len(kept_all)+len(rem_all)==381
+assert len(c['summary']['removed_public_ids'])==10
+subjects = {s.upper() for r in c['adjudications'] for s in [r['cve_id'], *r.get('aliases',[])]}
+assert subjects.isdisjoint(rem_all)
+# GHSA identity: no CVE alias creates a row
+assert all(r['cve_id'].startswith('GHSA-') for r in fp)
+assert len({r['cve_id'] for r in fp})==len(fp)
+owner = {}
+for r in admit:
+    for s in [r['cve_id'], *r.get('aliases',[])]:
+        assert s.upper() not in owner; owner[s.upper()] = r['cve_id']
+# shared SHA never implies duplication
+sha_owner, pairs = {}, []
+for r in admit:
+    f = final[r['fp211']['ordinal']]
+    for sha in f['candidate_set'] + f['minimum_fix_set']:
+        if sha in sha_owner: pairs.append((sha_owner[sha], r['cve_id'], sha[:12]))
+        sha_owner[sha] = r['cve_id']
+assert len(pairs)==5 and all(f['uniqueness_gate']=='PASS' for r in admit)
+print('ALL LIVE-CORPUS SEMANTIC CHECKS PASS; pairs:', pairs)
+PY
+
+--- 6. Adversarial mutations (temp copies; 20/20) -------------------------
+# Prerequisites: /tmp/fp211-redteam/{driver.py,mutations.json}, generated from
+# pristine copies of final_mechanisms.jsonl, manifest.jsonl, public_cases.jsonl,
+# audit_adjudications.json, cohort/publication_admission.py,
+# build_publication_adjudications.py (sha256 of inputs match the pins above).
+cd /tmp/fp211-redteam && python3 driver.py
+# 20/20 checks passed:
+#  M1  release_gate NA on admitted ordinal 2  -> HOLD/release_gate_must_pass; ADMIT 48->47
+#  M1b release_gate UNKNOWN                    -> HOLD 'CONFIRM requires all seven gates'
+#  M2  tombstone CVE-2026-62188 added to keep  -> conservation error; builder exit 2
+#  M3  tombstone added to a case alias         -> builder exit 2
+#  M4  UNKNOWN row with all gates PASS         -> errors; builder exit 2
+#  M5  FALSE_POSITIVE with no FAIL gate        -> errors; builder exit 2
+#  M6  HIGH demoted to MEDIUM                  -> HOLD confirm_requires_high_confidence
+#  M7  NARROW with no NARROW gate              -> errors; builder exit 2
+#  M8  duplicate_of without uniqueness FAIL    -> errors; builder exit 2
+#  M9  duplicated case_id in public_cases      -> builder exit 2
+#  M10 same kept GHSA id across two ordinals   -> builder exit 2
+#  M11 shared candidate SHA across two admitted rows -> both still ADMIT (positive control)
+#  M12 corpus label tampered                   -> --check reports stale, exit 2
+
+--- 7. Canonical overlay mirror mutations (4/4 fail closed) ----------------
+mkdir -p /tmp/canon-mirror/autoresearch
+cp -r autoresearch/orchestrator-260813-fp211-canonical /tmp/canon-mirror/autoresearch/
+ln -s /home/hanqing/agents/ai-slop/autoresearch/orchestrator-260812-posthold-canonical \
+      /tmp/canon-mirror/autoresearch/
+ln -s /home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-fp211-audit \
+      /tmp/canon-mirror/autoresearch/
+cd /tmp/canon-mirror/autoresearch/orchestrator-260813-fp211-canonical
+python3 build.py --check && python3 verify.py && python3 -m unittest test_canonical
+# PASS / PASS / 5 tests OK
+# T4: replace audit symlink with a real copy, flip release_gate PASS->NA on
+#     ordinal 2 in final_mechanisms.jsonl:
+python3 verify.py >/dev/null;        echo "T4a verify exit=$?"       # exit=1 (sha256 pin)
+python3 build.py --check >/dev/null; echo "T4b build-check exit=$?"   # exit=1
+# T5: restore symlink; flip fp211_released_publication_admitted True->False
+#     on one ledger record:
+python3 build.py --check >/dev/null; echo "T5a build-check exit=$?"   # exit=1 (stale artifact)
+python3 verify.py >/dev/null;        echo "T5b verify exit=$?"        # exit=1 (byte identity)
+
+--- 8. Evidence -----------------------------------------------------------
+# This review's only outputs:
+#   autoresearch/herdr-260813-fp-pipeline-semantic-redteam-deepseek/manifest.json
+#   autoresearch/herdr-260813-fp-pipeline-semantic-redteam-deepseek/result.json
+#   autoresearch/herdr-260813-fp-pipeline-semantic-redteam-deepseek/report.md
+#   autoresearch/herdr-260813-fp-pipeline-semantic-redteam-deepseek/replay.txt
+# Scratch (not part of evidence): /tmp/fp211-redteam/, /tmp/canon-mirror/,
+# /tmp/uverif-result.json

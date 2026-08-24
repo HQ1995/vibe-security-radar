@@ -1,0 +1,303 @@
+diff --git a/src/datamodel_code_generator/http.py b/src/datamodel_code_generator/http.py
+index c2a8e33a..47c5233d 100644
+--- a/src/datamodel_code_generator/http.py
++++ b/src/datamodel_code_generator/http.py
+@@ -1,70 +1,176 @@
+ """HTTP utilities for fetching remote schema files.
+ 
+ Provides functions to fetch schema content from URLs and join URL references.
+ HTTP(S) URLs require the 'http' extra: `pip install 'datamodel-code-generator[http]'`.
+ file:// URLs are handled without additional dependencies.
+ """
+ 
+ from __future__ import annotations
+ 
++import socket
++from ipaddress import IPv4Address, IPv6Address, ip_address
+ from typing import TYPE_CHECKING, Any
++from urllib.parse import urlparse
+ 
+ from datamodel_code_generator import SchemaFetchError
+ 
+ if TYPE_CHECKING:
+     from collections.abc import Sequence
+ 
+ 
+ def _get_httpx() -> Any:
+     """Lazily import httpx, raising a helpful error if not installed."""
+     try:
+         import httpx  # noqa: PLC0415
+     except ImportError as exc:  # pragma: no cover
+         msg = "Please run `$pip install 'datamodel-code-generator[http]`' to resolve HTTP(S) URL references"
+         raise Exception(msg) from exc  # noqa: TRY002
+     return httpx
+ 
+ 
+ DEFAULT_HTTP_TIMEOUT = 30.0
++MAX_HTTP_REDIRECTS = 20
++_HTTP_REDIRECT_STATUS_CODES = frozenset({301, 302, 303, 307, 308})
++_UNSAFE_HOST_NAMES = frozenset({"localhost"})
+ 
+ 
+-def get_body(
++def _is_safe_ip(ip: IPv4Address | IPv6Address) -> bool:
++    return ip.is_global
++
++
++def _get_ips_from_host(host: str) -> tuple[IPv4Address | IPv6Address, ...]:
++    try:
++        return (ip_address(host.split("%", maxsplit=1)[0]),)
++    except ValueError:
++        pass
++
++    try:
++        addr_infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
++    except OSError:
++        return ()
++
++    return tuple({ip_address(str(addr_info[4][0]).split("%", maxsplit=1)[0]) for addr_info in addr_infos})
++
++
++def _format_private_network_error(
++    *,
++    url: str,
++    hostname: str,
++    reason: str,
++    resolved_ips: tuple[IPv4Address | IPv6Address, ...] = (),
++) -> str:
++    ip_details = f" Resolved IPs: {', '.join(str(ip) for ip in resolved_ips)}." if resolved_ips else ""
++    return (
++        f"Blocked unsafe URL host: {hostname}\n"
++        f"Reason: {reason}.{ip_details}\n"
++        "datamodel-code-generator blocks local, private, link-local, reserved, and otherwise non-public "
++        "network targets by default to reduce SSRF risk.\n"
++        f"URL: {url}\n"
++        "If this is a trusted internal schema endpoint, pass --allow-private-network "
++        "or set allow_private_network=True when using the Python API."
++    )
++
++
++def _validate_url_for_fetch(url: str, *, allow_private_network: bool) -> None:
++    parsed_url = urlparse(url)
++    match parsed_url.scheme:
++        case "http" | "https":
++            pass
++        case _:
++            msg = f"Unsupported URL scheme for HTTP fetch: {url}"
++            raise SchemaFetchError(msg)
++
++    if (hostname := parsed_url.hostname) is None:
++        msg = f"Missing URL host for HTTP fetch: {url}"
++        raise SchemaFetchError(msg)
++
++    host = hostname.rstrip(".").lower()
++    if allow_private_network:
++        return
++
++    if host in _UNSAFE_HOST_NAMES or host.endswith(".localhost"):
++        msg = _format_private_network_error(
++            url=url,
++            hostname=hostname,
++            reason="localhost names resolve to the local machine",
++        )
++        raise SchemaFetchError(msg)
++
++    ips = _get_ips_from_host(host)
++    if not ips:
++        return
++
++    if all(_is_safe_ip(ip) for ip in ips):
++        return
++
++    msg = _format_private_network_error(
++        url=url,
++        hostname=hostname,
++        reason="the host resolves to a non-public address",
++        resolved_ips=ips,
++    )
++    raise SchemaFetchError(msg)
++
++
++def _get_redirect_url(httpx: Any, current_url: str, response: Any) -> str | None:
++    if response.status_code not in _HTTP_REDIRECT_STATUS_CODES:
++        return None
++    if not (location := response.headers.get("location")):
++        msg = f"Redirect response from {current_url} is missing a Location header"
++        raise SchemaFetchError(msg)
++    return str(httpx.URL(current_url).join(location))
++
++
++def get_body(  # noqa: PLR0913
+     url: str,
+     headers: Sequence[tuple[str, str]] | None = None,
+     ignore_tls: bool = False,  # noqa: FBT001, FBT002
+     query_parameters: Sequence[tuple[str, str]] | None = None,
+     timeout: float = DEFAULT_HTTP_TIMEOUT,
++    *,
++    allow_private_network: bool = False,
+ ) -> str:
+     """Fetch content from a URL with optional headers and query parameters."""
+     httpx = _get_httpx()
+-    try:
+-        response = httpx.get(
+-            url,
+-            headers=headers,
+-            verify=not ignore_tls,
+-            follow_redirects=True,
+-            params=query_parameters,  # ty: ignore
+-            timeout=timeout,
+-        )
+-    except Exception as e:
+-        msg = f"Failed to fetch {url}: {e}"
+-        raise SchemaFetchError(msg) from e
++    current_url = url
++    for redirect_count in range(MAX_HTTP_REDIRECTS + 1):
++        _validate_url_for_fetch(current_url, allow_private_network=allow_private_network)
++        try:
++            response = httpx.get(
++                current_url,
++                headers=headers,
++                verify=not ignore_tls,
++                follow_redirects=False,
++                params=query_parameters if redirect_count == 0 else None,  # ty: ignore
++                timeout=timeout,
++            )
++        except Exception as e:
++            msg = f"Failed to fetch {current_url}: {e}"
++            raise SchemaFetchError(msg) from e
++        if (redirect_url := _get_redirect_url(httpx, current_url, response)) is None:
++            break
++        current_url = redirect_url
++    else:
++        msg = f"Too many redirects fetching {url}"
++        raise SchemaFetchError(msg)
++
+     if response.status_code >= 400:  # noqa: PLR2004
+-        msg = f"HTTP {response.status_code} error fetching {url}"
++        msg = f"HTTP {response.status_code} error fetching {current_url}"
+         raise SchemaFetchError(msg)
+     content_type = response.headers.get("content-type", "").lower()
+     if "text/html" in content_type:
+         msg = (
+-            f"Unexpected HTML response from {url} (Content-Type: {content_type}). Expected JSON or YAML schema content."
++            f"Unexpected HTML response from {current_url} "
++            f"(Content-Type: {content_type}). Expected JSON or YAML schema content."
+         )
+         raise SchemaFetchError(msg)
+     return response.text
+ 
+ 
+ def join_url(url: str, ref: str = ".") -> str:  # noqa: PLR0912
+     """Join a base URL with a relative reference."""
+     if url.startswith("file://"):
+         from urllib.parse import urlparse  # noqa: PLC0415
+ 
+         parsed = urlparse(url)
+ 
+diff --git a/src/datamodel_code_generator/parser/base.py b/src/datamodel_code_generator/parser/base.py
+index 48da8e26..0ee15d78 100644
+--- a/src/datamodel_code_generator/parser/base.py
++++ b/src/datamodel_code_generator/parser/base.py
+@@ -1176,24 +1176,25 @@ class Parser(ABC, Generic[ParserConfigT, SchemaFeaturesT]):
+             naming_strategy=config.naming_strategy,
+             duplicate_name_suffix_map=config.duplicate_name_suffix,
+             class_name_prefix=config.class_name_prefix,
+             class_name_suffix=config.class_name_suffix,
+             class_name_affix_scope=config.class_name_affix_scope,
+             skip_affix_for_root=config.class_name is not None,
+             default_value_overrides=config.default_value_overrides,
+         )
+         self.class_name: str | None = config.class_name
+         self.allow_leading_underscore_class_name: bool = config.allow_leading_underscore_class_name
+         self.wrap_string_literal: bool | None = config.wrap_string_literal
+         self.allow_remote_refs: bool | None = config.allow_remote_refs
++        self.allow_private_network: bool = config.allow_private_network
+         self.http_headers: Sequence[tuple[str, str]] | None = config.http_headers
+         self.http_local_ref_path: Path | None = config.http_local_ref_path
+         self.http_query_parameters: Sequence[tuple[str, str]] | None = config.http_query_parameters
+         self.http_ignore_tls: bool = config.http_ignore_tls
+         self.http_timeout: float | None = config.http_timeout
+         self.use_annotated: bool = config.use_annotated
+         if self.use_annotated and not self.field_constraints:  # pragma: no cover
+             msg = "`use_annotated=True` has to be used with `field_constraints=True`"
+             raise Exception(msg)  # noqa: TRY002
+         self.use_serialize_as_any: bool = config.use_serialize_as_any
+         self.use_non_positive_negative_number_constrained_types = (
+             config.use_non_positive_negative_number_constrained_types
+@@ -1357,25 +1358,30 @@ class Parser(ABC, Generic[ParserConfigT, SchemaFeaturesT]):
+             return normalize(self.base_class_map[class_name])
+         if custom_base_path:
+             return normalize(custom_base_path)
+         return self.base_class or None
+ 
+     def _get_text_from_url(self, url: str) -> str:
+         from datamodel_code_generator.http import DEFAULT_HTTP_TIMEOUT, get_body  # noqa: PLC0415
+ 
+         timeout = self.http_timeout if self.http_timeout is not None else DEFAULT_HTTP_TIMEOUT
+         return self.remote_text_cache.get_or_put(
+             url,
+             default_factory=lambda _url: get_body(
+-                url, self.http_headers, self.http_ignore_tls, self.http_query_parameters, timeout
++                url,
++                self.http_headers,
++                self.http_ignore_tls,
++                self.http_query_parameters,
++                timeout,
++                allow_private_network=self.allow_private_network,
+             ),
+         )
+ 
+     @classmethod
+     def get_url_path_parts(cls, url: ParseResult) -> list[str]:
+         """Split URL into scheme/host and path components."""
+         return [
+             f"{url.scheme}://{url.netloc}",
+             *url.path.split("/")[1:],
+         ]
+ 
+     @property
+diff --git a/src/datamodel_code_generator/parser/jsonschema.py b/src/datamodel_code_generator/parser/jsonschema.py
+index 579b2710..6d8cd36e 100644
+--- a/src/datamodel_code_generator/parser/jsonschema.py
++++ b/src/datamodel_code_generator/parser/jsonschema.py
+@@ -4793,31 +4793,38 @@ class JsonSchemaParser(Parser["JSONSchemaParserConfig", "JsonSchemaFeatures"]):
+             treat_dot_as_module=self.treat_dot_as_module,
+         )
+         self.generation_store.register_model(data_model_root_type)
+         return self.data_type(reference=reference)
+ 
+     def _get_ref_body(self, resolved_ref: str) -> dict[str, YamlValue]:
+         """Get the body of a reference from URL or remote file."""
+         if is_url(resolved_ref):
+             if not resolved_ref.startswith("file://") and self.http_local_ref_path is None:
+                 if self.allow_remote_refs is False:
+                     msg = (
+                         f"Fetching remote $ref is disabled: {resolved_ref}\n"
+-                        "Use --allow-remote-refs to enable HTTP fetching of remote references."
++                        "Reason: --no-allow-remote-refs was set, so HTTP(S) $ref targets are not fetched.\n"
++                        "If this schema and all of its remote references are trusted, pass --allow-remote-refs. "
++                        "If a trusted remote reference points to an internal schema registry, also pass "
++                        "--allow-private-network."
+                     )
+                     raise Error(msg)
+                 if self.allow_remote_refs is None:
+                     warn_deprecated(
+                         "behavior.remote-ref-default",
+-                        details=f"Reference: {resolved_ref}",
++                        details=(
++                            f"Reference: {resolved_ref}. Pass --allow-remote-refs for trusted remote schemas, "
++                            "or --no-allow-remote-refs to block HTTP(S) $ref fetching. Internal network targets "
++                            "also require --allow-private-network."
++                        ),
+                         stacklevel=2,
+                     )
+             return self._get_ref_body_from_url(resolved_ref)
+         return self._get_ref_body_from_remote(resolved_ref)
+ 
+     def _get_ref_body_from_local_http_path(self, ref: str) -> dict[str, YamlValue]:
+         assert self.http_local_ref_path is not None
+         parsed = urlparse(ref)
+         if parsed.scheme not in {"http", "https"}:  # pragma: no cover
+             msg = f"Unsupported local HTTP $ref URL: {ref}"
+             raise Error(msg)
+ 

@@ -1,0 +1,3136 @@
+[
+  {
+    "ghsa": "GHSA-HGX2-28F8-6G2R",
+    "repo": "ory/kratos",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-hgx2-28f8-6g2r/GHSA-hgx2-28f8-6g2r.json",
+    "aliases": [
+      "CVE-2026-33503"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ],
+    "summary": "Ory Kratos has a SQL injection via forged pagination tokens",
+    "details": "## Description\n\nThe **ListCourierMessages** Admin API in Ory Kratos is vulnerable to SQL injection due to flaws in its pagination implementation.\n\nPagination tokens are encrypted using the secret configured in `secrets.pagination`. An attacker who knows this secret can craft their own tokens, including malicious tokens that lead to SQL injection. If this configuration value is not set, Kratos falls back to a default pagination encryption secret. Because this default value is publicly known, attackers can generate valid and malicious pagination tokens manually for installations where this secret is not set.\n\n## Preconditions\n\nThis issue can be exploited when the following conditions are met:\n\n- **ListCourierMessages API** is directly or indirectly accessible to the attacker\n- The attacker can pass a raw pagination token to the affected API\n- The configuration value `secrets.pagination` is not set or known to the attacker\n\n## Impact\n\nAn attacker can execute arbitrary SQL queries through forged pagination tokens.\n\n## Mitigation\n\nAs a first line of defense, **immediately** configure a custom value for `secrets.pagination` by generating a cryptographically secure random secret, for example:\n\n```\nopenssl rand -base64 32\n```\n\nNext, upgrade **Kratos** to a fixed version **as soon as possible**.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/ory/kratos",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "1.3.1-0.20260320110106-9d7085948039"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ory/kratos/security/advisories/GHSA-hgx2-28f8-6g2r"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33503"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ory/kratos"
+      }
+    ],
+    "cwe": [
+      "CWE-89"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T18:16:30Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-R9W3-57W2-GCH2",
+    "repo": "ory/hydra",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-r9w3-57w2-gch2/GHSA-r9w3-57w2-gch2.json",
+    "aliases": [
+      "CVE-2026-33504"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ],
+    "summary": "Ory Hydra has a SQL injection via forged pagination tokens",
+    "details": "## Description\n\nFollowing Admin APIs in Ory Hydra are vulnerable to SQL injection due to flaws in its pagination implementation:\n\n- listOAuth2Clients\n- listOAuth2ConsentSessions\n- listTrustedOAuth2JwtGrantIssuers\n\nPagination tokens are encrypted using the secret configured in `secrets.pagination`. If this value is not set, Hydra falls back to using `secrets.system`. An attacker who knows this secret can craft their own tokens, including malicious tokens that lead to SQL injection.\n\n## Preconditions\n\nThis issue can be exploited when the following conditions are met:\n\n- One or more **admin APIs** listed above are directly or indirectly accessible to the attacker\n- The attacker can pass a raw pagination token to the affected API\n- The configuration value `secrets.pagination` is set and known to the attacker, or `secrets.pagination` is not set and `secrets.system` is known to the attacker\n\n## Impact\n\nAn attacker can execute arbitrary SQL queries through forged pagination tokens.\n\n## Mitigation\n\nAs a first line of defense, immediately configure a custom value for `secrets.pagination` by generating a cryptographically secure random secret, for example:\n\n```\nopenssl rand -base64 32\n```\n\nNext, upgrade **Hydra** to the fixed version **as soon as possible**.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/ory/hydra",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "last_affected": "1.11.10"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/ory/hydra/v2",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "2.3.1-0.20260320110106-0b84568fffcc"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ory/hydra/security/advisories/GHSA-r9w3-57w2-gch2"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33504"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ory/hydra"
+      }
+    ],
+    "cwe": [
+      "CWE-89"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T18:16:31Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-C38G-MX2C-9WF2",
+    "repo": "ory/keto",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-c38g-mx2c-9wf2/GHSA-c38g-mx2c-9wf2.json",
+    "aliases": [
+      "CVE-2026-33505"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ],
+    "summary": "Ory Keto has a SQL injection via forged pagination tokens",
+    "details": "## Description\n\nThe **GetRelationships API** in Ory Keto is vulnerable to SQL injection due to flaws in its pagination implementation.\n\nPagination tokens are encrypted using the secret configured in `secrets.pagination`. An attacker who knows this secret can craft their own tokens, including malicious tokens that lead to SQL injection. If this configuration value is not set, Keto falls back to a hard-coded default pagination encryption secret. Because this default value is publicly known, attackers can generate valid and malicious pagination tokens manually for installations where this secret is not set.\n\n## Preconditions\n\nThis issue can be exploited when all of the following conditions are met:\n\n- **GetRelationships API** is directly or indirectly accessible to the attacker\n- The attacker can pass a raw pagination token to the affected API\n- The configuration value `secrets.pagination` is not set or known to the attacker\n\n## Impact\n\nAn attacker can execute arbitrary SQL queries through forged pagination tokens.\n\n## Mitigation\n\nAs a first line of defense, **immediately** configure a custom value for `secrets.pagination` by generating a cryptographically secure random secret, for example:\n\n```\nopenssl rand -base64 32\n```\n\nNext, upgrade **Keto** to a fixed version **as soon as possible**.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/ory/keto",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "0.14.1-0.20260320140104-e4393662cd2e"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ory/keto/security/advisories/GHSA-c38g-mx2c-9wf2"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33505"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ory/keto"
+      }
+    ],
+    "cwe": [
+      "CWE-89"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T19:17:04Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-GMFG-3V4Q-9QR4",
+    "repo": "authelia/authelia",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-gmfg-3v4q-9qr4/GHSA-gmfg-3v4q-9qr4.json",
+    "aliases": [
+      "CVE-2026-33525"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:A/AC:H/AT:P/PR:N/UI:P/VC:L/VI:L/VA:N/SC:L/SI:L/SA:N/E:U/S:N/AU:Y/R:U/V:D/RE:L/U:Clear"
+      }
+    ],
+    "summary": "Authelia: Improper Neutralization of Input During Web Page Generation Leads to Potential Cross-site Scripting",
+    "details": "### Impact\n\n**Official Weighted Severity Rating:** Low\n\nThis exploit is very unlikely to be the case for most users as it requires configuration of the Content Security Policy template value. Below represents a safe value, **_any other value_** other than unconfigured should be **_very carefully evaluated_** regardless of the fix.\n\n```yaml\nserver:\n  headers:\n    csp_template: ''\n```\n\n```env\nAUTHELIA_SERVER_HEADERS_CSP_TEMPLATE=\n```\n\nProvided the following conditions are met:\n\n1. The Content Security Policy:\n    1. Has been disabled or modified from the entirely safe default value; and\n    2. Has been completely disabled by the Administrator by omitting the header explicitly at the proxy (worst practice); or\n    3. Has been effectively disabled by modifying `script-src` allowing unsafe inline scripts rather than using hashes AND effectively disabled by modifying `connect-src` allowing connections to arbitrary websites.\n2. Authelia is being hosted on a domain that has other applications that can write to the cookie for the Authelia domain.\n3. One of the other applications noted in 2 has an vulnerability that can be exploited to execute malicious javascript with similar requirements to 1.\n4. The attacker can exploit the javascript in 3 to delete the existing `language` cookie scoped to the fully qualified domain name of Authelia with the same site value of `strict` (which is not possible in most scenarios unless the application in 3 has the exact same domain or a subdomain of the Authelia domain).\n5. The attacker can exploit the javascript in 3 to write a new `language` cookie scoped for a domain that Authelia is sent cookies for.\n6. The attacker can get a user to meet the conditions required to execute the javascript in 3.\n7. You are running Authelia 4.39.15.\n\nAn attacker",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/authelia/authelia/v4",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "4.39.15"
+              },
+              {
+                "fixed": "4.39.16"
+              }
+            ]
+          }
+        ],
+        "versions": [
+          "4.39.15"
+        ]
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/authelia/authelia/security/advisories/GHSA-gmfg-3v4q-9qr4"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33525"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/authelia/authelia"
+      }
+    ],
+    "cwe": [
+      "CWE-79"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T20:16:14Z",
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:A/AC:H/AT:P/PR:N/UI:P/VC:L/VI:L/VA:N/SC:L/SI:L/SA:N/E:U/S:N/AU:Y/R:U/V:D/RE:L/U:Clear"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-HXV8-4J4R-CQGV",
+    "repo": "cilium/cilium",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-hxv8-4j4r-cqgv/GHSA-hxv8-4j4r-cqgv.json",
+    "aliases": [
+      "CVE-2026-33726"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:N"
+      }
+    ],
+    "summary": "Cilium L7 proxy may bypass Kubernetes NetworkPolicy for same-node traffic",
+    "details": "### Impact\n\nIngress [Network Policies](https://docs.cilium.io/en/stable/network/kubernetes/policy/#network-policy) are not enforced for traffic from pods to L7 Services ([Envoy](https://docs.cilium.io/en/stable/network/servicemesh/l7-traffic-management), GAMMA) with a local backend on the same node, when [Per-Endpoint Routing](https://docs.cilium.io/en/stable/network/concepts/routing/#routing) is enabled and [BPF Host Routing](https://docs.cilium.io/en/stable/operations/performance/tuning/#ebpf-host-routing) is disabled.\n\nPer-Endpoint Routing is disabled by default, but is automatically enabled in deployments using cloud IPAM, including Cilium ENI on EKS (`eni.enabled`), AlibabaCloud ENI (`alibabacloud.enabled`), Azure IPAM (`azure.enabled`, but not AKS BYOCNI), and some GKE deployments (`gke.enabled`; managed offerings such as GKE Dataplane V2 may use different defaults). It is typically not enabled in tunneled deployments, and chaining deployments are not affected. In practice, Amazon EKS with Cilium ENI mode is likely the most common affected environment.\n\n### Patches\n\nThis issue was fixed by #44693.\n\nThis issue affects:\n\n* Cilium v1.19 between v1.19.0 and v1.19.1 inclusive\n* Cilium v1.18 between v1.18.0 and v1.18.7 inclusive\n* All versions of Cilium prior to v1.17.13\n\nThis issue is fixed in:\n\n* Cilium v1.19.2\n* Cilium v1.18.8\n* Cilium v1.17.14\n\n### Workarounds\n\nDisclaimer: There is currently no officially verified or comprehensive workaround for this issue. The only option would be to disable per-endpoint routes, but this will likely cause disruptions to ongoing connections, and potential conflicts if running in cloud providers.\n\n### Acknowledgements\n\nThe Cilium community has worked together with members of the Northflank and Isovalent teams to prepare these mitigat",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/cilium/cilium",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "1.17.14"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/cilium/cilium",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "1.18.0"
+              },
+              {
+                "fixed": "1.18.8"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/cilium/cilium",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "1.19.0"
+              },
+              {
+                "fixed": "1.19.2"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/cilium/cilium/security/advisories/GHSA-hxv8-4j4r-cqgv"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33726"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/cilium/cilium/pull/44693"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.cilium.io/en/stable/network/concepts/routing/#routing"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.cilium.io/en/stable/network/kubernetes/policy/#network-policy"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.cilium.io/en/stable/network/servicemesh/l7-traffic-management"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.cilium.io/en/stable/operations/performance/tuning/#ebpf-host-routing"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/cilium/cilium"
+      }
+    ],
+    "cwe": [
+      "CWE-284",
+      "CWE-863"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-27T01:16:20Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-MW3M-PQR2-QV7C",
+    "repo": "ImageMagick/ImageMagick",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-mw3m-pqr2-qv7c/GHSA-mw3m-pqr2-qv7c.json",
+    "aliases": [
+      "CVE-2026-33535"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      }
+    ],
+    "summary": "ImageMagick has an Out-of-Bounds write of a zero byte in  its X11 display interaction",
+    "details": "An out-of-bounds write of a zero byte exists in the X11 `display` interaction path that could lead to a crash.",
+    "affected": [
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ImageMagick/ImageMagick/security/advisories/GHSA-mw3m-pqr2-qv7c"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33535"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ImageMagick/ImageMagick"
+      }
+    ],
+    "cwe": [
+      "CWE-787"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T20:16:15Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-4C29-8RGM-JVJJ",
+    "repo": "moby/buildkit",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-4c29-8rgm-jvjj/GHSA-4c29-8rgm-jvjj.json",
+    "aliases": [
+      "CVE-2026-33747"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ],
+    "summary": "BuildKit's Malicious frontend can cause file escape outside of storage root",
+    "details": "### Impact\nWhen using a custom BuildKit frontend, the frontend can craft an API message that causes files to be written outside of the BuildKit state directory for the execution context.\n\n### Patches\nThe issue has been fixed in v0.28.1+\n\n### Workarounds\nIssue requires using an untrusted BuildKit frontend set with `#syntax` or `--build-arg BUILDKIT_SYNTAX`. Using these options with a well-known frontend image like `docker/dockerfile` is not affected.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/moby/buildkit",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "0.28.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/moby/buildkit/security/advisories/GHSA-4c29-8rgm-jvjj"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33747"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/moby/buildkit"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/moby/buildkit/releases/tag/v0.28.1"
+      }
+    ],
+    "cwe": [
+      "CWE-22"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-27T01:16:21Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-4VRQ-3VRQ-G6GG",
+    "repo": "moby/buildkit",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-4vrq-3vrq-g6gg/GHSA-4vrq-3vrq-g6gg.json",
+    "aliases": [
+      "CVE-2026-33748"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+      }
+    ],
+    "summary": "BuildKit Git URL subdir component can cause access to restricted files",
+    "details": "### Impact\nInsufficient validation of Git URL fragment subdir components (`<url>#<ref>:<subdir>`, [docs](https://docs.docker.com/build/concepts/context/#url-fragments)) may allow access to files outside the checked-out Git repository root. Possible access is limited to files on the same mounted filesystem.\n\n### Patches\nThe issue has been fixed in version v0.28.1\n\n### Workarounds\nThe issue affects only builds that use Git URLs with a subpath component. Avoid building Dockerfiles from untrusted sources or using the subdir component from an untrusted Git repository where the subdir component could point to a symlink.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/moby/buildkit",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "0.28.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/moby/buildkit/security/advisories/GHSA-4vrq-3vrq-g6gg"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33748"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.docker.com/build/concepts/context/#url-fragments"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/moby/buildkit"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/moby/buildkit/releases/tag/v0.28.1"
+      }
+    ],
+    "cwe": [
+      "CWE-22",
+      "CWE-59"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-27T15:16:57Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-8793-7XV6-82CF",
+    "repo": "ImageMagick/ImageMagick",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-8793-7xv6-82cf/GHSA-8793-7xv6-82cf.json",
+    "aliases": [
+      "CVE-2026-33536"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "summary": "ImageMagick has an Out-of-bounds Write via InterpretImageFilename",
+    "details": "Due to an incorrect return value on certain platforms a pointer is incremented past the end of a buffer that is on the stack and that could result in an out of bounds write.\n\n```\n=================================================================\n==48558==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x00016b9b7490 at pc 0x0001046d48ac bp 0x00016b9b31d0 sp 0x00016b9b31c8\nWRITE of size 1 at 0x00016b9b7490 thread T0\n```",
+    "affected": [
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ImageMagick/ImageMagick/security/advisories/GHSA-8793-7xv6-82cf"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33536"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ImageMagick/ImageMagick"
+      }
+    ],
+    "cwe": [
+      "CWE-121",
+      "CWE-787"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-26T20:16:15Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-6P22-Q7W5-33PG",
+    "repo": "ImageMagick/ImageMagick",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-6p22-q7w5-33pg/GHSA-6p22-q7w5-33pg.json",
+    "aliases": [],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+      }
+    ],
+    "summary": "ImageMagick has possible memory leak in ASHLAR coder when action fails",
+    "details": "The ASHLAR coder leaks a temporary image when an action fails and that could result to an out of memory.",
+    "affected": [
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ImageMagick/ImageMagick/security/advisories/GHSA-6p22-q7w5-33pg"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ImageMagick/ImageMagick"
+      }
+    ],
+    "cwe": [
+      "CWE-401"
+    ],
+    "github_reviewed": true,
+    "nvd_published": null,
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-9R56-3GJQ-HQF7",
+    "repo": "ImageMagick/ImageMagick",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-9r56-3gjq-hqf7/GHSA-9r56-3gjq-hqf7.json",
+    "aliases": [],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+      }
+    ],
+    "summary": "ImageMagick: META reader memory leak in the APP1JPEG input path",
+    "details": "ImageMagick contains a memory leak in the META reader when processing the `APP1JPEG` input path.",
+    "affected": [
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-HDRI-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-OpenMP-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q16-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-AnyCPU",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-OpenMP-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-arm64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x64",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "NuGet",
+        "name": "Magick.NET-Q8-x86",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "14.11.1"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/ImageMagick/ImageMagick/security/advisories/GHSA-9r56-3gjq-hqf7"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/ImageMagick/ImageMagick"
+      }
+    ],
+    "cwe": [
+      "CWE-401"
+    ],
+    "github_reviewed": true,
+    "nvd_published": null,
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-QR99-7898-VR7C",
+    "repo": "traefik/traefik",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-qr99-7898-vr7c/GHSA-qr99-7898-vr7c.json",
+    "aliases": [
+      "CVE-2026-33433"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:H/AT:P/PR:H/UI:N/VC:N/VI:N/VA:N/SC:H/SI:H/SA:N"
+      }
+    ],
+    "summary": "Traefik Vulnerable to BasicAuth/DigestAuth Identity Spoofing via Non-Canonical headerField",
+    "details": "## Summary\n\nThere is a potential vulnerability in Traefik's Basic and Digest authentication middlewares when `headerField` is configured with a non-canonical HTTP header name.\n\nAn authenticated attacker with valid credentials can inject the canonical version of the configured header to impersonate any identity to the backend. Because Traefik writes the authenticated username using a non-canonical map key, it creates a separate header entry rather than overwriting the attacker's canonical one \u2014 causing most backend frameworks to read the attacker-controlled value instead.\n\n## Patches\n\n- <https://github.com/traefik/traefik/releases/tag/v2.11.42>\n- <https://github.com/traefik/traefik/releases/tag/v3.6.12>\n- <https://github.com/traefik/traefik/releases/tag/v3.7.0-ea.3>\n\n## For more information\n\nIf there are any questions or comments about this advisory, please [open an issue](https://github.com/traefik/traefik/issues).\n\n---\n\n<details>\n<summary>Original Description</summary>\n\n### Summary\n\nWhen `headerField` is configured with a non-canonical HTTP header name (e.g., `x-auth-user` instead of `X-Auth-User`), an authenticated attacker can inject a canonical version of that header to impersonate any identity to the backend. The backend receives two header entries \u2014 the attacker-injected canonical one is read first, overriding Traefik's non-canonical write.\n\nTested on Traefik v3.6.10.\n\n### Details\n\nAt `pkg/middlewares/auth/basic_auth.go:92`, the authenticated username is written using direct map assignment:\n\n```go\nreq.Header[b.headerField] = []string{user}\n```\n\nGo's `http.Header` map is keyed by canonical names (e.g., `X-Auth-User`). Direct assignment with a non-canonical key (`x-auth-user`) creates a separate map entry from any canonical-key entry already present. The attacker's ",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v2",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "2.11.42"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v3",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "3.0.0-beta1"
+              },
+              {
+                "fixed": "3.6.12"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v3",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "3.7.0-ea.1"
+              },
+              {
+                "fixed": "3.7.0-ea.3"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/security/advisories/GHSA-qr99-7898-vr7c"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33433"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/traefik/traefik"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v2.11.42"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v3.6.11"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v3.7.0-ea.3"
+      }
+    ],
+    "cwe": [
+      "CWE-290"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-27T15:16:54Z",
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:H/AT:P/PR:H/UI:N/VC:N/VI:N/VA:N/SC:H/SI:H/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-443W-3RQ3-5M5H",
+    "repo": "aws/aws-sdk-java-v2",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-443w-3rq3-5m5h/GHSA-443w-3rq3-5m5h.json",
+    "aliases": [],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:H/SI:N/SA:N"
+      }
+    ],
+    "summary": "AWS SDK for Java 2.0: Improper Handling of Special Characters in CloudFront Signing Utilities",
+    "details": "### Summary\nThis notification is related to the [CloudFront signing utilities](https://github.com/aws/aws-sdk-java-v2/blob/master/services/cloudfront/src/main/java/software/amazon/awssdk/services/cloudfront/CloudFrontUtilities.java) in the AWS SDK for Java v2, which are used to generate Amazon CloudFront signed URLs and signed cookies. A defense-in-depth enhancement has been implemented to improve handling of special characters, such as double quotes and backslashes, in input values.\n### Impact\nThe CloudFront signing utilities build policy documents that define access restrictions for signed URLs and cookies. If an application passes unsanitized input containing special characters to these utilities, the resulting policy document may not reflect the application's intended access restrictions. While the SDK was functioning safely within the requirements of the shared responsibility model, additional safeguards have been added to support secure customer implementations. Applications that already follow AWS security best practices for input validation are not impacted.\n### Impacted versions: \n2.18.33 - 2.41.29\n### Patches\nOn 2026.02.16, an enhancement was made to AWS SDK for Java v2 version 2.41.30. The enhancement ensures that special characters in input values are correctly handled. We recommend upgrading to the latest version.\n### Workarounds\nNo workarounds are needed, but customers should ensure that your application is following security best practices:\n\n* Implement proper input validation in your application code before passing values to CloudFront signing utilities\n* Update to the latest AWS SDK release on a regular basis\n* Follow [AWS security best practices for SDK configuration](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/security.html)\n\n### R",
+    "affected": [
+      {
+        "eco": "Maven",
+        "name": "software.amazon.awssdk:cloudfront",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "2.18.33"
+              },
+              {
+                "fixed": "2.41.30"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/aws/aws-sdk-java-v2/security/advisories/GHSA-443w-3rq3-5m5h"
+      },
+      {
+        "type": "WEB",
+        "url": "https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/security.html"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/aws/aws-sdk-java-v2"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/aws/aws-sdk-java-v2/blob/master/services/cloudfront/src/main/java/software/amazon/awssdk/services/cloudfront/CloudFrontUtilities.java"
+      }
+    ],
+    "cwe": [
+      "CWE-116",
+      "CWE-20"
+    ],
+    "github_reviewed": true,
+    "nvd_published": null,
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:N/SC:H/SI:N/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-X27P-5F68-M644",
+    "repo": "trinodb/trino",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-x27p-5f68-m644/GHSA-x27p-5f68-m644.json",
+    "aliases": [
+      "CVE-2026-34214"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N"
+      }
+    ],
+    "summary": "Trino: Iceberg REST catalog static and vended credentials are accessible via query JSON",
+    "details": "### Summary\n\nIceberg connector REST catalog static credentials (access key) or vended credentials (temporary access key) are accessible to users that have write privilege on SQL level.\n\n### Details\n\nIceberg REST catalog typically needs access to object storage. This access can be configured in multiple different ways. When storage access is achieved by static credentials (e.g. AWS S3 access key) or vended credentials (temporary access key).\n\nQuery JSON is a query visualization and performance troubleshooting facility. It includes serialized query plan and handles for table writes or  execution of table procedures. A user that submitted a query has access to query JSON for their query. Query JSON is available from Trino UI or via `/ui/api/query/\u00abquery_id\u00bb` and `/v1/query/\u00abquery_id\u00bb` endpoints.\n\nThe storage credentials are stored in those handles when performing write operations, or table maintenance operations. They are serialized in query JSON. A user with write access to data in Iceberg connector configured to use REST Catalog with static or vended credentials can retrieve those credentials.\n\n### Impact\n\nAnyone using Iceberg REST catalog with static or vended credentials is impacted.\nThe credentials should be considered compromised. \nVended credentials are temporary in nature so they do not need to be rotated. However, underlying data could have been exposed.",
+    "affected": [
+      {
+        "eco": "Maven",
+        "name": "io.trino:trino-iceberg",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "439"
+              },
+              {
+                "fixed": "480"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/trinodb/trino/security/advisories/GHSA-x27p-5f68-m644"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34214"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/trinodb/trino"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/trinodb/trino/releases/tag/480"
+      }
+    ],
+    "cwe": [
+      "CWE-212",
+      "CWE-312"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-03-31T15:16:18Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-46WH-3698-F2CX",
+    "repo": "traefik/traefik",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-46wh-3698-f2cx/GHSA-46wh-3698-f2cx.json",
+    "aliases": [],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:H/SI:H/SA:N"
+      }
+    ],
+    "summary": "Traefik: Deny Rule Bypass via Unauthenticated Malicious gRPC Requests in gRPC-Go Dependency (CVE-2026-33186)",
+    "details": "## Summary\n\nThere is a potential vulnerability in Traefik due to its dependency on an affected version of gRPC-Go (CVE-2026-33186).\n\nA remote, unauthenticated attacker can send gRPC requests with a malformed HTTP/2 `:path` pseudo-header omitting the mandatory leading slash (e.g., `Service/Method` instead of `/Service/Method`). While the server routes such requests correctly, path-based authorization interceptors evaluate the raw non-canonical path and fail to match \"deny\" rules, allowing the request to bypass the policy entirely if a fallback \"allow\" rule is present.\n\n## Patches\n\n- https://github.com/traefik/traefik/releases/tag/v2.11.42\n- https://github.com/traefik/traefik/releases/tag/v3.6.12\n- https://github.com/traefik/traefik/releases/tag/v3.7.0-ea.3\n\n## For more information\n\nIf there are any questions or comments about this advisory, please [open an issue](https://github.com/traefik/traefik/issues).\n\n<details>\n<summary>Original Description</summary>\n\n### Summary\nThis CVE hits traefik until Version 3.6.11 and 2.11.41.\ngRPC-Go has an authorization bypass via missing leading slash in :path\n### Details\nAs described in https://github.com/advisories/GHSA-p77j-4mvh-x3m3\n### PoC\nUpdate library version in \nhttps://github.com/traefik/traefik/blob/67c64ed9b25fbb90f1086977a62827133a7aa01b/go.mod#L108\n### Impact\nIs described in https://github.com/advisories/GHSA-p77j-4mvh-x3m3\n\n</details>\n\n\n----------",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v2",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "2.11.42"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v3",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "3.0.0-beta3"
+              },
+              {
+                "fixed": "3.6.12"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/traefik/traefik/v3",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "3.7.0-ea.1"
+              },
+              {
+                "fixed": "3.7.0-ea.3"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/security/advisories/GHSA-46wh-3698-f2cx"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://github.com/advisories/GHSA-p77j-4mvh-x3m3"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/traefik/traefik"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/blob/67c64ed9b25fbb90f1086977a62827133a7aa01b/go.mod#L108"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v2.11.42"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v3.6.12"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/traefik/traefik/releases/tag/v3.7.0-ea.3"
+      }
+    ],
+    "cwe": [
+      "CWE-1395",
+      "CWE-285"
+    ],
+    "github_reviewed": true,
+    "nvd_published": null,
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:H/SI:H/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-F8XP-WVCX-P6F4",
+    "repo": "cloudreve/cloudreve",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/03/GHSA-f8xp-wvcx-p6f4/GHSA-f8xp-wvcx-p6f4.json",
+    "aliases": [
+      "CVE-2026-25726"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ],
+    "summary": "Cloudreve is vulnerable to Account Takeover via Weak Cryptographic Token Generation (Insecure PRNG Seeding)",
+    "details": "### Impact\nThis vulnerability affects **Cloudreve** instances that were **first deployed/initialized** with versions prior to V4.10.0.\n\nThe application uses the weak pseudo-random number generator `math/rand` seeded with `time.Now().UnixNano()` to generate critical security secrets, including the `secret_key`, and `hash_id_salt`. These secrets are generated upon first startup and persisted in the database.\n\nAn attacker can exploit this by obtaining the administrator's account creation time (via public API endpoints) to narrow the search window for the PRNG seed, and use known hashid to validate the seed. By brute-forcing the seed (demonstrated to take <3 hours on general consumer PC), an attacker can predict the `secret_key`. This allows them to forge valid JSON Web Tokens (JWTs) for any user, including administrators, leading to full account takeover and privilege escalation.\n\n**Note**: Servers running V4.10.0+ are still vulnerable if they were originally installed using an older version, as the weak secrets persist in the configuration.\n\n### Patches\nThe issue has been addressed in version 4.13.0.\nThis patch introduces a migration mechanism that automatically:\n\n1. Invalidate the existing `secret_key`.\n2. Regenerate a new, cryptographically secure `secret_key` using crypto/rand.\n\nUsers should upgrade to 4.13.0 immediately.\n\n### Workarounds\nIf an immediate upgrade is not possible, administrators must manually rotate the critical secrets in the configuration file to invalidate potential exploits:\n\n1. Stop the Cloudreve service.\n2. In Cloudreve database, locate `secret_key` setting.\n3. Replace the value with a long, random string (e.g., generated via `openssl rand -base64 64`).\n4. Restart the Cloudreve service.\n\n_Note: This will log out all currently active users._\n\n### Re",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/cloudreve/Cloudreve/v4",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "4.0.0-20260205113604-ec9fdd33bc54"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/cloudreve/cloudreve/security/advisories/GHSA-f8xp-wvcx-p6f4"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-25726"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/cloudreve/cloudreve"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/cloudreve/cloudreve/releases/tag/4.13.0"
+      }
+    ],
+    "cwe": [
+      "CWE-338"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-03T20:16:02Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-37FQ-47QJ-6J5J",
+    "repo": "YesWiki/yeswiki",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-37fq-47qj-6j5j/GHSA-37fq-47qj-6j5j.json",
+    "aliases": [
+      "CVE-2026-34598"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N"
+      }
+    ],
+    "summary": "YesWiki has Persistent Blind XSS at \"/?BazaR&vue=consulter\"",
+    "details": "### Summary\nA stored and blind XSS vulnerability exists in the form title field. A malicious attacker can inject JavaScript without any authentication via a form title that is saved in the backend database. When any user visits that injected page, the JavaScript payload gets executed.\n\nType: Stored and Blind Cross-Site Scripting (XSS)\nAffected Component: form title input field\nAuthentication Required: No (Unauthenticated attack possible)\nImpact: Arbitrary JavaScript execution in victim\u2019s browser\n\n\n### Details\nA Stored XSS vulnerability occurs when an application stores malicious user input (in this case, a script injected via the form title field) in its backend database and renders it later on a page viewed by other users without proper sanitization or encoding.\n\nIn this case, the attacker can inject JavaScript payloads in the title field of a form, which the application stores in the database. When any user, such as an admin or another visitor, views the page that displays this title, the malicious script executes in their browser context.\n\n### PoC\n- Visit `https://yeswiki.net/?BazaR&vue=formulaire` or `localhost/?BazaR&vue=formulaire` or \n `https://ferme.yeswiki.net/[username]/?BazaR&vue=formulaire`\n- Click on the `+` icon to add a record via the `Diary` form.\n- Inject the payload like: `<script>alert(document.cookie)</script>` or `<script>alert(1)</script>` into `Name of the event` and `Description`\n- Then save the record by clicking `To validate`\n- The payload will be executed when anyone visits `/?BazaR&vue=consulter` also in the diary record \n`/?wiki=BazaR&vue=consulter&action=recherche&q=&id=2&facette=`\n\nThe payload is persistant.",
+    "affected": [
+      {
+        "eco": "Packagist",
+        "name": "yeswiki/yeswiki",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "4.6.0"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/YesWiki/yeswiki/security/advisories/GHSA-37fq-47qj-6j5j"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34598"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/YesWiki/yeswiki"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/YesWiki/yeswiki/releases/tag/v4.6.0"
+      }
+    ],
+    "cwe": [
+      "CWE-79",
+      "CWE-87"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-02T18:16:31Z",
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-5724-X3RH-5QQQ",
+    "repo": "YesWiki/yeswiki",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-5724-x3rh-5qqq/GHSA-5724-x3rh-5qqq.json",
+    "aliases": [],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N"
+      }
+    ],
+    "summary": "YesWiki has Multiple Reflected Cross-site Scripting Vulnerabilities",
+    "details": "### Summary\n\nMultiple **reflected Cross-site Scripting (XSS)** vulnerabilities across both **authenticated and unauthenticated** portions of the application. These findings present a significant security risk, as they can be leveraged to execute arbitrary JavaScript in a victim\u2019s browser under various contexts.\n\n## Impact and Exploitation\n\nWhile XSS is often treated as a standalone issue, these vulnerabilities have broader implications. Specifically, they can be used as **launch points to exploit other significant vulnerabilities**. \n\nProof of concept links follow. All testing was performed on my local docker setup running the lastest version of the application. \n\n## Proof of Concepts\n\n## Authenticated Reflected XSS\n\n```\nhttp://localhost:8085/?ElizabethJFeinler/deletepage&incomingurl=%22%3E%3Cscript%3Ealert(1)%3C%2fscript%3E\n```\n\n```\nhttp://localhost:8085/?BazaR&vue=saisir&action=saisir_fiche&id=%3Cscript%3Ealert(1)%3C%2fscript%3E\n```\n\n```\nhttp://localhost:8085/?GererThemes/upload&file=%3Cscript%3Ealert(1)%3C/script%3E\n```\n\n## Unauthenticated Reflected XSS\n\n\n```\nhttp://localhost:8085/?PagePrincipale/listpages&tags=%22%3E%3Cscript%3Ealert(1)%3C/script%3E\n```\n\nIn this one, most of the parameters can be used to deliver an XSS payload, not just the template parameter. \n\n```\nhttp://localhost:8085/?BazaR/bazariframe&id=2&template=<script>alert(1)</script>&width=100%25&height=600px&lat=46.22763&lon=2.213749&markersize=big&provider=MapBox&zoom=5&groups=&titles=&groupsexpanded=false\n```\n\n### Impact\n\nThe reflected XSS vulnerabilities identified pose a significant risk to both application integrity and user safety. When combined with other issues discovered such as insecure endpoints or improper authentication mechanisms. These XSS flaws can be leveraged to escalate access, hijack",
+    "affected": [
+      {
+        "eco": "Packagist",
+        "name": "yeswiki/yeswiki",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "4.6.0"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/YesWiki/yeswiki/security/advisories/GHSA-5724-x3rh-5qqq"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/YesWiki/yeswiki"
+      }
+    ],
+    "cwe": [
+      "CWE-79"
+    ],
+    "github_reviewed": true,
+    "nvd_published": null,
+    "cvss": [
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:N/VI:N/VA:N/SC:L/SI:L/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-XPH3-R2JF-4VP3",
+    "repo": "haraka/Haraka",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-xph3-r2jf-4vp3/GHSA-xph3-r2jf-4vp3.json",
+    "aliases": [
+      "CVE-2026-34752"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+      }
+    ],
+    "summary": "Haraka affected by DoS via `__proto__` email header",
+    "details": "### Summary\n\nSending an email with `__proto__:` as a header name crashes the Haraka worker process. \n\n### Details\n\nThe header parser at `node_modules/haraka-email-message/lib/header.js:215-218` stores headers in a plain `{}` object:\n\n```javascript\n_add_header(key, value, method) {\n    this.headers[key] ??= []          // line 216\n    this.headers[key][method](value)  // line 217\n}\n```\n\nWhen `key` is `__proto__`:\n1. `this.headers['__proto__']` returns `Object.prototype` (the prototype getter)\n2. `Object.prototype` is not null/undefined, so `??=` is skipped\n3. `Object.prototype.push(value)` throws `TypeError: not a function`\n\nThe TypeError reaches the global `uncaughtException` handler at `haraka.js:26-33`, which calls `process.exit(1)`:\n\n```js\nprocess.on('uncaughtException', (err) => {\n    if (err.stack) {\n        err.stack.split('\\n').forEach((line) => logger.crit(line))\n    } else {\n        logger.crit(`Caught exception: ${JSON.stringify(err)}`)\n    }\n    logger.dump_and_exit(1)\n})\n```\n\n### PoC\n\n```python\nimport socket, time\n\nsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\nsock.settimeout(5)\nsock.connect((\"127.0.0.1\", 2525))\nsock.recv(4096)\nsock.sendall(b\"EHLO evil\\r\\n\"); sock.recv(4096)\nsock.sendall(b\"MAIL FROM:<x@x.com>\\r\\n\"); sock.recv(4096)\nsock.sendall(b\"RCPT TO:<user@haraka.local>\\r\\n\"); sock.recv(4096)\nsock.sendall(b\"DATA\\r\\n\"); sock.recv(4096)\n# Crash payload\nsock.sendall(b\"From: x@x.com\\r\\n__proto__: crash\\r\\n\\r\\nbody\\r\\n.\\r\\n\")\n```\n\n### Impact\n\nIn single-process mode (`nodes=0`), the entire server goes down. In cluster mode, the master restarts the worker, but all sessions are lost.",
+    "affected": [
+      {
+        "eco": "npm",
+        "name": "Haraka",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "3.1.4"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/haraka/Haraka/security/advisories/GHSA-xph3-r2jf-4vp3"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34752"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/haraka/Haraka"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/haraka/Haraka/releases/tag/v3.1.4"
+      }
+    ],
+    "cwe": [
+      "CWE-248"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-02T19:21:33Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-324Q-CWX9-7CRR",
+    "repo": "kubeai-project/kubeai",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-324q-cwx9-7crr/GHSA-324q-cwx9-7crr.json",
+    "aliases": [
+      "CVE-2026-34940"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:N"
+      }
+    ],
+    "summary": "KubeAI: OS Command Injection via Model URL in Ollama Engine startup probe allows arbitrary command execution in model pods",
+    "details": "## CHAMP: Description\n\n### Summary\n\nThe `ollamaStartupProbeScript()` function in `internal/modelcontroller/engine_ollama.go` constructs a shell command string using `fmt.Sprintf` with unsanitized model URL components (`ref`, `modelParam`). This shell command is executed via `bash -c` as a Kubernetes startup probe. An attacker who can create or update `Model` custom resources can inject arbitrary shell commands that execute inside model server pods.\n\n### Details\n\nThe `parseModelURL()` function in `internal/modelcontroller/model_source.go` uses a regex (`^([a-z0-9]+):\\/\\/([^?]+)(\\?.*)?$`) to parse model URLs. The `ref` component (capture group 2) matches `[^?]+`, allowing any characters except `?`, including shell metacharacters like `;`, `|`, `$()`, and backticks.\n\nThe `?model=` query parameter (`modelParam`) is also extracted without any sanitization.\n\n**Vulnerable code** ([permalink](https://github.com/kubeai-project/kubeai/blob/ba1824e8c1d70c9092b6c0a48199bba3b8973fee/internal/modelcontroller/engine_ollama.go#L185-L196)):\n\n```go\nfunc ollamaStartupProbeScript(m *kubeaiv1.Model, u modelURL) string {\n    startupScript := \"\"\n    if u.scheme == \"pvc\" {\n        startupScript = fmt.Sprintf(\"/bin/ollama cp %s %s\", u.modelParam, m.Name)\n    } else {\n        if u.pull {\n            pullCmd := \"/bin/ollama pull\"\n            if u.insecure {\n                pullCmd += \" --insecure\"\n            }\n            startupScript = fmt.Sprintf(\"%s %s && /bin/ollama cp %s %s\", pullCmd, u.ref, u.ref, m.Name)\n        } else {\n            startupScript = fmt.Sprintf(\"/bin/ollama cp %s %s\", u.ref, m.Name)\n        }\n    }\n    // ...\n    return startupScript\n}\n```\n\nThis script is then used as a `bash -c` startup probe ([permalink](https://github.com/kubeai-project/kubeai/blob/ba1824e8c1d70c9092b6",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/kubeai-project/kubeai",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "0.23.2"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/kubeai-project/kubeai/security/advisories/GHSA-324q-cwx9-7crr"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34940"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/kubeai-project/kubeai"
+      }
+    ],
+    "cwe": [
+      "CWE-78"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-06T16:16:37Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-MVF2-F6GM-W987",
+    "repo": "nearform/fast-jwt",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-mvf2-f6gm-w987/GHSA-mvf2-f6gm-w987.json",
+    "aliases": [
+      "CVE-2026-34950"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      }
+    ],
+    "summary": "fast-jwt: Incomplete fix for CVE-2023-48223: JWT Algorithm Confusion via Whitespace-Prefixed RSA Public Key",
+    "details": "### Summary\n The fix for GHSA-c2ff-88x2-x9pg (CVE-2023-48223) is incomplete. The publicKeyPemMatcher regex in fast-jwt/src/crypto.js uses a ^ anchor that is defeated by any leading whitespace in the key string, re-enabling the exact same JWT algorithm confusion attack that the CVE patched.\n\n### Details\n The fix for CVE-2023-48223 (https://github.com/nearform/fast-jwt/commit/15a6e92, v3.3.2) changed the public key matcher from a\n  plain string used with .includes() to a regex used with .match():\n\n```\n  // Before fix (vulnerable to original CVE)\n  const publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----'\n  // .includes() matched anywhere in the string \u2014 not vulnerable to whitespace\n\n  // After fix (current code, line 28)\n  const publicKeyPemMatcher = /^-----BEGIN(?: (RSA))? PUBLIC KEY-----/\n  // ^ anchor requires match at position 0 \u2014 defeated by leading whitespace\n\n  In performDetectPublicKeyAlgorithms()\n  (https://github.com/nearform/fast-jwt/blob/0ff14a687b9af786bd3ffa870d6febe6e1f13aaa/src/crypto.js#L126-L137):\n\n  function performDetectPublicKeyAlgorithms(key) {\n    const publicKeyPemMatch = key.match(publicKeyPemMatcher)  // no .trim()!\n\n    if (key.match(privateKeyPemMatcher)) {\n      throw ...\n    } else if (publicKeyPemMatch && publicKeyPemMatch[1] === 'RSA') {\n      return rsaAlgorithms      // \u2190 correct path: restricts to RS/PS algorithms\n    } else if (!publicKeyPemMatch && !key.includes(publicKeyX509CertMatcher)) {\n      return hsAlgorithms        // \u2190 VULNERABLE: RSA key falls through here\n    }\n\n```\n  When the key string has any leading whitespace (space, tab, \\n, \\r\\n), the ^ anchor fails, publicKeyPemMatch is null, and the RSA\n  public key is classified as an HMAC secret (hsAlgorithms). The attacker can then sign an HS256 token using the public key as the\n ",
+    "affected": [
+      {
+        "eco": "npm",
+        "name": "fast-jwt",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "6.2.0"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/nearform/fast-jwt/security/advisories/GHSA-mvf2-f6gm-w987"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34950"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://github.com/advisories/GHSA-c2ff-88x2-x9pg"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/nearform/fast-jwt"
+      }
+    ],
+    "cwe": [
+      "CWE-20",
+      "CWE-327"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-06T16:16:38Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-78H2-9FRX-2JM8",
+    "repo": "go-jose/go-jose",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-78h2-9frx-2jm8/GHSA-78h2-9frx-2jm8.json",
+    "aliases": [
+      "CVE-2026-34986"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "summary": "Go JOSE Panics in JWE decryption",
+    "details": "### Impact\n\nDecrypting a JSON Web Encryption (JWE) object will panic if the `alg` field indicates a key wrapping algorithm ([one ending in `KW`](https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants), with the exception of `A128GCMKW`, `A192GCMKW`, and `A256GCMKW`) and the `encrypted_key` field is empty. The panic happens when `cipher.KeyUnwrap()` in `key_wrap.go` attempts to allocate a slice with a zero or negative length based on the length of the `encrypted_key`.\n\nThis code path is reachable from `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` followed by `Decrypt()` on the resulting object. Note that the parse functions take a list of accepted key algorithms. If the accepted key algorithms do not include any key wrapping algorithms, parsing will fail and the application will be unaffected.\n\nThis panic is also reachable by calling `cipher.KeyUnwrap()` directly with any `ciphertext` parameter less than 16 bytes long, but calling this function directly is less common.\n\nPanics can lead to denial of service.\n\n### Fixed In\n\n4.1.4 and v3.0.5\n\n### Workarounds\n\nIf the list of `keyAlgorithms` passed to `ParseEncrypted()` / `ParseEncryptedJSON()` / `ParseEncryptedCompact()` does not include key wrapping algorithms (those ending in `KW`), your application is unaffected.\n\nIf your application uses key wrapping, you can prevalidate to the JWE objects to ensure the `encrypted_key` field is nonempty. If your application accepts JWE Compact Serialization, apply that validation to the corresponding field of that serialization (the data between the first and second `.`).\n\n### Thanks\n\nThanks to Datadog's Security team for finding this issue.",
+    "affected": [
+      {
+        "eco": "Go",
+        "name": "github.com/go-jose/go-jose/v4",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "4.1.4"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/go-jose/go-jose/v3",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "3.0.5"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Go",
+        "name": "github.com/go-jose/go-jose",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "last_affected": "2.6.3"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/go-jose/go-jose/security/advisories/GHSA-78h2-9frx-2jm8"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-34986"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/go-jose/go-jose"
+      },
+      {
+        "type": "WEB",
+        "url": "https://pkg.go.dev/github.com/go-jose/go-jose/v4#pkg-constants"
+      }
+    ],
+    "cwe": [
+      "CWE-248"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-06T17:17:11Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-HM7R-C7QW-GHP6",
+    "repo": "nearform/fast-jwt",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-hm7r-c7qw-ghp6/GHSA-hm7r-c7qw-ghp6.json",
+    "aliases": [
+      "CVE-2026-35042"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      }
+    ],
+    "summary": "fast-jwt accepts unknown `crit` header extensions (RFC 7515 violation)",
+    "details": "## Summary\n\n`fast-jwt` does not validate the `crit` (Critical) Header Parameter defined in RFC 7515 \u00a74.1.11. When a JWS token contains a `crit` array listing extensions that `fast-jwt` does not understand, the library accepts the token instead of rejecting it. This violates the **MUST** requirement in the RFC.\n\n---\n\n## RFC Requirement\n\nRFC 7515 \u00a74.1.11:\n\n> If any of the listed extension Header Parameters are **not understood\n> and supported** by the recipient, then the **JWS is invalid**.\n\n---\n\n## Proof of Concept\n\n```javascript\nconst { createSigner, createVerifier } = require(\"fast-jwt\"); // v3.3.3\n\nconst signer = createSigner({ key: \"secret\", algorithm: \"HS256\" });\nconst token = signer({\n  sub: \"attacker\",\n  role: \"admin\",\n  header: { crit: [\"x-custom-policy\"], \"x-custom-policy\": \"require-mfa\" },\n});\n\n// Should REJECT \u2014 x-custom-policy is not understood\nconst verifier = createVerifier({ key: \"secret\", algorithms: [\"HS256\"] });\ntry {\n  const result = verifier(token);\n  console.log(\"ACCEPTED:\", result);\n  // Output: ACCEPTED: { sub: 'attacker', role: 'admin' }\n} catch (e) {\n  console.log(\"REJECTED:\", e.message);\n}\n```\n\n**Expected:** Error \u2014 unsupported critical extension\n**Actual:** Token accepted.\n\n### Comparison\n\n```javascript\n// jose (panva) v4+ \u2014 correctly rejects\nconst jose = require(\"jose\");\nawait jose.jwtVerify(token, new TextEncoder().encode(\"secret\"));\n// throws: Extension Header Parameter \"x-custom-policy\" is not recognized\n```\n\n---\n\n## Impact\n\n- **Split-brain verification** in mixed-library environments\n- **Security policy bypass** when `crit` carries enforcement semantics\n- **Token binding bypass** (RFC 7800 `cnf` confirmation)\n- See CVE-2025-59420 for full impact analysis\n\n---\n\n## Suggested Fix\n\nIn `src/verifier.js`, add crit validation after header decodin",
+    "affected": [
+      {
+        "eco": "npm",
+        "name": "fast-jwt",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "last_affected": "6.1.0"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/nearform/fast-jwt/security/advisories/GHSA-hm7r-c7qw-ghp6"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-35042"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://github.com/advisories/GHSA-9ggr-2464-2j32"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/nearform/fast-jwt"
+      },
+      {
+        "type": "WEB",
+        "url": "https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.11"
+      }
+    ],
+    "cwe": [
+      "CWE-345",
+      "CWE-636"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-06T17:17:13Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-56P5-8MHR-2FPH",
+    "repo": "harttle/liquidjs",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-56p5-8mhr-2fph/GHSA-56p5-8mhr-2fph.json",
+    "aliases": [
+      "CVE-2026-35525"
+    ],
+    "withdrawn": null,
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+      }
+    ],
+    "summary": "LiquidJS: Root restriction bypass for partial and layout loading through symlinked templates",
+    "details": "### Summary\n\nLiquidJS enforces partial and layout root restrictions using the resolved pathname string, but it does not resolve the canonical filesystem path before opening the file. A symlink placed inside an allowed partials or layouts directory can therefore point to a file outside that directory and still be loaded.\n\n### Details\n\nFor `{% include %}`, `{% render %}`, and `{% layout %}`, LiquidJS checks whether the candidate path is inside the configured partials or layouts roots before reading it. That check is path-based, not realpath-based.\n\nBecause of that, a file like `partials/link.liquid` passes the directory containment check as long as its pathname is under the allowed root. If `link.liquid` is actually a symlink to a file outside the allowed root, the filesystem follows the symlink when the file is opened and LiquidJS renders the external target.\n\nSo the restriction is applied to the path string that was requested, not to the file that is actually read.\n\nThis matters in environments where an attacker can place templates or otherwise influence files under a trusted template root, including uploaded themes, extracted archives, mounted content, or repository-controlled template trees.\n\n### PoC\n\n```js\nconst { Liquid } = require('liquidjs');\nconst fs = require('fs');\n\nfs.rmSync('/tmp/liquid-root', { recursive: true, force: true });\nfs.mkdirSync('/tmp/liquid-root', { recursive: true });\n\nfs.writeFileSync('/tmp/secret-outside.liquid', 'SECRET_OUTSIDE');\nfs.symlinkSync('/tmp/secret-outside.liquid', '/tmp/liquid-root/link.liquid');\n\nconst engine = new Liquid({ root: ['/tmp/liquid-root'] });\n\nengine.parseAndRender('{% render \"link.liquid\" %}')\n  .then(console.log);\n// SECRET_OUTSIDE\n```\n\n### Impact\n\nIf an attacker can place or influence symlinks under a trusted partia",
+    "affected": [
+      {
+        "eco": "npm",
+        "name": "liquidjs",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "0"
+              },
+              {
+                "fixed": "10.25.3"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/harttle/liquidjs/security/advisories/GHSA-56p5-8mhr-2fph"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-35525"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/harttle/liquidjs/pull/867"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/harttle/liquidjs"
+      },
+      {
+        "type": "WEB",
+        "url": "https://github.com/harttle/liquidjs/releases/tag/v10.25.3"
+      }
+    ],
+    "cwe": [
+      "CWE-61"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-08T20:16:24Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+      },
+      {
+        "type": "CVSS_V4",
+        "score": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+      }
+    ]
+  },
+  {
+    "ghsa": "GHSA-GC59-R5JQ-98QW",
+    "repo": "jetty/jetty.project",
+    "exists": true,
+    "path": "/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database/advisories/github-reviewed/2026/04/GHSA-gc59-r5jq-98qw/GHSA-gc59-r5jq-98qw.json",
+    "aliases": [],
+    "withdrawn": "2026-04-14T00:06:18Z",
+    "severity": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      }
+    ],
+    "summary": "Duplicate Advisory: Eclipse Jetty: Early return from the JASPIAuthenticator code can potentially no clear ThreadLocal variables",
+    "details": "## Duplicate Advisory\n\nThis advisory has been withdrawn because it is a duplicate of GHSA-r7p8-xq5m-436c. This link is maintained to preserve external references.\n\n## Original Description\nIn Eclipse Jetty, the class JASPIAuthenticator initiates the authentication checks, which set two ThreadLocal variable.\n\n\nUpon returning from the initial checks, there are conditions that cause an early return from the JASPIAuthenticator code without clearing those ThreadLocals.\n\n\nA subsequent request using the same thread inherits the ThreadLocal values, leading to a broken access control and privilege escalation.",
+    "affected": [
+      {
+        "eco": "Maven",
+        "name": "org.eclipse.jetty.ee10:jetty-ee10",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "12.1.0"
+              },
+              {
+                "fixed": "12.1.7"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Maven",
+        "name": "org.eclipse.jetty.ee10:jetty-ee10",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "12.0.0"
+              },
+              {
+                "fixed": "12.0.33"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Maven",
+        "name": "org.eclipse.jetty.ee10:jetty-ee10",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "11.0.0"
+              },
+              {
+                "fixed": "11.0.28"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Maven",
+        "name": "org.eclipse.jetty.ee10:jetty-ee10",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "10.0.0"
+              },
+              {
+                "fixed": "10.0.28"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      },
+      {
+        "eco": "Maven",
+        "name": "org.eclipse.jetty.ee10:jetty-ee10",
+        "ranges": [
+          {
+            "type": "ECOSYSTEM",
+            "events": [
+              {
+                "introduced": "9.4.0"
+              },
+              {
+                "fixed": "9.4.60"
+              }
+            ]
+          }
+        ],
+        "versions": null
+      }
+    ],
+    "refs": [
+      {
+        "type": "WEB",
+        "url": "https://github.com/jetty/jetty.project/security/advisories/GHSA-r7p8-xq5m-436c"
+      },
+      {
+        "type": "ADVISORY",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-5795"
+      },
+      {
+        "type": "PACKAGE",
+        "url": "https://github.com/jetty/jetty.project"
+      },
+      {
+        "type": "WEB",
+        "url": "https://gitlab.eclipse.org/security/cve-assignment/-/issues/92"
+      }
+    ],
+    "cwe": [
+      "CWE-226"
+    ],
+    "github_reviewed": true,
+    "nvd_published": "2026-04-08T14:16:32Z",
+    "cvss": [
+      {
+        "type": "CVSS_V3",
+        "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      }
+    ]
+  }
+]

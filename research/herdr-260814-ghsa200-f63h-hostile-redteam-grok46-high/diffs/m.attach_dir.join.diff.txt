@@ -1,0 +1,27 @@
+SHA 590e7f3e1e6df546e860485ddab79142d31525eb
+SUBJECT feat: refactor attachment directory handling in ChatRoute
+FILES astrbot/dashboard/routes/chat.py
+FILE astrbot/dashboard/routes/chat.py
+@@ -52,8 +52,9 @@ def __init__(
+-        self.imgs_dir = os.path.join(get_astrbot_data_path(), "attachments")
+-        os.makedirs(self.imgs_dir, exist_ok=True)
++        self.attachments_dir = os.path.join(get_astrbot_data_path(), "attachments")
++        self.legacy_img_dir = os.path.join(get_astrbot_data_path(), "webchat", "imgs")
++        os.makedirs(self.attachments_dir, exist_ok=True)
+@@ -69,9 +70,18 @@ async def get_file(self):
+             return Response().error("Missing key: filename").__dict__
+-            file_path = os.path.join(self.imgs_dir, os.path.basename(filename))
++            file_path = os.path.join(self.attachments_dir, os.path.basename(filename))
+-            real_imgs_dir = os.path.realpath(self.imgs_dir)
++            real_imgs_dir = os.path.realpath(self.attachments_dir)
++                file_path = os.path.join(
++                    self.legacy_img_dir, os.path.basename(filename)
++                    real_imgs_dir = os.path.realpath(self.legacy_img_dir)
+             if not real_file_path.startswith(real_imgs_dir):
+@@ -125,7 +135,7 @@ async def post_file(self):
+-        path = os.path.join(self.imgs_dir, filename)
++        path = os.path.join(self.attachments_dir, filename)
+         await file.save(path)
+@@ -202,7 +212,7 @@ async def _create_attachment_from_file(
+-        file_path = os.path.join(self.imgs_dir, os.path.basename(filename))
++        file_path = os.path.join(self.attachments_dir, os.path.basename(filename))

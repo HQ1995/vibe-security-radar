@@ -1,0 +1,98 @@
+// TestWorktreeFilesystemRejectsSymlinkTraversal pins the leading-path
+// symlink invariant at the wrapper boundary. Every operation on "s/<name>"
+// must be refused while "s" is an existing symlink, so no worktree code
+// path, read or write, can follow the link out of the worktree. The path
+// string is innocent, so validPath alone would allow it. validNoLeadingSymlink
+// is what catches it. Chroot is additionally refused when the final
+// component is itself a symlink, the "valid path, wrong target" case that
+// Submodule.Repository relies on.
+//
+// It runs against both memfs and osfs so real on-disk symlink semantics
+// are exercised alongside the pure abstraction.
+func TestWorktreeFilesystemRejectsSymlinkTraversal(t *testing.T) {
+	t.Parallel()
+
+	const wantSubstr = "is a symlink"
+
+	backends := []struct {
+		name   string
+		makeFS func(t *testing.T) billy.Filesystem
+	}{
+		{"memfs", func(*testing.T) billy.Filesystem { return memfs.New() }},
+		{"osfs", func(t *testing.T) billy.Filesystem { return osfs.New(t.TempDir()) }},
+	}
+
+	// symlinkFS wraps a fresh backend filesystem with "s" and "a/b/s"
+	// planted as symlinks. Each subtest gets its own, so the parallel
+	// subtests never share filesystem state.
+	symlinkFS := func(t *testing.T, makeFS func(*testing.T) billy.Filesystem) *worktreeFilesystem {
+		t.Helper()
+		base := makeFS(t)
+		require.NoError(t, base.MkdirAll("elsewhere", 0o755))
+		require.NoError(t, base.MkdirAll("a/b", 0o755))
+		if err := base.Symlink("elsewhere", "s"); err != nil {
+			if isSymlinkWindowsNonAdmin(err) {
+				t.Skipf("symlink creation requires elevated privileges: %v", err)
+			}
+			require.NoError(t, err)
+		}
+		require.NoError(t, base.Symlink("elsewhere", "a/b/s"))
+		return newWorktreeFilesystem(base, false, false)
+	}
+
+	for _, bk := range backends {
+		t.Run(bk.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, p := range []string{"s/file", "s/deeper/file", "a/b/s/file"} {
+				t.Run(p, func(t *testing.T) {
+					t.Parallel()
+					fs := symlinkFS(t, bk.makeFS)
+
+					_, err := fs.Create(p)
+					assert.ErrorContains(t, err, wantSubstr, "Create should reject %q", p)
+
+					_, err = fs.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+					assert.ErrorContains(t, err, wantSubstr, "OpenFile should reject %q", p)
+
+					_, err = fs.Open(p)
+					assert.ErrorContains(t, err, wantSubstr, "Open should reject read through symlink %q", p)
+
+					err = fs.MkdirAll(p, 0o755)
+					assert.ErrorContains(t, err, wantSubstr, "MkdirAll should reject %q", p)
+
+					err = fs.Symlink("target", p)
+					assert.ErrorContains(t, err, wantSubstr, "Symlink should reject %q", p)
+
+					err = fs.Rename("readme.md", p)
+					assert.ErrorContains(t, err, wantSubstr, "Rename should reject destination %q", p)
+
+					err = fs.Remove(p)
+					assert.ErrorContains(t, err, wantSubstr, "Remove should reject %q", p)
+				})
+			}
+
+			t.Run("Chroot through leading symlink", func(t *testing.T) {
+				t.Parallel()
+				fs := symlinkFS(t, bk.makeFS)
+				_, err := fs.Chroot("s/sub")
+				assert.ErrorContains(t, err, wantSubstr, "Chroot should reject a leading symlink")
+			})
+
+			// The submodule-scoping case: Submodule.Repository chroots into
+			// the tree-controlled submodule path. A symlink as the final
+			// component must not redirect the scope out of the worktree.
+			t.Run("Chroot onto symlink target", func(t *testing.T) {
+				t.Parallel()
+				fs := symlinkFS(t, bk.makeFS)
+				_, err := fs.Chroot("s")
+				assert.ErrorContains(t, err, wantSubstr, "Chroot should reject a symlink as the final component")
+			})
+		})
+	}
+}
+
+// TestCheckoutReplacesBlockingFinalSymlink pins the final-component case at
+// the checkout materialisation boundary: writing a tracked regular file at
+// a path that already exists as a symlink must replace the symlink, not
+// follow it and overwrite the link's target. Runs on both memfs and osfs.

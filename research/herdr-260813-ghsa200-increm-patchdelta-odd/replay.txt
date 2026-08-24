@@ -1,0 +1,65 @@
+# Patch-delta independent review, ordinals 127,131,139,141,143,195
+# Input hashes (must match leader assignment):
+# CONTRACT.md sha256 cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+# upgrade-b/cases.jsonl sha256 50493a20909eef41ac835042207a6e5b32fcd82f8c9486185de2e3e62d5cd84f
+# Own only this directory and /home/hanqing/.cache/ghsa200-worker-clones/increm-patchdelta-odd
+# Do not edit siblings, canonical ledgers, or commit.
+
+BASE=/home/hanqing/.cache/ghsa200-worker-clones/increm-patchdelta-odd
+GIT='git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false'
+P=$BASE/clones/praisonai
+M=$BASE/clones/mcp-registry
+G=$BASE/clones/GitPython
+O=$BASE/clones/openclaw
+
+# First-party GHSA + GitHub Releases already fetched with gh api into $BASE/pages/
+# sha256sum $BASE/pages/*.json
+
+# 127 PraisonAI spider_tools encodings
+$GIT -C "$P" log -1 --format='%an %ae%n%s' 3cd664bf7b7db5f774c1e7e3123a1a24c68ba700
+$GIT -C "$P" grep -n _validate_url 3cd664bf7b7db5f774c1e7e3123a1a24c68ba700^ -- src/praisonai-agents/praisonaiagents/tools/spider_tools.py; echo parent_validate:$?
+$GIT -C "$P" merge-base --is-ancestor 3cd664bf7b7db5f774c1e7e3123a1a24c68ba700 v4.6.39; echo cand39:$?
+$GIT -C "$P" merge-base --is-ancestor 179cab02dbec0c1e9b601507a65908e079876004 v4.6.39; echo fix39:$?
+$GIT -C "$P" merge-base --is-ancestor 179cab02dbec0c1e9b601507a65908e079876004 v4.6.40; echo fix40:$?
+$GIT -C "$P" grep -n 'int(host, 16)' v4.6.40 -- src/praisonai-agents/praisonaiagents/tools/spider_tools.py
+
+# 131 MCP registry isBlockedIP prefixes
+$GIT -C "$M" rev-parse v1.7.5
+$GIT -C "$M" merge-base --is-ancestor 257eb178cfb05335c68f793a5b1fba16c32e3769 v1.7.5; echo mem175:$?
+$GIT -C "$M" rev-parse 257eb178cfb05335c68f793a5b1fba16c32e3769:internal/api/handlers/v0/auth/http.go 1201cbd82b2cf6d4b56edfc05c763059a12f9fdb:internal/api/handlers/v0/auth/http.go v1.7.5:internal/api/handlers/v0/auth/http.go v1.7.6:internal/api/handlers/v0/auth/http.go
+$GIT -C "$M" grep -n isBlockedIP 1201cbd82b2cf6d4b56edfc05c763059a12f9fdb^ -- internal/api/handlers/v0/auth/http.go; echo parent_block:$?
+$GIT -C "$M" grep -n '2002::' v1.7.6 -- internal/api/handlers/v0/auth/http.go; echo v176_6to4:$?
+$GIT -C "$M" merge-base --is-ancestor f5f40bd98084466eaf18fe48ea62a0d534caa774 v1.7.6; echo fix176:$?
+$GIT -C "$M" merge-base --is-ancestor f5f40bd98084466eaf18fe48ea62a0d534caa774 v1.7.7; echo fix177:$?
+$GIT -C "$M" log -1 --format='%b' 1201cbd82b2cf6d4b56edfc05c763059a12f9fdb | tail -8
+
+# 139 GitPython clone vs remote expand_vars
+$GIT -C "$G" log -1 --format='%an %ae%n%s' 8ac5a30519b6f4af85398b9b9d7064ff4d452da2
+$GIT -C "$G" grep -n polish_url 8ac5a30519b6f4af85398b9b9d7064ff4d452da2^ -- git/remote.py git/repo/base.py
+$GIT -C "$G" grep -n expand_vars 8ac5a30519b6f4af85398b9b9d7064ff4d452da2 -- git/repo/base.py git/remote.py git/cmd.py
+$GIT -C "$G" grep -n 'expand_vars=False' 863417457a0633db7ea5aed4fd01e0b291a41162 -- git/remote.py git/objects/submodule/base.py git/repo/base.py
+$GIT -C "$G" merge-base --is-ancestor 8ac5a30519b6f4af85398b9b9d7064ff4d452da2 3.1.54; echo cand54:$?
+$GIT -C "$G" merge-base --is-ancestor 863417457a0633db7ea5aed4fd01e0b291a41162 3.1.54; echo fix54:$?
+$GIT -C "$G" merge-base --is-ancestor 863417457a0633db7ea5aed4fd01e0b291a41162 3.1.55; echo fix55:$?
+
+# 141 GitPython config charset helper
+$GIT -C "$G" log -1 --format='%an %ae%n%s' 54538428f79b0c91ba52cda5229856a6edf7ac06
+$GIT -C "$G" grep -n _assure_config_name_safe 54538428f79b0c91ba52cda5229856a6edf7ac06^ -- git/config.py; echo parent_helper:$?
+$GIT -C "$G" merge-base --is-ancestor 54538428f79b0c91ba52cda5229856a6edf7ac06 3.1.52; echo cand52:$?
+$GIT -C "$G" merge-base --is-ancestor 1ed1b924f4e2d2ee7bab296df77b978af21853f1 3.1.52; echo fix52:$?
+$GIT -C "$G" merge-base --is-ancestor 1ed1b924f4e2d2ee7bab296df77b978af21853f1 3.1.53; echo fix53:$?
+
+# 143 GitPython Commit.count sibling
+$GIT -C "$G" log -1 --format='%an %ae%n%s' 701ce32fe5ba8cb622c0e0342a376a6beb47d738
+$GIT -C "$G" grep -n 'def count\|check_unsafe_options\|unsafe_git_rev_options' 701ce32fe5ba8cb622c0e0342a376a6beb47d738^ 701ce32fe5ba8cb622c0e0342a376a6beb47d738 -- git/objects/commit.py
+$GIT -C "$G" merge-base --is-ancestor 701ce32fe5ba8cb622c0e0342a376a6beb47d738 3.1.55; echo cand55:$?
+$GIT -C "$G" merge-base --is-ancestor 38553b6fddc7f6a667cdb45a6762343a08fc72b2 3.1.55; echo fix55:$?
+$GIT -C "$G" merge-base --is-ancestor 38553b6fddc7f6a667cdb45a6762343a08fc72b2 3.1.56; echo fix56:$?
+
+# 195 OpenClaw SSE vs streamable-HTTP
+$GIT -C "$O" log -1 --format='%an %ae%n%s' 47eb2d48d43452afc4b0160e40a2630e4a38a0ff
+$GIT -C "$O" grep -n 'SSEClientTransport\|fetchStreamableHttpWithRedirectScrub\|fetchWithUndici' 47eb2d48d43452afc4b0160e40a2630e4a38a0ff^ 47eb2d48d43452afc4b0160e40a2630e4a38a0ff -- src/agents/mcp-transport.ts
+$GIT -C "$O" merge-base --is-ancestor 47eb2d48d43452afc4b0160e40a2630e4a38a0ff v2026.6.1; echo cand61:$?
+$GIT -C "$O" merge-base --is-ancestor 3c6259ebb70c76523a7b3fb7cfdac2e40a7f7449 v2026.6.1; echo fix61:$?
+$GIT -C "$O" merge-base --is-ancestor 3c6259ebb70c76523a7b3fb7cfdac2e40a7f7449 v2026.6.5; echo fix65:$?
+$GIT -C "$O" show --stat 3c6259ebb70c76523a7b3fb7cfdac2e40a7f7449

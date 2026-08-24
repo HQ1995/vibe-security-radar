@@ -1,0 +1,24 @@
+commit bd4a469adb6ddb2bdcb856a3d307420268675b09
+Author:     Ryan Williams <ryan@runsascoded.com>
+AuthorDate: Sat Feb 28 09:44:45 2026 -0500
+Commit:     GitHub <noreply@github.com>
+CommitDate: Sat Feb 28 09:44:45 2026 -0500
+
+    Fix double-free in SVG `gradientTransform` / `transform` parsing (#8583)
+    
+    In `SVGStartElement`, the `gradientTransform` and `transform` attribute
+    handlers reassign `value` to `tokens[j+1]` inside the inner token-parsing
+    loop. After the loop, all tokens are freed via `DestroyString()`. The
+    outer attribute loop then calls `DestroyString(value)`, which double-frees
+    the already-destroyed token string, causing SIGABRT.
+    
+    Use a separate `token_value` local variable inside each inner loop instead
+    of reassigning `value`, so the outer loop's `DestroyString(value)` frees
+    the original `SVGEscapeString()`-allocated string exactly once.
+    
+    Add regression test for SVG `gradientTransform` (#8582).
+    
+    Fixes ImageMagick/ImageMagick#8582
+    
+    Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+

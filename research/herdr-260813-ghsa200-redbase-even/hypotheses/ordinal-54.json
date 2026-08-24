@@ -1,0 +1,106 @@
+{
+  "ordinal": 54,
+  "row_key": "strict-200-v3:alias-a05009adfdf51481b4c4ab3d",
+  "repository": "openclaw/openclaw",
+  "public_ids": [
+    "CVE-2026-32001",
+    "GHSA-RV2Q-F2H5-6XMG"
+  ],
+  "ghsa": [
+    "GHSA-RV2Q-F2H5-6XMG"
+  ],
+  "primary_id": "CVE-2026-32001",
+  "mechanism_key": "openclaw.gateway.ws.connect.token-auth.skip-device.role-node",
+  "mechanism": "Token-auth skip of device identity has no role gate, so role=node can connect with device:null; invariant: node must not skip device identity.",
+  "mechanism_fingerprint": "e1b3b737e70d4cfa4e38da1a6da12cd78cd1c48e65dfefdba2113c0b253ac0e5",
+  "causal_class": "AI_DIRECT_ROOT",
+  "row_state": "PASS",
+  "ai_provenance": {
+    "marker": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "marker_sha": "079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
+    "scope": "MERGE_MEMBER"
+  },
+  "candidate_fix_edges": [
+    {
+      "candidate_sha": "079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
+      "carrier_sha": "ec51bb700ca8c4f6f9e7bd5f99a9a1c59f4c8a46",
+      "fix_sha": "ddcb2d79b17bf2a42c5037d8aeff1537a12b931e",
+      "origin_kind": "merge_member"
+    }
+  ],
+  "atomic_fix_members": [
+    "ddcb2d79b17bf2a42c5037d8aeff1537a12b931e"
+  ],
+  "proposed_fixes": [],
+  "release_evidence": {
+    "candidate_sha": "079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
+    "fix_sha": "ddcb2d79b17bf2a42c5037d8aeff1537a12b931e",
+    "fixed_tag": "v2026.2.22",
+    "kind": "npm_githead",
+    "repo_cache": "openclaw_openclaw",
+    "vulnerable_tag": "v2026.1.20"
+  },
+  "source_refs": [
+    {
+      "locator": "54",
+      "path": "snapshot/strict/ledger.jsonl",
+      "sha256": "0cc19a49406c57026d58a064987f50579f2c47ac016881746c73ccd6c2470a81"
+    },
+    {
+      "locator": "11-25",
+      "path": "snapshot/strict/RESEARCH-STRICT-200-CLOSURE-2026-08-12.md",
+      "sha256": "e255c227967b921dd1b69e740edf0dccb5de4df655b73029ec204b51755e458b"
+    },
+    {
+      "locator": "batch-I-row-20",
+      "path": "docs/AUDIT-POST-HOLD-CANONICAL-HOLD-2026-08-12.md",
+      "sha256": "d59ad63c5e06aecf37befcf693235b47390d885f51903826b884c9272b0d2721"
+    },
+    {
+      "locator": "ordinal:54",
+      "path": "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+      "sha256": "0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2"
+    }
+  ],
+  "notes": [
+    "Batch I: parent rejected every missing device. Candidate changes if (!device) to if (!device && !hasTokenAuth). Human rewrites keep a skip; fix ddcb2d79 sets canSkipDevice = role==='operator' && sharedAuthOk."
+  ],
+  "fp211_adjudication": {
+    "ordinal": 54,
+    "verdict": "CONFIRM",
+    "confidence": "HIGH",
+    "causal_class": "AI_DIRECT_ROOT",
+    "candidate_set": [
+      "079af0d0b02ca2c722f90b6c4e38e27ba16227b4"
+    ],
+    "carrier_set": [
+      "ec51bb700ca8c4f6f9e7bd5f99a9a1c59f4c8a46"
+    ],
+    "minimum_fix_set": [
+      "ddcb2d79b17bf2a42c5037d8aeff1537a12b931e"
+    ],
+    "identity_gate": "PASS",
+    "ai_hunk_gate": "PASS",
+    "topology_gate": "PASS",
+    "but_for_gate": "PASS",
+    "fix_reversal_gate": "PASS",
+    "release_gate": "PASS",
+    "uniqueness_gate": "PASS",
+    "public_ids_keep": [
+      "CVE-2026-32001",
+      "GHSA-RV2Q-F2H5-6XMG"
+    ],
+    "public_ids_remove": [],
+    "lesson": "The same skip-device commit can be direct root for the node-role invariant while other rows use it for snapshot fields or allowInsecureAuth.",
+    "counterevidence": [],
+    "experience_tags": [
+      "shared_sha_distinct_mechanism",
+      "merge_member"
+    ],
+    "duplicate_of": null,
+    "replay_commands": [
+      "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw grep -n 'if (!device' 079af0d0b02c 079af0d0b02c^ -- src/gateway/server/ws-connection/message-handler.ts",
+      "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw show ddcb2d79b17b | rg canSkipDevice"
+    ]
+  }
+}

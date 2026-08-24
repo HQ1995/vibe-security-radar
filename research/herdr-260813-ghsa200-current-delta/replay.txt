@@ -1,0 +1,70 @@
+# replay.txt - current-delta worker reproduction
+# Terminal artifacts bind leader CONTRACT.md sha256
+# cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3 (revised 2026-08-13,
+# AI_INCOMPLETE_REMEDIATION patch-delta rule). No incomplete-remediation rows in this worker.
+# Every command below was executed on 2026-08-13 against the official sources.
+# No credentials are printed or stored. Raw API pages live only under
+# /tmp/ghsa200-worker-clones/current-delta/raw/ (hash manifest in the repo).
+# All paths relative to /home/hanqing/agents/ai-slop unless absolute.
+
+# 0. Frozen snapshot (read-only) and fresh official clone (alternates)
+git -C /home/hanqing/.cache/cve-analyzer/advisory-database log -1 --format='%H %cI'
+#   -> 39d8887723797efc1804585dd06585c9fd751226 2026-07-23T12:34:36+00:00
+git clone --bare --reference /home/hanqing/.cache/cve-analyzer/advisory-database \
+  https://github.com/github/advisory-database.git \
+  /tmp/ghsa200-worker-clones/current-delta/advisory-database.git
+git --git-dir=/tmp/ghsa200-worker-clones/current-delta/advisory-database.git log -1 --format='%H %cI'
+#   -> 6e8a7ca9f3d8463dc037f2308b57f6cf72b55e86 2026-08-13T18:29:41+00:00
+
+# 1. Exclusion freeze (baseline 381 declared public IDs + sibling declarations)
+python3 autoresearch/herdr-260813-ghsa200-current-delta/build_delta.py
+#   -> exclusion-freeze.json (sha256 in result.json)
+
+# 2. Pagination-complete delta enumeration (tree-to-tree diff, full-index SHAs)
+python3 autoresearch/herdr-260813-ghsa200-current-delta/enumerate_delta.py
+#   -> delta-manifest.jsonl, reviewed-delta.jsonl (731 A / 148 M / 0 D), delta-summary.json
+
+# 3. Live GraphQL cross-check with cursor conservation (gh CLI, authenticated)
+python3 autoresearch/herdr-260813-ghsa200-current-delta/enumerate_api.py
+#   -> api-manifest.json (per-page request cursor / response sha256 / endCursor chain)
+
+# 4. Routing queue + partition proof + modified-148 review
+python3 autoresearch/herdr-260813-ghsa200-current-delta/build_queue.py
+#   -> routing-queue.jsonl (731 rows; odd=338 current-delta, even=393 grok),
+#      partition-odd.txt / partition-even.txt, modified-148-review.jsonl
+
+# 5. Bounded deep evidence collection (per case; new objects under /home cache)
+python3 autoresearch/herdr-260813-ghsa200-current-delta/deep_collect.py GHSA-2Q4P-G7HV-5RGV
+#   -> evidence JSON + sha256 under /home/hanqing/.cache/ghsa200-worker-clones/current-delta/evidence/
+# Repeat for the other 33 adjudicated IDs (see cases.jsonl "replay_commands").
+
+# 6. AI-marker recall sweep over remaining fix-SHA candidates
+python3 autoresearch/herdr-260813-ghsa200-current-delta/recall_sweep.py
+#   -> recall-sweep.json (51 flagged; per-flag commit spec + trailer line)
+
+# 7. Assemble cases + result
+python3 autoresearch/herdr-260813-ghsa200-current-delta/build_cases.py
+#   -> cases.jsonl (410 rows), result.json
+
+# Manual per-case git archaeology (representative; exact SHAs in cases.jsonl):
+#   git -C <clone> show <fix-sha>                    # fix diff + message
+#   git -C <clone> blame -L <lines> <fix-sha>^ -- <file>   # vulnerable-line authors
+#   git -C <clone> log --reverse -S <symbol> <fix-sha> -- <file>  # introducing commit
+#   git -C <clone> show <introducing-sha>            # full message/trailers (AI markers)
+# Examples executed:
+#   git -C /tmp/ghsa200-worker-clones/current-delta/repos/thephpleague__commonmark show 629da942ca
+#   git -C /tmp/ghsa200-worker-clones/current-delta/repos/alextselegidis__easyappointments log --reverse -S get_http_client 4abb10545d
+#   git -C /tmp/ghsa200-worker-clones/current-delta/repos/nodejs__undici show 01122dafab
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/microsoft__kiota log --reverse -S StaticTemplate 9a185994a4
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/dynatrace-oss__dynatrace-mcp log --first-parent --reverse -G create_workflow_for_notification origin/main
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/nolabs-ai__nono blame -L 92,162 db07375031^ -- crates/nono-cli/src/profile_runtime.rs
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/pocket-id__pocket-id show 978ac87deffe
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/Budibase__budibase diff 60c8ca9207 72e602d68d
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/ether__etherpad show a6de73c
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/open-webui__open-webui show 22f2fe1ffb
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/flytohub__flyto-core show d5f89d7130
+#   git -C /home/hanqing/.cache/ghsa200-worker-clones/current-delta/repos/anthropics__claude-code diff v2.1.162 v2.1.163
+
+# Verification of partition invariants (already asserted by build_queue.py):
+#   sha256(uppercase GHSA id) last hex nibble odd  -> current-delta (338)
+#   even -> grok lane (393); union == 731; intersection empty.

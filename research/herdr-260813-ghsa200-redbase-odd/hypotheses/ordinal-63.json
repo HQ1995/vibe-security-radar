@@ -1,0 +1,73 @@
+{
+  "ordinal": 63,
+  "row_key": "strict-200-v3:alias-b9a5a8da5751392a45949620",
+  "primary_id": "CVE-2026-27487",
+  "public_ids": [
+    "CVE-2026-27487",
+    "GHSA-4564-PVR2-QQ4H"
+  ],
+  "ghsa": [
+    "GHSA-4564-PVR2-QQ4H"
+  ],
+  "repository": "openclaw/openclaw",
+  "mechanism": "GitHub-reviewed GHSA-4564-pvr2-qq4h aliases CVE-2026-27487 and names macOS Claude CLI keychain refresh writing token JSON via security add-generic-password -w through a shell. Parent 1281c1d1 only execSync-reads the keychain. Member a39951d4 (Co-Authored-By: Claude) first adds writeClaudeCliKeychainCredentials interpolating newValue into execSync(`security add-generic-password ... -w '${newValue.replace(...)}'`). Human 8b473681 later moves that sink into cli-credentials.ts without removing the shell. Minimum production reversal 9dce3d8b (#15924) switches the write to execFileSync(\"security\", argv). 66d7178f is a descendant of 9dce3d8b and only clears residual shell use; b9083882 is test cleanup. Published GitHub releases: v2026.2.12/v2026.2.13 contain origin without fix; v2026.2.14 contains 9dce3d8b.",
+  "mechanism_key": "openclaw.macos-claude-cli.oauth-refresh.execSync-security",
+  "mechanism_fingerprint": "43a2978602a0a1b44e898e0f85ff9df82d10c9e1cbc3e222437f745dc78c3aa7",
+  "causal_class": "AI_DIRECT_ROOT",
+  "source_tier": "STRICT_RELEASED",
+  "candidate_set": [
+    "a39951d463b9c5377cbe7e08d6953899dca708d8"
+  ],
+  "carrier_set": [],
+  "minimum_fix_set": [
+    "9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
+  ],
+  "top_candidate_set": [
+    {
+      "candidate_sha": "a39951d463b9c5377cbe7e08d6953899dca708d8",
+      "fix_sha": "9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
+      "origin_kind": "direct_commit"
+    }
+  ],
+  "ai_provenance": {
+    "marker": "Claude",
+    "marker_sha": "a39951d463b9c5377cbe7e08d6953899dca708d8",
+    "scope": "ATOMIC_COMMIT"
+  },
+  "release_evidence": {
+    "candidate_sha": "a39951d463b9c5377cbe7e08d6953899dca708d8",
+    "fix_sha": "9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
+    "fixed_tag": "v2026.2.14",
+    "kind": "git_tag",
+    "repo_cache": "v2_github.com_openclaw_c2e21135e2e4d103a91f04425616aa5d7d8c5dd28582aa10a12b6898fde51b0f",
+    "vulnerable_tag": "v2026.2.13"
+  },
+  "proposed_fixes": [],
+  "notes": [
+    "Batch IV: cli-credentials.ts does not exist at a39951d4; the origin sink is in auth-profiles.ts and is later moved by human 8b473681. Reject a39951d4→66d7178f as the minimum fix edge: 66d7178f is already on the post-9dce3d8b ancestry. v2026.2.12 also contains origin without the fix; GHSA last-affected is npm 2026.2.13."
+  ],
+  "duplicate_of": null,
+  "identity_relation": "FORMAL_ALIAS",
+  "adj_lesson": "An existing execSync read of a static keychain query is not the advisory; the AI write that interpolates token JSON into the shell is.",
+  "adj_decisive": [
+    "GHSA-4564-pvr2-qq4h / CVE-2026-27487 macOS Claude CLI keychain write via shell",
+    "parent 1281c1d1 only execSync-reads the keychain; Claude a39951d4 first interpolates newValue into execSync(`security add-generic-password ... -w '${newValue...}'`)",
+    "9dce3d8b switches the write to execFileSync argv; v2026.2.13 / v2026.2.14"
+  ],
+  "adj_counter": [],
+  "adj_replay": [
+    "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw grep -n add-generic-password a39951d463b9 -- src/agents/auth-profiles.ts",
+    "git -C ~/.cache/cve-analyzer/repos/openclaw_openclaw log -1 --format='%B' a39951d463b9 | rg -i 'Co-Authored-By: Claude'"
+  ],
+  "adj_false_positive_class": null,
+  "adj_experience_tags": [
+    "read_exists_write_is_new_sink"
+  ],
+  "adj_public_ids_keep": [
+    "CVE-2026-27487",
+    "GHSA-4564-PVR2-QQ4H"
+  ],
+  "adj_public_ids_remove": [],
+  "source_instance": "strict-200-v3",
+  "source_layer": "STRICT_200_BASELINE"
+}

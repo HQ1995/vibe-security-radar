@@ -1,0 +1,267 @@
+#!/usr/bin/env zsh
+# Fail-fast zsh replay for herdr-260813-ghsa200-narrow-recovery-b-grok46-high.
+# English only. Do not print credentials. Do not fetch, clone, commit, or push.
+# Do not use command strings. git_cmd is a zsh array expanded with "${git_cmd[@]}".
+# Do not name a local 'path': zsh ties path to PATH.
+# Worker PASS is a proposal. This script does not admit a 200-case claim.
+set -euo pipefail
+PATH=/usr/local/bin:/usr/bin:/bin
+export PATH
+
+ROOT=/home/hanqing/agents/ai-slop
+OWNED=$ROOT/autoresearch/herdr-260813-ghsa200-narrow-recovery-b-grok46-high
+CLONE_ROOT=/tmp/ghsa200-worker-clones/upgrade-b/clones
+CC=$CLONE_ROOT/claude-code-cache-fix
+PR=$CLONE_ROOT/praisonai
+GP=$CLONE_ROOT/gitpython
+OC=$CLONE_ROOT/openclaw
+CR=$CLONE_ROOT/churchcrm
+FI=$CLONE_ROOT/fission
+
+git_cmd=(/usr/bin/git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false)
+
+require_dir() {
+  if [[ ! -d $1 ]]; then
+    printf 'missing directory: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+expect_hash() {
+  local target=$1 expected=$2
+  local got
+  got=$(/usr/bin/sha256sum "$target" | /usr/bin/awk '{print $1}')
+  if [[ $got != "$expected" ]]; then
+    printf 'hash mismatch %s\n expected %s\n got      %s\n' "$target" "$expected" "$got" >&2
+    exit 1
+  fi
+}
+
+assert_ancestor() {
+  "${git_cmd[@]}" -C "$1" merge-base --is-ancestor "$2" "$3"
+}
+
+assert_not_ancestor() {
+  if "${git_cmd[@]}" -C "$1" merge-base --is-ancestor "$2" "$3"; then
+    printf 'unexpected ancestor: %s is ancestor of %s in %s\n' "$2" "$3" "$1" >&2
+    exit 1
+  fi
+}
+
+assert_blob_eq() {
+  local repo=$1 left=$2 right=$3
+  local a b
+  a=$("${git_cmd[@]}" -C "$repo" rev-parse "$left")
+  b=$("${git_cmd[@]}" -C "$repo" rev-parse "$right")
+  if [[ $a != "$b" ]]; then
+    printf 'blob mismatch %s != %s\n  %s\n  %s\n' "$left" "$right" "$a" "$b" >&2
+    exit 1
+  fi
+}
+
+assert_blob_ne() {
+  local repo=$1 left=$2 right=$3
+  local a b
+  a=$("${git_cmd[@]}" -C "$repo" rev-parse "$left")
+  b=$("${git_cmd[@]}" -C "$repo" rev-parse "$right")
+  if [[ $a == "$b" ]]; then
+    printf 'blobs unexpectedly equal: %s == %s (%s)\n' "$left" "$right" "$a" >&2
+    exit 1
+  fi
+}
+
+assert_blob_is() {
+  local repo=$1 spec=$2 expected=$3
+  local got
+  got=$("${git_cmd[@]}" -C "$repo" rev-parse "$spec")
+  if [[ $got != "$expected" ]]; then
+    printf 'blob %s expected %s got %s\n' "$spec" "$expected" "$got" >&2
+    exit 1
+  fi
+}
+
+require_dir "$OWNED"
+require_dir "$CC"
+require_dir "$PR"
+require_dir "$GP"
+require_dir "$OC"
+require_dir "$CR"
+require_dir "$FI"
+
+# Bind inputs. Hashes are identity pins, not causality.
+expect_hash "$ROOT/autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md" \
+  cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+expect_hash "$ROOT/autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl" \
+  0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2
+expect_hash "$ROOT/autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl" \
+  e20d4ba5b7fdf43d338af6f7ecb8e1abfe43cc02396332091eee3689688ed257
+expect_hash "$ROOT/autoresearch/herdr-260813-ghsa200-final-candidate-review-codex/result.json" \
+  4be2620a548370c845e22c0d7cbe3ed10ab156ef39b1a0432ff4220ff406e528
+expect_hash "$OWNED/cases.jsonl" \
+  8dc5b5744ed5ce61a8feda9a6737cc81ab0b4dfa2915f3390ca3d7859bbb886b
+
+# Assigned/reviewed/unreviewed conservation. Bounded to this lane.
+python3 - "$ROOT" "$OWNED/cases.jsonl" << 'PY'
+import json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+cases_path = Path(sys.argv[2])
+excl = set(json.loads((root / "autoresearch/herdr-260813-ghsa200-final-candidate-review-codex/result.json").read_text())["countable_first_party_ghsa_ids"])
+pc = {}
+for line in (root / "autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl").open():
+    r = json.loads(line)
+    pc.setdefault(r["ordinal"], []).append(r["case_id"])
+assigned = []
+for line in (root / "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl").open():
+    r = json.loads(line)
+    if 111 <= r["ordinal"] <= 211 and r["verdict"] in ("NARROW", "UNKNOWN"):
+        for cid in pc.get(r["ordinal"], []):
+            if cid not in excl:
+                assigned.append((r["ordinal"], cid))
+rows = [json.loads(l) for l in cases_path.read_text().splitlines() if l.strip()]
+reviewed = [(r["ordinal"], r["case_id"]) for r in rows]
+unreviewed = [t for t in assigned if t not in reviewed]
+extra = [t for t in reviewed if t not in assigned]
+assert len(assigned) == 33, len(assigned)
+assert len(reviewed) == 33, len(reviewed)
+assert len(unreviewed) == 0, unreviewed
+assert extra == [], extra
+assert set(assigned) == set(reviewed)
+assert len({r["case_id"] for r in rows}) == 33
+verdicts = {}
+for r in rows:
+    verdicts[r["verdict"]] = verdicts.get(r["verdict"], 0) + 1
+assert verdicts.get("PASS") == 3, verdicts
+assert verdicts.get("NARROW") == 26, verdicts
+assert verdicts.get("UNKNOWN") == 4, verdicts
+assert verdicts.get("REJECT", 0) == 0
+assert verdicts.get("BLOCKED", 0) == 0
+gates = ["identity_gate", "ai_hunk_gate", "topology_gate", "but_for_gate", "fix_reversal_gate", "release_gate", "uniqueness_gate"]
+pass_ids = []
+for r in rows:
+    seven = all(r.get(g) == "PASS" for g in gates)
+    fg = r.get("failing_gates") or []
+    if r["verdict"] == "PASS":
+        assert seven, r["case_id"]
+        assert fg == [], (r["case_id"], fg)
+        pass_ids.append(r["case_id"])
+    else:
+        assert not seven, r["case_id"]
+        assert fg, r["case_id"]
+assert pass_ids == ["GHSA-G3XQ-3GMV-QQ8G", "GHSA-F38V-77QJ-H4JQ", "GHSA-PV2J-RGHR-V5R9"]
+print("conservation assigned=33 reviewed=33 unreviewed=0")
+print("PASS=3 NARROW=26 UNKNOWN=4 REJECT=0 BLOCKED=0")
+PY
+
+# ----- PASS 113 GHSA-G3XQ-3GMV-QQ8G -----
+"${git_cmd[@]}" -C "$CC" log -1 --format='%B' 7b9322a86a5cae3230c30943bd659d7f67b0387c | grep -F 'Co-Authored-By: Claude Opus 4.7' >/dev/null
+assert_blob_is "$CC" 7b9322a86a5cae3230c30943bd659d7f67b0387c:tools/quota-statusline.sh 626f3494c062d3e6923ab1f6e2c428681ccee9ea
+assert_blob_is "$CC" e19169011a7ca59c3ccee67c626c658ba47eb275:tools/quota-statusline.sh 4d61ea15310a7195b0ef993087f8ad214441e026
+assert_blob_is "$CC" v3.5.0:tools/quota-statusline.sh 626f3494c062d3e6923ab1f6e2c428681ccee9ea
+assert_blob_is "$CC" v3.5.1:tools/quota-statusline.sh 626f3494c062d3e6923ab1f6e2c428681ccee9ea
+assert_blob_is "$CC" v3.5.2:tools/quota-statusline.sh 853af30658bffe76069eab08401fab6badf03c77
+assert_blob_eq "$CC" v3.5.2:tools/quota-statusline.sh 0a3e3c130e1ec803a2107fe83775d97f5f8f6dde:tools/quota-statusline.sh
+assert_ancestor "$CC" 7b9322a86a5cae3230c30943bd659d7f67b0387c v3.5.0
+assert_not_ancestor "$CC" e19169011a7ca59c3ccee67c626c658ba47eb275 v3.5.0
+"${git_cmd[@]}" -C "$CC" grep -F "json.loads('''\$input''')" 7b9322a86a5cae3230c30943bd659d7f67b0387c -- tools/quota-statusline.sh >/dev/null
+if "${git_cmd[@]}" -C "$CC" grep -F "json.loads('''\$input''')" '7b9322a86a5cae3230c30943bd659d7f67b0387c^' -- tools/quota-statusline.sh >/dev/null; then
+  printf 'parent unexpectedly interpolates $input\n' >&2
+  exit 1
+fi
+"${git_cmd[@]}" -C "$CC" grep -F 'CC_INPUT' v3.5.2 -- tools/quota-statusline.sh >/dev/null
+python3 - "$OWNED" << 'PY'
+import json, sys
+from pathlib import Path
+owned = Path(sys.argv[1])
+d = json.loads((owned / "snapshot/pages/ghsa/ghsa-g3xq-3gmv-qq8g.json").read_text())
+assert d.get("cve_id") == "CVE-2026-45136"
+v = d["vulnerabilities"][0]
+assert v["vulnerable_version_range"] == ">= 3.5.0, < 3.5.2"
+assert v.get("first_patched_version") == "3.5.2"
+rel = json.loads((owned / "snapshot/pages/github-releases/cnighswonger__claude-code-cache-fix__v3.5.0.json").read_text())
+fix = json.loads((owned / "snapshot/pages/github-releases/cnighswonger__claude-code-cache-fix__v3.5.2.json").read_text())
+assert rel.get("draft") is False
+assert fix.get("draft") is False
+print("113 first-party identity and releases ok")
+PY
+
+# ----- PASS 169 GHSA-F38V-77QJ-H4JQ -----
+"${git_cmd[@]}" -C "$PR" log -1 --format='%B' 179cab02dbec0c1e9b601507a65908e079876004 | grep -F 'Co-authored-by: Cursor' >/dev/null
+"${git_cmd[@]}" -C "$PR" grep -F '_issue_token' 179cab02dbec0c1e9b601507a65908e079876004 -- src/praisonai-platform/praisonai_platform/services/auth_service.py >/dev/null
+"${git_cmd[@]}" -C "$PR" grep -F 'os.environ.get("PLATFORM_ENV", "dev")' 179cab02dbec0c1e9b601507a65908e079876004 -- src/praisonai-platform/praisonai_platform/services/auth_service.py >/dev/null
+python3 - "$OWNED" << 'PY'
+import json, sys
+from pathlib import Path
+owned = Path(sys.argv[1])
+d = json.loads((owned / "snapshot/pages/ghsa/ghsa-f38v-77qj-h4jq.json").read_text())
+assert d.get("cve_id") == "CVE-2026-57148"
+v = d["vulnerabilities"][0]
+assert v["vulnerable_version_range"] == "<= 0.1.4"
+assert v.get("first_patched_version") == "0.1.6"
+meta = json.loads((owned / "snapshot/pages/pypi/praisonai-platform.json").read_text())
+assert "0.1.5" not in meta["releases"]
+def wheel_sha(ver):
+    files = [f for f in meta["releases"][ver] if f["packagetype"] == "bdist_wheel"]
+    assert files, ver
+    return files[0]["digests"]["sha256"]
+assert wheel_sha("0.1.4") == "6c64b97add99510856506ce052155099dd03f89ceb2d9d5b1a849ee89fbc5882"
+assert wheel_sha("0.1.6") == "a4e909ba1e6784cac45510b30a0a24b3f89dbc64d775c8f9e08560fa49bcfc8d"
+print("169 first-party identity and pypi wheels ok")
+PY
+
+# ----- PASS 188 GHSA-PV2J-RGHR-V5R9 -----
+"${git_cmd[@]}" -C "$PR" grep -F '_SANDBOX_BLOCKED_CALLS' 179cab02dbec0c1e9b601507a65908e079876004 -- src/praisonai-agents/praisonaiagents/tools/python_tools.py >/dev/null
+if "${git_cmd[@]}" -C "$PR" grep -F '_SANDBOX_BLOCKED_CALLS' '179cab02dbec0c1e9b601507a65908e079876004^' -- src/praisonai-agents/praisonaiagents/tools/python_tools.py >/dev/null; then
+  printf 'parent unexpectedly has _SANDBOX_BLOCKED_CALLS\n' >&2
+  exit 1
+fi
+"${git_cmd[@]}" -C "$PR" grep -F 'format_map' 2adfe7e8323f6deec66925cf15a885b6238895e9 -- src/praisonai-agents/praisonaiagents/tools/python_tools.py >/dev/null
+assert_ancestor "$PR" 179cab02dbec0c1e9b601507a65908e079876004 v4.6.58
+assert_not_ancestor "$PR" 2adfe7e8323f6deec66925cf15a885b6238895e9 v4.6.58
+assert_ancestor "$PR" 2adfe7e8323f6deec66925cf15a885b6238895e9 v4.6.59
+python3 - "$OWNED" << 'PY'
+import json, sys
+from pathlib import Path
+owned = Path(sys.argv[1])
+d = json.loads((owned / "snapshot/pages/ghsa/ghsa-pv2j-rghr-v5r9.json").read_text())
+assert d.get("cve_id") == "CVE-2026-57120"
+v = d["vulnerabilities"][0]
+assert v["vulnerable_version_range"] == "< 1.6.59"
+assert v.get("first_patched_version") == "1.6.59"
+meta = json.loads((owned / "snapshot/pages/pypi/praisonaiagents.json").read_text())
+def wheel_sha(ver):
+    files = [f for f in meta["releases"][ver] if f["packagetype"] == "bdist_wheel"]
+    assert files, ver
+    return files[0]["digests"]["sha256"]
+assert wheel_sha("1.6.52") == "28e09b51976a02c566e2a99b23ca9570aae8d41b44f5c37eb400d490ddaf4869"
+assert wheel_sha("1.6.59") == "30e70d4f0dfdf9604183d631350c47681dc93ba07c0e3176f6728050d47a0c31"
+print("188 first-party identity and pypi wheels ok")
+PY
+
+# ----- Preserved NARROW/UNKNOWN counterexamples (do not promote) -----
+# 170: AI startswith is not the 3.1.50 residual matcher.
+"${git_cmd[@]}" -C "$GP" grep -F 'startswith' c9a26789d88b18f8b4620f37307df2976292d2a0 -- git/cmd.py >/dev/null
+assert_ancestor "$GP" 142195888e713542189533a52cdfc333f05c3af6 3.1.50
+
+# 192/195: candidate ancestry only; sibling-path patch-delta stays NARROW.
+assert_ancestor "$OC" b75ad800a59009fc47eaa3471410f69046150e59 v2026.5.22
+assert_ancestor "$OC" 47eb2d48d43452afc4b0160e40a2630e4a38a0ff v2026.6.1
+
+# 187: Claude member is not a tag ancestor; member/carrier/tag blobs are three-way unequal.
+assert_not_ancestor "$CR" 095bf81b318c892258a9874e63ebb017b971443d 7.3.3
+assert_blob_is "$CR" 095bf81b318c892258a9874e63ebb017b971443d:src/ChurchCRM/Plugin/PluginInstaller.php b79ef3586b2664133248fd72840b9d3d89aa9e9d
+assert_blob_is "$CR" de417ffa845a8f6c68905740b34478537543bc05:src/ChurchCRM/Plugin/PluginInstaller.php bd4e0ec0c2ef32820b11799e83ea1114a891d616
+assert_blob_is "$CR" 7.3.3:src/ChurchCRM/Plugin/PluginInstaller.php 332bdd42f008d2c41e70022705b194928c0f2313
+assert_blob_ne "$CR" 095bf81b318c892258a9874e63ebb017b971443d:src/ChurchCRM/Plugin/PluginInstaller.php de417ffa845a8f6c68905740b34478537543bc05:src/ChurchCRM/Plugin/PluginInstaller.php
+assert_blob_ne "$CR" de417ffa845a8f6c68905740b34478537543bc05:src/ChurchCRM/Plugin/PluginInstaller.php 7.3.3:src/ChurchCRM/Plugin/PluginInstaller.php
+
+# 123: three-way unequal loader blobs; member not tag ancestor.
+assert_blob_is "$OC" fc1b156dc4105bdbcdc24d4c25d4f5af25cfd7bb:src/plugins/loader.ts 86d83fa81ddde9c65075ca6025dc582bf435d945
+assert_blob_is "$OC" f4cc93dc7da7359c35130bbbb244d3fac695740f:src/plugins/loader.ts b9132c08f3322d506f6dc9778d979b777ca9cf0c
+assert_blob_is "$OC" v2026.4.1:src/plugins/loader.ts 7b6cebb7490b6044665351dabb1b71a9c21eb204
+assert_not_ancestor "$OC" fc1b156dc4105bdbcdc24d4c25d4f5af25cfd7bb v2026.4.1
+
+# 133: parent already calls SanitizeFilePath.
+"${git_cmd[@]}" -C "$FI" grep -n SanitizeFilePath '0d851525a35ba517dda7fe892333df5d0919dffc^' -- pkg/builder/builder.go pkg/fetcher/fetcher.go >/dev/null
+
+printf 'REPLAY_OK bounded assigned=33 reviewed=33 unreviewed=0 PASS_proposal=3\n'

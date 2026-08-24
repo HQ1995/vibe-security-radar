@@ -1,0 +1,40 @@
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:25:// TestForceCheckoutReplacesLeadingSymlink covers the symlink-mask bypass
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:26:// (CVE-2021-21300 class). A symlink "s" pointing at a dangerous directory
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:30:// so string validation alone lets it through. Following the symlink would
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:34:// the blocking symlink and materialise a real directory, writing the file
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:38:func TestForceCheckoutReplacesLeadingSymlink(t *testing.T) {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:40:		t.Skip("skipping symlink-mask path validation test in short mode")
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:48:		// setup returns the symlink target (the on-disk contents of the
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:49:		// planted symlink "s"), the tree path the attack commit writes,
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:106:			// Plant the masking symlink in the worktree. This models the
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:107:			// pre-existing symlink an attacker relies on.
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:110:					t.Skipf("symlink creation requires elevated privileges: %v", err)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:117:				"force checkout should replace symlink %q -> %q, not fail", entryPath, linkTarget)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:122:					"force checkout wrote through symlink %q -> %q to %s", entryPath, linkTarget, escapePath)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:125:			// The blocking symlink is gone and the file lands safely in the
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:129:			require.Zero(t, fi.Mode()&os.ModeSymlink, "leading symlink %q must be replaced by a real directory", "s")
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:139:// symlink invariant at the wrapper boundary. Every operation on "s/<name>"
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:140:// must be refused while "s" is an existing symlink, so no worktree code
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:142:// string is innocent, so validPath alone would allow it. validNoLeadingSymlink
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:144:// component is itself a symlink, the "valid path, wrong target" case that
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:147:// It runs against both memfs and osfs so real on-disk symlink semantics
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:149:func TestWorktreeFilesystemRejectsSymlinkTraversal(t *testing.T) {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:152:	const wantSubstr = "is a symlink"
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:162:	// symlinkFS wraps a fresh backend filesystem with "s" and "a/b/s"
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:163:	// planted as symlinks. Each subtest gets its own, so the parallel
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:165:	symlinkFS := func(t *testing.T, makeFS func(*testing.T) billy.Filesystem) *worktreeFilesystem {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:172:				t.Skipf("symlink creation requires elevated privileges: %v", err)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:187:					fs := symlinkFS(t, bk.makeFS)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:196:					assert.ErrorContains(t, err, wantSubstr, "Open should reject read through symlink %q", p)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:212:			t.Run("Chroot through leading symlink", func(t *testing.T) {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:214:				fs := symlinkFS(t, bk.makeFS)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:216:				assert.ErrorContains(t, err, wantSubstr, "Chroot should reject a leading symlink")
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:220:			// the tree-controlled submodule path. A symlink as the final
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:222:			t.Run("Chroot onto symlink target", func(t *testing.T) {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:224:				fs := symlinkFS(t, bk.makeFS)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:226:				assert.ErrorContains(t, err, wantSubstr, "Chroot should reject a symlink as the final component")
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:234:// a path that already exists as a symlink must replace the symlink, not
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:236:func TestCheckoutReplacesBlockingFinalSymlink(t *testing.T) {
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:249:				t.Skipf("symlink creation requires elevated privileges: %v", err)
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:267:		// The symlink target must be untouched.
+008a78f2dd86f52544ddff8b8e8ddeecdf3f7aab:worktree_fs_test.go:274:		assert.Zero(t, fi.Mode()&os.ModeSymlink, "tracked.txt must be a regular file, not a symlink")

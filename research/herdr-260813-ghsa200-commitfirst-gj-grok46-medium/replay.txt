@@ -1,0 +1,145 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+# Fail-fast read-only offline replay.
+# Do not fetch, clone, commit, push, or rerun emit_artifacts.py.
+
+ROOT=/home/hanqing/agents/ai-slop
+cd "$ROOT"
+
+OWNED=autoresearch/herdr-260813-ghsa200-commitfirst-gj-grok46-medium
+GN=autoresearch/herdr-260813-ghsa200-commitfirst-gn
+GOGS=/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/gogs__gogs
+GIT=(git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false)
+
+hash_file() {
+  sha256sum -- "$1" | awk '{print $1}'
+}
+
+[[ -f "$OWNED/result.json" ]]
+[[ -f "$OWNED/cases.jsonl" ]]
+[[ -f "$OWNED/report.md" ]]
+[[ -f "$OWNED/replay.txt" ]]
+[[ -f "$GN/freeze.json" ]]
+[[ -f scripts/publication_adjudications.json ]]
+[[ -d "$GOGS/.git" ]]
+
+[[ "$(hash_file "$GN/assigned.jsonl")" == "89cf34362e3f1cc36d91595ddab808eeefc477c0756a924b705d581207149a73" ]]
+[[ "$(hash_file "$GN/cases.jsonl")" == "47538e731f8c4979651ff36ead7063ea23a1adc05e551a99ae94ceaafd835b2d" ]]
+[[ "$(hash_file "$GN/ai-commit-scans.jsonl")" == "a6d7ca1584dbeb1596c57643092df0178001925efe0de60ca3eee5f72182481a" ]]
+[[ "$(hash_file "$GN/ai-ghsa-intersections.jsonl")" == "c58444221e9cc00555ba251da75f518281bacd660a438f6cc8a5df3ac5cf331e" ]]
+[[ "$(hash_file "$GN/freeze.json")" == "a1087603574a83472a916adc6d5d7028e86d0ce8e572f13e2a7fd5fbff9ebc4b" ]]
+[[ "$(hash_file "$GN/unresolved-ids.txt")" == "98ede484a9e01d1bfdc0ce748c6f5546f9a3d98af4872b8bb43b7c166a5b65d9" ]]
+[[ "$(hash_file autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md)" == "cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3" ]]
+
+# Frozen GN selection role
+python3 -c '
+import json
+from pathlib import Path
+freeze = json.loads(Path("autoresearch/herdr-260813-ghsa200-commitfirst-gn/freeze.json").read_text())
+assert freeze["input_hashes"]["publication_adjudications.json"] == "bfec060f7705014d11e58dc386294264eac47027cd64d3b934a17422bb1be7a6"
+'
+
+# Current overlap check role after 5620e01
+[[ "$(hash_file scripts/publication_adjudications.json)" == "9fdff2e65bb2e4e1ac6b83c355bbb27e08542005fe572700340e1567a4e9cc4f" ]]
+
+python3 -c '
+import hashlib, json
+from pathlib import Path
+OWNED = Path("autoresearch/herdr-260813-ghsa200-commitfirst-gj-grok46-medium")
+GN = Path("autoresearch/herdr-260813-ghsa200-commitfirst-gn")
+res = json.loads((OWNED / "result.json").read_text())
+for name, digest in res["artifact_hashes"].items():
+    path = OWNED / name
+    assert path.is_file(), name
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
+assert res["frozen_selection_inputs"]["publication_adjudications"] == "bfec060f7705014d11e58dc386294264eac47027cd64d3b934a17422bb1be7a6"
+assert res["current_overlap_check"]["publication_adjudications"] == "9fdff2e65bb2e4e1ac6b83c355bbb27e08542005fe572700340e1567a4e9cc4f"
+assert res["current_overlap_check"]["git_commit"] == "5620e0192ed01fd41c76b36f98e035f2fd443ee4"
+assert "publication_adjudications.json" not in res["input_hashes"]
+assigned = [json.loads(l) for l in (GN / "assigned.jsonl").read_text().splitlines() if l.strip()]
+gn_cases = [json.loads(l) for l in (GN / "cases.jsonl").read_text().splitlines() if l.strip()]
+gj = [r for r in assigned if r.get("owner", "").casefold()[:1] in "ghij"]
+gn_reviewed = {r["case_id"].upper() for r in gn_cases}
+gj_ids = {r["ghsa_id"].upper() for r in gj}
+pool = gj_ids - gn_reviewed
+cases = [json.loads(l) for l in (OWNED / "cases.jsonl").read_text().splitlines() if l.strip()]
+unrev = [l.strip() for l in (OWNED / "unresolved-ids.txt").read_text().splitlines() if l.strip()]
+assert len(gj) == 1072
+assert len(gj_ids & gn_reviewed) == 47
+assert len(pool) == 1025
+assert len(cases) == 30
+assert len(unrev) == 995
+assert len(cases) + len(unrev) == 1025
+assert res["counts"]["reviewed_case_rows"] == 30
+assert res["counts"]["unresolved_unreviewed"] == 995
+assert res["counts"]["PASS"] == 1
+assert res["counts"]["REJECT"] == 29
+assert res["counts"]["countable_pass"] == 0
+pass_rows = [c for c in cases if c["worker_verdict"] == "PASS"]
+assert [c["case_id"] for c in pass_rows] == ["GHSA-6P9M-Q3JP-47H4"]
+assert all(v == "PASS" for v in pass_rows[0]["gates"].values())
+pub = json.loads(Path("scripts/publication_adjudications.json").read_text())
+live = set()
+def walk(x):
+    if isinstance(x, dict):
+        for v in x.values():
+            if isinstance(v, str) and v.upper().startswith("GHSA-"):
+                live.add(v.upper())
+            else:
+                walk(v)
+    elif isinstance(x, list):
+        for v in x:
+            walk(v)
+walk(pub)
+assert "GHSA-6P9M-Q3JP-47H4" not in live
+assert set(c["case_id"] for c in cases).isdisjoint(set(unrev))
+assert set(c["case_id"] for c in cases) | set(unrev) == pool
+'
+
+INTRO_MEMBER=85ebf175c0f953253247717f72f50fd6aba2d362
+SHIPPED_MEMBER=90f99d5f672ba95cf8cdb1a1d915acb079adb5ef
+SQUASH=81ee8836445ac888d99da8b652be7d5cbc5c4d5c
+REL_CARRIER=5e6014c421f7e3ab1d541983372377331aa4bf7a
+FIX=f35a767af74e05342bafc6fdda02c791816426f8
+REL_FIX=e2fae5d0455d4f92c6382433d21c3a16da077d64
+
+for sha in "$INTRO_MEMBER" "$SHIPPED_MEMBER" "$SQUASH" "$REL_CARRIER" "$FIX" "$REL_FIX" v0.14.2 v0.14.3; do
+  "${GIT[@]}" -C "$GOGS" cat-file -t "$sha" >/dev/null
+done
+
+intro_body="$("${GIT[@]}" -C "$GOGS" log -1 --format=%B "$INTRO_MEMBER")"
+[[ "$intro_body" == *"Co-Authored-By: Claude Opus 4.6"* ]]
+[[ "$intro_body" == *"Prevent cross-repository LFS object overwrite"* ]]
+
+shipped_body="$("${GIT[@]}" -C "$GOGS" log -1 --format=%B "$SHIPPED_MEMBER")"
+[[ "$shipped_body" == *"Co-Authored-By: Claude Opus 4.6"* ]]
+
+squash_blob="$("${GIT[@]}" -C "$GOGS" rev-parse "$SQUASH:internal/lfsutil/storage.go")"
+v142_blob="$("${GIT[@]}" -C "$GOGS" rev-parse "v0.14.2:internal/lfsutil/storage.go")"
+[[ "$squash_blob" == "b53522f10a33f5021b005c6577a8492ecd1202fc" ]]
+[[ "$v142_blob" == "$squash_blob" ]]
+
+# Expected nonzero: mainline squash is not an ancestor of the release tag.
+squash_anc_rc=0
+"${GIT[@]}" -C "$GOGS" merge-base --is-ancestor "$SQUASH" v0.14.2 || squash_anc_rc=$?
+[[ "$squash_anc_rc" -eq 1 ]]
+
+rel_anc_rc=0
+"${GIT[@]}" -C "$GOGS" merge-base --is-ancestor "$REL_CARRIER" v0.14.2 || rel_anc_rc=$?
+[[ "$rel_anc_rc" -eq 0 ]]
+
+fix_anc_rc=0
+"${GIT[@]}" -C "$GOGS" merge-base --is-ancestor "$REL_FIX" v0.14.3 || fix_anc_rc=$?
+[[ "$fix_anc_rc" -eq 0 ]]
+
+v142_snip="$("${GIT[@]}" -C "$GOGS" show v0.14.2:internal/lfsutil/storage.go | sed -n "77,82p")"
+[[ "$v142_snip" == *"skip the upload and return the"* ]]
+[[ "$v142_snip" == *"io.Copy(io.Discard, rc)"* ]]
+
+v143_snip="$("${GIT[@]}" -C "$GOGS" show v0.14.3:internal/lfsutil/storage.go | sed -n "77,90p")"
+[[ "$v143_snip" == *"client must still prove it has"* ]]
+[[ "$v143_snip" == *"computed != string(oid)"* ]]
+
+rel_fix_body="$("${GIT[@]}" -C "$GOGS" log -1 --format=%B "$REL_FIX")"
+[[ "$rel_fix_body" == *"cherry picked from commit $FIX"* ]]

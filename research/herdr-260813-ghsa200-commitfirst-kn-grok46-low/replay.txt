@@ -1,0 +1,115 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+# Replay for herdr-260813-ghsa200-commitfirst-kn-grok46-low
+# Contract SHA-256: cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+# Advisory-database freeze: a42c436870111aa3f221257c9d56126a93173ccc
+# Clone root: /home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones
+
+[[ -f autoresearch/herdr-260813-ghsa200-commitfirst-kn-grok46-low/result.json ]]
+[[ -f autoresearch/herdr-260813-ghsa200-commitfirst-gn/freeze.json ]]
+[[ -f scripts/publication_adjudications.json ]]
+
+hash_file() {
+  sha256sum -- "$1" | awk '{print $1}'
+}
+
+# Frozen selection: publication_adjudications hash as recorded by commitfirst-GN
+python3 -c '
+import json
+from pathlib import Path
+freeze = json.loads(Path("autoresearch/herdr-260813-ghsa200-commitfirst-gn/freeze.json").read_text())
+h = freeze["input_hashes"]["publication_adjudications.json"]
+assert h == "bfec060f7705014d11e58dc386294264eac47027cd64d3b934a17422bb1be7a6", h
+'
+
+# Current overlap check: live file after 5620e01
+[[ "$(hash_file scripts/publication_adjudications.json)" == "9fdff2e65bb2e4e1ac6b83c355bbb27e08542005fe572700340e1567a4e9cc4f" ]]
+
+# Frozen G-N assignment hashes (selection denominator)
+[[ "$(hash_file autoresearch/herdr-260813-ghsa200-commitfirst-gn/assigned.jsonl)" == "89cf34362e3f1cc36d91595ddab808eeefc477c0756a924b705d581207149a73" ]]
+[[ "$(hash_file autoresearch/herdr-260813-ghsa200-commitfirst-gn/ai-commit-scans.jsonl)" == "a6d7ca1584dbeb1596c57643092df0178001925efe0de60ca3eee5f72182481a" ]]
+[[ "$(hash_file autoresearch/herdr-260813-ghsa200-commitfirst-gn/ai-ghsa-intersections.jsonl)" == "c58444221e9cc00555ba251da75f518281bacd660a438f6cc8a5df3ac5cf331e" ]]
+[[ "$(hash_file autoresearch/herdr-260813-ghsa200-commitfirst-gn/cases.jsonl)" == "47538e731f8c4979651ff36ead7063ea23a1adc05e551a99ae94ceaafd835b2d" ]]
+[[ "$(hash_file autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md)" == "cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3" ]]
+
+# Current overlap assertion: none of the 30 frozen-selected IDs are in live adjudications
+python3 -c '
+import hashlib, json
+from pathlib import Path
+root = Path("autoresearch/herdr-260813-ghsa200-commitfirst-kn-grok46-low")
+pub = Path("scripts/publication_adjudications.json")
+h = hashlib.sha256(pub.read_bytes()).hexdigest()
+assert h == "9fdff2e65bb2e4e1ac6b83c355bbb27e08542005fe572700340e1567a4e9cc4f", h
+data = json.loads(pub.read_text())
+live = set()
+for item in data.get("adjudications") or []:
+    if not isinstance(item, dict):
+        continue
+    for _k, v in item.items():
+        if isinstance(v, str) and v.upper().startswith("GHSA-"):
+            live.add(v.upper())
+selected = [line.strip().upper() for line in (root / "selected-ids.txt").read_text().splitlines() if line.strip()]
+assert len(selected) == 30
+overlap = sorted(s for s in selected if s in live)
+assert overlap == [], overlap
+'
+
+DM=/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/koxudaxi__datamodel-code-generator
+LOC=/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/locutusjs__locutus
+NX=/home/hanqing/.cache/ghsa200-worker-clones/commit-gn/clones/nrwl__nx
+AI_REF=f6d4cbd3440a84e801566fa758ab2bf483322082
+FIX_REF=2ff4a72b4550a2b2069754c5b075b1655067e5fb
+
+# Ancestry check used for GHSA-8359-H9FX-J6V9 (expect AI commit is an ancestor of the fix)
+ancestor_rc=0
+git -C "$DM" merge-base --is-ancestor "$AI_REF" "$FIX_REF" || ancestor_rc=$?
+[[ "$ancestor_rc" -eq 0 ]]
+
+# Marker on the AI HTTP-ref guard
+ai_body="$(git -C "$DM" log -1 --format=%B "$AI_REF")"
+[[ "$ai_body" == *"Co-Authored-By: Claude Opus 4.6"* ]]
+[[ "$ai_body" == *"file:// URLs are still allowed"* ]]
+
+# Fix amends local ref containment on the same parser file
+git -C "$DM" grep -q "_resolve_local_ref_path" "$FIX_REF" -- src/datamodel_code_generator/parser/jsonschema.py
+
+# Locutus: Claude-marked parse_str harden is a different GHSA than unserialize
+loc_body="$(git -C "$LOC" log -1 --format=%B 042af9ca7fde2ff599120783e720a17f335bb01c)"
+[[ "$loc_body" == *"Fixes GHSA-rxrv-835q-v5mh"* ]]
+[[ "$loc_body" == *"Co-authored-by: Claude Opus 4.5"* ]]
+loc_fix_subj="$(git -C "$LOC" log -1 --format=%s 345a6211e1e6f939f96a7090bfeff642c9fcf9e4)"
+[[ "$loc_fix_subj" == "fix: harden php prototype pollution sinks (#597)" ]]
+
+# nx CORS header origin is unmarked (git -S may return empty; capture rc)
+nx_rc=0
+nx_log="$(git -C "$NX" log -S "Access-Control-Allow-Origin" --format="%H %s" -- packages/nx/src/command-line/graph/graph.ts)" || nx_rc=$?
+[[ "$nx_rc" -eq 0 ]]
+[[ "$nx_log" == *"b97c869279b692d4ea04b5626b525db70be08f94"* ]]
+[[ "$nx_log" == *"e59122c5569cf201561b9995ce4e34a304f4fb03"* ]]
+[[ "$nx_log" != *"fc99ded0828cb087af9f60507ee1a71353f0dcc6"* ]]
+
+# Frozen selection population + worker_verdict
+python3 -c '
+import json
+from collections import Counter
+from pathlib import Path
+root = Path("autoresearch/herdr-260813-ghsa200-commitfirst-kn-grok46-low")
+rows = [json.loads(line) for line in (root / "cases.jsonl").read_text().splitlines() if line.strip()]
+assert all("worker_verdict" in row for row in rows)
+assert all("verdict" not in row for row in rows)
+counts = Counter(row["worker_verdict"] for row in rows)
+assert len(rows) == 30
+assert counts["REJECT"] == 30
+assert counts["PASS"] == 0
+unrev = sum(1 for line in (root / "unresolved-ids.txt").read_text().splitlines() if line.strip())
+assert unrev == 1421
+assert unrev + 30 == 1451
+res = json.loads((root / "result.json").read_text())
+assert "publication_adjudications.json" not in res["input_hashes"]
+assert res["frozen_selection_inputs"]["publication_adjudications"] == "bfec060f7705014d11e58dc386294264eac47027cd64d3b934a17422bb1be7a6"
+assert res["current_overlap_check"]["publication_adjudications"] == "9fdff2e65bb2e4e1ac6b83c355bbb27e08542005fe572700340e1567a4e9cc4f"
+assert res["counts"]["REJECT"] == 30
+assert res["counts"]["PASS"] == 0
+assert res["conservation"]["unreviewed_plus_reviewed_equals_kn_unreviewed_before"] is True
+'

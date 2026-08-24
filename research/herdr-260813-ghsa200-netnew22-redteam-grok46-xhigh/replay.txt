@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Fail-fast compact replay for the 22 ACCEPT net-new dispositions.
+# bash autoresearch/herdr-260813-ghsa200-netnew22-redteam-grok46-xhigh/replay.txt
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$ROOT"
+die() { printf 'FAIL %s\n' "$*" >&2; exit 1; }
+expect_hash() {
+  local got; got="$(sha256sum "$1" | awk '{print $1}')"
+  [ "$got" = "$2" ] || die "hash $1 want=$2 got=$got"
+}
+expect_rc() {
+  local want="$1"; shift; local got=0
+  "$@" || got=$?
+  [ "$got" -eq "$want" ] || die "rc want=$want got=$got cmd=$*"
+}
+gitx() {
+  local repo="$1"; shift
+  GIT_NO_LAZY_FETCH=1 git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false -C "$repo" "$@"
+}
+
+OWN="autoresearch/herdr-260813-ghsa200-netnew22-redteam-grok46-xhigh"
+CACHE="/home/hanqing/.cache/ghsa200-worker-clones"
+
+expect_hash autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+expect_hash autoresearch/orchestrator-260813-ghsa200-leader/baseline.json d92b1f93adcbc519dc335ca7ab07f90d9e64103a0cd6e0cb7b8fdf334f7c3132
+expect_hash autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl 1f0d15a82765c557b67efceaaf41a887c2d078a49f3da84d5f42458043e3e5e6
+expect_hash autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl 0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2
+expect_hash autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl e20d4ba5b7fdf43d338af6f7ecb8e1abfe43cc02396332091eee3689688ed257
+expect_hash autoresearch/herdr-260813-ghsa200-final-candidate-review-codex/result.json 4be2620a548370c845e22c0d7cbe3ed10ab156ef39b1a0432ff4220ff406e528
+expect_hash "$OWN/cases.jsonl" d4d3c96ba0a60214971ab88f3de7adce1edfc27f39a388906600aad91b5c1889
+
+python3 - <<'PY'
+import json, sys
+from pathlib import Path
+from collections import Counter
+own = Path("autoresearch/herdr-260813-ghsa200-netnew22-redteam-grok46-xhigh")
+ids = [
+    "GHSA-3RP5-JJMW-4WV2","GHSA-3WXW-XV34-2FRG","GHSA-539M-9XH6-Q6RR",
+    "GHSA-5C6W-WWFQ-7QQM","GHSA-7C3W-FXGH-FRC7","GHSA-8JPQ-5H99-FF5R",
+    "GHSA-FMFG-9G7C-3VQ7","GHSA-G39V-CVJH-8FPF","GHSA-J4XF-96QF-RX69",
+    "GHSA-JV46-XFWM-36J7","GHSA-MF5G-6R6F-GHHM","GHSA-PF93-J98V-25PV",
+    "GHSA-PWF7-47C3-MFHX","GHSA-R48C-V28R-PF6V","GHSA-R9MR-M37C-5FR3",
+    "GHSA-RG8M-3943-VM6Q","GHSA-RQP8-Q22P-5J9Q","GHSA-W28W-GP39-M4P6",
+    "GHSA-WPXJ-VHFP-HHVM","GHSA-WV46-V6XC-2QHF","GHSA-WXHM-2MQ7-7697",
+    "GHSA-XW8C-RRVX-F7XQ",
+]
+gates = ["identity_gate","ai_hunk_gate","topology_gate","but_for_gate","fix_reversal_gate","release_gate","uniqueness_gate"]
+src = json.loads(Path("autoresearch/herdr-260813-ghsa200-final-candidate-review-codex/result.json").read_text())
+if src["accepted_net_new_candidates"] != ids:
+    raise SystemExit("FAIL source id list")
+rows = [json.loads(l) for l in (own/"cases.jsonl").read_text().splitlines() if l.strip()]
+if len(rows) != 22 or [r["case_id"] for r in rows] != ids:
+    raise SystemExit("FAIL cases.jsonl rows/order")
+if dict(Counter(r["verdict"] for r in rows)) != {"KEEP": 21, "NARROW": 1}:
+    raise SystemExit("FAIL verdict counts")
+req = ["case_id","aliases","repository","mechanism_key","scope_statement","contribution_class",
+       "candidate_set","carrier_set","minimum_fix_set","vulnerable_release","fixed_release",
+       "first_party_sources","ai_marker_evidence","counterevidence","replay_commands","baseline_overlap"]
+for r in rows:
+    miss = [k for k in req+gates if k not in r]
+    if miss:
+        raise SystemExit(f"FAIL {r['case_id']} missing {miss}")
+    if r["verdict"] == "KEEP":
+        bad = [g for g in gates if r[g] != "PASS"]
+        if bad:
+            raise SystemExit(f"FAIL KEEP {r['case_id']} {bad}")
+        if r.get("countable") is not True:
+            raise SystemExit(f"FAIL KEEP {r['case_id']} countable")
+n = next(r for r in rows if r["case_id"] == "GHSA-7C3W-FXGH-FRC7")
+if n["verdict"] != "NARROW" or n["but_for_gate"] != "NARROW" or n.get("failed_gate") != "but_for_gate" or n.get("countable") is not False:
+    raise SystemExit("FAIL 7C3W downgrade not persisted")
+for g in gates:
+    if g != "but_for_gate" and n[g] != "PASS":
+        raise SystemExit(f"FAIL 7C3W {g}")
+res = json.loads((own/"result.json").read_text())
+if res["verdicts"] != {"KEEP": 21, "NARROW": 1, "REJECT": 0, "UNKNOWN": 0, "BLOCKED": 0}:
+    raise SystemExit("FAIL result verdicts")
+if res["per_case"]["GHSA-7C3W-FXGH-FRC7"] != "NARROW":
+    raise SystemExit("FAIL result 7C3W")
+if res["causal_admission"] is not False:
+    raise SystemExit("FAIL causal_admission")
+gv = res["gate_vectors"]
+if list(gv) != ids:
+    raise SystemExit("FAIL gate_vectors order")
+for r in rows:
+    v = gv[r["case_id"]]
+    if v["verdict"] != r["verdict"]:
+        raise SystemExit(f"FAIL vector verdict {r['case_id']}")
+    for g in gates:
+        if v[g] != r[g]:
+            raise SystemExit(f"FAIL vector {r['case_id']} {g}")
+edge = ["GHSA-8JPQ-5H99-FF5R","GHSA-FMFG-9G7C-3VQ7","GHSA-J4XF-96QF-RX69","GHSA-MF5G-6R6F-GHHM","GHSA-PWF7-47C3-MFHX","GHSA-R48C-V28R-PF6V","GHSA-RG8M-3943-VM6Q","GHSA-RQP8-Q22P-5J9Q","GHSA-W28W-GP39-M4P6","GHSA-WV46-V6XC-2QHF"]
+if res["edge_rewrites"]["ids"] != edge or res["edge_rewrites"]["unresolved"] != 0:
+    raise SystemExit("FAIL edge_rewrites")
+print("structural_ok 22 rows KEEP=21 NARROW=1 7C3W downgrade persisted gate_vectors match")
+PY
+
+HA="$CACHE/commit-gn/clones/homeassistant-ai__ha-mcp"
+CI="$CACHE/third-review-upgrade-a/clones/ciguard"
+OC="$CACHE/contributor-redteam/clones/openclaw"
+RY="$CACHE/red-upgrade-b-ord211-release/clones/szTheory__relyra"
+CK="$CACHE/increm-patchdelta-even/clones/clearancekit"
+GP="$CACHE/increm-patchdelta-even/clones/GitPython"
+PR="$CACHE/increm-patchdelta-odd/clones/praisonai"
+RG="$CACHE/increm-patchdelta-odd/clones/mcp-registry"
+PK="$CACHE/contributor-redteam/clones/prek-action"
+GL="$CACHE/contributor-redteam/clones/gitlab-mcp"
+PYR="$CACHE/contributor-redteam/clones/prompty"
+
+# 7C3W downgrade proof: parent /trace exists; candidate adds /artifacts
+expect_rc 0 gitx "$GL" grep -F -n -- 'jobs/${jobId}/trace' 'c156ac7675207e3dbc0c6a4b3ed6931dc96513c2^' -- index.ts >/dev/null
+expect_rc 0 gitx "$GL" grep -F -n -- 'jobs/${jobId}/artifacts' c156ac7675207e3dbc0c6a4b3ed6931dc96513c2 -- index.ts >/dev/null
+expect_rc 0 gitx "$GL" merge-base --is-ancestor c156ac7675207e3dbc0c6a4b3ed6931dc96513c2 v2.0.32
+expect_rc 1 gitx "$GL" merge-base --is-ancestor e2a81a047ab8750fa5bfa1763b5d85e5616f3994 v2.0.32
+expect_rc 0 gitx "$GL" merge-base --is-ancestor e2a81a047ab8750fa5bfa1763b5d85e5616f3994 v2.1.32
+
+# Compact KEEP ancestry from cases.jsonl (cand in vuln tag, fix not in vuln, fix in fixed tag)
+python3 - <<'PY' || exit 1
+import json, os, subprocess, sys
+from pathlib import Path
+CACHE="/home/hanqing/.cache/ghsa200-worker-clones"
+CLONES={
+    "gitpython-developers/GitPython": f"{CACHE}/increm-patchdelta-even/clones/GitPython",
+    "MervinPraison/PraisonAI": f"{CACHE}/increm-patchdelta-odd/clones/praisonai",
+    "zereight/gitlab-mcp": f"{CACHE}/contributor-redteam/clones/gitlab-mcp",
+    "openclaw/openclaw": f"{CACHE}/contributor-redteam/clones/openclaw",
+    "homeassistant-ai/ha-mcp": f"{CACHE}/commit-gn/clones/homeassistant-ai__ha-mcp",
+    "szTheory/relyra": f"{CACHE}/red-upgrade-b-ord211-release/clones/szTheory__relyra",
+    "modelcontextprotocol/registry": f"{CACHE}/increm-patchdelta-odd/clones/mcp-registry",
+    "j178/prek-action": f"{CACHE}/contributor-redteam/clones/prek-action",
+    "microsoft/prompty": f"{CACHE}/contributor-redteam/clones/prompty",
+    "craigjbass/clearancekit": f"{CACHE}/increm-patchdelta-even/clones/clearancekit",
+    "Jo-Jo98/ciguard": f"{CACHE}/third-review-upgrade-a/clones/ciguard",
+}
+def gitx(repo, *args):
+    env=os.environ.copy(); env["GIT_NO_LAZY_FETCH"]="1"
+    return subprocess.run(["git","--no-optional-locks","-c","gc.auto=0","-c","maintenance.auto=false","-C",repo,*args], env=env, check=False)
+def anc(repo, commit, tag):
+    return gitx(repo,"merge-base","--is-ancestor",commit,tag).returncode
+rows=[json.loads(l) for l in Path("autoresearch/herdr-260813-ghsa200-netnew22-redteam-grok46-xhigh/cases.jsonl").read_text().splitlines()]
+for r in rows:
+    repo=CLONES[r["repository"]]
+    cand=r["candidate_set"][0]
+    fix=r["minimum_fix_set"][0]
+    vtag=r["vulnerable_release"]["tag"]
+    ftag=r["fixed_release"]["tag"]
+    if anc(repo,cand,vtag)!=0:
+        raise SystemExit(f"FAIL {r['case_id']} cand not in {vtag}")
+    if anc(repo,fix,vtag)==0:
+        raise SystemExit(f"FAIL {r['case_id']} fix already in {vtag}")
+    if anc(repo,fix,ftag)!=0:
+        raise SystemExit(f"FAIL {r['case_id']} fix not in {ftag}")
+    print(f"ancestry_ok {r['case_id']} {r['verdict']}")
+print("ancestry_ok 22/22")
+PY
+
+echo "PASS compact fail-fast replay: 22 dispositions persisted, 7C3W NARROW, gate vectors match"

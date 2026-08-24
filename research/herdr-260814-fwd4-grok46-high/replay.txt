@@ -1,0 +1,13 @@
+# replay for fwd-slice-4 timeboxed file-list exclusions
+set -euo pipefail
+SLICE=/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260814-ghsa200-canvas/sweep/fwd-slice-4.jsonl
+ADV=/home/hanqing/.cache/ghsa200-worker-clones/commit-oz/advisory-database
+FETCH=/home/hanqing/.cache/ghsa200-sweep-fetch
+sha256sum "$SLICE" "$ADV/../advisory-database" 2>/dev/null || sha256sum "$SLICE"
+git -C "$ADV" rev-parse HEAD
+for spec in ImageMagick__ImageMagick:bd4a469adb6ddb2bdcb856a3d307420268675b09 traefik__traefik:8ac8473554d758459ae4e99dab4be7dcbb167a07 siyuan-note__siyuan:a539de39ccf7597b45878096cddac7135a843eb9 etcd-io__etcd:d741e38c47c6f5551c3d24eba7f9ce32d95723b2 johnbillion__query-monitor:2a2939e53abf718c790a7e38b0db8dfb7f6052a0 hyperterse__hyperterse:8e7d541c5c324707b0ca958feefc2de674cd110d; do
+  repo=${spec%%:*}; sha=${spec##*:}
+  echo "=== $repo $sha ==="
+  timeout 30s git -C "$FETCH/$repo" log -1 --format=fuller "$sha" || true
+  timeout 30s git -C "$FETCH/$repo" show --format=fuller --stat --name-only "$sha" || true
+done

@@ -1,0 +1,7 @@
+const [parentMsg, replies] = await Promise.all([fetchChannelMessage(graphToken, groupId, conversationId, activity.replyToId), fetchThreadReplies(graphToken, groupId, conversationId, activity.replyToId)]);
+			const formatted = formatThreadContext(parentMsg ? [parentMsg, ...replies] : replies, activity.id);
+			if (formatted) threadContext = formatted;
+		} catch (err) {
+			log.debug?.("failed to fetch thread history", { error: String(err) });
+		}
+		const envelopeFrom = isDirectMessage ? senderName : conversationType;

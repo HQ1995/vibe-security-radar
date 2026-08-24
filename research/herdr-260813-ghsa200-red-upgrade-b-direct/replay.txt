@@ -1,0 +1,108 @@
+# Replay: herdr-260813-ghsa200-red-upgrade-b-direct
+# Cache only. No /tmp clones. English commands.
+# CACHE=/home/hanqing/.cache/ghsa200-worker-clones/red-upgrade-b-direct
+
+set -euo pipefail
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/red-upgrade-b-direct
+H=$CACHE/clones/nesquena__hermes-webui
+O=$CACHE/clones/openclaw__openclaw
+R=$CACHE/clones/szTheory__relyra
+ADV=$CACHE/advisories
+export GIT_OPTIONAL_LOCKS=0
+
+mkdir -p "$ADV" "$CACHE/clones"
+
+# --- first-party GHSA (global + repo) ---
+curl -fsSL https://api.github.com/advisories/GHSA-p52p-4vmg-4vq3 -o "$ADV/ghsa-p52p-4vmg-4vq3.global.json"
+curl -fsSL -o "$ADV/GHSA-p52p-4vmg-4vq3.repo.json" \
+  https://api.github.com/repos/nesquena/hermes-webui/security-advisories/GHSA-p52p-4vmg-4vq3 \
+  || printf '%s\n' '{"error":"404"}' > "$ADV/GHSA-p52p-4vmg-4vq3.repo.json"
+curl -fsSL https://api.github.com/advisories/GHSA-mf5g-6r6f-ghhm -o "$ADV/ghsa-mf5g-6r6f-ghhm.global.json"
+curl -fsSL https://api.github.com/repos/openclaw/openclaw/security-advisories/GHSA-mf5g-6r6f-ghhm \
+  -o "$ADV/GHSA-mf5g-6r6f-ghhm.repo.json"
+curl -fsSL https://api.github.com/advisories/GHSA-jv46-xfwm-36j7 -o "$ADV/ghsa-jv46-xfwm-36j7.global.json"
+curl -fsSL https://api.github.com/repos/szTheory/relyra/security-advisories/GHSA-jv46-xfwm-36j7 \
+  -o "$ADV/GHSA-jv46-xfwm-36j7.repo.json"
+curl -fsSL https://api.github.com/advisories/GHSA-gw85-xp4q-5gp9 -o "$ADV/ghsa-gw85-xp4q-5gp9.global.json"
+
+# --- clones (blob:none; cache path only) ---
+git clone --filter=blob:none https://github.com/nesquena/hermes-webui.git "$H"
+git clone --filter=blob:none https://github.com/openclaw/openclaw.git "$O"
+git clone --filter=blob:none https://github.com/szTheory/relyra.git "$R"
+git -C "$H" -c gc.auto=0 config --local gc.auto 0
+git -C "$O" -c gc.auto=0 config --local gc.auto 0
+git -C "$R" -c gc.auto=0 config --local gc.auto 0
+
+git -C "$H" -c gc.auto=0 fetch --filter=blob:none origin tag v0.51.357 tag v0.51.358
+git -C "$O" -c gc.auto=0 fetch --filter=blob:none origin tag v2026.2.22 tag v2026.3.24 tag v2026.3.28
+git -C "$R" -c gc.auto=0 fetch --filter=blob:none origin tag v1.0 tag v1.1.0 tag v1.2.0
+
+# --- 114 Hermes ---
+git -C "$H" -c gc.auto=0 log -1 --format=fuller b8b62722ec2f6b3cd394737ab409c35650f29ca6
+git -C "$H" -c gc.auto=0 rev-list --parents -n1 b8b62722ec2f6b3cd394737ab409c35650f29ca6
+git -C "$H" -c gc.auto=0 grep -n '_set_password' b8b62722^ -- api || true
+git -C "$H" -c gc.auto=0 grep -n '_set_password' b8b62722 -- api/config.py api/routes.py
+git -C "$H" -c gc.auto=0 merge-base --is-ancestor b8b62722 v0.51.357
+git -C "$H" -c gc.auto=0 merge-base --is-ancestor f2ef2851d389cf7a41308dcf0180d7cfbe446379 v0.51.357; echo $?
+git -C "$H" -c gc.auto=0 merge-base --is-ancestor f2ef2851d389cf7a41308dcf0180d7cfbe446379 v0.51.358
+git -C "$H" -c gc.auto=0 log -1 --format='%H %P %s' 1126e541325d401538f6a272a9c024c37d47ae08
+git -C "$H" -c gc.auto=0 diff v0.51.357 v0.51.358 -- api/routes.py
+git -C "$H" -c gc.auto=0 blame --since='2026-04-03' -L 5959,5959 v0.51.357 -- api/config.py
+git -C "$H" -c gc.auto=0 blame --since='2026-04-03' -L 8303,8306 v0.51.357 -- api/routes.py
+git -C "$H" -c gc.auto=0 log -1 --format='%B' 31a721417e8cc0dd30e396655c91c1ba42b6dc90
+git -C "$H" -c gc.auto=0 grep -n '_set_password' 31a721417^ -- api/config.py
+git -C "$H" -c gc.auto=0 log -1 --format='%B' 8b857d9efc121586f2ef79ca4b8f92d8ad373b5b
+
+# --- 122 OpenClaw (KEEP proposal) ---
+git -C "$O" -c gc.auto=0 log -1 --format=fuller cc048a295e7e70684ca24654257e0ecf38e49153
+git -C "$O" -c gc.auto=0 log -1 --format='%H%n%P%n%B' 03586e3d0057b5975090d50dadcc5bc95b51f977
+git -C "$O" -c gc.auto=0 rev-parse \
+  cc048a29:extensions/synology-chat/src/webhook-handler.ts \
+  03586e3d:extensions/synology-chat/src/webhook-handler.ts \
+  v2026.2.22:extensions/synology-chat/src/webhook-handler.ts \
+  v2026.3.24:extensions/synology-chat/src/webhook-handler.ts \
+  v2026.3.28:extensions/synology-chat/src/webhook-handler.ts
+git -C "$O" -c gc.auto=0 cat-file -e cc048a29^:extensions/synology-chat/src/webhook-handler.ts || echo parent_no_file
+for a in cc048a295e7e70684ca24654257e0ecf38e49153 03586e3d0057b5975090d50dadcc5bc95b51f977 0b4d07337467f4d40a0cc1ced83d45ceaec0863c; do
+  for b in v2026.2.22 v2026.3.24 v2026.3.28; do
+    git -C "$O" -c gc.auto=0 merge-base --is-ancestor $a $b && echo $a in $b YES || echo $a in $b NO
+  done
+done
+git -C "$O" -c gc.auto=0 blame -L 134,137 v2026.2.22 -- extensions/synology-chat/src/webhook-handler.ts
+git -C "$O" -c gc.auto=0 blame -L 287,289 v2026.3.24 -- extensions/synology-chat/src/webhook-handler.ts
+git -C "$O" -c gc.auto=0 log -1 --format='%s%n%B' bb16ab9e084205b0c3290097616b41526777ace4
+git -C "$O" -c gc.auto=0 grep -n 'InvalidTokenRateLimiter' v2026.3.24 -- extensions/synology-chat/src/webhook-handler.ts || echo none_at_324
+git -C "$O" -c gc.auto=0 show --stat --format='%s' 0b4d07337467f4d40a0cc1ced83d45ceaec0863c
+git -C "$O" -c gc.auto=0 rev-parse -q --verify v2026.3.25^{commit} || echo tag_2026.3.25_missing
+curl -fsSL https://registry.npmjs.org/openclaw | python3 -c 'import json,sys; v=json.load(sys.stdin)["versions"];
+print("2026.3.24", "2026.3.24" in v); print("2026.3.25", "2026.3.25" in v); print("2026.3.28", "2026.3.28" in v)'
+
+# uniqueness vs GHSA-GW85
+curl -fsSL https://api.github.com/advisories/GHSA-gw85-xp4q-5gp9 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["summary"]); print(d["vulnerabilities"][0]["vulnerable_version_range"], d["vulnerabilities"][0]["first_patched_version"])'
+git -C "$O" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5
+git -C "$O" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 0b4d07337467f4d40a0cc1ced83d45ceaec0863c
+
+# --- 211 Relyra ---
+git -C "$R" -c gc.auto=0 log -1 --format=fuller 2aeba972d43391175a94c7793b63c6a5709abc48
+git -C "$R" -c gc.auto=0 cat-file -e 2aeba972^:lib/relyra/security/signature.ex || echo parent_no_file
+git -C "$R" -c gc.auto=0 blame -L 167,175 v1.1.0 -- lib/relyra/security/signature.ex
+git -C "$R" -c gc.auto=0 rev-parse \
+  2aeba972:lib/relyra/security/signature.ex \
+  v1.0:lib/relyra/security/signature.ex \
+  v1.1.0:lib/relyra/security/signature.ex \
+  v1.2.0:lib/relyra/security/signature.ex \
+  2e456897:lib/relyra/security/signature.ex
+git -C "$R" -c gc.auto=0 show v1.0:mix.exs | grep -E 'version'
+git -C "$R" -c gc.auto=0 show v1.1.0:mix.exs | grep -E '@version|version:'
+git -C "$R" -c gc.auto=0 show v1.2.0:mix.exs | grep -E '@version|version:'
+for a in 2aeba972 2e456897 8910200edc77a502d4cbce7ec88188b4bd636f99; do
+  for b in v1.0 v1.1.0 v1.2.0; do
+    git -C "$R" -c gc.auto=0 merge-base --is-ancestor $a $b && echo $a in $b YES || echo $a in $b NO
+  done
+done
+git -C "$R" -c gc.auto=0 log -1 --format='%s' 2e456897af3158c175bb490ce7fc51d6241c8922
+git -C "$R" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 2e456897 8910200edc77a502d4cbce7ec88188b4bd636f99
+curl -fsSL -o /dev/null -w 'hex_1.0.0 %{http_code}\n' https://hex.pm/api/packages/relyra/releases/1.0.0 || true
+curl -fsSL -o /dev/null -w 'hex_1.1.0 %{http_code}\n' https://hex.pm/api/packages/relyra/releases/1.1.0
+curl -fsSL -o /dev/null -w 'hex_1.2.0 %{http_code}\n' https://hex.pm/api/packages/relyra/releases/1.2.0
+curl -fsSL https://hex.pm/api/packages/relyra | python3 -c 'import json,sys; p=json.load(sys.stdin); print([(r["version"], r["inserted_at"]) for r in p["releases"][:15]])'

@@ -1,0 +1,750 @@
+diff --git a/README.md b/README.md
+index 76b69fc..529ab86 100644
+--- a/README.md
++++ b/README.md
+@@ -7,7 +7,7 @@
+ [![Release](https://img.shields.io/badge/release-v4.5.3-blue.svg)](https://github.com/Jovancoding/Network-AI/releases)
+ [![npm](https://img.shields.io/npm/dw/network-ai.svg?label=npm%20downloads)](https://www.npmjs.com/package/network-ai)
+ [![Tests](https://img.shields.io/badge/tests-1399%20passing-brightgreen.svg)](#testing)
+-[![Adapters](https://img.shields.io/badge/frameworks-14%20supported-blueviolet.svg)](#adapter-system)
++[![Adapters](https://img.shields.io/badge/frameworks-15%20supported-blueviolet.svg)](#adapter-system)
+ [![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
+ [![Socket](https://socket.dev/api/badge/npm/package/network-ai)](https://socket.dev/npm/package/network-ai/overview)
+ [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)
+@@ -20,7 +20,7 @@ Network-AI is a TypeScript/Node.js multi-agent orchestrator that adds coordinati
+ 
+ - **Shared blackboard with locking** — atomic `propose → validate → commit` prevents race conditions and split-brain failures across parallel agents
+ - **Guardrails and budgets** — FSM governance, per-agent token ceilings, HMAC audit trails, and permission gating
+-- **14 adapters** — LangChain (+ streaming), AutoGen, CrewAI, OpenAI Assistants, LlamaIndex, Semantic Kernel, Haystack, DSPy, Agno, MCP, Custom (+ streaming), OpenClaw, A2A, and Codex — no glue code, no lock-in
++- **15 adapters** — LangChain (+ streaming), AutoGen, CrewAI, OpenAI Assistants, LlamaIndex, Semantic Kernel, Haystack, DSPy, Agno, MCP, Custom (+ streaming), OpenClaw, A2A, Codex, and MiniMax — no glue code, no lock-in
+ - **Persistent project memory (Layer 3)** — `context_manager.py` injects decisions, goals, stack, milestones, and banned patterns into every system prompt so agents always have full project context
+ 
+ > **The silent failure mode in multi-agent systems:** parallel agents writing to the same key
+@@ -55,7 +55,7 @@ Network-AI is a TypeScript/Node.js multi-agent orchestrator that adds coordinati
+ | Race conditions in parallel agents | Atomic blackboard: `propose → validate → commit` with file-system mutex |
+ | Agent overspend / runaway costs | `FederatedBudget` — hard per-agent token ceilings with live spend tracking |
+ | No visibility into what agents did | HMAC-signed audit log on every write, permission grant, and FSM transition |
+-| Locked into one AI framework | 14 adapters — mix LangChain + AutoGen + CrewAI + Codex + custom in one swarm |
++| Locked into one AI framework | 15 adapters — mix LangChain + AutoGen + CrewAI + Codex + MiniMax + custom in one swarm |
+ | Agents escalating beyond their scope | `AuthGuardian` — scoped permission tokens required before sensitive operations |
+ | Agents lack project context between runs | `ProjectContextManager` (Layer 3) — inject decisions, goals, stack, and milestones into every system prompt |
+ 
+@@ -267,7 +267,7 @@ npm run demo -- --07
+ 
+ ## Adapter System
+ 
+-14 adapters, zero adapter dependencies. You bring your own SDK objects.
++15 adapters, zero adapter dependencies. You bring your own SDK objects.
+ 
+ | Adapter | Framework / Protocol | Register method |
+ |---|---|---|
+@@ -285,6 +285,7 @@ npm run demo -- --07
+ | `OpenClawAdapter` | OpenClaw | `registerSkill(name, skillRef)` |
+ | `A2AAdapter` | Google A2A Protocol | `registerRemoteAgent(name, url)` |
+ | `CodexAdapter` | OpenAI Codex / gpt-4o / Codex CLI | `registerCodexAgent(name, config)` |
++| `MiniMaxAdapter` | MiniMax LLM API (M2.5 / M2.5-highspeed) | `registerAgent(name, config)` |
+ 
+ **Streaming variants** (drop-in replacements with `.stream()` support):
+ 
+@@ -303,7 +304,7 @@ Extend `BaseAdapter` (or `StreamingBaseAdapter` for streaming) to add your own i
+ 
+ | Capability | Network-AI | LangGraph | CrewAI | AutoGen |
+ |---|---|---|---|---|
+-| Cross-framework agents in one swarm | ✅ 14 built-in adapters | ⚠️ Nodes can call any code; no adapter abstraction | ⚠️ Extensible via tools; CrewAI-native agents only | ⚠️ Extensible via plugins; AutoGen-native agents only |
++| Cross-framework agents in one swarm | ✅ 15 built-in adapters | ⚠️ Nodes can call any code; no adapter abstraction | ⚠️ Extensible via tools; CrewAI-native agents only | ⚠️ Extensible via plugins; AutoGen-native agents only |
+ | Atomic shared state (conflict-safe) | ✅ `propose → validate → commit` mutex | ⚠️ State passed between nodes; last-write-wins | ⚠️ Shared memory available; no conflict resolution | ⚠️ Shared context available; no conflict resolution |
+ | Hard token ceiling per agent | ✅ `FederatedBudget` (first-class API) | ⚠️ Via callbacks / custom middleware | ⚠️ Via callbacks / custom middleware | ⚠️ Built-in token tracking in v0.4+; no swarm-level ceiling |
+ | Permission gating before sensitive ops | ✅ `AuthGuardian` (built-in) | ⚠️ Possible via custom node logic | ⚠️ Possible via custom tools | ⚠️ Possible via custom middleware |
+@@ -319,7 +320,7 @@ Extend `BaseAdapter` (or `StreamingBaseAdapter` for streaming) to add your own i
+ npm run test:all          # All suites in sequence
+ npm test                  # Core orchestrator
+ npm run test:security     # Security module
+-npm run test:adapters     # All 14 adapters
++npm run test:adapters     # All 15 adapters
+ npm run test:streaming    # Streaming adapters
+ npm run test:a2a          # A2A protocol adapter
+ npm run test:codex        # Codex adapter
+@@ -335,7 +336,7 @@ npm run test:cli          # CLI layer
+ | `test-phase5f.ts` | 127 | SSE transport, `McpCombinedBridge`, extended MCP tools |
+ | `test-phase5g.ts` | 121 | CRDT backend, vector clocks, bidirectional sync |
+ | `test-phase6.ts` | 121 | MCP server, control-plane tools, audit tools |
+-| `test-adapters.ts` | 140 | All 14 adapters, registry routing, integration, edge cases |
++| `test-adapters.ts` | 140 | All 15 adapters, registry routing, integration, edge cases |
+ | `test-phase5d.ts` | 117 | Pluggable backend (Redis, CRDT, Memory) |
+ | `test-standalone.ts` | 88 | Blackboard, auth, integration, persistence, parallelisation, quality gate |
+ | `test-phase5e.ts` | 87 | Federated budget tracking |
+diff --git a/adapters/index.ts b/adapters/index.ts
+index 1b6ed95..7bb6663 100644
+--- a/adapters/index.ts
++++ b/adapters/index.ts
+@@ -98,6 +98,10 @@ export type {
+   CodexCLIExecutor,
+ } from './codex-adapter';
+ 
++// MiniMax adapter (MiniMax LLM API — MiniMax-M2.5 / MiniMax-M2.5-highspeed)
++export { MiniMaxAdapter } from './minimax-adapter';
++export type { MiniMaxAgentConfig, MiniMaxChatClient } from './minimax-adapter';
++
+ // Streaming types
+ export type { StreamingChunk, IStreamingAdapter, StreamCollector } from '../types/streaming-adapter';
+ 
+diff --git a/adapters/minimax-adapter.ts b/adapters/minimax-adapter.ts
+new file mode 100644
+index 0000000..c5e710e
+--- /dev/null
++++ b/adapters/minimax-adapter.ts
+@@ -0,0 +1,329 @@
++/**
++ * MiniMax Adapter
++ *
++ * Integrates MiniMax LLM API (OpenAI-compatible chat completions) with
++ * the SwarmOrchestrator. Supports MiniMax-M2.5 and MiniMax-M2.5-highspeed
++ * models with 204K context window.
++ *
++ * Usage — built-in fetch:
++ *   const adapter = new MiniMaxAdapter();
++ *   adapter.registerAgent('analyst', {
++ *     model: 'MiniMax-M2.5',
++ *     apiKey: process.env.MINIMAX_API_KEY,
++ *     systemPrompt: 'You are an expert analyst.',
++ *   });
++ *
++ * Usage — bring-your-own client (any OpenAI-compatible SDK):
++ *   adapter.registerAgent('fast', {
++ *     model: 'MiniMax-M2.5-highspeed',
++ *     client: openaiCompatibleInstance.chat.completions,
++ *   });
++ *
++ * @module MiniMaxAdapter
++ * @version 1.0.0
++ */
++
++import { BaseAdapter } from './base-adapter';
++import type {
++  AdapterConfig,
++  AdapterCapabilities,
++  AgentPayload,
++  AgentContext,
++  AgentResult,
++} from '../types/agent-adapter';
++
++// ---------------------------------------------------------------------------
++// Public types
++// ---------------------------------------------------------------------------
++
++/**
++ * Minimal interface for an OpenAI-compatible chat completions client.
++ * Users supply their own SDK instance; no hard dependency.
++ */
++export interface MiniMaxChatClient {
++  create(params: {
++    model: string;
++    messages: Array<{ role: string; content: string }>;
++    max_tokens?: number;
++    temperature?: number;
++    stop?: string[];
++  }): Promise<{
++    choices: Array<{ message?: { content?: string | null }; text?: string }>;
++    usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
++  }>;
++}
++
++/** Configuration for a registered MiniMax agent */
++export interface MiniMaxAgentConfig {
++  /** Model name — e.g. 'MiniMax-M2.5', 'MiniMax-M2.5-highspeed' */
++  model?: string;
++  /** MiniMax API key — falls back to MINIMAX_API_KEY env var */
++  apiKey?: string;
++  /** Base URL override (default: 'https://api.minimax.io/v1') */
++  baseUrl?: string;
++  /** System-level prompt prepended to every request */
++  systemPrompt?: string;
++  /** Maximum tokens in the completion */
++  maxTokens?: number;
++  /** Temperature — must be in (0.0, 1.0]. MiniMax rejects 0. Default: 0.7 */
++  temperature?: number;
++  /** Stop sequences */
++  stop?: string[];
++  /**
++   * Bring-your-own OpenAI-compatible chat completions instance.
++   * If supplied, apiKey / baseUrl are ignored and this client is used directly.
++   */
++  client?: MiniMaxChatClient;
++  /** Additional headers to send with fetch-based requests */
++  headers?: Record<string, string>;
++  /** Request timeout in milliseconds (default: 120000) */
++  timeout?: number;
++}
++
++/** Internal entry stored per registered agent */
++interface MiniMaxAgentEntry {
++  config: MiniMaxAgentConfig;
++}
++
++// ---------------------------------------------------------------------------
++// Helpers
++// ---------------------------------------------------------------------------
++
++/** Build the prompt string from an AgentPayload */
++function buildPrompt(payload: AgentPayload): string {
++  const parts: string[] = [];
++
++  const instruction = payload.handoff?.instruction;
++  if (instruction) parts.push(instruction);
++
++  if (payload.action) parts.push(`Task: ${payload.action}`);
++
++  if (payload.params && Object.keys(payload.params).length > 0) {
++    parts.push(`Parameters: ${JSON.stringify(payload.params, null, 2)}`);
++  }
++
++  if (payload.blackboardSnapshot && Object.keys(payload.blackboardSnapshot).length > 0) {
++    const relevant = Object.entries(payload.blackboardSnapshot)
++      .slice(0, 10)
++      .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
++      .join('\n');
++    parts.push(`Context from blackboard:\n${relevant}`);
++  }
++
++  return parts.join('\n\n') || 'Complete the task.';
++}
++
++/** Resolve API key — config first, then env */
++function resolveApiKey(config: MiniMaxAgentConfig): string {
++  return config.apiKey ?? process.env['MINIMAX_API_KEY'] ?? '';
++}
++
++/**
++ * Clamp temperature to MiniMax's valid range (0.0, 1.0].
++ * MiniMax rejects exactly 0, so we use a small epsilon.
++ */
++function clampTemperature(temp: number | undefined): number {
++  const t = temp ?? 0.7;
++  if (t <= 0) return 0.01;
++  if (t > 1) return 1.0;
++  return t;
++}
++
++// ---------------------------------------------------------------------------
++// MiniMaxAdapter
++// ---------------------------------------------------------------------------
++
++/**
++ * Adapter that connects MiniMax LLM models to the SwarmOrchestrator.
++ * Uses MiniMax's OpenAI-compatible chat completions API.
++ *
++ * Available models:
++ * - MiniMax-M2.5 — flagship model with 204K context
++ * - MiniMax-M2.5-highspeed — faster variant optimised for throughput
++ */
++export class MiniMaxAdapter extends BaseAdapter {
++  readonly name = 'minimax';
++  readonly version = '1.0.0';
++
++  private agents: Map<string, MiniMaxAgentEntry> = new Map();
++
++  get capabilities(): AdapterCapabilities {
++    return {
++      streaming: false,
++      parallel: true,
++      bidirectional: false,
++      discovery: true,
++      authentication: true,
++      statefulSessions: false,
++    };
++  }
++
++  // -------------------------------------------------------------------------
++  // Registration
++  // -------------------------------------------------------------------------
++
++  /**
++   * Register a MiniMax-powered agent.
++   *
++   * @param agentId   Unique identifier used in `delegateTask` calls.
++   * @param config    MiniMax agent configuration.
++   */
++  registerAgent(agentId: string, config: MiniMaxAgentConfig = {}): void {
++    if (!this.ready) {
++      this.ready = true;
++    }
++
++    this.agents.set(agentId, { config });
++    this.registeredAgents.set(agentId, {
++      id: agentId,
++      name: agentId,
++      description: `MiniMax agent (model: ${config.model ?? 'MiniMax-M2.5'})`,
++      capabilities: ['chat', 'analysis', 'code-generation', 'reasoning'],
++      adapter: this.name,
++      status: 'available',
++    });
++  }
++
++  // -------------------------------------------------------------------------
++  // Execution
++  // -------------------------------------------------------------------------
++
++  async executeAgent(
++    agentId: string,
++    payload: AgentPayload,
++    context: AgentContext
++  ): Promise<AgentResult> {
++    if (!this.ready) {
++      throw new Error('MiniMaxAdapter: adapter not initialized. Call initialize() first.');
++    }
++
++    const entry = this.agents.get(agentId);
++    if (!entry) {
++      return {
++        success: false,
++        error: {
++          code: 'AGENT_NOT_FOUND',
++          message: `MiniMaxAdapter: no agent registered with id "${agentId}"`,
++          recoverable: false,
++        },
++        metadata: { adapter: this.name },
++      };
++    }
++
++    const cfg = entry.config;
++
++    try {
++      const { output, usage } = await this._executeChat(cfg, payload);
++
++      return {
++        success: true,
++        data: { output, model: cfg.model ?? 'MiniMax-M2.5' },
++        metadata: {
++          adapter: this.name,
++          trace: {
++            taskId: context.taskId,
++            ...(usage ? { usage } : {}),
++          },
++        },
++      };
++    } catch (err) {
++      const message = err instanceof Error ? err.message : String(err);
++      return {
++        success: false,
++        error: {
++          code: 'EXECUTION_ERROR',
++          message,
++          recoverable: true,
++        },
++        metadata: { adapter: this.name },
++      };
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Private execution
++  // -------------------------------------------------------------------------
++
++  private async _executeChat(
++    cfg: MiniMaxAgentConfig,
++    payload: AgentPayload
++  ): Promise<{ output: string; usage?: Record<string, number> }> {
++    const prompt = buildPrompt(payload);
++    const model = cfg.model ?? 'MiniMax-M2.5';
++    const temperature = clampTemperature(cfg.temperature);
++
++    // Bring-your-own SDK client
++    if (cfg.client) {
++      const messages: Array<{ role: string; content: string }> = [];
++      if (cfg.systemPrompt) messages.push({ role: 'system', content: cfg.systemPrompt });
++      messages.push({ role: 'user', content: prompt });
++
++      const resp = await cfg.client.create({
++        model,
++        messages,
++        max_tokens: cfg.maxTokens,
++        temperature,
++        stop: cfg.stop,
++      });
++
++      const output = resp.choices[0]?.message?.content ?? resp.choices[0]?.text ?? '';
++      return { output, usage: resp.usage as Record<string, number> | undefined };
++    }
++
++    // Built-in fetch path
++    const apiKey = resolveApiKey(cfg);
++    if (!apiKey) {
++      throw new Error(
++        'MiniMaxAdapter: no API key provided. Set apiKey in config or MINIMAX_API_KEY env var.'
++      );
++    }
++
++    const base = (cfg.baseUrl ?? 'https://api.minimax.io/v1').replace(/\/+$/, '');
++    const url = `${base}/chat/completions`;
++
++    const messages: Array<{ role: string; content: string }> = [];
++    if (cfg.systemPrompt) messages.push({ role: 'system', content: cfg.systemPrompt });
++    messages.push({ role: 'user', content: prompt });
++
++    const body = {
++      model,
++      messages,
++      ...(cfg.maxTokens != null ? { max_tokens: cfg.maxTokens } : {}),
++      temperature,
++      ...(cfg.stop ? { stop: cfg.stop } : {}),
++    };
++
++    const timeoutMs = cfg.timeout ?? 120_000;
++    const controller = new AbortController();
++    const timer = setTimeout(() => controller.abort(), timeoutMs);
++
++    let resp: Response;
++    try {
++      resp = await fetch(url, {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json',
++          'Authorization': `Bearer ${apiKey}`,
++          ...cfg.headers,
++        },
++        body: JSON.stringify(body),
++        signal: controller.signal,
++      });
++    } finally {
++      clearTimeout(timer);
++    }
++
++    if (!resp.ok) {
++      const text = await resp.text().catch(() => '');
++      throw new Error(`MiniMaxAdapter: HTTP ${resp.status} from MiniMax API — ${text.slice(0, 200)}`);
++    }
++
++    const json = await resp.json() as {
++      choices: Array<{ message?: { content?: string | null } }>;
++      usage?: Record<string, number>;
++    };
++
++    const output = json.choices[0]?.message?.content ?? '';
++    return { output, usage: json.usage };
++  }
++}
+diff --git a/test-minimax.ts b/test-minimax.ts
+new file mode 100644
+index 0000000..de6c5b0
+--- /dev/null
++++ b/test-minimax.ts
+@@ -0,0 +1,319 @@
++/**
++ * test-minimax.ts — MiniMax Adapter Test Suite
++ *
++ * Tests:
++ *   - MiniMaxAdapter initialisation and lifecycle
++ *   - registerAgent() registration
++ *   - executeAgent() — chat via BYOC client
++ *   - executeAgent() — unregistered agent returns error result
++ *   - executeAgent() — client throws, returns error result
++ *   - executeAgent() — no API key returns error result
++ *   - Temperature clamping (MiniMax rejects 0)
++ *   - buildPrompt coverage (handoff, blackboard snapshot)
++ *   - Capabilities / listAgents
++ *   - Multiple agents on same adapter
++ *   - Type exports (smoke check)
++ *
++ * Run: npx ts-node test-minimax.ts
++ */
++
++import { MiniMaxAdapter } from './adapters/minimax-adapter';
++import type {
++  MiniMaxAgentConfig,
++  MiniMaxChatClient,
++} from './adapters/minimax-adapter';
++import type { AgentPayload, AgentContext } from './types/agent-adapter';
++
++// ─── Colours ─────────────────────────────────────────────────────────────────
++
++const c = {
++  green: '\x1b[32m',
++  red:   '\x1b[31m',
++  cyan:  '\x1b[36m',
++  bold:  '\x1b[1m',
++  reset: '\x1b[0m',
++};
++
++let passed = 0;
++let failed = 0;
++
++function assert(condition: boolean, message: string): void {
++  if (condition) {
++    console.log(`  ${c.green}[v]${c.reset} ${message}`);
++    passed++;
++  } else {
++    console.log(`  ${c.red}[x]${c.reset} ${message}`);
++    failed++;
++  }
++}
++
++function section(title: string): void {
++  console.log(`\n${c.cyan}${c.bold}> ${title}${c.reset}`);
++}
++
++// ─── Helpers ─────────────────────────────────────────────────────────────────
++
++const defaultPayload: AgentPayload = {
++  action: 'analyze',
++  params: { topic: 'market trends', depth: 'detailed' },
++};
++
++const defaultContext: AgentContext = {
++  agentId: 'test-caller',
++  taskId: 'task-001',
++  sessionId: 'sess-001',
++};
++
++/** Build a minimal BYOC chat client that captures parameters */
++function makeChatClient(
++  responseText: string,
++  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
++): MiniMaxChatClient & { lastParams?: Record<string, unknown> } {
++  const client: MiniMaxChatClient & { lastParams?: Record<string, unknown> } = {
++    create: async (params) => {
++      client.lastParams = params as unknown as Record<string, unknown>;
++      return {
++        choices: [{ message: { content: responseText } }],
++        usage,
++      };
++    },
++  };
++  return client;
++}
++
++// ─── Tests ───────────────────────────────────────────────────────────────────
++
++async function runTests(): Promise<void> {
++
++  // ── 1. Lifecycle ────────────────────────────────────────────────────────────
++  section('1. Lifecycle');
++
++  const adapter = new MiniMaxAdapter();
++  assert(adapter.name === 'minimax', 'name is "minimax"');
++  assert(adapter.version === '1.0.0', 'version is 1.0.0');
++  assert(!adapter.isReady(), 'not ready before initialize()');
++
++  await adapter.initialize({});
++  assert(adapter.isReady(), 'ready after initialize()');
++
++  const health = await adapter.healthCheck();
++  assert(health.healthy === true, 'healthCheck() returns healthy');
++
++  await adapter.shutdown();
++  assert(!adapter.isReady(), 'not ready after shutdown()');
++
++  // ── 2. Registration ─────────────────────────────────────────────────────────
++  section('2. Registration');
++
++  const a2 = new MiniMaxAdapter();
++  a2.registerAgent('analyst', { model: 'MiniMax-M2.5', client: makeChatClient('ok') });
++  assert(a2.isReady(), 'registerAgent() sets adapter ready');
++
++  const agents = await a2.listAgents();
++  assert(agents.length === 1, 'listAgents() returns 1 agent');
++  assert(agents[0].id === 'analyst', 'agent id is "analyst"');
++  assert(await a2.isAgentAvailable('analyst'), 'isAgentAvailable() true for registered agent');
++  assert(!(await a2.isAgentAvailable('ghost')), 'isAgentAvailable() false for unknown agent');
++
++  // ── 3. Chat mode via BYOC client ──────────────────────────────────────────
++  section('3. Chat mode — BYOC client');
++
++  const client3 = makeChatClient('market analysis complete', {
++    prompt_tokens: 50,
++    completion_tokens: 120,
++    total_tokens: 170,
++  });
++
++  const a3 = new MiniMaxAdapter();
++  a3.registerAgent('analyst', {
++    model: 'MiniMax-M2.5',
++    systemPrompt: 'You are a market analyst.',
++    client: client3,
++  });
++
++  const r3 = await a3.executeAgent('analyst', defaultPayload, defaultContext);
++  assert(r3.success === true, 'chat mode result.success is true');
++  assert(typeof r3.data === 'object' && r3.data !== null, 'result.data is an object');
++  const d3 = r3.data as Record<string, unknown>;
++  assert(d3['output'] === 'market analysis complete', 'result.data.output matches client response');
++  assert(d3['model'] === 'MiniMax-M2.5', 'result.data.model is "MiniMax-M2.5"');
++  assert(r3.metadata?.['adapter'] === 'minimax', 'metadata.adapter is "minimax"');
++  assert(typeof (r3.metadata?.trace as Record<string,unknown>)?.['usage'] === 'object', 'metadata.trace.usage is present');
++
++  // ── 4. System prompt passed to client ────────────────────────────────────
++  section('4. System prompt forwarded');
++
++  const msgs = client3.lastParams?.['messages'] as Array<{ role: string; content: string }>;
++  assert(Array.isArray(msgs), 'messages is an array');
++  assert(msgs[0]?.role === 'system', 'first message role is system');
++  assert(msgs[0]?.content === 'You are a market analyst.', 'system prompt content is correct');
++  assert(msgs[1]?.role === 'user', 'second message role is user');
++
++  // ── 5. Temperature clamping ────────────────────────────────────────────────
++  section('5. Temperature clamping (MiniMax rejects 0)');
++
++  const tempClient = makeChatClient('ok');
++  const a5 = new MiniMaxAdapter();
++  a5.registerAgent('temp-test', { temperature: 0, client: tempClient });
++  await a5.executeAgent('temp-test', defaultPayload, defaultContext);
++  const sentTemp = (tempClient.lastParams?.['temperature'] as number) ?? -1;
++  assert(sentTemp > 0, `temperature 0 clamped to ${sentTemp} (must be > 0)`);
++  assert(sentTemp <= 1, `clamped temperature ${sentTemp} is <= 1`);
++
++  const tempClient2 = makeChatClient('ok');
++  const a5b = new MiniMaxAdapter();
++  a5b.registerAgent('temp-test-2', { temperature: 1.5, client: tempClient2 });
++  await a5b.executeAgent('temp-test-2', defaultPayload, defaultContext);
++  const sentTemp2 = (tempClient2.lastParams?.['temperature'] as number) ?? -1;
++  assert(sentTemp2 === 1.0, `temperature 1.5 clamped to 1.0, got ${sentTemp2}`);
++
++  // ── 6. Default model fallback ─────────────────────────────────────────────
++  section('6. Default model fallback');
++
++  const defaultClient = makeChatClient('default response');
++  const a6 = new MiniMaxAdapter();
++  a6.registerAgent('default-model', { client: defaultClient }); // no model specified
++  const agents6 = await a6.listAgents();
++  assert(agents6[0]?.description?.includes('MiniMax-M2.5') ?? false, 'default model is MiniMax-M2.5');
++
++  const r6 = await a6.executeAgent('default-model', defaultPayload, defaultContext);
++  assert(r6.success === true, 'default model executes successfully');
++  const d6 = r6.data as Record<string, unknown>;
++  assert(d6['model'] === 'MiniMax-M2.5', 'result.data.model defaults to "MiniMax-M2.5"');
++  assert(defaultClient.lastParams?.['model'] === 'MiniMax-M2.5', 'client receives default model');
++
++  // ── 7. Highspeed model ────────────────────────────────────────────────────
++  section('7. MiniMax-M2.5-highspeed model');
++
++  const hsClient = makeChatClient('fast response');
++  const a7 = new MiniMaxAdapter();
++  a7.registerAgent('fast', { model: 'MiniMax-M2.5-highspeed', client: hsClient });
++
++  const r7 = await a7.executeAgent('fast', defaultPayload, defaultContext);
++  assert(r7.success === true, 'highspeed model executes successfully');
++  assert((r7.data as Record<string, unknown>)['model'] === 'MiniMax-M2.5-highspeed', 'model is MiniMax-M2.5-highspeed');
++  assert(hsClient.lastParams?.['model'] === 'MiniMax-M2.5-highspeed', 'client receives highspeed model');
++
++  // ── 8. Blackboard snapshot in prompt ──────────────────────────────────────
++  section('8. Blackboard snapshot included in prompt');
++
++  const bbClient = makeChatClient('done');
++  const a8 = new MiniMaxAdapter();
++  a8.registerAgent('bb-agent', { client: bbClient });
++
++  const bbPayload: AgentPayload = {
++    action: 'summarize',
++    params: {},
++    blackboardSnapshot: {
++      'task:current': 'review auth module',
++      'analysis:result': { score: 95, issues: [] },
++    },
++  };
++
++  await a8.executeAgent('bb-agent', bbPayload, defaultContext);
++  const bbMsgs = bbClient.lastParams?.['messages'] as Array<{ role: string; content: string }>;
++  const userMsg = bbMsgs?.find(m => m.role === 'user')?.content ?? '';
++  assert(userMsg.includes('task:current'), 'prompt includes blackboard key');
++  assert(userMsg.includes('review auth module'), 'prompt includes blackboard value');
++
++  // ── 9. Handoff instruction in prompt ─────────────────────────────────────
++  section('9. Handoff instruction in prompt');
++
++  const handoffClient = makeChatClient('done');
++  const a9 = new MiniMaxAdapter();
++  a9.registerAgent('handoff-agent', { client: handoffClient });
++
++  const handoffPayload: AgentPayload = {
++    action: 'review',
++    params: {},
++    handoff: {
++      handoffId: 'h-001',
++      sourceAgent: 'orchestrator',
++      targetAgent: 'handoff-agent',
++      taskType: 'delegate',
++      instruction: 'Review the authentication code carefully',
++    },
++  };
++
++  await a9.executeAgent('handoff-agent', handoffPayload, defaultContext);
++  const handoffMsgs = handoffClient.lastParams?.['messages'] as Array<{ role: string; content: string }>;
++  const handoffUserMsg = handoffMsgs?.find(m => m.role === 'user')?.content ?? '';
++  assert(handoffUserMsg.includes('Review the authentication code'), 'prompt contains handoff instruction');
++
++  // ── 10. Unregistered agent returns error result ───────────────────────────
++  section('10. Unregistered agent — error result');
++
++  const a10 = new MiniMaxAdapter();
++  await a10.initialize({});
++  const r10 = await a10.executeAgent('ghost', defaultPayload, defaultContext);
++  assert(r10.success === false, 'unregistered agent returns success=false');
++  assert(typeof r10.error?.message === 'string' && r10.error.message.includes('ghost'), 'error message mentions agent id');
++  assert(r10.metadata?.['adapter'] === 'minimax', 'metadata.adapter is "minimax"');
++
++  // ── 11. Client throws — captured as error result ──────────────────────────
++  section('11. Client throws — error captured in result');
++
++  const throwingClient: MiniMaxChatClient = {
++    create: async () => { throw new Error('rate limit exceeded'); },
++  };
++
++  const a11 = new MiniMaxAdapter();
++  a11.registerAgent('throw-agent', { client: throwingClient });
++  const r11 = await a11.executeAgent('throw-agent', defaultPayload, defaultContext);
++  assert(r11.success === false, 'client error returns success=false');
++  assert(typeof r11.error?.message === 'string' && r11.error.message.includes('rate limit'), 'error message propagated');
++
++  // ── 12. No API key — error when using fetch path ─────────────────────────
++  section('12. No API key — error result');
++
++  const origKey = process.env['MINIMAX_API_KEY'];
++  delete process.env['MINIMAX_API_KEY'];
++
++  const a12 = new MiniMaxAdapter();
++  a12.registerAgent('no-key', {}); // no client, no apiKey
++  const r12 = await a12.executeAgent('no-key', defaultPayload, defaultContext);
++  assert(r12.success === false, 'no API key returns success=false');
++  assert(r12.error?.message?.includes('API key') ?? false, 'error mentions API key');
++
++  if (origKey) process.env['MINIMAX_API_KEY'] = origKey;
++
++  // ── 13. Multiple agents on same adapter ───────────────────────────────────
++  section('13. Multiple agents on same adapter');
++
++  const a13 = new MiniMaxAdapter();
++  a13.registerAgent('agent-a', { model: 'MiniMax-M2.5', client: makeChatClient('response A') });
++  a13.registerAgent('agent-b', { model: 'MiniMax-M2.5-highspeed', client: makeChatClient('response B') });
++
++  const agents13 = await a13.listAgents();
++  assert(agents13.length === 2, 'two agents registered');
++
++  const rA = await a13.executeAgent('agent-a', defaultPayload, defaultContext);
++  const rB = await a13.executeAgent('agent-b', defaultPayload, defaultContext);
++  assert((rA.data as Record<string,unknown>)['output'] === 'response A', 'agent-a returns its own response');
++  assert((rB.data as Record<string,unknown>)['output'] === 'response B', 'agent-b returns its own response');
++
++  // ── 14. Capabilities ─────────────────────────────────────────────────────
++  section('14. Capabilities');
++
++  const caps = new MiniMaxAdapter().capabilities;
++  assert(caps.parallel === true, 'capabilities.parallel is true');
++  assert(caps.authentication === true, 'capabilities.authentication is true');
++  assert(caps.discovery === true, 'capabilities.discovery is true');
++  assert(caps.streaming === false, 'capabilities.streaming is false (sync adapter)');
++  assert(caps.statefulSessions === false, 'capabilities.statefulSessions is false');
++
++  // ── 15. Type exports smoke check ─────────────────────────────────────────
++  section('15. Type exports');
++
++  const configCheck: MiniMaxAgentConfig = { model: 'MiniMax-M2.5', temperature: 0.7 };
++  assert(configCheck.model === 'MiniMax-M2.5', 'MiniMaxAgentConfig type usable');
++
++  // ── Summary ─────────────────────────────────────────────────────────────────
++  console.log(`\n${c.bold}Results: ${c.green}${passed} passed${c.reset}${c.bold}, ${failed > 0 ? c.red : c.green}${failed} failed${c.reset}`);
++  if (failed > 0) process.exit(1);
++}
++
++runTests().catch((err) => {
++  console.error('Unexpected error:', err);
++  process.exit(1);
++});

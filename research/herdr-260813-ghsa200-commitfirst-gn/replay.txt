@@ -1,0 +1,68 @@
+# Replay for herdr-260813-ghsa200-commitfirst-gn
+# Clones only under /home/hanqing/.cache/ghsa200-worker-clones/commit-gn
+# Do not print tokens. Worker PASS is a proposal only.
+# CONTRACT.md SHA-256 cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+
+export GIT_OPTIONAL_LOCKS=0
+export GIT_TERMINAL_PROMPT=0
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/commit-gn
+ADV=$CACHE/advisory-database
+HA=$CACHE/clones/homeassistant-ai__ha-mcp
+OBJREF=/home/hanqing/.cache/cve-analyzer/advisory-database
+OUT=autoresearch/herdr-260813-ghsa200-commitfirst-gn
+
+# 1. Freeze official advisory-database origin/main
+git clone --no-checkout --filter=blob:none --reference "$OBJREF" \
+ https://github.com/github/advisory-database.git "$ADV"
+git -C "$ADV" fetch --filter=blob:none origin main
+test "$(git -C "$ADV" rev-parse origin/main)" = "a42c436870111aa3f221257c9d56126a93173ccc"
+git -C "$ADV" sparse-checkout init --cone
+git -C "$ADV" sparse-checkout set advisories/github-reviewed/2025 advisories/github-reviewed/2026
+git -C "$ADV" checkout --detach origin/main
+git -C "$ADV" ls-tree -r --name-only HEAD -- advisories/github-reviewed/2025 | grep -c '\.json$'
+# Expected: 3688
+git -C "$ADV" ls-tree -r --name-only HEAD -- advisories/github-reviewed/2026 | grep -c '\.json$'
+# Expected: 9129
+
+# 2. Rebuild assignment and prove conservation
+python3 "$OUT/build_freeze_and_assignment.py"
+# Expected: assigned 2577, gn_excluded 46, conservation.check true
+# G-N window-active 2623 = 46 + 2577
+
+# 3. Commit-first AI-marker mine (clones only under $CACHE/clones)
+python3 "$OUT/mine_ai_commits.py"
+# Expected at this freeze: scanned 578, clone_fail 2, repos_with_ai_commits 358
+python3 "$OUT/intersect_ai_ghsa.py"
+# Expected: exact_ref_matches 93; intersections are routing only
+
+# 4. Proposed PASS: GHSA-G39V-CVJH-8FPF
+git -C "$HA" show -s --format=fuller 1f322cf05db736fe3df9c7e16ac87b0cb1c6d30e
+git -C "$HA" grep -n yaml_backups 3f71508dad90fec6235b65b4d0bf234afd322352 -- custom_components/ha_mcp_tools/__init__.py
+git -C "$HA" merge-base --is-ancestor 1f322cf05db736fe3df9c7e16ac87b0cb1c6d30e v7.4.0
+git -C "$HA" merge-base --is-ancestor 09c524526b5f945638aa97de6218fadcd233023c v7.4.0; echo expect_nonzero:$?
+git -C "$HA" merge-base --is-ancestor 09c524526b5f945638aa97de6218fadcd233023c v7.5.0
+git -C "$HA" grep -n yaml_backups v7.4.0 -- custom_components/ha_mcp_tools/__init__.py
+git -C "$HA" grep -n ha_mcp_tools_backups v7.5.0 -- custom_components/ha_mcp_tools/__init__.py
+gh api repos/homeassistant-ai/ha-mcp/pulls/827/commits --jq '.[] | {sha:.sha, subject:(.commit.message|split("\n")[0])}'
+
+# 5. Proposed PASS: GHSA-PF93-J98V-25PV
+git -C "$HA" show -s --format=fuller aae7acba91dc21fc897ef6b78989b1f548c4083e
+git -C "$HA" rev-parse aae7acba91dc21fc897ef6b78989b1f548c4083e:src/ha_mcp/auth/consent_form.py
+git -C "$HA" rev-parse 39806871c9720bf8afdcf3e061095c0dd63dea7f:src/ha_mcp/auth/consent_form.py
+git -C "$HA" rev-parse v6.7.2:src/ha_mcp/auth/consent_form.py
+# Expected: all three blobs equal b284774958fba9cdec4345ef124c2cd31f018df3
+git -C "$HA" grep -n html.escape v6.7.2 -- src/ha_mcp/auth/consent_form.py; echo expect_empty
+git -C "$HA" grep -n 'Authorize {display_name}' v6.7.2 -- src/ha_mcp/auth/consent_form.py
+git -C "$HA" grep -n html.escape v7.0.0 -- src/ha_mcp/auth/consent_form.py
+git -C "$HA" merge-base --is-ancestor 39806871c9720bf8afdcf3e061095c0dd63dea7f v6.7.2
+git -C "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v6.7.2; echo expect_nonzero:$?
+git -C "$HA" merge-base --is-ancestor dc8eaa16a8550f885614655f14b6fd9fe429b278 v7.0.0
+
+# 6. Confirm novelty versus the exclusion freeze
+python3 - <<'PY'
+from pathlib import Path
+ex=set(Path("autoresearch/herdr-260813-ghsa200-commitfirst-gn/exclusion-ghsa-ids.txt").read_text().split())
+for i in ["GHSA-G39V-CVJH-8FPF","GHSA-PF93-J98V-25PV","GHSA-FMFG-9G7C-3VQ7","CVE-2026-32112","CVE-2026-32111"]:
+ print(i, "EXCLUDED" if i in ex else "novel")
+PY
+# Expected: G39V novel, PF93 novel, FMFG excluded, CVE-2026-32112 novel, CVE-2026-32111 excluded

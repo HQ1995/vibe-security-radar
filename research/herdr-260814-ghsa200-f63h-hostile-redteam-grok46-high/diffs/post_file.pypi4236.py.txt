@@ -1,0 +1,62 @@
+def _sanitize_upload_filename(filename: str | None) -> str:
+    if not filename:
+        return f"{uuid.uuid4()!s}"
+    normalized = filename.replace("\\", "/")
+    name = PurePosixPath(normalized).name.replace("\x00", "").strip()
+    if name in ("", ".", ".."):
+        return f"{uuid.uuid4()!s}"
+    return name
+
+
+
+    async def post_file(self):
+        """Upload a file and create an attachment record, return attachment_id."""
+        post_data = await request.files
+        if "file" not in post_data:
+            return Response().error("Missing key: file").__dict__
+
+        file = post_data["file"]
+        filename = _sanitize_upload_filename(file.filename)
+        content_type = file.content_type or "application/octet-stream"
+
+# [non-ascii comment omitted]
+        if content_type.startswith("image"):
+            attach_type = "image"
+        elif content_type.startswith("audio"):
+            attach_type = "record"
+        elif content_type.startswith("video"):
+            attach_type = "video"
+        else:
+            attach_type = "file"
+
+        attachments_dir = Path(self.attachments_dir).resolve(strict=False)
+        file_path = (attachments_dir / filename).resolve(strict=False)
+        if not file_path.is_relative_to(attachments_dir):
+            return Response().error("Invalid filename").__dict__
+
+        await file.save(str(file_path))
+
+# [non-ascii comment omitted]
+        attachment = await self.db.insert_attachment(
+            path=str(file_path),
+            type=attach_type,
+            mime_type=content_type,
+        )
+
+        if not attachment:
+            return Response().error("Failed to create attachment").__dict__
+
+        filename = os.path.basename(attachment.path)
+
+        return (
+            Response()
+            .ok(
+                data={
+                    "attachment_id": attachment.attachment_id,
+                    "filename": filename,
+                    "type": attach_type,
+                }
+            )
+            .__dict__
+        )
+

@@ -1,0 +1,31 @@
+diff --git a/x/costaking/keeper/hooks_finality.go b/x/costaking/keeper/hooks_finality.go
+index c8e6db4a..2243b3ef 100644
+--- a/x/costaking/keeper/hooks_finality.go
++++ b/x/costaking/keeper/hooks_finality.go
+@@ -20,18 +20,17 @@ type HookFinality struct {
+ // AfterBtcDelegationUnbonded handles BTC delegation unbonding events.
+ // This hook is triggered when a BTC delegation is unbonded/removed from the system.
+ //
+-// State Changes:
+-// - If FP was active in both previous and current sets: ActiveSatoshis -= sats
+-// - Otherwise: No change (to prevent double subtraction)
++// Possible State Changes (previous -> current):
++// - inactive -> active: no-op
++// - active -> active: subtract ActiveSatoshis
++// - active -> inactive: subtract ActiveSatoshis (there's no risk of double counting
++// because the AfterBbnFpRemovedFromActiveSet hook gets the updated active sats amount)
++// - inactive -> inactive: no-op
++// More concisely if the FP was active in the previous set, we subtract the sats.
+ func (h HookFinality) AfterBtcDelegationUnbonded(ctx context.Context, fpAddr sdk.AccAddress, btcDelAddr sdk.AccAddress, isFpActiveInPrevSet, isFpActiveInCurrSet bool, sats uint64) error {
+-	if !isFpActiveInPrevSet || !isFpActiveInCurrSet {
+-		// It needs to check the fp was active in the previous set and in it is currently active in the current set for the case where:
+-		// 1. the fp was active in the block X
+-		// 2. block x+1 btc delegation was unbonded (removes sats)
+-		// 3. fp becomes inactive (removes sats twice)
++	if !isFpActiveInPrevSet {
+ 		return nil
+ 	}
+-
+ 	return h.k.costakerModified(ctx, btcDelAddr, func(rwdTracker *types.CostakerRewardsTracker) {
+ 		rwdTracker.ActiveSatoshis = rwdTracker.ActiveSatoshis.SubRaw(int64(sats))
+ 	})

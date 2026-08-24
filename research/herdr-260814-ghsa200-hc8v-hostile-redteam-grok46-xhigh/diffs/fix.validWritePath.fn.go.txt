@@ -1,0 +1,12 @@
+// validWritePath validates paths for mutating operations. It layers the
+// filesystem-state check validNoLeadingSymlink on top of the string-only
+// checks in validPath, so a write can neither name a dangerous path nor
+// reach one by traversing an existing symlink. Every mutating method on
+// the wrapper funnels through here, so the leading-symlink invariant holds
+// for all worktree writers without each call site having to remember it.
+func (sfs *worktreeFilesystem) validWritePath(paths ...string) error {
+	if err := sfs.validPath(paths...); err != nil {
+		return err
+	}
+	return sfs.validNoLeadingSymlink(paths...)
+}

@@ -1,0 +1,39 @@
+# Replay — herdr-260813-ghsa200-redbase-even
+# Independent red-team of fp211 released-admitted even ordinals.
+# Cache: /home/hanqing/.cache/ghsa200-worker-clones/redbase-even
+# No canonical edits.
+
+LEDGER=autoresearch/orchestrator-260813-fp211-canonical/ledger.jsonl
+# sha256 1f0d15a82765c557b67efceaaf41a887c2d078a49f3da84d5f42458043e3e5e6
+# Select counting.fp211_released_publication_admitted==true
+# AND fp211_adjudication.ordinal % 2 == 0
+# Expected ordinals (26):
+# 2 6 12 14 18 26 32 42 44 46 54 58 64 66 76 106 112 118 148 160 162 164 166 176 182 210
+
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/redbase-even
+GIT='git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false'
+
+# Clone first-party repos into $CACHE/clones (blob:none then fetch --tags).
+# Fetch GHSA JSON:
+#   GET https://api.github.com/advisories/<ghsa>
+#   GET https://api.github.com/repos/<owner>/<repo>/security-advisories/<ghsa>
+
+# Representative git probes (full SHAs in cases.jsonl):
+# $GIT -C clones/<repo> log -1 --format='%H%n%P%n%B' <candidate>
+# $GIT -C clones/<repo> merge-base --is-ancestor <sha> <tag>
+# $GIT -C clones/<repo> rev-parse <rev>:<path>
+# $GIT -C clones/<repo> show <fix> -- <path>
+
+# Notable independent corrections vs hypotheses:
+# ord6: member cc048a29 missing; origin is AI-marked squash 03586e3d
+# ord42/58/66: origin in m1heng/clawdbot-feishu, carrier 2267d58a
+# ord44: 3e176213 not on main; landed Copilot 4f28b6950
+# ord118: no local tag v2026.1.28
+# ord148: no tag with candidate XOR fix
+# ord162: f7fd5102 not in v1.27.0; use backport ab10e37a
+# ord182: member not tag ancestor; squash blob equals member for public-user.php
+# ord210: path move src/net/TURN -> src/SIPSorcery/net/TURN; tag blob != member blob
+
+# Worker scripts:
+# autoresearch/herdr-260813-ghsa200-redbase-even/investigate.py
+# English outputs: result.json cases.jsonl report.md replay.txt

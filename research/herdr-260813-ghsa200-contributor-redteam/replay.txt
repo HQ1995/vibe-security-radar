@@ -1,0 +1,260 @@
+# Contributor red-team replay for 39 AI_NEW_SURFACE_CONTRIBUTOR non-PASS upgrade-a rows
+# Independent clones under /home/hanqing/.cache/ghsa200-worker-clones/contributor-redteam
+# Do not reset/clean/commit/push. Do not use /tmp clones.
+
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/contributor-redteam
+GIT='git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false'
+
+# Hash locks (leader CONTRACT cbd04ef2 + upgrade-a + this worker cases.jsonl)
+# Incomplete-remediation patch-delta does not apply: all 39 rows are AI_NEW_SURFACE_CONTRIBUTOR.
+python3 - <<'PY'
+from pathlib import Path
+import hashlib
+files = {
+  'CONTRACT': Path('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-ghsa200-leader/CONTRACT.md'),
+  'baseline': Path('/home/hanqing/agents/ai-slop/autoresearch/orchestrator-260813-ghsa200-leader/baseline.json'),
+  'upgrade_a': Path('/home/hanqing/agents/ai-slop/autoresearch/herdr-260813-ghsa200-upgrade-a/cases.jsonl'),
+  'cases': Path('/home/hanqing/agents/ai-slop/autoresearch/herdr-260813-ghsa200-contributor-redteam/cases.jsonl'),
+}
+want_contract = 'cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3'
+got = {k: hashlib.sha256(p.read_bytes()).hexdigest() for k,p in files.items()}
+assert got['CONTRACT'] == want_contract, got['CONTRACT']
+for k,h in got.items():
+    print(k, h)
+print('contract_bound', want_contract)
+PY
+
+# Ordinal set assert
+python3 - <<'PY'
+import json
+from pathlib import Path
+want = [3,8,10,21,22,24,25,28,29,30,31,33,34,37,40,47,52,55,60,62,70,71,77,78,79,80,85,87,88,91,95,96,97,100,101,102,103,104,105]
+rows = [json.loads(l) for l in Path('/home/hanqing/agents/ai-slop/autoresearch/herdr-260813-ghsa200-contributor-redteam/cases.jsonl').read_text().splitlines() if l.strip()]
+got = [r['ordinal'] for r in rows]
+assert got == want, (got, want)
+assert all(r['contribution_class']=='AI_NEW_SURFACE_CONTRIBUTOR' for r in rows)
+assert not any('INCOMPLETE_REMEDIATION' in r['contribution_class'] for r in rows)
+print('ordinals_ok', len(rows), 'incomplete_remediation_rows', 0)
+PY
+
+# --- ordinal 3 GHSA-PWF7-47C3-MFHX verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s%n%B' a7c5a0054bcdf34c9ec0f1c20d1356ce54f069b3
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 070aae8e5398e8a01806912ed2833f8b0fc8197a v1.0.5; echo member_in_v105:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a7c5a0054bcdf34c9ec0f1c20d1356ce54f069b3 v1.0.5; echo cand_in_v105:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 6b7c6ef5c3875c766893b881b40773cd5605bde3 v1.0.5; echo fix_in_v105:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 6b7c6ef5c3875c766893b881b40773cd5605bde3 v1.0.6; echo fix_in_v106:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n 'prek-version' v1.0.5 -- action.yaml
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show 6b7c6ef5c3875c766893b881b40773cd5605bde3 -- action.yaml
+
+# --- ordinal 8 GHSA-J4XF-96QF-RX69 verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%B' 2267d58afcc70fe19408b8f0dce108c340f3426d
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false cat-file -e 4286755f26bcfdd5c704cc4eb0cabfdc1b314e68; echo member_in_openclaw:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show 2267d58afcc70fe19408b8f0dce108c340f3426d^:src/feishu/access.ts | head -80
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show v2026.2.21:extensions/feishu/src/policy.ts | head -40
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n 'matchSource: "name"' v2026.2.21 -- src/channels/allowlist-match.ts extensions/feishu/src/policy.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show 4ed87a667263ed2d422b9d5d5a5d326e099f92c7 -- extensions/feishu/src/policy.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 2267d58afcc70fe19408b8f0dce108c340f3426d v2026.2.21; echo cand8:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4ed87a667263ed2d422b9d5d5a5d326e099f92c7 v2026.2.22; echo fix8:$?
+
+# --- ordinal 10 GHSA-5WQV-FHMR-PJGH verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' ee672df463e285791e4466e6132297e5feb4a1df
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor ee672df463e285791e4466e6132297e5feb4a1df v0.51.442; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 2a3baa71b81ca92da8ece8616a09f15894beec71 v0.51.443; echo fix_in_ftag:$?
+
+# --- ordinal 21 GHSA-6C8G-7P36-R338 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 8b95e0a76d6b387533175730e2895ccd16772d07
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 8b95e0a76d6b387533175730e2895ccd16772d07 0.47.4; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 2021a06626d0555a4d69471386e763ca5f5d5dfb 0.48.0; echo fix_in_ftag:$?
+
+# --- ordinal 22 GHSA-42M6-XH7C-6XM4 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 8348c85cd8d43affa0c9d83be20ff42d895fe1dc
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 8348c85cd8d43affa0c9d83be20ff42d895fe1dc v0.32.0; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 08c171b6b487654a0eb188494fa24bd1c4272a2e v0.33.0; echo fix_in_ftag:$?
+
+# --- ordinal 24 GHSA-2M67-CXXQ-C3H8 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 51bc07a02484ddfd2ec9c7f382dc43f829a9df86
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 51bc07a02484ddfd2ec9c7f382dc43f829a9df86 v0.5.0; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f50c17e11ae3e2d40c96730abac41974ef2ee2a8 v0.7.0; echo fix_in_ftag:$?
+
+# --- ordinal 25 GHSA-PQGX-6WG3-GMVR verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 67c7b7663219c9e28fce487b1803706b333c2a4f
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 67c7b7663219c9e28fce487b1803706b333c2a4f 0.99.48; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 2e2ac5cbeed47a76720b21c7fde0214a242e065e 0.99.49; echo fix_in_ftag:$?
+
+# --- ordinal 28 GHSA-QJ77-C3C8-9C3Q verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 4b3e9c0f339d3b0af21dbbd699b378899ec6e193
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4b3e9c0f339d3b0af21dbbd699b378899ec6e193 v2026.2.1; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a7f4a53ce80c98ba1452eb90802d447fca9bf3d6 v2026.2.2; echo fix_in_ftag:$?
+
+# --- ordinal 29 GHSA-XMXX-7P24-H892 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f v2026.4.14; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor acd4e0a32f12e1ad85f3130f63b42443ce90f094 v2026.4.15; echo fix_in_ftag:$?
+
+# --- ordinal 30 GHSA-PQH8-P93P-2RX7 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 66ff2a7c8bedc23939d6d70ab4c3bdce53673843
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 66ff2a7c8bedc23939d6d70ab4c3bdce53673843 1.2.0; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 15d3546c0618ffbaeaeca477337e08e92f2151bc 2.1.1; echo fix_in_ftag:$?
+
+# --- ordinal 31 GHSA-8JPQ-5H99-FF5R verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n sendMediaFeishu 2267d58afcc70fe19408b8f0dce108c340f3426d -- extensions/feishu
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n sendMediaFeishu 2267d58afcc70fe19408b8f0dce108c340f3426d^ -- '*.ts'; echo parent_sendMedia:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n isLocalPath v2026.2.13 -- extensions/feishu/src/media.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show 5b4121d6011a48c71e747e3c18197f180b872c5d -- extensions/feishu/src/media.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 2267d58afcc70fe19408b8f0dce108c340f3426d v2026.2.13; echo cand31:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 5b4121d6011a48c71e747e3c18197f180b872c5d v2026.2.14; echo fix31:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 5b4121d6011a48c71e747e3c18197f180b872c5d v2026.2.13; echo fix_in_v13:$?
+
+# --- ordinal 33 GHSA-3CVX-236H-M9FJ verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 079af0d0b02ca2c722f90b6c4e38e27ba16227b4
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 v2026.2.19; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 40a292619e1f2be3a3b1db663d7494c9c2dc0abf v2026.2.21; echo fix_in_ftag:$?
+
+# --- ordinal 34 GHSA-Q9J6-XCVX-PX63 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 4d4254b591ede243b38df7b678cf36619cb25825
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4d4254b591ede243b38df7b678cf36619cb25825 v4.0.0-beta.461; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f267a28cb2badc7e712c4592af4d79d090fe5063 v4.0.0-beta.471; echo fix_in_ftag:$?
+
+# --- ordinal 37 GHSA-GC24-PX2R-5QMF verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' a7319f0e7087cee59f1aa658c52c6408f1fb71e8
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a7319f0e7087cee59f1aa658c52c6408f1fb71e8 v0.1.6; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a82f9278d2d587b7042a0858aab79fd8b6e3add9 v0.1.7; echo fix_in_ftag:$?
+
+# --- ordinal 40 GHSA-HFF7-CCV5-52F8 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f v2026.2.19; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 356d61aacfa5b0f1d5830716ec59d70682a3e7b8 v2026.2.21; echo fix_in_ftag:$?
+
+# --- ordinal 47 GHSA-Q447-RJ3R-2CGH verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 5c2cb6c591e4b63c2df0549ad2202403256e2a96
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 5c2cb6c591e4b63c2df0549ad2202403256e2a96 v2026.2.12; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 3cbcba10cf30c2ffb898f0d8c7dfb929f15f8930 v2026.2.13; echo fix_in_ftag:$?
+
+# --- ordinal 52 GHSA-7C3W-FXGH-FRC7 verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%B' c156ac7675207e3dbc0c6a4b3ed6931dc96513c2
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n '/artifacts' c156ac7675207e3dbc0c6a4b3ed6931dc96513c2 -- index.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n '/artifacts' c156ac7675207e3dbc0c6a4b3ed6931dc96513c2^ -- index.ts; echo parent_artifacts:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor c156ac7675207e3dbc0c6a4b3ed6931dc96513c2 v2.0.32; echo cand52:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor e2a81a047ab8750fa5bfa1763b5d85e5616f3994 v2.1.32; echo fix52:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false show e2a81a047ab8750fa5bfa1763b5d85e5616f3994 -- index.ts
+
+# --- ordinal 55 GHSA-C339-W3CQ-2RJR verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 009b4e7d4803493ff9e3dadae864615dfa90e8dc
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 009b4e7d4803493ff9e3dadae864615dfa90e8dc v4.0.0-beta.461; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 0fed553207383f384b93cba24d28122065fa67d5 v4.0.0-beta.471; echo fix_in_ftag:$?
+
+# --- ordinal 60 GHSA-Q6QF-4P5J-R25G verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 8d74578ceb0c3b913555dff6265821eb0fc09749
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 8d74578ceb0c3b913555dff6265821eb0fc09749 v2026.2.22; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor dd9d9c1c609dcb4579f9e57bd7b5c879d0146b53 v2026.2.23; echo fix_in_ftag:$?
+
+# --- ordinal 62 GHSA-JFV4-H8MC-JCP8 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 8befe7f8a7fea496e1566eecc3fbf0a1d46e3642
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 8befe7f8a7fea496e1566eecc3fbf0a1d46e3642 v2026.1.15; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 6084d13b956119e3cf95daaf9a1cae1670ea3557 v2026.2.14; echo fix_in_ftag:$?
+
+# --- ordinal 70 GHSA-Q5PP-GVJG-H7V4 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 84abb22ce4b1f74145e63de1c4464007855c6a08
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 84abb22ce4b1f74145e63de1c4464007855c6a08 v0.12.4; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f85b9f54ad303159f9c448268eb7005c319fe02a v0.13.0; echo fix_in_ftag:$?
+
+# --- ordinal 71 GHSA-HHFF-FJ5F-QG48 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' b9b47f50023d9f6384372bad6eee1a181b98c48e
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor b9b47f50023d9f6384372bad6eee1a181b98c48e v2026.3.28; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor ee52f64226a03efadfdf1e3b759e13424a3d4e41 v2026.3.31; echo fix_in_ftag:$?
+
+# --- ordinal 77 GHSA-W4H3-GPV2-82QC verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 8d74578ceb0c3b913555dff6265821eb0fc09749
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 8d74578ceb0c3b913555dff6265821eb0fc09749 v2026.3.13-1; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4fd7feb0fd4ec16c48ed983980dba79a09b3aaf5 v2026.3.22; echo fix_in_ftag:$?
+
+# --- ordinal 78 GHSA-F7FH-QG34-X2XH verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 75602014dbc5088b80e9b236146dfe5fdcc59e20
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 75602014dbc5088b80e9b236146dfe5fdcc59e20 v2026.3.8; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor bc356cc8c2beaa747c71dd86cceab8f804699665 v2026.4.5; echo fix_in_ftag:$?
+
+# --- ordinal 79 GHSA-VMW2-QWM8-X84C verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 18c8d9b463dc31f429bb1684b83967ca42c751f2
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 18c8d9b463dc31f429bb1684b83967ca42c751f2 V8.36.0; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 626249656829860b9c55895b5b6046b61a2a695f V8.37.0; echo fix_in_ftag:$?
+
+# --- ordinal 80 GHSA-RQPP-RJJ8-7WV8 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 079af0d0b02ca2c722f90b6c4e38e27ba16227b4
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 079af0d0b02ca2c722f90b6c4e38e27ba16227b4 v2026.2.19; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 5e389d5e7c9233ec91026ab2fea299ebaf3249f6 v2026.2.21; echo fix_in_ftag:$?
+
+# --- ordinal 85 GHSA-RXXP-482V-7MRH verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 506bed5aed40820565b7db66a963b8163968208f
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 506bed5aed40820565b7db66a963b8163968208f v2026.2.22; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 73d93dee64127a26f1acd09d0403b794cdeb4f5c v2026.3.22; echo fix_in_ftag:$?
+
+# --- ordinal 87 GHSA-H4RQ-P45C-642R verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' ebb39d59d259152855cc297859f5a24632a14e80
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor ebb39d59d259152855cc297859f5a24632a14e80 core-8.2.3; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 84822f4051ed97d651b1b4d191c6da2aa8c3c037 core-8.2.8; echo fix_in_ftag:$?
+
+# --- ordinal 88 GHSA-5J8P-5RRJ-8WJG verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' fa0511f4e19f42e6e20989fd96a2f73eceff7499
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor fa0511f4e19f42e6e20989fd96a2f73eceff7499 v0.5.7; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 88404da7a283f2c0a796a4cd16bbb6e6aa1f4722 v0.5.8; echo fix_in_ftag:$?
+
+# --- ordinal 91 GHSA-X2XQ-QHJF-5MVG verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 5f9884519a8c4e4e9d2af5e97e31abfea1098a82
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 5f9884519a8c4e4e9d2af5e97e31abfea1098a82 v1.25.1; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 05cbe299770a590b89bfc8dddab33e61b4302e43 v1.25.2; echo fix_in_ftag:$?
+
+# --- ordinal 95 GHSA-G5CG-8X5W-7JPM verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 483fba41b9f9fb57964f31b90a2ddacb185d54d7
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 483fba41b9f9fb57964f31b90a2ddacb185d54d7 v2026.3.28; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a30214a624946fc5c85c9558a27c1580172374fd v2026.3.31; echo fix_in_ftag:$?
+
+# --- ordinal 96 GHSA-RQP8-Q22P-5J9Q verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%B' 03586e3d0057b5975090d50dadcc5bc95b51f977
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false cat-file -e 03586e3d0057b5975090d50dadcc5bc95b51f977^:extensions/synology-chat/src/accounts.ts; echo parent_synology:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n webhookPath v2026.2.22 -- extensions/synology-chat/src/accounts.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 03586e3d0057b5975090d50dadcc5bc95b51f977 v2026.2.22; echo cand96:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 980940aa58f862da4e19372597bbc2a9f268d70b v2026.2.22; echo fix_in_v222:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 980940aa58f862da4e19372597bbc2a9f268d70b v2026.3.22; echo fix96:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false cat-file -e cc048a295e7e70684ca24654257e0ecf38e49153; echo member96:$?
+
+# --- ordinal 97 GHSA-WXW3-Q3M9-C3JR verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 0deaaa4e67c3067bd3b0570b3adfef2b532c7085
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 9deb7936aba7931f2db4b460141f476508f11bfd v1.6.2; echo fix_in_ftag:$?
+
+# --- ordinal 100 GHSA-C4M7-2GWP-VW76 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 4aaf9147a6c6f76aecc775defcd1a542537cf01f
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4aaf9147a6c6f76aecc775defcd1a542537cf01f v0.38.2; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 4e70b760b4eb157469b58645339ba831f6513d37 v0.39.0; echo fix_in_ftag:$?
+
+# --- ordinal 101 GHSA-2JRP-274C-JHV3 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' afde1c431371ce24757179ed1cad09af0f382d29
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor afde1c431371ce24757179ed1cad09af0f382d29 v1.34.0; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor d398bc9d39aecca6530fa7486a410d5cce936301 v1.56.0; echo fix_in_ftag:$?
+
+# --- ordinal 102 GHSA-VW3V-WHVP-33V5 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' f172b314a4db5084fd46ce8ddcb94592a96d8a49
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f172b314a4db5084fd46ce8ddcb94592a96d8a49 autogpt-platform-beta-v0.6.30; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 57a06f70883ce6be18738c6ae8bb41085c71e266 autogpt-platform-beta-v0.6.32; echo fix_in_ftag:$?
+
+# --- ordinal 103 GHSA-2CM6-R77W-6G96 verdict=NARROW ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%an %ae%n%s' 3e590361e0e251382ae30cbc9993d604bfdb67d5
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 3e590361e0e251382ae30cbc9993d604bfdb67d5 v3.11.1; echo cand_in_vtag:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor f9b1eb510478570609ef451984a255775aa4b937 v3.13.0; echo fix_in_ftag:$?
+
+# --- ordinal 104 GHSA-WXHM-2MQ7-7697 verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%B' a0e6108842a3bfc840a33db819a4415fbdac333d
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n 'file:' typescript/2.0.0-beta.1 -- runtime/typescript/packages/core/src/core/loader.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a0e6108842a3bfc840a33db819a4415fbdac333d typescript/2.0.0-beta.1; echo cand104:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 88ac9948d7d37995edbb2f6d36913436626c39e1 typescript/2.0.0-beta.1; echo fix_in_beta1:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 88ac9948d7d37995edbb2f6d36913436626c39e1 typescript/2.0.0-beta.2; echo fix104:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%s%n%B' 88ac9948d7d37995edbb2f6d36913436626c39e1 | head -20
+
+# --- ordinal 105 GHSA-W28W-GP39-M4P6 verdict=KEEP ---
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n 'new nunjucks.Environment' a0e6108842a3bfc840a33db819a4415fbdac333d -- runtime/typescript/prompty/src/renderers/nunjucks.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false grep -n 'new nunjucks.Environment' typescript/2.0.0-beta.1 -- runtime/typescript/packages/core/src/renderers/nunjucks.ts
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false log -1 --format='%s%n%B' e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor a0e6108842a3bfc840a33db819a4415fbdac333d typescript/2.0.0-beta.1; echo cand105:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e typescript/2.0.0-beta.5; echo e4a_in_beta5:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor 047756f4c8caf91c5868eeb42520c938393277b0 typescript/2.0.0-beta.5; echo merge_in_beta5:$?
+git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false merge-base --is-ancestor e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e 047756f4c8caf91c5868eeb42520c938393277b0; echo e4a_in_merge:$?
+

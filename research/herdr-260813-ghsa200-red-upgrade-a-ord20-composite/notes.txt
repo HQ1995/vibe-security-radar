@@ -1,0 +1,283 @@
+==== eol ====
+d42195e10be0d7d9bfb4ec45fecfb83521d3fc67
+Jo.Moore <jmoore.cpo@gmail.com>
+2026-04-26T01:24:44+01:00
+0.6.0: SCA enrichment — EOL-aware container image checks
+
+0.6.0: SCA enrichment — EOL-aware container image checks
+
+First post-PRD release. Adds CVE/EOL awareness to existing pipeline
+findings without becoming a full SCA tool. ciguard remains a pipeline-
+configuration scanner; this release adds dependency awareness for the
+container images and language runtimes referenced inside the pipeline.
+
+Headline use-case: pipelines silently accumulate `python:3.9`, `node:16`,
+`alpine:3.16`, `debian:11` references that go EOL and stay in production
+for years afterwards. ciguard now flags these.
+
+New rules:
+  - SCA-EOL-001 — End-of-Life Container Base Image (Critical/High)
+  - SCA-EOL-002 — End-of-Life Language Runtime (Critical/High)
+  - SCA-EOL-003 — Image Approaching End-of-Life ≤90d (Info)
+  - SCA-PIN-001 — Image Pinned by Tag, Not by Digest (Low)
+
+Data source: endoflife.date (free, vendor-neutral, ~250 products).
+On-disk cache at ~/.ciguard/cache/ with 24h TTL — pipeline scans stay
+fast and the cache survives across runs.
+
+CLI:
+  - `--offline` flag disables network lookups (air-gapped CI)
+  - `AnalysisEngine(enable_sca=False)` opt-out for callers / tests
+
+Cross-platform: SCA rules run for GitLab CI (job image:), GitHub Actions
+(jobs.<id>.container + services), and Jenkins (Declarative agents at
+top-level + per-stage + parallel children).
+
+Validation:
+  - 318 / 318 tests passing (was 288; +30 SCA tests in test_sca_rules.py)
+  - Real-world smoke against python:3.9-slim, alpine:3.16, node:18-alpine
+    correctly flags all three Critical with accurate EOL dates
+  - All existing fixtures pass with enable_sca=False — zero regression
+
+NOT in scope (deliberate):
+  - General SCA on user's project deps (requirements.txt, package.json) —
+    that's the Snyk / Dependabot / Nexus IQ space, we complement not compete
+  - Custom vulnerability database — OSV.dev planned for v0.6.1 covers CVEs
+  - License compliance — separate adjacent product
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+
+name-status eol
+M	CHANGELOG.md
+M	pyproject.toml
+M	src/ciguard/analyzer/engine.py
+A	src/ciguard/analyzer/sca/__init__.py
+A	src/ciguard/analyzer/sca/endoflife.py
+A	src/ciguard/analyzer/sca/image_extractor.py
+A	src/ciguard/analyzer/sca_rules.py
+M	src/ciguard/main.py
+M	tests/test_baseline.py
+M	tests/test_gha_rules.py
+M	tests/test_jenkins_rules.py
+M	tests/test_parser.py
+M	tests/test_policy.py
+M	tests/test_reporters.py
+M	tests/test_sarif_report.py
+A	tests/test_sca_rules.py
+
+parents eol d42195e10be0d7d9bfb4ec45fecfb83521d3fc67 fd78c75b5504f12e122a70a49ec7ff7cfdb9ae2f
+==== osv ====
+f08e654974f208f90ef6015928ef651982f3224a
+Jo.Moore <jmoore.cpo@gmail.com>
+2026-04-26T02:18:31+01:00
+0.6.1: SCA CVE + graduated EOL tiers + EOS detection
+
+0.6.1: SCA CVE + graduated EOL tiers + EOS detection
+
+Adds GHA action / reusable workflow CVE awareness via OSV.dev, graduates
+SCA-EOL-003 severity from a single Info tier to High/Medium/Low based on
+remaining runway, and introduces SCA-EOS-001 for end-of-active-support
+detection. All three changes share the v0.6.0 caching + offline
+infrastructure — no new external dependencies beyond OSV.dev.
+
+Container base CVE lookup explicitly dropped after redesign — that's the
+Trivy/Grype lane and ciguard would compete, not complement. The EOL tier
+graduation gives most of the same risk signal at the cycle level.
+
+318 -> 358 tests, ruff clean, fully offline / deterministic via seeded
+caches. Documented as BREAKING for SCA-EOL-003 severity in CHANGELOG.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+
+name-status osv
+M	CHANGELOG.md
+M	pyproject.toml
+M	src/ciguard/analyzer/engine.py
+A	src/ciguard/analyzer/sca/action_extractor.py
+A	src/ciguard/analyzer/sca/osv.py
+M	src/ciguard/analyzer/sca_rules.py
+M	tests/test_sca_rules.py
+
+parents osv f08e654974f208f90ef6015928ef651982f3224a d42195e10be0d7d9bfb4ec45fecfb83521d3fc67
+==== fix ====
+17a119fe43dd956ef463c1c575a463ffd9a8d95b
+Jo.Moore <jmoore.cpo@gmail.com>
+2026-04-27T00:08:42+01:00
+fix(security): close 4 findings from Cycle 1 self-pentest (CYCLE-1-001..004)
+
+fix(security): close 4 findings from Cycle 1 self-pentest (CYCLE-1-001..004)
+
+First self-conducted pentest cycle (PTES + OWASP TG v4.2 + CREST framing)
+ran 2026-04-26. No Critical or High findings; this commit closes the four
+Low/Medium findings ahead of the v0.8.2 release.
+
+CYCLE-1-001 (Medium, CVSS 5.7, CWE-59) — `discover_pipeline_files` followed
+symlinks out of scan root. Added `follow_symlinks: bool = False` parameter
+(default no-follow) plus belt-and-braces filter that drops any result whose
+`.resolve()` lies outside the scan root. Three new tests in test_discovery.
+
+CYCLE-1-002 (Low, CVSS 3.4, CWE-269) — Container ran as root. Added
+groupadd/useradd + USER ciguard to Dockerfile; chown writable mounts.
+Trivy DS-0002 misconfig clears.
+
+CYCLE-1-003 (Low, CVSS 3.1, CWE-770) — SCA HTTP clients read response
+bodies unbounded. Added MAX_RESPONSE_BYTES = 5 MB cap to both osv.py and
+endoflife.py; resp.read(MAX+1) with overflow check. Three new tests.
+
+CYCLE-1-004 (Low, CVSS 4.3, CWE-693) — Web UI missing defence-in-depth
+headers (CSP/X-Frame-Options/Referrer-Policy/etc.). New
+SecurityHeadersMiddleware with per-path CSP carve-out for /api/docs.
+Six new tests.
+
+444 → 447 tests passing (3 SCA size-cap tests; the discovery + web tests
+were already accounted for in the running total). Ruff clean. Bandit
+unchanged from baseline (1 Medium FP in github_actions parser, already
+documented for separate annotation).
+
+Findings register + CREST report at:
+  Project ciguard/Pentest Reports/2026-05-12-cycle-1.md (vault)
+PoC scripts (each flips from EXPLOIT_OK to EXPLOIT_FAILED post-fix):
+  Project ciguard/Pentest Reports/2026-05-12-cycle-1/exploits/
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+
+name-status fix
+M	Dockerfile
+M	src/ciguard/analyzer/sca/endoflife.py
+M	src/ciguard/analyzer/sca/osv.py
+M	src/ciguard/discovery.py
+M	src/ciguard/web/app.py
+A	src/ciguard/web/security_headers.py
+M	tests/test_discovery.py
+M	tests/test_sca_rules.py
+M	tests/test_web.py
+
+parents fix 17a119fe43dd956ef463c1c575a463ffd9a8d95b 8465be3d88f60c5ce018c06626a7333c6661e32f
+exists d42195e10be0d7d9bfb4ec45fecfb83521d3fc67^:src/ciguard/analyzer/sca/endoflife.py False
+exists d42195e10be0d7d9bfb4ec45fecfb83521d3fc67:src/ciguard/analyzer/sca/endoflife.py True
+exists f08e654974f208f90ef6015928ef651982f3224a^:src/ciguard/analyzer/sca/osv.py False
+exists f08e654974f208f90ef6015928ef651982f3224a:src/ciguard/analyzer/sca/osv.py True
+v0.6.0=e7a41d4b7320a428868497914bde52d67b447659
+  eol ancestor of v0.6.0: True
+  osv ancestor of v0.6.0: False
+  fix ancestor of v0.6.0: False
+  v0.6.0:src/ciguard/analyzer/sca/endoflife.py exists True
+  v0.6.0:src/ciguard/analyzer/sca/osv.py exists False
+v0.8.1=0f294a346c49b358893e39b06d13ac7516775567
+  eol ancestor of v0.8.1: True
+  osv ancestor of v0.8.1: True
+  fix ancestor of v0.8.1: False
+  v0.8.1:src/ciguard/analyzer/sca/endoflife.py exists True
+  v0.8.1:src/ciguard/analyzer/sca/osv.py exists True
+v0.8.2=ca5accfeabb96028ec9a07295573ebeeeb09ae0f
+  eol ancestor of v0.8.2: True
+  osv ancestor of v0.8.2: True
+  fix ancestor of v0.8.2: True
+  v0.8.2:src/ciguard/analyzer/sca/endoflife.py exists True
+  v0.8.2:src/ciguard/analyzer/sca/osv.py exists True
+v0.8.1 endoflife reads
+v0.8.1:src/ciguard/analyzer/sca/endoflife.py:216:                payload = json.loads(resp.read().decode("utf-8"))
+
+v0.8.1 osv reads
+v0.8.1:src/ciguard/analyzer/sca/osv.py:183:                payload = json.loads(resp.read().decode("utf-8"))
+
+v0.8.2 endoflife reads
+v0.8.2:src/ciguard/analyzer/sca/endoflife.py:40:MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+v0.8.2:src/ciguard/analyzer/sca/endoflife.py:223:                body = resp.read(MAX_RESPONSE_BYTES + 1)
+v0.8.2:src/ciguard/analyzer/sca/endoflife.py:224:                if len(body) > MAX_RESPONSE_BYTES:
+
+v0.8.2 osv reads
+v0.8.2:src/ciguard/analyzer/sca/osv.py:52:MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+v0.8.2:src/ciguard/analyzer/sca/osv.py:191:                body = resp.read(MAX_RESPONSE_BYTES + 1)
+v0.8.2:src/ciguard/analyzer/sca/osv.py:192:                if len(body) > MAX_RESPONSE_BYTES:
+
+eol origin read
+d42195e10be0d7d9bfb4ec45fecfb83521d3fc67:src/ciguard/analyzer/sca/endoflife.py:215:                payload = json.loads(resp.read().decode("utf-8"))
+
+osv origin read
+f08e654974f208f90ef6015928ef651982f3224a:src/ciguard/analyzer/sca/osv.py:182:                payload = json.loads(resp.read().decode("utf-8"))
+
+fix diff endoflife
+diff --git a/src/ciguard/analyzer/sca/endoflife.py b/src/ciguard/analyzer/sca/endoflife.py
+index d3fee67..205bca4 100644
+--- a/src/ciguard/analyzer/sca/endoflife.py
++++ b/src/ciguard/analyzer/sca/endoflife.py
+@@ -34,6 +34,11 @@ USER_AGENT = "ciguard-sca/0.6 (+https://github.com/Jo-Jo98/ciguard)"
+ DEFAULT_TTL_SECONDS = 24 * 60 * 60                 # 24 hours
+ DEFAULT_TIMEOUT_SECONDS = 8
+ 
++# Cap on the response body we'll accept. endoflife.date product responses
++# are typically <100 KB; 5 MB is generous headroom. Prevents memory exhaustion
++# from a hostile / compromised endpoint or successful TLS MITM.
++MAX_RESPONSE_BYTES = 5 * 1024 * 1024
++
+ # Map of "image name → endoflife.date product slug". Many image names match
+ # their endoflife slug exactly; the ones below need explicit redirection.
+ # Add aggressively — false negatives are worse than false positives here
+@@ -213,7 +218,12 @@ class EndOfLifeClient:
+             with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:  # nosec B310
+                 if resp.status != 200:
+                     return None
+-                payload = json.loads(resp.read().decode("utf-8"))
++                # Read with size cap (+1) so we can detect overflow. A hostile
++                # server returning gigabytes would otherwise OOM-kill ciguard.
++                body = resp.read(MAX_RESPONSE_BYTES + 1)
++                if len(body) > MAX_RESPONSE_BYTES:
++                    return None
++                payload = json.loads(body.decode("utf-8"))
+                 if not isinstance(payload, list):
+                     return None
+                 return payload
+
+fix diff osv
+diff --git a/src/ciguard/analyzer/sca/osv.py b/src/ciguard/analyzer/sca/osv.py
+index a982622..2cd3563 100644
+--- a/src/ciguard/analyzer/sca/osv.py
++++ b/src/ciguard/analyzer/sca/osv.py
+@@ -45,6 +45,12 @@ USER_AGENT = "ciguard-sca/0.6 (+https://github.com/Jo-Jo98/ciguard)"
+ DEFAULT_TTL_SECONDS = 24 * 60 * 60
+ DEFAULT_TIMEOUT_SECONDS = 8
+ 
++# Cap on the response body we'll accept. OSV.dev advisory responses are
++# typically <100 KB; 5 MB is generous headroom. Prevents memory exhaustion
++# from a hostile / compromised endpoint or successful TLS MITM returning a
++# multi-GB response.
++MAX_RESPONSE_BYTES = 5 * 1024 * 1024
++
+ # OSV.dev ecosystem string for GitHub Actions advisories. Case-sensitive.
+ ECOSYSTEM_GITHUB_ACTIONS = "GitHub Actions"
+ 
+@@ -180,7 +186,12 @@ class OSVClient:
+             with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:  # nosec B310
+                 if resp.status != 200:
+                     return None
+-                payload = json.loads(resp.read().decode("utf-8"))
++                # Read with size cap (+1) so we can detect overflow. A hostile
++                # server returning gigabytes would otherwise OOM-kill ciguard.
++                body = resp.read(MAX_RESPONSE_BYTES + 1)
++                if len(body) > MAX_RESPONSE_BYTES:
++                    return None
++                payload = json.loads(body.decode("utf-8"))
+                 if not isinstance(payload, dict):
+                     return None
+                 vulns = payload.get("vulns")
+
+081 eol v0.8.1:src/ciguard/analyzer/sca/endoflife.py:216:                payload = json.loads(resp.read().decode("utf-8"))
+
+blame 081 eol d42195e1 (Jo.Moore 2026-04-26 01:24:44 +0100 216)                 payload = json.loads(resp.read().decode("utf-8"))
+
+081 osv v0.8.1:src/ciguard/analyzer/sca/osv.py:183:                payload = json.loads(resp.read().decode("utf-8"))
+
+blame 081 osv f08e6549 (Jo.Moore 2026-04-26 02:18:31 +0100 183)                 payload = json.loads(resp.read().decode("utf-8"))
+
+eol ancestor of osv: True
+osv ancestor of eol: False
+global summary ciguard: SCA HTTP client reads response body without size cap
+global range [({'ecosystem': 'pip', 'name': 'ciguard'}, '>= 0.6.0, <= 0.8.1', '0.8.2')]
+withdrawn None
+cve CVE-2026-44219
+repo range [({'ecosystem': 'pip', 'name': 'ciguard'}, '>= 0.6.0, <= 0.8.1', '0.8.2')]
+desc has both True

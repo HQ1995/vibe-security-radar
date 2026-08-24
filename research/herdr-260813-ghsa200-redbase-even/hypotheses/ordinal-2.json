@@ -1,0 +1,111 @@
+{
+  "ordinal": 2,
+  "row_key": "strict-200-v3:alias-043e2fc26bdd6275f9cae512",
+  "repository": "nesquena/hermes-webui",
+  "public_ids": [
+    "CVE-2026-6830",
+    "GHSA-VVFR-G83F-8QCV"
+  ],
+  "ghsa": [
+    "GHSA-VVFR-G83F-8QCV"
+  ],
+  "primary_id": "CVE-2026-6830",
+  "mechanism_key": "hermes-webui-additive-dotenv-profile-env-leak",
+  "mechanism": "Additive dotenv reload on profile switch leaves prior profile secrets in os.environ; invariant: switching profiles must drop previously loaded profile keys before loading the next .env.",
+  "mechanism_fingerprint": "a9a9a29fdb434e132cd6ed0444f22f6c4a1637466bcc9ecde065cf33f3247e74",
+  "causal_class": "AI_DIRECT_ROOT",
+  "row_state": "PASS",
+  "ai_provenance": {
+    "marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+    "marker_sha": "d2b27f6f1edb83634730f93dc8f19721d877bd07",
+    "scope": "MERGE_MEMBER"
+  },
+  "candidate_fix_edges": [
+    {
+      "candidate_sha": "d2b27f6f1edb83634730f93dc8f19721d877bd07",
+      "carrier_sha": "f21b088a14d63fb0ce459da7b8b304393ee94f7c",
+      "fix_sha": "88dc8bbe26a6055161d3251b70f5cd3d3c5831b0",
+      "origin_kind": "merge_member"
+    }
+  ],
+  "atomic_fix_members": [
+    "abee926eb1e781338e36e6479aea3b7c9362cef5"
+  ],
+  "proposed_fixes": [],
+  "release_evidence": {
+    "candidate_member_sha": "d2b27f6f1edb83634730f93dc8f19721d877bd07",
+    "candidate_sha": "f21b088a14d63fb0ce459da7b8b304393ee94f7c",
+    "fix_member_sha": "abee926eb1e781338e36e6479aea3b7c9362cef5",
+    "fix_sha": "88dc8bbe26a6055161d3251b70f5cd3d3c5831b0",
+    "fixed_tag": "v0.50.12",
+    "kind": "git_tag",
+    "repo_cache": "github.com_nesquena_hermes-webui",
+    "vulnerable_tag": "v0.24"
+  },
+  "source_refs": [
+    {
+      "locator": "2",
+      "path": "snapshot/strict/ledger.jsonl",
+      "sha256": "0cc19a49406c57026d58a064987f50579f2c47ac016881746c73ccd6c2470a81"
+    },
+    {
+      "locator": "11-25",
+      "path": "snapshot/strict/RESEARCH-STRICT-200-CLOSURE-2026-08-12.md",
+      "sha256": "e255c227967b921dd1b69e740edf0dccb5de4df655b73029ec204b51755e458b"
+    },
+    {
+      "locator": "batch-I-row-2",
+      "path": "docs/AUDIT-POST-HOLD-CANONICAL-HOLD-2026-08-12.md",
+      "sha256": "d59ad63c5e06aecf37befcf693235b47390d885f51903826b884c9272b0d2721"
+    },
+    {
+      "locator": "ordinal:2",
+      "path": "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+      "sha256": "0d76a1a82082e0c4742686a4466130a3a02ef9245c8f3ce86aa0298ebae701c2"
+    }
+  ],
+  "notes": [
+    "Batch I: d2b27f6f adds api/profiles.py with additive _reload_dotenv; merge carrier f21b088a is tag v0.24.",
+    "Minimum fix member abee926e pops previously loaded profile env keys; squash 88dc8bbe is the public carrier in v0.50.12. Distinct from CVE-2026-49956 session-search."
+  ],
+  "fp211_adjudication": {
+    "ordinal": 2,
+    "verdict": "CONFIRM",
+    "confidence": "HIGH",
+    "causal_class": "AI_DIRECT_ROOT",
+    "candidate_set": [
+      "d2b27f6f1edb83634730f93dc8f19721d877bd07"
+    ],
+    "carrier_set": [
+      "f21b088a14d63fb0ce459da7b8b304393ee94f7c"
+    ],
+    "minimum_fix_set": [
+      "88dc8bbe26a6055161d3251b70f5cd3d3c5831b0"
+    ],
+    "identity_gate": "PASS",
+    "ai_hunk_gate": "PASS",
+    "topology_gate": "PASS",
+    "but_for_gate": "PASS",
+    "fix_reversal_gate": "PASS",
+    "release_gate": "PASS",
+    "uniqueness_gate": "PASS",
+    "public_ids_keep": [
+      "CVE-2026-6830",
+      "GHSA-VVFR-G83F-8QCV"
+    ],
+    "public_ids_remove": [],
+    "lesson": "Additive dotenv reload is but-for when the parent lacks _reload_dotenv and the named fix pops previously loaded profile keys.",
+    "counterevidence": [
+      "repo nesquena/hermes-webui GHSA-vvfr 404; identity closed via global GHSA"
+    ],
+    "experience_tags": [
+      "merge_member_is_origin",
+      "shared_sha_distinct_mechanism"
+    ],
+    "duplicate_of": null,
+    "replay_commands": [
+      "git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false -C /tmp/fp211-cross-04/clones/hermes-webui merge-base --is-ancestor d2b27f6f1edb83634730f93dc8f19721d877bd07 v0.24",
+      "git --no-optional-locks -c gc.auto=0 -c maintenance.auto=false -C /tmp/fp211-cross-04/clones/hermes-webui grep -n _loaded_profile_env_keys v0.50.12 -- api/profiles.py"
+    ]
+  }
+}

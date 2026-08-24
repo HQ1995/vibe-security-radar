@@ -1,0 +1,66 @@
+# Replay: herdr-260813-ghsa200-red-upgrade-b-ord211-release
+# Cache only. No /tmp clones. English commands.
+# CACHE=/home/hanqing/.cache/ghsa200-worker-clones/red-upgrade-b-ord211-release
+
+set -euo pipefail
+CACHE=/home/hanqing/.cache/ghsa200-worker-clones/red-upgrade-b-ord211-release
+R=$CACHE/clones/szTheory__relyra
+ADV=$CACHE/advisories
+export GIT_OPTIONAL_LOCKS=0
+
+mkdir -p "$ADV" "$CACHE/clones"
+
+curl -fsSL https://api.github.com/advisories/GHSA-jv46-xfwm-36j7 -o "$ADV/ghsa-jv46-xfwm-36j7.global.json"
+curl -fsSL https://api.github.com/repos/szTheory/relyra/security-advisories/GHSA-jv46-xfwm-36j7 \
+  -o "$ADV/GHSA-jv46-xfwm-36j7.repo.json"
+curl -fsSL https://hex.pm/api/packages/relyra/releases/1.1.0 -o "$ADV/hex-relyra-1.1.0.json"
+curl -fsSL https://hex.pm/api/packages/relyra/releases/1.2.0 -o "$ADV/hex-relyra-1.2.0.json"
+curl -fsSL https://hex.pm/api/packages/relyra -o "$ADV/hex-relyra.json"
+curl -fsSL 'https://api.github.com/repos/szTheory/relyra/releases?per_page=20' -o "$ADV/github-releases.json"
+curl -fsSL -o /dev/null -w 'hex_1.0.0 %{http_code}\n' https://hex.pm/api/packages/relyra/releases/1.0.0 || true
+
+git clone --filter=blob:none https://github.com/szTheory/relyra.git "$R"
+git -C "$R" -c gc.auto=0 config --local gc.auto 0
+git -C "$R" -c gc.auto=0 fetch --filter=blob:none origin tag v1.0 tag v1.1.0 tag v1.2.0
+
+git -C "$R" -c gc.auto=0 log -1 --format=fuller 2aeba972d43391175a94c7793b63c6a5709abc48
+git -C "$R" -c gc.auto=0 rev-list --parents -n1 2aeba972d43391175a94c7793b63c6a5709abc48
+git -C "$R" -c gc.auto=0 cat-file -e 2aeba972^:lib/relyra/security/signature.ex || echo parent_no_file
+git -C "$R" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 2aeba972
+
+git -C "$R" -c gc.auto=0 show v1.1.0:mix.exs | grep -E '@version|version:'
+git -C "$R" -c gc.auto=0 show v1.2.0:mix.exs | grep -E '@version|version:'
+git -C "$R" -c gc.auto=0 show v1.0:mix.exs | grep -E 'version:'
+
+git -C "$R" -c gc.auto=0 merge-base --is-ancestor 2aeba972d43391175a94c7793b63c6a5709abc48 v1.1.0 && echo candidate_in_110 YES
+git -C "$R" -c gc.auto=0 merge-base --is-ancestor 2e456897af3158c175bb490ce7fc51d6241c8922 v1.1.0 || echo fix_in_110 NO
+git -C "$R" -c gc.auto=0 merge-base --is-ancestor 2e456897af3158c175bb490ce7fc51d6241c8922 v1.2.0 && echo fix_in_120 YES
+git -C "$R" -c gc.auto=0 merge-base --is-ancestor 8910200edc77a502d4cbce7ec88188b4bd636f99 v1.1.0 || echo meta_fix_in_110 NO
+git -C "$R" -c gc.auto=0 merge-base --is-ancestor 8910200edc77a502d4cbce7ec88188b4bd636f99 v1.2.0 && echo meta_fix_in_120 YES
+
+git -C "$R" -c gc.auto=0 blame -L 167,175 v1.1.0 -- lib/relyra/security/signature.ex
+git -C "$R" -c gc.auto=0 blame -L 205,205 v1.2.0 -- lib/relyra/security/signature.ex
+git -C "$R" -c gc.auto=0 rev-parse \
+  2aeba972:lib/relyra/security/signature.ex \
+  v1.1.0:lib/relyra/security/signature.ex \
+  v1.2.0:lib/relyra/security/signature.ex \
+  2e456897:lib/relyra/security/signature.ex
+
+git -C "$R" -c gc.auto=0 log -1 --format='%s' 2e456897af3158c175bb490ce7fc51d6241c8922
+git -C "$R" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 2e456897af3158c175bb490ce7fc51d6241c8922
+git -C "$R" -c gc.auto=0 diff-tree --no-commit-id --name-only -r 8910200edc77a502d4cbce7ec88188b4bd636f99
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+adv=Path("/home/hanqing/.cache/ghsa200-worker-clones/red-upgrade-b-ord211-release/advisories")
+g=json.loads((adv/"ghsa-jv46-xfwm-36j7.global.json").read_text())
+print("range", g["vulnerabilities"][0]["vulnerable_version_range"], "patched", g["vulnerabilities"][0]["first_patched_version"])
+h11=json.loads((adv/"hex-relyra-1.1.0.json").read_text())
+h12=json.loads((adv/"hex-relyra-1.2.0.json").read_text())
+print("hex11", h11["version"], h11["inserted_at"], h11["checksum"])
+print("hex12", h12["version"], h12["inserted_at"], h12["checksum"])
+def v(s):
+    return tuple(int(x) for x in s.split("."))
+print("1.1.0 in >=1.0.0,<1.2.0", v("1.0.0") <= v("1.1.0") < v("1.2.0"))
+PY

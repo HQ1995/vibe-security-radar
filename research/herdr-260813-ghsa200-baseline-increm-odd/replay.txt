@@ -1,0 +1,82 @@
+# baseline-increm-odd independent replay
+
+CONTRACT.md sha256: cbd04ef2770d7b93e59032ec92dde3566e1d64df3b1e003dfbcfbea558f90ed3
+ledger.jsonl sha256: 1f0d15a82765c557b67efceaaf41a887c2d078a49f3da84d5f42458043e3e5e6
+Filter: counting.fp211_released_publication_admitted == true
+        causal_class == AI_INCOMPLETE_REMEDIATION
+        fp211_adjudication.ordinal in [135, 137, 147, 161, 163, 167, 171, 179]
+Cache: /home/hanqing/.cache/ghsa200-worker-clones/baseline-increm-odd
+
+# clones (no /tmp; no canonical edits)
+git clone https://github.com/ShaneIsrael/fireshare.git clones/fireshare
+git clone https://github.com/patriksimek/vm2.git clones/vm2
+git clone https://github.com/czlonkowski/n8n-mcp.git clones/n8n-mcp
+git clone https://github.com/locutusjs/locutus.git clones/locutus
+git clone https://github.com/scriban/scriban.git clones/scriban
+git clone https://github.com/gitpython-developers/GitPython.git clones/GitPython
+# then: git -C clones/<repo> fetch --tags
+
+# advisories
+gh api repos/ShaneIsrael/fireshare/security-advisories/GHSA-fvvp-rj8g-c7gc
+gh api advisories/GHSA-fvvp-rj8g-c7gc   # expected 404
+gh api repos/patriksimek/vm2/security-advisories/GHSA-m4wx-m65x-ghrr
+gh api advisories/GHSA-m4wx-m65x-ghrr
+gh api repos/czlonkowski/n8n-mcp/security-advisories/GHSA-56c3-vfp2-5qqj
+gh api advisories/GHSA-56c3-vfp2-5qqj
+gh api repos/locutusjs/locutus/security-advisories/GHSA-vc8f-x9pp-wf5p
+gh api advisories/GHSA-vc8f-x9pp-wf5p
+gh api repos/scriban/scriban/security-advisories/GHSA-q6rr-fm2g-g5x8
+gh api advisories/GHSA-q6rr-fm2g-g5x8
+gh api repos/scriban/scriban/security-advisories/GHSA-6q7j-xr26-3h2c
+gh api advisories/GHSA-6q7j-xr26-3h2c
+gh api repos/gitpython-developers/GitPython/security-advisories/GHSA-mv93-w799-cj2w
+gh api advisories/GHSA-mv93-w799-cj2w
+gh api repos/gitpython-developers/GitPython/security-advisories/GHSA-5xxx-qhh7-9287
+gh api advisories/GHSA-5xxx-qhh7-9287   # expected 404
+
+# ancestry oracle is merge-base --is-ancestor (exit 0 ancestor, 1 not)
+# 135
+git -C clones/fireshare show --format='%an %ae%n%s' -s 157386c85f6683f89192dae52115069b435b6d34
+git -C clones/fireshare show 157386c85f6683f89192dae52115069b435b6d34 -- app/server/fireshare/api.py
+git -C clones/fireshare show --format='%an %ae%n%s' -s 92c289539f0cc2f9e9cf72f33b2bad3f4f3e8c8f
+git -C clones/fireshare merge-base --is-ancestor 92c289539f0cc2f9e9cf72f33b2bad3f4f3e8c8f v1.5.2; echo $?
+git -C clones/fireshare merge-base --is-ancestor 70b5b35aadd55c7936a25effd6f3e9ee4c124879 v1.5.2; echo $?
+git -C clones/fireshare merge-base --is-ancestor 70b5b35aadd55c7936a25effd6f3e9ee4c124879 v1.5.3; echo $?
+# 137
+git -C clones/vm2 rev-parse 'v3.11.1^{commit}'
+git -C clones/vm2 merge-base --is-ancestor 01a7552add345d5a6862623884e6b79a85bf0568 v3.11.1; echo $?
+git -C clones/vm2 merge-base --is-ancestor 86ab819f202c3a8dad88cef5705f2e416c5188d7 v3.11.3; echo $?
+git -C clones/vm2 merge-base --is-ancestor 86ab819f202c3a8dad88cef5705f2e416c5188d7 v3.11.4; echo $?
+# 147
+git -C clones/n8n-mcp grep validateUrlSync 643c98bcf7663fe8f08f6dfd21d2ddeb56634387 -- src/utils/ssrf-protection.ts; echo $?
+git -C clones/n8n-mcp merge-base --is-ancestor d9d847f230923d96e0857ccecf3a4dedcc9b0096 v2.47.4; echo $?
+git -C clones/n8n-mcp merge-base --is-ancestor 9639f757853149f0cb16663cc8b6b6468f27a25f v2.47.13; echo $?
+git -C clones/n8n-mcp merge-base --is-ancestor 9639f757853149f0cb16663cc8b6b6468f27a25f v2.47.14; echo $?
+# 161
+git -C clones/locutus show 042af9ca7fde2ff599120783e720a17f335bb01c -- src/php/strings/parse_str.js
+git -C clones/locutus merge-base --is-ancestor 042af9ca7fde2ff599120783e720a17f335bb01c v2.0.38; echo $?
+git -C clones/locutus merge-base --is-ancestor 042af9ca7fde2ff599120783e720a17f335bb01c v2.0.39; echo $?
+git -C clones/locutus merge-base --is-ancestor 345a6211e1e6f939f96a7090bfeff642c9fcf9e4 v3.0.25; echo $?
+# 163
+git -C clones/scriban show --name-only --format='%s' 2d01bd15a1114fac2533aa005036e07389ee89db
+git -C clones/scriban show --name-only 205ca6a7c2349d3d388bd5f1f7729ee198c0d5e5
+git -C clones/scriban merge-base --is-ancestor 2d01bd15a1114fac2533aa005036e07389ee89db 6.6.0; echo $?
+# 167
+git -C clones/scriban grep -n -A8 'void EnterExpression' 6.6.0 -- src/Scriban/Parsing/Parser.Expressions.cs
+git -C clones/scriban show f55280a09575e577fcf7f5629007e0814594e3ac -- src/Scriban/Parsing/Parser.Expressions.cs
+git -C clones/scriban merge-base --is-ancestor f55280a09575e577fcf7f5629007e0814594e3ac 6.6.0; echo $?
+# 171
+git -C clones/GitPython show c417af469f9aa3da8dfef78f996c0fb8c5d1f4c2 -- git/config.py
+git -C clones/GitPython merge-base --is-ancestor c417af469f9aa3da8dfef78f996c0fb8c5d1f4c2 3.1.48; echo $?
+git -C clones/GitPython merge-base --is-ancestor 54538428f79b0c91ba52cda5229856a6edf7ac06 3.1.50; echo $?
+# 179
+git -C clones/GitPython grep -n -A6 unsafe_git_revision_options 701ce32fe5ba8cb622c0e0342a376a6beb47d738 -- git/repo/base.py
+git -C clones/GitPython merge-base --is-ancestor 701ce32fe5ba8cb622c0e0342a376a6beb47d738 3.1.51; echo $?
+git -C clones/GitPython merge-base --is-ancestor 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 3.1.59; echo $?
+
+# Schema: every AI_INCOMPLETE_REMEDIATION row must have remediation_patch_delta_gate
+# plus the seven legacy gates. KEEP requires remediation_patch_delta_gate=PASS and
+# but_for_gate=PASS (patch-delta interpretation). NARROW/REJECT/UNKNOWN record the
+# matching non-PASS patch-delta value. Substantive verdicts unchanged.
+
+KEEP is a proposal only. No canonical edits, commit, reset, or clean.

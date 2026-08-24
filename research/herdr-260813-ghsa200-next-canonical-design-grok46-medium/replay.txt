@@ -1,0 +1,150 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+# Fail-fast structural replay of this design packet only. No builder. No case Git.
+HERE="${0:A:h}"
+ROOT="${HERE:A:h:h}"
+python3 - "$HERE" "$ROOT" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+HERE = Path(sys.argv[1])
+ROOT = Path(sys.argv[2])
+HAN = re.compile(r"[\u3400-\u9fff]")
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+GHSA = re.compile(r"^GHSA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$")
+
+required = [
+    "design.md",
+    "schema.json",
+    "verifier-requirements.json",
+    "result.json",
+    "replay.txt",
+]
+for name in required:
+    path = HERE / name
+    assert path.is_file(), name
+    text = path.read_text()
+    assert text, name
+    assert not HAN.search(text), name
+
+result = json.loads((HERE / "result.json").read_text())
+schema = json.loads((HERE / "schema.json").read_text())
+vr = json.loads((HERE / "verifier-requirements.json").read_text())
+assert schema["overlay_name"] if False else schema.get("title")
+assert result["status"] == "HOLD"
+assert result["causal_admission"] is False
+assert result["integration_ready"] is False
+assert result["publication_ready"] is False
+assert result["builder_implemented"] is False
+assert result["conservation"]["fp211_hypotheses"] == 211
+assert result["conservation"]["fp211_source_ghsa_cases"] == 212
+
+for name in ("design.md", "schema.json", "verifier-requirements.json", "replay.txt"):
+    got = hashlib.sha256((HERE / name).read_bytes()).hexdigest()
+    assert result["design_artifact_hashes"][name] == got, name
+
+assert vr["schema_version"] == 1
+assert vr["overlay_name"] == "fp211-next-hold"
+assert vr["counting_unit"] == "first-party GHSA case"
+assert vr["conservation"]["fp211_hypotheses"] == 211
+assert vr["conservation"]["fp211_source_ghsa_cases"] == 212
+assert vr["conservation"]["cve_aliases_counted"] is False
+assert vr["conservation"]["upgrades_append"] is False
+assert vr["conservation"]["new_identities_append"] is True
+assert vr["countable_predicate"]["seven_gates"] == [
+    "identity_gate",
+    "ai_hunk_gate",
+    "topology_gate",
+    "but_for_gate",
+    "fix_reversal_gate",
+    "release_gate",
+    "uniqueness_gate",
+]
+assert vr["countable_predicate"]["exact_value"] == "PASS"
+assert vr["countable_predicate"]["null_fails"] is True
+assert vr["countable_predicate"]["na_fails"] is True
+assert vr["edge_policy"]["cartesian_candidate_fix_edges"] is False
+assert vr["verification_layers"] == ["structural", "git", "semantic"]
+assert vr["semantic_controls"]["seven_c3w_cannot_keep"] == "GHSA-7C3W-FXGH-FRC7"
+assert vr["semantic_controls"]["authority_not_from_glob_or_contrary_vote"] is True
+
+ids = []
+for bucket, state in (("KEEP", "KEEP"), ("NARROW", "NARROW"), ("PENDING", "PENDING")):
+    for row in vr["candidate_sets"][bucket]:
+        for key in (
+            "case_id",
+            "overlay_state",
+            "action",
+            "in_fp211_212",
+            "candidate_set",
+            "carrier_set",
+            "minimum_fix_set",
+            "unlock",
+        ):
+            assert row.get(key) is not None, key
+        assert row["overlay_state"] == state
+        assert GHSA.match(row["case_id"])
+        for field in ("candidate_set", "carrier_set", "minimum_fix_set"):
+            vals = row[field]
+            assert isinstance(vals, list)
+            assert vals == sorted(set(vals))
+            assert all(SHA40.fullmatch(x) for x in vals)
+        if row["action"] == "APPEND":
+            assert row["in_fp211_212"] is False
+        else:
+            assert row["in_fp211_212"] is True
+        ids.append(row["case_id"])
+assert len(ids) == len(set(ids))
+assert len(vr["candidate_sets"]["KEEP"]) == 30
+assert len(vr["candidate_sets"]["NARROW"]) == 8
+assert len(vr["candidate_sets"]["PENDING"]) == 5
+assert "GHSA-7C3W-FXGH-FRC7" not in {
+    r["case_id"] for r in vr["candidate_sets"]["KEEP"]
+}
+seven = [
+    r
+    for r in vr["candidate_sets"]["NARROW"]
+    if r["case_id"] == "GHSA-7C3W-FXGH-FRC7"
+]
+assert len(seven) == 1
+assert seven[0]["action"] == "SUPERSEDE"
+append_ids = {
+    r["case_id"] for r in vr["candidate_sets"]["KEEP"] if r["action"] == "APPEND"
+}
+assert append_ids == {"GHSA-G39V-CVJH-8FPF", "GHSA-PF93-J98V-25PV"}
+
+edge = next(e for e in vr["supersedes_edges"] if e["edge_id"] == "E-7C3W-RT")
+assert edge["to_verdict"] == "NARROW"
+assert edge["from_verdict"] == "ACCEPT"
+assert edge["authority_rank"] == 30
+assert edge["pending_until_to_packet_terminal"] is False
+assert edge["applies_now"] is True
+nn = next(
+    p
+    for p in vr["packet_authority"]
+    if p["packet"].endswith("netnew22-redteam-grok46-xhigh")
+)
+fr = next(p for p in vr["packet_authority"] if p["role"] == "final_review")
+assert nn["terminal"] is True
+assert fr["terminal"] is True
+assert nn["authority_rank"] > fr["authority_rank"]
+
+for group in ("frozen", "current"):
+    for item in vr["hash_roles"][group].values():
+        path = ROOT / item["path"]
+        assert path.is_file(), item["path"]
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert got == item["sha256"], item["path"]
+        assert item["role"] == group
+
+pc_path = ROOT / "autoresearch/orchestrator-260813-fp211-audit/public_cases.jsonl"
+fm_path = ROOT / "autoresearch/orchestrator-260813-fp211-audit/final_mechanisms.jsonl"
+pc = [json.loads(l) for l in pc_path.read_text().splitlines() if l.strip()]
+fm = [json.loads(l) for l in fm_path.read_text().splitlines() if l.strip()]
+assert len(pc) == 212 and len({r["case_id"] for r in pc}) == 212
+assert len(fm) == 211 and [r["ordinal"] for r in fm] == list(range(1, 212))
+print("PASS: next-canonical-design artifacts structurally valid; integration HOLD")
+PY
