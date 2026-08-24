@@ -1,6 +1,6 @@
 # Vibe Security Radar - canonical research ledger summary
 
-The JSONL ledger is the source of truth. Refreshed 2026-08-23 after archiving the round6 causal wave checkpoint 9 (1114 cases) and closing the three remaining Gogs causal chains (shard-042 NOT_AI verdicts). Previous refresh: 2026-08-23 duplicate TP fold and site class/identity reconciliation.
+The JSONL ledger is the source of truth. Refreshed 2026-08-24 after completing the round6 causal wave over the full 1,182-case priority pool (`round6/priority-pool.jsonl`), fixing 5 malformed introducer fields, and normalizing JSONL serialization to compact form (`17fc98f`). Previous refresh: 2026-08-23 (checkpoint 9, 1114 cases) plus the Gogs causal closure and duplicate TP fold.
 
 ## Canonical status
 
@@ -8,13 +8,13 @@ Counts below treat `site_publication.publish: false` TP rows as folded duplicate
 
 | Status | Classes | Meaning |
 |---|---:|---|
-| AI_ROOT_CAUSE | 183 | Unique official IDs where AI code introduced or enabled the vulnerability. |
+| AI_ROOT_CAUSE | 186 | Unique official IDs where AI code introduced or enabled the vulnerability. |
 | AI_CODE_FLAWED | 59 | Unique official IDs where AI-written code was flawed. |
 | FOLDED_DUPLICATE_TP | 7 | Extra class rows for the same GHSA as another TP; kept in the book, not extra TPs. |
-| NOT_AI | 917 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
-| PARTIALLY_ANALYZED | 6356 | Some evidence exists, but the complete causal chain is not closed. |
-| BLOCKED | 30 | A required implementation, fix, ownership, or history boundary is unavailable. |
-| UNANALYZED | 16316 | No individual causal research has been completed. |
+| NOT_AI | 980 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
+| PARTIALLY_ANALYZED | 6357 | Some evidence exists, but the complete causal chain is not closed. |
+| BLOCKED | 31 | A required implementation, fix, ownership, or history boundary is unavailable. |
+| UNANALYZED | 16248 | No individual causal research has been completed. |
 | Total | 23861 | One row per class_id. Unique confirmed TPs: 195. |
 
 ## Gogs causal closure - 2026-08-23
@@ -29,20 +29,23 @@ Three Gogs partial-wave rows carried complete NOT_AI research in `shard-042-out.
 
 Backup: `artifacts/funnel-account-20260817.jsonl.bak-gogs-remaining-20260823`.
 
-## Round6 causal research wave - 2026-08-23 (checkpoint 9)
+## Round6 causal research wave - 2026-08-24 (complete: 1182/1182)
 
-Round6 is the prioritized wave over the 1,182-case priority pool (`round6/priority-pool.jsonl`). Workers pA-pG run the 3-step causal method (vulnerability understanding, atomic BIC decomposition with parent-absence verification, AI-marker assessment on vulnerable lines). This checkpoint archives 1114 completed cases; 68 pool rows remain in flight or queued. Lanes pB, pE, pF, and pG are fully complete; pA (126), pC (167), and pD (146) remain in flight (near the end of their lanes).
+Round6 is the prioritized wave over the 1,182-case priority pool (`round6/priority-pool.jsonl`). Workers pA-pG run the 3-step causal method (vulnerability understanding, atomic BIC decomposition with parent-absence verification, AI-marker assessment on vulnerable lines). This checkpoint archives the final 68 cases (pA lane completion, 169/169), closing the wave at 1182/1182 archived; all lanes emitted `BATCH_COMPLETE`.
 
-- Verdicts: 705 NOT_AI, 366 EVIDENCE_GAP, 33 AI_ROOT_CAUSE, 7 AI_CODE_FLAWED, 3 BLOCKED.
+- Final wave verdicts: 768 NOT_AI, 367 EVIDENCE_GAP, 36 AI_ROOT_CAUSE, 7 AI_CODE_FLAWED, 4 BLOCKED (final 68: 63 NOT_AI, 3 AI_ROOT_CAUSE, 1 EVIDENCE_GAP, 1 BLOCKED).
 - Archive fields: `round6_research`, `round6_verdict`, `round6_research_source` (per row); EVIDENCE_GAP maps to PARTIALLY_ANALYZED.
 - EVIDENCE_GAP here is dominated by classes whose advisory identity cannot be pinned locally (no `.alias_class_member_map.json` entry, ambiguous repo-level collapse); the no-inference rule forbids guessing among candidate advisories, so those rows stay PARTIALLY_ANALYZED.
+- The `round6_research` key presence alone is not an archive marker: an unrelated pipeline run had stamped empty `{}` placeholders on unresearched rows, which would have silently skipped the final 68. The checkpoint now treats a row as archived only when it carries `round6_verdict` or a non-empty research dict.
 - Notable AI_ROOT_CAUSE: labring/fastgpt `fetchThreadReplies` thread-context injection (no allowlist filter, `Co-authored-by: Claude Opus 4.6` trailer on the vulnerable lines; fixed 30h later by filtering thread messages through the sender allowlist).
 - Notable AI_CODE_FLAWED: nousresearch/hermes-agent regex-bypass in the context-file prompt-injection scanner — the AI-co-authored commit 95b6bd5df6 (Claude Opus 4.6 trailer) first wrote the vulnerable element, but the flawed blocklist approach was copied from a human-written skills_guard list, so AI implicated but not sole root.
 - Notable NOT_AI: openc3/cosmos CVE-2025-68271 unauthenticated RCE via `eval(self)` in `String#convert_to_value` — BIC 320cb782 is the 2014 initial commit (pre-AI), fix 01e9fbc5 swaps eval → YAML.safe_load.
 - Notable NOT_AI: n8n-io/n8n CVE-2026-72766 Send Email node arbitrary file read/SSRF — BIC is the 2019 repository root commit (pre-AI, `introducer_parent_absent=true`); fix-side AI trailers (Claude Opus 4.8, Cursor) concern the fix, not the introducer.
 - Notable NOT_AI: zhongyu09/openchatbi CVE-2026-5586 Text2SQL prompt-injection RCE — BIC is the first code commit (2025-09-09, no AI markers, `introducer_parent_absent=True`); repo-wide AI trailers are post-advisory and never touched the vulnerable sink.
+- Malformed-field repair (5 rows, verified against GitHub API 2026-08-24): apache/arrow introducer_sha corrected to `f62213921b003cc716d6fe50d8604560cea4a3d4` (41-char stored value dropped a char); modelcontextprotocol/python-sdk introducer_sha corrected to `4cbf8154306aa5b96b2bb3fc83ac5984d217a0f5` (39-char stored value, root commit with no parents, confirmed); vllm-project/vllm introducer_parent corrected to `37dfa6003782d872a375cc41429ca16fe241f83f` (10-char truncation); significant-gravitas/autogpt and ultradagcom/core introducer_parent values were `sha^ (parent)` shell fragments, normalized to their bare 40-hex parents (`d82e57719677e972cadf1fc890908dc904db332c`, `6462f64ec2af07129bdd6aade7a3653eb133b39f`). Parent-of-introducer relationships re-verified for arrow, vllm, and python-sdk.
+- BIC fine-grained decomposition (`f2f7a68`): 5 previously-unverified squashes decomposed to atomic BICs — autogpt 57a06f708 → 583a9a9e (AI markers ON atomic BIC), grackle 3837cbd0 → 0f7e831a (AI markers ON atomic BIC), openclaw 8c852d86 4/4 (vulnerable-line BIC 9f40ec89 has NO AI marker), consul b1cd635f 13/13 (vulnerable-line BIC e42e734 has NO AI marker), llm_memory d3d69dc 5/5 (vulnerable-line BIC 696f8e39 has NO AI marker). The 3 weakened cases (openclaw/consul/llm_memory) keep their verdict with `bic_analysis` notes; downgrade review suggested.
 
-Backup: `artifacts/funnel-account-20260817.jsonl.bak-round6-20260823`. Remaining pool: 68.
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-round6-20260823`. Remaining pool: 0.
 
 ## Duplicate TP fold - 2026-08-23
 
@@ -154,7 +157,7 @@ Status remains BLOCKED for all 22 rows; missing causal history is not evidence f
 
 - JSONL rows: 23861/23861 parse successfully.
 - Unique class_id: 23861/23861.
-- Status counts: {"AI_CODE_FLAWED": 52, "AI_ROOT_CAUSE": 148, "BLOCKED": 22, "NOT_AI": 39, "PARTIALLY_ANALYZED": 6170, "UNANALYZED": 17430}.
+- Status counts: {"AI_CODE_FLAWED": 59, "AI_ROOT_CAUSE": 186, "BLOCKED": 31, "NOT_AI": 980, "PARTIALLY_ANALYZED": 6357, "UNANALYZED": 16248}.
 - BLOCKED boundary dossiers: 22/22 unique class_ids.
 - NOT_AI evidence audit: 39/39 passed; no row is counted as fully remediated unless remediation_status is FIX_VERIFIED.
 - NOT_AI dimension fields: notai_attribution_status, notai_remediation_status, notai_lineage_status, notai_causal_review_status.
