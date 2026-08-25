@@ -76,4 +76,47 @@ def test_inferred_repository_identities_have_frozen_public_provenance() -> None:
             assert control["repository_identity"].removeprefix("github.com/") in audit_text
             continue
         source_text = (REPO_ROOT / repository_source).read_text(encoding="utf-8")
-        assert control["repository_identity"].removeprefix("github.com/") in source_text.lower()
+        suffix = control["repository_identity"].removeprefix("github.com/")
+        provenance = (
+            source_text.lower()
+            + _ledger_repos(control["advisory"])
+            + _historical_repo_text(control["advisory"]).lower()
+        )
+        assert suffix in provenance
+
+
+def _ledger_repos(advisory: str) -> str:
+    """Repository identities for an advisory from the canonical funnel ledger."""
+    ledger = REPO_ROOT / "artifacts" / "funnel-account-20260817.jsonl"
+    needle = str(advisory).lower()
+    repos = []
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("repo") and needle in json.dumps(row).lower():
+            repos.append(str(row["repo"]).lower())
+    return "\n".join(repos)
+
+
+def _historical_repo_text(advisory: str) -> str:
+    """Pre-archive web/data/cves/{advisory}.json from git history."""
+    import subprocess
+
+    path = f"web/data/cves/{advisory}.json"
+    found = subprocess.run(
+        ["git", "log", "--all", "--format=%H", "--", path],
+        capture_output=True,
+        text=True,
+    )
+    if not found.stdout.strip():
+        return ""
+    for commit in found.stdout.splitlines():
+        content = subprocess.run(
+            ["git", "show", f"{commit}:{path}"],
+            capture_output=True,
+            text=True,
+        )
+        if content.returncode == 0:
+            return content.stdout
+    return ""

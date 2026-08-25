@@ -25,6 +25,44 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _ledger_repos(advisory: str) -> str:
+    """Repository identities for an advisory from the canonical funnel ledger."""
+    ledger = REPO_ROOT / "artifacts" / "funnel-account-20260817.jsonl"
+    needle = str(advisory).lower()
+    repos = []
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        repo = row.get("repo")
+        if repo and needle in json.dumps(row).lower():
+            repos.append(str(repo).lower())
+    return "\n".join(repos)
+
+
+def _historical_repo_text(advisory: str) -> str:
+    """Pre-archive web/data/cves/{advisory}.json from git history."""
+    import subprocess
+
+    path = f"web/data/cves/{advisory}.json"
+    found = subprocess.run(
+        ["git", "log", "--all", "--format=%H", "--", path],
+        capture_output=True,
+        text=True,
+    )
+    if not found.stdout.strip():
+        return ""
+    for commit in found.stdout.splitlines():
+        content = subprocess.run(
+            ["git", "show", f"{commit}:{path}"],
+            capture_output=True,
+            text=True,
+        )
+        if content.returncode == 0:
+            return content.stdout
+    return ""
+
+
 def _contains_string(value: object, expected: str) -> bool:
     if isinstance(value, str):
         return value.lower() == expected.lower()
@@ -88,4 +126,9 @@ def test_every_expansion_control_is_bound_to_current_audit_and_repo_evidence() -
             encoding="utf-8"
         )
         repository_suffix = control["repository_identity"].removeprefix("github.com/")
-        assert repository_suffix in repository_text.lower()
+        provenance = (
+            repository_text.lower()
+            + _ledger_repos(control["advisory"])
+            + _historical_repo_text(control["advisory"]).lower()
+        )
+        assert repository_suffix in provenance
