@@ -8,8 +8,6 @@ read this before editing anything outside its own output dir.
   agent runs git checkout on it.
 - web/src/app, web/src/components, web/src/lib : owned by the site-fix2 lane.
   Other lanes treat them as read-only.
-- archives/legacy-web-data-campaign/ : frozen legacy campaign evidence.
-  Do not edit.
 - research/orchestrator-*/ and research/herdr-*/ : owned by the lane
   that created each dir. Never edit another lane's dir. Lane dirs are
   tracked for evidence (result.json, report.md, cases.jsonl, manifests);

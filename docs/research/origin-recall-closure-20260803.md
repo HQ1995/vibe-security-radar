@@ -18,6 +18,8 @@ that was absent from all prior research state:
   squash roots resolved and zero blocked, carrier-only, provenance-gap, or
   uncovered-surface roots.
 
+> Evidence directory archived 2026-08-25 (removed from the repo; the JSON remains in git history).
+>
 The canonical machine-readable v7 result is
 [`final_result.json`](../archives/legacy-web-data-campaign/heldout_studies/prospective-origin-heldout-20260803-v7-fresh/final_result.json).
 
@@ -127,6 +129,8 @@ This closes the demonstrated candidate-admission and squash-budget failures.
 It does **not** provide a fresh method-independent positive denominator and does
 **not** certify zero population misses.
 
+> Evidence directory archived 2026-08-25 (removed from the repo; the JSON remains in git history).
+>
 The canonical machine-readable result is
 [`final_result.json`](../archives/legacy-web-data-campaign/heldout_studies/prospective-origin-heldout-20260803-v6-reserved/final_result.json).
 
