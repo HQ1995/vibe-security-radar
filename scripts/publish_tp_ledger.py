@@ -558,9 +558,49 @@ def merge_duplicate_identities(cases: list[dict]) -> list[dict]:
     return merged
 
 
-def publication_errors(cases: list[dict]) -> list[str]:
+def entity_alias_map() -> dict[str, str]:
+    """GHSA <-> CVE equivalence map (one advisory, two spellings).
+
+    Loaded from scripts/ghsa-cve-map.json (maintained from GitHub advisory
+    API). Catches cross-type duplicates: one case publishing a GHSA while
+    another publishes its CVE is the same vulnerability twice.
+    """
+    path = ROOT / "scripts/ghsa-cve-map.json"
+    try:
+        payload = json.loads(path.read_text())
+    except (FileNotFoundError, ValueError):
+        return {}
+    out: dict[str, str] = {}
+    for key, value in (payload.get("ghsa_to_cve") or {}).items():
+        out[str(key).upper()] = str(value).upper()
+    for key, value in (payload.get("cve_to_ghsa") or {}).items():
+        out[str(key).upper()] = str(value).upper()
+    return out
+
+
+_ENTITY_ALIASES: dict[str, str] | None = None
+
+
+def expand_entity_ids(official_ids: list[str]) -> list[str]:
+    """Expand official IDs to the same-entity spelling (GHSA <-> CVE)."""
+    global _ENTITY_ALIASES
+    if _ENTITY_ALIASES is None:
+        _ENTITY_ALIASES = entity_alias_map()
+    out = list(official_ids)
+    for oid in official_ids:
+        twin = (_ENTITY_ALIASES or {}).get(str(oid).upper())
+        if twin:
+            out.append(twin)
+    return out
+
+
+def publication_errors(
+    cases: list[dict],
+    dates: dict[str, str] | None = None,
+) -> list[str]:
     errors: list[str] = []
     seen: dict[str, str] = {}
+    date_values = set((dates or {}).values())
     for case in cases:
         case_id = case["case_id"]
         if case.get("ir_chain") and case.get("contribution_class") != "AI_INCOMPLETE_REMEDIATION":
@@ -582,13 +622,20 @@ def publication_errors(cases: list[dict]) -> list[str]:
         ghsas = [item for item in official_ids_of(case) if GHSA_RE.match(item)]
         if len(ghsas) > 1:
             errors.append(f"{case_id}: multiple GHSAs {ghsas}")
-        for official_id in official_ids_of(case):
+        for official_id in unique(expand_entity_ids(official_ids_of(case))):
             owner = seen.get(official_id)
             if owner and owner != case_id:
                 errors.append(f"{official_id}: claimed by both {owner} and {case_id}")
             seen[official_id] = case_id
         if not case.get("published_at"):
             errors.append(f"{case_id}: missing published_at")
+        elif date_values and case.get("published_at") not in date_values:
+            errors.append(
+                f"{case_id}: published_at {case.get('published_at')} not traceable "
+                f"to the advisory date table (scripts/first-party-advisory-dates.json); "
+                f"resolve the real advisory date (web search if the APIs miss it), "
+                f"never substitute the introducer commit date"
+            )
     return errors
 
 
@@ -1079,7 +1126,7 @@ def main() -> None:
             "ledger_not_started": census["not_started"],
             "exact_publication_dates": dated,
             "unknown_publication_dates": len(cases) - dated,
-            "date_policy": "GHSA_OR_CVE_PUBLISHED_ELSE_INTRODUCER_COMMIT",
+            "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
             "coverage_from": LEDGER_WINDOW_START,
             "coverage_to": LEDGER_WINDOW_END,
             "source_cutoff": LEDGER_WINDOW_END,
@@ -1102,7 +1149,7 @@ def main() -> None:
         raise SystemExit(
             f"CJK leaked into public fields: {leaks[:12]} ({len(leaks)} total)"
         )
-    identity_errors = publication_errors(cases)
+    identity_errors = publication_errors(cases, dates)
     if identity_errors:
         raise SystemExit(
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
