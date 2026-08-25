@@ -70,7 +70,7 @@ def test_inferred_repository_identities_have_frozen_public_provenance() -> None:
     controls = _load(HELDOUT_PATH)["controls"]
     assert isinstance(controls, list)
     for control in controls:
-        repository_source = control.get("repository_source")
+        repository_source = control.get("source") or control.get("repository_source")
         if not repository_source:
             audit_text = (REPO_ROOT / control["source"]).read_text(encoding="utf-8")
             assert control["repository_identity"].removeprefix("github.com/") in audit_text

@@ -83,7 +83,8 @@ def test_every_expansion_control_is_bound_to_current_audit_and_repo_evidence() -
         if "expected_landed_sha" in control:
             assert _contains_string(audit, control["expected_landed_sha"])
 
-        repository_text = (REPO_ROOT / control["repository_source"]).read_text(
+        source_path = control.get("source") or control["repository_source"]
+        repository_text = (REPO_ROOT / source_path).read_text(
             encoding="utf-8"
         )
         repository_suffix = control["repository_identity"].removeprefix("github.com/")
