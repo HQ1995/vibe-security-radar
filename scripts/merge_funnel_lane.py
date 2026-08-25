@@ -73,6 +73,51 @@ def load_lane_items(path: Path) -> list[dict]:
     return items
 
 
+def row_identity(row: dict) -> set[str]:
+    """Official advisory identities a TP row claims.
+
+    Dedup happens at ledger level: two terminal-TP rows that claim the
+    same vulnerability must not both exist. Sources, in order:
+    advisory_identity.member_ids, roundN_research advisory_ids,
+    squash_audit[*].case_id.
+    """
+    ids: set[str] = set()
+    identity = row.get("advisory_identity") or {}
+    for value in identity.get("member_ids") or []:
+        ids.add(str(value).upper())
+    for key, value in row.items():
+        if key.endswith("_research") and isinstance(value, dict):
+            for item in value.get("advisory_ids") or []:
+                ids.add(str(item).upper())
+    audit = row.get("squash_audit") or []
+    if isinstance(audit, list):
+        for item in audit:
+            if isinstance(item, dict) and item.get("case_id"):
+                ids.add(str(item["case_id"]).upper())
+    return ids
+
+
+def detect_duplicate_tps(rows: list[dict]) -> list[str]:
+    """Find terminal-TP rows that claim the same advisory identity."""
+    terminal = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
+    owners: dict[str, str] = {}
+    problems: list[str] = []
+    for row in rows:
+        if row.get("status") not in terminal:
+            continue
+        if (row.get("site_publication") or {}).get("publish") is False:
+            continue
+        class_id = str(row.get("class_id") or "")
+        for oid in row_identity(row):
+            if oid in owners and owners[oid] != class_id:
+                problems.append(
+                    f"{oid}: claimed by both {owners[oid]} and {class_id} "
+                    f"(dedup must happen at ledger level, not at publish)"
+                )
+            owners[oid] = class_id
+    return problems
+
+
 def validate_rows(rows: list[dict], path: str) -> list[str]:
     errors: list[str] = []
     seen: dict[str, int] = {}
@@ -159,6 +204,15 @@ def main() -> int:
                 print(f"  {line}", file=sys.stderr)
             if len(conflicts) > 20:
                 print(f"  ... and {len(conflicts) - 20} more", file=sys.stderr)
+            return 1
+
+        dupes = detect_duplicate_tps(rows)
+        if dupes:
+            print("duplicate TP rows detected, nothing written:", file=sys.stderr)
+            for line in dupes[:20]:
+                print(f"  {line}", file=sys.stderr)
+            if len(dupes) > 20:
+                print(f"  ... and {len(dupes) - 20} more", file=sys.stderr)
             return 1
 
         errors = validate_rows(rows, str(args.ledger))
