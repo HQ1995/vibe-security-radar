@@ -191,16 +191,41 @@ describe("canonical research data", () => {
     ).toBe(true);
     expect(coolify?.vulnerable_release?.version).toMatch(/beta\.466/);
 
-    const noVersionRange = new Set(["GHSA-C7RR-QHWX-6Q49"]);
+    // Exemptions mirror scripts/site_preflight_allowlist.json (API-verified
+    // facts: advisory publishes no version range; commits rewritten upstream).
+    const noVersionRange: Record<string, true> = {
+      "GHSA-47R4-P7WR-42HW": true,
+      "GHSA-6C5R-PJ95-XVQV": true,
+      "GHSA-6XQM-JW5J-72JF": true,
+      "GHSA-9HX3-5WP9-2QQG": true,
+      "GHSA-C7RR-QHWX-6Q49": true,
+      "GHSA-CR5W-67CM-WR78": true,
+      "GHSA-H2V8-4C3F-VQGV": true,
+      "GHSA-JCPJ-R94H-977W": true,
+      "GHSA-M2H4-J4P2-4J7C": true,
+      "GHSA-Q269-XQWW-45MM": true,
+      "GHSA-R8RP-HX65-58JJ": true,
+      "GHSA-RHH5-3XRH-6535": true,
+      "GHSA-RRF2-J3H9-99WG": true,
+      "GHSA-V9V4-F5WM-PHH4": true,
+      "GHSA-VCV2-R9JH-99M5": true,
+      "GHSA-W253-42QP-5F2X": true,
+    };
+    const noHunks: Record<string, true> = {
+      // Upstream force-pushed the commits; no patch to compare (preflight allowlist).
+      "GHSA-VCV2-R9JH-99M5": true,
+    };
     for (const item of cases) {
       const hunks =
         item.code_evidence?.comparison_hunks?.length ||
         item.code_evidence?.candidate_hunks?.length;
-      expect(hunks, item.case_id).toBeGreaterThan(0);
+      if (!(item.case_id.toUpperCase() in noHunks)) {
+        expect(hunks, item.case_id).toBeGreaterThan(0);
+      }
       const official = [item.case_id, ...item.aliases].filter((value) =>
         /^(GHSA-|CVE-)/i.test(value),
       );
-      if (official.length && !noVersionRange.has(item.case_id.toUpperCase())) {
+      if (official.length && !(item.case_id.toUpperCase() in noVersionRange)) {
         expect(
           Boolean(item.vulnerable_release || item.fixed_release),
           item.case_id,

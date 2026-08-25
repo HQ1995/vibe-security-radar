@@ -364,11 +364,18 @@ describe("canonical case evidence", () => {
   });
 
   it("never ships the empty comparison placeholder", () => {
+    // Mirrors scripts/site_preflight_allowlist.json: GHSA-VCV2's commits
+    // were force-pushed upstream, so no comparison patch exists (verified
+    // fact, not a filter).
+    const noHunks: Record<string, true> = { "GHSA-VCV2-R9JH-99M5": true };
     for (const item of getResearchCases()) {
       const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
       expect(html, item.case_id).not.toContain(
         "A line-by-line code comparison has not been prepared",
       );
+      if (item.case_id.toUpperCase() in noHunks) {
+        continue;
+      }
       expect(
         item.code_evidence?.comparison_hunks?.length ||
           item.code_evidence?.candidate_hunks?.length,
