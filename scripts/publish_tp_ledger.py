@@ -446,8 +446,14 @@ def find_cached(
 def public_shas(
     rec: dict | None,
     cached: dict | None,
+    evidence: dict | None = None,
 ) -> tuple[list[str], list[str]]:
-    """One SHA source for listing, diagram, and diffs."""
+    """One SHA source for listing, diagram, and diffs.
+
+    ``evidence`` (the code_evidence the case will publish) takes priority
+    over cached evidence so re-generated comparison hunks stay consistent
+    with the listing SHAs.
+    """
     candidates = collect_shas(rec, "introducer_sha", "introducer", "introducer_shas")
     if not candidates and cached:
         candidates = list(cached.get("candidate_set") or [])
@@ -455,7 +461,7 @@ def public_shas(
     if not fixes and cached:
         fixes = list(cached.get("minimum_fix_set") or [])
     chain = (cached or {}).get("ir_chain") or {}
-    evidence = (cached or {}).get("code_evidence") or {}
+    evidence = evidence or (cached or {}).get("code_evidence") or {}
     attempted = ((chain.get("attempted_remediation") or {}).get("candidate_shas") or [])
     final = ((chain.get("final_closure") or {}).get("minimum_fix_shas") or [])
     url_candidate = sha_from_url(evidence.get("candidate_url"))
@@ -867,7 +873,15 @@ def build_case(
     )
     repo = repo or ((cached or {}).get("repository") if cached else None)
     language = ((cached or {}).get("repository_metadata") or {}).get("language") or ""
-    candidates, fixes = public_shas(rec, cached)
+    case_evidence = next(
+        (
+            generated_evidence.get(str(key).upper())
+            for key in [case_id, *aliases, row.get("class_id")]
+            if (generated_evidence.get(str(key).upper()) or {}).get("comparison_hunks")
+        ),
+        None,
+    ) or (cached or {}).get("code_evidence")
+    candidates, fixes = public_shas(rec, cached, case_evidence)
     gates = dict(PASS_GATES) if row.get("site_tier") == "ALL_GATES_PASS" else dict(
         cached.get("gates") if cached and cached.get("gates") else DEFAULT_GATES
     )
