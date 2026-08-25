@@ -1,22 +1,42 @@
 # Audit protocol
 
-怎么审一个 case 的规矩。核心就一条:**不机械扫描**——先把漏洞的成因和完整生命周期理解透彻,再判定 AI 角色。
+The standing rules for judging a case. Core principle: **no mechanical
+scanning** — fully understand the vulnerability's root cause and its
+complete lifecycle before judging the AI role.
 
-## 每个 case 必做
+## Required for every case
 
-1. **理解漏洞**:成因、触发路径、受影响版本、修复行为。理解不透彻不动手。
-2. **BIC 拆到最小**:脆弱行的 first writer,必须是最小原子 commit;squash 拆到 PR constituents,记 `introducer_sha` + `decomposed_shas`。
-3. **找 fix**:修复 commit 记 `fix_sha`/`direct_fix_sha`;没有修复就明确记 `unpatched`。
-4. **incomplete fix 全链路**:原始引入 → 修复尝试 → 残余绕过 → 最终闭合(`ir_chain`),缺一环不结案。
-5. **定 AI 角色**:只认**最小 BIC 上**的信号;squash 聚合的 Co-Authored-By 不算脆弱行信号(信号不在 BIC 上就降级)。
-6. **研究记录写进账本**:`roundN_research` 里记 verdict / reasoning / flaw_origin / bug_semantics / ai_marker / 所有 sha,然后跑 `scripts/merge_funnel_lane.py` 及时更新总账。
-7. **补全必要信息**:advisory identity(禁止 ALIAS 发布——按 仓库公告 → OSV commit 查询 → OSV package → NVD → websearch 挖真实 GHSA/CVE)、advisory 日期(禁 BIC 日期)。
+1. **Understand the vulnerability**: root cause, trigger path, affected
+   versions, fixed behavior. Do not start until understood.
+2. **Minimal BIC**: the smallest atomic commit that first wrote the
+   vulnerable lines; decompose squashes to PR constituents; record
+   `introducer_sha` + `decomposed_shas`.
+3. **Find the fix**: record `fix_sha`/`direct_fix_sha`; if unfixed,
+   record `unpatched` explicitly.
+4. **Incomplete-fix chain**: original introducer → attempted remediation
+   → residual bypass → final closure (`ir_chain`); no closure without
+   every link.
+5. **Judge the AI role** from signals **on the minimal BIC only**; a
+   squash-level aggregated Co-Authored-By is not a vulnerable-line
+   signal (downgrade when the signal is not on the BIC).
+6. **Record the research in the ledger**: `roundN_research` with
+   verdict / reasoning / flaw_origin / bug_semantics / ai_marker / all
+   SHAs, then run `scripts/merge_funnel_lane.py` to update the ledger
+   promptly.
+7. **Backfill required info**: advisory identity (no ALIAS publishing —
+   dig the real GHSA/CVE via repo security-advisories → OSV commit query
+   → OSV package query → NVD → web search) and the advisory date (never
+   the introducer commit date).
 
-## 禁止
+## Forbidden
 
-- 模板词填充(`introduced_with_feature` / `ai` / `introducer`)
-- 发布 `ALIAS-*` case
-- 用 introducer commit 日期当 `published_at`
-- 发布端去重(去重必须在账本级,`site_publication.publish=false`)
+- Template-word fields (`introduced_with_feature` / `ai` / `introducer`)
+- Publishing `ALIAS-*` cases
+- Using the introducer commit date as `published_at`
+- Deduplicating at publish time (dedup belongs at ledger level via
+  `site_publication.publish=false`)
 
-发布门禁由 `scripts/publish_tp_ledger.py` 强制(重复/日期/ir_chain/SHA/hunks/release),本文件不管代码细节。数据字段语义见 `docs/DATA-SCHEMA.md`,文件归属见 `docs/AGENT-OWNERSHIP.md`。
+Publication gates (duplicates / dates / ir_chain / SHA / hunks / release)
+are enforced by `scripts/publish_tp_ledger.py`; this file does not repeat
+code details. Field semantics: `docs/DATA-SCHEMA.md`; file ownership:
+`docs/AGENT-OWNERSHIP.md`.
