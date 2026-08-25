@@ -39,7 +39,7 @@ Identity:
 - `case_id` — public ID (GHSA/CVE); `aliases` — all known IDs
 - `class_id` — ledger cluster key; `repository` + `repository_metadata`
 
-Path (the "来龙去脉"):
+Path (the case's causal journey):
 
 - `contribution_class` — one of `AI_DIRECT_ROOT` (108), `AI_NEW_SURFACE_CONTRIBUTOR` (31),
   `AI_INCOMPLETE_REMEDIATION` (31), `AI_CODE_FLAWED` (23), `AI_CAUSAL_CONTRIBUTOR` (2)
