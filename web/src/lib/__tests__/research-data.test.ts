@@ -9,7 +9,6 @@ import {
   getLanguageDistribution,
   getRepositoryDistribution,
   formatCaseLabel,
-  formatPublicationStatus,
   getResearchCaseById,
   getResearchSnapshot,
   getResearchTimeline,
@@ -47,9 +46,6 @@ describe("canonical research data", () => {
       snapshot.cases.filter((item) => item.publication_status === "confirmed")
         .length,
     ).toBe(snapshot.snapshot.confirmed_cases);
-    expect(formatPublicationStatus("confirmed")).toBe("Confirmed");
-    expect(formatPublicationStatus("qualified")).toBe("Qualified");
-    expect(formatPublicationStatus("provisional")).toBe("Provisional");
     expect(
       snapshot.snapshot.ai_root_cause! + snapshot.snapshot.ai_code_flawed!,
     ).toBe(caseCount);

@@ -66,8 +66,7 @@ export default function AboutPage() {
           Evidence before attribution.
         </h1>
         <p className="mt-4 max-w-3xl text-lg leading-7 text-muted-foreground">
-          This public index covers {caseCount} findings:{" "}
-          {snapshot.confirmed_cases} confirmed. Each case links its
+          This public index covers {caseCount} findings. Each case links its
           vulnerability, contributing change, AI signal, and closing fix back
           to first-party evidence.
         </p>

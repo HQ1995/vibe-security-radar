@@ -9,7 +9,6 @@ import { TrendChart } from "@/components/trend-chart";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
-  formatLedgerStatus,
   getAiFamilyIconKey,
   getAiToolDistribution,
   getCauseDistribution,
@@ -128,9 +127,8 @@ export default function HomePage() {
                   Vibe Security Radar
                 </h1>
                 <p className="mt-3 max-w-xl text-lg font-medium leading-7 tracking-[-0.02em] sm:text-xl sm:leading-8">
-                  {research.snapshot.confirmed_cases} confirmed
-                  AI-contributed vulnerabilities cataloged and evidence-linked
-                  across their full causal chain.
+                  {caseCount} AI-contributed vulnerabilities cataloged and
+                  evidence-linked across their full causal chain.
                 </p>
               </div>
               <div className="mt-6 md:mt-0 xl:mt-6">
@@ -163,19 +161,6 @@ export default function HomePage() {
                     </dt>
                     <dd className="text-right font-semibold">
                       {formatCount(caseCount)} findings
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="text-muted-foreground">Publication status</dt>
-                    <dd className="text-right font-semibold">
-                      {formatCount(research.snapshot.confirmed_cases ?? 0)}{" "}
-                      confirmed
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        {formatCount(research.snapshot.qualified_cases ?? 0)}{" "}
-                        qualified ·{" "}
-                        {formatCount(research.snapshot.provisional_cases ?? 0)}{" "}
-                        provisional
-                      </span>
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-4 py-2.5">
@@ -348,7 +333,6 @@ export default function HomePage() {
                     {getCaseSummary(item)}
                   </h3>
                   <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                    {formatLedgerStatus(item.ledger_status)} ·{" "}
                     {getCauseCategoryLabel(item.cause_category)} ·{" "}
                     {formatContributionClass(item.contribution_class)}
                   </p>

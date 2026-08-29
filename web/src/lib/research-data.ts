@@ -476,21 +476,3 @@ export function formatContributionClass(value: string): string {
   );
 }
 
-export function formatLedgerStatus(value: string | undefined): string {
-  return (
-    {
-      AI_ROOT_CAUSE: "AI root cause",
-      AI_CODE_FLAWED: "AI-written code was flawed",
-    }[value ?? ""] ?? "Confirmed true positive"
-  );
-}
-
-export function formatPublicationStatus(value: string): string {
-  return (
-    {
-      confirmed: "Confirmed",
-      qualified: "Qualified",
-      provisional: "Provisional",
-    }[value] ?? value
-  );
-}

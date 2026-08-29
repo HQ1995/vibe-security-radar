@@ -18,7 +18,7 @@
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-08-29T04:44:15Z",
+  "generated_at": "2026-08-29T23:13:36Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -10915,18 +10915,11 @@
    },
    "ir_chain": null,
    "research_status": "fix 6d70922 (PR #49 squash 'fix: project memory key isolation + legacy dir migration (lands #47) (#49)') replaces literal-path sha256 with _getProjectMemoryHash(canonical realpath + schema v2) and adds regression test 'does not reuse project memory when the same lexical path points to a different real workspace' (symlink victim/attacker swap); MemoryManager.ts at bce0d2b line 285 contains the flawed literal-path hash; bce0d2b body has Co-Authored-By: Claude Opus 4.6; parent of bce0d2b lacks initProjectMemory",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "Fix 6d709229 (PR #49) exists on main but no release contains it: the advisory claims '0.4.0 is sufficient' but v0.4.0 predates the fix; releases end at v0.4.0 (2026-03-11).",
-    "potential_fix": {
-     "approach": "Isolate project memory keys per workspace (add a crypto-hashed project-id namespace to autonomous memory keys) and migrate legacy shared-memory directories into the per-project store.",
-     "rationale": "The cross-project key reuse lets one project read another's autonomous memory (CWE-200); namespacing keys by project id removes the shared namespace.",
-     "reference_commit": "6d709229b5199f6769fb3cf763e5122dcc43c079",
-     "reference_url": "https://github.com/DeepMyst/Mysti/pull/49"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-fwpr-59hh-gr98",
-   "publication_issues": [],
+   "publication_issues": [
+    "missing_fixed_release"
+   ],
    "publication_status": "qualified"
   },
   {
@@ -13982,18 +13975,11 @@
    },
    "ir_chain": null,
    "research_status": "PR #23 (merge 38d351f 'Merge pull request #23 from DeepMyst/release/v0.3.0') fetched via git protocol (refs/pull/23/head); member commits listed; ChannelBridge.ts diff-filter=A -> 94e14d9d (v0.3.0 release commit, Co-Authored-By: Claude Opus 4.6); fix 9b4aff0 (PR #43 squash) changes _isTrackedConversation to (sender, channelId, channelType) and adds _resolveChannelType; 94e14d9d body trailer confirmed",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "NVD CVE-2026-13591 Deferred; fix 9b4aff0f (PR #43) merged on main but no release/tag after v0.4.0 publishes it (only v0.3.1, v0.4.0 tags exist).",
-    "potential_fix": {
-     "approach": "Scope _isTrackedConversation tracking to the originating channel (ChannelBridge) instead of a global contact list, and key contact identity by (channelId + contactId).",
-     "rationale": "CWE-266 privilege/datastore exposure arises from channel-spanning contact tracking; channel-scoped keys restore the intended per-channel boundary.",
-     "reference_commit": "9b4aff0f106db424aa45a35aa89dd0b8f2eb9a48",
-     "reference_url": "https://github.com/DeepMyst/Mysti/pull/43"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-4pqr-v6c3-x77j",
-   "publication_issues": [],
+   "publication_issues": [
+    "missing_fixed_release"
+   ],
    "publication_status": "qualified"
   },
   {
@@ -15434,19 +15420,12 @@
    "code_evidence": null,
    "ir_chain": null,
    "research_status": "OSV GHSA-vcv2-r9jh-99m5 / CVE-2026-58195: prior to 2.0.14, MCP server tools in standalone-stdio.ts and fastmcp servers/tools interpolated params into execSync; OSV fixed ranges list 0c2ec967736a8b6b85832c6bae2a3e74989705ec and da901d06cc5661ebf3f66a962dc116464e7980b0 (the latter verified in ruvnet_ruflo clone: merge of PR #2415, 2026-06-18). Pickaxe `git log --all -S 'execSync(cmd' -- '*src/mcp*'`: earliest hit = 319c9861 (2025-10-04). `git show 8d643867:agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts` shows the same interpolation pattern already present before standalone-stdio.ts existed. Fix PR #170 (head a0f9c2b, merged as 0c2ec967 by rUv, 2026-06-18) rewrote all sinks to execFileSync('npx', argv, {shell:false}) and added tests/security/cwe-78-mcp-execsync.test.ts. Advisory notes prior partial fix 6a06854 (#158) missed MCP files entirely.",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "OSV CVE-2026-58195 lists two fixed reranges (0c2ec967736a8b6b85 and a0f9c2bf95b6203b) but neither SHA is reachable: the GitHub remote rejects fetching them ('not our ref') and the repo clone predates those commits; no published 2.x release contains the fix.",
-    "potential_fix": {
-     "approach": "Replace execSync(command) with spawn/execFile and pass the tool parameters as an argument array (never interpolate into a shell string), and validate agent/task/name/language/key against a safe-character allowlist or JSON-encode them.",
-     "rationale": "The CWE-78 sink is string interpolation into a shell executed by execSync; switching to an argv form removes shell metacharacter evaluation entirely, and input validation blocks parameter tampering at the boundary.",
-     "reference_commit": "0c2ec967736a8b6b85832c6bae2a3e74989705ec",
-     "reference_url": "https://osv.dev/vulnerability/CVE-2026-58195"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/GHSA-VCV2-R9JH-99M5",
    "publication_issues": [
-    "missing_candidate"
+    "missing_fixed_release",
+    "missing_candidate",
+    "missing_fix"
    ],
    "publication_status": "provisional"
   },
@@ -22352,16 +22331,7 @@
    },
    "ir_chain": null,
    "research_status": "None. (Fix is a module deletion/rewrite rather than a targeted patch; the removal commits are identified.) ['GitHub advisory GHSA-64vr-4gr2-m642 / CVE-2026-30635 (published 2026-05-11): command injection in automagik-genie 2.5.27 MCP server via view_task (view) in readTranscriptFromCommit in dist/mcp/server.js when reading from an external FORGE_BASE_URL; CWE-78, CVSS 8.1.', 'Vulnerable sink present at v2.5.27 (9811c738054d817ce39ea05f05e28ae9312819f4): src/mcp/server.ts lines 163-183 define readTranscriptFromCommit with execSync(`git --git-dir=\"${gitDir}\" log -1 --format=\"%B\" ${commitSha}`); commitSha interpolated outside double quotes.', \"Introduced on main by squash commit 32230bc7acff055a089eaf682d6717ca945b6c7d ('rc (#462)', Felipe Rosa author, committer GitHub, 2025-11-17): git diff 322^..322 adds import execSync + readTranscriptFromCommit + both call sites; immediate parent 6cf64528a04da39cb798dbad6990af8e632ca3c6 has 0 occurrences of readTranscriptFromCommit (verified).\", \"Squash-decomposed to atomic branch writer f5e4e03e1c614b1bcc1764bf93fa7dce6e4c4624 ('Complete taxonomy refactor wish 424', 2025-11-15) whose diff adds the same function and whose parent 3526d97bd356ebb1690455113a46336d05397598 lacks it; f5e4e03e1 carries an explicit AI marker: Co-authored-by: Automagik Genie 🧞 <genie@namastex.ai>. The squash 32230bc7a also carries 31 Co-authored-by trailers incl. Automagik Genie, Claude, Claude Code.\", \"Fix: v3 promotion merge 21de369a5819931d2ad4e88fb71c3baa7524066f (2026-03-07, authored by Automagik Genie) replaced the v2 codebase; its first parent 32bab6ae1a82981d40fe01905398117de18d8a39 (v2.5.28-rc.4) still contained readTranscriptFromCommit (3 occurrences) and the merge result removed it entirely (0 occurrences). First v3.260302.2 tag contains the fix. On the dev lineage the deletion happened in 066b31ef8d343d5897ae1c0acdc04672289b1dff ('feat: restore Genie identity' #510, Automagik Genie) whose parent 523daeec82edda8c738c4fb96d851848f0d44f3a still had the path.\", 'No dedicated security patch before v3; the vulnerable v2 MCP module (incl. the fn and both call sites) was deleted by the v3 rewrite. The gist proof-of-concept (spdc-elm) reproduces RCE against npm automagik-genie@2.5.27.']",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "NVD CVE-2026-30635 Deferred; no stable npm release after 2.5.27; sink still present at 2.5.28-rc.4. No patched 2.x release or published fix commit.",
-    "potential_fix": {
-     "approach": "Stop interpolating the commit/task argument into execSync('git --git-dir=...') inside readTranscriptFromCommit/view_task; use execFile/spawn with an argv array and validate the path against an allowlisted repo root.",
-     "rationale": "CWE-78 arises from shell-interpolated git invocations; argv-form exec removes shell metacharacter evaluation.",
-     "reference_commit": null,
-     "reference_url": "https://osv.dev/vulnerability/CVE-2026-30635"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-64vr-4gr2-m642",
    "publication_issues": [],
    "publication_status": "provisional"
@@ -25075,18 +25045,11 @@
    },
    "ir_chain": null,
    "research_status": "None material: exploit mechanics fully verifiable in-repo; advisory's fix status ('no response') predates the 2026-04-29 fix commit, which is on the default branch but unreleased (package.json still 1.5.0). GitHub advisory GHSA-jcpj-r94h-977w (2026-04-27, CWE-918, medium; cites VulDB 359746 and issues/4; project initially unresponsive). Clone joecastrom_mcp-chat-studio (HEAD 59a3524; no tags; package.json always 1.5.0). git log -S 'req.query.base_url' -- server/routes/llm.js => only 28feb38 (2026-01-03, author=committer JoeCastrom <jo_seph111@hotmail.com>); commit body explicitly AI-marked with Claude Code generation line and Co-Authored-By Claude Opus 4.5. Parent absence: git grep -F 'req.query.base_url' 262d83b4 rc=1; 'override' at parent rc=1; parent /models used llmClient.config.base_url only (config-change SSRF vector existed but not the advisory's query override). Atomicity: intermediate commits 349f8d9 (no llm.js base_url diff), 0bdceb8 (only added /config response field), 14466e0 (prettier) did not touch the vulnerable expression. Fix 1ded0e9 (2026-04-29, author Ghazi <vwu5hwl@wvdewobmc008991.fritz.box>, 'Closes #4') adds server/utils/urlValidator.js assertSafeUrl (blocks RFC1918/loopback/link-local/metadata) applied to /models targetUrl and POST /config base_url; HEAD route shows assertSafeUrl(targetUrl,'llm/models') before fetch.",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "CVE-2026-7147 affects 'up to 1.5.0'; fix 1ded0e9a is committed but no release contains it (repo has no tags, package.json stays 1.5.0).",
-    "potential_fix": {
-     "approach": "Reject base_url targets that resolve to loopback/private/link-local ranges in GET /api/llm/models, or pass the URL through an allowlisted public-host proxy.",
-     "rationale": "The SSRF sink is fetch() on caller-controlled base_url; blocking private address resolution closes it (CWE-918).",
-     "reference_commit": "1ded0e9a7b6f72d2c792f1afe190a9fa827cf7d7",
-     "reference_url": null
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-jcpj-r94h-977w",
-   "publication_issues": [],
+   "publication_issues": [
+    "missing_fixed_release"
+   ],
    "publication_status": "provisional"
   },
   {
@@ -26431,18 +26394,11 @@
    },
    "ir_chain": null,
    "research_status": "osv CVE-2026-40583 (GHSA-q8wx-2crx-c7pp): non-council attacker submits signed SmartOp::Vote passing signature/nonce/balance prechecks but failing authorization only after state mutation; 361e71d4 diff adds apply_smart_op_tx with fee debit + increment_nonce executed before the match-branch is_council_member checks for Vote/CreateProposal (engine.rs +64); fix 45bcf706 (2026-04-12) moves council checks before fee/nonce mutation and removes double nonce increment, explicitly citing 'fee burned without operation success', 'nonce incremented twice', 'supply accounting mismatch triggering fatal node halt (exit code 101)'; fix 2f5a3a23 (same day) restructures ALL SmartOp types into validate/mutate/apply phases and refers to 'Qwen's prior fix'; 361e71d4 is a new-function introduction (no pre-existing apply_smart_op_tx), no (#N), single theme",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "NVD/OSV CVE-2026-40583: vulnerable =0.1; fix commits 45bcf70/2f5a3a2 are ancestors of main but no tag after v0.1.0 publishes them; workspace Cargo.toml v0.9.0 untagged.",
-    "potential_fix": {
-     "approach": "Complete SmartOp validate-before-mutate: reject a Vote/CreateProposal whose self.debit + incremented nonce would halt the supply invariant (exit 101) before mutating state.",
-     "rationale": "The vulnerability is a fatal supply-invariant halt reachable by a non-council actor; pre-validating fee+nonce against the invariant prevents the halt.",
-     "reference_commit": "2f5a3a237e",
-     "reference_url": "https://osv.dev/vulnerability/CVE-2026-40583"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://www.cve.org/CVERecord?id=CVE-2026-40583",
-   "publication_issues": [],
+   "publication_issues": [
+    "missing_fixed_release"
+   ],
    "publication_status": "provisional"
   },
   {
@@ -32816,18 +32772,11 @@
    },
    "ir_chain": null,
    "research_status": "The local-agent identity 'kali-builder-agent' cannot be mapped to a specific commercial AI tool (vendor unknown), but its agent nature is corroborated by the .kimi/ tooling shipped in the same commit and sibling AI-agent identities. GHSA-f67f-hcr6-94mf (critical, no CVE, published 2026-03-20, affected '<= 3.0.0') references affected state commit 07e65c72 (not present in cloned history, likely squash artifact; file's first-in-history commit on mainline is 6b469ce0). Fix 15cf07f8e00f8d930c276060175292b360ccbb01 (2026-02-24, human SHAdd0WTAka <shadowtaka@protonmail.com>, no AI markers) moves all github.event.* interpolations to job-level env vars (EVENT_NAME/ISSUE_TITLE/etc.), the GitHub-documented hardening pattern; verified still in place at 7aa2ba2b^ (file immediately before deletion in 7aa2ba2b5cd608467e56f8cec74b20508a9fba73 2026-03-31 by Atakan). Fix is NOT contained in any release tag (v3.0.0 = last tag, 2026-02-19, still 7 github.event refs) - remediation landed via workflow disable/deletion. Introducer commit has no human co-author trailers.",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "GHSA-f67f-hcr6-94mf: fix 26c4e07 ('security(workflows): fix script injection') is dated after latest release v3.0.0 (2026-02-19) and is diverged from main; no released version contains it.",
-    "potential_fix": {
-     "approach": "Pass the issue title via an environment variable or GitHub Action input into the bash step, never interpolate it directly into the ${{ }} expression, and quote it.",
-     "rationale": "Direct title interpolation into a bash run block is a CWE-78 script-injection sink; environment/input indirection removes shell metacharacter evaluation.",
-     "reference_commit": "26c4e07",
-     "reference_url": "https://github.com/advisories/GHSA-f67f-hcr6-94mf"
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-f67f-hcr6-94mf",
-   "publication_issues": [],
+   "publication_issues": [
+    "missing_fixed_release"
+   ],
    "publication_status": "provisional"
   },
   {
@@ -38485,19 +38434,11 @@
    },
    "ir_chain": null,
    "research_status": "ZDI-25-983 (ZDI-CAN-27913, CWE-78): openBrowser() in auth.js used child_process.exec() with unescaped URL interpolation: exec(`${command} \"${url}\"`) -> attacker-controlled oauth_token in the OAuth authorize URL can inject shell commands (e.g. '\"; touch /tmp/pwned #') executed in the MCP server process context (local privilege escalation). Vulnerable function introduced in e08547bcdb42aaa86190c6e2dfc64159fcd3a146 (2025-06-16, brentmid, 'Add comprehensive OAuth 1.0a authentication and testing suite') which created auth.js from scratch (parent 9f7c1b36 had no auth.js). Introducer commit body carries '(R) Generated with [Claude Code]' and a REAL 'Co-Authored-By: Claude <noreply@anthropic.com>' trailer - Claude-code co-authored introducer of exactly the vulnerable lines. Fix 1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579 (2025-10-15, brentmid, 'security: Fix command injection vulnerability in openBrowser function', Fixes #2/#3) rewrites openBrowser to child_process.spawn() with array args (no shell); fix commit also Co-Authored-By: Claude <noreply@anthropic.com> (AI-assisted fix).",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "CVE-2025-12489 fix 1e66c78 is committed but the repo has zero tags/releases (package.json 2.2.1) so no release contains it; NVD Deferred.",
-    "potential_fix": {
-     "approach": "Replace exec(`${command} \"${url}\"`) in openBrowser() with spawn/execFile and an argv array, and validate oauth_to/url against an https and safe-scheme allowlist.",
-     "rationale": "CWE-78 shell injection via unescaped URL interpolation; argv-form execution removes shell interpretation.",
-     "reference_commit": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
-     "reference_url": null
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-h2v8-4c3f-vqgv",
    "publication_issues": [
-    "missing_vulnerable_release"
+    "missing_vulnerable_release",
+    "missing_fixed_release"
    ],
    "publication_status": "provisional"
   },
@@ -38621,19 +38562,11 @@
    },
    "ir_chain": null,
    "research_status": "ff958e486 creates api_server.py with `file_path = os.path.join(\"workflows\", filename)` at get_workflow_detail:193, download_workflow:212, get_workflow_diagram:226 (no basename validation); fix 64f9f86f (human, evan) replaces with `workflows_path.rglob(\"*.json\")` + `f.name == filename` basename match. Single commit, not squash.",
-   "unpatched": {
-    "confirmed": true,
-    "reason": "CVE-2025-55526: fix 5ffee225 exists but the repo publishes no versioned releases (NVD only a date CPE), so no fixed release/version exists; issue #48 closed.",
-    "potential_fix": {
-     "approach": "Resolve filename with os.path.realpath and reject any resolved path outside the 'workflows' base directory in download_workflow/get_workflow_detail.",
-     "rationale": "The traversal sink is path.join('workflows', filename) with no basename validation (CWE-22); realpath containment closes it.",
-     "reference_commit": "5ffee225b7c9e314cacefd7f0a46a1c10ae3d20e",
-     "reference_url": null
-    }
-   },
+   "unpatched": null,
    "advisory_url": "https://github.com/advisories/GHSA-C7RR-QHWX-6Q49",
    "publication_issues": [
-    "missing_vulnerable_release"
+    "missing_vulnerable_release",
+    "missing_fixed_release"
    ],
    "publication_status": "provisional"
   },

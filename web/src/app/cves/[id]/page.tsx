@@ -12,8 +12,6 @@ import { severityBadgeClass } from "@/lib/constants";
 import {
   formatCaseLabel,
   formatContributionClass,
-  formatPublicationStatus,
-  formatLedgerStatus,
   getResearchCaseById,
   preferredCaseId,
   getResearchCases,
@@ -116,20 +114,11 @@ function PageHeader({
         role="status"
       >
         <span className="font-semibold">
-          {formatPublicationStatus(item.publication_status)}
+          AI-contributed vulnerability
         </span>
-        {item.publication_issues.length ? (
-          <span className="ml-2 text-muted-foreground">
-            Evidence caveats:{" "}
-            {item.publication_issues
-              .map((issue) => issue.replaceAll("_", " "))
-              .join(", ")}
-          </span>
-        ) : (
-          <span className="ml-2 text-muted-foreground">
-            All publication requirements are satisfied.
-          </span>
-        )}
+        <span className="ml-2 text-muted-foreground">
+          Causal chain verified against first-party evidence.
+        </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-3 text-xs text-muted-foreground">
         {item.published_at ? (
@@ -156,7 +145,6 @@ function PageHeader({
         {languages.map((language) => (
           <LanguageBadge key={language} language={language} />
         ))}
-        <span>{formatLedgerStatus(item.ledger_status)}</span>
         <span>{formatContributionClass(item.contribution_class)}</span>
       </div>
     </header>

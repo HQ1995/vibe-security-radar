@@ -6,7 +6,6 @@ import { ResearchCaseTable } from "@/components/research-case-table";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
-  formatPublicationStatus,
   getAiToolLabel,
   getCauseCategoryLabel,
   type ResearchCase,
@@ -16,7 +15,6 @@ export interface ResearchCaseFilters {
   readonly query: string;
   readonly cause: string;
   readonly contribution: string;
-  readonly status?: string;
   readonly tool: string;
   readonly language: string;
   readonly repository: string;
@@ -61,7 +59,6 @@ export function filterResearchCases(
       (!filters.cause || item.cause_category === filters.cause) &&
       (!filters.contribution ||
         item.contribution_class === filters.contribution) &&
-      (!filters.status || item.publication_status === filters.status) &&
       (!filters.tool || tool === filters.tool) &&
       (!filters.language ||
         item.repository_metadata.language === filters.language) &&
@@ -84,7 +81,6 @@ const EMPTY_FILTERS: ResearchCaseFilters = {
   query: "",
   cause: "",
   contribution: "",
-  status: "",
   tool: "",
   language: "",
   repository: "",
@@ -108,7 +104,6 @@ export function ResearchCaseExplorer({
     cases.flatMap((item) => (item.cause_category ? [item.cause_category] : [])),
   );
   const contributions = unique(cases.map((item) => item.contribution_class));
-  const statuses = unique(cases.map((item) => item.publication_status));
   const tools = unique(cases.map(getAiToolLabel));
   const languages = unique(
     cases
@@ -173,21 +168,6 @@ export function ResearchCaseExplorer({
             {contributions.map((contribution) => (
               <option key={contribution} value={contribution}>
                 {formatContributionClass(contribution)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          Verification
-          <select
-            value={filters.status ?? ""}
-            onChange={(event) => update("status", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All verification statuses</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {formatPublicationStatus(status)}
               </option>
             ))}
           </select>
