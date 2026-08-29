@@ -1,7 +1,6 @@
 import { formatMonthShort } from "@/lib/month-utils";
 import type { ResearchMonth } from "@/lib/research-data";
 
-const VISIBLE_MONTHS = 12;
 const WIDTH = 720;
 const HEIGHT = 260;
 const LEFT = 36;
@@ -29,7 +28,7 @@ export function TrendChart({
   unknownDateCount,
   sourceCutoff,
 }: TrendChartProps) {
-  const visible = data.slice(-VISIBLE_MONTHS);
+  const visible = data;
   const plotWidth = WIDTH - LEFT - RIGHT;
   const plotHeight = HEIGHT - TOP - BOTTOM;
   const maxCount = Math.max(1, ...visible.map((entry) => entry.count));
@@ -136,7 +135,10 @@ export function TrendChart({
             </div>
             <div className="mt-2 grid grid-cols-6 font-mono text-[8px] text-muted-foreground">
               {points
-                .filter((_, index) => index % 2 === 0)
+                .filter(
+                  (_, index) =>
+                    index % Math.max(1, Math.ceil(points.length / 6)) === 0,
+                )
                 .map((point) => (
                   <span key={point.month}>{shortMonth(point.month)}</span>
                 ))}

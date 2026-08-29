@@ -106,12 +106,10 @@ function rootCauseTitle(item: ResearchCase): string {
   );
 }
 
-function markerName(marker: string | undefined): string | null {
-  return marker?.match(/(?:Co-Authored-By|Assisted-by):\s*([^<]+)/i)?.[1].trim() ?? null;
-}
 
 function fixAuthorship(item: ResearchCase): string {
   const record = item.fix_authorship;
+  if (!record) return "Fix authorship not yet analyzed";
   const authors = [...new Set(record.fixes.map((fix) => fix.author.name))].join(", ");
   const families = record.families
     .map(
@@ -168,7 +166,8 @@ function FileLink({
   readonly sha: string;
   readonly file: string;
 }) {
-  if (!repository) return <span className="font-mono">{file}</span>;
+  if (!file) return <span className="font-mono">File path unavailable</span>;
+  if (!repository || !sha) return <span className="font-mono">{file}</span>;
   return (
     <a
       href={`https://github.com/${repository}/blob/${sha}/${file}`}
@@ -345,6 +344,7 @@ function IncompleteRemediationFlow({
   const closureShas = closure?.minimum_fix_shas?.length
     ? closure.minimum_fix_shas
     : item.minimum_fix_set;
+  const hasClosure = closureShas.length > 0;
   const attemptCoversOriginal = Boolean(
     chain.original_sha &&
       attemptShas.some(
@@ -373,14 +373,22 @@ function IncompleteRemediationFlow({
   );
   const closureCard = (
     <CauseFixCard
-      tone="good"
-      kicker="Fixed again"
-      title={closure?.closed ?? "A later commit closed the remaining case."}
-      detail="This is the patch that actually stops the same attack path."
+      tone={hasClosure ? "good" : "warn"}
+      kicker={hasClosure ? "Fixed again" : "Fix status"}
+      title={
+        hasClosure
+          ? (closure?.closed ?? "A later commit closed the remaining case.")
+          : "No public closure identified"
+      }
+      detail={
+        hasClosure
+          ? "This is the patch that actually stops the same attack path."
+          : "No minimum fix commit has been established for the remaining path."
+      }
       repository={item.repository}
       shas={closureShas}
       files={item.code_evidence?.fix_hunks.map((hunk) => hunk.file) ?? []}
-      authorship={fixAuthorship(item)}
+      authorship={hasClosure ? fixAuthorship(item) : "Fix status unresolved"}
     />
   );
   const thisAdvisoryPair = (
@@ -437,7 +445,6 @@ function IncompleteRemediationFlow({
     </div>
   );
 }
-
 function DiffHunk({
   hunk,
   repository,
@@ -448,7 +455,7 @@ function DiffHunk({
   readonly hunk: ResearchCodeHunk;
   readonly repository: string | null;
   readonly sha: string;
-  readonly label: "AI change" | "Fix";
+  readonly label: "AI change" | "Fix" | "Comparison";
   readonly open: boolean;
 }) {
   const lines = hunk.code.replace(/\n$/, "").split("\n");
@@ -514,16 +521,41 @@ export function CanonicalCaseEvidence({
 }) {
   const visibleId = displayId ?? preferredCaseId(item);
   const evidence = item.code_evidence;
-  const candidateFiles = evidence?.candidate_hunks.map((hunk) => hunk.file) ?? [];
-  const fixFiles = evidence?.fix_hunks.map((hunk) => hunk.file) ?? [];
-  const candidateModel = markerName(evidence?.ai_marker) ?? getAiToolLabel(item);
-  const ghsaId = item.case_id.toUpperCase().startsWith("GHSA-")
-    ? item.case_id
-    : item.aliases.find((alias) => alias.toUpperCase().startsWith("GHSA-"));
-  const githubAdvisoryUrl = ghsaId
-    ? `https://github.com/advisories/${ghsaId}`
-    : undefined;
-  const hasCode = Boolean(evidence?.comparison_hunks.length);
+  const candidateHunks = evidence?.candidate_hunks ?? [];
+  const fixHunks = evidence?.fix_hunks ?? [];
+  const comparisonHunks = evidence?.comparison_hunks ?? [];
+  const candidateFiles = candidateHunks.map((hunk) => hunk.file);
+  const fixFiles = fixHunks.map((hunk) => hunk.file);
+  const markerMatch = evidence?.ai_marker?.match(
+    /(?:Co-Authored-By|Assisted-by):\s*([^<]+)/i,
+  );
+  const candidateModel = markerMatch?.[1].trim() ?? getAiToolLabel(item);
+  const codeHunks = comparisonHunks.length
+    ? comparisonHunks.map((hunk) => ({
+        hunk,
+        label: "Comparison" as const,
+        sha: item.minimum_fix_set[0] ?? item.candidate_set[0] ?? "",
+      }))
+    : [
+        ...candidateHunks.map((hunk) => ({
+          hunk,
+          label: "AI change" as const,
+          sha: item.candidate_set[0] ?? "",
+        })),
+        ...fixHunks.map((hunk) => ({
+          hunk,
+          label: "Fix" as const,
+          sha: item.minimum_fix_set[0] ?? "",
+        })),
+      ];
+  const hasCode = codeHunks.length > 0;
+  const hasFix = item.minimum_fix_set.length > 0;
+  const codeTitle =
+    candidateHunks.length && fixHunks.length
+      ? "Vulnerable code and fix"
+      : candidateHunks.length
+        ? "Candidate change"
+        : "Security fix";
   const incomplete =
     item.contribution_class === "AI_INCOMPLETE_REMEDIATION" &&
     Boolean(item.ir_chain);
@@ -582,17 +614,23 @@ export function CanonicalCaseEvidence({
           />
           <ChainArrow />
           <CauseFixCard
-            tone="good"
-            kicker="Fix"
-            title={rightStep?.title ?? "Security fix"}
+            tone={hasFix ? "good" : "warn"}
+            kicker={hasFix ? "Fix" : "Fix status"}
+            title={
+              hasFix
+                ? (rightStep?.title ?? "Security fix")
+                : "No public fix identified"
+            }
             detail={
-              rightStep?.detail ??
-              "The minimum fix commit below closes the same vulnerable path."
+              hasFix
+                ? (rightStep?.detail ??
+                  "The minimum fix commit below closes the same vulnerable path.")
+                : "No minimum fix commit has been established for this finding."
             }
             repository={item.repository}
             shas={item.minimum_fix_set}
             files={fixFiles}
-            authorship={fixAuthorship(item)}
+            authorship={hasFix ? fixAuthorship(item) : "Fix status unresolved"}
           />
         </div>
       )}
@@ -602,24 +640,19 @@ export function CanonicalCaseEvidence({
           <div>
             <p className="section-kicker">Code comparison</p>
             <h3 id="code-comparison" className="mt-2 text-xl font-semibold">
-              Vulnerable code and fix
+              {codeTitle}
             </h3>
           </div>
-          {evidence.comparison_hunks.map((hunk, index) => (
+          {codeHunks.map(({ hunk, label, sha }, index) => (
             <DiffHunk
-              key={`${index}-${hunk.file}`}
+              key={`${label}-${index}-${hunk.file}`}
               hunk={hunk}
               repository={item.repository}
-              sha={
-                index < evidence.candidate_hunks.length
-                  ? item.candidate_set[0]
-                  : item.minimum_fix_set[0]
-              }
-              label={
-                index < evidence.candidate_hunks.length ? "AI change" : "Fix"
-              }
+              sha={sha}
+              label={label}
               open={
-                index === 0 || index === evidence.candidate_hunks.length
+                index === 0 ||
+                (label === "Fix" && codeHunks[index - 1]?.label !== "Fix")
               }
             />
           ))}
@@ -673,50 +706,44 @@ export function CanonicalCaseEvidence({
         </div>
       )}
 
-      {item.vulnerable_release || item.fixed_release ? (
-        <div className="max-w-xl border-y border-border py-5">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Releases
-          </p>
-          <dl className="mt-3 space-y-2 text-sm">
-            {item.vulnerable_release ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Vulnerable</dt>
-                <dd className="font-mono text-right">
-                  {releaseLabel(item.vulnerable_release)}
-                </dd>
-              </div>
-            ) : null}
-            {item.fixed_release ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Fixed</dt>
-                <dd className="font-mono text-right">
-                  {releaseLabel(item.fixed_release)}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-        </div>
-      ) : null}
+      <div className="max-w-xl border-y border-border py-5">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Releases
+        </p>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Vulnerable</dt>
+            <dd className="font-mono text-right">
+              {item.vulnerable_release
+                ? releaseLabel(item.vulnerable_release)
+                : "Not established"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Fixed</dt>
+            <dd className="font-mono text-right">
+              {item.fixed_release
+                ? releaseLabel(item.fixed_release)
+                : "Not established"}
+            </dd>
+          </div>
+        </dl>
+      </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-        {[
-          ["GitHub advisory", githubAdvisoryUrl],
-          ...(evidence?.advisory_url !== githubAdvisoryUrl
-            ? [["Repository advisory", evidence?.advisory_url]]
-            : []),
-        ].map(([label, href]) =>
-          href ? (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-            >
-              {label} <ExternalLink className="h-3 w-3" />
-            </a>
-          ) : null,
+        {item.advisory_url ? (
+          <a
+            href={item.advisory_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
+            Advisory source <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <span className="text-muted-foreground">
+            Advisory source not recorded
+          </span>
         )}
       </div>
     </section>

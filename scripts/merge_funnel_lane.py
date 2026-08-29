@@ -32,6 +32,8 @@ import json
 import sys
 from pathlib import Path
 
+from audit_record_gates import check_record
+
 KNOWN_STATUS = {
     "UNANALYZED",
     "PARTIALLY_ANALYZED",
@@ -204,6 +206,20 @@ def main() -> int:
                 print(f"  {line}", file=sys.stderr)
             if len(conflicts) > 20:
                 print(f"  ... and {len(conflicts) - 20} more", file=sys.stderr)
+            return 1
+
+        record_problems: list[str] = []
+        for path in args.lane_outputs:
+            for item in load_lane_items(path):
+                if "verdict" not in item:
+                    continue
+                record_problems.extend(check_record(item))
+        if record_problems:
+            print("research-record gates failed, nothing written:", file=sys.stderr)
+            for line in record_problems[:20]:
+                print(f"  {line}", file=sys.stderr)
+            if len(record_problems) > 20:
+                print(f"  ... and {len(record_problems) - 20} more", file=sys.stderr)
             return 1
 
         dupes = detect_duplicate_tps(rows)

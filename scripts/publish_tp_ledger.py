@@ -22,14 +22,16 @@ IR_CHAINS = ROOT / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
 ADVISORY_RELEASES = ROOT / "scripts/first-party-advisory-releases.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
+UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
+REPO_LANGUAGES = ROOT / "scripts/repo-language-map.json"
 DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
-# Inclusive GHSA/CVE publication window of the 23,861-class funnel ledger.
+# Inclusive GHSA/CVE publication window of the funnel ledger.
 LEDGER_WINDOW_START = "2025-05-01"
-LEDGER_WINDOW_END = "2026-08-16"
+LEDGER_WINDOW_END = "2026-08-26"
 GHSA_RE = re.compile(r"GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}", re.I)
 CVE_RE = re.compile(r"(?<![A-Z0-9])CVE-\d{4}-\d{4,7}(?![A-Z0-9])", re.I)
 SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
@@ -212,7 +214,13 @@ def contribution_class(row: dict, rec: dict | None) -> str:
     if row.get("status") == "AI_CODE_FLAWED":
         return "AI_CODE_FLAWED"
     origin = str((rec or {}).get("flaw_origin") or "")
-    if re.search(r"incomplete|missed|bypass remained|residual", origin, re.I):
+    if re.search(
+        r"\b(?:incomplete|partial)\s+(?:fix|patch|remediation)\b"
+        r"|\b(?:fix|patch|remediation)\b.{0,80}\b(?:missed|residual)\b"
+        r"|\bbypass remained after\b",
+        origin,
+        re.I,
+    ):
         return "AI_INCOMPLETE_REMEDIATION"
     if re.search(r"surface|reachable|prerequisite", origin, re.I):
         return "AI_NEW_SURFACE_CONTRIBUTOR"
@@ -240,7 +248,7 @@ def research_records(row: dict) -> list[dict]:
         ):
             if isinstance(value, dict) and value:
                 records.append(value)
-    for key in ("squash_audit", "partial_wave", "blocked535", "blocked106"):
+    for key in ("squash_audit", "partial_wave", "blocked535", "blocked106", "blocked_deepwave_research", "blocked_deepwave_refreshed"):
         value = row.get(key)
         if isinstance(value, list):
             records.extend(item for item in value if isinstance(item, dict))
@@ -362,6 +370,22 @@ def public_text(*values: object) -> str | None:
     return None
 
 
+def infer_hunk_file(hunk: dict) -> str | None:
+    file = str(hunk.get("file") or "").strip()
+    if file:
+        return file
+    code = str(hunk.get("code") or "")
+    for pattern in (
+        re.compile(r"^diff --git a/.+? b/(.+)$", re.M),
+        re.compile(r"^\+\+\+ b/(.+)$", re.M),
+        re.compile(r"^--- a/(.+)$", re.M),
+    ):
+        match = pattern.search(code)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
 def scrub_evidence(evidence: dict | None) -> dict | None:
     if not isinstance(evidence, dict):
         return None
@@ -388,10 +412,126 @@ def scrub_evidence(evidence: dict | None) -> dict | None:
             item = dict(hunk)
             if CJK_RE.search(str(item.get("annotation") or "")):
                 item["annotation"] = ""
+            item["file"] = infer_hunk_file(item)
             hunks.append(item)
-        if key in evidence:
-            cleaned[key] = hunks
+        cleaned[key] = hunks
     return cleaned
+
+
+def normalize_fix_authorship(value: object, fixes: list[str]) -> dict | None:
+    if not isinstance(value, dict) or not fixes:
+        return None
+    records = [
+        record
+        for record in value.get("fixes") or []
+        if isinstance(record, dict)
+        and record.get("sha")
+        and any(sha_overlap([str(record["sha"])], [sha]) for sha in fixes)
+        and str((record.get("author") or {}).get("name") or "").strip()
+    ]
+    if len(records) != len(fixes):
+        return None
+    return {
+        "classification": value.get("classification") or "no_ai_marker",
+        "families": [
+            family for family in value.get("families") or [] if str(family).strip()
+        ],
+        "fixes": records,
+    }
+
+
+def advisory_url_of(case: dict) -> str | None:
+    override_url = str(case.get("advisory_url") or "").strip()
+    if override_url:
+        return override_url
+    evidence_url = str(((case.get("code_evidence") or {}).get("advisory_url")) or "").strip()
+    if evidence_url:
+        return evidence_url
+    ids = official_ids_of(case)
+    ghsa = next((item for item in ids if GHSA_RE.match(item)), None)
+    if ghsa:
+        return f"https://github.com/advisories/{ghsa}"
+    cve = next((item for item in ids if CVE_RE.match(item)), None)
+    return f"https://www.cve.org/CVERecord?id={cve}" if cve else None
+
+
+def publication_issues(case: dict) -> list[str]:
+    evidence = case.get("code_evidence") or {}
+    issues: list[str] = []
+    unpatched = _is_unpatched(case)
+    checks = (
+        ("missing_candidate", case.get("candidate_set")),
+        (
+            "missing_ai_attribution",
+            (case.get("ai_provenance") or {}).get("coverage") != "unresolved",
+        ),
+        # An unpatched finding is a complete result, not a missing fix.
+        ("missing_fix", (case.get("minimum_fix_set") or unpatched)),
+        ("missing_vulnerable_release", case.get("vulnerable_release")),
+        # Unpatched findings have no fixed release by definition.
+        ("missing_fixed_release", (case.get("fixed_release") or unpatched)),
+    )
+    issues.extend(name for name, value in checks if not value)
+    for role in ("candidate_hunks", "fix_hunks"):
+        # A confirmed case must carry both hunk sets (site_preflight contract);
+        # their absence keeps the case qualified, never confirmed.
+        # Unpatched findings legitimately have no fix hunks.
+        if role == "fix_hunks" and unpatched:
+            continue
+        if not (evidence.get(role) or []):
+            issues.append(f"missing_{role.removesuffix('_hunks')}")
+        elif any(not str(hunk.get("file") or "").strip() for hunk in evidence.get(role) or []):
+            issues.append(f"missing_{role.removesuffix('_hunks')}_file")
+    return issues
+
+
+def first_unpatched(
+    case_id: str,
+    aliases: list[str],
+    class_id: str,
+    unpatched_fixes: dict[str, dict],
+) -> dict | None:
+    for key in (case_id, *aliases, class_id):
+        if key:
+            record = unpatched_fixes.get(str(key).upper())
+            if isinstance(record, dict):
+                return record
+    return None
+
+
+def _is_unpatched(case: dict) -> bool:
+    record = case.get("unpatched")
+    if isinstance(record, dict) and record.get("confirmed") is True:
+        return True
+    blob = json.dumps(
+        {
+            "research_status": case.get("research_status"),
+            "mechanism": case.get("mechanism"),
+            "scope": case.get("scope_statement"),
+            "description": case.get("description"),
+            "references": case.get("references"),
+        },
+        ensure_ascii=False,
+    ).lower()
+    return bool(
+        re.search(r"\bunpatched\b", blob)
+        or re.search(r"\bno fix\b", blob)
+        or re.search(r"\bno fix commit\b", blob)
+        or re.search(r"\bno fixing commit\b", blob)
+        or re.search(r"\bnever fixed\b", blob)
+        or re.search(r"\bno fix released\b", blob)
+        or re.search(r"\bno fix was ever released\b", blob)
+        or re.search(r"\bvulnerability remains\b", blob)
+    )
+
+
+def publication_status(case: dict) -> str:
+    gate_values = set((case.get("gates") or {}).values())
+    if not gate_values or "UNKNOWN" in gate_values or not case.get("candidate_set"):
+        return "provisional"
+    if gate_values == {"PASS"} and not case.get("publication_issues"):
+        return "confirmed"
+    return "qualified"
 
 
 def index_existing(existing: dict) -> tuple[dict[str, dict], dict[str, dict]]:
@@ -682,8 +822,20 @@ def load_generated_evidence() -> dict[str, dict]:
     return {
         str(key).upper(): value
         for key, value in payload.items()
-        if isinstance(value, dict) and (value.get("comparison_hunks") or value.get("candidate_hunks"))
+        if isinstance(value, dict)
+        and (value.get("comparison_hunks") or value.get("candidate_hunks"))
     }
+
+
+def load_repo_languages() -> dict[str, str]:
+    payload = load_json(REPO_LANGUAGES)
+    if not isinstance(payload, dict):
+        return {}
+    out: dict[str, str] = {}
+    for key, value in payload.items():
+        if key and value:
+            out[str(key).lower()] = str(value)
+    return out
 
 
 def load_advisory_releases() -> dict[str, dict]:
@@ -695,6 +847,31 @@ def load_advisory_releases() -> dict[str, dict]:
         if isinstance(value, dict) and (value.get("vulnerable") or value.get("fixed")):
             out[str(key).upper()] = value
     return out
+
+
+def load_unpatched_fixes() -> dict[str, dict]:
+    payload = load_json(UNPATCHED_FIXES)
+    if isinstance(payload, list):
+        out: dict[str, dict] = {}
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            record = item.get("unpatched")
+            if not isinstance(record, dict):
+                continue
+            for cid in (item.get("case_id"), item.get("repo")):
+                if cid:
+                    out[str(cid).upper()] = record
+        return out
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        str(key).upper(): value
+        for key, value in payload.items()
+        if isinstance(value, dict)
+    }
+
+
 
 
 def release_from_advisory(value: object, kind: str) -> dict | None:
@@ -758,6 +935,7 @@ def ledger_census() -> dict[str, int]:
         "AI_CODE_FLAWED": 0,
         "NOT_AI": 0,
         "BLOCKED": 0,
+        "FALSE_POSITIVE": 0,
         "PARTIALLY_ANALYZED": 0,
         "UNANALYZED": 0,
     }
@@ -774,6 +952,7 @@ def ledger_census() -> dict[str, int]:
         + counts["AI_CODE_FLAWED"]
         + counts["NOT_AI"]
         + counts["BLOCKED"]
+        + counts["FALSE_POSITIVE"]
     )
     in_progress = counts["PARTIALLY_ANALYZED"]
     not_started = counts["UNANALYZED"]
@@ -827,6 +1006,18 @@ def apply_case_overrides(
         meta = dict(case.get("repository_metadata") or {})
         meta["language"] = spec["language"]
         case["repository_metadata"] = meta
+    if spec.get("advisory_url"):
+        case["advisory_url"] = str(spec["advisory_url"])
+    for field in (
+        "severity",
+        "cwes",
+        "description",
+        "references",
+        "scope_statement",
+        "fix_authorship",
+    ):
+        if field in spec:
+            case[field] = spec[field]
     if spec.get("aliases_extra"):
         case["aliases"] = unique([*(case.get("aliases") or []), *spec["aliases_extra"]])
     if spec.get("drop_aliases"):
@@ -874,6 +1065,8 @@ def build_case(
     dates: dict[str, str],
     releases: dict[str, dict],
     generated_evidence: dict[str, dict],
+    unpatched_fixes: dict[str, dict],
+    repo_languages: dict[str, str],
 ) -> dict:
     recs = research_records(row)
     rec = recs[0] if recs else None
@@ -918,8 +1111,7 @@ def build_case(
     scope_statement = public_text(
         cached.get("scope_statement") if cached else None,
     )
-    repo = repo or ((cached or {}).get("repository") if cached else None)
-    language = ((cached or {}).get("repository_metadata") or {}).get("language") or ""
+    language = ((cached or {}).get("repository_metadata") or {}).get("language") or repo_languages.get((repo or "").lower()) or ""
     case_evidence = next(
         (
             generated_evidence.get(str(key).upper())
@@ -1014,19 +1206,7 @@ def build_case(
             "named_candidate_count": len(candidates),
             "note": public_text(marker),
         },
-        "fix_authorship": (cached or {}).get("fix_authorship")
-        or {
-            "classification": "mixed",
-            "families": [],
-            "fixes": [
-                {
-                    "sha": sha,
-                    "classification": "no_ai_marker",
-                    "author": {"name": "", "email": ""},
-                }
-                for sha in fixes
-            ],
-        },
+        "fix_authorship": (cached or {}).get("fix_authorship"),
         "code_evidence": scrub_evidence(
             next(
                 (
@@ -1041,13 +1221,20 @@ def build_case(
             or (cached or {}).get("code_evidence")
         ),
         "ir_chain": (cached or {}).get("ir_chain"),
-        "tier": "true_positive",
-        "research_status": "PUBLISHED",
     }
-    if family:
-        case["ai_provenance"]["family"] = family
-        case["ai_provenance"]["coverage"] = "complete"
+    case["research_status"] = " ".join(
+        str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
+    ).strip() or None
+    case["unpatched"] = first_unpatched(
+        case_id, aliases, row.get("class_id"), unpatched_fixes
+    )
     case = apply_case_overrides(case, row, rec, overrides, chains)
+    case["fix_authorship"] = normalize_fix_authorship(
+        case.get("fix_authorship"), list(case.get("minimum_fix_set") or [])
+    )
+    case["advisory_url"] = advisory_url_of(case)
+    case["publication_issues"] = publication_issues(case)
+    case["publication_status"] = publication_status(case)
     if not case.get("published_at"):
         case["published_at"] = first_party_date(
             case["case_id"],
@@ -1069,6 +1256,8 @@ def main() -> None:
     dates = load_advisory_dates()
     releases = load_advisory_releases()
     generated_evidence = load_generated_evidence()
+    unpatched_fixes = load_unpatched_fixes()
+    repo_languages = load_repo_languages()
     drop_class_ids = {
         str(item).lower() for item in (overrides.get("drop_class_ids") or [])
     }
@@ -1092,6 +1281,8 @@ def main() -> None:
             dates,
             releases,
             generated_evidence,
+            unpatched_fixes,
+            repo_languages,
         )
         case["aliases"] = [
             item
@@ -1121,9 +1312,18 @@ def main() -> None:
             "ai_root_cause": root_cause,
             "ai_code_flawed": code_flawed,
             "ledger_total": census["total"],
-            "ledger_reviewed": census["reviewed"],
+            "ledger_reviewed": census["closed"],
             "ledger_in_progress": census["in_progress"],
             "ledger_not_started": census["not_started"],
+            "confirmed_cases": sum(
+                item["publication_status"] == "confirmed" for item in cases
+            ),
+            "qualified_cases": sum(
+                item["publication_status"] == "qualified" for item in cases
+            ),
+            "provisional_cases": sum(
+                item["publication_status"] == "provisional" for item in cases
+            ),
             "exact_publication_dates": dated,
             "unknown_publication_dates": len(cases) - dated,
             "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
@@ -1137,8 +1337,6 @@ def main() -> None:
         "ai_provenance_families": FAMILIES,
         "cases": cases,
     }
-    if existing.get("ai_commit_census"):
-        payload["ai_commit_census"] = existing["ai_commit_census"]
 
     leaks = [
         case["case_id"]

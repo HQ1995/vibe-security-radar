@@ -5,7 +5,20 @@ const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
 export function AiToolBaseRate() {
   const rate = getAiToolBaseRate();
-  if (rate.unavailable) return null;
+  if (rate.unavailable) {
+    return (
+      <section className="border-t border-border pt-4">
+        <p className="section-kicker">Commit denominator</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-[-0.025em]">
+          Measurement paused
+        </h3>
+        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+          Tool ratios are hidden until the commit census is regenerated for
+          the same repositories and disclosure window as this dataset.
+        </p>
+      </section>
+    );
+  }
   const max = Math.max(1, ...rate.rows.map((row) => row.ai_commit_share));
 
   return (

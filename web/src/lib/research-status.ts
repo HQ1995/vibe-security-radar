@@ -84,6 +84,6 @@ export const WORKFLOW_STEPS = [
   [
     "05",
     "Publication boundary",
-    "Only confirmed true positives are published. NOT_AI, BLOCKED, and incomplete causal rows stay in the research ledger.",
+    "Published findings retain confirmed, qualified, or provisional status; incomplete evidence is never labeled confirmed.",
   ],
 ] as const;

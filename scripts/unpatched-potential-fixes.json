@@ -1,0 +1,310 @@
+[
+ {
+  "case_id": "GHSA-WFX9-6H8H-F3GM",
+  "repo": "chenhg5/cc-connect",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The advisory remained unpatched at the audited repository head, so no remediation commit is attributed; the reported GitHub issue was closed automatically due to inactivity, meaning no upstream fix was ever merged.",
+   "potential_fix": {
+    "approach": "Fail closed in the webhook authenticator: treat an empty or whitespace-only configured token as invalid at startup and in Authenticate, returning 401 for every request to the hook path when no non-empty token is configured; additionally require a constant-time comparison of the presented token against the configured non-empty token in handleHook before dispatching the JSON exec value to executeShell.",
+    "rationale": "The RCE sink is only reachable because an empty configured token is treated as authenticated, letting an unauthenticated remote POST reach handleHook and flow a supplied exec value into executeShell. Rejecting every request when the token is empty (and requiring a valid token match) removes the authenticated-but-keyless state, so the exec payload can never reach the shell without a secret.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-V2JJ-5G64-RXP4",
+  "repo": "chenhg5/cc-connect",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The advisory remained unpatched at the audited repository head, so no remediation commit is attributed; the reported GitHub issue was closed automatically due to inactivity.",
+   "potential_fix": {
+    "approach": "(1) Make the Management API middleware fail closed: reject all requests with HTTP 401 when the configured token is omitted or empty instead of treating every request as authenticated. (2) At the execution boundary, validate CronJob.Exec before shellExecCommand invokes `sh -c`: reject any value containing shell metacharacters and/or match it against an allowlist of safe command names, on both the persisted /api/v1/cron path and the immediate /api/v1/cron/{id}/exec path.",
+    "rationale": "Remote RCE requires both an unauthenticated route (a) and the raw Exec string being handed to the shell (b). Failing closed on an empty token removes the unauthenticated write to CronJob.Exec, and validating/allowlisting the Exec string at the scheduler boundary neutralizes the CWE-77 injection sink even if a caller is authenticated.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-QP9J-GFJJ-6H3V",
+  "repo": "anubissbe/projecthub-mcp",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "No remediation is recorded in the finding; the audited commit (31dd902) that introduced the outbound fetch is the vulnerable state and the webhook url is accepted and stored with no URL validation, leaving the SSRF unpatched.",
+   "potential_fix": {
+    "approach": "Validate webhook.url at write time (POST /api/webhooks and PUT /api/webhooks/:id) and revalidate before every outbound request: parse with the URL constructor, require an allowlisted scheme of http/https only, refuse credentials/other schemes, and reject targets that resolve to loopback (127.0.0.0/8, ::1), RFC1918 space, link-local, or the cloud metadata endpoint (169.254.169.254), before staging the value into sampleWebhooks and before /api/webhooks/:id/test, /api/webhooks/notify, and the lifecycle hooks call fetch(webhook.url).",
+    "rationale": "The SSRF sink is the backend issuing Node's global fetch to a caller-controlled stored url. Enforcing http(s)-only plus a private/metadata destination block at both registration and fetch time closes the exact relay path used to reach localhost admin ports, RFC1918 services, and the metadata service, while preserving legitimate public webhook delivery.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-RRF2-J3H9-99WG",
+  "repo": "andreahaku/llm_memory_mcp",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The advisory was filed via issue #21, no fix has been released, and the vulnerable code is still present at HEAD.",
+   "potential_fix": {
+    "approach": "In GitHooksManager.getCommitInfo, stop interpolating commitHash into a command template string. Pass it as a separate argv element without a shell (execFileSync/execFile('git', ['show', '-s', '--format=...', commitHash])), or, if the shell path must remain, validate commitHash against a strict grammar such as /^(HEAD(~[0-9]+)?|[0-9a-f]{7,40})$/ before any use.",
+    "rationale": "The injection occurs because ${commitHash} is concatenated into a string executed by execSync, so a value like 'HEAD; <cmd>' is tokenized by the shell into two commands. Passing the hash as a distinct argv element (no shell interpretation) or rejecting values that do not match a git-hash/HEAD grammar ensures metacharacters are never evaluated, closing the CWE-74/77 sink.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-H8JJ-PQWW-5M4W",
+  "repo": "hulupeep/mcp-ui-probe",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The mechanism confirms no basename extraction, normalization, or '..' rejection exists on any of the journeyId/filename arguments, so the traversal remains exploitable and unpatched.",
+   "potential_fix": {
+    "approach": "Contain every caller-supplied path component before the filesystem call: reject absolute paths and any value containing '..' segments, or canonicalize with path.resolve and assert the resolved path remains under the intended directory (baseDir for journeyId, dataDir for the usage_stats filename) before fs.readFile/fs.unlink/fs.writeFile; equivalently reduce each component with path.basename() so only a plain leaf name reaches path.join.",
+    "rationale": "The sink is path.join(baseDir, `${journeyId}.yml`/`.json`) (and path.join(dataDir, filename)) escaping via ../ segments. Rejecting '..'/absolute input — or verifying the resolved path stays within the storage directory — guarantees readFile, unlink, and the usage_stats writeFile can only touch files under the intended directories.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-4P6X-RJ5H-HG93",
+  "repo": "astralisone/rive-mcp-server-core",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "No sanitization of libraryId exists anywhere in the flow; the 'imported-components' default is only a fallback when the argument is omitted, so the traversal is unpatched.",
+   "potential_fix": {
+    "approach": "Validate libraryId against a strict safe-identifier allowlist (e.g. /^[A-Za-z0-9_-]+$/) before use, and additionally verify that path.resolve(config.manifestsPath, `${libraryId}.library.json`) stays under config.manifestsPath (prefix check) before saveLibrary() calls fs.writeFile.",
+    "rationale": "saveLibrary joins manifestsPath with `${library.id}.library.json`, and path.join does not collapse '..' segments, so a libraryId like '../../etc/x' escapes the manifest directory. Restricting libraryId to a set with no path separators or parent segments (plus a resolved-path containment check) makes any escape attempt impossible at the exact write sink.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-GC8W-X73W-P4RH",
+  "repo": "artmin96/yii2-mcp-server",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The project was notified but did not respond, and no fix was released; the only guard remains the trivially bypassable 3-entry .includes() denylist.",
+   "potential_fix": {
+    "approach": "Replace the denylist and shell execution: invoke the Yii script via execFile/spawn passing the script path, command, and each arg as separate argv elements (no shell), and validate `command`/`args` against a positive allowlist of known safe console command names with matching argument shapes; reject any value containing shell metacharacters (`;`, `|`, `&`, `$(`, backticks, newlines). Apply the same treatment to getCommandHelp's `help ${command}` path.",
+    "rationale": "The injection is caused by interpolating command/args into a shell string run with exec(shell=true), where the .includes() denylist is bypassable via 'migrate/fresh; id'. Switching to a shell-less argv invocation plus a strict allowlist means metacharacters can never be interpreted by a shell and arbitrary commands never reach php.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-M2H4-J4P2-4J7C",
+  "repo": "eyal-gor/p_69_branch_monkey_mcp",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The unauthenticated /time-machine/preview handler passes the user-supplied dev_script unchanged into Popen(shell=True); no fix or command restriction is recorded.",
+   "potential_fix": {
+    "approach": "Eliminate shell=True for user input: after {port} substitution, run the preview through a fixed allowed set of known commands invoked with subprocess.Popen([...], shell=False) and the substituted value passed as a distinct argument; if a genuinely arbitrary dev script must be supported, write it to a temp file and execute it via an explicitly selected known interpreter (argv list), never by concatenating it into a shell command string.",
+    "rationale": "The injection is direct: any dev_script text is concatenated into a command executed under shell=True, so '; <cmd>' is silently executed as a second command. Removing shell interpretation (argv-based execution or a fixed allowlist) means shell metacharacters in dev_script are treated as data, closing the CWE-77 sink.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-CR5W-67CM-WR78",
+  "repo": "ghantakiran/splunk-mcp-integration",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "job_name is only length-constrained (max 255); no sanitization of ../ or absolute paths exists, leaving the traversal write unpatched.",
+   "potential_fix": {
+    "approach": "Sanitize job_name before it reaches generate_csv: reject or strip path separators, '..' segments, and absolute-path prefixes (or reduce it with os.path.basename() against a safe-character allowlist), then verify containment with os.path.commonpath([CSV_OUTPUT_DIR, file_path]) == CSV_OUTPUT_DIR (or a resolved-path prefix check) before writing.",
+    "rationale": "file_path = os.path.join(CSV_OUTPUT_DIR, job_name.replace(' ','_') + ...) lets '../../x' climb out of the output directory. Rejecting traversal/absolute components and asserting the final path stays under CSV_OUTPUT_DIR guarantees resulting CSV files are written only inside the designated directory.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-6XQM-JW5J-72JF",
+  "repo": "zachhandley/zmcptools",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The log resource handler builds paths with path.join and no traversal containment check, so attacker-controlled dirname/filename can escape ~/.mcptools/logs and the flaw is unpatched.",
+   "potential_fix": {
+    "approach": "Contain dirname and the file query param before any filesystem access: reject components that are absolute or contain '..', or resolve the joined path and require it to remain under ~/.mcptools/logs (resolved-prefix check, or per-component path.basename normalizing), before readdir/stat/readFile in the logs://{dirname}/files and logs://{dirname}/content templates.",
+    "rationale": "The sink is path.join(homedir(), '.mcptools', 'logs', dirname[, filename]) being traversed via ../../../../etc/passwd. Enforcing that the resolved path stays within ~/.mcptools/logs means only log entries actually inside that directory can be listed or read, closing the arbitrary-file read.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-47R4-P7WR-42HW",
+  "repo": "erlichliu/claude-agent-sdk-master",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "No fix was ever released; the HEAD commit b185aa7ff0d864581257008077b4010fca1747bf (the CVE's 'up to' commit) still contains the identical code.",
+   "potential_fix": {
+    "approach": "Replace the 'any absolute path' policy for {outputFile}: require the resolved path to be under an authorized output directory (e.g. the agent's configured cwd/output sandbox) via a canonical-path prefix check, or require the file to be one of an allowlisted set of SDK-produced output files registered per run; additionally add authentication to POST /api/agent-output since it is remotely reachable.",
+    "rationale": "The exfiltration occurs because the endpoint returns the content of any host file that isFile(). Restricting outputFile to an authorized directory (and authenticating the endpoint) means /etc/passwd, .env, and key files can no longer be requested and served, closing the arbitrary-file-read sink without breaking the SDK's legitimate output_file use inside that boundary.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-R8RP-HX65-58JJ",
+  "repo": "idachev/mcp-javadc",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The vulnerable lines are still present at HEAD; the advisory remains unpatched.",
+   "potential_fix": {
+    "approach": "Remove the shell from the jar invocations in DecompilerService.decompileFromJar: call execFile/spawn with argv lists (e.g. execFile('jar', ['tf', jarFilePath]) and, for extraction, spawn 'jar' with ['xf', jarFilePath] in tempDir) so jarFilePath is a distinct argument, and validate it first (must exist, isFile, and stay within an allowlisted directory and/or match a .jar/.zip extension).",
+    "rationale": "The injection arises because jarFilePath is interpolated into a shell string and only wrapped in double quotes, so a value like '\"; <command>; \"' breaks out. Passing jarFilePath as a shell-less argv element (plus path/extension validation) prevents the shell from interpreting the injected quote/metacharacters, closing the CWE-78 sink in both the `jar tf` and `jar xf` commands.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-V9V4-F5WM-PHH4",
+  "repo": "lupinlin1/jimeng-web-mcp",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "The GHSA is Unreviewed with 'Patched versions: Unknown' and 'No known source code'; the OSV affected range is the single version v2.1.2 where introduced == last_affected == eba7d2efe, so no subsequent fixing release exists and the sensitive-data logging introduced by that commit remains.",
+   "potential_fix": {
+    "approach": "Stop emitting credential material to the logger: delete or redact the line `logger.debug(`[ImageUploader] 上传凭证响应: ${JSON.stringify(authRes).substring(0, 200)}`)` in getUploadAuth() (log only a boolean such as whether authRes.data exists, never the token/credential object), and strip query parameters carrying session/msToken/cookie from `logger.debug(`[HttpClient] Request: ${method} ${fullUrl}`)` in HttpClient (log path only).",
+    "rationale": "The CWE-532 sink is the debug logger writing the upload-authorization response (containing an upload token/credential) and auth-laden request URLs into the log. Removing or redacting those specific credential-bearing fields at the two logging sites eliminates the sensitive-information insertion while retaining non-sensitive diagnostics.",
+    "reference_commit": null,
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-VCV2-R9JH-99M5",
+  "repo": "ruvnet/ruflo",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "OSV CVE-2026-58195 lists two fixed reranges (0c2ec967736a8b6b85 and a0f9c2bf95b6203b) but neither SHA is reachable: the GitHub remote rejects fetching them ('not our ref') and the repo clone predates those commits; no published 2.x release contains the fix.",
+   "potential_fix": {
+    "approach": "Replace execSync(command) with spawn/execFile and pass the tool parameters as an argument array (never interpolate into a shell string), and validate agent/task/name/language/key against a safe-character allowlist or JSON-encode them.",
+    "rationale": "The CWE-78 sink is string interpolation into a shell executed by execSync; switching to an argv form removes shell metacharacter evaluation entirely, and input validation blocks parameter tampering at the boundary.",
+    "reference_commit": "0c2ec967736a8b6b85832c6bae2a3e74989705ec",
+    "reference_url": "https://osv.dev/vulnerability/CVE-2026-58195"
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-FWPR-59HH-GR98",
+  "repo": "deepmyst/mysti",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "Fix 6d709229 (PR #49) exists on main but no release contains it: the advisory claims '0.4.0 is sufficient' but v0.4.0 predates the fix; releases end at v0.4.0 (2026-03-11).",
+   "potential_fix": {
+    "approach": "Isolate project memory keys per workspace (add a crypto-hashed project-id namespace to autonomous memory keys) and migrate legacy shared-memory directories into the per-project store.",
+    "rationale": "The cross-project key reuse lets one project read another's autonomous memory (CWE-200); namespacing keys by project id removes the shared namespace.",
+    "reference_commit": "6d709229b5199f6769fb3cf763e5122dcc43c079",
+    "reference_url": "https://github.com/DeepMyst/Mysti/pull/49"
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-4PQR-V6C3-X77J",
+  "repo": "deepmyst/mysti",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "NVD CVE-2026-13591 Deferred; fix 9b4aff0f (PR #43) merged on main but no release/tag after v0.4.0 publishes it (only v0.3.1, v0.4.0 tags exist).",
+   "potential_fix": {
+    "approach": "Scope _isTrackedConversation tracking to the originating channel (ChannelBridge) instead of a global contact list, and key contact identity by (channelId + contactId).",
+    "rationale": "CWE-266 privilege/datastore exposure arises from channel-spanning contact tracking; channel-scoped keys restore the intended per-channel boundary.",
+    "reference_commit": "9b4aff0f106db424aa45a35aa89dd0b8f2eb9a48",
+    "reference_url": "https://github.com/DeepMyst/Mysti/pull/43"
+   }
+  }
+ },
+ {
+  "case_id": "CVE-2026-40583",
+  "repo": "UltraDAGcom/core",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "NVD/OSV CVE-2026-40583: vulnerable =0.1; fix commits 45bcf70/2f5a3a2 are ancestors of main but no tag after v0.1.0 publishes them; workspace Cargo.toml v0.9.0 untagged.",
+   "potential_fix": {
+    "approach": "Complete SmartOp validate-before-mutate: reject a Vote/CreateProposal whose self.debit + incremented nonce would halt the supply invariant (exit 101) before mutating state.",
+    "rationale": "The vulnerability is a fatal supply-invariant halt reachable by a non-council actor; pre-validating fee+nonce against the invariant prevents the halt.",
+    "reference_commit": "2f5a3a237e",
+    "reference_url": "https://osv.dev/vulnerability/CVE-2026-40583"
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-F67F-HCR6-94MF",
+  "repo": "shadd0wtaka/zen-ai-pentest",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "GHSA-f67f-hcr6-94mf: fix 26c4e07 ('security(workflows): fix script injection') is dated after latest release v3.0.0 (2026-02-19) and is diverged from main; no released version contains it.",
+   "potential_fix": {
+    "approach": "Pass the issue title via an environment variable or GitHub Action input into the bash step, never interpolate it directly into the ${{ }} expression, and quote it.",
+    "rationale": "Direct title interpolation into a bash run block is a CWE-78 script-injection sink; environment/input indirection removes shell metacharacter evaluation.",
+    "reference_commit": "26c4e07",
+    "reference_url": "https://github.com/advisories/GHSA-f67f-hcr6-94mf"
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-64VR-4GR2-M642",
+  "repo": "automagik-dev/genie",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "NVD CVE-2026-30635 Deferred; no stable npm release after 2.5.27; sink still present at 2.5.28-rc.4. No patched 2.x release or published fix commit.",
+   "potential_fix": {
+    "approach": "Stop interpolating the commit/task argument into execSync('git --git-dir=...') inside readTranscriptFromCommit/view_task; use execFile/spawn with an argv array and validate the path against an allowlisted repo root.",
+    "rationale": "CWE-78 arises from shell-interpolated git invocations; argv-form exec removes shell metacharacter evaluation.",
+    "reference_commit": null,
+    "reference_url": "https://osv.dev/vulnerability/CVE-2026-30635"
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-JCPJ-R94H-977W",
+  "repo": "joecastrom/mcp-chat-studio",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "CVE-2026-7147 affects 'up to 1.5.0'; fix 1ded0e9a is committed but no release contains it (repo has no tags, package.json stays 1.5.0).",
+   "potential_fix": {
+    "approach": "Reject base_url targets that resolve to loopback/private/link-local ranges in GET /api/llm/models, or pass the URL through an allowlisted public-host proxy.",
+    "rationale": "The SSRF sink is fetch() on caller-controlled base_url; blocking private address resolution closes it (CWE-918).",
+    "reference_commit": "1ded0e9a7b6f72d2c792f1afe190a9fa827cf7d7",
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-H2V8-4C3F-VQGV",
+  "repo": "brentmid/evernote-mcp-server",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "CVE-2025-12489 fix 1e66c78 is committed but the repo has zero tags/releases (package.json 2.2.1) so no release contains it; NVD Deferred.",
+   "potential_fix": {
+    "approach": "Replace exec(`${command} \"${url}\"`) in openBrowser() with spawn/execFile and an argv array, and validate oauth_to/url against an https and safe-scheme allowlist.",
+    "rationale": "CWE-78 shell injection via unescaped URL interpolation; argv-form execution removes shell interpretation.",
+    "reference_commit": "1e66c78c4ce6ea294ac6b0eb289a9eae9c5e9579",
+    "reference_url": null
+   }
+  }
+ },
+ {
+  "case_id": "GHSA-C7RR-QHWX-6Q49",
+  "repo": "zie619/n8n-workflows",
+  "unpatched": {
+   "confirmed": true,
+   "reason": "CVE-2025-55526: fix 5ffee225 exists but the repo publishes no versioned releases (NVD only a date CPE), so no fixed release/version exists; issue #48 closed.",
+   "potential_fix": {
+    "approach": "Resolve filename with os.path.realpath and reject any resolved path outside the 'workflows' base directory in download_workflow/get_workflow_detail.",
+    "rationale": "The traversal sink is path.join('workflows', filename) with no basename validation (CWE-22); realpath containment closes it.",
+    "reference_commit": "5ffee225b7c9e314cacefd7f0a46a1c10ae3d20e",
+    "reference_url": null
+   }
+  }
+ }
+]

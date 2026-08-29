@@ -14,13 +14,16 @@ read this before editing anything outside its own output dir.
   heavy dumps (work/, snapshot/, clones/, pages/, notes/, evidence/,
   api-cache/) stay local-only via .gitignore. Commit your lane's evidence
   files when the round closes; never force-add a dump dir.
-- Shared ledgers (foundation.jsonl, canonical*/ledger.jsonl) : leader-only
-  writes; lanes read.
-- artifacts/funnel-account-*.jsonl : single-writer = the leader, via
-  scripts/merge_funnel_lane.py ONLY (atomic write + schema check; conflict
-  aborts with nothing written). Lanes never edit it directly; they commit
-  their per-lane result files and the leader merges. Commit checkpoints
-  only at round milestones, not per merge.
+- Shared ledgers (`foundation.jsonl`, `canonical*/ledger.jsonl`) remain leader-only.
+- The canonical funnel ledger is Neon Postgres. Lanes write only their owned
+  result files; the leader records append-only assessments and lands complete
+  verdict batches through `scripts/ledger_store.py assessment-add` / `finalize`.
+  Expected revisions, advisory retention, envelope checks, and immutable history
+  are enforced transactionally.
+- `artifacts/funnel-account-*.jsonl` is the deterministic GitHub recovery export,
+  written only by the leader via `scripts/ledger_store.py export`. Never edit it
+  directly. Run duplicate-TP and record gates before `finalize`; export/publish
+  only after the Neon transaction succeeds.
 
 Conflict rule: if two lanes need the same file, the leader arbitrates; no
 lane re-does or reverts another lane's committed-in-progress work.

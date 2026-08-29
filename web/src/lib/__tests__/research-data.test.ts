@@ -9,6 +9,7 @@ import {
   getLanguageDistribution,
   getRepositoryDistribution,
   formatCaseLabel,
+  formatPublicationStatus,
   getResearchCaseById,
   getResearchSnapshot,
   getResearchTimeline,
@@ -34,8 +35,21 @@ describe("canonical research data", () => {
     expect(snapshot.snapshot.exact_publication_dates).toBe(caseCount);
     expect(
       (snapshot.snapshot.ledger_reviewed ?? 0) +
+        (snapshot.snapshot.ledger_in_progress ?? 0) +
         (snapshot.snapshot.ledger_not_started ?? 0),
     ).toBe(snapshot.snapshot.ledger_total);
+    expect(
+      (snapshot.snapshot.confirmed_cases ?? 0) +
+        (snapshot.snapshot.qualified_cases ?? 0) +
+        (snapshot.snapshot.provisional_cases ?? 0),
+    ).toBe(caseCount);
+    expect(
+      snapshot.cases.filter((item) => item.publication_status === "confirmed")
+        .length,
+    ).toBe(snapshot.snapshot.confirmed_cases);
+    expect(formatPublicationStatus("confirmed")).toBe("Confirmed");
+    expect(formatPublicationStatus("qualified")).toBe("Qualified");
+    expect(formatPublicationStatus("provisional")).toBe("Provisional");
     expect(
       snapshot.snapshot.ai_root_cause! + snapshot.snapshot.ai_code_flawed!,
     ).toBe(caseCount);
@@ -191,30 +205,21 @@ describe("canonical research data", () => {
     ).toBe(true);
     expect(coolify?.vulnerable_release?.version).toMatch(/beta\.466/);
 
-    // Exemptions mirror scripts/site_preflight_allowlist.json (API-verified
-    // facts: advisory publishes no version range; commits rewritten upstream).
-    const noVersionRange: Record<string, true> = {
-      "GHSA-47R4-P7WR-42HW": true,
-      "GHSA-6C5R-PJ95-XVQV": true,
-      "GHSA-6XQM-JW5J-72JF": true,
-      "GHSA-9HX3-5WP9-2QQG": true,
-      "GHSA-C7RR-QHWX-6Q49": true,
-      "GHSA-CR5W-67CM-WR78": true,
-      "GHSA-H2V8-4C3F-VQGV": true,
-      "GHSA-JCPJ-R94H-977W": true,
-      "GHSA-M2H4-J4P2-4J7C": true,
-      "GHSA-Q269-XQWW-45MM": true,
-      "GHSA-R8RP-HX65-58JJ": true,
-      "GHSA-RHH5-3XRH-6535": true,
-      "GHSA-RRF2-J3H9-99WG": true,
-      "GHSA-V9V4-F5WM-PHH4": true,
-      "GHSA-VCV2-R9JH-99M5": true,
-      "GHSA-W253-42QP-5F2X": true,
+    // One canonical exemption source; site preflight and this contract must agree.
+    const preflightAllowlist = JSON.parse(
+      readFileSync(
+        resolve(
+          import.meta.dirname,
+          "../../../../scripts/site_preflight_allowlist.json",
+        ),
+        "utf8",
+      ),
+    ) as {
+      missing_diff: Record<string, string>;
+      missing_release: Record<string, string>;
     };
-    const noHunks: Record<string, true> = {
-      // Upstream force-pushed the commits; no patch to compare (preflight allowlist).
-      "GHSA-VCV2-R9JH-99M5": true,
-    };
+    const noVersionRange = preflightAllowlist.missing_release;
+    const noHunks = preflightAllowlist.missing_diff;
     for (const item of cases) {
       const hunks =
         item.code_evidence?.comparison_hunks?.length ||
@@ -225,9 +230,19 @@ describe("canonical research data", () => {
       const official = [item.case_id, ...item.aliases].filter((value) =>
         /^(GHSA-|CVE-)/i.test(value),
       );
+      const unpatched = item.unpatched?.confirmed === true;
+      if (unpatched) {
+        expect(item.minimum_fix_set, item.case_id).toHaveLength(0);
+        expect(item.unpatched?.reason, item.case_id).toBeTruthy();
+        expect(item.unpatched?.potential_fix.approach, item.case_id).toBeTruthy();
+        expect(item.unpatched?.potential_fix.rationale, item.case_id).toBeTruthy();
+      }
       if (official.length && !(item.case_id.toUpperCase() in noVersionRange)) {
         expect(
-          Boolean(item.vulnerable_release || item.fixed_release),
+          Boolean(
+            item.vulnerable_release ||
+              (!unpatched && item.fixed_release),
+          ),
           item.case_id,
         ).toBe(true);
       }

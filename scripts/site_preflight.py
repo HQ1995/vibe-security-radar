@@ -20,6 +20,7 @@ GHSA_RE = re.compile(r"^GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$", re.I)
 CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,7}$", re.I)
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3000-\u303f]")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+PUBLICATION_STATUSES = ("confirmed", "qualified", "provisional")
 
 
 def load_json(path: Path) -> dict:
@@ -47,6 +48,31 @@ def has_release(case: dict) -> bool:
     return bool(case.get("vulnerable_release") or case.get("fixed_release"))
 
 
+def is_unpatched(case: dict) -> bool:
+    record = case.get("unpatched")
+    return isinstance(record, dict) and record.get("confirmed") is True
+
+
+def unpatched_errors(case_id: str, case: dict) -> list[str]:
+    record = case.get("unpatched")
+    if record is None:
+        return []
+    if not isinstance(record, dict) or record.get("confirmed") is not True:
+        return [f"{case_id}: unpatched record is present but not confirmed"]
+    reason = str(record.get("reason") or "").strip()
+    potential = record.get("potential_fix") if isinstance(record.get("potential_fix"), dict) else {}
+    approach = str(potential.get("approach") or "").strip()
+    rationale = str(potential.get("rationale") or "").strip()
+    errors: list[str] = []
+    if not reason:
+        errors.append(f"{case_id}: unpatched record has no reason")
+    if not approach or not rationale:
+        errors.append(f"{case_id}: unpatched record has no potential_fix approach/rationale")
+    if case.get("minimum_fix_set"):
+        errors.append(f"{case_id}: unpatched case still has a fix set")
+    return errors
+
+
 def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], list[str], dict]:
     allowlist = allowlist or {}
     diff_allow = {
@@ -65,6 +91,7 @@ def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], l
     dated = 0
     hunks = 0
     releases = 0
+    status_counts = {status: 0 for status in PUBLICATION_STATUSES}
     unused_diff_allow = set(diff_allow)
     unused_release_allow = set(release_allow)
 
@@ -79,11 +106,53 @@ def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], l
         blob = json.dumps(case, ensure_ascii=False)
         if CJK_RE.search(blob):
             errors.append(f"{case_id}: CJK leaked into public fields")
+        status = str(case.get("publication_status") or "")
+        if status not in status_counts:
+            errors.append(f"{case_id}: invalid publication_status {status!r}")
+        else:
+            status_counts[status] += 1
+        evidence = case.get("code_evidence") or {}
+        errors.extend(unpatched_errors(case_id, case))
+        unpatched = is_unpatched(case)
+        for role in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
+            for index, hunk in enumerate(evidence.get(role) or []):
+                if not str(hunk.get("file") or "").strip():
+                    errors.append(f"{case_id}: {role}[{index}] has no file")
+        if status == "confirmed":
+            gates = case.get("gates") or {}
+            if not gates or set(gates.values()) != {"PASS"}:
+                errors.append(f"{case_id}: confirmed case does not have all PASS gates")
+            if case.get("publication_issues"):
+                errors.append(
+                    f"{case_id}: confirmed case has publication issues "
+                    f"{case.get('publication_issues')}"
+                )
+            for field in (
+                "candidate_set",
+                "minimum_fix_set",
+                "vulnerable_release",
+                "fixed_release",
+                "advisory_url",
+            ):
+                if field in {"minimum_fix_set", "fixed_release"} and unpatched:
+                    continue
+                if not case.get(field):
+                    errors.append(f"{case_id}: confirmed case has no {field}")
+            for role in ("candidate_hunks", "fix_hunks"):
+                if role == "fix_hunks" and unpatched:
+                    continue
+                if not evidence.get(role):
+                    errors.append(f"{case_id}: confirmed case has no {role}")
         published = str(case.get("published_at") or "")
         if not DATE_RE.match(published):
             errors.append(f"{case_id}: missing published_at")
         else:
             dated += 1
+        language = str(
+            ((case.get("repository_metadata") or {}).get("language") or "").strip()
+        )
+        if not language:
+            errors.append(f"{case_id}: missing repository language")
         if has_hunks(case):
             hunks += 1
         elif key in diff_allow:
@@ -94,15 +163,23 @@ def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], l
                 f"{case_id}: no code comparison; add hunks or allowlist a reason"
             )
         ids = official_ids(case)
-        if has_release(case):
+        if has_release(case) or (unpatched and case.get("vulnerable_release")):
             releases += 1
-        elif ids:
+        elif ids and not unpatched:
             if key in release_allow:
                 unused_release_allow.discard(key)
                 warnings.append(f"{case_id}: no release range ({release_allow[key]})")
             else:
                 errors.append(
                     f"{case_id}: official ID has no vulnerable/fixed release; fetch it or allowlist"
+                )
+        elif ids and unpatched and not case.get("vulnerable_release"):
+            if key in release_allow:
+                unused_release_allow.discard(key)
+                warnings.append(f"{case_id}: no release range ({release_allow[key]})")
+            else:
+                errors.append(
+                    f"{case_id}: unpatched official ID has no vulnerable release; fetch it or allowlist"
                 )
         if case.get("contribution_class") == "AI_INCOMPLETE_REMEDIATION" and not case.get("ir_chain"):
             errors.append(f"{case_id}: incomplete remediation without ir_chain")
@@ -134,12 +211,37 @@ def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], l
         errors.append("snapshot unknown_publication_dates does not match cases")
     if snapshot.get("unknown_publication_dates", 0) != 0:
         errors.append("snapshot still reports unknown publication dates")
+    expected_status_counts = {
+        "confirmed": snapshot.get("confirmed_cases"),
+        "qualified": snapshot.get("qualified_cases"),
+        "provisional": snapshot.get("provisional_cases"),
+    }
+    if expected_status_counts != status_counts:
+        errors.append(
+            f"snapshot publication counts {expected_status_counts} "
+            f"do not match cases {status_counts}"
+        )
+    census_total = sum(
+        int(snapshot.get(field) or 0)
+        for field in ("ledger_reviewed", "ledger_in_progress", "ledger_not_started")
+    )
+    if census_total != snapshot.get("ledger_total"):
+        errors.append(
+            f"ledger census totals {census_total} but ledger_total="
+            f"{snapshot.get('ledger_total')}"
+        )
 
     stats = {
         "cases": len(cases),
         "dated": dated,
         "diffs": hunks,
         "releases": releases,
+        "languages": sum(
+            1
+            for case in cases
+            if str(((case.get("repository_metadata") or {}).get("language") or "").strip())
+        ),
+        "publication_statuses": status_counts,
         "errors": len(errors),
         "warnings": len(warnings),
     }
@@ -159,8 +261,10 @@ def main(argv: list[str] | None = None) -> int:
                 "dated": f"{stats['dated']}/{stats['cases']}",
                 "diffs": f"{stats['diffs']}/{stats['cases']}",
                 "releases": f"{stats['releases']}/{stats['cases']}",
+                "languages": f"{stats['languages']}/{stats['cases']}",
                 "allowlisted": stats["warnings"],
                 "errors": stats["errors"],
+                "publication_statuses": stats["publication_statuses"],
             },
             sort_keys=True,
         )

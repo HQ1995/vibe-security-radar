@@ -18,8 +18,8 @@ export interface ResearchCodeHunk {
 }
 
 export interface ResearchCodeEvidence {
-  readonly ai_marker: string;
-  readonly fix_marker?: string;
+  readonly ai_marker: string | null;
+  readonly fix_marker?: string | null;
   readonly candidate_url: string;
   readonly fix_url: string;
   readonly advisory_url: string;
@@ -43,6 +43,17 @@ export interface ResearchRelease {
   readonly [key: string]: unknown;
 }
 
+export interface ResearchUnpatched {
+  readonly confirmed: true;
+  readonly reason: string;
+  readonly potential_fix: {
+    readonly approach: string;
+    readonly rationale: string;
+    readonly reference_commit: string | null;
+    readonly reference_url: string | null;
+  };
+}
+
 export interface ResearchCase {
   readonly case_id: string;
   readonly class_id?: string;
@@ -58,6 +69,9 @@ export interface ResearchCase {
   readonly candidate_set: readonly string[];
   readonly carrier_set: readonly string[];
   readonly minimum_fix_set: readonly string[];
+  readonly publication_status: "confirmed" | "qualified" | "provisional";
+  readonly publication_issues: readonly string[];
+  readonly advisory_url: string | null;
   readonly gates: ResearchGateSet;
   readonly vulnerable_release: ResearchRelease | null;
   readonly fixed_release: ResearchRelease | null;
@@ -85,8 +99,9 @@ export interface ResearchCase {
       readonly classification: "ai_assisted" | "no_ai_marker";
       readonly author: { readonly name: string; readonly email: string };
     }[];
-  };
+  } | null;
   readonly code_evidence: ResearchCodeEvidence | null;
+  readonly unpatched: ResearchUnpatched | null;
   readonly ir_chain?: {
     readonly original_advisory_ids: readonly string[];
     readonly original_mechanism: string | null;
@@ -149,6 +164,9 @@ const snapshot = researchData as {
     readonly ledger_reviewed?: number;
     readonly ledger_in_progress?: number;
     readonly ledger_not_started?: number;
+    readonly confirmed_cases?: number;
+    readonly qualified_cases?: number;
+    readonly provisional_cases?: number;
     readonly exact_publication_dates: number;
     readonly unknown_publication_dates: number;
     readonly date_policy: string;
@@ -312,9 +330,9 @@ function countLabels(values: readonly string[]): ResearchDistributionItem[] {
 
 export function getLanguageDistribution(): ResearchDistributionItem[] {
   return countLabels(
-    snapshot.cases
-      .map((item) => item.repository_metadata.language)
-      .filter((name) => Boolean(name)),
+    snapshot.cases.map(
+      (item) => item.repository_metadata.language || "Unknown",
+    ),
   );
 }
 
@@ -464,5 +482,15 @@ export function formatLedgerStatus(value: string | undefined): string {
       AI_ROOT_CAUSE: "AI root cause",
       AI_CODE_FLAWED: "AI-written code was flawed",
     }[value ?? ""] ?? "Confirmed true positive"
+  );
+}
+
+export function formatPublicationStatus(value: string): string {
+  return (
+    {
+      confirmed: "Confirmed",
+      qualified: "Qualified",
+      provisional: "Provisional",
+    }[value] ?? value
   );
 }

@@ -61,7 +61,7 @@ function faqs(caseCount: number) {
     },
     {
       question: "Is this the total number of AI security bugs?",
-      answer: `No. These ${caseCount} findings are confirmed true positives from public advisories whose Git history binds the flaw to an AI-authored change. They are a lower bound, not a census.`,
+      answer: `No. The index contains ${caseCount} findings, an observed public set rather than a census of every AI bug.`,
     },
     {
       question: "Can a finding be corrected?",
@@ -81,11 +81,9 @@ export default function HomePage() {
   const languages = getLanguageDistribution();
   const repositories = getRepositoryDistribution();
   const featuredCases = (() => {
-    const pool = [...getResearchCases()].sort((a, b) => {
-      const evidence = Number(Boolean(b.code_evidence)) - Number(Boolean(a.code_evidence));
-      if (evidence !== 0) return evidence;
-      return (b.published_at ?? "").localeCompare(a.published_at ?? "");
-    });
+    const pool = [...getResearchCases()].sort(
+      (a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""),
+    );
     const picked: typeof pool = [];
     const classOrder = [
       "AI_INCOMPLETE_REMEDIATION",
@@ -130,8 +128,9 @@ export default function HomePage() {
                   Vibe Security Radar
                 </h1>
                 <p className="mt-3 max-w-xl text-lg font-medium leading-7 tracking-[-0.02em] sm:text-xl sm:leading-8">
-                  {caseCount} confirmed vulnerabilities where AI-written code
-                  introduced, enabled, or failed to close the flaw.
+                  {research.snapshot.confirmed_cases} confirmed
+                  AI-contributed vulnerabilities cataloged and evidence-linked
+                  across their full causal chain.
                 </p>
               </div>
               <div className="mt-6 md:mt-0 xl:mt-6">
@@ -140,7 +139,7 @@ export default function HomePage() {
                     href="/cves"
                     className="inline-flex min-h-10 w-full items-center justify-center bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90 sm:w-auto"
                   >
-                    Browse {research.snapshot.case_count} true positives →
+                    Browse all {caseCount} findings →
                   </Link>
                   <a
                     href="https://github.com/HQ1995/vibe-security-radar"
@@ -160,10 +159,23 @@ export default function HomePage() {
                 <dl className="mt-6 divide-y divide-border border-y border-border text-sm">
                   <div className="flex items-start justify-between gap-4 py-2.5">
                     <dt className="flex items-center gap-2 text-muted-foreground">
-                      Confirmed true positives
+                      Cataloged findings
                     </dt>
                     <dd className="text-right font-semibold">
-                      {formatCount(research.snapshot.case_count)} cases
+                      {formatCount(caseCount)} findings
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-4 py-2.5">
+                    <dt className="text-muted-foreground">Publication status</dt>
+                    <dd className="text-right font-semibold">
+                      {formatCount(research.snapshot.confirmed_cases ?? 0)}{" "}
+                      confirmed
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {formatCount(research.snapshot.qualified_cases ?? 0)}{" "}
+                        qualified ·{" "}
+                        {formatCount(research.snapshot.provisional_cases ?? 0)}{" "}
+                        provisional
+                      </span>
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-4 py-2.5">
@@ -178,9 +190,11 @@ export default function HomePage() {
                       advisories
                       <span className="block text-xs font-normal text-muted-foreground">
                         {formatCount(research.snapshot.ledger_reviewed ?? 0)}{" "}
-                        reviewed ·{" "}
+                        completed ·{" "}
+                        {formatCount(research.snapshot.ledger_in_progress ?? 0)}{" "}
+                        in progress ·{" "}
                         {formatCount(research.snapshot.ledger_not_started ?? 0)}{" "}
-                        under analysis
+                        not started
                       </span>
                     </dd>
                   </div>
@@ -283,7 +297,7 @@ export default function HomePage() {
             <DistributionBars
               eyebrow="Languages"
               title="Where the vulnerable code lives"
-              description="Top languages; all remain available in Findings."
+              description="Top languages, including findings whose language is not yet recorded."
               iconMode="language"
               items={languages.slice(0, 6)}
             />
@@ -308,7 +322,7 @@ export default function HomePage() {
               </h2>
             </div>
             <Link href="/cves" className="text-sm text-primary hover:underline">
-              Browse all {research.snapshot.case_count} true positives →
+              Browse all {research.snapshot.case_count} findings →
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

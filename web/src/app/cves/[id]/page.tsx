@@ -12,20 +12,23 @@ import { severityBadgeClass } from "@/lib/constants";
 import {
   formatCaseLabel,
   formatContributionClass,
+  formatPublicationStatus,
   formatLedgerStatus,
   getResearchCaseById,
+  preferredCaseId,
   getResearchCases,
   type ResearchCase,
 } from "@/lib/research-data";
 
 export const dynamicParams = false;
-
 export function generateStaticParams() {
   const ids = new Set<string>();
   for (const item of getResearchCases()) {
-    ids.add(item.case_id);
-    if (item.class_id) ids.add(item.class_id);
-    item.aliases.forEach((alias) => ids.add(alias));
+    for (const id of [item.case_id, ...item.aliases]) {
+      if (/^(?:GHSA-[A-Z0-9-]+|CVE-\d{4}-\d{4,7})$/i.test(id)) {
+        ids.add(id);
+      }
+    }
   }
   return [...ids].sort().map((id) => ({ id }));
 }
@@ -38,13 +41,17 @@ export async function generateMetadata({
   const { id } = await params;
   const item = getResearchCaseById(id);
   if (!item) return { title: "Finding not found" };
-
   const description = stripMarkdown(
     item.description ?? "Mechanism-level evidence for " + id + ".",
   ).slice(0, 200);
+  const canonicalId = preferredCaseId(item);
+  const title = `${canonicalId} — AI contribution evidence`;
   return {
-    title: `${id} — AI contribution evidence`,
+    title,
     description,
+    alternates: { canonical: `/cves/${canonicalId}` },
+    openGraph: { title, description, url: `/cves/${canonicalId}` },
+    twitter: { title, description },
   };
 }
 
@@ -104,6 +111,26 @@ function PageHeader({
         </div>
       </div>
 
+      <div
+        className="border-l-2 border-primary bg-primary/[0.04] px-4 py-3 text-sm"
+        role="status"
+      >
+        <span className="font-semibold">
+          {formatPublicationStatus(item.publication_status)}
+        </span>
+        {item.publication_issues.length ? (
+          <span className="ml-2 text-muted-foreground">
+            Evidence caveats:{" "}
+            {item.publication_issues
+              .map((issue) => issue.replaceAll("_", " "))
+              .join(", ")}
+          </span>
+        ) : (
+          <span className="ml-2 text-muted-foreground">
+            All publication requirements are satisfied.
+          </span>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-3 text-xs text-muted-foreground">
         {item.published_at ? (
           <span>Published {formatPublished(item.published_at)}</span>

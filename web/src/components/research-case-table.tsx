@@ -5,6 +5,7 @@ import { ToolIcon } from "@/components/tool-icon";
 import {
   formatCaseLabel,
   formatContributionClass,
+  formatPublicationStatus,
   getAiFamilyIconKey,
   getAiToolLabel,
   getCauseCategoryLabel,
@@ -39,6 +40,9 @@ export function ResearchCaseTable({
               </div>
               <p className="mt-4 break-words text-sm font-medium">
                 {item.repository ?? "Not recorded"}
+              </p>
+              <p className="mt-1 text-xs font-medium text-primary">
+                {formatPublicationStatus(item.publication_status)}
               </p>
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>
@@ -89,6 +93,7 @@ export function ResearchCaseTable({
               <th className="px-4 py-3 font-medium">Root cause</th>
               <th className="px-4 py-3 font-medium">AI contribution</th>
               <th className="px-4 py-3 font-medium">AI tool</th>
+              <th className="px-4 py-3 font-medium">Verification</th>
               <th className="py-3 pl-4 text-right font-medium">Published</th>
             </tr>
           </thead>
@@ -130,6 +135,9 @@ export function ResearchCaseTable({
                       />
                       {getAiToolLabel(item)}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 text-sm font-medium text-primary">
+                    {formatPublicationStatus(item.publication_status)}
                   </td>
                   <td className="py-4 pl-4 text-right font-mono text-xs">
                     {item.published_at?.slice(0, 10) ?? "Date unavailable"}

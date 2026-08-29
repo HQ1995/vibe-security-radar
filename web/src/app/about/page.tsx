@@ -56,7 +56,8 @@ const SOURCES = [
 ] as const;
 
 export default function AboutPage() {
-  const caseCount = getResearchSnapshot().snapshot.case_count;
+  const snapshot = getResearchSnapshot().snapshot;
+  const caseCount = snapshot.case_count;
   return (
     <main className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 sm:py-14 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
       <header className="border-b border-border pb-8">
@@ -65,9 +66,10 @@ export default function AboutPage() {
           Evidence before attribution.
         </h1>
         <p className="mt-4 max-w-3xl text-lg leading-7 text-muted-foreground">
-          This public index covers {caseCount} confirmed true positives: findings
-          where AI-written code introduced the flaw, exposed the vulnerable
-          path, or left a security fix incomplete.
+          This public index covers {caseCount} findings:{" "}
+          {snapshot.confirmed_cases} confirmed. Each case links its
+          vulnerability, contributing change, AI signal, and closing fix back
+          to first-party evidence.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
           Real disclosed vulnerabilities from{" "}
@@ -150,8 +152,9 @@ export default function AboutPage() {
           ))}
         </div>
         <p className="mt-4 max-w-3xl text-xs leading-5 text-muted-foreground">
-          Advisory indexes help find candidates. Git history and released
-          artifacts decide whether a finding belongs in the dataset.
+          Public and repository advisories identify disclosed vulnerabilities.
+          Git history and released artifacts determine the AI contribution and
+          each finding&apos;s verification status.
         </p>
       </section>
 

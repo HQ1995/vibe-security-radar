@@ -6,7 +6,7 @@ import { ResearchCaseTable } from "@/components/research-case-table";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
-  formatLedgerStatus,
+  formatPublicationStatus,
   getAiToolLabel,
   getCauseCategoryLabel,
   type ResearchCase,
@@ -61,7 +61,7 @@ export function filterResearchCases(
       (!filters.cause || item.cause_category === filters.cause) &&
       (!filters.contribution ||
         item.contribution_class === filters.contribution) &&
-      (!filters.status || item.ledger_status === filters.status) &&
+      (!filters.status || item.publication_status === filters.status) &&
       (!filters.tool || tool === filters.tool) &&
       (!filters.language ||
         item.repository_metadata.language === filters.language) &&
@@ -108,9 +108,7 @@ export function ResearchCaseExplorer({
     cases.flatMap((item) => (item.cause_category ? [item.cause_category] : [])),
   );
   const contributions = unique(cases.map((item) => item.contribution_class));
-  const statuses = unique(
-    cases.flatMap((item) => (item.ledger_status ? [item.ledger_status] : [])),
-  );
+  const statuses = unique(cases.map((item) => item.publication_status));
   const tools = unique(cases.map(getAiToolLabel));
   const languages = unique(
     cases
@@ -180,16 +178,16 @@ export function ResearchCaseExplorer({
           </select>
         </label>
         <label className="text-xs text-muted-foreground">
-          Verdict
+          Verification
           <select
             value={filters.status ?? ""}
             onChange={(event) => update("status", event.target.value)}
             className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
-            <option value="">All verdicts</option>
+            <option value="">All verification statuses</option>
             {statuses.map((status) => (
               <option key={status} value={status}>
-                {formatLedgerStatus(status)}
+                {formatPublicationStatus(status)}
               </option>
             ))}
           </select>

@@ -76,6 +76,12 @@ def load_fetch_overrides() -> dict[str, dict]:
         if isinstance(value, dict)
     }
 
+def needs_evidence(case_id: str, existing: dict, force: set[str]) -> bool:
+    return case_id in force or not (
+        (existing.get(case_id) or {}).get("comparison_hunks")
+    )
+
+
 
 def fetch_override_for(case: dict, overrides: dict[str, dict]) -> dict:
     keys = [case.get("case_id"), *(case.get("aliases") or [])]
@@ -327,7 +333,9 @@ def main() -> None:
         )
     fetch_overrides = load_fetch_overrides()
     missing = []
+    scheduled: set[str] = set()
     for case in cases:
+        key = case["case_id"].upper()
         override = fetch_override_for(case, fetch_overrides)
         has_source = (
             (override.get("fetch_repo") or case.get("repository"))
@@ -338,14 +346,10 @@ def main() -> None:
                 or case.get("minimum_fix_set")
             )
         )
-        needs = case["case_id"].upper() in force or not (
-            (case.get("code_evidence") or {}).get("comparison_hunks")
-        )
-        if has_source and (needs or override):
-            if case["case_id"].upper() in force or not (
-                (case.get("code_evidence") or {}).get("comparison_hunks")
-            ):
-                missing.append((case, override))
+        needs = needs_evidence(key, existing, force)
+        if has_source and needs and key not in scheduled:
+            missing.append((case, override))
+            scheduled.add(key)
     print("targets", len(missing))
     ok = 0
     for index, (case, override) in enumerate(missing, 1):

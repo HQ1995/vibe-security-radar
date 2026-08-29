@@ -1,42 +1,28 @@
 # Audit protocol
 
-The standing rules for judging a case. Core principle: **no mechanical
-scanning** — fully understand the vulnerability's root cause and its
-complete lifecycle before judging the AI role.
+How a case gets judged. One principle: **no mechanical scanning** —
+fully understand the vulnerability's root cause and its complete
+lifecycle before judging the AI role.
 
-## Required for every case
+Vulnerability first, AI second. One vulnerability, one clean analysis
+context — no leftover verdicts from other cases. The leader still
+passes same-mechanism ledger/site hits, the advisory, and the clone.
+The BIC is the smallest commit that first wrote the vulnerable lines —
+a move, refactor, revert, or squash aggregate is not a BIC. But a
+first-write that is the smallest surviving object in public history
+IS a valid BIC when its immediate parent is verifiable and no finer
+public member can be reconstructed; never invert the search to first
+find an AI-marked commit and then call it the BIC. Judge the AI role
+from signals on that BIC only.
 
-1. **Understand the vulnerability**: root cause, trigger path, affected
-   versions, fixed behavior. Do not start until understood.
-2. **Minimal BIC**: the smallest atomic commit that first wrote the
-   vulnerable lines; decompose squashes to PR constituents; record
-   `introducer_sha` + `decomposed_shas`.
-3. **Find the fix**: record `fix_sha`/`direct_fix_sha`; if unfixed,
-   record `unpatched` explicitly.
-4. **Incomplete-fix chain**: original introducer → attempted remediation
-   → residual bypass → final closure (`ir_chain`); no closure without
-   every link.
-5. **Judge the AI role** from signals **on the minimal BIC only**; a
-   squash-level aggregated Co-Authored-By is not a vulnerable-line
-   signal (downgrade when the signal is not on the BIC).
-6. **Record the research in the ledger**: `roundN_research` with
-   verdict / reasoning / flaw_origin / bug_semantics / ai_marker / all
-   SHAs, then run `scripts/merge_funnel_lane.py` to update the ledger
-   promptly.
-7. **Backfill required info**: advisory identity (no ALIAS publishing —
-   dig the real GHSA/CVE via repo security-advisories → OSV commit query
-   → OSV package query → NVD → web search) and the advisory date (never
-   the introducer commit date).
+Withdrawn/rejected advisories are `FALSE_POSITIVE`, not `NOT_AI`:
+`NOT_AI` means a real vulnerability with human authorship, while
+`FALSE_POSITIVE` means the advisory itself was wrong or was withdrawn.
+Check the CVE.org record (and vendor disposition) before closing; the
+GitHub advisory's `withdrawn_at` field is not authoritative.
 
-## Forbidden
-
-- Template-word fields (`introduced_with_feature` / `ai` / `introducer`)
-- Publishing `ALIAS-*` cases
-- Using the introducer commit date as `published_at`
-- Deduplicating at publish time (dedup belongs at ledger level via
-  `site_publication.publish=false`)
-
-Publication gates (duplicates / dates / ir_chain / SHA / hunks / release)
-are enforced by `scripts/publish_tp_ledger.py`; this file does not repeat
-code details. Field semantics: `docs/DATA-SCHEMA.md`; file ownership:
-`docs/AGENT-OWNERSHIP.md`.
+Record the judgment in the ledger. Do not publish `ALIAS-*` cases or
+use the introducer commit date as `published_at`. Field semantics,
+file ownership, and landing gates live in `docs/DATA-SCHEMA.md`,
+`docs/AGENT-OWNERSHIP.md`, `scripts/audit_record_gates.py`, and
+`scripts/publish_tp_ledger.py`.
