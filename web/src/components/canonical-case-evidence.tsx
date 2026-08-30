@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 
 import { isPublicProse, stripMarkdown } from "@/lib/markdown-utils";
 import { formatPublished } from "@/lib/commit-utils";
@@ -319,11 +319,12 @@ function AdvisoryDisclosure({
 }) {
   return (
     <details className={`group/advisory ${className ?? ""}`}>
-      <summary className="inline-cursor-pointer select-none text-sm font-medium text-primary [&::-webkit-details-marker]:hidden">
+      <summary className="-mx-1 inline-flex cursor-pointer select-none items-center gap-1 rounded px-1 text-sm font-medium text-primary transition-colors hover:bg-primary/5 [&::-webkit-details-marker]:hidden">
         <span className="group-open/advisory:hidden">Show full advisory description</span>
         <span className="hidden group-open/advisory:inline">Hide advisory description</span>
+        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open/advisory:rotate-180" />
       </summary>
-      <p className="mt-2 max-w-3xl whitespace-pre-line text-base leading-7 text-muted-foreground group-open/advisory:mt-3">
+      <p className="mt-2 max-w-3xl whitespace-pre-line text-sm leading-6 text-muted-foreground group-open/advisory:mt-3">
         {text}
       </p>
     </details>
@@ -346,9 +347,10 @@ function MechanismDisclosure({
   if (!text || (blurb && stripMarkdown(text).trim() === blurb.trim())) return null;
   return (
     <details className={`group/mech ${className ?? ""}`}>
-      <summary className="cursor-pointer select-none text-sm font-medium text-primary [&::-webkit-details-marker]:hidden">
+      <summary className="-mx-1 inline-flex cursor-pointer select-none items-center gap-1 rounded px-1 text-sm font-medium text-primary transition-colors hover:bg-primary/5 [&::-webkit-details-marker]:hidden">
         <span className="group-open/mech:hidden">What actually happened</span>
         <span className="hidden group-open/mech:inline">Hide details</span>
+        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open/mech:rotate-180" />
       </summary>
       <p className="mt-2 max-w-3xl whitespace-pre-line text-sm leading-6 text-muted-foreground">
         {text}
@@ -410,13 +412,15 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       : []),
   ];
   return (
-    <aside className="h-fit border border-border bg-card p-5 text-sm xl:sticky xl:top-6">
+    <aside className="h-fit rounded-lg border border-border bg-card p-5 text-sm shadow-sm xl:sticky xl:top-6">
       <p className="section-kicker">Case facts</p>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{statusLine}</p>
-      <dl className="mt-4 space-y-3">
+      <dl className="mt-4 space-y-3.5">
         {facts.map(({ label, value }) => (
           <div key={label} className="flex items-baseline justify-between gap-4">
-            <dt className="shrink-0 text-muted-foreground">{label}</dt>
+            <dt className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {label}
+            </dt>
             <dd className="text-right">{value}</dd>
           </div>
         ))}
@@ -435,6 +439,16 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
             </a>
           ))}
         </div>
+      ) : null}
+      {item.advisory_url ? (
+        <a
+          href={item.advisory_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex items-center gap-1 border-t border-border pt-4 text-primary hover:underline"
+        >
+          Advisory source <ExternalLink className="h-3 w-3" />
+        </a>
       ) : null}
     </aside>
   );
@@ -634,7 +648,6 @@ function DiffHunk({
   // full diff is shown — no max-height clipping, no ellipsis.
   const collapsible = lines.length > 24;
   const openDefault = collapsible ? false : open;
-
   return (
     <details
       open={openDefault}
@@ -647,11 +660,9 @@ function DiffHunk({
         <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
           <span className="text-emerald-700">+{added}</span>
           <span className="text-red-700">−{removed}</span>
-          <span className="font-semibold uppercase tracking-wider text-muted-foreground">
-          </span>
         </span>
       </summary>
-      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-6 [contain:paint]">
+      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
         <code>
           {lines.map((line, index) => (
             <span
@@ -735,7 +746,7 @@ export function CanonicalCaseEvidence({
   const blurb = advisoryBlurb(item);
 
   return (
-    <section className="space-y-8 border-t border-border pt-7">
+    <section className="space-y-12 border-t border-border pt-8">
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
         <div className="flex flex-wrap items-center gap-3">
@@ -744,7 +755,7 @@ export function CanonicalCaseEvidence({
             {formatContributionClass(item.contribution_class)}
           </span>
         </div>
-        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
+        <h2 className="mt-3 text-xl font-semibold tracking-[-0.025em] sm:text-2xl">
           {summary ?? contributionHeadline(item.contribution_class)}
         </h2>
         {blurb && blurb !== summary ? (
@@ -806,7 +817,7 @@ export function CanonicalCaseEvidence({
         <div className="space-y-4" aria-labelledby="code-comparison">
           <div>
             <p className="section-kicker">Code comparison</p>
-            <h3 id="code-comparison" className="mt-2 text-xl font-semibold">
+            <h3 id="code-comparison" className="mt-2 text-lg font-semibold">
               {codeTitle}
             </h3>
           </div>
@@ -837,7 +848,7 @@ export function CanonicalCaseEvidence({
         <div className="space-y-4 border-y border-border py-5">
           <div>
             <p className="section-kicker">What went wrong</p>
-            <h3 className="mt-2 text-xl font-semibold">
+            <h3 className="mt-2 text-lg font-semibold">
               {rootCauseTitle(item)}
             </h3>
           </div>
@@ -873,22 +884,6 @@ export function CanonicalCaseEvidence({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-        {item.advisory_url ? (
-          <a
-            href={item.advisory_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            Advisory source <ExternalLink className="h-3 w-3" />
-          </a>
-        ) : (
-          <span className="text-muted-foreground">
-            Advisory source not recorded
-          </span>
-        )}
-      </div>
     </section>
   );
 }

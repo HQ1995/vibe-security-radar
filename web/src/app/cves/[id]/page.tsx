@@ -5,13 +5,8 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { stripMarkdown } from "@/lib/markdown-utils";
 
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
-import { LanguageBadge } from "@/components/language-badge";
-import { Badge } from "@/components/ui/badge";
-import { formatPublished } from "@/lib/commit-utils";
-import { severityBadgeClass } from "@/lib/constants";
 import {
   formatCaseLabel,
-  formatContributionClass,
   getResearchCaseById,
   preferredCaseId,
   getResearchCases,
@@ -64,9 +59,6 @@ function PageHeader({
   const owner = repository?.split("/")[0];
   const repoUrl = repository ? `https://github.com/${repository}` : undefined;
   const avatarUrl = owner ? `https://github.com/${owner}.png?size=32` : undefined;
-  const languages = item.repository_metadata.language
-    ? [item.repository_metadata.language]
-    : [];
 
   return (
     <header className="space-y-4">
@@ -122,33 +114,6 @@ function PageHeader({
               : "Gate verification in progress; treat as provisional evidence."}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-3 text-xs text-muted-foreground">
-        {item.published_at ? (
-          <span>Published {formatPublished(item.published_at)}</span>
-        ) : (
-          <span>Publication date unavailable</span>
-        )}
-        {item.severity ? (
-          <Badge className={severityBadgeClass(item.severity)}>
-            {item.severity}
-          </Badge>
-        ) : null}
-        {item.cwes.map((cwe) => (
-          <a
-            key={cwe}
-            href={`https://cwe.mitre.org/data/definitions/${cwe.replace(/^CWE-/, "")}.html`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-primary hover:underline"
-          >
-            {cwe}
-          </a>
-        ))}
-        {languages.map((language) => (
-          <LanguageBadge key={language} language={language} />
-        ))}
-        <span>{formatContributionClass(item.contribution_class)}</span>
-      </div>
     </header>
   );
 }
@@ -165,14 +130,14 @@ export default async function CveDetailPage({
   const references = item.references ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-[96rem] space-y-8 px-4 py-10 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+    <main className="mx-auto w-full max-w-[96rem] space-y-12 px-4 py-10 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
       <PageHeader id={id} item={item} />
 
       <CanonicalCaseEvidence item={item} displayId={id} />
 
       {references.length > 0 ? (
         <section
-          className="border-t border-border pt-7"
+          className="border-t border-border pt-8"
           aria-labelledby="sources"
         >
           <p className="section-kicker">Advisory references</p>
