@@ -1149,6 +1149,14 @@ def apply_case_overrides(
         chain = normalize_ir_chain(row.get("ir_chain"))
     if not chain:
         chain = chains.get(str(case.get("case_id") or "").upper())
+    if chain and rec and rec.get("squash_decomposed"):
+        introducer = str(rec.get("introducer_sha") or "")
+        evidence_sha = sha_from_url((case.get("code_evidence") or {}).get("candidate_url"))
+        if introducer and evidence_sha and sha_overlap([introducer], [evidence_sha]):
+            chain = json.loads(json.dumps(chain))
+            attempted = dict(chain.get("attempted_remediation") or {})
+            attempted["candidate_shas"] = [introducer]
+            chain["attempted_remediation"] = attempted
     if chain and (
         spec.get("ir_chain")
         or case.get("contribution_class") == "AI_INCOMPLETE_REMEDIATION"
@@ -1343,8 +1351,9 @@ def build_case(
     case["research_status"] = " ".join(
         str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
     ).strip() or None
-    case["unpatched"] = first_unpatched(
-        case_id, aliases, row.get("class_id"), unpatched_fixes
+    case["unpatched"] = (
+        (rec or {}).get("unpatched")
+        or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes)
     )
     case = apply_case_overrides(case, row, rec, overrides, chains)
     case["fix_authorship"] = normalize_fix_authorship(

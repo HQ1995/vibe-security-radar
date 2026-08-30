@@ -257,6 +257,7 @@ def ledger_cases(path: Path) -> list[dict]:
             continue
         rec = None
         for key in (
+            "round11_research",
             "round9_research",
             "round8_research",
             "round7_research",
