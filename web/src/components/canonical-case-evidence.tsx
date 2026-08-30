@@ -463,11 +463,13 @@ function ChainArrow() {
 }
 
 function introducedBy(chain: NonNullable<ResearchCase["ir_chain"]>): string {
-  const who =
-    chain.original_author_kind === "AI"
-      ? `AI${chain.original_author_name ? ` (${chain.original_author_name})` : ""}`
-      : (chain.original_author_name ?? "a human commit");
-  return `Originally written by ${who}`;
+  if (chain.original_author_kind === "AI") {
+    return `Originally written by AI${chain.original_author_name ? ` (${chain.original_author_name})` : ""}`;
+  }
+  if (chain.original_author_kind === "HUMAN") {
+    return `Originally written by ${chain.original_author_name ?? "a human commit"}`;
+  }
+  return "Original authorship unresolved";
 }
 
 function caseIdentities(item: ResearchCase): Set<string> {
@@ -533,7 +535,8 @@ function IncompleteRemediationFlow({
       ),
   );
   const originalDistinct = Boolean(
-    (chain.original_mechanism || chain.original_sha) && !attemptCoversOriginal,
+    (chain.original_mechanism || chain.original_sha || chain.unresolved_reason) &&
+      !attemptCoversOriginal,
   );
   const earlierId = originalDistinct ? earlierAdvisoryId(item) : null;
 
@@ -607,9 +610,15 @@ function IncompleteRemediationFlow({
             "The vulnerable behavior already existed."
           }
           detail={
-            chain.original_sink
-              ? `Sink: ${chain.original_sink}`
-              : "Prior context, not this advisory."
+            `${
+              chain.original_sink
+                ? `Sink: ${chain.original_sink}`
+                : "Prior context, not this advisory."
+            }${
+              !chain.original_sha && chain.unresolved_reason
+                ? ` Unresolved origin: ${chain.unresolved_reason}`
+                : ""
+            }`
           }
           repository={item.repository}
           shas={chain.original_sha ? [chain.original_sha] : []}
@@ -747,71 +756,73 @@ export function CanonicalCaseEvidence({
 
   return (
     <section className="space-y-12 border-t border-border pt-8">
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div>
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="section-kicker">How AI contributed</p>
-          <span className="border border-primary/25 bg-primary/[0.05] px-2 py-1 font-mono text-[10px] font-semibold text-primary">
-            {formatContributionClass(item.contribution_class)}
-          </span>
-        </div>
-        <h2 className="mt-3 text-xl font-semibold tracking-[-0.025em] sm:text-2xl">
-          {summary ?? contributionHeadline(item.contribution_class)}
-        </h2>
-        {blurb && blurb !== summary ? (
-          <AdvisoryDisclosure text={blurb} className="mt-3" />
-        ) : null}
-        <MechanismDisclosure item={item} className="mt-5" />
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 space-y-8">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="section-kicker">How AI contributed</p>
+              <span className="border border-primary/25 bg-primary/[0.05] px-2 py-1 font-mono text-[10px] font-semibold text-primary">
+                {formatContributionClass(item.contribution_class)}
+              </span>
+            </div>
+            <h2 className="mt-3 text-xl font-semibold tracking-[-0.025em] sm:text-2xl">
+              {summary ?? contributionHeadline(item.contribution_class)}
+            </h2>
+            {blurb && blurb !== summary ? (
+              <AdvisoryDisclosure text={blurb} className="mt-3" />
+            ) : null}
+            <MechanismDisclosure item={item} className="mt-5" />
+          </div>
+
+          {introStep && !incomplete ? (
+            <div className="grid gap-2 border-y border-border py-4 sm:grid-cols-[8rem_1fr]">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
+                AI change
+              </p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {introStep.detail}
+              </p>
+            </div>
+          ) : null}
+
+          {incomplete ? (
+            <IncompleteRemediationFlow item={item} displayId={visibleId} />
+          ) : (
+            <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              <CauseFixCard
+                tone="bad"
+                kicker="Root cause"
+                title={cardStepTitle(leftStep, rootCauseTitle(item))}
+                detail={
+                  leftStep?.detail ??
+                  "The candidate commit below is where the vulnerable behavior appears."
+                }
+                repository={item.repository}
+                shas={item.candidate_set}
+                files={candidateFiles}
+                authorship={`AI candidate: ${candidateModel}`}
+              />
+              <ChainArrow />
+              <CauseFixCard
+                tone={hasFix ? "good" : "warn"}
+                kicker={hasFix ? "Fix" : "Fix status"}
+                title={hasFix ? cardStepTitle(rightStep, "Security fix") : "No public fix identified"}
+                detail={
+                  hasFix
+                    ? (rightStep?.detail ??
+                      "The minimum fix commit below closes the same vulnerable path.")
+                    : "No minimum fix commit has been established for this finding."
+                }
+                repository={item.repository}
+                shas={item.minimum_fix_set}
+                files={fixFiles}
+                authorship={hasFix ? fixAuthorship(item) : "Fix status unresolved"}
+              />
+            </div>
+          )}
         </div>
         <CaseFactsCard item={item} />
       </div>
-
-      {introStep && !incomplete ? (
-        <div className="grid gap-2 border-y border-border py-4 sm:grid-cols-[8rem_1fr]">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-            AI change
-          </p>
-          <p className="text-sm leading-6 text-muted-foreground">
-            {introStep.detail}
-          </p>
-        </div>
-      ) : null}
-
-      {incomplete ? (
-        <IncompleteRemediationFlow item={item} displayId={visibleId} />
-      ) : (
-        <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-          <CauseFixCard
-            tone="bad"
-            kicker="Root cause"
-            title={cardStepTitle(leftStep, rootCauseTitle(item))}
-            detail={
-              leftStep?.detail ??
-              "The candidate commit below is where the vulnerable behavior appears."
-            }
-            repository={item.repository}
-            shas={item.candidate_set}
-            files={candidateFiles}
-            authorship={`AI candidate: ${candidateModel}`}
-          />
-          <ChainArrow />
-          <CauseFixCard
-            tone={hasFix ? "good" : "warn"}
-            kicker={hasFix ? "Fix" : "Fix status"}
-            title={hasFix ? cardStepTitle(rightStep, "Security fix") : "No public fix identified"}
-            detail={
-              hasFix
-                ? (rightStep?.detail ??
-                  "The minimum fix commit below closes the same vulnerable path.")
-                : "No minimum fix commit has been established for this finding."
-            }
-            repository={item.repository}
-            shas={item.minimum_fix_set}
-            files={fixFiles}
-            authorship={hasFix ? fixAuthorship(item) : "Fix status unresolved"}
-          />
-        </div>
-      )}
 
       {evidence && hasCode ? (
         <div className="space-y-4" aria-labelledby="code-comparison">

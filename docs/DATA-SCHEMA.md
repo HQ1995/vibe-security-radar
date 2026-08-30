@@ -10,8 +10,9 @@ get the full evidence chain per case without guessing field semantics.
 | Layer | File | Rows | Role |
 |---|---|---|---|
 | Working ledger | `artifacts/funnel-account-*.jsonl` | 29,593 | GitHub recovery export of every candidate case; status state machine |
-| Published catalog | `web/src/generated/research-data.json` | 252 | Published TPs with confirmed/qualified/provisional status |
+| Published catalog | `web/src/generated/research-data.json` | 260 | Published TPs with confirmed/qualified/provisional status |
 | Chain index | `research/orchestrator-260814-irchains-sol/ir-chains.jsonl` | 51 | Incomplete-remediation causal chains with `evidence_paths` |
+| Origin re-review overlay | `research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl` | 4 | Full-history corrections that supersede missing/shallow original-commit fields |
 
 ## Ledger row (`artifacts/funnel-account-*.jsonl`)
 
@@ -71,6 +72,8 @@ Causal chain (`ir_chain`, present for every `AI_INCOMPLETE_REMEDIATION` case,
 absent for other classes — they need no remediation chain):
 
 - `original_advisory_ids`, `original_sha`, `original_author_kind/name`
+- `unresolved_reason` — required when `original_sha` is unavailable; records the
+  exact history/evidence boundary instead of guessing an introducer
 - `original_mechanism`, `original_sink`
 - `attempted_remediation` — the incomplete fix (candidate shas)
 - `residual_bypass` — how the path stayed open
@@ -103,7 +106,8 @@ Snapshot census: `ledger_total` = `ledger_reviewed` + `ledger_in_progress` +
   (see `snapshot.case_count` / `snapshot.generated_at`).
 - Full chains: `ir-chains.jsonl` rows carry `evidence_paths` pointing into
   `research/orchestrator-*/` lane artifacts for deep verification.
-- Inputs that rebuild the catalog (all git-tracked): ledger, ir-chains,
+- Inputs that rebuild the catalog (all git-tracked): ledger, ir-chains and the
+  full-history origin re-review overlay,
   `research/.../ghsa200-canvas/sweep/*.json` (first-party dates,
   enrichment fixes, code evidence), `scripts/generated-code-evidence.json`,
   `scripts/*adjudications*.json`, `scripts/tp_publication_overrides.json`.

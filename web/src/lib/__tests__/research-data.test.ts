@@ -111,6 +111,9 @@ describe("canonical research data", () => {
     for (const item of cases) {
       if (item.ir_chain) {
         expect(item.contribution_class).toBe("AI_INCOMPLETE_REMEDIATION");
+        if (!item.ir_chain.original_sha) {
+          expect(item.ir_chain.unresolved_reason, item.case_id).toBeTruthy();
+        }
         const attempted =
           item.ir_chain.attempted_remediation?.candidate_shas ?? [];
         if (attempted.length) {
@@ -163,9 +166,25 @@ describe("canonical research data", () => {
       "GHSA-33MH-2634-FWR2",
     );
     expect(getResearchCaseById("GHSA-J5QP-P44G-2M49")?.ir_chain).toBeTruthy();
-    expect(getResearchCaseById("CVE-2026-59221")?.case_id).toBe(
-      "GHSA-FRVJ-C5QP-XJ4W",
+    const frvj = getResearchCaseById("CVE-2026-59221");
+    expect(frvj?.case_id).toBe("GHSA-FRVJ-C5QP-XJ4W");
+    expect(frvj?.ir_chain?.original_sha).toBe(
+      "4737e1f11847d057859ec78892fa89e24cbcd83b",
     );
+    expect(frvj?.ir_chain?.original_mechanism).toContain(
+      "initially concatenated",
+    );
+
+    const reviewedOrigins = new Map([
+      ["GHSA-4FXP-2M36-QV64", "b0fa7751b112038cb01a0fac3b2ab841f2f7f7cc"],
+      ["GHSA-Q9PG-JJ6X-J9P6", "a487fa8ef7012007a6c9d89a810403a39b568aea"],
+      ["GHSA-6Q7J-XR26-3H2C", "46054810b50b03a6d19cd51886321cbbefa5d589"],
+    ]);
+    for (const [caseId, originalSha] of reviewedOrigins) {
+      expect(getResearchCaseById(caseId)?.ir_chain?.original_sha).toBe(
+        originalSha,
+      );
+    }
     expect(
       cases.some((item) => item.case_id.startsWith("ALIAS-4FDB")),
     ).toBe(false);

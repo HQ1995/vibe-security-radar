@@ -19,6 +19,7 @@ LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
 OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 IR_CHAINS = ROOT / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
+IR_CHAIN_UPDATES = ROOT / "research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
 ADVISORY_RELEASES = ROOT / "scripts/first-party-advisory-releases.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
@@ -788,6 +789,10 @@ def publication_errors(
         if case.get("contribution_class") == "AI_INCOMPLETE_REMEDIATION" and not case.get("ir_chain"):
             errors.append(f"{case_id}: incomplete remediation without ir_chain")
         chain = case.get("ir_chain") or {}
+        if chain and not chain.get("original_sha") and not str(
+            chain.get("unresolved_reason") or ""
+        ).strip():
+            errors.append(f"{case_id}: ir_chain without original_sha needs unresolved_reason")
         attempted = ((chain.get("attempted_remediation") or {}).get("candidate_shas") or [])
         if attempted and case.get("candidate_set") and not sha_overlap(attempted, list(case["candidate_set"])):
             errors.append(f"{case_id}: listing SHA does not match incomplete-fix SHA")
@@ -836,6 +841,8 @@ def normalize_ir_chain(raw: dict | None) -> dict | None:
         "original_author_kind": raw.get("original_author_kind"),
         "original_author_name": original_name,
         "original_sha": original_sha,
+        "unresolved_reason": raw.get("unresolved_reason")
+        or raw.get("original_introducing_commit_reason"),
         "attempted_remediation": raw.get("attempted_remediation"),
         "residual_bypass": raw.get("residual_bypass"),
         "final_closure": raw.get("final_closure"),
@@ -1147,8 +1154,25 @@ def apply_case_overrides(
     chain = normalize_ir_chain(spec.get("ir_chain")) if spec.get("ir_chain") else None
     if not chain:
         chain = normalize_ir_chain(row.get("ir_chain"))
+    indexed_chain = chains.get(str(case.get("case_id") or "").upper())
+    if indexed_chain and indexed_chain.get("_publication_override"):
+        chain = {
+            key: value
+            for key, value in indexed_chain.items()
+            if key != "_publication_override"
+        }
+    elif chain and indexed_chain:
+        chain = dict(chain)
+        for field in (
+            "original_author_kind",
+            "original_author_name",
+            "original_sha",
+            "unresolved_reason",
+        ):
+            if not chain.get(field) or chain.get(field) == "UNKNOWN":
+                chain[field] = indexed_chain.get(field)
     if not chain:
-        chain = chains.get(str(case.get("case_id") or "").upper())
+        chain = indexed_chain
     if chain and rec and rec.get("squash_decomposed"):
         introducer = str(rec.get("introducer_sha") or "")
         evidence_sha = sha_from_url((case.get("code_evidence") or {}).get("candidate_url"))
@@ -1380,6 +1404,10 @@ def main() -> None:
     )
     overrides = load_json(OVERRIDES)
     chains = load_ir_chains(IR_CHAINS)
+    chain_updates = load_ir_chains(IR_CHAIN_UPDATES)
+    for chain in chain_updates.values():
+        chain["_publication_override"] = True
+    chains.update(chain_updates)
     dates = load_advisory_dates()
     releases = load_advisory_releases()
     generated_evidence = load_generated_evidence()

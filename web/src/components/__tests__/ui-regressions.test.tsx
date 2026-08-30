@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import ErrorPage from "@/app/error";
+import Loading from "@/app/loading";
 import AboutPage from "@/app/about/page";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
@@ -300,6 +301,23 @@ describe("canonical case evidence", () => {
     expect(html).toContain((dump!.code_evidence?.summary ?? "").slice(0, 60));
   });
 
+  it("keeps the summary and causal chain together before the facts card", () => {
+    const item = getResearchCaseById("CVE-2026-34218");
+    expect(item).not.toBeNull();
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain(
+      "grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]",
+    );
+    expect(html.indexOf("How AI contributed")).toBeLessThan(
+      html.indexOf("Root cause"),
+    );
+    expect(html.indexOf("Root cause")).toBeLessThan(
+      html.indexOf("Case facts"),
+    );
+  });
+
   it("shows audited fix authorship without unknown labels", () => {
     const humanMarked = getResearchCaseById("GHSA-7P8R-X3MC-P8W7");
     const aiMarked = getResearchCaseById("GHSA-5XXX-QHH7-9287");
@@ -349,6 +367,41 @@ describe("canonical case evidence", () => {
     expect(html).toContain("3af0c2516c");
     expect(html).toContain("1b0d2d9b91");
     expect(html).not.toContain("Security fix");
+  });
+
+  it("never presents unresolved original authorship as human", () => {
+    const base = getResearchCaseById("GHSA-3WXW-XV34-2FRG");
+    expect(base?.ir_chain).toBeTruthy();
+
+    for (const originalAuthorKind of [null, "UNKNOWN"] as const) {
+      const item = {
+        ...base!,
+        ir_chain: {
+          ...base!.ir_chain!,
+          original_author_kind: originalAuthorKind,
+          original_author_name: "Unverified name",
+          original_sha: null,
+          unresolved_reason: "History does not include the introducing commit.",
+        },
+      };
+      const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+
+      expect(html).toContain("Original authorship unresolved");
+      expect(html).toContain(
+        "Unresolved origin: History does not include the introducing commit.",
+      );
+      expect(html).not.toContain("Originally written by Unverified name");
+      expect(html).not.toContain("Originally written by a human commit");
+    }
+  });
+
+  it("keeps the route loading state compact and content-shaped", () => {
+    const html = renderToStaticMarkup(<Loading />);
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("Loading case details");
+    expect(html).toContain("xl:grid-cols-[minmax(0,1fr)_22rem]");
+    expect(html).not.toContain("py-32");
   });
 
   it("shows researched hunks and an annotation for previously empty comparisons", () => {

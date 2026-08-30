@@ -109,6 +109,7 @@ export interface ResearchCase {
     readonly original_author_kind: string | null;
     readonly original_author_name: string | null;
     readonly original_sha: string | null;
+    readonly unresolved_reason: string | null;
     readonly attempted_remediation: {
       readonly candidate_shas: readonly string[];
       readonly changed: string;
@@ -475,4 +476,3 @@ export function formatContributionClass(value: string): string {
     }[value] ?? value.replaceAll("_", " ").toLowerCase()
   );
 }
-

@@ -183,6 +183,11 @@ def evaluate(payload: dict, allowlist: dict | None = None) -> tuple[list[str], l
                 )
         if case.get("contribution_class") == "AI_INCOMPLETE_REMEDIATION" and not case.get("ir_chain"):
             errors.append(f"{case_id}: incomplete remediation without ir_chain")
+        chain = case.get("ir_chain") or {}
+        if chain and not chain.get("original_sha") and not str(
+            chain.get("unresolved_reason") or ""
+        ).strip():
+            errors.append(f"{case_id}: ir_chain without original_sha needs unresolved_reason")
         if case.get("ir_chain") and case.get("contribution_class") != "AI_INCOMPLETE_REMEDIATION":
             errors.append(
                 f"{case_id}: ir_chain present but class is {case.get('contribution_class')}"

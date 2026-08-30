@@ -68,6 +68,56 @@ def test_hunk_paths_are_recovered_from_git_diffs() -> None:
     ) == "src/app.py"
 
 
+def test_ir_chain_requires_a_reason_when_original_sha_is_unresolved() -> None:
+    case = _case()
+    case["published_at"] = "2026-01-01"
+    case["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
+    case["ir_chain"] = {"original_sha": None}
+    assert publish_tp_ledger.publication_errors([case]) == [
+        "CVE-2026-12345: ir_chain without original_sha needs unresolved_reason"
+    ]
+
+    case["ir_chain"]["unresolved_reason"] = "The available clone ends at a shallow boundary."
+    assert publish_tp_ledger.publication_errors([case]) == []
+
+
+def test_ir_chain_normalization_preserves_history_gap_reason() -> None:
+    chain = publish_tp_ledger.normalize_ir_chain(
+        {
+            "original_introducing_commit": None,
+            "original_introducing_commit_reason": "The parent commit is unavailable.",
+        }
+    )
+    assert chain is not None
+    assert chain["original_sha"] is None
+    assert chain["unresolved_reason"] == "The parent commit is unavailable."
+
+
+def test_site_preflight_rejects_an_unexplained_origin_gap() -> None:
+    case = _case()
+    case.update(
+        {
+            "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+            "ir_chain": {"original_sha": None},
+            "publication_status": "confirmed",
+            "publication_issues": [],
+            "published_at": "2026-01-01",
+            "repository_metadata": {"language": "Python"},
+        }
+    )
+    errors, _, _ = site_preflight.evaluate(
+        {"cases": [case], "snapshot": {"case_count": 1}}
+    )
+    expected = "CVE-2026-12345: ir_chain without original_sha needs unresolved_reason"
+    assert expected in errors
+
+    case["ir_chain"]["unresolved_reason"] = "The parent commit is unavailable."
+    errors, _, _ = site_preflight.evaluate(
+        {"cases": [case], "snapshot": {"case_count": 1}}
+    )
+    assert expected not in errors
+
+
 def test_generated_site_data_passes_publication_contract() -> None:
     root = Path(__file__).resolve().parents[2]
     payload = json.loads(
