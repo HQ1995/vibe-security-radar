@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-13cab56e58910a5206e6928e",
+  "case_id": "GHSA-h26w-wq3x-9p76",
+  "repo": "akaunting/akaunting",
+  "advisory_ids": [
+    "CVE-2026-71251",
+    "GHSA-h26w-wq3x-9p76"
+  ],
+  "bug_semantics": "CWE-639 IDOR on the shared authenticated download endpoint. routes/common.php registers GET uploads/{id}/download as Common\\Uploads@download behind only auth (no admin/portal permission). download() does Media::find($id) and streams the file. Media uses the Tenants/Company global scope, so cross-company rows are filtered, but there is no object-level check that a portal customer owns the mediable parent. Any authenticated same-company portal user can enumerate media IDs and download other customers' invoice/bill/receipt attachments. Vendor patch 80ef6d3 added authorizeMedia()/mediaBelongsToContact(), allowing read-admin-panel users company-wide and portal users only when the parent contact_id matches the requester.",
+  "flaw_origin": "The ID-keyed download without ownership was first written on 2018-01-02 in ddd18c7ea6f872540c293f40d99c987842ac0f6f ('Invoice path' by cuneytsenturk). That commit changed download($folder,$file) plus company-prefixed getPath() into download($id) with Media::find($id) and a path derived only from the media record, and simultaneously switched the shared auth route from {folder}/{file}/download to {id}/download. The client portal already existed (9710f810, 2017-10-21) and these upload routes already sat outside permission:read-admin-panel. Later try/catch (297b328), streaming helpers, and tenant scoping preserved the missing contact ownership check until 80ef6d3.",
+  "introducer_sha": "ddd18c7ea6f872540c293f40d99c987842ac0f6f",
+  "introducer_parent": "6429a699b272dceb6453097d03121a8ecfccec5a",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author/committer cuneytsenturk <cneytsenturk@gmail.com> on 2018-01-02; git cat-file / %(trailers) show no Co-Authored-By, Generated-with, Cursor, Copilot, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db",
+  "direct_fix_sha": "80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db",
+  "evidence": [
+    "CVE.org CVE-2026-71251 state=PUBLISHED (TuranSec; datePublished 2026-08-05; not rejected/withdrawn). GHSA-h26w-wq3x-9p76 withdrawn_at=null. NVD vulnStatus=Deferred, CWE-639, CVSS 6.5 AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N.",
+    "Pre-fix download() at 1daf1a0da118079aaba2bea42ee8819510b114e2:app/Http/Controllers/Common/Uploads.php:118-132 is Media::find($id) then streamMedia($media) with no ownership check. routes/common.php:12-16 places {id}/download under Route::group(['middleware'=>'auth']) only; admin/portal permission groups start later in the same file.",
+    "Pre-fix app/Models/Common/Media.php uses trait Tenants; app/Scopes/Company.php applies where company_id = company_id(). Fix comment in 80ef6d3 correctly describes remaining hole as same-company portal IDOR, not cross-company.",
+    "git log -S 'Media::find' -- app/Http/Controllers/Common/Uploads.php and blame of pre-fix download() attribute the first Media::find($id) in download() to ddd18c7ea6f872540c293f40d99c987842ac0f6f (2018-01-02, cuneytsenturk, 'Invoice path'). Single parent 6429a699b272dceb6453097d03121a8ecfccec5a.",
+    "Parent tree 6429a699:app/Http/Controllers/Common/Uploads.php:35 still has public function download($folder, $file) using getPath($folder,$file) which prefixes session('company_id'). Parent has Media::find only in destroy(), not download(). ddd18c7 is the first write of ID-keyed download + {id}/download route.",
+    "297b328f2c8230b5df2361b4cd991012a72a3ae9 only wraps existing Media::find in try/catch; 6d50fa844252a4d2325d7ad0362db5389fefc52b and d9c076457215c089cd221dbd4c822ce6a3bd021b do not rewrite download(). git log -S authorizeMedia shows first addition in 80ef6d3.",
+    "git merge-base --is-ancestor: BIC is in tag 3.1.21 (vulnerable download at Uploads.php:118-132); fix is NOT in 3.1.21 (exit 1); fix IS in 3.2.0 which also contains authorizeMedia at Uploads.php:149/233. 3.2.0 dated 2026-07-12, same day as 80ef6d3.",
+    "Fix 80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db (Cüneyt Şentürk, 2026-07-12, parent 1daf1a0da118079aaba2bea42ee8819510b114e2) is a direct non-merge commit adding authorizeMedia/mediaBelongsToContact. Later 600fa3a6e 'Fixed some security issues..' does not touch Uploads.php.",
+    "BIC commit object: author/committer cuneytsenturk <cneytsenturk@gmail.com>, message 'Invoice path', empty trailers, 2018-01-02 (pre-Copilot/ChatGPT). No AI marker on the BIC."
+  ],
+  "reasoning": "The advisory is a real published IDOR, not withdrawn. Attack path is authenticated portal access to GET {company_id}/uploads/{id}/download: download() loads Media by attacker-controlled ID and streams it. Company global scope blocks other tenants, so the live hole is same-company object-level IDOR (CVE text saying 'other company's files' is imprecise; the vendor fix comment matches the code). The smallest first-write of that ID-keyed download is ddd18c7ea6, which replaced path-based download($folder,$file) with Media::find($id) and exposed {id}/download on the shared auth route; parent 6429a699 still lacks those lines. Later commits are refactors, not BICs. 80ef6d3 is the first and direct fix (authorizeMedia), landing in 3.2.0 and absent from 3.1.21. AI is judged only on the BIC commit object: 2018 human author/committer with no AI trailers, so NOT_AI.",
+  "remaining_gap": null
+}

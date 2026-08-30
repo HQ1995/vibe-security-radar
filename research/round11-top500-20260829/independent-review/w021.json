@@ -1,0 +1,29 @@
+{
+  "worker": "w021",
+  "review_agent_id": "r389_w021",
+  "class_id": "alias-e882f68bc400d7b151121ca2",
+  "case_id": "GHSA-q84q-h76q-mqp7",
+  "repo": "scriban/scriban",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: the first-party GHSA and the 7.2.0 tree agree that ScriptArray<T>.TryEvaluate accepts an attacker-controlled integer multiplier, computes intModifier * array.Count with unchecked int arithmetic, allocates that capacity, and fills it with an AddRange loop without LoopLimit or StepLoop enforcement.",
+    "atomic_bic": "PASS: reverse -S history for the Multiply case identifies 774f70d8aea61421434df30259563db05e840037 as the first commit that adds the array custom-binary Multiply path and its unbounded AddRange loop. The later 7ad86c304a3349973661f6d46387538081453680 capacity change preserves the already-present unbounded mechanism and is absent from 3.0.0.",
+    "immediate_parent_absence": "PASS: the sole parent 7a8548bb97ebf1b8e2026e7b7128ca02119b3d49 contains LoopLimit infrastructure but has no ScriptArray IScriptCustomBinaryOperation implementation, Multiply case, or AddRange(array) repetition path.",
+    "squash_member_decomposition": "PASS WITH CORRECTION: 774f70d8 is a single-parent public commit and is an individually preserved member associated with draft PR #230 (Scriban 3.0), not a squash or merge aggregate. The primary claim that the GitHub commit API found no associated PR is false; no finer public member below this atomic commit exists to decompose.",
+    "affected_fixed_release_membership": "PASS: 774f70d8 is absent from 2.1.4 and is an ancestor of 3.0.0, 3.0.0-alpha.1, and 7.2.0. Direct fix 205ca6a7c2349d3d388bd5f1f7729ee198c0d5e5 is absent from 7.2.0 and present in 7.2.1, matching the first-party GHSA range >=3.0.0, <=7.2.0 and first patched version 7.2.1 for Scriban and Scriban.Signed.",
+    "direct_fix_or_unpatched": "PASS: 205ca6a7 directly edits the vulnerable Multiply block, uses long result-length arithmetic, rejects lengths above int.MaxValue or context.LoopLimit, calls StepLoop in the fill loop, and adds focused regression tests. The 7.2.0 tree remains unpatched while 7.2.1 contains this change.",
+    "bic_only_ai_attribution": "PASS: the raw 774f70d8 commit object names Alexandre Mutel as author and committer and contains only the subject 'Add binary operations for ScriptArray', with no Co-authored-by, Generated-with, bot identity, or other AI marker. Later AI-marked sibling hardening is irrelevant to BIC-only attribution, so NOT_AI is sustained."
+  },
+  "findings": [
+    "The causal verdict is sound: 774f70d8 is the smallest surviving public first-write of the vulnerable array-multiplication mechanism, its immediate parent lacks the path, and 205ca6a7 is the direct fix with the stated release membership.",
+    "Primary evidence incorrectly says the BIC had no associated PR. GitHub's associated-pulls endpoint returns draft PR #230, whose Scriban 3.0 scope explicitly includes custom binary operations and more ScriptArray binary expressions. This does not disqualify the BIC because 774f70d8 survives as its own atomic member rather than a squash aggregate.",
+    "Primary evidence incorrectly dates the first-party GHSA publication to 2026-05-24. The authoritative GHSA API reports published_at 2026-06-26T21:01:57Z; 2026-05-24 is the CVE CNA datePublic and the direct-fix author date, not the GHSA publication timestamp.",
+    "The corrected evidence leaves introducer_sha, introducer_parent, introducer_parent_absent, squash_decomposed, decomposed_shas, fix_sha, direct_fix_sha, ai_marker, and verdict unchanged."
+  ],
+  "corrected_fields": {
+    "evidence[0]": "The first-party GHSA-q6rr-fm2g-g5x8 authoritative API reports published_at 2026-06-26T21:01:57Z, updated_at 2026-07-06T13:03:57Z, withdrawn_at null, affected Scriban and Scriban.Signed >=3.0.0 and <=7.2.0, and first patched version 7.2.1. CVE-2026-73062 separately records CNA datePublic 2026-05-24 and state PUBLISHED.",
+    "evidence[3]": "GitHub's associated-pulls API for 774f70d8 returns draft PR #230, Scriban 3.0. The BIC is nevertheless an individually preserved single-parent member commit and not a squash or merge aggregate; its raw commit object has no AI marker."
+  },
+  "remaining_gap": null
+}

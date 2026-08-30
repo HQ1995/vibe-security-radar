@@ -1,0 +1,25 @@
+{
+  "worker": "w360",
+  "review_agent_id": "r389_w360",
+  "class_id": "alias-13292b77cd124ec887bcc685",
+  "case_id": "GHSA-mr6m-xj7v-3cv3",
+  "repo": "apache/activemq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed against the vendor advisory and the activemq-6.2.4 tree: DestinationView.sendTextMessage concatenates vm:// with mutable ManagedRegionBroker.getBrokerName(); VMTransportFactory parses brokerConfig from that URI and creates a broker when the crafted host is absent, enabling the documented remote XBean Spring XML load and pre-validation bean instantiation.",
+    "atomic_bic": "Confirmed 07d4e8c63de63e589b7bf807fecdf64d167565d3 as the smallest surviving first-write object: its DestinationView diff adds sendTextMessage and String brokerUrl = \"vm://\"+broker.getBrokerName(). Exact-string and path history reaches this 2006 commit; 230a86c4897e10fbc5e7384b064cc526395d47e5 only reformats it, 5cd2921c4e7272b925c02cb2082198a1e6c462f7 wraps it in an overload, and 58aca869816e893e7a2f34f0708c1d7fcbdca0f5 is a zero-diff module move.",
+    "immediate_parent_absence": "Confirmed single parent 4af97546537765c015951f9500ced2f36271122a. The parent DestinationView.java exists, but targeted git grep finds none of sendTextMessage, vm://, or getBrokerName in that file; the BIC adds all relevant sink lines.",
+    "squash_member_decomposition": "Confirmed no squash/member substitution is required: the BIC is a one-parent git-svn import of the single public SVN revision 383815, and that revision is the smallest surviving public history object containing the first write. Later release, formatting, overload, and move commits were separately rejected as carriers.",
+    "affected_fixed_release_membership": "Confirmed BIC ancestry in activemq-5.19.5, activemq-5.19.6, activemq-6.2.4, and activemq-6.2.5. Unfixed tags 5.19.5 and 6.2.4 contain the getBrokerName concatenation; fixed tags 5.19.6 and 6.2.5 contain getVmConnectorURI. Release fixes 843c8ab0ce58fbef2b338bcfec446aa4022a40c4 and 2b8455b34ff3f57aa69efb33dcec0865465cc2e1 are ancestors only of their respective fixed tags, matching the vendor ranges before 5.19.6 and 6.0.0 through 6.2.4.",
+    "direct_fix_or_unpatched_state": "Confirmed direct mainline fix 95eeb906d74ff02665dd8a1b3f084e824a10648c replaces the tainted String URI construction with broker.getVmConnectorURI(). Its stable patch-id matches both release-line fixes, while direct tree inspection verifies the vulnerable expression remains in both immediately preceding release tags.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC alone: the commit object is authored and committed by Hiram R. Chirino on 2006-03-07, records contemporaneous Apache SVN revision 383815, and has no AI-generation, co-author, assistant, or bot marker. The 2006 provenance predates modern generative coding assistants; no later AI-marked carrier or fix was used for attribution."
+  },
+  "findings": [
+    "CVE-2026-41044 is currently PUBLISHED in the CVE record and the Apache vendor advisory confirms the authenticated broker-name-to-VM-transport-to-XBean RCE mechanism and fixed versions 5.19.6 and 6.2.5.",
+    "The primary record identifies the correct atomic BIC, immediate parent, direct fix, release-line equivalents, affected/fixed tag boundary, and BIC-only human provenance.",
+    "The separate RegionBroker immutability commit 084502ae2e16d411c80e07e6c3f6d34d3e08a295 removes the mutable-name bypass as defense in depth; it neither displaces the DestinationView sink BIC nor the direct sink fix."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

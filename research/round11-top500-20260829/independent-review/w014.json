@@ -1,0 +1,25 @@
+{
+  "worker": "w014",
+  "review_agent_id": "r389_w014",
+  "class_id": "alias-b0e8aaafaceec891c37780c1",
+  "case_id": "GHSA-m3x4-5jfw-2mqc",
+  "repo": "gitpython-developers/gitpython",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed independently against the vendor advisory and clone: Repo.archive() forwards caller-controlled kwargs through Git.transform_kwargs, which renders add_file and add_virtual_file as git archive options. --add-file reads an out-of-repository path into the returned archive; the 3.1.56 guard blocks --exec/--output/-o but omits both archive-addition options.",
+    "atomic_bic": "Confirmed b67bd4c730273a9b6cce49a8444fb54e654de540 as the smallest public first-write. It replaces prefix-only archive_tar/archive_tar_gz with Repo.archive(..., **kwargs), documents arbitrary git-archive arguments, and passes those kwargs to self.git.archive. Reverse -S history finds this first write before later moves and formatting changes.",
+    "immediate_parent_absence": "Confirmed parent 00c5497f190172765cc7a53ff9d8852a26b91676. Its archive methods construct a local options/kwargs dict containing only prefix and expose no caller kwargs, so the vulnerable option-forwarding surface is absent.",
+    "squash_member_decomposition": "Confirmed the BIC is a normal single-parent commit, not a merge, revert, move, or squash aggregate. No finer public member exists to decompose; later repo.py package/file moves preserve rather than introduce the forwarding surface.",
+    "affected_fixed_release_membership": "Confirmed by annotated tags and ancestry: b67bd4c is an ancestor of 3.1.56; 701ce32f is absent from 3.1.50 and present in 3.1.51; 7a4f5dcb is absent from 3.1.56 and present in 3.1.57. CVE.org records versions <3.1.57 affected and 3.1.57 unaffected.",
+    "direct_fix_or_unpatched": "Confirmed direct fix 7a4f5dcb7bf3cbcbf6e438017efcdfe0bc0d36ca. Relative to parent 3af0c2516c5e18c829da30338614688f6b69b49c it adds --add-file and --add-virtual-file to unsafe_git_archive_options and regression assertions that Repo.archive rejects both. The later review commit only adjusts clone-option documentation and does not supply archive closure.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only: b67bd4c was authored and committed by Sebastian Thiel <byronimo@gmail.com> and has no AI marker or trailer. GPT 5.6 authorship on later guard commit 701ce32f and direct fix 7a4f5dcb is not attributable to the 2009 BIC."
+  },
+  "findings": [
+    "The advisory is a real published vulnerability, not a withdrawn or rejected record: CVE.org reports CVE-2026-73619 state PUBLISHED and the vendor advisory identifies affected <=3.1.56 with 3.1.57 as the fixed release.",
+    "The primary record correctly avoids selecting the AI-authored incomplete denylist as the BIC: add-file already reached git archive at 701ce32f's parent, while the caller-controlled archive option surface first entered GitPython in b67bd4c.",
+    "No material discrepancy was found in introducer, parent, release membership, direct fix, or BIC-only AI attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

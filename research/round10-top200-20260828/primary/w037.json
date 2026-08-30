@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-b2029db0205a4be36ab58012",
+  "case_id": "GHSA-w385-33fw-3fww",
+  "repo": "misp/cti-transmute",
+  "advisory_ids": [
+    "CVE-2026-72760",
+    "GHSA-w385-33fw-3fww"
+  ],
+  "bug_semantics": "The login-protected GET /account/get_following endpoint serialized each followed Account's private user.email value into its JSON list. Any authenticated account could follow target users and then retrieve their email addresses; the email was unnecessary for the feature, and the sibling followers and user-search responses exposed only identifiers and public display data.",
+  "flaw_origin": "Commit 4fa058f3ea7275eb340ea751ab9908a071673f94 introduced the follow system and, in website/web/account/account.py:269-285, created get_following() with AccountModel.get_following(current_user.id), loaded each followed account, and emitted the vulnerable field at line 282 as \"email\": user.email. This new response design—not a later move, refactor, or regression—created the disclosure mechanism.",
+  "introducer_sha": "4fa058f3ea7275eb340ea751ab9908a071673f94",
+  "introducer_parent": "45874f5d162c4dc640f1763cb9916bccaf62b261",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "BIC commit object: author and committer are ecrou-exact <geffetheo@gmail.com>; exact AI trailer is \"Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\".",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "4bad9f105a824979e0ae79fd6115cd7a88c84ee5",
+  "direct_fix_sha": "4bad9f105a824979e0ae79fd6115cd7a88c84ee5",
+  "evidence": "First-party advisory https://api.github.com/advisories/GHSA-W385-33FW-3FWW (HTML: https://github.com/advisories/GHSA-w385-33fw-3fww) describes authenticated email disclosure through get_following() and references the first-party fix https://github.com/MISP/cti-transmute/commit/4bad9f105a824979e0ae79fd6115cd7a88c84ee5; its structured vulnerabilities list is empty, so release boundaries were verified from repository tags and trees. `git log --all --full-history --reverse -p -S'\\\"email\\\": user.email' -- website/web/account/account.py` and `git log -L` over get_following() identify 4fa058f3ea7275eb340ea751ab9908a071673f94 as the first addition and 4bad9f105a824979e0ae79fd6115cd7a88c84ee5 as the removal. At the BIC, website/web/account/account.py:269-285 defines the authenticated route and line 282 emits user.email. Direct-parent tree inspection of 45874f5d162c4dc640f1763cb9916bccaf62b261:website/web/account/account.py found neither the vulnerable line, get_following(), nor the /get_following route. The BIC is a normal one-parent repository commit, GitHub's first-party associated-PR endpoint https://api.github.com/repos/MISP/cti-transmute/commits/4fa058f3ea7275eb340ea751ab9908a071673f94/pulls returns [], and no reconstructable same-tree squash/member commit was found; therefore no decomposition SHA exists. `git tag --contains` places the BIC in v1.3, v1.4, and v1.5, while the fix appears only in v1.5. Direct tag-tree checks found the vulnerable line/endpoint absent at v1.2 (62e040ed56cd1caee7a454e115fc0a50bd7aa799), present at v1.3 (7caef6e3eb31542ce4c34a8bc83c9fcaf65009f3) and v1.4 (bc46b6ed186786e672c1229d014a6d0a448fedad), and the endpoint present but email line absent at v1.5 (fe093f9a1f9727068bc7e82ba47630907d859edb). The fix's direct parent 1ce9836816ad0ee33763c98e0a62e9d4f0240dc1 still contains the email line; 4bad9f105a824979e0ae79fd6115cd7a88c84ee5 deletes exactly that line from website/web/account/account.py (pre-fix line 431 / diff hunk near line 428), establishing it as the direct fix. Raw `git cat-file -p` inspection of the BIC object shows one parent, human author/committer ecrou-exact, and the exact Claude co-author trailer quoted in ai_marker.",
+  "reasoning": "The causal unit is the response field, not the broader social-feature surface. Both -S and function-level -L history converge on 4fa058f3ea7275eb340ea751ab9908a071673f94: it creates get_following() and writes user.email in the same commit, while its immediate parent tree lacks the route, function, and field. No later edit introduced the disclosure, and the advisory fix directly removes the field from a still-vulnerable parent. Tag ancestry and tree contents establish the released lifecycle as first vulnerable in v1.3, still vulnerable in v1.4, and fixed in v1.5; v1.2 predates the mechanism. AI attribution is restricted to the proven BIC object: its exact Claude Sonnet 4.6 Co-Authored-By trailer is commit-object co-authorship on the commit that first wrote the flaw, satisfying AI_ROOT_CAUSE rather than a fix-only or later-AI attribution.",
+  "remaining_gap": null
+}

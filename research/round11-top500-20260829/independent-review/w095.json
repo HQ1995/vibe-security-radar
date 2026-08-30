@@ -1,0 +1,50 @@
+{
+  "worker": "w095",
+  "review_agent_id": "r389_w095",
+  "class_id": "alias-efdc2ff3e43af5f13a858220",
+  "case_id": "GHSA-8rp2-gc6p-4hgp",
+  "repo": "renovatebot/renovate",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-76230 is PUBLISHED and defines affected >=35.63.0 <40.33.0. In the affected npm manager, generatePackageKey() derives packageKey from packageName and version, generateLockFile() concatenates packageKey and workspace into npm install command strings, and lib/util/exec/common.ts invokes spawn with shell enabled. Shell metacharacters in repository-controlled packageName therefore reach a shell command."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "PR #21274 member 342a5069804f19d0af439f22855e9ee05cf7e223 is the smallest commit that changes both workspace and root updateCmd maps from depName@newVersion to packageName@newVersion. The earlier member 45881c2dd90702a9d0986a90f84931b6825c8dd5 introduces the related unquoted workspace-name sink but still uses depName, so it does not precede the CVE's packageName mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC is single-parent with immediate parent a6bc31a5d59156e99e784f91940bd1fec3898184. That parent exists and both updateCmd maps still interpolate depName@newVersion; packageName is not interpolated into either npm install command until the BIC."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "Main-line commit 012c0ac2fe32832e60a62bde405c0a241efd314c is the single-parent GitHub squash of PR #21274, not the atomic BIC. The public PR lists 37 member commits and includes both 342a5069804f19d0af439f22855e9ee05cf7e223 and its earlier ancestor 45881c2dd90702a9d0986a90f84931b6825c8dd5; the clone contains the member and parent objects. The squash preserves the packageName-derived packageKey in the vulnerable command construction."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "012c0ac2fe32832e60a62bde405c0a241efd314c is not an ancestor of tag 35.62.0, is tags/35.63.0~2, and is an ancestor of tags 35.63.0 and 40.32.7. This matches the advisory affected range beginning at 35.63.0 and extending below 40.33.0."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Fix 59de985bb27ce6ae9e316f4b0552f746e725bc0d is not an ancestor of tag 40.32.7, is tags/40.33.0~1, and is an ancestor of tag 40.33.0, matching the first fixed release."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The parent of 59de985bb27ce6ae9e316f4b0552f746e725bc0d still directly joins unquoted workspace and packageKey values into npm install strings. The fix imports shlex quote(), quotes workspace, maps quote() over workspace package keys and root package keys, and adds injection regression cases for malicious packageName and workspace strings."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Commit 342a5069804f19d0af439f22855e9ee05cf7e223 has human author and committer RahulGautamSingh <rahultesnik@gmail.com>, subject 'check if packageFile is:string', and no trailers or AI markers. Attribution is based only on this atomic BIC; the squash and later fix are not used to infer authorship."
+    }
+  },
+  "findings": [
+    "The primary record correctly identifies the live command-injection mechanism and distinguishes the CVE's packageName path from the related earlier workspace-name sink.",
+    "The atomic member, immediate parent, squash landing, affected tags, direct fix, and fixed tag are independently reproducible from the assigned clone and advisory.",
+    "The BIC contains no AI marker, so NOT_AI is supported without relying on metadata from the squash or fix."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

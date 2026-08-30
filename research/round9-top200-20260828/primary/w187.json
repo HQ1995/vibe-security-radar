@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-38114a7b8b6fde769328a068",
+  "case_id": "GHSA-7rv6-hjpp-g74c",
+  "repo": "appneta/tcpreplay",
+  "advisory_ids": [
+    "CVE-2025-51006",
+    "GHSA-7rv6-hjpp-g74c"
+  ],
+  "bug_semantics": "A crafted Juniper-Ethernet pcap can advertise unsupported extension media/encapsulation while still being long enough for dlt_jnpr_ether_decode() to treat the post-extension bytes as Ethernet. A successful en10mb subdecoder decode is followed by tcpedit_dlt_copy_decoder_state(), which assigns the subcontext-owned decoded_extra allocation directly to the outer context. Cleanup then traverses the outer context and the recursively owned subcontext; dlt_linuxsll2_cleanup() frees each context's decoded_extra pointer, so the aliased allocation is freed twice and tcprewrite aborts or corrupts memory.",
+  "flaw_origin": "Commit 745a71184c9d739305d4319cf2e6bb3998cc27b6 introduced the Juniper subdecoder lifecycle as one cohesive feature: it created an en10mb subcontext, copied subdecoder state by borrowing the decoded_extra pointer without transferring or recording ownership, and recursively destroyed the subcontext during outer cleanup. It also continued to decode Juniper payloads as Ethernet without validating the extension-declared media type and encapsulation. Those combined lines first created the aliased-ownership double-free path; later aggregate/import commit 77387f1580220c1232a9091c79d0db83ba7ac5b0 merely reintroduced the already-existing mechanism into the 4.0 line.",
+  "introducer_sha": "745a71184c9d739305d4319cf2e6bb3998cc27b6",
+  "introducer_parent": "f41d2a0b319df3e3825007658307e2fb5ce32a2c",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "745a71184c9d739305d4319cf2e6bb3998cc27b6"
+  ],
+  "ai_marker": "absent: the BIC commit object names Aaron Turner <synfinatic@gmail.com> as both author and committer and contains only the subject/body 'add support for subdecoders refs #389 / improve JUNIPER_ETHERNET_DLT refs #387'; it has no Co-Authored-By, Generated-with, Assisted-by, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "1076f1864237091d0f9abb22499888ee7a9452d9",
+  "direct_fix_sha": "868db118535a646a8a48c957f1e6367069be1aa7",
+  "evidence": [
+    "First-party issue https://github.com/appneta/tcpreplay/issues/926 reports the ASan double free in tcprewrite 4.5.1: dlt_linuxsll2_cleanup() frees the allocation, outer tcpedit_dlt_cleanup() reaches dlt_jnpr_ether_cleanup(), and the nested tcpedit_dlt_cleanup() reaches dlt_linuxsll2_cleanup() again. Maintainer Fred Klassen states the reproducer is fixed by issue #902 and shows 4.5.2 rejecting the unsupported packet with a decoder warning.",
+    "NVD https://nvd.nist.gov/vuln/detail/CVE-2025-51006 describes the same crafted-pcap double free and lists Broadcom tcpreplay 4.5.1 as the affected CPE.",
+    "git show 745a71184c9d739305d4319cf2e6bb3998cc27b6 shows the original subdecoder feature adding dlt_jnpr_ether_post_init() with tcpedit_dlt_init(..., DLT_EN10MB), recursive tcpedit_dlt_cleanup(config->subctx), dlt_jnpr_ether_decode() calling tcpedit_dlt_copy_decoder_state(ctx, config->subctx), and the new helper assigning ctx->decoded_extra = subctx->decoded_extra with the explicit comment 'just need to copy the ptr'.",
+    "Direct parent-tree verification used git grep on f41d2a0b319df3e3825007658307e2fb5ce32a2c for both 'subctx' and 'tcpedit_dlt_copy_decoder_state' in src/tcpedit/plugins/dlt_jnpr_ether/jnpr_ether.c and src/tcpedit/plugins/dlt_utils.c; it returned no matches. The BIC is a one-parent commit whose commit object names that exact parent.",
+    "History decomposition: git log -L on v4.5.1 src/tcpedit/plugins/dlt_utils.c traces the current line through the 147-file, 6,903-insertion aggregate 77387f1580220c1232a9091c79d0db83ba7ac5b0 ('merge 4.0alpha1'). git merge-base --is-ancestor proves the original focused commit 745a71184c9d739305d4319cf2e6bb3998cc27b6 is already in that aggregate's history, and its patch is where the vulnerable subdecoder/aliasing mechanism was first authored; therefore the aggregate is not selected as the BIC.",
+    "Persistence at the affected boundary: git grep on v4.5.1 (release commit 0ba7d17fcb9ddedf61168f99c249b30731310d4e) finds recursive subcontext cleanup at src/tcpedit/plugins/dlt_jnpr_ether/jnpr_ether.c:166, the state-copy call at :251, and decoded_extra pointer aliasing at src/tcpedit/plugins/dlt_utils.c:262. git tag --contains the BIC includes v4.0.0 onward and specifically v4.5.1, so the BIC predates and is present in the advisory's affected version.",
+    "Direct fix 868db118535a646a8a48c957f1e6367069be1aa7 ('Bug #902 juniper: added safeguards') parses Juniper extension records and returns TCPEDIT_WARN unless the declared media DLT is DLT_EN10MB and encapsulation is 14, preventing the crafted unsupported payload from reaching the en10mb decode/state-alias path. Merge commit 1076f1864237091d0f9abb22499888ee7a9452d9 integrates that direct fix via PR #949.",
+    "Release boundary verification: merge-base checks show 1076f1864237091d0f9abb22499888ee7a9452d9 is absent from v4.5.1 but is an ancestor of v4.5.2 (release commit 98169912173986cc48a4ad325997dcc20c38af28); direct fix 868db118535a646a8a48c957f1e6367069be1aa7 is also an ancestor of v4.5.2. git grep finds no extension-media validation in v4.5.1, while v4.5.2 contains JUNIPER_ETHER_EXT_MEDIA_TYPE and the dlt != DLT_EN10MB rejection at src/tcpedit/plugins/dlt_jnpr_ether/jnpr_ether.c:255 and :269.",
+    "BIC-only AI inspection used git cat-file -p 745a71184c9d739305d4319cf2e6bb3998cc27b6. The raw commit object contains human author/committer Aaron Turner, a 2009 timestamp, the two-line subdecoder/Juniper message, and no trailers or AI markers. No PR, later commit, fix, or branch-name signal was used for attribution."
+  ],
+  "reasoning": "The vulnerable lifecycle begins with 745a71184c9d739305d4319cf2e6bb3998cc27b6, not the later Linux SLL2 plugin addition and not the 2013 4.0 aggregate. The 2009 commit simultaneously established a nested en10mb decoder, shallow-copied its decoded_extra ownership into the outer Juniper context, and recursively cleaned the nested context. Once a packet passes the unvalidated Juniper-to-Ethernet decode, outer and inner contexts therefore hold the same allocation. The later Linux SLL2 cleanup makes the two frees appear at dlt_linuxsll2_cleanup() in the reported ASan stack, but it is not the causal origin: the ownership alias and two cleanup domains already existed. The direct parent lacks the entire subdecoder/copy mechanism, satisfying immediate-parent absence. The same vulnerable lines persist in v4.5.1, while 868db118535a646a8a48c957f1e6367069be1aa7, merged as 1076f1864237091d0f9abb22499888ee7a9452d9 and included in v4.5.2, rejects unsupported Juniper extension types before state aliasing; this matches the maintainer's 4.5.2 observation. Finally, the raw BIC commit object has no AI marker and identifies only a human author/committer, so under the required BIC-only attribution rule the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

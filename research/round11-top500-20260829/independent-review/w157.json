@@ -1,0 +1,27 @@
+{
+  "worker": "w157",
+  "review_agent_id": "r389_w157",
+  "class_id": "alias-be76f5a34ff4d2eb6e293740",
+  "case_id": "GHSA-m6hq-p25p-ffr2",
+  "repo": "containerd/containerd",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: The original Attach monitor waits only on the WriteCloseInformer close channel and then wg.Wait(); a disconnected client cannot unblock it when the container emits no further output. The direct fix adds ctx.Done() and removes the writer-group entries, matching the reported goroutine and memory leak.",
+    "atomic_bic": "PASS: git log -S for attachStream across the historical CRI paths first reaches 45ee2e554a226a86bef50889b579d94b4180e5fc. That commit first adds the vulnerable bare <-close Attach implementation; later e41b6d3c24565853d780e77b9b259e80511ff4ef is a refactor.",
+    "immediate_parent_absence": "PASS: The sole parent is 77b703f1e701a79ade3fc25fc60c40add44fe476; its Attach method returns not implemented, and it has no attachStream, NewWriteCloseInformer, or ContainerIO.Attach implementation outside vendor.",
+    "squash_member_decomposition": "PASS: The BIC is a single-parent source commit, not a merge or squash aggregate, so no finer member decomposition is required. The advisory-cited merge 083b53cd6f19b5de7717b0ce92c11bdf95e612df was separately decomposed to direct fix member a0d0f0ef68935338d2c710db164fa7820f692530.",
+    "affected_release_membership": "PASS: The BIC is an ancestor of v1.7.28, v2.0.6, v2.1.4, and v2.2.0-rc.1; each tag still contains the bare <-close wait and excludes its release-line fix.",
+    "fixed_release_membership": "PASS: v1.7.29, v2.0.7, v2.1.5, and v2.2.0 each contain the ctx.Done() cancellation arm. The first three contain their named backports, while v2.2.0 contains advisory-cited merge 083b53cd6f19b5de7717b0ce92c11bdf95e612df.",
+    "direct_fix_or_verified_unpatched_state": "PASS: a0d0f0ef68935338d2c710db164fa7820f692530 passes the request context into ContainerIO.Attach, selects on ctx.Done(), removes stdout/stderr writer-group entries, and is the second parent of advisory-cited merge 083b53cd6f19b5de7717b0ce92c11bdf95e612df.",
+    "bic_only_ai_attribution": "PASS: The BIC object is authored and committed by Lantao Liu in 2017 and contains only a Signed-off-by trailer; it has no Co-Authored-By, Generated-with, bot identity, or AI-tool marker. The NOT_AI judgment is based only on this BIC object, not on the 2025 fix."
+  },
+  "findings": [
+    "CVE-2025-64329 is PUBLISHED and its CNA record names the same Attach goroutine-leak mechanism and affected version ranges as the bundled GHSA; this is not a withdrawn or rejected advisory.",
+    "Independent clone replay confirms 45ee2e554a226a86bef50889b579d94b4180e5fc as the first public commit that writes the vulnerable Attach wait, with the mechanism absent from its immediate parent.",
+    "The vulnerable and fixed tag boundaries match the advisory, and the advisory merge resolves to the direct cancellation-aware fix member.",
+    "No primary field requires correction; the primary NOT_AI verdict is supported under BIC-only attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

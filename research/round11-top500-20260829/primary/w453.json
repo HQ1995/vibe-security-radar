@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-a3061e770b4acff99bbc9620",
+  "case_id": "GHSA-cpmj-h4f6-r6pq",
+  "repo": "step-security/harden-runner",
+  "advisory_ids": [
+    "CVE-2026-25598",
+    "GHSA-cpmj-h4f6-r6pq"
+  ],
+  "bug_semantics": "Harden-Runner Community Tier before v2.14.2 installed a non-TLS step-security/agent release whose audit-mode network monitor registered only the connect syscall and whose packet parser recognized TCP but not UDP. Code already executing in a workflow could therefore transmit UDP with sendto, sendmsg, or sendmmsg without producing the expected outbound-connection audit log; block mode and Enterprise Tier were not affected.",
+  "flaw_origin": "The smallest surviving public source commit that introduced the flawed monitoring mechanism is step-security/agent commit c793555005be99a734737f7bf8ebce54e545f3c6. It added procmon.go with an audit rule only for connect and no sendto/sendmsg coverage; its immediate parent has neither procmon.go nor procmon_linux.go. Harden-Runner later packaged that Community agent lineage, and the advisory's v2.14.2 remediation advanced the packaged agent from v0.14.2 to v0.14.3.",
+  "introducer_sha": "c793555005be99a734737f7bf8ebce54e545f3c6",
+  "introducer_parent": "794340760181b0a57396ae8eaa9a3235f472994e",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names Varun Sharma <varunsh@stepsecurity.io> as both author and committer, has message 'First commit', and contains no Co-Authored-By, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "5ef0c079ce82195b2a36a210272d6b661572d83e",
+  "direct_fix_sha": "eae0164904494eeae61d68028d71779e188fbb14",
+  "evidence": [
+    "The assigned bundle (SHA-256 d796254f252fef66219d10855a722344f8bca11b247832732ace751d3709a676) identifies GHSA-cpmj-h4f6-r6pq / CVE-2026-25598, affected Harden-Runner versions <2.14.2, first patched version 2.14.2, and advisory fix 5ef0c079ce82195b2a36a210272d6b661572d83e.",
+    "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-25598 is PUBLISHED and states that Community Tier before 2.14.2 allowed sendto, sendmsg, and sendmmsg outbound traffic to evade audit logging; it is not rejected or withdrawn.",
+    "In the assigned full-history harden-runner clone, git diff e3f713f2d8f53843e71c69a996d56f51aa9adfb9 5ef0c079ce82195b2a36a210272d6b661572d83e shows src/install-agent.ts changing the Community agent download from v0.14.2 to v0.14.3 and src/checksum.ts changing its checksum; v2.14.1 resolves to e3f713f2d8f53843e71c69a996d56f51aa9adfb9 and v2.14.2 resolves to 5ef0c079ce82195b2a36a210272d6b661572d83e.",
+    "The advisory-linked 5ef0c079ce82195b2a36a210272d6b661572d83e is a merge of e3f713f2d8f53843e71c69a996d56f51aa9adfb9 and eb43c7b3fd5a30c42ff1ab84b494f1cc6c7cc3b6; eb43c7b3fd5a30c42ff1ab84b494f1cc6c7cc3b6 is the one-parent harden-runner dependency-bump commit titled 'update agent'.",
+    "First-party compare https://api.github.com/repos/step-security/agent/compare/v0.14.2...v0.14.3 shows direct source fix eae0164904494eeae61d68028d71779e188fbb14 adding UDP handling to netmon.go and sendto/sendmsg audit rules to procmon_linux.go; its parent is the v0.14.2 commit a33c48b038c7b6ac98c789579037e76204e082d0, whose procmon_linux.go lines 100-110 register only connect.",
+    "The same first-party compare places eae0164904494eeae61d68028d71779e188fbb14 before the v0.14.3 tag; the tag resolves to 689409c83f4ac2a559d1cc60278197f33c0bb83d. The v0.14.3 release explicitly lists PR #465, 'feat: enhance network monitoring for UDP packets'.",
+    "GitHub path history for step-security/agent procmon.go/procmon_linux.go reaches c793555005be99a734737f7bf8ebce54e545f3c6 as the first public write of the process/network audit implementation. Its patch adds '-a exit,always -S connect -k netconn' but no sendto, sendmsg, or sendmmsg audit rule.",
+    "Direct parent-tree query https://api.github.com/repos/step-security/agent/git/trees/794340760181b0a57396ae8eaa9a3235f472994e?recursive=1 returned truncated=false and no procmon.go or procmon_linux.go entry, proving the vulnerable monitoring implementation absent from the immediate parent.",
+    "First-party ancestry compare https://api.github.com/repos/step-security/agent/compare/c793555005be99a734737f7bf8ebce54e545f3c6...v0.14.2 reports merge base c793555005be99a734737f7bf8ebce54e545f3c6 and behind_by=0, proving the BIC is in the vulnerable v0.14.2 lineage.",
+    "Raw BIC commit-object query https://api.github.com/repos/step-security/agent/git/commits/c793555005be99a734737f7bf8ebce54e545f3c6 gives sole parent 794340760181b0a57396ae8eaa9a3235f472994e, author and committer Varun Sharma <varunsh@stepsecurity.io>, and message 'First commit' with no trailers or AI marker."
+  ],
+  "reasoning": "The official advisory and CVE establish a real audit-mode logging bypass, not a withdrawn or rejected report. The vulnerable code lived in the public Community agent consumed by harden-runner: its original public monitoring implementation registered only connect and thus omitted UDP-oriented syscall coverage, while affected harden-runner releases through v2.14.1 selected vulnerable agent versions. c793555005be99a734737f7bf8ebce54e545f3c6 is the smallest surviving public first-write object for that mechanism; its direct parent tree lacks both the pre-rename and Linux-specific procmon files, so parent absence is directly verified. It is a broad initial source import, but no finer public member history exists and it is not a later move, release merge, or dependency bump. The source fix eae0164904494eeae61d68028d71779e188fbb14 added UDP packet parsing and sendto/sendmsg audit rules, then harden-runner commit eb43c7b3fd5a30c42ff1ab84b494f1cc6c7cc3b6 pinned agent v0.14.3 and advisory-linked merge 5ef0c079ce82195b2a36a210272d6b661572d83e became tag v2.14.2. Because the BIC commit object is authored and committed by a named human and contains no AI marker, the vulnerability is NOT_AI; later repository AI-scan signals are irrelevant to BIC attribution.",
+  "remaining_gap": null
+}

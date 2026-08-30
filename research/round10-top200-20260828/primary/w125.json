@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-543b2e438cca6aff027d4230",
+  "case_id": "GHSA-84r2-jw7c-4r5q",
+  "repo": "mmaitre314/picklescan",
+  "advisory_ids": [
+    "CVE-2025-71320",
+    "GHSA-84r2-jw7c-4r5q"
+  ],
+  "bug_semantics": "The scanner extracted pickle GLOBAL/STACK_GLOBAL references but treated a reference as an issue only when its module/name matched a finite deny-list. A malicious pickle could therefore compose pydoc.locate to resolve/import an arbitrary module such as os with operator.methodcaller to invoke a method such as system; because locate and methodcaller were not denied, the scan produced no dangerous issue even though unpickling the same payload could execute a command.",
+  "flaw_origin": "The initial scanner implementation in src/picklescan/scanner.py introduced a default-allow-by-omission decision: _suspicious_globals listed only selected modules/functions, and scan_pickle_bytes incremented issues_count only for an explicit match. pydoc and operator were absent, so pydoc.locate and operator.methodcaller were unreported from the first implementation. Later commits 108b06040de644c7aeb5f22d8b10dd9c5d282386 (operator.attrgetter) and 93764d62af72b0ec3e2dd693ab6a9774abbed953 (pydoc.pipepager) were incomplete mitigations, not introducers, because the bypass already existed.",
+  "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+  "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object identifies author Matthieu Maitre (mmaitre314) and committer Matthieu Maitre (mmaitre314), has an empty body, no Co-authored-by or Generated-with trailer, and no bot identity: https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+  "verdict": "NOT_AI",
+  "fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "direct_fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "evidence": [
+    "First-party advisory https://github.com/mmaitre314/picklescan/security/advisories/GHSA-84r2-jw7c-4r5q names CVE-2025-71320, explains the pydoc.locate + operator.methodcaller RCE chain, and declares affected versions <0.0.33 with 0.0.33 first patched.",
+    "BIC https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e creates src/picklescan/scanner.py. In that file, _suspicious_globals omits pydoc and operator, while scan_pickle_bytes counts only explicit module/name matches: https://github.com/mmaitre314/picklescan/blob/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e/src/picklescan/scanner.py#L14-L23 and https://github.com/mmaitre314/picklescan/blob/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e/src/picklescan/scanner.py#L74-L89.",
+    "The BIC commit object gives the sole direct parent as 6a76b8c3ac67dc04181e600614ecf2a423cca326. Direct parent-tree verification found src/picklescan/scanner.py absent (the raw path returns 404), while the parent setup.cfg already identifies package version 0.0.1: https://github.com/mmaitre314/picklescan/commit/6a76b8c3ac67dc04181e600614ecf2a423cca326 and https://raw.githubusercontent.com/mmaitre314/picklescan/6a76b8c3ac67dc04181e600614ecf2a423cca326/setup.cfg.",
+    "History cross-check: https://github.com/mmaitre314/picklescan/commit/108b06040de644c7aeb5f22d8b10dd9c5d282386 added only operator.attrgetter, and https://github.com/mmaitre314/picklescan/commit/93764d62af72b0ec3e2dd693ab6a9774abbed953 added only pydoc.pipepager. Their parents already inherited the initial default non-match behavior, so neither first introduced the locate/methodcaller bypass.",
+    "The v0.0.32 tag remains vulnerable: setup.cfg is version 0.0.32 and src/picklescan/scanner.py contains operator: attrgetter and pydoc: pipepager rather than methodcaller/locate: https://raw.githubusercontent.com/mmaitre314/picklescan/v0.0.32/setup.cfg and https://raw.githubusercontent.com/mmaitre314/picklescan/v0.0.32/src/picklescan/scanner.py.",
+    "Direct fix https://github.com/mmaitre314/picklescan/commit/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab explicitly references GHSA-84r2-jw7c-4r5q, changes operator to a set containing methodcaller, changes pydoc to '*', and bumps setup.cfg from 0.0.32 to 0.0.33.",
+    "Release https://github.com/mmaitre314/picklescan/releases/tag/v0.0.33 points tag v0.0.33 at 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab and lists this advisory as fixed; the tagged source contains operator.methodcaller and pydoc '*': https://raw.githubusercontent.com/mmaitre314/picklescan/v0.0.33/src/picklescan/scanner.py.",
+    "BIC-only attribution check: the embedded commit object and patch for c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e show human author/committer Matthieu Maitre, subject 'Implement Pickle scanner', empty body, and no AI/co-author/generated trailer: https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e.patch."
+  ],
+  "reasoning": "The vulnerable behavior began when c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e first implemented the scanner: imports outside its finite list did not increment issues_count, so the advisory's pydoc.locate and operator.methodcaller chain was already a clean scan bypass. The direct parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 has no scanner.py, proving absence rather than merely relying on blame. Subsequent attrgetter and pipepager entries partially expanded the deny-list but did not create the underlying omission, and v0.0.32 still has those incomplete entries. Commit 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab directly closes the named path and is the v0.0.33 release target, matching the advisory boundary. Inspection of only the BIC commit object found no AI attribution marker, so the causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

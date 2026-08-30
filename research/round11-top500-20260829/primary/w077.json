@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-7ac78b85f51eac0d4c3f4a11",
+  "case_id": "GHSA-gf32-cmjh-8m9v",
+  "repo": "nltk/nltk",
+  "advisory_ids": ["CVE-2026-63310", "GHSA-gf32-cmjh-8m9v"],
+  "bug_semantics": "NLTK Downloader._download_package downloads a corpus/model archive over HTTP via urlopen, writes the bytes to disk, then extracts with unzip/_unzip_iter without comparing the received file to the package-index checksum. MD5 (later SHA-256) hashing exists only in _pkg_status() as a pre-download installed/stale check, so a MITM, DNS-poisoned, or malicious-mirror response is extracted and treated as trusted NLTK data (CWE-494).",
+  "flaw_origin": "The missing post-download integrity check was first written in 2008 when Edward Loper added nltk/downloader.py: _download_package already downloaded then unzipped, and _pkg_status already hashed the on-disk package only to decide INSTALLED vs STALE. Later SHA-256 index work and the 3.9.3 zip-slip hardening never wired that hash into the post-download path.",
+  "introducer_sha": "fa242f5e10511cb2400396ebb56964becef12799",
+  "introducer_parent": "0465a4daad21fbab03956599f0f109aef1bb4f3d",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Edward Loper <edloper@ldc.upenn.edu>, committer Edward Loper <edloper@ldc.upenn.edu>; commit body has no Co-Authored-By, Generated-with, Signed-off-by, or bot trailers (git-svn svn/trunk@6522, 2008-08-30)",
+  "verdict": "NOT_AI",
+  "fix_sha": "7a5740af89feeb739193db766e11e85dfe78339c",
+  "direct_fix_sha": "7a5740af89feeb739193db766e11e85dfe78339c",
+  "evidence": [
+    "CVE.org CVE-2026-63310 state=PUBLISHED (not rejected); CNA VulnCheck; affected nltk < 3.9.3, claimed unaffected 3.9.3; vendor-advisory https://github.com/nltk/nltk/security/advisories/GHSA-5wp5-5229-5g6q; https://www.cve.org/CVERecord?id=CVE-2026-63310",
+    "First-party GHSA-5wp5-5229-5g6q published 2026-08-07 by maintainer ekaf, withdrawn_at=null: downloader.py downloads then os.replace then _unzip_iter with no SHA-256 between those steps; checksums only in _pkg_status() as a pre-download status check. GHSA-gf32-cmjh-8m9v is the NVD import of the same CVE.",
+    "Tag 3.9.2 (4e17ea390c526ec9cb9e5ef5eb3733ac118dbb8d) nltk/downloader.py _download_package ~L663-728: urlopen(info.url) writes filepath then _unzip_iter(filepath, zipdir) with no md5/sha256 of the received bytes. _pkg_status ~L871-905 hashes only to return STALE/INSTALLED before download.",
+    "Tag 3.9.3 (4154eb85e832f266660a09286c7e37e308292284) ChangeLog lists zip-slip CVE-2025-14009 and related path/JAR hardening, not post-download archive verification. git show 3.9.3:nltk/downloader.py _download_package still has no checksum call; 0e26734a61094b628d93e26dc18dd7302567ac46 (message 'check sha256 checksums on download') only retargets _pkg_status from md5_hexdigest to sha256_hexdigest.",
+    "BIC git log -L 690,730:nltk/downloader.py 3.9.2 ends at fa242f5e10511cb2400396ebb56964becef12799 (Edward Loper, 2008-08-30, 'Added downloader tool', svn/trunk@6522). That commit added nltk/downloader.py (A); original _download_package L549-615 already did urllib2.urlopen + write + unzip(filepath) with no post-download hash, while original _pkg_status L720-731 already compared md5_hexdigest(filepath) != info.checksum only for status.",
+    "Parent verification: git rev-parse fa242f5e10511cb2400396ebb56964becef12799^ = 0465a4daad21fbab03956599f0f109aef1bb4f3d; git cat-file reports nltk/downloader.py exists on disk but not in that parent tree; git ls-tree -r parent has no download* files. Smallest public first-write; git-svn single revision, not a reconstructable squash.",
+    "Tag membership: fa242f5e10511cb2400396ebb56964becef12799 is ancestor of 3.9.2, 3.9.3, 3.9.4, and v3.10.0. 3.9.3/3.9.4 still lack the integrity-before-extract check (advisory patched-range >=3.9.3 is inaccurate).",
+    "Actual fix is GitHub squash of PR #3625: 7a5740af89feeb739193db766e11e85dfe78339c (author Mohammad Favas S, committer GitHub, 2026-06-26) inserts size+sha256/md5 checks on tmp_filepath before os.replace and labels it 'CVE-2026-12261 fix (integrity before commit)'. Absent at parent 4085d53c7793d3d6622f2bf02272faf54d4c3975. First release tag containing the fix: v3.10.0-rc2 / v3.10.0. PR member 56a044599b6cfaa3026f57e3a86c7a328e49e746 is not in the default clone history.",
+    "BIC AI check: git log -1 --format and git cat-file -p fa242f5e10511cb2400396ebb56964becef12799 show only Edward Loper <edloper@ldc.upenn.edu> as author and committer; empty trailers; no Co-Authored-By/Generated-with/Copilot/Cursor/bot identity."
+  ],
+  "reasoning": "The CVE/GHSA describe a real CWE-494 gap: NLTK's downloader extracts a just-downloaded package without verifying it against the index checksum. CVE.org is PUBLISHED and GHSA-5wp5-5229-5g6q is not withdrawn, so this is not FALSE_POSITIVE; the claimed patched boundary 3.9.3 is simply wrong. On 3.9.2 and 3.9.3, _download_package still writes the HTTP body then unzips, while _pkg_status uses the checksum only as a pre-download stale check. git log -L on that download-then-unzip region reconstructs to the 2008 first add of nltk/downloader.py (fa242f5e10511cb2400396ebb56964becef12799); the immediate parent tree lacks the file, and later black/pyupgrade/unzip-iterator edits are carriers, not first-writes. The same commit already shipped md5_hexdigest and used it only in _pkg_status, so the missing post-download check is original design, not a later regression. Closure is 7a5740af89feeb739193db766e11e85dfe78339c (PR #3625), which is the first public-history commit that hashes the temp file before os.replace/extract; it is not in 3.9.3/3.9.4 and first ships in v3.10.0. AI attribution is judged only on the BIC commit object: human author/committer Edward Loper in 2008 with no AI/bot trailers, so NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,53 @@
+{
+  "worker": "w167",
+  "review_agent_id": "r389_w167",
+  "class_id": "alias-049d9e990bc63abaa2897f2a",
+  "case_id": "GHSA-hv8m-jj95-wg3x",
+  "repo": "messagepack-csharp/messagepack-csharp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "At v3.1.6, MessagePackSerializer.TryDecompress accepts Lz4Block type 99 and Lz4BlockArray data, sends attacker-controlled compressed bytes through LZ4Codec.Decode, and LZ4_uncompress_32/64 advances src_p through token, literal-length, offset, and match-length reads without any src_end bound; the consumed-length comparison occurs only after the native reads."
+    },
+    "atomic_bic": {
+      "status": "FAIL",
+      "evidence": "bf5f2dd91bad2948063668de3703259f7562cf73 first adds the decoder source files to this repository, but it is a vendoring/copy commit. Its immediate parent already references lz4net 1.0.11.93 and calls global::LZ4.LZ4Codec.Decode. Under the protocol, a copy is not the BIC."
+    },
+    "immediate_parent_absence": {
+      "status": "FAIL",
+      "evidence": "Parent 23674873e020d8ce96e4bd2b87b3ed2856ce06fa is not non-vulnerable: it creates MessagePack.LZ4, adds PackageReference lz4net 1.0.11.93, and deserializes extension type 99 by calling LZ4Codec.Decode with attacker-controlled bytes. Its parent 03f9c3652adc018c171ec3180909bd9b971ca4a9 lacks MessagePack.LZ4, showing project exposure began before the claimed BIC."
+    },
+    "squash_member_decomposition": {
+      "status": "NOT_APPLICABLE",
+      "evidence": "Both 23674873e020d8ce96e4bd2b87b3ed2856ce06fa and bf5f2dd91bad2948063668de3703259f7562cf73 are single-parent commits with no merge or squash member recorded locally; the disqualifying topology is dependency adoption followed by vendoring, not a squash."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The claimed BIC is an ancestor of affected v2.5.205, v3.0.214-rc.1, and v3.1.6. Backport 3538bc1110ed8507b394348188c8075d3d8a3dbf is in v2.5.301 and not v2.5.205; v3 fix 719e690abae8d4dba6b0c43088c8ded29cdc1ba2 is in v3.1.7 and not v3.1.6. CVE-2026-48109 is currently PUBLISHED; its CNA v3 range is internally malformed, while the bundled GHSA and Git ancestry support the v3.1.7 boundary."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "719e690abae8d4dba6b0c43088c8ded29cdc1ba2 is a direct v3 fix: it passes input.Length into both decoders, adds src_end checks before token, literal, offset, and match-length reads, and adds Lz4BlockRejectsTruncatedLiteralRun. 3538bc1110ed8507b394348188c8075d3d8a3dbf is the corresponding v2 backport."
+    },
+    "bic_only_ai_attribution": {
+      "status": "FAIL",
+      "evidence": "The no-AI-marker check was performed on bf5f2dd91bad2948063668de3703259f7562cf73, but that commit is a copy rather than the atomic origin. Its human 2017 metadata cannot establish NOT_AI for the unresolved lz4net/LZ4 decoder writer."
+    }
+  },
+  "findings": [
+    "Primary incorrectly treats vendoring commit bf5f2dd91bad2948063668de3703259f7562cf73 as the BIC even though its parent already exposes the same vulnerable lz4net decoder to untrusted MessagePack extension data.",
+    "Primary's statement that the immediate parent lacks decoder source proves only that code was dependency-provided; it does not prove absence of the vulnerability.",
+    "The direct fixes and affected/fixed tag ancestry are independently reproducible, but they do not repair the missing atomic-origin and BIC-only AI-attribution gates."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "Project exposure is present by 23674873e020d8ce96e4bd2b87b3ed2856ce06fa through lz4net 1.0.11.93; bf5f2dd91bad2948063668de3703259f7562cf73 later copies that decoder into the repository and is not an atomic BIC.",
+    "introducer_sha": null,
+    "introducer_parent": null,
+    "introducer_parent_absent": null,
+    "ai_marker": null,
+    "verdict": "EVIDENCE_GAP"
+  },
+  "remaining_gap": "Resolve the exact lz4net 1.0.11.93 / LZ4 r93 source history and identify the smallest original commit that first wrote the unbounded fast-decoder lines; then verify its immediate parent, any copy/squash members, and AI markers on that exact writer."
+}

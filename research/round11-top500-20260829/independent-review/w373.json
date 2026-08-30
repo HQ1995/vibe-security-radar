@@ -1,0 +1,25 @@
+{
+  "worker": "w373",
+  "review_agent_id": "r389_w373",
+  "class_id": "alias-200ff0d776891de9e55c4307",
+  "case_id": "GHSA-5x9f-6vg5-qg4m",
+  "repo": "siderolabs/omni",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: pre-fix SAML.getSession reads SAMLAssertion.Used, rejects only that stale snapshot, then separately calls StateUpdateWithConflicts whose callback unconditionally sets Used=true. Concurrent requests can both pass the outer check and authenticate with one nominally single-use token; ced79da6 fixes this by re-checking Used inside the conflict-retried update callback.",
+    "atomic_bic": "CONFIRMED: git log -L for getSession and both exact pickaxes attribute the vulnerable check-then-update sequence's first public write to dfcbaae7d0b7d61d3af526f510db7e233cfb6807. The only intervening c6aaff0f change removes an explicit namespace argument and does not introduce the race.",
+    "immediate_parent_absence": "CONFIRMED: dfcbaae7d0b7d61d3af526f510db7e233cfb6807 has no parent header, rev-parse of its parent fails, and rev-list --max-parents=0 --all identifies it as the public repository root.",
+    "squash_member_decomposition": "CONFIRMED: the 227162-line public root is the smallest surviving public object containing the vulnerable function. Its CHANGELOG names private-era SAML commit c0fa5d46f705e73d904b78a5ce4e98dc0b787d0e, but that object is absent from the clone/remote and its exact GitHub commit URL returns 404, so no finer public member can be reconstructed; the primary correctly leaves squash_decomposed=false and uses the surviving root BIC under the protocol exception.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is an ancestor of vulnerable tags v1.6.5 and v1.7.2. Main fix ced79da6c032d2103803eb53343d0916cc957d2a is not an ancestor of fixed tags v1.6.6 or v1.7.3, but exact cherry-picks 4c4c1e2d8226914f26774a309a91595f168ee921 and 272d3f4dd00e778b39fde09afde35575fe13ef13 respectively are; both release changelogs list 'fix: consume SAML sessions once'.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: ced79da6c032d2103803eb53343d0916cc957d2a directly changes getSession to reject Used inside StateUpdateWithConflicts and adds concurrent-use coverage; both release commits carry the same diff and identify themselves as cherry-picks of ced79da6.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object has human author and committer Andrey Smirnov, a Signed-off-by trailer, and human Co-Authored-By trailers only. It contains no AI-tool, generated-by, bot, Copilot, Cursor, Claude, or ChatGPT marker; later fix/review activity is excluded from BIC attribution."
+  },
+  "findings": [
+    "The vendor GHSA remains reachable at its exact URL with HTTP 200 and describes the TOCTOU; the frozen GitHub-reviewed advisory record is not withdrawn and lists patched versions 1.6.6 and 1.7.3.",
+    "CVE.org currently returns CVE_RECORD_DNE/404 for CVE-2026-45720, but this does not negate the live vendor GHSA, matching vulnerable code, direct fix, backports, and fixed releases.",
+    "All primary causal fields and the NOT_AI verdict are supported by independent clone and advisory replay."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,22 @@
+{
+  "worker": "w293",
+  "review_agent_id": "r389_w293",
+  "class_id": "alias-1e6f631fa96725e6e80a6258",
+  "case_id": "GHSA-h3qp-hwvr-9xcq",
+  "repo": "octo-sts/app",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In e6d0bdf230446bcb66f09356053e294659d400ee, Exchange parses the unverified JWT payload issuer with apiauth.ExtractIssuer and passes it to oidc.NewProvider before signature verification. go-oidc v3.9.0 performs GET {issuer}/.well-known/openid-configuration with http.DefaultClient and includes a non-200 response body in its error; Exchange returns that wrapped error to the unauthenticated caller, establishing SSRF and response reflection.",
+    "atomic_bic": "PASS: e6d0bdf230446bcb66f09356053e294659d400ee is the earliest public first-write of the adjacent ExtractIssuer and oidc.NewProvider flow. Pickaxe history shows only this addition and the later 0ba5ef748bccfa19ffeffd910cd25f09f2dcf09f relocation into provider.Get; the relocation is not a BIC.",
+    "immediate_parent_absence": "PASS: The sole immediate parent e90d1e919d13bb15c45a293c258212651a11777e exists and its tree contains only .gitignore, LICENSE, and README.md; pkg/octosts/octosts.go and pkg/provider/provider.go are absent.",
+    "squash_member_decomposition": "PASS: The BIC has one parent, its commit message is an initial-working-version check-in rather than a merge or revert, and GitHub reports no associated pull request. No finer public member is reconstructable, so the surviving first-write commit is the atomic public BIC rather than a squash aggregate requiring decomposition.",
+    "affected_release_membership": "PASS: e6d0bdf230446bcb66f09356053e294659d400ee is an ancestor of v0.5.2 (3ae8b79b512c71bf45016e6cb9012336646e6a01), whose Exchange still routes unvalidated issuer data through provider.Get to oidc.NewProvider. This matches the published affected range below 0.5.3 / through 0.5.2.",
+    "fixed_release_membership": "PASS: b3976e39bd8c8c217c0670747d34a4499043da92 and the follow-up redaction 0f177fde54f9318e33f0bba6abaea9463a7c3afd are ancestors of v0.5.3; b3976e39bd8c8c217c0670747d34a4499043da92 is not an ancestor of v0.5.2.",
+    "direct_fix_or_verified_unpatched_state": "PASS: Parent d55477b72c6c5252fadc60eaa3fd69c5b3807de4 still sends ExtractIssuer output directly to provider.Get/oidc.NewProvider. Direct fix b3976e39bd8c8c217c0670747d34a4499043da92 rejects invalid issuer URLs before discovery and validates redirect destinations; 0f177fde54f9318e33f0bba6abaea9463a7c3afd additionally redacts reflected errors. Earlier 74ba874c017cf973edd6711144cf4399a9fcff57 only limits response size and leaves the SSRF sink reachable.",
+    "bic_only_ai_attribution": "PASS: Attribution was checked only on BIC e6d0bdf230446bcb66f09356053e294659d400ee. Its author and committer are Matt Moore <mattmoor@chainguard.dev>, and its message has only a matching Signed-off-by trailer; there is no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, or bot marker. NOT_AI is supported."
+  },
+  "findings": [],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,46 @@
+{
+  "worker": "w034",
+  "review_agent_id": "r389_w034",
+  "class_id": "alias-de1110ee7bad63b7586c5161",
+  "case_id": "GHSA-v273-448j-v4qj",
+  "repo": "harttle/liquidjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "Independent replay of the published liquidjs@10.25.4 package with Liquid({root:[emptyTempDir]}).renderFile('/etc/hosts') returned the exact file contents. At v10.25.4 Parser uses LookupType.Root, Loader.lookup sets enforceRoot = type !== LookupType.Root, and therefore skips contains() while candidates() yields path.resolve(root, absoluteFile), which resolves to the absolute file. The same replay against 10.25.5 rejected the lookup."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "822ba0be0f1cfbedd50376aff8ac49eee71bd48c is the smallest surviving first-write of the explicit Root exemption: its loader diff passes type !== LookupType.Root into candidates() and gates both containment checks with !enforceRoot. Pickaxe for that predicate finds its addition at 822ba0b and later removal by the fix; subsequent 3cd024d and 529dd67e retained or relocated the same exemption."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single immediate parent a3455ebd0b207141c34630c0af44d917db2ca1dd. That parent has no type !== LookupType.Root predicate and requires referenced.startsWith(dir) for every candidate, so an absolute path outside an unrelated root is not yielded."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a one-parent ordinary commit, not a merge or squash aggregate, so no BIC member decomposition is required. For fix lineage, reconstructable PR member 484ba7f07863735af65fc2eed8e51c311298bdba and landed squash f41c1fc02fe901598f3328118b42b13bc6bc9b04 share parent db4348507e6aa205ab2ba5e3fa273c40767e6764 and have identical trees; the landed commit is the release-line fix."
+    },
+    "affected_fixed_release": {
+      "status": "PASS",
+      "evidence": "822ba0b is absent from v9.27.1, first contained by v9.28.0, and is an ancestor of v10.25.0 and v10.25.4. f41c1fc is not an ancestor of v10.25.4 and is an ancestor of v10.25.5; v10.25.5 release metadata names f41c1fc as the root-containment fix. Live GHSA metadata states affected <=10.25.4 and first patched 10.25.5. CVE.org is PUBLISHED but its <10.25.3 range conflicts with repository and GHSA evidence."
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": "f41c1fc02fe901598f3328118b42b13bc6bc9b04 directly removes the LookupType.Root exemption, applies contains() to every candidate, and adds absolute-outside-root rejection tests. Published 10.25.5 independently rejects the 10.25.4 PoC."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The raw 822ba0b commit object names Harttle as author and committer and contains no AI-related trailer or marker, supporting NOT_AI. Made-with: Cursor appears only on the 2026 fix member/squash and is excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "The advisory is live and CVE-2026-39859 is PUBLISHED; this is a real CWE-22 rather than a withdrawn or rejected advisory.",
+    "The primary record's mechanism, atomic BIC, parent absence, release membership, direct fix, and BIC-only NOT_AI attribution independently reproduce.",
+    "The fix PR member and landed squash are byte-for-byte tree-equivalent, so retaining f41c1fc as fix_sha and direct_fix_sha is supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

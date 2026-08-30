@@ -1,0 +1,55 @@
+{
+  "worker": "w065",
+  "review_agent_id": "r389_w065",
+  "class_id": "alias-580e062d7c557c3e99bea50d",
+  "case_id": "GHSA-75mg-c62r-v95g",
+  "repo": "apache/airflow",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "passed": true,
+      "evidence": "At tag 3.3.0, get_conn_value/get_variable try the caller's team namespace and then unconditionally read PREFIX + supplied_id.upper(); an encoded id such as _TEAM_A___DB is byte-identical to another team's stored namespaced key. The guard returns true only when team_name is None and uses _[^_]+___.+, which misses legal underscore-bearing team names. POST /api/v2/connections/test calls Connection.get_connection_from_secrets(test_body.connection_id) without team_name and then uses the resolved Connection to test outward. CVE.org is PUBLISHED, NVD is Analyzed, and the Apache advisory states apache-airflow before 3.3.1 is affected."
+    },
+    "atomic_bic": {
+      "passed": true,
+      "evidence": "d3033106035253962a8b264d06dfa1dcc988a840 is the sole public PR #58905 member and first writes the vulnerable team-scoped probe followed by the unconditional global fallback in get_variable. Its environment_variables.py blob 1973152b42670262975736445f335ed59caf269e exactly matches the GitHub squash d32091cd4f4b2b0935bc71e02e2995cdb8713a30. PR #59476 member f5755b7e0db7c2c3b920f6c626d0fe5719a9b3b6 later copies the mechanism into get_conn_value."
+    },
+    "immediate_parent_absence": {
+      "passed": true,
+      "evidence": "The BIC has the single immediate parent 612a290a34ec5ab697bca8f4f54fc633cafd0874. The parent version has get_variable(key) performing only the ordinary global read and contains neither team_name nor the team namespace construction; the vulnerable added lines appear in the parent-to-BIC diff."
+    },
+    "squash_member_decomposition": {
+      "passed": true,
+      "evidence": "GitHub's PR API reports PR #58905 head/only member d3033106035253962a8b264d06dfa1dcc988a840 and merge_commit_sha d32091cd4f4b2b0935bc71e02e2995cdb8713a30. The squash has one parent, and the relevant member and squash file blobs are identical, so the member rather than the aggregate is the atomic BIC."
+    },
+    "affected_and_fixed_release_membership": {
+      "passed": true,
+      "evidence": "Mainline origin/copy/incomplete-guard commits d32091cd, a4f3417b, and 6f9cc5f8 are ancestors of tags 3.2.0, 3.2.1, 3.2.2, and 3.3.0 but not 3.1.8. Tag 3.3.1 contains maintenance backports 386f5eb3a04b9fec6fe7589d3c422c12039013c3 and ccb7782c507c92d7db8473451ee4c6ecaff818b8; the mainline fix SHAs are correctly absent from that maintenance lineage. This matches the CNA boundary before 3.3.1."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "passed": true,
+      "evidence": "e0cac1f6b2ddd473c9e6440ee0acc32b7b6581fc directly removes both incomplete-guard gaps by trying the safe caller namespace first and refusing any namespaced id before global fallback. ed87a1a024a55aaa494e6a718cb876f0cbe47b44 additionally refuses any separator-bearing id before either lookup, closing the ambiguous scoped-key collision. Equivalent backports are present in 3.3.1, whose backend rejects separator-bearing ids in multi-team mode."
+    },
+    "bic_only_ai_attribution": {
+      "passed": true,
+      "evidence": "The BIC object names human author and committer vincbeck <vincbeck@amazon.com>, has only the subject Check team boundaries in variables, and has no AI/co-author/generated trailer. PR #58905's body contains no AI disclosure. Claude disclosure on fix PRs #70736/#70902 is irrelevant to BIC attribution."
+    }
+  },
+  "findings": [
+    {
+      "severity": "material_evidence_error",
+      "field": "evidence",
+      "finding": "The primary says PR #62588's body checkbox claimed generative AI. The authoritative GitHub PR API body instead contains an unchecked '- [ ] Yes' inside the AI disclosure section and a commented-out Generated-by template; member 69d3d90da5430823a7e04f667f65f19616e6570d also has no AI trailer. This does not change the BIC-only NOT_AI verdict, but the affirmative claim must be removed."
+    },
+    {
+      "severity": "confirmation",
+      "field": "verdict",
+      "finding": "Apart from that evidence correction, the primary's vulnerability lifecycle, atomic BIC, parent absence, squash decomposition, release boundary, direct fixes, and BIC-only NOT_AI judgment are independently confirmed."
+    }
+  ],
+  "corrected_fields": {
+    "evidence_item_incomplete_remediation": "Incomplete remediation #62588 member 69d3d90da5430823a7e04f667f65f19616e6570d (blob 5fb85732d712eceabfe0bec6f4cbb2ef8d27f774, squashed as 6f9cc5f8fb4186ffc66d9a4f9e25613e63fe5050) added _is_team_specific_accessed_as_global. The PR body leaves the generative-AI checkbox unchecked and the Generated-by template commented out; the commit object also has no AI trailer. In any event, this attempted remediation is not the BIC."
+  },
+  "remaining_gap": null
+}

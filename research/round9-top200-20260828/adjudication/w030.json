@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-08277d0aedc4ae2c09aa5de1",
+  "case_id": "GHSA-6h3p-88p7-m8gp",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79673",
+    "GHSA-6h3p-88p7-m8gp"
+  ],
+  "bug_semantics": "A scoped access token carrying only profile:read is accepted by PUT /user because that mutating route is guarded by RequireScopes(ScopeProfileRead). UpdateUser uses the token viewer's administrator identity and permits a supplied password to replace that administrator's password. The attacker can then log in with the replacement password; login issues a session JWT, and RequireScopes deliberately bypasses scope checks for session tokens, yielding unrestricted administrator access.",
+  "flaw_origin": "PR #195 introduced route-level scoped-token authorization. Its member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 first wrote the causal mismatch in internal/router/user.go by binding PUT /user to ScopeProfileRead. GitHub later landed the PR as squash commit 3f8fb150158723aca31df2ae937a1aa7b31ac254; that mainline aggregate carries the flaw but is not the smallest BIC.",
+  "introducer_sha": "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939",
+  "introducer_parent": "1b280c252d1ef2ee69bf09f890d2da673b4b0a68",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939"
+  ],
+  "ai_marker": "The exact BIC commit object has human author and committer L1nSn0w <l1nsn0w@qq.com> and the explicit message trailer \"Made-with: Cursor\". It has no AI author, AI co-author, Co-Authored-By trailer, or Generated-with trailer. This is BIC-local evidence of AI assistance, but not evidence that the AI was the sole author or independently identifiable root cause.",
+  "verdict": "AI_CODE_FLAWED",
+  "fix_sha": "057e8b0b713d105eca7040ade810a057397613fa",
+  "direct_fix_sha": "057e8b0b713d105eca7040ade810a057397613fa",
+  "evidence": [
+    "The first-party advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-hm2h-wwwh-g49x states the precise escalation chain: profile:read token -> PUT /user password change -> login -> unrestricted session token. It identifies the flawed RequireScopes(\"profile:read\") guard, the password assignment, the session-token scope bypass, and patched version 4.4.3.",
+    "The GitHub commit API object for b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 reports sole parent 1b280c252d1ef2ee69bf09f890d2da673b4b0a68 and its internal/router/user.go patch directly changes the pre-existing one-line PUT /user route to call middleware.RequireScopes(authModel.ScopeProfileRead) before UpdateUser. This is the smallest causal member, not an import, move, refactor, release commit, or squash aggregate.",
+    "Direct parent-tree check of https://raw.githubusercontent.com/lin-snow/Ech0/1b280c252d1ef2ee69bf09f890d2da673b4b0a68/internal/router/user.go shows PUT /user calling UpdateUser with no authModel import, RequireScopes call, or ScopeProfileRead mapping. The exact vulnerable authorization contract is absent from the immediate parent.",
+    "In the validated clone, git show 3f8fb150158723aca31df2ae937a1aa7b31ac254 -- internal/router/user.go shows the same flawed PUT /user -> ScopeProfileRead mapping arriving in the one-parent mainline squash. The carrier tree is e9484ebf85c66a09c425d8407ebfa79f57da39fa, consistent with the reconstructed PR-member decomposition; the aggregate is rejected as BIC in favor of b47fa1c75d890cd080e3f6699bbfca8cd8d4b939.",
+    "In the validated clone, git show 057e8b0b713d105eca7040ade810a057397613fa -- internal/model/auth/scope.go internal/router/user.go shows the direct reversal: it adds ScopeProfileWrite to the scope model and replaces ScopeProfileRead with ScopeProfileWrite on PUT /user. git show -s reports sole parent 2ccf950dcbb582b1c24147d0783a3397e9fe7354, so the fix is a direct mechanism change despite its broader inbox-removal subject.",
+    "Release-boundary checks in the clone peel v4.2.0, v4.2.1, v4.4.2, and v4.4.3 to 7f236aed761da27f971ad289c4a26af0d9eb3e92, 77f371df9cca25ac856ad42afc43ea035dc4bf1d, 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2, and b934467d26b91c96dc7c937b6a4e47d8d01484eb. git merge-base --is-ancestor rejects the landed carrier from v4.2.0, while git tag --contains starts at v4.2.1; v4.4.2 source still guards PUT /user with ScopeProfileRead, git tag --contains the fix starts at v4.4.3, and v4.4.3 source uses ScopeProfileWrite.",
+    "The disputed verdict is resolved from the BIC object alone: https://api.github.com/repos/lin-snow/Ech0/commits/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 records human author and committer L1nSn0w and message ending \"Made-with: Cursor\" while directly containing the flawed mapping. No PR-body disclosure, branch name, later AI refactor, squash-carrier-only marker, or fix-only AI signal is used."
+  ],
+  "reasoning": "Primary and reviewer agree on the vulnerability, decomposed BIC, direct parent, fix, and release boundary; they disagree only between AI_ROOT_CAUSE and AI_CODE_FLAWED. The reviewer claim wins. The atomic BIC itself directly writes the flawed read-scope-on-write authorization mapping and explicitly says Made-with: Cursor, so the code is causally flawed and AI-assisted. But the same commit object identifies only the human maintainer as author and committer and supplies no AI author/co-author or stronger object evidence that Cursor alone originated the security decision. AI_ROOT_CAUSE would overstate what the BIC object proves; AI_CODE_FLAWED precisely records AI assistance on the causal flawed commit without converting a tooling trailer into sole-root-cause attribution. The mainline squash is rejected as an aggregate, the BIC parent lacks the guard, and the v4.4.3 fix directly changes the required capability to profile:write, closing both causal and version-boundary gates.",
+  "remaining_gap": null
+}

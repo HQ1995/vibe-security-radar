@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-e03a488b396dbfba39fde27d",
+  "case_id": "GHSA-wcrg-p6mv-jx2j",
+  "repo": "scriban/scriban",
+  "advisory_ids": [
+    "CVE-2026-74784",
+    "GHSA-wcrg-p6mv-jx2j"
+  ],
+  "bug_semantics": "Scriban's template builtin array.insert_at (ArrayFunctions.InsertAt) pads the target list by running a tight C# for-loop from list.Count up to an attacker-controlled index and calling Add(null) each step, then Inserts the value. That fill never calls TemplateContext.StepLoop and never consults LoopLimit, LimitToString, RecursiveLimit, or ObjectRecursionLimit, even though LoopLimit (default 1000) existed from the first commit for script for-statements. A one-line template such as {{ [1] | array.insert_at 200000000 'x' | array.size }} therefore allocates unbounded memory, raises OutOfMemoryException, and can terminate the host process in well under a second. The 7.0.0 sibling hardening (dde661d36bb6b06414546c6b1272fc1b517078c9) added StepLoop overloads to other ArrayFunctions primitives and still left InsertAt on the unbounded IEnumerable/int/object signature. CVE-2026-74784 / first-party GHSA-24c8-4792-22hx: affected <= 7.1.0 (CVE < 7.2.0); patched 7.2.0.",
+  "flaw_origin": "The unbounded fill was first written in the public-history root commit 46054810b50b03a6d19cd51886321cbbefa5d589 (2016-01-25, Alexandre Mutel, message 'Initial version') as Textamina.Scriban.Helpers.ArrayFunctions.InsertAt at src/Textamina.Scriban/Helpers/ArrayFunctions.cs:167-188, registered onto the array builtin via ScriptObject.From. git log -L on the 7.1.0 InsertAt body traces the same for-loop through later moves/refactors only (9eb6ecbf namespace split, da6d32a copy-on-write ScriptArray, 2a7645ee argument reorder, 163bed29 method reorder, 7d73abb ScriptRange rename to array.Add(null), e5f6950f nullable annotations); none of those first wrote the mechanism. The commit object has no parent line, git rev-parse 46054810^ fails, and git rev-list --max-parents=0 HEAD is this SHA, so no finer public member exists.",
+  "introducer_sha": "46054810b50b03a6d19cd51886321cbbefa5d589",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC 46054810b50b03a6d19cd51886321cbbefa5d589 author=Alexandre Mutel <alexandre_mutel@live.com> committer=Alexandre Mutel <alexandre_mutel@live.com>; git log -1 --format='%(trailers)' empty; no Co-Authored-By/Generated-with/Made-with trailers; not a bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7fdf19df7db01c5e57888c5cc31e4d05f3d75440",
+  "direct_fix_sha": "7fdf19df7db01c5e57888c5cc31e4d05f3d75440",
+  "evidence": [
+    "CVE.org CVE-2026-74784 state=PUBLISHED (not rejected/withdrawn); assigner VulnCheck; affected scriban >=0 <7.2.0, unaffected 7.2.0; CWE-770; vendor-advisory https://github.com/scriban/scriban/security/advisories/GHSA-24c8-4792-22hx. GitHub GHSA-wcrg-p6mv-jx2j is the unreviewed CVE wrapper (withdrawn_at null) of that first-party GHSA.",
+    "First-party reviewed GHSA-24c8-4792-22hx: array.insert_at index DoS bypasses LoopLimit/LimitToString; NuGet scriban/Scriban.Signed affected <=7.1.0 patched 7.2.0; sink ArrayFunctions.InsertAt fill loop; PoC {{ [1] | array.insert_at 200000000 'x' | array.size }}.",
+    "BIC git cat-file -p 46054810b50b03a6d19cd51886321cbbefa5d589: tree-only object, no parent line; git rev-parse 46054810^ -> fatal: Needed a single revision; git rev-list --max-parents=0 HEAD = 46054810b50b03a6d19cd51886321cbbefa5d589. introducer_parent_absent after that parent-tree check.",
+    "Vulnerable first write at 46054810: src/Textamina.Scriban/Helpers/ArrayFunctions.cs:167-188 InsertAt(int index, object value, IList list) for (int i = list.Count; i < index; i++) list.Add(null); registered in Register() via ScriptObject.From(typeof(ArrayFunctions)) as builtins['array']. Same commit already has TemplateOptions.LoopLimit=1000 enforced only on script for-statements in TemplateContext.cs, not this builtin.",
+    "git log -L 369,386:src/Scriban/Functions/ArrayFunctions.cs at 7.1.0 follows the fill through e5f6950f (nullable), 7d73abb (IEnumerable/ScriptArray local), 163bed29 (reorder add), then continuing at the pre-reorder locus through 2a7645ee, 96ab70f, da6d32a to 46054810 creating Helpers/ArrayFunctions.cs. Moves/refactors, not new mechanism.",
+    "7.1.0=41e94911e662a8fa385f0679b221da209ca2f465 still has unbounded InsertAt at src/Scriban/Functions/ArrayFunctions.cs:369-386 (array.Add(null), no StepLoop). dde661d36bb6b06414546c6b1272fc1b517078c9 (in 7.0.0 and 7.1.0) does not mention InsertAt. git merge-base --is-ancestor 46054810 7.1.0 yes; ancestor of v0.1.0 yes.",
+    "Fix 7fdf19df7db01c5e57888c5cc31e4d05f3d75440 is tag 7.2.0 (single parent c8094b09f35a9a6249a050011076400f8d76625d; not in 7.1.0). Marks the unbounded overload [ScriptMemberIgnore] and adds InsertAt(TemplateContext, SourceSpan, ...) that context.StepLoop-counts the fill. Test ArrayInsertAtShouldRespectLoopLimitForInternalIteration parses {{ [1] | array.insert_at 200000000 'x' | array.size }}. git merge-base --is-ancestor 7fdf19df 7.2.0 yes; 7.1.0 no."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-74784 is a published VulnCheck CVE wrapping the live first-party advisory GHSA-24c8-4792-22hx (reviewed, not withdrawn). The sink is the array.insert_at fill that allocates index-Count nulls in compiled C# without StepLoop. That loop is present on 7.1.0 and absent as a reachable template primitive after 7fdf19df / 7.2.0, matching the patched boundary. BIC search used git log -S/-L and parent absence, not an AI-marked commit hunt: the smallest public first-write of the fill is root commit 46054810 (2016-01-25). Later ArrayFunctions edits only relocated or retyped the same loop (copy-on-write, argument order, ScriptRange). Incomplete 7.0.0 LoopLimit hardening is a missed sibling, not the introducer. AI judgment is BIC-commit-object only: Alexandre Mutel author and committer, empty trailers, no bot, 2016 initial import. Therefore a real vulnerability with human authorship: NOT_AI. The 7.2.0 merge-from-fork is the direct fix; private-fork members are not reconstructable in public history, which does not affect BIC choice.",
+  "remaining_gap": null
+}

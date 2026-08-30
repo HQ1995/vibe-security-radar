@@ -1,0 +1,25 @@
+{
+  "worker": "w261",
+  "review_agent_id": "r389_w261",
+  "class_id": "alias-9f5a2214d7af46a6b11a403b",
+  "case_id": "GHSA-53wx-pr6q-m3j5",
+  "repo": "apache/parquet-java",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. For SpecificData/ReflectData, attacker-controlled java-class or java-key-class schema properties reach ClassUtils.forName; FieldStringableConverter then resolves a public String constructor and invokes it on Parquet binary data. GenericData does not take this class-loading branch. CVE-2025-46762 is PUBLISHED and the Apache CNA describes code execution through 1.15.1 under specific/reflect models.",
+    "atomic_bic": "Confirmed as 0e9240f5aa6fa3130d1453312540d94fd7736aa2. Its diff atomically adds getStringableClass/ClassUtils.forName and FieldStringableConverter/getConstructor(String.class)/newInstance; the later member beb5a44b5530550afe4e628cb9b300146ca4e360 extends map-key and @Stringable coverage rather than first creating the core sink.",
+    "immediate_parent_absence": "Confirmed. The BIC has the single immediate parent d6f082b9be5d507ff60c6bc83a179cc44015ab97, whose parquet-avro production tree has none of FieldStringableConverter, getStringableClass, JAVA_CLASS_PROP, or getConstructor(String.class).",
+    "squash_member_decomposition": "Confirmed. Public landing 918609f2cc4e4de95445ce4fdd7dc952b9625017 has the same parent as 0e9240f5, explicitly names members beb5a44 and 0e9240f in its commit message, and its tree exactly equals the tree of final member beb5a44b5530550afe4e628cb9b300146ca4e360. The reconstructable first member, not the squash aggregate, is the atomic BIC.",
+    "affected_release_membership": "Confirmed. Landing 918609f2cc4e4de95445ce4fdd7dc952b9625017 is not an ancestor of apache-parquet-1.7.0, but is an ancestor of apache-parquet-1.8.0, apache-parquet-1.15.0, and apache-parquet-1.15.1. The 1.15.0 tag contains the unrestricted class-loading and String-constructor path; the Apache CNA marks versions through 1.15.1 affected.",
+    "fixed_release_membership": "Confirmed. Incomplete mitigation 8e70eea820d4d4b9d1ae240a9bc25d266ab780f3 is an ancestor of apache-parquet-1.15.1 but not 1.15.0. Direct fix 2fef79bb53ea0a894e4bae861faa8105ca9da15b is an ancestor of apache-parquet-1.15.2 and not 1.15.1, matching the CNA and GHSA first-patched version 1.15.2.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 2fef79bb53ea0a894e4bae861faa8105ca9da15b. It changes SERIALIZABLE_PACKAGES from five default-trusted packages to an empty default and validates schema class names before ClassUtils.forName, with an explicit parquet.avro.serializable.classes allowlist. This closes the advertised default-path flaw; 1.15.1's package check retained gadget-capable defaults.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. Raw commit 0e9240f5aa6fa3130d1453312540d94fd7736aa2 is authored and committed by Ryan Blue <blue@apache.org> in 2015 and has no Co-Authored-By, Generated-with, bot identity, or other AI marker."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic introducer, parent, squash decomposition, affected/fixed release gates, direct fix, and BIC-only authorship conclusion independently reproduce from the advisory and clone.",
+    "The primary NOT_AI verdict is supported; no field-level correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

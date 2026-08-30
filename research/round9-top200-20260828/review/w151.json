@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-1a6c7a79f2c7ef9b41005604",
+  "case_id": "alias-1a6c7a79f2c7ef9b41005604",
+  "repo": "chaiscript/chaiscript",
+  "advisory_ids": [
+    "CVE-2026-2656",
+    "GHSA-rjm5-gmfm-6cp4"
+  ],
+  "bug_semantics": "ChaiScript's built-in async() launched a std::async worker executing a script closure that could continue using its Dispatch_Engine after the owning ChaiScript instance began destruction. If that worker raised eval_error while the main thread destroyed the engine, error formatting called Dispatch_Engine::get_type_name and Type_Info::bare_equal over entries in the concurrently freed type map, producing the reported heap-use-after-free. The dereference in bare_equal is the observed sink, not the lifecycle root cause; the missing ownership/join relationship for engine-spawned workers is the flaw.",
+  "flaw_origin": "Commit 52d03a66b15358e8fd2caeb5b063044c8aa839d2 first registered the script-visible async function in include/chaiscript/chaiscript_stdlib.hpp as a direct std::async(std::launch::async, t_func) call and returned only its future, without registering the spawned work with Dispatch_Engine or making engine destruction join it.",
+  "introducer_sha": "52d03a66b15358e8fd2caeb5b063044c8aa839d2",
+  "introducer_parent": "a32a180a063d9186ca38b2708a9c19d50da378db",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No BIC commit-object AI marker. `git cat-file -p 52d03a66b15358e8fd2caeb5b063044c8aa839d2` identifies both author and committer as Jason Turner <jason@emptycrate.com> and contains only the subject `Add future support, and fix returning of r-values`, with no Co-Authored-By, Generated-with, bot, or AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7b95ff5126f0365c101b08fa33b50ae387342484",
+  "direct_fix_sha": "7b95ff5126f0365c101b08fa33b50ae387342484",
+  "evidence": [
+    "First-party issue https://github.com/ChaiScript/ChaiScript/issues/636 (opened 2026-01-19) supplies the reproducer and ASan trace: an async script worker formats eval_error while the main thread frees Dispatch_Engine's type map; the trace reaches get_type_name and include/chaiscript/dispatchkit/type_info.hpp:58 Type_Info::bare_equal. The maintainer closed it on 2026-04-11 with `Closed in #656`.",
+    "In the validated full-history clone, `git show 52d03a66b15358e8fd2caeb5b063044c8aa839d2 -- include/chaiscript/chaiscript_stdlib.hpp include/chaiscript/dispatchkit/bootstrap_stl.hpp` shows the first addition of <future>, future bindings, and `std::async(std::launch::async, t_func)` under the script name `async`. `git log -L 51,54:include/chaiscript/chaiscript_stdlib.hpp 1b27d0dd15f45b4781273bc039713a8d8608cf86` follows that same registration through formatting/refactor-only edits back to 52d03a66b15358e8fd2caeb5b063044c8aa839d2; repository-wide `git log --all -S 'std::async' -- .` independently includes that origin.",
+    "Direct-parent check: `git grep -n -E 'std::async|\"async\"|future_type' a32a180a063d9186ca38b2708a9c19d50da378db -- include` returns no matches, while the BIC diff adds all three. The BIC is an ordinary one-parent commit, not a move, revert, release/backport, or squash aggregate, so no member decomposition is needed.",
+    "Release boundary: `git tag --contains 52d03a66b15358e8fd2caeb5b063044c8aa839d2 --sort=version:refname` starts at v5.6.0 and then lists v5.7.0 through v5.8.6, v6.0.0, and v6.1.0 (plus non-release Test_Release and wasm-latest); v5.5.1 does not contain the BIC. Thus the described built-in-async flaw first shipped in v5.6.0 and remains in every later numbered release through the advisory's latest affected v6.1.0.",
+    "Direct fix: `git show 7b95ff5126f0365c101b08fa33b50ae387342484` removes the untracked std::async registration, registers async from ChaiScript_Basic with Dispatch_Engine::track_async_thread, stores the threads, and makes the engine destructor call join_async_threads before member teardown. It also adds an engine-lifetime regression reproducer. PR https://github.com/ChaiScript/ChaiScript/pull/656 explicitly says issues #632 and #636 share this threads-outliving-engine root cause. `git tag --contains 7b95ff5126f0365c101b08fa33b50ae387342484` is empty, so the fix is present in repository history after v6.1.0 but is not contained in any release tag in this clone.",
+    "BIC-only AI check: raw commit object 52d03a66b15358e8fd2caeb5b063044c8aa839d2 has tree 4f370143e2a87d8f469dd8e5a7648343c3e83d9d, sole parent a32a180a063d9186ca38b2708a9c19d50da378db, human author/committer Jason Turner, and no trailers. The Claude/leftibot evidence on the 2026 fix is later fix-only evidence and is excluded from the verdict by the BIC-only rule."
+  ],
+  "reasoning": "The vulnerable Type_Info access is reached only because an engine-created async worker has no lifetime tie to the engine. The smallest causal change is therefore the 2015 commit that first exposed an untracked std::async worker to ChaiScript code, rather than the much older bare_equal comparison or later rewrites that preserved the same async behavior. Its immediate parent has neither future support nor an async registration, and line history/pickaxe converge on the same BIC. The 2026 fix closes the same lifetime gap by tracking and joining workers before engine teardown and is the direct fix for #636. Because the introducer commit object is human-authored and has no AI/bot marker, this is NOT_AI; AI attribution on the later fix cannot change a BIC-only judgment.",
+  "remaining_gap": null
+}

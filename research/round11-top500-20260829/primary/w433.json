@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-764e1cb0cc9cbb2a37321577",
+  "case_id": "GHSA-c66c-vq6w-fvh5",
+  "repo": "siderolabs/omni",
+  "advisory_ids": [
+    "CVE-2026-45723",
+    "GHSA-c66c-vq6w-fvh5"
+  ],
+  "bug_semantics": "An authenticated Operator can supply TalosVersion containing ../ segments to managementServer.CreateSchematic. When an installation medium has an overlay, Omni passes that unvalidated value to imageFactoryClient.OverlaysVersions; the image-factory client interpolates it into /version/%s/overlays/official and URL path joining normalizes the traversal, so Omni performs a same-host GET to an unintended image-factory path and reflects HTTP error-body text to the caller.",
+  "flaw_origin": "The smallest public Git object that created the vulnerable Omni data flow is 7486bb8d20d42b6c2fddda9e641bca55601b1dd9. It added overlay support to CreateSchematic and, in the same atomic commit, forwarded caller-controlled request.TalosVersion to Client.OverlaysVersions without validating it. Later commits 5057ba92cb2c32f307847faeb80d2a739c839263 and d3e4884ba7f73e7d3c6b6907fec16cce602bbc4e only changed the client wrapper and moved the surviving call into getOverlay; they did not originate the flaw.",
+  "introducer_sha": "7486bb8d20d42b6c2fddda9e641bca55601b1dd9",
+  "introducer_parent": "e580f14e8ec1808e32d7e8052d5f2e8a85a79cd2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names author and committer Artem Chernyshev <artem.chernyshev@talos-systems.com>; its message has only Fixes and Signed-off-by trailers and has no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "13c3f289789842e1fd954d98babb34b94eea1192",
+  "direct_fix_sha": "13c3f289789842e1fd954d98babb34b94eea1192",
+  "evidence": [
+    "GitHub's reviewed vendor advisory https://github.com/siderolabs/omni/security/advisories/GHSA-c66c-vq6w-fvh5 and live https://api.github.com/advisories/GHSA-C66C-VQ6W-FVH5 identify CVE-2026-45723, describe the TalosVersion-to-OverlaysVersions path traversal, report withdrawn_at=null, and give affected ranges <1.6.6 and >=1.7.0,<1.7.3 with fixes 1.6.6 and 1.7.3.",
+    "CVE.org was checked directly on 2026-08-29: https://www.cve.org/CVERecord?id=CVE-2026-45723 returned the record application's HTTP 200 shell, while https://cveawg.mitre.org/api/cve/CVE-2026-45723 returned HTTP 404; the repository advisory itself remains published and the vulnerable and fixed trees are independently reproducible from the assigned clone.",
+    "git show 7486bb8d20d42b6c2fddda9e641bca55601b1dd9 -- internal/backend/grpc/schematics.go adds auth.WithRole(role.Operator), reads request.MediaId, checks overlay support from request.TalosVersion, and calls s.imageFactoryClient.Client.OverlaysVersions(ctx, request.TalosVersion) without validation.",
+    "Direct parent-tree verification with git show e580f14e8ec1808e32d7e8052d5f2e8a85a79cd2:internal/backend/grpc/schematics.go plus searches for OverlaysVersions and request.TalosVersion found neither vulnerable call nor the new overlay data flow; the BIC diff introduces them.",
+    "git log -G 'OverlaysVersions\\(ctx, (request|req)\\.TalosVersion\\)' -- internal/backend/grpc/schematics.go traces the first write to 7486bb8d20d42b6c2fddda9e641bca55601b1dd9, a wrapper-only edit in 5057ba92cb2c32f307847faeb80d2a739c839263, and a move into getOverlay in d3e4884ba7f73e7d3c6b6907fec16cce602bbc4e; the BIC is a normal one-parent commit, not a squash aggregate.",
+    "git cat-file commit 7486bb8d20d42b6c2fddda9e641bca55601b1dd9 shows author and committer Artem Chernyshev and only Fixes and Signed-off-by message trailers; no commit-object AI attribution marker is present.",
+    "Original direct fix 13c3f289789842e1fd954d98babb34b94eea1192 adds semver.ParseTolerant(req.TalosVersion) at the start of getOverlay and returns InvalidArgument before OverlaysVersions; its parent ced79da6c032d2103803eb53343d0916cc957d2a still calls OverlaysVersions with no such validation.",
+    "Tag-tree and ancestry checks show BIC 7486bb8d20d42b6c2fddda9e641bca55601b1dd9 in vulnerable v1.6.5 and v1.7.2 and in both patched tags. v1.6.5 and v1.7.2 lack the semver guard; v1.6.6 (9769f9442e302e000401e351ffd6d6fb3671a5bf) contains cherry-pick 3e69e80802624bf322f16aa499d5eafca16d0025, and v1.7.3 (e70a16e4a226aa2f98643dbed6664edc1a5e90e7) contains cherry-pick 9426c2cabccaa1d442bc8ebf28c16cae2d7c6ff7, each carrying the same direct validation from 13c3f289789842e1fd954d98babb34b94eea1192.",
+    "Release sources https://github.com/siderolabs/omni/releases/tag/v1.6.6 and https://github.com/siderolabs/omni/releases/tag/v1.7.3 list the corresponding add-more-input-validations cherry-picks and match the advisory's patched-version boundaries."
+  ],
+  "reasoning": "The vulnerability is real and reproducible as a source-to-sink chain: Operator-authorized CreateSchematic accepts TalosVersion, the BIC's overlay branch forwards it unchanged to OverlaysVersions, and the vendor advisory documents the downstream path interpolation and normalization that enables same-host traversal and error-body disclosure. The atomic first-write search resolves 7486bb8d20d42b6c2fddda9e641bca55601b1dd9 rather than later wrapper, refactor, release, or backport commits; its immediate parent lacks the call and flow. The upstream fix 13c3f289789842e1fd954d98babb34b94eea1192 rejects non-semver input before the sink, and its two release-branch cherry-picks align exactly with v1.6.6 and v1.7.3 while the preceding tags remain vulnerable. AI attribution is judged only on the BIC commit object: it is authored and committed by Artem Chernyshev and contains no AI marker, so the closed causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

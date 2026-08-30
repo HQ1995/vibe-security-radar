@@ -1,0 +1,50 @@
+{
+  "worker": "w022",
+  "review_agent_id": "r389_w022",
+  "class_id": "alias-f4fa8f88498d39fc78df240f",
+  "case_id": "GHSA-q5qx-vc88-69hw",
+  "repo": "scriban/scriban",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "Vendor GHSA-xw6w-9jjh-p9cr and CVE-2026-74785 describe three expression-evaluation DoS paths: unbounded string multiplication, uncapped BigInteger shifts, and range enumeration bypassing LoopLimit. Clone replay found the matching vulnerable operations in tag 6.6.0."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "46054810b50b03a6d19cd51886321cbbefa5d589 is the unique public-history root and first writes the unbounded string loop, lazy range iterators, ArrayFunctions Join/Size consumers, and loop controls limited to for/while. Vector 2 independently first appears in sibling BIC 4175ec0cd75adcc459810abbf9e3e0a9d360ffb3 as the two uncapped BigInteger ShiftLeft returns; later edits preserve rather than originate vectors 1 and 3."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "46054810b50b03a6d19cd51886321cbbefa5d589 has no parent in its commit object and rev-parse of its parent fails. The immediate parent of 4175ec0cd75adcc459810abbf9e3e0a9d360ffb3 is e5fcf501d317e76871c1438d64c2090fda50d977, which lacks CalculateLongWithInt, CalculateBigIntegerNoFit, and the vulnerable BigInteger shift returns."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The initial-version BIC is the smallest surviving public object: it is the sole repository root, has no parent, no replace/graft history, and no finer public member can be reconstructed. The later shift BIC is an ordinary single-parent commit whose exact added lines were inspected; neither BIC was inferred from a fix, move, or squash aggregate."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "detail": "Annotated tag 6.6.0 resolves to b5ac4bf30459fdc76964e3f751e16f7e96079ea7 and contains both 46054810b50b03a6d19cd51886321cbbefa5d589 and 4175ec0cd75adcc459810abbf9e3e0a9d360ffb3, while its tree still contains all three vulnerable mechanisms. This matches the vendor range <= 6.6.0 and CVE range < 7.0.0."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "detail": "Annotated tag 7.0.0 resolves to 25d148a104dd4d679a1a1932442616599e003c2f and contains direct fix 2d01bd15a1114fac2533aa005036e07389ee89db; 6.6.0 does not contain that fix. The 7.0.0 tree contains the LimitToString, ValidateShiftAmount, and ValidateRangeSize guards."
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "detail": "2d01bd15a1114fac2533aa005036e07389ee89db directly adds the string multiplication size check, shift magnitude validation, and eager range-size validation, with focused regression tests. Its parent 98563216488161a9edeba6c37c7cf82c98319c9b has the vulnerable operations and none of those guards."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "Commit objects for both mechanism BICs, 46054810b50b03a6d19cd51886321cbbefa5d589 and 4175ec0cd75adcc459810abbf9e3e0a9d360ffb3, identify Alexandre Mutel as author and committer and contain no Co-authored-by, Generated-with, bot, Copilot, ChatGPT, or Claude marker. Copilot appears only on the 2026 fix and is excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "The primary record correctly treats the unique parentless root as the structured introducer for vectors 1 and 3 and separately closes the later atomic BIC for vector 2.",
+    "The direct fix and affected/fixed release boundaries independently reproduce the authoritative advisory.",
+    "No corrected field or unresolved protocol gate remains; NOT_AI is confirmed from BIC-only metadata, not from the AI-marked fix."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,25 @@
+{
+ "class_id": "alias-e1282b377c92494fed5ec65f",
+ "case_id": "GHSA-vg28-83rp-8xx4",
+ "repo": "blakeblackshear/frigate",
+ "advisory_ids": [
+  "CVE-2026-33125",
+  "GHSA-vg28-83rp-8xx4"
+ ],
+ "bug_semantics": "DELETE /api/users/{username} (frigate/api/auth.py delete_user) removed a user by id with no admin-role dependency. GET/POST /users later required require_role([\"admin\"]), and PUT /users/{username}/password had its own identity check, but delete_user stayed unguarded through v0.16.2. Any authenticated non-admin (viewer) who could hit the route could delete other accounts, including admin, causing integrity loss and DoS. GHSA-vg28-83rp-8xx4 / CVE-2026-33125 (CWE-285) is not withdrawn; GitHub advisory patched versions start at 0.16.3.",
+ "flaw_origin": "The unguarded delete handler was first written in reconstructed PR #11347 member fafc0aab2fea3ec3eab86fb3a2b02629ca0de497 (\"move users to database instead of config\", Blake Blackshear). That commit added @AuthBp.route(\"/users/<username>\", methods=[\"DELETE\"]) def delete_user(username): User.delete_by_id(username).execute() with no role check. Parent 7cf3abc850ca3cd335203a5654d801e58a2cc816 has frigate/api/auth.py but only /auth and /login — no users CRUD and no delete_user. Public history later squashed the PR as 1133202cbd12ec6a92fa1b446889ff2d75986def (\"Auth! (#11347)\"); that squash is not the BIC. FastAPI rewrite cffc431b and viewer-role PR 74ca009 kept the same unguarded DELETE while adding admin deps only on GET/POST /users. Direct fix is 153bcdba3163d5668c7ef927b682a1c592cc0830 (\"require admin role to delete users\"), landed by squash 592c245dcd25919e7d39bdae2462847c6323850f (PR #21061), first released in v0.16.3.",
+ "introducer_sha": "fafc0aab2fea3ec3eab86fb3a2b02629ca0de497",
+ "introducer_parent": "7cf3abc850ca3cd335203a5654d801e58a2cc816",
+ "introducer_parent_absent": true,
+ "squash_decomposed": true,
+ "decomposed_shas": [
+  "fafc0aab2fea3ec3eab86fb3a2b02629ca0de497"
+ ],
+ "ai_marker": "absent; author Blake Blackshear <blakeb@blakeshome.com>, committer Blake Blackshear <blakeb@blakeshome.com>; git cat-file -p fafc0aab2fea3ec3eab86fb3a2b02629ca0de497 shows only subject \"move users to database instead of config\" with no Co-Authored-By, Generated-with, Cursor/Claude/Copilot/GPT trailer, or bot identity",
+ "verdict": "NOT_AI",
+ "fix_sha": "592c245dcd25919e7d39bdae2462847c6323850f",
+ "direct_fix_sha": "592c245dcd25919e7d39bdae2462847c6323850f",
+ "evidence": "GHSA-vg28-83rp-8xx4 / CVE-2026-33125 names DELETE /api/users/admin as CWE-285; withdrawn_at is null; live advisory affected 0.16.2 / patched 0.16.3. Clone /home/hanqing/agents/ai-slop/.ai-slop/state/repos/blakeblackshear_frigate. git log -S 'def delete_user' -- frigate/api/auth.py first public landing is squash 1133202cbd12ec6a92fa1b446889ff2d75986def (single parent a70dd02788685ca7e345ce921df08429d27807e3; git cat-file -e parent:frigate/api/auth.py fails). PR #11347 head 20b9a85b89a834df886240e4e6f738824454333d is still in the clone (35 members). git log -S 'def delete_user' a70dd027..20b9a85b -- frigate/api/auth.py yields only fafc0aab2fea3ec3eab86fb3a2b02629ca0de497. git cat-file -p fafc0aab: human author/committer only. git cat-file -e 7cf3abc8:frigate/api/auth.py succeeds; git grep delete_user|users/<username> on that parent is empty. v0.16.2:frigate/api/auth.py:450 is still @router.delete(\"/users/{username}\") with no require_role; GET/POST /users already have require_role([\"admin\"]). v0.16.3:450 adds dependencies=[Depends(require_role([\"admin\"]))]. git merge-base --is-ancestor 592c245d v0.16.3 succeeds and v0.16.2 fails. Member 153bcdba (parent 914ff4f1e5c2a15e93c8b61d317c9e5ffa141ae3) is the one-line admin-dep add; follow-up 6437ebb8 blocks deleting username==\"admin\". PR #21061 https://github.com/blakeblackshear/frigate/pull/21061. Field reconciliation 2026-08-29: direct_fix_sha updated to the landed fix 592c245dcd25919e7d39bdae2462847c6323850f; original independent value 153bcdba3163d5668c7ef927b682a1c592cc0830 retained here in evidence.",
+ "reasoning": "Vulnerability first: an unauthenticated-at-handler DELETE that removes arbitrary users is real CWE-285; vendor patched it in 0.16.3, so not FALSE_POSITIVE. BIC is the smallest first-write of that handler. The Auth! squash 1133202 is an aggregate; PR members remain reachable from 20b9a85b, and fafc0aab is the only member that introduced delete_user. Parent 7cf3abc8 has auth.py without the users DELETE route (parent-tree line absence verified). Later FastAPI port and viewer-role work carried the same unguarded DELETE; they are not first-write. Fix: 153bcdba is the direct sink change; 592c245d is the master squash contained in tag v0.16.3 and not v0.16.2. AI second: judge only fafc0aab — Blake Blackshear, 2024-05-09, no AI trailers — therefore NOT_AI. Squash/PR Co-Authored-By Nicolas Mowen and later AI-looking work do not attribute the BIC.",
+ "remaining_gap": null
+}

@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-20648a6f1e6e73fc25466c98",
+  "case_id": "GHSA-m42h-3232-vpv3",
+  "repo": "nltk/nltk",
+  "advisory_ids": [
+    "CVE-2026-12243",
+    "GHSA-m42h-3232-vpv3"
+  ],
+  "bug_semantics": "nltk.data.find() accepts a resource name that is supposed to remain beneath an NLTK data search root. The unsafe-path check examines the still-encoded resource_name, but the filesystem branch subsequently calls url2pathname(resource_name), so percent escapes such as %2e%2e become .. only after validation. os.path.join(path_, '../...') then resolves outside path_; os.path.exists() accepts the escaped target, find() returns a FileSystemPathPointer, and load()/open() reads the arbitrary process-readable file. In 3.9.4 the central path sentinel is reached, but ENFORCE=False only emits a warning and still calls builtins.open, so it does not close the read.",
+  "flaw_origin": "Commit 51ceb7517237d78b843a95db56629b11d41ede2b made a Windows compatibility change in nltk/data.py: it imported url2pathname and changed the ordinary-filesystem join from os.path.join(path_, resource_name) to os.path.join(path_, url2pathname(resource_name)). That is the smallest commit that first added percent-decoding before filesystem access and thereby made encoded traversal components active. Later raw-string path checks exposed the decode-after-check ordering, but did not originate the vulnerable decoding mechanism.",
+  "introducer_sha": "51ceb7517237d78b843a95db56629b11d41ede2b",
+  "introducer_parent": "e8c09039f8d805437a6fea14a3bce619db452eee",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names author and committer as `Steven Xu <>`, has one parent, and contains only the message `convert the resource names to paths in windows so data.doctest passes`; it has no Co-Authored-By, Generated-with, AI, or bot marker/trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "155e40343cff0bf50d233e274a12e04d1428b1d9",
+  "direct_fix_sha": "155e40343cff0bf50d233e274a12e04d1428b1d9",
+  "evidence": [
+    "First-party advisory https://github.com/nltk/nltk/security/advisories/GHSA-m42h-3232-vpv3 describes `%2e%2e` decoding after path checks, arbitrary reads through nltk.data.find()/load(), affected versions <=3.9.4, and patched versions >=3.10.0; issue https://github.com/nltk/nltk/issues/3504 gives the same vulnerable statement and proof of concept.",
+    "`git log -L 655,655:nltk/data.py aec4fce1b84ad725b8975f7365b23a4f626572a9^1` traces `p = os.path.join(path_, url2pathname(resource_name))` to 51ceb7517237d78b843a95db56629b11d41ede2b, whose one-file diff imports url2pathname and replaces the raw resource_name join with the decoding call.",
+    "Direct parent-tree comparison `git diff e8c09039f8d805437a6fea14a3bce619db452eee 51ceb7517237d78b843a95db56629b11d41ede2b -- nltk/data.py` proves immediate-parent absence: the parent has `p = os.path.join(path_, resource_name)`, while the BIC first has `p = os.path.join(path_, url2pathname(resource_name))` (and likewise adds decoding for the zipfile component). A Python stdlib check produced `url2pathname('%2e%2e/SECRET_credentials.txt') == '../SECRET_credentials.txt'`.",
+    "`git cat-file -p 51ceb7517237d78b843a95db56629b11d41ede2b` shows parent e8c09039f8d805437a6fea14a3bce619db452eee, author/committer Steven Xu, the Windows-path message, and no trailers or AI/bot identity. The BIC is an ordinary single-parent commit, not a squash or merge requiring decomposition.",
+    "Tag reachability places the BIC in the first subsequent prerelease 3.0.0b2 (peeled commit 48c40a00ad34344d79a5114912b69e56c8b1aa63) and release 3.0.0 (82e137d26bb4b737d1fe7cfc8a2387589483d26e), and it remains reachable from 3.9.4 (ad9c96ba00a16923ffe917eacf63f1707bfa2d08), establishing the vulnerable release history through the advisory's upper boundary.",
+    "The advisory-linked PR #3522 merged as aec4fce1b84ad725b8975f7365b23a4f626572a9 and routed FileSystemPathPointer.open() through nltk.pathsec, but that merge is already reachable from tag 3.9.4 and its nltk/pathsec.py sets `ENFORCE = False`; validation only warns and permits builtins.open, so it is preparatory mitigation rather than the effective version-boundary fix.",
+    "PR https://github.com/nltk/nltk/pull/3593 explicitly changes the default to strict path security. Its direct single-parent commit 155e40343cff0bf50d233e274a12e04d1428b1d9 changes nltk/pathsec.py from `ENFORCE = False` in parent 4b71ed5cd39722037a20888759409940c4227e6f to `ENFORCE = True`, making the already-routed decoded escaped path raise instead of opening it. Ancestry checks show 155e40343cff0bf50d233e274a12e04d1428b1d9 is absent from 3.9.4 but present in v3.10.0 (peeled tag commit bd49f9011d7dc8c6a36b3c4ae71f04060c9b3fb9), matching the patched boundary."
+  ],
+  "reasoning": "The vulnerable primitive is not the 2026 regex check itself: it is the 2014 conversion of an attacker-controlled logical resource name into a decoded native path inside find(). Before 51ceb7517237d78b843a95db56629b11d41ede2b, the immediate parent joined the encoded text unchanged, so `%2e%2e` did not become a parent-directory component; the BIC first introduced that transformation. The line survived into releases beginning with 3.0.0b2 and through 3.9.4. PR #3522 added a resolved-path sentinel and wired file opens through it, but deliberately shipped warn-only, explaining why its merge is in still-affected 3.9.4. Commit 155e40343cff0bf50d233e274a12e04d1428b1d9 is the smallest final lifecycle change that turns the sentinel into enforcement and is present at the 3.10.0 patched boundary. AI attribution is judged only from the BIC object: its human author/committer identity and trailer-free message contain no AI signal, so the closed verdict is NOT_AI regardless of Copilot discussion on the much later fix PR.",
+  "remaining_gap": null
+}

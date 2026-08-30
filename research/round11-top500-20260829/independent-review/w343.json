@@ -1,0 +1,26 @@
+{
+  "worker": "w343",
+  "review_agent_id": "r389_w343",
+  "class_id": "alias-05664ab63a43dfe6d17a9839",
+  "case_id": "GHSA-v853-w46p-fv2h",
+  "repo": "apache/activemq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. BrokerView accepts connector discovery URIs from authenticated JMX/Jolokia calls. The incomplete mitigation checks the outer scheme, then inspects components only when URISupport.isCompositeURI returns true; that predicate requires the scheme-specific part to begin with '(', although parseComposite accepts the non-parenthesized form. Thus static:vm://... and masterslave:vm://...,... skip inner vm rejection; VMTransportFactory consumes brokerConfig, calls BrokerFactory.createBroker, and the xbean path constructs ResourceXmlApplicationContext before later broker validation.",
+    "atomic_bic": "Confirmed ef53b5b7b7ba2a14e67f1fcbf9126e79625430d0 as the smallest public first-write object for this residual flaw. Its BrokerView change first adds validateAllowedUrl and the vulnerable if (URISupport.isCompositeURI(uri)) gate at both connector entry points. Later #1847/#1900 changes retain that gate and are follow-ons, not first writes.",
+    "immediate_parent_absence": "Confirmed. The BIC has the single immediate parent bedb10801c4d11e12f61ef8a9d9cf3407be50e97. That parent BrokerView contains direct brokerService.addConnector/addNetworkConnector calls and no validateAllowedUrl, validateAllowedUri, or isCompositeURI reference; its BrokerView blob is 4f0ab2c7a64d964f60280a310ba9bcf759624a8c.",
+    "squash_member_decomposition": "Confirmed. PR member ef53b5b7b7ba2a14e67f1fcbf9126e79625430d0 and GitHub squash a4c771f2440efb3ae8cb9b9b66483fc2a8c6a249 have identical old/new blobs for all three changed files and identical stable patch-id 42dd4bee3aec4080fd73ce075d5eb7858de13079. The reconstructed member, rather than the squash aggregate, is therefore the atomic BIC.",
+    "affected_release_membership": "Confirmed. Backports of the incomplete validator are ancestors of activemq-5.19.4 through 5.19.6 but not 5.19.3, and activemq-6.2.3 through 6.2.5 but not 6.2.2. BrokerView at tags 5.19.6 and 6.2.5 still gates component inspection on isCompositeURI, matching the advisory's affected ranges.",
+    "fixed_release_membership": "Confirmed. Fix backport c034ea803fc94656ffaeaca56ade1a45afac68ce is an ancestor of activemq-5.19.7 but not 5.19.6; c1b44af11530496a704aee983e4134cad16700cc is an ancestor of activemq-6.2.6 but not 6.2.5. The CVE record is PUBLISHED and names 5.19.7 and 6.2.6 as the first fixed releases.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed direct fix cf0006041d2c78c4638f5ea513db4d59515998f6. It removes the isCompositeURI precondition, always attempts parseComposite, recursively checks components with schemes, and adds tests for non-parenthesized composite and nested URIs. The main fix is an ancestor of activemq-6.3.0; the two verified backports supply the advisory release fixes.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only. ef53b5b7b7ba2a14e67f1fcbf9126e79625430d0 is authored and committed by Christopher L. Shannon <cshannon@apache.org>; its raw commit has no Co-Authored-By, Generated-with, bot identity, or other AI marker. GitHub's committer identity on the separate squash is merge machinery and was not used to attribute the BIC."
+  },
+  "findings": [
+    "The primary record correctly distinguishes this CVE's vulnerable first-write—the incomplete CVE-2026-34197 validator—from the older underlying Jolokia-to-VM-transport RCE.",
+    "Independent clone replay confirms the BIC, parent, squash decomposition, direct fix, affected tags, fixed tags, and human-only BIC metadata stated by the primary record.",
+    "The authoritative CVE record is PUBLISHED, describes the non-parenthesized static/masterslave wrapper bypass, and is consistent with NOT_AI rather than FALSE_POSITIVE."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

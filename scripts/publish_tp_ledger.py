@@ -386,6 +386,21 @@ def infer_hunk_file(hunk: dict) -> str | None:
     return None
 
 
+def trim_mid_sentence(text: str) -> str:
+    """Cut a clipped annotation at its last sentence boundary, never mid-word.
+
+    Marker-style strings (sink:/source:/key=value) have no sentence boundary and
+    pass through untouched.
+    """
+    stripped = text.rstrip()
+    if len(stripped) < 120 or stripped[-1:] in ".!?\"')":
+        return text
+    boundary = stripped.rfind(". ")
+    if boundary < int(len(stripped) * 0.6):
+        return text
+    return stripped[: boundary + 1]
+
+
 def scrub_evidence(evidence: dict | None) -> dict | None:
     if not isinstance(evidence, dict):
         return None
@@ -406,12 +421,37 @@ def scrub_evidence(evidence: dict | None) -> dict | None:
             }
         )
     cleaned["steps"] = steps
+    full_summary = (
+        cleaned.get("summary")
+        if len(str(cleaned.get("summary") or "")) > 180
+        else (cleaned.get("mechanism") or cleaned.get("summary") or "")
+    )
+    fulltexts = load_json(ANNOTATION_FULLTEXTS) or {}
     for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
         hunks = []
         for hunk in evidence.get(key) or []:
             item = dict(hunk)
-            if CJK_RE.search(str(item.get("annotation") or "")):
+            annotation = str(item.get("annotation") or "")
+            if CJK_RE.search(annotation):
                 item["annotation"] = ""
+            elif fulltext := fulltexts.get(annotation):
+                item["annotation"] = fulltext
+            elif (
+                len(annotation) == 180
+                and (prose := ANNOTATION_PROSE.get(annotation[:100]))
+                and prose.startswith(annotation[:100])
+            ):
+                item["annotation"] = prose
+            elif (
+                len(annotation) == 180
+                and len(full_summary) > 180
+                and full_summary.startswith(annotation[:100])
+            ):
+                item["annotation"] = full_summary
+            else:
+                trimmed = trim_mid_sentence(annotation)
+                if trimmed != annotation:
+                    item["annotation"] = trimmed
             item["file"] = infer_hunk_file(item)
             hunks.append(item)
         cleaned[key] = hunks
@@ -815,17 +855,93 @@ def load_advisory_dates() -> dict[str, str]:
     return dates
 
 
+AI_CASE_SUMMARIES = ROOT / "research/gate-campaign-20260830/summaries-by-alias.json"
+ANNOTATION_FULLTEXTS = ROOT / "research/gate-campaign-20260830/annotation-fulltext.json"
+ROUND_ADJUDICATION = ROOT / "research/round9-top200-20260828/adjudication"
+
+
+def ai_summary_overlay(case: dict) -> None:
+    """Apply the generated one-line finding to a case's evidence summary in place."""
+    summary = AI_SUMMARIES.get(str(case.get("case_id") or "").upper())
+    if not summary:
+        return
+    evidence = case.get("code_evidence")
+    if not isinstance(evidence, dict):
+        evidence = {}
+        case["code_evidence"] = evidence
+    evidence["summary"] = summary
+    mechanism = AI_SUMMARIES_MECHANISM.get(str(case.get("case_id") or "").upper())
+    if mechanism and not CJK_RE.search(mechanism):
+        evidence["mechanism"] = mechanism
+
+
 def load_generated_evidence() -> dict[str, dict]:
     payload = load_json(GENERATED_EVIDENCE)
     if not isinstance(payload, dict):
         return {}
-    return {
+    evidence = {
         str(key).upper(): value
         for key, value in payload.items()
         if isinstance(value, dict)
         and (value.get("comparison_hunks") or value.get("candidate_hunks"))
     }
+    return evidence
 
+
+def _index_prose(value: object) -> None:
+    """Index long prose strings by their 100-char prefix for annotation recovery."""
+    if isinstance(value, dict):
+        for item in value.values():
+            _index_prose(item)
+    elif isinstance(value, list):
+        for item in value:
+            _index_prose(item)
+    elif isinstance(value, str) and len(value) > 200:
+        ANNOTATION_PROSE[value[:100]] = value
+
+
+def _load_summary_maps() -> None:
+    global AI_SUMMARIES, AI_SUMMARIES_MECHANISM, ANNOTATION_PROSE
+    overlay = load_json(AI_CASE_SUMMARIES) or {}
+    AI_SUMMARIES = {}
+    AI_SUMMARIES_MECHANISM = {}
+    ANNOTATION_PROSE = {}
+    for key, value in overlay.items():
+        if not isinstance(value, dict):
+            continue
+        if value.get("summary"):
+            AI_SUMMARIES[str(key).upper()] = str(value["summary"])
+        if value.get("mechanism"):
+            AI_SUMMARIES_MECHANISM[str(key).upper()] = str(value["mechanism"])
+    for line in LEDGER.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            _index_prose(json.loads(line))
+        except (json.JSONDecodeError, ValueError):
+            continue
+    for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
+        try:
+            _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, ValueError, OSError):
+            continue
+    for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
+        for line in patch_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                _index_prose(json.loads(line))
+            except (json.JSONDecodeError, ValueError):
+                continue
+    for key, mechanism in AI_SUMMARIES_MECHANISM.items():
+        prose = ANNOTATION_PROSE.get(mechanism[:100])
+        if prose and prose.startswith(mechanism):
+            AI_SUMMARIES_MECHANISM[key] = prose
+
+
+AI_SUMMARIES: dict[str, str] = {}
+AI_SUMMARIES_MECHANISM: dict[str, str] = {}
+ANNOTATION_PROSE: dict[str, str] = {}
 
 def load_repo_languages() -> dict[str, str]:
     payload = load_json(REPO_LANGUAGES)
@@ -1122,7 +1238,9 @@ def build_case(
     ) or (cached or {}).get("code_evidence")
     candidates, fixes = public_shas(rec, cached, case_evidence)
     gates = dict(PASS_GATES) if row.get("site_tier") == "ALL_GATES_PASS" else dict(
-        cached.get("gates") if cached and cached.get("gates") else DEFAULT_GATES
+        row.get("gates")
+        or (cached.get("gates") if cached and cached.get("gates") else None)
+        or DEFAULT_GATES
     )
     derived_class = contribution_class(row, rec)
     contribution = (
@@ -1244,8 +1362,8 @@ def build_case(
         )
     return strip_cjk_tree(drop_original_aliases(case))
 
-
 def main() -> None:
+    _load_summary_maps()
     existing = git_head_research_data() or load_json(OUT)
     cache = merge_indexes(
         index_existing(existing),
@@ -1291,6 +1409,8 @@ def main() -> None:
         ]
         cases.append(case)
     cases = merge_duplicate_identities(cases)
+    for case in cases:
+        ai_summary_overlay(case)
 
     root_cause = sum(1 for item in cases if item["ledger_status"] == "AI_ROOT_CAUSE")
     code_flawed = sum(1 for item in cases if item["ledger_status"] == "AI_CODE_FLAWED")
@@ -1337,6 +1457,31 @@ def main() -> None:
         "ai_provenance_families": FAMILIES,
         "cases": cases,
     }
+
+    ai_commit_census = load_json(
+        ROOT / "research/ai-commit-census-current/ai-commit-census.json"
+    )
+    if ai_commit_census.get("total_commits"):
+        window = ai_commit_census.get("window") or {}
+        payload["ai_commit_census"] = {
+            "window": {
+                "since": str(window.get("since") or LEDGER_WINDOW_START),
+                "until": str(window.get("until") or LEDGER_WINDOW_END),
+            },
+            "repos_scanned": ai_commit_census.get("repos_scanned") or 0,
+            "repos_missing": ai_commit_census.get("repos_missing") or [],
+            "total_commits": ai_commit_census.get("total_commits") or 0,
+            "marked_ai_commits": ai_commit_census.get("marked_ai_commits") or 0,
+            "families": {
+                key: {
+                    "marked": (value or {}).get("marked") or 0,
+                    "trailer": (value or {}).get("trailer") or 0,
+                    "author": (value or {}).get("author") or 0,
+                    "text": (value or {}).get("text") or 0,
+                }
+                for key, value in (ai_commit_census.get("families") or {}).items()
+            },
+        }
 
     leaks = [
         case["case_id"]

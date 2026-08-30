@@ -1,0 +1,27 @@
+{
+  "worker": "w151",
+  "review_agent_id": "r389_w151",
+  "class_id": "alias-09ebd7252f1d98948899ccfb",
+  "case_id": "GHSA-6jjx-jh3j-cxqj",
+  "repo": "baserow/baserow",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: a41ab1ac created parseMention, which interpolates user.name unescaped into a raw HTML span; grid and card rich-text components pass workspace users through parseMarkdown and render its result with v-html. The account API accepts first_name as a plain CharField. CVE-2026-76837 is PUBLISHED and records versions below 2.3.0 as affected.",
+    "atomic_bic": "CONFIRMED: git log -S for the exact data-label interpolation has only a41ab1ac87009d87db9a06c8a6973b8df954c26d as the add and a870dc0d38c98eff045683bc409e64f92b9ed1ce as the removal. The former created mention.js and registered parseMention; later 8636a082 only moved the className guard.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 976bccde3b2722d3a392fd0361a3f87789d90ab6 has no mention.js and no parseMention or raw data-label/user.name mention template. Its existing TipTap mention renderer returns a structured renderHTML array, not the vulnerable HTML-string path.",
+    "squash_member_decomposition": "CONFIRMED: merge 951cf2ca5ca76b952108545be7c6f9b5e6d1a6ff has parents 976bccde and a41ab1ac; its unique second-parent range contains only a41ab1ac. The surviving non-merge first-write commit is therefore the finest public member available, so squash_decomposed=false is appropriate.",
+    "affected_release_membership": "CONFIRMED: the BIC is not an ancestor of tag 1.23.2, whose tree lacks mention.js; it is an ancestor of tags 1.24.0 and 2.2.2, both of which retain the unescaped user.name interpolation.",
+    "fixed_release_membership": "CONFIRMED: fix a870dc0d38c98eff045683bc409e64f92b9ed1ce is not an ancestor of 2.2.2 and is an ancestor of 2.3.0; tag 2.3.0 escapes user.name before interpolation. This matches the CVE affected range below 2.3.0.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: a870dc0d directly escapes user.name for both the data-label attribute and span body, and adds a stored-XSS regression test. Its immediate parent 60e5b7c4d78ebe6b40ea7c87e5150233e3cc9e58 still contains the vulnerable interpolation.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC object names Davide Silvestri as human author and committer and contains no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, or bot marker. Later fix/review activity is irrelevant to BIC attribution; NOT_AI is supported."
+  },
+  "findings": [
+    "Primary field introducer_parent_absent=false contradicts both its own evidence and direct clone replay: the vulnerable raw-HTML mention path is absent from the immediate parent.",
+    "The identified BIC, release boundary, direct fix, and BIC-only NOT_AI attribution are independently confirmed."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

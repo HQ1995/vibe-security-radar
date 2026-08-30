@@ -1,0 +1,39 @@
+{
+  "class_id": "alias-7c401778404a8fc933d1c7b4",
+  "case_id": "GHSA-2mwq-hcmq-fqq4",
+  "repo": "thorsten/phpmyfaq",
+  "advisory_ids": [
+    "CVE-2026-75920",
+    "GHSA-2mwq-hcmq-fqq4"
+  ],
+  "bug_semantics": "phpMyFAQ's authenticated content-backup API (BackupController::download type=content, gated by PermissionType::BACKUP) built a ZipArchive of PMF_CONTENT_DIR — including content/core/config/database.php — at the web-accessible document-root path PMF_ROOT_DIR/content.zip, then streamed the file and unlinked it. Unlike archives under content/, that root path is not blocked by content/.htaccess. An unauthenticated client can race GET /content.zip during the write-to-unlink window (or fetch a leftover archive after a failed unlink) and obtain database credentials and other content/. With admin-context XSS, an attacker can trigger the authenticated backup from the victim session and then fetch content.zip without holding BACKUP themselves.",
+  "flaw_origin": "The insecure location was first written on 2024-06-16 in PR #3003 member d28770dc075c5d7d220f7c540e4cdd8620724930 (Jan / @modelrailroader): Backup::createContentFolderBackup() set $zipFile = PMF_ROOT_DIR . DIRECTORY_SEPARATOR . 'content.zip' and BackupController streamed then unlinked that file. Follow-up members a9606c4e (throw on ZipArchive open failure) and 7c055785 (return-type cleanup) kept the same path. GitHub squash-merged the PR as 2cd1dac0ce70b28500a4845f2105c42f82b87a50 onto main. git blame on 4.1.6 still attributes the zipFile assignment to that squash; later refactors (b62cda109, 323aafff05, 7a57114880) did not relocate the archive. Thorsten's 2026-08-02 fix ad858dfb3 (4.1) / 76a6eec23 (main) switched the write to tempnam(sys_get_temp_dir(), 'pmf_content_backup_') and BinaryFileResponse::deleteFileAfterSend().",
+  "introducer_sha": "d28770dc075c5d7d220f7c540e4cdd8620724930",
+  "introducer_parent": "34e30bd2b75f484e373cdaf66ce44514268c6110",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "d28770dc075c5d7d220f7c540e4cdd8620724930",
+    "a9606c4ed1861ff9556db15de09bd902b6903c9a",
+    "7c055785f3eeb84dfafec34052d76a8fde928573"
+  ],
+  "ai_marker": "absent; BIC d28770dc author Jan <96944229+modelrailroader@users.noreply.github.com>, committer Jan <96944229+modelrailroader@users.noreply.github.com>, unsigned; commit message is only 'feat(api): added possibility for backup of content-folder' with no Co-Authored-By, Generated-with, Copilot, Cursor, or Signed-off-by trailers. Squash landing 2cd1dac0 is likewise unmarked (author Jan, committer GitHub <noreply@github.com>, same subject, no AI trailers).",
+  "verdict": "NOT_AI",
+  "fix_sha": "ad858dfb3a55e84ce69879a4a4c73c83be2eae97",
+  "direct_fix_sha": "ad858dfb3a55e84ce69879a4a4c73c83be2eae97",
+  "evidence": [
+    "CVE.org CVE-2026-75920 state=PUBLISHED (not rejected/withdrawn), assigner VulnCheck, datePublished 2026-08-19T14:01:53Z; GHSA-2mwq-hcmq-fqq4 withdrawn_at=null (unreviewed GitHub Advisory Database mirror of the CVE).",
+    "First-party GHSA-8hmh-mrx6-pqvf (published 2026-08-04, not withdrawn): Sensitive Content Backup ZIP Written to Web-Accessible Document Root; root cause Backup::createContentFolderBackup() $zipFile = PMF_ROOT_DIR . DIRECTORY_SEPARATOR . 'content.zip'; files src/phpMyFAQ/Administration/Backup.php and Controller/Api/BackupController.php; reporter tested v4.1.6; vendor phpmyfaq.de advisory-2026-08-04 states phpMyFAQ <= 4.1.6, solution 4.1.7, thanks kevinnivekkevin.",
+    "CVE/GHSA-2mwq text says 'before v4.1.6' and CVE affected lists 4.1.6 as unaffected, but that range is inconsistent with vendor <=4.1.6 / patched 4.1.7, the reporter's 4.1.6 test, and the trees below; the issue itself is real.",
+    "git log -S 'content.zip' --all: 2cd1dac0ce70b28500a4845f2105c42f82b87a50 (feat add), ad858dfb3a55e84ce69879a4a4c73c83be2eae97 (4.1 fix), 76a6eec23a21f77d95556fd355da6142a94cb192 (main fix), 21ad40be9aa279d642155bda846130730a16811e (test path assertion).",
+    "PR https://github.com/thorsten/phpMyFAQ/pull/3003 merged 2024-06-16T16:44:26Z as GitHub squash 2cd1dac0 (committer GitHub, single parent 5e52e5dcc3a05572a73d2c02d7538c9651faf6bc). Reconstructable members: d28770dc (feat; first-write of content.zip), a9606c4e (fix: throw exception; still content.zip), 7c055785 (fix: improved code; still content.zip). Parent of d28770dc is 34e30bd2b75f484e373cdaf66ce44514268c6110.",
+    "Parent-tree absence: git grep createContentFolderBackup|content.zip|BACKUP_TYPE_CONTENT at 34e30bd2 and at squash-parent 5e52e5dc both empty; 34e30bd2 Backup.php ends at getBackupHeader() with no createContentFolderBackup.",
+    "d28770dc patch (GitHub): phpmyfaq/src/phpMyFAQ/Administration/Backup.php adds public function createContentFolderBackup(): string|bool { $zipFile = PMF_ROOT_DIR . DIRECTORY_SEPARATOR . 'content.zip'; ... }; BackupController adds type=content, file_get_contents + unlink($backupFile).",
+    "4.1.6 (58c1d7f2fa36f7074664fc6d862afee0ca8bcc89, package.json 4.1.6) still has $zipFile = PMF_ROOT_DIR . DIRECTORY_SEPARATOR . 'content.zip' at Backup.php:219; git blame -L 219,219 4.1.6 attributes that line to squash 2cd1dac0 (Jan 2024-06-16).",
+    "4.1.7 (28d6f641c16e3015d51d0a01d14841b845251f35, package.json 4.1.7) has $zipFile = tempnam(directory: sys_get_temp_dir(), prefix: 'pmf_content_backup_'). git merge-base --is-ancestor ad858dfb3 4.1.7 yes; ad858dfb3 not in 4.1.6. Squash 2cd1dac0 is in 4.1.6 and 4.0.0-alpha.3+ (absent from 4.0.0-alpha.2).",
+    "fix ad858dfb3 author/committer Thorsten Rinne <thorsten@phpmyfaq.de> 2026-08-02, message 'fix: prevented unauthenticated download of the content backup archive': Backup.php zip path -> tempnam; BackupController uses BinaryFileResponse + deleteFileAfterSend. Main-line equivalent 76a6eec23a21f77d95556fd355da6142a94cb192 (same author/message, not in 4.1.7). Tests added in the fix assert PMF_ROOT_DIR/content.zip is not created.",
+    "BIC-only AI check: d28770dc git object has no AI/co-author trailers (confirmed via GitHub git/commits API and .patch From/Subject). Human contributor @modelrailroader; PR review comments are style-only (throw exception vs false), not AI disclosure."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-75920 is a published (not rejected) VulnCheck CVE mirroring first-party GHSA-8hmh-mrx6-pqvf. The mechanism is CWE-377: Backup::createContentFolderBackup() wrote a sensitive content/ ZIP to document-root content.zip and BackupController unlinked only after streaming, so unauthenticated GET /content.zip could win a race. Vendor advisory 2026-08-04 and the 4.1.6 vs 4.1.7 trees confirm a real bug through 4.1.6, patched in 4.1.7 (CVE's 'before v4.1.6' / 4.1.6-unaffected listing is a range error, not a withdrawn/false advisory). BIC search used -S content.zip and the first-party file/function names, not an AI-commit hunt. The default-branch first appearance is GitHub squash 2cd1dac0 (PR #3003). That squash is not the BIC; its three public members were reconstructed from the PR. The smallest first-write of $zipFile = PMF_ROOT_DIR . DIRECTORY_SEPARATOR . 'content.zip' and the download/unlink path is member d28770dc; its parent 34e30bd2 was verified in the clone to lack those symbols. Later members and 2025 refactors did not change the web-root location, so they are not the introducer. AI judgment is from the BIC commit object only: Jan authored and committed d28770dc with a one-line feat subject and no Co-Authored-By/Generated-with/bot markers. The squash landing is also unmarked. Therefore a real vulnerability with human authorship: NOT_AI. Fix SHA is the 4.1-line commit ad858dfb3 that 4.1.7 actually contains (main equivalent 76a6eec23 is the same change, later the same day).",
+  "remaining_gap": null
+}

@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-63b23ebf6dcbff843269675d",
+  "case_id": "GHSA-rp9m-7r4c-75qg",
+  "repo": "nearform/fast-jwt",
+  "advisory_ids": [
+    "CVE-2026-35039",
+    "GHSA-rp9m-7r4c-75qg"
+  ],
+  "bug_semantics": "When createVerifier is used with cache enabled and a custom cacheKeyBuilder, src/verifier.js looks up and stores verification results under cacheKeyBuilder(token) and on a cache hit returns the stored payload without rebinding it to the presented token. If two distinct valid JWTs hash to the same custom key, verify(tokenB) can return tokenA's claims (sub/aud/etc.), causing identity/authorization mixup. Default cacheKeyBuilder remains hashToken. CWE-345/CWE-706.",
+  "flaw_origin": "PR #504 first made the cache key a user-supplied function. Atomic member aa23c181 replaced hardcoded hashToken(token) in cacheSet/cache.get with tokenHasher(token), defaulting to hashToken but accepting options.tokenHasher. Member 2aae9c6d only renamed tokenHasher to cacheKeyBuilder. Parent 72762fd5 still keyed the LRU cache only with hashToken; no custom builder existed. The squash on master is 79f367c3.",
+  "introducer_sha": "aa23c181f3f3eecf5adcb3dbae009a589d41eb22",
+  "introducer_parent": "72762fd58dd59e561132c118d1cd6c3457a1fb09",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "aa23c181f3f3eecf5adcb3dbae009a589d41eb22",
+    "3895f0d12139560741b892493d0c4d369f7fafda",
+    "2aae9c6d402e0924527557a1edc71e0d4608c2e0",
+    "4da7e7a7abfc4abe6772caadb1d2b668de13a9b1",
+    "d3acb866ac9ceb0f5d34d37c59d4881472b31534"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "de121056c6415b58770c60640881eaec67ac4ceb",
+  "direct_fix_sha": "de121056c6415b58770c60640881eaec67ac4ceb",
+  "evidence": "GHSA-rp9m-7r4c-75qg / CVE-2026-35039 (published 2026-04-03, withdrawn_at null, reviewed) describes cacheKeyBuilder collisions in src/verifier.js; affected >=0.0.1 <6.2.0, patched 6.2.0. Master squash 79f367c3187f0d6f2877a2cd59bcdf74c0fcf000 (single parent b1d56ae0, subject 'feat: LRU cache key (#504)') first added cacheKeyBuilder on the default branch. Public PR members from refs/pull/504/head: aa23c181 'feat: token hasher option' is the smallest first-write (git cat-file -p: parent 72762fd58dd59e561132c118d1cd6c3457a1fb09; git cat-file -e PARENT:src/verifier.js succeeds; git grep tokenHasher|cacheKeyBuilder on PARENT -- src/verifier.js is empty). BIC author/committer Matteo Pietro Dazzi <matteopietro.dazzi@gmail.com>; commit object has no Co-Authored-By/Generated-with/bot author. 2aae9c6d is a rename-only follow-up. Official fix de121056c6415b58770c60640881eaec67ac4ceb (Antonio Attanasio, 2026-04-07, #587, in v6.2.0) emits FAST_JWT_CACHE_KEY_BUILDER_SECURITY_RISK when cache && options.cacheKeyBuilder; it does not bind cache entries to the token. Copilot trailers on the fix do not attribute the BIC.",
+  "reasoning": "The advisory is live (not withdrawn/rejected): a documented cacheKeyBuilder hook plus cache-hit return of an unbound payload is a real identity-mixup sink when the builder collides. The BIC is the PR #504 atomic member that first replaced hashToken with a user-supplied cache-key function; the parent tree still used hashToken only. Authorship on that BIC object is human (Matteo Pietro Dazzi) with no AI marker, so AI did not introduce the flaw. The GHSA-referenced fix SHA is de121056.",
+  "remaining_gap": null
+}

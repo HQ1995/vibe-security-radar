@@ -1,0 +1,22 @@
+{
+  "worker": "w340",
+  "review_agent_id": "r389_w340",
+  "class_id": "alias-0389f68c5dc855b285c98b38",
+  "case_id": "GHSA-9pgc-3ccv-5297",
+  "repo": "python-zeroconf/python-zeroconf",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. The decoder recursively follows each compression pointer, while seen_pointers only rejects repeated offsets and MAX_DNS_LABELS only checks accumulated labels after recursion. A chain of unique forward pointers can therefore exceed Python's recursion limit without either guard firing, and pre-fix DECODE_EXCEPTIONS omits RecursionError.",
+    "atomic_bic": "Confirmed as 0a36cc6815a7c6593b249242a6854e1a7ca3b590. It is the first reconstructable PR #934 member and first writes _decode_labels_at_offset plus the unbounded recursive call; later 15a89a0ed8b9ba61814ba15d0b573c556cbc44c5 only moves the same mechanism into DNSIncoming.",
+    "immediate_parent_absence": "Confirmed against 4d30c25fe57425bcae36a539006e44941ef46e2c. The parent has none of _decode_labels_at_offset, DnsNameReader, MAX_DNS_LABELS, or DECODE_EXCEPTIONS and uses an iterative read_name loop that rejects forward pointers with off >= first, so the vulnerable recursive mechanism is absent.",
+    "squash_member_decomposition": "Confirmed. The nine-commit chain from 0a36cc6815a7c6593b249242a6854e1a7ca3b590 through e579fad36833bded033f74ebff7ce67ffd970a22 is locally reconstructable. Its aggregate patch and squash 5682a4c3c89043bf8a10e79232933ada5ab71972 have identical stable patch-id ed484455467d8da4f389ed594a6be4225a034ed3; member inspection leaves 0a36cc6815a7c6593b249242a6854e1a7ca3b590 as the smallest first-write commit.",
+    "affected_release_membership": "Confirmed. Squash 5682a4c3c89043bf8a10e79232933ada5ab71972 is not an ancestor of 0.33.2 (commit 4d30c25fe57425bcae36a539006e44941ef46e2c) and is an ancestor of 0.33.3 (commit 206671a1237ee8237d302b04c5a84158fed1d50b), whose README records forward DNS compression pointer support from #934. CVE.org currently marks versions < 0.149.5 affected.",
+    "fixed_release_membership": "Confirmed. Fix f9e23592137f30fdf7ef710dba065da31c79b1cf is not an ancestor of 0.149.4 (commit 6db1f91a352cd2d15ad581a17780079549232e60) and is an ancestor of 0.149.5 (commit 65b22cb8de06dcb40a8ee21b04ce84e9aa0dac91); the 0.149.5 changelog names #1719.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix f9e23592137f30fdf7ef710dba065da31c79b1cf. Its single-parent diff adds a depth parameter and MAX_DNS_LABELS depth rejection, increments depth on recursive pointer traversal, adds RecursionError to DECODE_EXCEPTIONS, and adds a 1500-pointer regression test. CVE.org directly references this commit and release 0.149.5.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. Commit 0a36cc6815a7c6593b249242a6854e1a7ca3b590 has human author and committer J. Nick Koston <nick@koston.org> and its complete commit object contains no AI-generation, bot, or co-author trailer. Later automated discovery or fix-review activity does not alter BIC authorship."
+  },
+  "findings": [],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

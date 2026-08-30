@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-47f0ad68fdab15129b790c82",
+ "case_id": "GHSA-fhw4-v2hr-j5m2",
+ "repo": "feed-mob/fm-mcp-servers",
+ "advisory_ids": [
+  "CVE-2026-19770",
+  "GHSA-fhw4-v2hr-j5m2"
+ ],
+ "bug_semantics": "The Smadex MCP tool get_smadex_report in src/smadex-reporting/src/index.ts accepts downloadUrl as a plain z.string() and passes it to downloadReport, which does await fetch(url) with no scheme, host, IP-range, port, or redirect restrictions. An MCP client (or prompt-injected tool call) can therefore make the local server process request attacker-chosen destinations such as loopback or private-network URLs and return the response body. Adjacent tools create a Smadex report and poll SMADEX_API_BASE_URL for a vendor downloadUrl, but the download step does not bind the fetch to that vendor URL.",
+ "flaw_origin": "The unrestricted fetch sink and the get_smadex_report tool that feeds it first appear together in aaff3decbc880724bbbe30810a50aa1ac42359c5 (Add smadex mcp), a one-parent commit that added the entire src/smadex-reporting package (index.ts 320 lines). Immediate parent ab4179e9ad97966db18119c3700f69dc849cd760 has no smadex-reporting path. Later commits on that file only bump package versions and leave downloadReport unchanged. This is a first-write of the vulnerable lines, not a move, refactor, revert, backport, release, or squash.",
+ "introducer_sha": "aaff3decbc880724bbbe30810a50aa1ac42359c5",
+ "introducer_parent": "ab4179e9ad97966db18119c3700f69dc849cd760",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent. git cat-file -p aaff3decbc880724bbbe30810a50aa1ac42359c5 shows author and committer steven <wuqi0509@gmail.com>, one parent ab4179e9ad97966db18119c3700f69dc849cd760, subject Add smadex mcp, a personal PGP signature, and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "CVE-2026-19770 CVE.org record state=PUBLISHED (VulDB CNA; not rejected/withdrawn). GHSA-fhw4-v2hr-j5m2 type=unreviewed, withdrawn_at null. GitHub issue feed-mob/fm-mcp-servers#198 remains Open and documents get_smadex_report -> downloadReport -> fetch(url) with a localhost PoC. git log -S 'async function downloadReport' -- src/smadex-reporting/src/index.ts returns only aaff3decbc880724bbbe30810a50aa1ac42359c5. git cat-file -e ab4179e9ad97966db18119c3700f69dc849cd760 succeeds; git cat-file -e ab4179e9ad97966db18119c3700f69dc849cd760:src/smadex-reporting/src/index.ts fails (path absent). BIC tree adds src/smadex-reporting/src/index.ts with downloadReport using await fetch(url) and server.tool('get_smadex_report', ..., {downloadUrl: z.string()}) calling downloadReport(downloadUrl). HEAD 3024176fc3996d7e023732dc968b9c4d036b2d70 still has that sink; later file commits cd8b313b4154a7492074ad9b1e1bacdafa3d5e98 and 51ed50a5eb7f0235f1d32285852c9634f9092caf are version bumps only. Package version 0.0.1 at BIC, 0.0.3 at HEAD. git log -1 --format='%an %ae %cn %ce' aaff3decbc880724bbbe30810a50aa1ac42359c5 = steven wuqi0509@gmail.com (author and committer).",
+ "reasoning": "The advisory mechanism is real: user-controlled downloadUrl reaches fetch() without destination binding, which is CWE-918 SSRF. CVE-2026-19770 is published, so this is not FALSE_POSITIVE. The smallest first-write is aaff3decbc880724bbbe30810a50aa1ac42359c5; the parent tree lacks the file and therefore the vulnerable lines. Authorship is judged only on that BIC commit object: human author/committer, no AI trailers. Issue #198 and later version-bump commits do not attribute the BIC. No public fix commit exists on the path, so fix_sha and direct_fix_sha are null and the finding is unpatched.",
+ "remaining_gap": "Unpatched at audit time: HEAD 3024176fc3996d7e023732dc968b9c4d036b2d70 and package 0.0.3 still contain downloadReport's unrestricted fetch(url); issue #198 is open with no vendor patch, so fix_sha and direct_fix_sha are null.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched at audit time: HEAD 3024176fc3996d7e023732dc968b9c4d036b2d70 and package 0.0.3 still contain downloadReport's unrestricted fetch(url); issue #198 is open with no vendor patch, so fix_sha and direct_fix_sha are null.",
+  "potential_fix": {
+   "approach": "Remediate the feed-mob/fm-mcp-servers sink described in bug_semantics by validating/normalizing the attacker-controlled input at the boundary before it reaches the vulnerable path (the concrete sink identified in bug_semantics), and land it upstream with a tagged release so fix_sha can be recorded.",
+   "rationale": "The record's remaining_gap verifies no public fix exists through the audited HEAD; the approach states the minimal boundary-level remediation consistent with the verified mechanism.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

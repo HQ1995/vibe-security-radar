@@ -1,0 +1,39 @@
+{
+  "class_id": "alias-84436ad872bfed39828d8257",
+  "case_id": "GHSA-6gxr-4p8w-gxc9",
+  "repo": "vladimir-tokarev-cyera/llama-cpp-security-patches",
+  "advisory_ids": ["CVE-2026-43627", "GHSA-6gxr-4p8w-gxc9"],
+  "bug_semantics": "Integer overflow to heap overflow in ggml-org/llama.cpp llama_batch_init(): attacker-influenced n_tokens_alloc, embd, and n_seq_max are multiplied into malloc() sizes with no range/overflow checks, so the products wrap (INT32_MAX / size_t) and undersize the token/embd/pos/seq_id/logits buffers. Later batch fills write past those allocations, causing heap corruption and potential code execution. CWE-190/CWE-680. CVE.org PUBLISHED; not withdrawn.",
+  "flaw_origin": "Georgi Gerganov first wrote llama_batch_init() in reconstructable PR #3228 member addae65fd44d362995acd8c05b99c3351c214df8 (2023-09-20, llama.cpp/llama.h) with unchecked malloc(sizeof(float)*n_tokens*embd) and sibling size multiplies. That member is absent from its parent a1327c71c6cfee3b1697aa6646f52f1de249120b. GitHub squash-merged the PR as ec893798b7a2a803466cc8f063051499ec3d96f7, tagged b1283 (advisory start). #3624 0e89203b517c95ec6675eda75d200a60d1e8921d later added the n_seq_max per-token seq_id malloc, widening the same sink. No overflow checks on b9058, b9445, or master HEAD.",
+  "introducer_sha": "addae65fd44d362995acd8c05b99c3351c214df8",
+  "introducer_parent": "a1327c71c6cfee3b1697aa6646f52f1de249120b",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": ["addae65fd44d362995acd8c05b99c3351c214df8"],
+  "ai_marker": "absent. Author Georgi Gerganov <ggerganov@gmail.com>; committer Georgi Gerganov <ggerganov@gmail.com>; git cat-file -p / log -1 show no Co-Authored-By, Generated-with, Assisted-by, or other AI trailers; not a bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-43627 state=PUBLISHED (cveawg.mitre.org); CNA VulnCheck; not rejected/withdrawn. GHSA-6gxr-4p8w-gxc9 withdrawn_at=null. Affected llama.cpp b1283..b9058 and 0.4.0..0.17.1; defaultStatus=affected (no patched version).",
+    "Cyera write-up: GHSA-wwq5-4jr6-6m93 reported 2025-07-13; advisory closed without fix 2026-01-05; June 2026 re-check vs b9445 still unpatched; n_seq_max multiply called out. Closed upstream PR ggml-org/llama.cpp#24063 (7fb1044b81dafe3cd4f177ca3976b66cf1fbff73) labeled spam by ngxson, not merged.",
+    "git show addae65fd44d362995acd8c05b99c3351c214df8 -- llama.cpp llama.h: first added struct llama_batch llama_batch_init(uint32_t n_tokens, int32_t embd) with malloc(sizeof(float)*n_tokens*embd) and sibling mallocs; no overflow checks. git grep llama_batch_init a1327c71c6cfee3b1697aa6646f52f1de249120b: absent entire parent tree. PR #3228 members d29e769/9f42e754/fa0e677 lack the helper; addae65 is the first-write member.",
+    "git cat-file -p / log -1 --format=fuller addae65fd44d362995acd8c05b99c3351c214df8: Author/Committer Georgi Gerganov <ggerganov@gmail.com> 2023-09-20; message 'llama : improve llama_batch API + simplify parallel example'; no AI trailers.",
+    "Master landing is squash ec893798b7a2a803466cc8f063051499ec3d96f7 (#3228, tag b1283). git grep llama_batch_init on squash parent 45855b3f1c7bdd0320aa632334d0b3e8965c26c4 and tag b1280 da0400344be12074e67dcabc565140289cf7efaa: absent. BIC precedes affected start.",
+    "Later 0e89203b517c95ec6675eda75d200a60d1e8921d (#3624, 2023-10-18, also ggerganov) changed the signature to (n_tokens, embd, n_seq_max) and added malloc(sizeof(llama_seq_id)*n_seq_max) in a per-token loop; still no overflow checks.",
+    "b9058 803627f121dca7d4ec5166178d89398f20d288c0, b9445 af6528e6df5d798f7f1363ec1141699be0f638e2, and master HEAD c841aeeb8bb2fe417038dadfa9b007cf1a9ef950 src/llama-batch.cpp llama_batch_init still do the unchecked mallocs (no SIZE_MAX/INT32_MAX guards). Unpatched confirmed.",
+    "Third-party mitigation only: patches/CVE-2026-43627-batch-init-overflow.patch in vladimir-tokarev-cyera/llama-cpp-security-patches (first landed 7c8f244a7d94f7c323ba277fcb24ff051339acd2; extra n_tokens_alloc>=INT32_MAX check in b7e9f472a171ca3a7ebe3eebe1839226be223504). Not merged upstream."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-43627 is a real CWE-190 integer overflow in llama_batch_init() malloc size math. The first-party NVD/GHSA/VulnCheck text matches the still-live function: n_tokens_alloc*embd and sizeof(llama_seq_id)*n_seq_max can wrap, then batch operations write past the undersized heap. CVE.org is PUBLISHED, not withdrawn, so this is not FALSE_POSITIVE. BIC search started from that sink, not from AI markers. git log of PR #3228 members plus parent-tree grep shows the helper first appears in addae65fd44d362995acd8c05b99c3351c214df8; earlier PR members and parent a1327c71c6cfee3b1697aa6646f52f1de249120b lack llama_batch_init entirely. The master squash ec893798b7a2a803466cc8f063051499ec3d96f7 is a squash aggregate (tag b1283), so it is not the BIC; the reconstructable member is. #3624 later added the n_seq_max multiply Cyera highlights, which widens the same unchecked-malloc mechanism rather than first writing it; CVE affected range correctly starts at b1283. AI judgment is BIC-only: addae65 is human-authored by Georgi Gerganov with no commit-object AI trailers or bot identity, so NOT_AI. Closed PR #24063 and the Cyera patches repo are remediations, not introducers. No upstream fix landed through master c841aeeb8bb2fe417038dadfa9b007cf1a9ef950; the finding is unpatched.",
+  "remaining_gap": "Upstream ggml-org/llama.cpp remains unpatched (no merged fix SHA). Closed PR #24063 was not landed; Cyera third-party patch is mitigation only.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "Vendor closed GHSA-wwq5-4jr6-6m93 without a fix (2026-01-05) and closed public PR ggml-org/llama.cpp#24063 without merging. llama_batch_init() at b9058, Cyera's b9445 re-check, and master HEAD c841aeeb8bb2fe417038dadfa9b007cf1a9ef950 still multiply n_tokens_alloc/embd/n_seq_max into malloc() with no overflow checks. CVE lists no patched version (defaultStatus=affected).",
+    "potential_fix": {
+      "approach": "In llama_batch_init(), reject n_tokens_alloc<=0, n_seq_max<=0, embd<0, and n_tokens_alloc>=INT32_MAX; refuse malloc size products that exceed SIZE_MAX/sizeof(float)/embd or SIZE_MAX/sizeof(llama_seq_id) before calling malloc; return a zeroed batch on failure.",
+      "rationale": "Those checks stop wrapping allocation sizes so later token/embd/seq_id/logits writes cannot run past the heap buffers. Matches Cyera's CVE-2026-43627-batch-init-overflow.patch.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/Vladimir-tokarev-cyera/llama-cpp-security-patches/blob/main/patches/CVE-2026-43627-batch-init-overflow.patch"
+    }
+  }
+}

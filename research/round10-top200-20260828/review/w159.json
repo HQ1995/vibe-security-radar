@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-00ae217c2ad8a2c9f27beedb",
+  "case_id": "GHSA-fcv5-2rgw-v385",
+  "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+  "advisory_ids": [
+    "CVE-2026-74327",
+    "GHSA-fcv5-2rgw-v385"
+  ],
+  "bug_semantics": "CWE-476 NULL dereference in is_vm_area_hugepages() (include/linux/vmalloc.h). Under CONFIG_HAVE_ARCH_HUGE_VMALLOC the helper did find_vm_area(addr)->page_order with no NULL check. find_vm_area() returns NULL when the address is not a tracked vmalloc area. At introduction, alloc_large_system_hash() called the helper on a possibly-failed __vmalloc() pointer; later callers (e.g. powerpc change_memory_attr) could also pass a non-area address. Result is a kernel oops / local DoS.",
+  "flaw_origin": "First write of is_vm_area_hugepages() in include/linux/vmalloc.h in 121e6f3258fe393e22c36f61a319be8a4f2c05ae (mm/vmalloc: hugepage vmalloc mappings). That commit added the unguarded deref return find_vm_area(addr)->page_order > 0. Immediate parent 5d87510de15f31d1b26cffced7bc4d504539a2c7 has the header but neither the helper nor that line. The vulnerable line is unchanged until the 2026 fix. Not a move, refactor, revert, backport, or squash.",
+  "introducer_sha": "121e6f3258fe393e22c36f61a319be8a4f2c05ae",
+  "introducer_parent": "5d87510de15f31d1b26cffced7bc4d504539a2c7",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "c55dd3b46c1208d6d2ea737a8aefef4aa4c70cb8",
+  "direct_fix_sha": "c55dd3b46c1208d6d2ea737a8aefef4aa4c70cb8",
+  "evidence": "CVE.org CVE-2026-74327 state=PUBLISHED (Linux CNA, datePublished 2026-08-15, dateUpdated 2026-08-17); not rejected/withdrawn. GHSA-fcv5-2rgw-v385 withdrawn_at=null. Mainline fix c55dd3b46c1208d6d2ea737a8aefef4aa4c70cb8 (Hui Zhu / Andrew Morton, 2026-06-08) edits only include/linux/vmalloc.h: return find_vm_area(addr)->page_order > 0 becomes struct vm_struct *area = find_vm_area(addr); return area && area->page_order > 0. Message Fixes: 121e6f3258fe. Stable c741485fa09bf5900f76d95424d86316d0a00331, b86f98e53df4f5d57259817b8e9a00167b78bae6, af71c2b88ccae44418e273bdfe0c96be8515151e, a1bca6b69bd934e2731d009e645038e05d57ce59, bbd664b7c77f6488cd5652231c0fe01d069a73ea, 55a44f5259e6a5f1d5b11cb0e19e943c9cc62280 are Upstream-commit backports of c55dd3b46c1208d6d2ea737a8aefef4aa4c70cb8. git log -S find_vm_area(addr)->page_order -- include/linux/vmalloc.h is only 121e6f3258fe (add) and c55dd3b46c12 (remove). git log -S is_vm_area_hugepages -- include/linux/vmalloc.h is only 121e6f3258fe. git cat-file -e 5d87510de15f:include/linux/vmalloc.h succeeds; that parent tree has no is_vm_area_hugepages and no find_vm_area(addr)->page_order. BIC is a single-parent non-merge: author Nicholas Piggin npiggin@gmail.com, committer Linus Torvalds torvalds@linux-foundation.org, 2021-04-30. git cat-file -p 121e6f3258fe has Signed-off-by Nicholas Piggin / Andrew Morton / Linus Torvalds only; no Co-Authored-By, Generated-with, or bot author. At BIC, mm/vmalloc.c find_vm_area() already returns NULL when find_vmap_area() fails. At BIC, mm/page_alloc.c alloc_large_system_hash() did table=__vmalloc(...); huge=is_vm_area_hugepages(table) with no table NULL check. Pre-fix also called from arch/powerpc/mm/pageattr.c change_memory_attr().",
+  "reasoning": "Vulnerability first: published Linux CNA CVE, real unguarded NULL deref, closed by checking find_vm_area() before ->page_order. BIC is the 2021 first-write of that helper, parent tree lacks the lines, and the deref was not rewritten before the 2026 fix. AI second: judge only the BIC object. Human kernel author/committer, no AI trailer or bot identity on 121e6f3258fe. Later AI on a fix or PR would not attribute this BIC. Therefore NOT_AI, not FALSE_POSITIVE.",
+  "remaining_gap": null
+}

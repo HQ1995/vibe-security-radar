@@ -1,0 +1,28 @@
+{
+  "worker": "w279",
+  "review_agent_id": "r389_w279",
+  "class_id": "alias-8315569d2b3a5c61cd42c7be",
+  "case_id": "GHSA-79v2-fj3p-7x4f",
+  "repo": "antvis/layout",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-15598 is PUBLISHED and identifies CWE-1321 in setNestedValue. The public root export reaches src/util/object.ts, which splits an externally supplied dotted path and passes the segments to @antv/util set; @antv/util 3.3.11 walks and assigns each key without blocking __proto__, constructor, or prototype, permitting Object.prototype pollution.",
+    "atomic_bic": "PASS: b9fde76f4c45b246c1c9cb11868bc670f4bdf82c is the smallest reconstructable public commit that first adds setNestedValue with the vulnerable body. The commit has the single parent 12398dc49e2e4a18603de4602ff5cdfd55addb15.",
+    "immediate_parent_absence": "PASS: git grep and the parent-to-BIC diff confirm that 12398dc49e2e4a18603de4602ff5cdfd55addb15 contains no setNestedValue and that the complete vulnerable function is added by b9fde76f4c45b246c1c9cb11868bc670f4bdf82c.",
+    "squash_member_decomposition": "PASS: PR #264 exposes a linear chain of 11 member commits beginning with b9fde76f4c45b246c1c9cb11868bc670f4bdf82c. The landed a9f7e70c9a27fae48385ebbb728d2d5df0908d4d is a single-parent squash over the same base, while the object.ts content is unchanged from the first through the last PR member; the squash is therefore correctly rejected as the BIC.",
+    "affected_and_fixed_release_membership": "CORRECTION_REQUIRED: CVE.org explicitly marks 2.0.0 affected, and the npm 2.0.0 artifact contains the vulnerable exported function. The primary omits npm 2.0.1, published 2026-06-05 from 2435ddabfeef352db59f6f6191a6d4834bcf2b64; its source and built lib/util/object.js retain the identical unsafe body and dependency on @antv/util ^3.3.2. Thus 2.0.1 is also demonstrably vulnerable and no fixed npm release was found.",
+    "direct_fix_or_verified_unpatched_state": "PASS: origin/v5 still resolves to 62bb4792b3ab948e096f9e17cfcb0f5c51ad9545 with the unsafe function, issue #292 was closed by the reporter with no comments, linked PR, or commit event, and the latest npm release 2.0.1 is also vulnerable. fix_sha and direct_fix_sha correctly remain null.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object names yvonneyx as both author and committer and contains no Co-Authored-By, Signed-off-by, Generated-with, Made-with, bot identity, or other AI marker. PR-level review activity is not BIC authorship evidence, so NOT_AI is supported from the BIC alone."
+  },
+  "findings": [
+    "The primary NOT_AI verdict, vulnerability mechanism, atomic introducer, parent state, squash decomposition, and unpatched conclusion are independently confirmed.",
+    "The release analysis is incomplete: npm 2.0.1 exists and preserves the vulnerable public setNestedValue implementation, so the record must include 2.0.1 as evidence of continued exposure rather than describe only 2.0.0/current v5."
+  ],
+  "corrected_fields": {
+    "evidence": "Add that npm @antv/layout 2.0.1 was published on 2026-06-05 from gitHead 2435ddabfeef352db59f6f6191a6d4834bcf2b64 and that both package/src/util/object.ts and package/lib/util/object.js still split the path and call unguarded @antv/util set; no fixed npm release is established.",
+    "reasoning": "Retain NOT_AI, but replace the release-state claim with: CVE.org lists 2.0.0 as affected; direct artifact inspection proves both npm 2.0.0 and latest npm 2.0.1 retain the vulnerable exported function, while origin/v5 also remains unpatched.",
+    "unpatched.reason": "CVE-2026-15598 remains PUBLISHED; issue #292 has no linked fix; origin/v5 at 62bb4792b3ab948e096f9e17cfcb0f5c51ad9545 remains vulnerable; and npm 2.0.1, built from 2435ddabfeef352db59f6f6191a6d4834bcf2b64, still ships the same unsafe setNestedValue implementation."
+  },
+  "remaining_gap": "CVE.org names only 2.0.0 in its affected-version metadata even though direct npm artifact inspection shows 2.0.1 is also vulnerable; no vendor fixed-version range or direct fix commit exists."
+}

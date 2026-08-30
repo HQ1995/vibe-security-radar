@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-fb99494bb546805f329c2d76",
+  "case_id": "GHSA-wg7g-xr7v-hf69",
+  "repo": "budibase/budibase",
+  "advisory_ids": ["CVE-2026-73618", "GHSA-wg7g-xr7v-hf69"],
+  "bug_semantics": "POST /api/v2/queries/:queryId (QUERY WRITE) interpolates attacker-controlled parameters into saved MongoDB/REST JSON query templates via Handlebars with noEscaping:true, then JSON.parse of json/customData/requestBody. Quote/brace breakout such as \", \"$ne\": \" turns {\"username\":\"{{username}}\"} into {\"username\":\"\",\"$ne\":\"\"}, which collection.find/updateMany/deleteMany execute as a broadened filter. validateQueryInputs only rejects Handlebars blocks, not JSON metacharacters.",
+  "flaw_origin": "f2a025013ea034a86c841e7151c5d38cfdb6acd4 (2022-02-03) first passed noEscaping:true into enrichQueryFields processStringSync and implemented disableEscaping ({{ → {{{) in string-templates. Parent a20249777b41a4ab5564334b0a52e5857b6470d8 already interpolated then JSON.parse'd json/customData/requestBody, but only triple-braced whole-field {{...}} templates; embedded JSON bindings still used Handlebars HTML escaping, which encodes quotes and blocks operator injection. After this commit every binding in a JSON template is unescaped, so user quotes become structural JSON. Precursors: 94ee5855 (handlebars field interpolation) and fc5ebd6b (JSON.parse of interpolated json for MongoDB).",
+  "introducer_sha": "f2a025013ea034a86c841e7151c5d38cfdb6acd4",
+  "introducer_parent": "a20249777b41a4ab5564334b0a52e5857b6470d8",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author/committer mike12345567 <me@michaeldrury.co.uk>; cat-file/log show no Co-Authored-By, Generated-with, or other AI trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "2d6c1d17cff8a653adbb2f9003eda9de38c7670f",
+  "direct_fix_sha": "dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80",
+  "evidence": [
+    "CVE.org CVE-2026-73618 state=PUBLISHED (VulnCheck CNA, not rejected/withdrawn); GHSA-wg7g-xr7v-hf69 withdrawn_at=null; first-party GHSA-qw6m-8fw2-2v64 (reviewed, reporter offset) describes the same CWE-943 quote-break on enrichContext + JSON.parse + MongoDB find/deleteMany.",
+    "GHSA-qw6m-8fw2-2v64 references https://github.com/Budibase/budibase/pull/18907, commit 2d6c1d17cff8a653adbb2f9003eda9de38c7670f, and tag 3.39.9; CVE/VulnCheck mark affected <3.40.0 / unaffected 3.40.0.",
+    "git show 3.38.1:packages/server/src/sdk/workspace/queries/queries.ts:121-140 processStringSync(..., {noEscaping:true,noHelpers:true}) then JSON.parse(json||customData||requestBody). mongodb.ts:509 collection.find(json); :624 deleteMany(json.filter). validateQueryInputs (index.ts, from 68bc7bbdf53 2024-03-19) only findHBSBlocks.",
+    "git log -S 'noEscaping: true' -- packages/server/src/threads/query.js first pick is f2a025013ea034a86c841e7151c5d38cfdb6acd4. At that commit query.js:188-191 adds noEscaping:true; string-templates/src/index.js:126 disableEscaping on noEscaping. git grep noEscaping on parent a20249777b41a4ab5564334b0a52e5857b6470d8 packages/server is empty.",
+    "Parent a20249777b41a4ab5564334b0a52e5857b6470d8 query.js:191-198 still JSON.parse(enrichedQuery.json) but only wraps a field in triple braces when IS_HANDLEBARS.test of the entire field; {\"username\":\"{{username}}\"} remains double-brace HTML-escaped. git cat-file -p f2a02501 is a single-parent non-merge; parent tree verified present.",
+    "Earlier interpolate-then-parse of json (not BIC): fc5ebd6b53cbc5dc04b35c217242f7fb42f7e6b2 switched JSON.parse(fields.json) to JSON.parse(enrichedQuery.json). Handlebars default escaping still encoded quotes, so the advisory $ne breakout was not live until noEscaping.",
+    "Tag cross-check: git merge-base --is-ancestor f2a02501 3.38.1 yes; 2d6c1d17 3.38.1 no; 2d6c1d17 3.39.9 yes; 2d6c1d17 3.40.0 yes; f2a02501 3.40.0 yes (introduced long before the patched bound).",
+    "Surviving fix: dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80 adds processJsonStringSync (parse template JSON first, then inject binding values). Landed by merge 2d6c1d17 (PR 18907, tag 3.39.9). 3.39.8 already had jsonEscapeForContext from PR 18847/ddef68abaf8, which 18907 reverted as a breaking change and replaced with parse-then-inject. 3.39.9 and 3.40.0 both grep processJsonStringSync in queries.ts.",
+    "BIC commit object: author/committer mike12345567 <me@michaeldrury.co.uk> 2022-02-03, subject 'Fix for #4308 - triple brace conversion...'; no Co-Authored-By/Generated-with/Claude/Copilot trailers."
+  ],
+  "reasoning": "CVE-2026-73618 is a real published VulnCheck record (not withdrawn). The sink is authenticated query execution: user parameters are Handlebars-interpolated into a saved JSON MongoDB query body and JSON.parsed into a driver filter. The exploitable step is unescaped interpolation of JSON metacharacters. git history shows JSON.parse of interpolated json from fc5ebd6b (2021-01-15) and processStringSync enrichment from 4960ad76/94ee5855, but until f2a02501 embedded {{bindings}} in JSON templates were HTML-escaped, so a quote-breaking $ne payload could not become structural JSON. f2a02501 is the smallest public commit that first wrote noEscaping:true on that path and implemented disableEscaping globally; its parent lacks noEscaping and still uses whole-field-only triple-brace conversion. That commit is a single-parent human change by mike12345567 with no AI commit-object markers, so authorship is NOT_AI. Vendor GHSA-qw6m-8fw2-2v64 points at PR 18907/2d6c1d17/3.39.9: that merge reverts the short-lived jsonEscape of #18847 and lands processJsonStringSync (dd8c0654), which parses the template before substitution and stops quote-breakout for valid JSON MongoDB bodies. CVE's unaffected 3.40.0 contains 2d6c1d17; 3.38.1 has the BIC and not the fix. Later fail-closed work on multi-object fallback (1e7166ec, 2026-08-07) is after 3.40.0 and is not required to close this advisory's quoted-JSON PoC.",
+  "remaining_gap": null
+}

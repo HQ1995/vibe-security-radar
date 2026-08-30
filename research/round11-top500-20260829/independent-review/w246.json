@@ -1,0 +1,27 @@
+{
+  "worker": "w246",
+  "review_agent_id": "r389_w246",
+  "class_id": "alias-28ede3a298a2c59fb29633cd",
+  "case_id": "GHSA-6cmp-qv2f-x97x",
+  "repo": "velocidex/velociraptor",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: attacker-controlled EVTX BinXML array lengths reach evtx ConsumeUnit16Array/ConsumeUnit64Array; the original loops call LittleEndian.Uint16/Uint64 on a trailing suffix without first proving 2/8 bytes remain, so a non-multiple length panics and crashes parse_evtx. The later >= clamp with len-offset-1 can itself manufacture a short trailing suffix.",
+    "atomic_bic": "CONFIRMED: gaddiab/evtx f20ab033e4a12bd28a64562a685fde4a97c0f077 is the smallest reconstructable public commit that first adds both vulnerable array consumers and their 0x86/0x8a dispatch cases; it is not merely a move, refactor, revert, or squash aggregate.",
+    "immediate_parent_absence": "CONFIRMED: f20ab033 has sole parent b476f1394a9706d9eb175a0e43d6856b3a038cc2, and that parent's evtx.go contains neither array consumer nor either 0x86/0x8a dispatch case. The primary boolean introducer_parent_absent is therefore inverted.",
+    "squash_member_decomposition": "CONFIRMED: Velocidex/evtx PR #21 merged four member commits and landed as squash e6e1b58a24f996238b00eb5b473933c55489d4c1; the member list identifies f20ab033, not the squash, as the first writer of the vulnerable lines.",
+    "affected_release_membership": "CONFIRMED: velociraptor tag v0.76.2 pins evtx f9f4e4ed0236, the direct parent of the parser fix, and product commit 7165598319110900ba077fecae2ff3391725be6b is not its ancestor. CVE.org is PUBLISHED and the vendor/CNA range is before 0.76.5.",
+    "fixed_release_membership": "CONFIRMED WITH VERSIONING NOTE: product commit 7165598319110900ba077fecae2ff3391725be6b changes the evtx pin to 06ab70045154, whose parent is the direct parser fix 4b5870ad; 71655983 is an ancestor of source tags v0.76.4 and v0.76.6. The vendor distributes the named 0.76.5 build under the v0.76 release, while no v0.76.5 git tag exists.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: evtx 4b5870ad3048a0ece93dbe13b97d0bc5edf3724b removes the >=/len-offset-1 clamps and changes the array reads to bounded explicit 2/8-byte slices; successor 06ab70045154 is the version pinned by product fix 71655983.",
+    "bic_only_ai_attribution": "CONFIRMED: f20ab033's commit object is dated 2021-11-04, names Gad Diab as author and committer, and has message 'Adding 5 more ValueTypes' with no AI, bot, Generated-with, or Co-Authored-By marker. Markers on the later squash or unrelated commits are excluded."
+  },
+  "findings": [
+    "The NOT_AI judgment and causal chain are supported independently.",
+    "Primary field introducer_parent_absent=false contradicts the verified immediate-parent state and must be true."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

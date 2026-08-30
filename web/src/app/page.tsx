@@ -176,8 +176,6 @@ export default function HomePage() {
                       <span className="block text-xs font-normal text-muted-foreground">
                         {formatCount(research.snapshot.ledger_reviewed ?? 0)}{" "}
                         completed ·{" "}
-                        {formatCount(research.snapshot.ledger_in_progress ?? 0)}{" "}
-                        in progress ·{" "}
                         {formatCount(research.snapshot.ledger_not_started ?? 0)}{" "}
                         not started
                       </span>

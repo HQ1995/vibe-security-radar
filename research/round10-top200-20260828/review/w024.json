@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-c2d1cf8b7c417dd8405574b8",
+  "case_id": "GHSA-25v3-x2wq-mm38",
+  "repo": "scriban/scriban",
+  "advisory_ids": [
+    "CVE-2026-73060",
+    "GHSA-25v3-x2wq-mm38"
+  ],
+  "bug_semantics": "array * int on a lazy ScriptRange repeats the left sequence count times without charging LoopLimit on the outer repetition. When the left operand is empty or a lazy builtin (array.map/filter/reverse/etc.), the inner StepLoop never runs, so an attacker template can drive billions of uncharged iterations even at LoopLimit=1, pinning CPU and GC while ScriptArray * int is already bounded.",
+  "flaw_origin": "7d73abb515f942dd71f8797506356bbe6383b3be first added src/Scriban/Runtime/ScriptRange.cs with MultiplyImpl as an unbounded for-i-in-count / foreach-yield loop and switched lazy array builtins onto ScriptRange. That uncharged outer repetition is the sink; later LoopLimit work only charged inner emission (dde661d3) or ScriptArray growth (205ca6a), leaving this path open until 973edd1f.",
+  "introducer_sha": "7d73abb515f942dd71f8797506356bbe6383b3be",
+  "introducer_parent": "8aa9acc7df5e7783fd51b1ffbdacf80a29f4edf3",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: raw commit object for 7d73abb515f942dd71f8797506356bbe6383b3be has author and committer 'Alexandre Mutel <alexandre_mutel@live.com>' and message 'Add better support for ranges via ScriptRange. Add IScriptTransformable.'; no Co-Authored-By, Generated-with, bot identity, or other trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "973edd1f1c10fae7d3a8650ac0d309d52072102c",
+  "direct_fix_sha": "973edd1f1c10fae7d3a8650ac0d309d52072102c",
+  "evidence": [
+    "CVE.org CVE-2026-73060 is state PUBLISHED (datePublished 2026-08-16, dateUpdated 2026-08-17). Bundle GHSA-25v3-x2wq-mm38 has withdrawn_at null. First-party advisory https://github.com/scriban/scriban/security/advisories/GHSA-89cf-6hmv-8rxm names ScriptRange.Multiply in src/Scriban/Runtime/ScriptRange.cs, affected NuGet Scriban >=3.0.0 <=7.2.5, patched 7.2.6, and the missed sibling GHSA-q6rr-fm2g-g5x8 whose 7.2.1 ScriptArray-only pre-check is 205ca6a7c2349d3d388bd5f1f7729ee198c0d5e5.",
+    "numactl --cpunodebind=1 --membind=1 git log --all --reverse -S'MultiplyImpl' --format='%H %P %s' -- src/Scriban/Runtime/ScriptRange.cs starts at 7d73abb515f942dd71f8797506356bbe6383b3be parent 8aa9acc7df5e7783fd51b1ffbdacf80a29f4edf3. git diff-tree -r -M -C --name-status reports A src/Scriban/Runtime/ScriptRange.cs (14 files total, one parent, not a merge/squash). git cat-file -e 8aa9acc7df5e7783fd51b1ffbdacf80a29f4edf3:src/Scriban/Runtime/ScriptRange.cs fails (exit 128). Tag 2.1.4 also lacks the path; 7d73abb5 is contained by 3.0.0 (git describe --contains: 3.0.0-alpha.1~61) and by 7.2.5.",
+    "GIT_NO_LAZY_FETCH=0 git grep -n -A6 -F 'private static IEnumerable MultiplyImpl' 7d73abb515f942dd71f8797506356bbe6383b3be -- src/Scriban/Runtime/ScriptRange.cs shows lines 175-181: for (int i = 0; i < count; i++) { foreach (var value in left) yield return value; } with no StepLoop/LoopLimit. The same commit switches ArrayFunctions map/compact/concat/limit/offset/reverse/uniq onto ScriptRange, creating the lazy left-operand * int dispatch named in the advisory.",
+    "Parent 8aa9acc7 already had ScriptArray * int as a materialized AddRange loop (git grep -A20 -F 'case ScriptBinaryOperator.Multiply:' ... ScriptArray.cs around 445-462). ScriptRange.Multiply is a new lazy sibling, not a rename/move of that array path.",
+    "dde661d36bb6b06414546c6b1272fc1b517078c9 (parent 2d01bd15) adds a context MultiplyImpl but only charges the inner foreach (7.2.5 ScriptRange.cs:368-380 still has StepLoop only after enumerating left). 205ca6a7c2349d3d388bd5f1f7729ee198c0d5e5 (in 7.2.1, not 7.2.0) adds resultLength vs LoopLimit only in ScriptArray.cs and does not touch ScriptRange.cs. Those are later incomplete bounds, not first-write.",
+    "Direct fix: git cat-file -p 973edd1f1c10fae7d3a8650ac0d309d52072102c is ordinary one-parent commit 'Enforce LoopLimit for lazy array multiplication' over c3f03bfc912e14b306a01a03e611f606b05f9c33. Path-limited diff-tree is M src/Scriban/Runtime/ScriptRange.cs and TestRuntime.cs. git grep of MultiplyImpl(TemplateContext...) at 973edd1f shows context.StepLoop(span, ref repetitionLoopStep) before the inner foreach. git merge-base --is-ancestor 973edd1f 7.2.5 fails and 7.2.6 succeeds. d17bd4bf6e9a4cfef56ba4096115d8eee1e2345c later shares the loop counter (7.2.6 uses EnterLoopScope + StepLoop(span) per outer i) but is not the first sink close. CVE's listed 'patch' c3f03bf is the 973edd1f parent ('Fix missing tests'), not the LoopLimit charge.",
+    "BIC-only AI: git cat-file -p 7d73abb515f942dd71f8797506356bbe6383b3be and git log -1 --format='%an %ae %cn %ce' show human author/committer Alexandre Mutel <alexandre_mutel@live.com>, one parent, and only that subject. No Co-Authored-By, Generated-with, bot, or other trailer. Later Copilot trailer on dde661d3 and any PR/fix metadata are not used to attribute the BIC."
+  ],
+  "reasoning": "The advisory is a real CWE-770: ScriptRange.Multiply's outer count loop is not charged against LoopLimit, so lazy/empty left sequences bypass the ScriptArray 7.2.1 bound. Those uncharged outer-loop lines were first written when ScriptRange.cs was added in 7d73abb5; the parent tree lacks the path, the commit is a 14-file ordinary first-write (not move/squash/revert), and it is inside 3.0.0 through 7.2.5. dde661d3 and 205ca6a only partially bounded related iteration and must not be treated as BICs. 973edd1f is the smallest commit that charges the outer repetition and is the first 7.2.6-contained sink close. The BIC object is human-authored with no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

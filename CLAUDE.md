@@ -22,7 +22,7 @@ python3 scripts/publish_tp_ledger.py   # → web/src/generated/research-data.jso
 cd web && npm run build
 ```
 
-`npm run dev` / `npm run build` in `web/` run the publisher automatically (predev/prebuild). Coverage window is the ledger window (`2025-05-01` .. `2026-08-16`), not generate time.
+`npm run dev` / `npm run build` in `web/` run the publisher automatically (predev/prebuild). Coverage window is the ledger window (`2025-05-01` .. `2026-08-26`), not generate time.
 
 Public site copy, README, and committed files are English-only.
 

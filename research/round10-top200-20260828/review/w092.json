@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-6e2ebc76ee01bfb7bbca7b98",
+ "case_id": "GHSA-rf5q-vwxw-gmrf",
+ "repo": "mtrudel/bandit",
+ "advisory_ids": [
+  "CVE-2026-39806",
+  "GHSA-rf5q-vwxw-gmrf"
+ ],
+ "bug_semantics": "Bandit.HTTP1.Socket.do_read_chunked_data!/5 in lib/bandit/http1/socket.ex terminated a chunked body only on the last-chunk pattern [\"0\", \"\\r\\n\" <> rest], i.e. 0\\r\\n immediately followed by the empty trailer line. RFC 9112 §7.1.2 permits trailer fields between 0\\r\\n and the final \\r\\n. With trailers present, :binary.split/2 yields [\"0\", \"X-Trailer:...\"], none of the clauses match, the catch-all computes to_read = 0 - byte_size(rest) (negative), read_available!/2 returns <<>> on timeout, and the function tail-recurses with an unchanged buffer, pinning the HTTP/1 worker for the TCP connection's lifetime (CWE-835). A few concurrent trailer-bearing chunked requests can exhaust the listener pool. The source comment at the terminator clause acknowledged the gap.",
+ "flaw_origin": "The hang was first written in e73e379ab59840e8561b5730878f16e29ab06217 ('Handle pipelined requests (#437)'). That commit changed the last-chunk clause from [\"0\", _] (which matched any remainder after 0\\r\\n and returned without looping) to [\"0\", \"\\r\\n\" <> rest] so leftover bytes after an empty trailer could be preserved for pipelining, but it did not consume trailer fields. Immediate parent 267b4af2bda92db66ae42c4ecc05f6da6aa2e9e8 still used [\"0\", _] and had no 'We should be reading (and ignoring) trailers here' comment. 903e209a521bc216b9f9065c01ae9a0cac2d5a10 first added the chunk decoder with the looser [\"0\", _] terminator; it is not this CVE's BIC because trailer-bearing last chunks still matched and returned. ae3520dfdbfab115c638f8c7f6f6b805db34e1ab overhauled chunk reading and discarded trailers via do_read_headers!/2.",
+ "introducer_sha": "e73e379ab59840e8561b5730878f16e29ab06217",
+ "introducer_parent": "267b4af2bda92db66ae42c4ecc05f6da6aa2e9e8",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; BIC author Mat Trudel <mat@geeky.net>, committer GitHub <noreply@github.com>; cat-file -p and git log trailers show no Co-Authored-By, Generated-with/Generated-by, Cursor/Copilot/ChatGPT/OpenAI/Claude/Anthropic/Gemini/Aider/Codex/Devin, or bot identity.",
+ "verdict": "NOT_AI",
+ "fix_sha": "ae3520dfdbfab115c638f8c7f6f6b805db34e1ab",
+ "direct_fix_sha": "ae3520dfdbfab115c638f8c7f6f6b805db34e1ab",
+ "evidence": "CVE-2026-39806 is PUBLISHED (cveawg.mitre.org state=PUBLISHED datePublished 2026-05-13; NVD vulnStatus Analyzed not rejected; GHSA withdrawn_at null). CNA names Elixir.Bandit.HTTP1.Socket.do_read_chunked_data!/5 in lib/bandit/http1/socket.ex; Hex range from 1.6.1 before 1.11.1; git range e73e379a < ae3520df. GHSA Hex start >=1.6.0 is slightly conservative vs first containing tag 1.6.1. Fix ae3520dfdbfab115c638f8c7f6f6b805db34e1ab ('Improve chunk handling (#585)', author Mat Trudel, committer GitHub, 2026-05-13) is single-parent (0f56e10ed194faad75abcbc8b221988568ccbf15); it replaces the hang-prone decoder with do_read_chunk!/4 that consumes trailers via do_read_headers!/2 and errors on empty recv. CHANGELOG 1.11.1: 'Improve handling of request trailers (CVE-2026-39806, #585)'. Ancestry: BIC not in 1.6.0, BIC in 1.6.1 and 1.11.0; fix not in 1.11.0, fix in 1.11.1. git log -S 'We should be reading (and ignoring) trailers' first hits e73e379a then the fix. Parent tree: [\"0\", _] terminator, no trailer comment (introducer_parent_absent=true). BIC cat-file: tree b898a395, parent 267b4af2, author Mat Trudel 1733493162 -0500, GitHub committer, single parent; rev-list count parent..BIC is 1 (squash-merge of #437 with no finer public members in this clone).",
+ "reasoning": "Vulnerability is an infinite loop in the HTTP/1 chunked decoder when RFC-conformant trailers follow the last-chunk marker. The smallest commit that first wrote that non-matching terminator (and therefore the hang) is e73e379ab59840e8561b5730878f16e29ab06217. Parent 267b4af2 still used [\"0\", _], which matched trailer-bearing last chunks and returned rather than spinning. Earlier 903e209 introduced the decoder but not this hang. Direct fix ae3520df lands in 1.11.1 and is the advisory patch. BIC commit object is human (Mat Trudel / GitHub merge) with no AI trailers, so verdict is NOT_AI. Advisory remains published.",
+ "remaining_gap": null
+}

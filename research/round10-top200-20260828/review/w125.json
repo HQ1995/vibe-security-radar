@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-543b2e438cca6aff027d4230",
+ "case_id": "GHSA-84r2-jw7c-4r5q",
+ "repo": "mmaitre314/picklescan",
+ "advisory_ids": [
+  "CVE-2025-71320",
+  "GHSA-84r2-jw7c-4r5q"
+ ],
+ "bug_semantics": "Picklescan flags pickle GLOBAL/STACK_GLOBAL imports only when the module is in _unsafe_globals and the name matches that module's filter. Before v0.0.33, operator was listed only as attrgetter and pydoc only as pipepager, so operator.methodcaller and pydoc.locate were treated as non-dangerous. A pickle can REDUCE pydoc.locate('os') to obtain the os module, then operator.methodcaller('system', cmd) to execute it (CWE-184). The same miss existed from the original denylist, which listed neither module.",
+ "flaw_origin": "The first public scanner c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e (2022-09-04) introduced denylist matching that ignores unlisted names; operator and pydoc were absent. Immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 has no scanner.py. Later incomplete expansions wrote operator:attrgetter (108b06040de644c7aeb5f22d8b10dd9c5d282386, 2023-12-16) and pydoc:pipepager (93764d62af72b0ec3e2dd693ab6a9774abbed953, 2025-03-02) without methodcaller/locate; those are later incomplete list writes, not the first miss. Direct fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab (PR #53) upgrades operator to {attrgetter,itemgetter,methodcaller} and pydoc to *; first released in v0.0.33. GHSA-84r2-jw7c-4r5q remains published (withdrawn_at null).",
+ "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+ "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; BIC author/committer Matthieu Maitre <mmaitre314@users.noreply.github.com> 2022-09-04; cat-file -p subject Implement Pickle scanner with no Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, Gemini, Aider, or bot-author trailers.",
+ "verdict": "NOT_AI",
+ "fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+ "direct_fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+ "evidence": "Advisory GHSA-84r2-jw7c-4r5q / CVE-2025-71320: incomplete pydoc/operator denylist; affected <0.0.33, patched 0.0.33; GHSA withdrawn_at null; PoC pickle via pydoc.locate plus operator.methodcaller. Original scanner c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e _suspicious_globals has neither operator nor pydoc; parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 lacks scanner.py (git cat-file -e fails). 108b06040de644c7aeb5f22d8b10dd9c5d282386 first adds operator:attrgetter (parent d692b57879b0626fec882b3e601172566e2478ee has no operator). 93764d62af72b0ec3e2dd693ab6a9774abbed953 (Merge commit from fork, Trevor Madge, Co-authored-by Matthieu Maitre; single parent) first adds pydoc:pipepager. v0.0.32 still has operator:attrgetter and pydoc:pipepager; v0.0.33 has operator set including methodcaller/itemgetter and pydoc *. Fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab is ancestor of v0.0.33 not v0.0.32. BIC commit object is human Matthieu Maitre, no AI trailers.",
+ "reasoning": "The vulnerability is CWE-184: denylist matching does not flag pydoc.locate or operator.methodcaller, so a locate-plus-methodcaller pickle scans clean. That miss dates to the original 2022 denylist, which never listed those names. Later commits that added only attrgetter and pipepager are incomplete expansions, not the first write of the miss, and not the BIC. Parent-tree verification shows scanner.py absent immediately before c1d5abdc. The complete fix is PR #53 / v0.0.33. AI judgment is BIC-only: 2022 human author, no AI trailers. Therefore NOT_AI. Not FALSE_POSITIVE: GHSA remains published with a matching PoC and a landed wildcard/function-set fix.",
+ "remaining_gap": null
+}

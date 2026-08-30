@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-3f6dd612f18e1e8d588b5ae1",
+  "case_id": "GHSA-prf8-cf2x-rhx7",
+  "repo": "hyperledger/fabric",
+  "advisory_ids": [
+    "CVE-2026-41586",
+    "GHSA-prf8-cf2x-rhx7"
+  ],
+  "bug_semantics": "CWE-502 Java deserialization RCE in the deprecated fabric-sdk-java client. HFClient.deSerializeChannel(byte[]) / deSerializeChannel(File) wrap caller-supplied bytes in a raw ObjectInputStream and call readObject() with no ObjectInputFilter. Channel was made Serializable in the same change and implements a private readObject() that only defaultReadObject()s and rehydrates transients; that hook is not the entry point. An attacker who can feed crafted serialized bytes (compromised local channel file, SampleStore-style persistence, or any app that accepts Channel bytes) can instantiate gadget graphs during deserialization. Channel bytes are not sent by Fabric peers; this is a client-side sink. The GHSA snippet misplaces deSerializeChannel on Channel.java; the live method is on HFClient.java.",
+  "flaw_origin": "First written in hyperledger/fabric-sdk-java commit 9282be96df6e5bd72d5aaca7b057b1693ae89af8 (FAB-6200 Java serialize channels, 2017-09-18) by rickr <cr22rc@gmail.com>. That non-merge Gerrit commit added Channel implements Serializable, Channel.readObject/serializeChannel, and HFClient.deSerializeChannel that does new ObjectInputStream(...).readObject() on the raw byte[]. Parent 24390b41241a5903378d6a1ffb6eb72db978f309 has none of those production APIs (Channel is a plain class). Later edits (FAB-6887 javadoc wrap, FAB-8074/FAB-8805) did not add a filter. No AI marker on the BIC commit object.",
+  "introducer_sha": "9282be96df6e5bd72d5aaca7b057b1693ae89af8",
+  "introducer_parent": "24390b41241a5903378d6a1ffb6eb72db978f309",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: BIC author/committer rickr <cr22rc@gmail.com>; trailers only Change-Id: I0e379d5dab626a4fd71cb66298612f5611215b78 and Signed-off-by: rickr <cr22rc@gmail.com>; no Co-Authored-By, Generated-with, or bot identity on the commit object (2017-09-18).",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org cvelistV5 CVE-2026-41586 state=PUBLISHED (not rejected/withdrawn); NVD vulnStatus=Analyzed (lastModified 2026-08-25); GHSA-prf8-cf2x-rhx7 withdrawn_at=null, reviewed, patched versions None. Vendor GHSA filed on hyperledger/fabric because fabric-sdk-java lacked private reporting; source_code_location=https://github.com/hyperledger/fabric-sdk-java.",
+    "Sink at HEAD a61508e5bf7c8f7197926f28db51cdab0a6b9f1e HFClient.java:328-335: public Channel deSerializeChannel(byte[] channelBytes) { ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(channelBytes)); channel = (Channel) in.readObject(); } File overload at 309-315 reads the file then calls the byte[] overload. No ObjectInputFilter in the method or repo (git grep HEAD and git log -G ObjectInputFilter empty).",
+    "Channel.java HEAD:362-364 private void readObject(ObjectInputStream in) { in.defaultReadObject(); ... } and serializeChannel() at 6358/6374 write ObjectOutputStream.writeObject(this). GHSA PoC client.deSerializeChannel(maliciousBytes) matches HFClient, not Channel.",
+    "BIC 9282be96df6e5bd72d5aaca7b057b1693ae89af8 is a single-parent commit (parent 24390b41241a5903378d6a1ffb6eb72db978f309), author/committer rickr <cr22rc@gmail.com>, subject FAB-6200 Java serialize channels. git diff parent..BIC: HFClient.java +72/- lines including the new deSerializeChannel methods with new ObjectInputStream(...).readObject(); Channel.java made implements Serializable and gained readObject/serializeChannel. git grep deSerializeChannel on parent production HFClient.java/Channel.java exits 1 (absent). Parent Channel is `public class Channel` without Serializable.",
+    "git blame -L 328,355 HFClient.java attributes the ObjectInputStream.readObject body to 9282be96; only the two signature-wrap lines are later (f678c01 FAB-6887). git log -G deSerializeChannel -- HFClient.java is only 9282be96 then f678c01. Gerrit PS2–PS15 notes are in the message; no finer public member is reconstructable from GitHub history, so squash_decomposed=false.",
+    "Tag membership: BIC not ancestor of v1.0.0 (2017-07-11) or v1.0.1; first contained in v1.1.0-alpha then v1.1.0 (2018-05-09) through v2.2.26 (86aa0022e19aa4ee369107e6528b63af5d833916, 2024-02-23). v2.2.26 HFClient.java:334 still `in = new ObjectInputStream(new ByteArrayInputStream(channelBytes));`. hyperledger/fabric clone has no HFClient.java and git log -S deSerializeChannel -- '*.java' is empty; the Go Fabric tree is not the vulnerable codebase.",
+    "Unpatched: GHSA first_patched_version=null / patched versions None; CVE description 'At time of publication, there are no publicly available patches'; fabric-sdk-java HEAD a61508e5 is 'Archive repo (#306)' 2025-04-22 with the same unfiltered readObject sink."
+  ],
+  "reasoning": "Vulnerability-first: GHSA-prf8-cf2x-rhx7 / CVE-2026-41586 describe unfiltered Java deserialization of Channel bytes in fabric-sdk-java. CVE.org remains PUBLISHED and NVD Analyzed, so this is not FALSE_POSITIVE. The live sink is HFClient.deSerializeChannel creating an unfiltered ObjectInputStream over caller bytes; Channel.readObject is the Serializable restoration hook added beside it. Attack path is client-side (local/serialized Channel bytes), matching the advisory. BIC search used git log -G/blame/-L on fabric-sdk-java (the GHSA's actual source), not an AI-marked commit hunt. 9282be96 is the smallest public commit that first wrote the deserialize API; the immediate parent tree lacks those lines. Later commits only rewrapped signatures or moved surrounding code; they did not introduce the mechanism and did not add ObjectInputFilter. AI judgment is BIC-only: 2017 human Gerrit author rickr, Signed-off-by self, no Co-Authored-By/Generated-with/bot trailer. Closed NOT_AI with no fix SHA because the deprecated SDK was archived still vulnerable (unpatched object below); recommended closure is an ObjectInputFilter allowlist on that stream or migration to fabric-gateway.",
+  "remaining_gap": "unpatched: no security fix commit exists in hyperledger/fabric-sdk-java through archived HEAD a61508e5bf7c8f7197926f28db51cdab0a6b9f1e or tag v2.2.26; GHSA/CVE list no patched version.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "fabric-sdk-java is deprecated and was archived on 2025-04-22 with HFClient.deSerializeChannel still calling unfiltered ObjectInputStream.readObject; GHSA patched versions are None and CVE-2026-41586 states there are no public patches.",
+    "potential_fix": {
+      "approach": "In HFClient.deSerializeChannel(byte[]), after constructing the ObjectInputStream and before readObject(), set an ObjectInputFilter allowlist such as org.hyperledger.fabric.sdk.*;java.util.*;java.lang.*;!* (as the GHSA sketches), or remove the Java-serialization persist/restore API and migrate callers to org.hyperledger.fabric:fabric-gateway.",
+      "rationale": "The filter rejects non-allowlisted gadget classes before constructors and readObject hooks run, closing the CWE-502 RCE sink on this stream; dropping Java serialization removes the sink entirely.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/hyperledger/fabric/security/advisories/GHSA-prf8-cf2x-rhx7"
+    }
+  }
+}

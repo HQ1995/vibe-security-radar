@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-d6c234b71617e996cf9f9684",
+  "case_id": "GHSA-jhcc-gw3q-f4pc",
+  "repo": "opensearch-project/opensearch-dashboards",
+  "advisory_ids": [
+    "CVE-2026-18420",
+    "GHSA-jhcc-gw3q-f4pc"
+  ],
+  "bug_semantics": "Authenticated POST /api/metrics/vis/data in TSVB accepts a JSON body (schema.object({}, {unknowns:'allow'}); visPayloadSchema failures are logged and ignored) and, for a math metric, evaluates attacker-controlled series.metrics[].script on the Node server via mathjs. evaluate.ts does create(all) and exports math.evaluate after only disabling import/createUnit/evaluate/parse/simplify/derivative. Remaining mathjs builtins can mutate Object.prototype from a crafted script/scope, which the advisory treats as prototype pollution enabling RCE. CWE-1321. Closed by deleting the server-side evaluation path.",
+  "flaw_origin": "The mathjs server sink first appeared in 620624c8443e818e60e73bf927912c25a7c8954b (Replace Tinymath with math.js, #4492, 2023-09-12): it added evaluate.ts and switched series/math.js from tinymath to that wrapper. Parent b9be70ab012d01873ed21d08d9a1c06969068c86 has no evaluate.ts. The evaluate.ts blob is unchanged through 3.0.0 and 3.7.0. 2.19.6 still imports tinymath and is outside the advisory range (>=3.0.0,<3.8.0). Earlier TSVB math (tinymath, 2017-2018) is a different evaluator. #11129 added a client-side path but left the server sink; #12160 removed it.",
+  "introducer_sha": "620624c8443e818e60e73bf927912c25a7c8954b",
+  "introducer_parent": "b9be70ab012d01873ed21d08d9a1c06969068c86",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author Danila Gulderov <gulderov@ya.ru>, committer GitHub <noreply@github.com>; Signed-off-by Danila Gulderov and Anan Zhuang; Co-authored-by: Anan Zhuang <ananzh@amazon.com>; no Generated-with, Cursor/Claude, or bot author on the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "09044879c875de47c29c4da1784604f7ce5decfd",
+  "direct_fix_sha": "09044879c875de47c29c4da1784604f7ce5decfd",
+  "evidence": "First-party GHSA-xmqx-xq2p-8jq2 / GHSA-jhcc-gw3q-f4pc / CVE-2026-18420 (NVD vulnStatus=Awaiting Analysis, not rejected/withdrawn; AWS 2026-085): TSVB metrics visualization API prototype pollution RCE; affected >=3.0.0 <3.8.0; patch 3.8.0. 3.8.0 notes: Refactor TSVB to use client-side math processing and remove legacy server-side evaluation path (#12160). git show --stat 09044879c875de47c29c4da1784604f7ce5decfd -- src/plugins/vis_type_timeseries deletes evaluate.ts, series/math.js, table/math.js, server/routes/vis.ts, get_vis_data.ts. Parent 36852a0d11bc1d3a6ce3f6bb7d04c99c9039a5ee still has vis.ts POST /api/metrics/vis/data with escapeHatch unknowns:allow and non-blocking visPayloadSchema.validate, and mathAgg calling evaluate(mathMetric.script, {params}). git log --diff-filter=A --follow -- evaluate.ts: first add 620624c8443e818e60e73bf927912c25a7c8954b. git cat-file -p 620624c8443e818e60e73bf927912c25a7c8954b: author Danila Gulderov <gulderov@ya.ru> 1694558532 +0300, committer GitHub; body Replace Tinymath with math.js (#4492); no AI trailers. git cat-file -e b9be70ab012d01873ed21d08d9a1c06969068c86:src/plugins/vis_type_timeseries/server/lib/vis_data/response_processors/series/evaluate.ts fails. Blob of evaluate.ts is c39d07d24ce44bb130cf16a331d4413a6ffd1d6c at 620624, 3.0.0, and 090448^ . merge-base --is-ancestor 620624 3.0.0 yes; 620624 2.19.6 no; 2.19.6 math.js still import { evaluate } from 'tinymath'. merge-base --is-ancestor 090448 3.8.0 yes; 090448 3.7.0 no. #11129 da29c5e33dd73cb62e8e9eb0f7fb5895a35cb96e added client-side math but left the server sink (not the closer).",
+  "reasoning": "The advisory is a live TSVB CWE-1321 PP-to-RCE, not withdrawn. Version math (3.x only) tracks the mathjs wrapper, not the older tinymath mathAgg. Smallest first-write of that wrapper is 620624c844 adding evaluate.ts; parent tree lacks the path; later 3.x history copies the same blob. That GitHub PR commit is a human-authored single-parent object with no AI commit-object markers, so NOT_AI. Direct closer is 09044879c8 (#12160) removing the server evaluate/vis.data path in 3.8.0.",
+  "remaining_gap": null
+}

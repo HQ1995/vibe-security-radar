@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-5534dc3a5861fe38c5625f9b",
+ "case_id": "GHSA-45h5-66jx-r2wf",
+ "repo": "mjmlio/mjml",
+ "advisory_ids": [
+  "CVE-2025-67898",
+  "GHSA-45h5-66jx-r2wf"
+ ],
+ "bug_semantics": "mj-include resolves attrs.path with path.resolve(cwd, file) then fs.readFileSync with no confinement. Missing files become a comment that includes the attempted path, so traversal can test existence. type=css/html (handleCssHtmlInclude) injects file bytes into output, so the same path can read files. ignoreIncludes defaulted to false, so the CVE-2020-12827 opt-out did not close the sink.",
+ "flaw_origin": "Unconstrained include in the live parser was first written in 584f60506757ba23436e7320d1c88061fb67d9cf ('working include in xml parser'). That commit added handleInclude: partialPath = path.resolve(cwd, file); content = fs.readFileSync(partialPath). Parent 9ee155d5290fa2f9596e3fee535c0a12cc725d84 has packages/mjml-parser-xml/src/index.js but no handleInclude/mj-include/readFileSync. Pre-parser includeExternal.js (042e11fc then b39ec514) is a replaced predecessor, not the lines 517b376 patched. Later bafb24a5 added the type=css read sink with the same resolve pattern. CVE-2020-12827's incomplete control (b17d5585 ignoreIncludes=false, v4.6.3 30e29ed2/21034a71) left that default off and added no path check.",
+ "introducer_sha": "584f60506757ba23436e7320d1c88061fb67d9cf",
+ "introducer_parent": "9ee155d5290fa2f9596e3fee535c0a12cc725d84",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "517b376b068e71c713ec4bb4ef9e5b0b7235b8ce",
+ "direct_fix_sha": "517b376b068e71c713ec4bb4ef9e5b0b7235b8ce",
+ "evidence": "CVE.org CVE-2025-67898 state PUBLISHED, not rejected; GHSA withdrawn_at null. git cat-file -p 584f60506757ba23436e7320d1c88061fb67d9cf: author/committer Maxime Brazeilles <maxime.brazeilles@gmail.com>, single parent 9ee155d5290fa2f9596e3fee535c0a12cc725d84, message 'working include in xml parser', no Co-Authored-By/Generated-with/bot trailer. git cat-file -e parent:packages/mjml-parser-xml/src/index.js succeeds; parent grep for handleInclude/mj-include/readFileSync is empty. Fix 517b376b068e71c713ec4bb4ef9e5b0b7235b8ce (ancestor of v5.0.0-alpha.9) adds isPathAllowed via realpathSync under cwd, denyInclude, and ignoreIncludes default true. Incomplete 2020 control: b17d5585 ignoreIncludes=false; 30e29ed2/21034a71 (v4.6.3) still default false with no path bound. ppa re-checked line-level 2026-08-29: git show 9ee155d5:packages/mjml-parser-xml/src/index.js has zero matches for mj-include/handleInclude/readFileSync/path.resolve (grep exit 1); the BIC diff 584f6050 adds the whole handleInclude block with fs.readFileSync(path.resolve(cwd, file)) as new lines. -> introducer_parent_absent=true.",
+ "reasoning": "Real CWE-36: mj-include path is resolved and read without a root bound, enabling existence tests and css/html file reads. Smallest first-write of those parser lines is 584f6050; parent tree lacks them. BIC author/committer is human Maxime Brazeilles with no AI marker on the commit object. The 2020 ignoreIncludes opt-out did not rewrite the sink and is not the BIC. Verdict NOT_AI.",
+ "remaining_gap": null
+}

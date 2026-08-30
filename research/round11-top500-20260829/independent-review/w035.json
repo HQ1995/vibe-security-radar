@@ -1,0 +1,25 @@
+{
+  "worker": "w035",
+  "review_agent_id": "r389_w035",
+  "class_id": "alias-ea822041965c4e8d4b9b5bbd",
+  "case_id": "GHSA-9x9p-qf8f-mvjg",
+  "repo": "harttle/liquidjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: d489916231779149e110183400e3e597b8ee02ba makes a per-render ownPropertyOnly override effective in the parent Context, while the {% render %} path still constructs a child Context with only sync, globals, and strictVariables. The child therefore falls back to instance opts.ownPropertyOnly; {% include %} reuses the parent Context and is not this sink.",
+    "atomic_bic": "CONFIRMED: d489916231779149e110183400e3e597b8ee02ba is a one-file, four-line change that adds Context.ownPropertyOnly, resolves it from renderOptions, and routes property reads through it. This is the smallest public commit that creates the advisory-specific split where the top level honors the override but a render child loses it.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 24c8a1e3722e5359f02934e2814f9abfa888ee86 is present and still reads this.opts.ownPropertyOnly; it has no Context.ownPropertyOnly. Thus the parent cannot exhibit the advisory-specific parent-secure/child-insecure split.",
+    "squash_member_decomposition": "CONFIRMED: the BIC has one parent, changes only src/context/context.ts, and GitHub reports no associated pull request, so no finer public member exists to substitute. e443068cb9281883ff0fe9f755a15f52ada4e7e2 only moves the already-incomplete inline child construction into Context.spawn() and is not the BIC. For the fix, PR #893 member 1318b3f3edf08b631491f59846c37d521cea41cf and landed commit dbbf6288030591bf6da28d8c1cce5a17bca97bb6 have the same parent, tree, and stable patch-id.",
+    "affected_fixed_release_membership": "CONFIRMED: d489916231779149e110183400e3e597b8ee02ba is not an ancestor of v10.4.0 but is an ancestor of v10.5.0 and v10.25.7. dbbf6288030591bf6da28d8c1cce5a17bca97bb6 is not in v10.25.7 and is in v10.26.0. The published CVE record says versions below 10.26.0 are affected; the v10.26.0 release notes name dbbf628 as the propagation fix.",
+    "direct_fix_or_unpatched": "CONFIRMED: dbbf6288030591bf6da28d8c1cce5a17bca97bb6 directly adds ownPropertyOnly: this.ownPropertyOnly to Context.spawn() and adds a regression test for the top-level/render-partial split. It is the landed direct fix in v10.26.0.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object and GitHub commit record identify Slav Ivanov / Harttle, with no AI or bot author, committer, co-author, generated-with, or similar marker. Cursor appears only as a co-author of the 2026 fix and is excluded from BIC attribution."
+  },
+  "findings": [
+    "The advisory is live: GHSA withdrawn_at is null and the authoritative CVE record is PUBLISHED with the same Context.spawn() mechanism.",
+    "The pre-existing incomplete child option copy began before ownPropertyOnly existed; d48991623, not that old copy or the later spawn refactor, is the atomic commit that first makes the documented override hold at top level while failing across {% render %}.",
+    "The primary record's introducer, parent, direct fix, release boundaries, and BIC-only NOT_AI attribution independently replay against the assigned clone and official advisory endpoints."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

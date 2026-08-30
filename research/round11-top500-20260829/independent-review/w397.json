@@ -1,0 +1,50 @@
+{
+  "worker": "w397",
+  "review_agent_id": "r389_w397",
+  "class_id": "alias-3598903927f77b31ad026eed",
+  "case_id": "GHSA-v33r-r6h2-8wr7",
+  "repo": "kimai/kimai",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "At reconstructed BIC 0714fc6ac6576e83a035ca2f4090dd7a97ee8e93, GET /api/invoices/{id} accepts an Invoice entity, checks only view_invoice, and serializes it without checking access on its customer. ROLE_TEAMLEAD receives the INVOICE permission set containing view_invoice, while CustomerVoter::access restricts customers by team membership unless the customer has no teams or the user can see all data. The collection endpoint separately calls InvoiceArchiveQuery::setCurrentUser(), so the single-entity endpoint bypasses that scoping. CVE-2026-28685 is currently PUBLISHED and describes this cross-team invoice disclosure; GHSA-v33r-r6h2-8wr7 has withdrawn_at null."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "PR #5070 member 0714fc6ac6576e83a035ca2f4090dd7a97ee8e93 is the smallest surviving public commit that first adds src/API/InvoiceController.php and the vulnerable getAction. Its parent is d6d48795fa28f8711434eac3f0080379c6550b20. The default-branch pickaxe first sees squash carrier 8de54e1fa7ffe3b911c93080f4abd0210bbc22b0, not a finer mainline commit."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The immediate parent d6d48795fa28f8711434eac3f0080379c6550b20 is present and verifiable; its tree contains neither src/API/InvoiceController.php nor tests/API/InvoiceControllerTest.php, and a parent-tree search finds no get_invoice or Invoice getAction PHP path."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "GitHub PR #5070 reports squash 8de54e1fa7ffe3b911c93080f4abd0210bbc22b0 and the exact seven-member linear chain 28c8fe2c, d9815b25, b3c7a706, f6a3a4fe, d6d48795, 0714fc6a, b165b393. All objects and parent links exist locally. Only 0714fc6a first adds the invoice API; b165b393 does not alter src/API/InvoiceController.php, and that file is identical between 0714fc6a, the last member, and the squash."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "The squash carrier 8de54e1fa7ffe3b911c93080f4abd0210bbc22b0 is an ancestor of tags 2.22.0 and 2.50.0. Tag 2.21.0 lacks src/API/InvoiceController.php; tag 2.50.0 contains getAction with only view_invoice and no customer-access Expression. GHSA marks <= 2.50.0 affected."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Tag 2.51.0 peels exactly to a0601c8cb28fed1cca19051a8272425069ab758f; the fix is not an ancestor of 2.50.0. Both the live GHSA and CVE records identify 2.51.0 as fixed."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix a0601c8cb28fed1cca19051a8272425069ab758f adds Symfony Expression support and #[IsGranted(new Expression(\"is_granted('access', subject.getCustomer())\"), 'invoice')] to getAction, plus cross-team denial tests. This directly closes the missing customer authorization check present in its parent and in 2.50.0."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The raw BIC commit object names Kevin Papst <kpapst@gmx.net> as both author and committer, has subject 'added API endpoints to fetch invoices', an empty body, and no Co-Authored-By, Generated-with, Made-with, Copilot, Cursor, Claude, ChatGPT, OpenAI, or bot marker. AI attribution is based only on this BIC, so NOT_AI is supported."
+    }
+  },
+  "findings": [
+    "The advisory is a real, published cross-team invoice IDOR rather than a withdrawn or rejected report.",
+    "The primary correctly distinguishes reconstructed PR member 0714fc6ac6576e83a035ca2f4090dd7a97ee8e93 as the BIC from mainline squash carrier 8de54e1fa7ffe3b911c93080f4abd0210bbc22b0.",
+    "The immediate parent, release, direct-fix, and BIC-only authorship evidence independently reproduces the primary NOT_AI verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-76b6bdf9567124529666db74",
+  "case_id": "GHSA-w5r5-m38g-f9f9",
+  "repo": "authlib/joserfc",
+  "advisory_ids": [
+    "CVE-2026-27932",
+    "GHSA-w5r5-m38g-f9f9"
+  ],
+  "bug_semantics": "An unauthenticated attacker can supply a JWE protected header with a very large integer p2c value when a PBES2 key-management algorithm is enabled. The decryption path accepts that header value and passes it unchanged as PBKDF2HMAC.iterations, consuming CPU in proportion to the attacker-selected count before JWT claim validation and enabling denial of service.",
+  "flaw_origin": "The project-written PBES2 implementation first added in commit 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 reads p2c from the protected header and supplies it directly to PBKDF2HMAC without an upper bound; its immediate parent contains neither PBES2 support nor the vulnerable derivation path.",
+  "introducer_sha": "86d25febaca03a7628787b7aa1d6d21ccd9e65a7",
+  "introducer_parent": "b70333fd58bceb0afa38fad7214e3ce55586c4c2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names Hsiaoming Yang <me@lepture.com> as both author and committer; its message is 'feat(jwe): added ECDH-ES, PBES2-HS related algs' and has no Co-Authored-By, Generated-with, bot identity, or other AI trailer",
+  "verdict": "NOT_AI",
+  "fix_sha": "696a9611ab982c45ee2190ed79ca8e1d8e09398f",
+  "direct_fix_sha": "696a9611ab982c45ee2190ed79ca8e1d8e09398f",
+  "evidence": [
+    "The CVE.org record for CVE-2026-27932 is PUBLISHED and states that joserfc 1.6.2 and earlier pass an unbounded attacker-controlled JWE p2c value to PBKDF2, causing CPU exhaustion; it references GHSA-w5r5-m38g-f9f9 and fix 696a9611ab982c45ee2190ed79ca8e1d8e09398f.",
+    "git log --all --reverse -S'PBES2HSAlgModel' on src/joserfc/rfc7518/jwe_algs.py identifies 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 as the first PBES2 implementation commit; its diff adds protected-header p2c handling and PBKDF2HMAC(iterations=p2c).",
+    "Direct parent-tree checks at b70333fd58bceb0afa38fad7214e3ce55586c4c2 show src/joserfc/rfc7518/jwe_algs.py exists but contains neither PBES2HSAlgModel nor PBKDF2HMAC, proving the vulnerable mechanism is absent from the immediate parent.",
+    "Commit 3716e8e16f6b86919d97a0c88aad610f377511d6 is a later code-style-only rewrite of the already-unbounded p2c flow, and b9379f7d4e5f440594c45d6961f64cb3acd37e24 later renames the path with 99% similarity; neither is the BIC.",
+    "The BIC is an ordinary single-parent commit whose directly inspectable diff itself adds the vulnerable PBES2 implementation, so no squash/member decomposition is needed; git cat-file shows only human author/committer metadata, a GPG signature, and no AI attribution trailer.",
+    "Tag containment places the BIC in releases beginning with 0.2.0. Tag 1.6.2 resolves to 52c6ffd37eca2bfc0968677a1276742290fb51cb and contains the BIC but not the fix; its src/joserfc/_rfc7518/jwe_algs.py still passes headers['p2c'] to iterations=p2c.",
+    "Commit 696a9611ab982c45ee2190ed79ca8e1d8e09398f directly adds validate_p2c with max_value=300000 and binds it to the p2c HeaderParameter; tag 1.6.3 resolves to f06540f931b8f258806e7cb6cde68394ecbbfd9e and contains this fix, matching the GitHub advisory patched boundary of 1.6.3."
+  ],
+  "reasoning": "The vulnerability is real and its complete source-to-sink path is locally visible: an attacker-controlled protected-header p2c reaches PBKDF2HMAC.iterations without a maximum during PBES2 JWE decryption. Commit 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 is the smallest public object that first writes both the PBES2 header consumption and unbounded KDF call, while direct inspection of immediate parent b70333fd58bceb0afa38fad7214e3ce55586c4c2 proves that mechanism absent. Later style and rename commits preserve rather than introduce it. The direct fix 696a9611ab982c45ee2190ed79ca8e1d8e09398f validates p2c before derivation, and release ancestry agrees with affected-through-1.6.2 and fixed-in-1.6.3 advisory boundaries. AI attribution is judged only from the BIC commit object: it has human author and committer identities and no AI marker or co-author/generated trailer. Therefore this is a human-introduced real vulnerability, yielding NOT_AI.",
+  "remaining_gap": null
+}

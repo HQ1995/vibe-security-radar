@@ -1,0 +1,36 @@
+{
+  "worker": "w282",
+  "review_agent_id": "r389_w282",
+  "class_id": "alias-8cbd27f3ae08b43f59886b3f",
+  "case_id": "GHSA-44p3-ph5c-h5h3",
+  "repo": "getmaxun/maxun",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: authenticated storage, SDK, auth, workflow, and webhook handlers selected globally addressable Robot or Run records without a userId ownership predicate, permitting cross-tenant read, mutation, deletion, execution, webhook changes, and disclosure of plaintext Google/Airtable token columns.",
+    "atomic_bic": "FAIL_PRIMARY: 7e22582997165bf6b127d2d963bf36896d5014ba is explicitly a filesystem-to-database refactor of already-global storage operations, so the protocol excludes it as a BIC. The atomic first-write is single-parent 0ee54bf1f0912b5ac317516ba5c7668f9b963e96, which added server/src/routes/storage.ts with unscoped list, delete, read, and execute operations.",
+    "immediate_parent_absence": "FAIL_PRIMARY_PASS_CORRECTION: 565d86ec549f54db8d0110737d516f4588ed5c5d already contains equivalent global filesystem-backed recording access, so the vulnerability mechanism is not absent from 7e225829's parent. The corrected BIC parent 99ba2629cf4fdc153b1e4105bacd946a371dfcc3 has no server/src/routes/storage.ts.",
+    "squash_member_decomposition": "PASS: corrected BIC 0ee54bf1f0912b5ac317516ba5c7668f9b963e96 is a normal one-parent commit, not a merge, squash aggregate, move, refactor, or revert; no member decomposition is needed. Later 4bf496fcd4f99161c75ba47e7cd7f0257b391433 restored unscoped queries after short-lived ownership filters but is a revert and is not the BIC.",
+    "affected_release_membership": "PASS: corrected BIC 0ee54bf1f0912b5ac317516ba5c7668f9b963e96 is an ancestor of v0.0.01 and affected v0.0.41 (9a5f98e302ad7dd6a59951d7502e024475676b39); the pre-fix v0.0.41 tree contains unscoped Robot.findAll/findOne/destroy operations and plaintext Google/Airtable token fields.",
+    "fixed_release_membership": "PASS: advisory merge 11db0257531f1c23dec94727793c9444ee2873cf and direct-fix parent 9b5e35ff47af887c23f67ac976c45833943a1ec0 are ancestors of v0.0.42 (50ee9b35cc99719829db3d4197ddd6b7284f734e); 11db025 is not an ancestor of v0.0.41. CVE.org lists versions below 0.0.42 affected and 0.0.42 unaffected.",
+    "direct_fix_or_verified_unpatched_state": "PASS: 9b5e35ff47af887c23f67ac976c45833943a1ec0 directly adds userId ownership constraints and caller identity checks across storage, webhook, auth, SDK, record, and workflow sinks; GitHub PR 1088 identifies it as the head and 11db0257531f1c23dec94727793c9444ee2873cf as the merged patch commit.",
+    "bic_only_ai_attribution": "PASS_WITH_CORRECTION: corrected BIC 0ee54bf1f0912b5ac317516ba5c7668f9b963e96 has author and committer karishmas6 <carishmashukla28@gmail.com>, subject 'feat: use maxun-core', and no Co-Authored-By, Generated-with, Cursor, Copilot, bot identity, or other AI marker. CodeRabbit text on the 2026 fixing PR is irrelevant to BIC attribution."
+  },
+  "findings": [
+    "CVE-2026-56767 is PUBLISHED, GitHub advisory GHSA-44p3-ph5c-h5h3 has withdrawn_at=null, and the repository/advisory mechanism and 0.0.42 fix are confirmed.",
+    "The primary chose 7e225829 because it first wrote the surviving Sequelize query forms, but its parent already exposed the same global recordings through readFiles, deleteFile, and getRecordingByFileName. That commit merely changed storage representation and is barred by the protocol's move/refactor rule.",
+    "The corrected first-write commit 0ee54bf1f0912b5ac317516ba5c7668f9b963e96 created storage.ts and globally exposed recordings and runs without authentication or ownership checks; user authentication arrived later, and 5d8cc4a091929e661a14b63e7037bffab0aa55e5 narrowed these routes to signed-in users without adding per-user ownership.",
+    "The corrected BIC remains human-authored with no AI marker, so the causal verdict remains NOT_AI even though the primary introducer and parent fields require correction."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The missing object-level authorization was first written by 0ee54bf1f0912b5ac317516ba5c7668f9b963e96 when it created server/src/routes/storage.ts with global recording/run listing, attacker-selected deletion, retrieval, and execution and no authentication or owner predicate. Authentication was added later without ownership scoping; 7e225829 only migrated the already-vulnerable operations from shared files to unscoped Robot/Run queries.",
+    "introducer_sha": "0ee54bf1f0912b5ac317516ba5c7668f9b963e96",
+    "introducer_parent": "99ba2629cf4fdc153b1e4105bacd946a371dfcc3",
+    "introducer_parent_absent": true,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "ai_marker": "absent: author and committer karishmas6 <carishmashukla28@gmail.com>, message 'feat: use maxun-core', with no Co-Authored-By, Generated-with, Cursor, Copilot, bot identity, or other AI trailer",
+    "verdict": "NOT_AI"
+  },
+  "remaining_gap": null
+}

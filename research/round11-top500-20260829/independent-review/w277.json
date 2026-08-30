@@ -1,0 +1,51 @@
+{
+  "worker": "w277",
+  "review_agent_id": "r389_w277",
+  "class_id": "alias-6ecb3d605d4fcf0548d89172",
+  "case_id": "GHSA-93xg-c6hj-rp82",
+  "repo": "idurar/idurar-erp-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-72600 is PUBLISHED and describes unauthenticated access to invoice PDFs through /download. At tag 4.1.0, backend/src/app.js mounts coreDownloadRouter without adminAuth.isValidAuthToken; the router derives the MongoDB id from the requested filename; downloadPdf.js performs Model.findOne({_id: id}), generates the PDF, and returns it with res.download."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Targeted -S history and the commit diff identify e968bc95b8a1098d25d47d62615c4dd15e721941 as the first writer of handlers/downloadHandler/downloadPdf.js and its Model.findById(ObjectId(id))/generatePdf sink. The earlier f22dc173e4e5e89364c20b9b2289f078f1eafc8a route only served an already-existing static path with res.download and is not this database-to-generated-PDF mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS_WITH_PRIMARY_CORRECTION",
+      "evidence": "The BIC's immediate parent is 4d74cb369fd8ab6ee998e35f92e54bcb7af01d13. Its tree has no handlers/downloadHandler/downloadPdf.js, while its routes/coreRoutes/coreDownloadRouter.js already calls that missing module and app.js mounts /download without authentication. Thus the vulnerable working sink is absent in the immediate parent and introducer_parent_absent must be true."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "4de3f8ac38325b82070c1f96a15de08933880308 is a two-parent merge, not a squash. Its reconstructable topic members are ef38c0f932e3413b766d87486292f8d4163f79a6, 4d74cb369fd8ab6ee998e35f92e54bcb7af01d13, e968bc95b8a1098d25d47d62615c4dd15e721941, and 16c0f66ebbee328db958cce3fec19e4b234a8c34; the member e968bc95 is the atomic BIC."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is not an ancestor of 2.0.0 but is an ancestor of 2.1.0, 4.1.0, 4.1.1, and HEAD e935dec13cf8b6082a7e7fc4736669e5151a80a3. Tags 4.1.0 and 4.1.1 and HEAD all retain the unauthenticated /download mount. No fixed release is present in the reviewed clone."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Commit 2b7eda9d51a1071ae15427290c22f993b7865e61 temporarily added isValidAdminToken, but 050af4c7a5e07d9db07cfc3ed4fdcbe5f3ca86f6 removed it before every tag that contains either commit. The concrete proposal ebac0684d87db1c179f5be706c75c8d656d5e00b adds adminAuth.isValidAuthToken to /download but is not an ancestor of HEAD. The repository state is therefore verified unpatched, with no direct landed fix SHA."
+    },
+    "bic_only_ai_attribution": {
+      "status": "FAIL",
+      "evidence": "The BIC object has author and committer onfranciis <onukwuf@gmail.com>, subject feat: create downloadPdf, no body or trailers, and no signature. Those facts establish only absence of an explicit AI marker; a human-looking identity and empty trailers do not prove that the causal code was human-written. No independent BIC-level human-authorship evidence is recorded, so NOT_AI is not closed."
+    }
+  },
+  "findings": [
+    "The vulnerability lifecycle and atomic BIC are supported, but the primary verdict overclaims NOT_AI from absence of AI markers rather than affirmative BIC-level human-authorship evidence.",
+    "introducer_parent_absent is recorded as false even though the immediate parent tree lacks handlers/downloadHandler/downloadPdf.js and therefore lacks the vulnerable database-to-PDF sink.",
+    "The primary evidence names backend/src paths for the 2023 BIC parent, but the historical paths at that commit are app.js, routes/coreRoutes/coreDownloadRouter.js, and handlers/downloadHandler/downloadPdf.js."
+  ],
+  "corrected_fields": {
+    "verdict": "EVIDENCE_GAP",
+    "introducer_parent_absent": true,
+    "ai_marker": "No explicit AI marker in the BIC commit object; this absence does not establish human authorship.",
+    "remaining_gap": "Obtain affirmative BIC-level evidence identifying the causal writer as human or AI. Author/committer identity and missing trailers alone cannot close the attribution gate."
+  },
+  "remaining_gap": "Causal authorship of e968bc95b8a1098d25d47d62615c4dd15e721941 remains unproven. The case should remain EVIDENCE_GAP rather than NOT_AI until affirmative BIC-level human- or AI-authorship evidence is available."
+}

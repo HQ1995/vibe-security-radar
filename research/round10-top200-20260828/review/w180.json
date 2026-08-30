@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-20e6f05453ae6a3856984a6a",
+ "case_id": "GHSA-r232-48q8-3598",
+ "repo": "asyncfuncai/deepwiki-open",
+ "advisory_ids": [
+  "CVE-2026-72567",
+  "GHSA-r232-48q8-3598"
+ ],
+ "bug_semantics": "Unauthenticated wiki-cache GET/POST/DELETE handlers interpolate user-controlled owner, repo, repo_type, and language into a filename via get_wiki_cache_path and then open/write/os.remove that path under the wiki cache directory with no sanitization or confinement. Path separators and \"..\" in those fields escape the cache directory, yielding arbitrary file write and delete (critical when the API runs as root in Docker).",
+ "flaw_origin": "Commit 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c first moved wiki cache from browser localStorage onto the server filesystem and introduced get_wiki_cache_path as filename = f\"deepwiki_cache_{repo_type}_{owner}_{repo}_{language}.json\" joined onto WIKI_CACHE_DIR, then used that path in read_wiki_cache/save_wiki_cache and the /api/wiki_cache endpoints. The parent tree only had a client-side localStorage key of the same shape, not a server path. Later commits added DELETE and relocated the helper to api/services/wiki/io.py without adding path confinement.",
+ "introducer_sha": "36d7fa915ecb08f4b19123796ee4af95c1a0eb2c",
+ "introducer_parent": "9f76ddd1f58fa3b4661efa93953c001dc35d9f97",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author/committer davideuler <davideuler@github.com>; cat-file -p and log body have no Co-Authored-By, Generated-with, or bot identity",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "Advisory GHSA-r232-48q8-3598 / CVE-2026-72567 (NVD-published 2026-08-10, withdrawn_at null) describes CWE-22 in the wiki-cache endpoint through commit 16f35a0fc0284e99b7963bbf4e8585e9957e2fe1. git show 16f35a0:api/api.py lines 408-411: def get_wiki_cache_path interpolates repo_type/owner/repo/language into os.path.join(WIKI_CACHE_DIR, filename) with no sanitization; GET/POST/DELETE /api/wiki_cache all call that helper. git log -S \"def get_wiki_cache_path\" -- api/api.py first hit is 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c (\"Move localstorage cache from browser to server side\"). Immediate parent 9f76ddd1f58fa3b4661efa93953c001dc35d9f97 has api/api.py but no get_wiki_cache_path/WIKI_CACHE_DIR; parent-tree grep for those symbols is empty (only client localStorage key deepwiki_cache_${repoType}_${owner}_${repo}_${language} in src/app/[owner]/[repo]/page.tsx). Single-parent commit (not a squash merge). git merge-base --is-ancestor 36d7fa 16f35a0 is yes. DELETE added in 9df12b2383125a17f5fa55561b432e2ab8a0cc71 using the same helper. Later move to api/services/wiki/io.py (b5e766699b7f0ec5294426af53f5924d9058218b / cbd1ebd137dd9968ca917080e5e878a6518c6f66) still interpolates the same unsanitized fields; HEAD get_wiki_cache_path has no commonpath/is_relative_to/normpath confinement. No security/path-traversal fix commit after 16f35a0. Unpatched in public history through HEAD c6bea82b68d47fd81f514e96025de90698030708.",
+ "reasoning": "The vulnerability is unsanitized interpolation of owner/repo/repo_type/language into a filesystem path used for read/write/delete of wiki cache files. That mechanism first appears in 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c, which created the server-side cache helpers and endpoints; the parent only stored an analogous key in browser localStorage. Parent-tree verification shows the vulnerable function and WIKI_CACHE_DIR are absent. The commit is a single-parent first-write, not a move/refactor/revert/backport/squash aggregate. Advisory bound 16f35a0 still contains the identical interpolation. No later commit adds path confinement, so there is no fix SHA; the case is a real unpatched vulnerability. AI judgment is BIC-only: author and committer are davideuler <davideuler@github.com> with no Co-Authored-By, Generated-with, or bot identity on the commit object, hence NOT_AI.",
+ "remaining_gap": "Unpatched: public history through HEAD still interpolates unsanitized owner/repo/repo_type/language in get_wiki_cache_path with no directory confinement; no fix SHA exists.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched: public history through HEAD still interpolates unsanitized owner/repo/repo_type/language in get_wiki_cache_path with no directory confinement; no fix SHA exists.",
+  "potential_fix": {
+   "approach": "Remediate the asyncfuncai/deepwiki-open sink described in bug_semantics by validating/normalizing the attacker-controlled input at the boundary before it reaches the vulnerable path (the concrete sink identified in bug_semantics), and land it upstream with a tagged release so fix_sha can be recorded.",
+   "rationale": "The record's remaining_gap verifies no public fix exists through the audited HEAD; the approach states the minimal boundary-level remediation consistent with the verified mechanism.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

@@ -1,0 +1,28 @@
+{
+  "worker": "w174",
+  "review_agent_id": "r389_w174",
+  "class_id": "alias-23f33f211dc3503dd2175443",
+  "case_id": "GHSA-65fp-7g2v-658r",
+  "repo": "bagisto/bagisto",
+  "primary_verdict": "FALSE_POSITIVE",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed the reported execution path but not a vulnerability mechanism: the public PoC logs in as an administrator explicitly granted the sole Configure ACL, enters JavaScript in Configure > General > Content > Custom Scripts, and observes that script on the storefront. Bagisto's own documentation says admins may write JS there and that it is appended to the master file; the v2.3.15 Blade layout deliberately emits the saved value unescaped inside a script element.",
+    "atomic_bic": "Not applicable because the claimed behavior is an intentional privileged feature, so there is no vulnerability-introducing commit. As corroborating feature provenance, 4b6bb0a8f550e1a23391d4803de2910e1c526c7d is a single-parent atomic commit that adds both the custom_css/custom_javascript configuration fields and their explicit raw CSS/JS layout sinks.",
+    "immediate_parent_absence": "Not applicable to a BIC because no vulnerability exists. Independently verified that feature-origin parent cc2318066454d48c585ddab89a536e1b87d72f35 lacks custom_scripts, custom_css, and custom_javascript in the affected configuration and layout files.",
+    "squash_member_decomposition": "No BIC exists to decompose. The corroborating feature-origin commit 4b6bb0a8f550e1a23391d4803de2910e1c526c7d has exactly one parent and directly contains the relevant additions; it is neither a merge nor an aggregate requiring member reconstruction.",
+    "affected_release_membership": "Verified that 4b6bb0a8f550e1a23391d4803de2910e1c526c7d is an ancestor of v2.3.15 and that v2.3.15 contains raw custom_javascript emission in the shop and admin-anonymous layouts. This establishes release presence of the intended feature, not a vulnerable release.",
+    "fixed_release_membership": "No fixed release is claimed or evidenced: the live GHSA reports first_patched_version=null, and v2.3.16, v2.3.19, v2.4.10, and clone HEAD all retain the same custom_javascript sink. This persistence agrees with the documented intended capability.",
+    "direct_fix_or_unpatched_state": "No direct security fix exists because there is no security defect to repair. The advisory supplies no fix reference, the GHSA supplies no patched version, and later tagged releases plus HEAD retain the behavior unchanged in substance.",
+    "bic_only_ai_attribution": "No BIC exists, so AI attribution is not applicable and no AI-marked commit was substituted for causal provenance. The feature-origin commit is authored and committed by jitendra <jitendra@webkul.com> and has no trailers, but that corroboration is not used as a BIC judgment."
+  },
+  "findings": [
+    "The live CVE record remains PUBLISHED and the live GitHub advisory remains unwithdrawn, but publication status does not establish a valid vulnerability mechanism.",
+    "The public exploit document expressly creates a role with Configure permission, logs in as that user, and uses the product's Custom Scripts input to save alert JavaScript; this is the exact documented administrative feature.",
+    "Bagisto documentation states that an admin can write CSS and JS in Custom Scripts and that the code is appended to the master file; v2.3.15 source implements exactly that contract.",
+    "The only configuration ACL is the top-level configuration/Configure permission, so the PoC grants the actor the permission governing the capability it exercises.",
+    "Independent Git replay confirms the primary record's feature origin, parent absence, release ancestry, continuing presence, lack of direct fix, and absence of any vulnerability BIC."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

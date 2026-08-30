@@ -1,0 +1,27 @@
+{
+  "worker": "w281",
+  "review_agent_id": "r389_w281",
+  "class_id": "alias-8bb1b4e7ea326c70e2b1d859",
+  "case_id": "GHSA-rcpp-qhfh-r47v",
+  "repo": "quickjs-ng/quickjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: js_typed_array_constructor snapshots offset and len from a resizable ArrayBuffer, then js_create_from_ctor reads new_target.prototype and can run a getter that shrinks the buffer. Before the fix, typed_array_init uses the stale geometry and sets the view pointer and count without revalidation. Issue #1296 supplies this exact PoC and an ASAN heap-buffer-overflow trace whose allocation stack passes through js_array_buffer_resize.",
+    "atomic_bic": "PASS: 878647e21dec1a101a5d7ced6134e70a8e2ffca8 is the smallest public first-write. It introduces RAB resize support, track_rab in js_typed_array_constructor, the side-effecting js_create_from_ctor followed by unchecked typed_array_init, and the contrasting DataView post-ctor RAB revalidation in one atomic PR member.",
+    "immediate_parent_absence": "PASS: the BIC has the single verified parent e569f39bf18b4670dd526b11ea09cd00d7be3e91. That tree has no track_rab, js_array_buffer_resize, max_byte_length, or array_buffer_is_resizable in quickjs.c; its ArrayBuffer length cannot be shrunk while attached, so the reported realloc-based stale-view mechanism is absent.",
+    "squash_member_decomposition": "PASS: GitHub PR #646 exposes the linear members 878647e21dec1a101a5d7ced6134e70a8e2ffca8, 8d3babe2c3a51332df20aa6594e6955e6b44c34b, 611b1abdfc2a076b3ae459d36cc4669e172800ff, ab40bdb0e9fe33e9f492b55010dc7a15e0112226, and fda205a23d2d8d40e7f8ffa28b6d3308db09141b. The later four members do not change js_typed_array_constructor, track_rab, or typed_array_init. Mainline 37fe427d59043d70f92c70d315592232ad8cb358 is the squash carrier, not the atomic BIC.",
+    "affected_release_membership": "PASS: the mainline carrier is absent from v0.1.0 through v0.6.1 and is contained by every checked release from v0.7.0 through v0.11.0. The direct fix is absent from all of those affected tags. This supports the primary's narrower code-derived boundary and its warning that the advisory's broad 'up to 0.11.0' wording includes pre-RAB releases.",
+    "fixed_release_membership": "PASS: c5d80831e51e48a83eab16ea867be87f091783c5 is first contained by v0.12.0 and remains contained by later local tags; v0.11.0 contains the carrier but not the fix.",
+    "direct_fix_or_unpatched_state": "PASS: advisory, merged PR #1299, and local history all identify c5d80831e51e48a83eab16ea867be87f091783c5. Its parent is 210ecb2b27b2cea1f8adddafae5594008738d6d4. The patch re-fetches the ArrayBuffer after js_create_from_ctor, rejects detach or invalid offset, recomputes tracking-RAB length, rejects a fixed-length view beyond the resized buffer, and adds tests/bug1296.js.",
+    "bic_only_ai_attribution": "PASS: the commit object for 878647e21dec1a101a5d7ced6134e70a8e2ffca8 names Ben Noordhuis as both author and committer and contains no trailers or AI-generation markers. The GitHub squash carrier and remediation were not substituted for the BIC when judging authorship. NOT_AI is supported from the BIC alone."
+  },
+  "findings": [
+    "CVE.org currently reports CVE-2026-0821 as PUBLISHED; GitHub reports GHSA-rcpp-qhfh-r47v with withdrawn_at null. The case is a real vulnerability, not FALSE_POSITIVE.",
+    "Independent source replay confirms the constructor TOCTOU and the atomic first-write at 878647e21dec1a101a5d7ced6134e70a8e2ffca8.",
+    "Independent PR-member, parent-tree, fix-diff, tag-membership, and BIC commit-object checks support every material primary field.",
+    "No correction to the primary record is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

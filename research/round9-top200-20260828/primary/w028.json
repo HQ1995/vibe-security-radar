@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-3e6b6b4fe75d477b98c50871",
+  "case_id": "GHSA-m7qq-f4rg-v5m5",
+  "repo": "go-gitea/gitea",
+  "advisory_ids": [
+    "CVE-2026-24059",
+    "GHSA-m7qq-f4rg-v5m5"
+  ],
+  "bug_semantics": "The runner registration-token API exposed token creation through GET routes. The existing token-scope middleware derives Read versus Write solely from the HTTP method, so a read-scoped user, organization, repository, or admin token could pass the GET route even though shared.GetRegistrationToken calls actions_model.NewRunnerToken when no usable token exists. The caller receives that credential and can register an Actions runner, which can then execute workflow jobs with access to repository source and secrets.",
+  "flaw_origin": "PR #27144 was squash-landed as baf0d402d9cb47849394202fcfc7c2e23b0faac3, but its reconstructable member eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f is the smallest BIC: it first added GET registration-token routes and the shared GET handler whose not-found/inactive branch creates a runner token. The scope middleware already treated all GET requests as Read in that member's immediate parent. A later member, bba250f3e99bef12bbd9a1d9d790ab8155c999d5, added the user and repository variants, extending rather than originating the same flawed mechanism.",
+  "introducer_sha": "eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f",
+  "introducer_parent": "24a215e317103471aeb864f365089a36076efc1d",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f",
+    "bba250f3e99bef12bbd9a1d9d790ab8155c999d5"
+  ],
+  "ai_marker": "absent — the eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f commit object names human author and committer Lunny Xiao <xiaolunwen@gmail.com>; its complete message is 'Add get actions runner registration token for API routes, repo, org and global level' and contains no Co-authored-by, Generated-with, AI, Copilot, or other trailer, and neither identity is a bot.",
+  "verdict": "NOT_AI",
+  "fix_sha": "716a800f500348e10a663ad749398d230c5bb7ad",
+  "direct_fix_sha": "716a800f500348e10a663ad749398d230c5bb7ad",
+  "evidence": [
+    "The public GHSA-m7qq-f4rg-v5m5 description identifies the exact mechanism: GET /api/v1/user/actions/runners/registration-token and owner/repository equivalents can create a token, while method-based API scope enforcement classifies GET as read-only; its references identify go-gitea/gitea#36801 as the fix.",
+    "Direct inspection of parent 24a215e317103471aeb864f365089a36076efc1d at routers/api/v1/api.go:257-261 shows requiredScopeLevel initialized to auth_model.Read and changed to Write only for POST, PUT, PATCH, or DELETE. The same parent has the user, repository, organization, and admin tokenRequiresScopes groups, so method classification was active before the vulnerable endpoints were added.",
+    "The PR #27144 commits API reconstructs the squash. Member eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f (parent 24a215e317103471aeb864f365089a36076efc1d) adds routers/api/v1/shared/runners.go:15-18, where GetRegistrationToken calls GetUnactivatedRunnerToken and then NewRunnerToken on not-found/inactive state, plus GET routes for organization and admin. Member bba250f3e99bef12bbd9a1d9d790ab8155c999d5 later adds the user handler and user/repository GET routes. The final squash baf0d402d9cb47849394202fcfc7c2e23b0faac3 preserves the same shared NewRunnerToken branch and all four GET route families.",
+    "Immediate-parent absence was checked against the parent tree, not inferred from blame: searching the raw 24a215e317103471aeb864f365089a36076efc1d routers/api/v1/api.go finds no GetRegistrationToken or registration-token route, and the parent-tree contents lookup for routers/api/v1/shared/runners.go returns 404 because the file does not exist. The eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f commit diff records the shared runner file and route handlers as additions.",
+    "Local full-history checks corroborate the landing lineage: git log -S'user.GetRegistrationToken' -- routers/api/v1/api.go finds introduction at squash baf0d402d9cb47849394202fcfc7c2e23b0faac3 and removal at 716a800f500348e10a663ad749398d230c5bb7ad; git log -L for shared.GetRegistrationToken traces its landed function to baf0d402d9cb47849394202fcfc7c2e23b0faac3, with only a later error-reporting refactor before the fix.",
+    "Direct fix 716a800f500348e10a663ad749398d230c5bb7ad (PR #36801, 'Remove API registration-token') removes every GET registration-token route and handler from routers/api/v1/{admin,user,org,repo} and routers/api/v1/api.go, removes their Swagger GET operations, and switches the integration caller from GET to POST. POST remains the state-changing registration-token operation and therefore receives Write scope under tokenRequiresScopes.",
+    "Version membership is bounded by tags: git tag --contains baf0d402d9cb47849394202fcfc7c2e23b0faac3 includes v1.22.0 and later but no v1.21 release. git tag --contains 716a800f500348e10a663ad749398d230c5bb7ad begins with the v1.26.0 release family and excludes v1.25.5. Direct git blame of v1.25.5 at user.GetRegistrationToken still shows the vulnerable GET route from baf0d402d9cb47849394202fcfc7c2e23b0faac3, so the advisory's v1.25.5 reference is not itself a patched boundary; v1.26.0 is the first stable tag in this clone containing the direct fix.",
+    "BIC-only AI inspection used the verified eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f commit object from GitHub's commit API. It records Lunny Xiao as both author and committer and a one-line message with no trailers or AI marker. The later squash's co-author trailers and the fix PR were not used to attribute the decomposed BIC."
+  ],
+  "reasoning": "The vulnerability is a semantic mismatch between HTTP method and behavior. Scoped-token authorization already classified GET as Read, but the PR introduced GET endpoints whose shared implementation could persist a new runner registration token. The earliest reconstructable PR member that combines a GET registration-token route with that mutating helper is eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f; bba250f3e99bef12bbd9a1d9d790ab8155c999d5 merely extends the same mechanism to the specifically named user and repository routes. Because #27144 was squash-merged, baf0d402d9cb47849394202fcfc7c2e23b0faac3 is the public landing aggregate rather than the smallest BIC. Direct inspection of eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f's immediate parent proves both the endpoint/helper absence and the pre-existing GET-as-Read rule. The squash first ships in v1.22.0; the referenced v1.25.5 tag remains vulnerable; and 716a800f500348e10a663ad749398d230c5bb7ad removes the GET surface in the v1.26.0 line. Finally, the decomposed BIC commit object contains only human identities and no AI-authorship marker, so the closed causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

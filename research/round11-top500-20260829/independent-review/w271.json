@@ -1,0 +1,51 @@
+{
+  "worker": "w271",
+  "review_agent_id": "r389_w271",
+  "class_id": "alias-154dfb6a8008d88303151b03",
+  "case_id": "GHSA-wmpg-2mpv-2hmm",
+  "repo": "gitlab.gnome.org/gnome/libsoup",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE.org records CVE-2026-77014 as PUBLISHED and Red Hat CNA describes CWE-197: sort_ranges() subtracts two 64-bit goffset starts but returns int, so differences beyond INT_MAX can reverse sign. GitLab issue 519 demonstrates that the invalid ordering feeds the later overlap merge and silently drops the middle range from a 206 response for a 5,000,000,000-byte body. The vulnerable and fixed trees contain a matching regression test for ranges more than G_MAXINT apart."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Vulnerability-first diff and line history identify 7aee2eeb1ca5aaad2162c0fb500a9d9a191a5e27 as the first public commit that adds sort_ranges(), the exact 'return ra->start - rb->start;' line, g_array_sort(), and the dependent merge loop. SoupRange.start was already goffset in that tree, so the 64-to-32 defect existed at first write."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "7aee2eeb has the single immediate parent e8e850b340fbcb51cbb7f950d102337b6a3cdf09. Exact parent-tree searches find neither sort_ranges nor 'ra->start - rb->start'; the parent has soup_message_headers_get_ranges() but lacks the newly added sorting and merge path."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is not a merge, move, refactor, revert, or squash aggregate: it is the single-parent git-svn conversion of public SVN revision 1181 and its focused diff adds 29 lines to one source file. No finer public member is reconstructable. MR !550 is separately decomposed: e82c13ba directly fixes this comparator, while 6ece9e52 and 546a59d2 address Content-Range validation and 416 response metadata."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "Ancestry checks show the BIC absent from LIBSOUP_2_24_3 and present in LIBSOUP_2_25_1, the first containing tag dated 2008-11-04. It remains an ancestor of tag 3.7.2, whose tree still has the truncated comparator."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "e82c13ba is on local master and origin/master, but 'git tag --contains' returns no tag. The newest available tag, 3.7.2, predates and does not contain the fix; therefore the fix is verified on the development branch but no fixed release is evidenced in the clone."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The direct fix is e82c13ba03defcee10f981ac964f4d570b21a251. Its parent f2af6b499cf23075ad73e065370cbb2e4eaceb6a still contains the truncated subtraction, while e82c13ba replaces it with an explicit three-way goffset comparison and adds tests for the exact issue-519 range pattern. The BIC is an ancestor of this fix; GitLab MR !550 lists the commit and is merged to master."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was evaluated only on BIC 7aee2eeb. Its commit object names human author and committer Dan Winship <danw@src.gnome.org>, dated 2008-10-10, and contains only a conventional changelog plus the git-svn revision trailer. It has no Co-Authored-By, Generated-with, bot identity, or other AI marker."
+    }
+  },
+  "findings": [
+    "The advisory is a real, non-withdrawn vulnerability: CVE.org state is PUBLISHED and GHSA-wmpg-2mpv-2hmm has withdrawn_at=null.",
+    "The primary record identifies the smallest surviving public first-write commit and verifies absence in its immediate parent.",
+    "The primary record correctly distinguishes the direct comparator fix from the other commits in merged MR !550 and correctly reports that no fixed tag is present.",
+    "BIC-only attribution supports NOT_AI because the 2008 human git-svn commit contains no AI marker."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

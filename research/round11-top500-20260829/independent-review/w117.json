@@ -1,0 +1,61 @@
+{
+  "worker": "w117",
+  "review_agent_id": "r389_w117",
+  "class_id": "alias-1a6e3850e1433264420875f5",
+  "case_id": "GHSA-x2fp-hj8c-mmxh",
+  "repo": "concretecms/concretecms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "At tag 9.5.0, unauthenticated GET /ccm/calendar/view_event/{bID}/{occurrence_id} reaches a controller whose canAccess() returns true. The controller validates only that bID names a calendar block, then EventOccurrenceService::getByID() performs a global versionOccurrenceID lookup. The dialog renders the selected occurrence through the block controller without checking occurrence-to-calendar membership or the occurrence event calendar's view permission, enabling a public calendar block to disclose a private calendar occurrence."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "66f16af85c73dc35d55302634ecd4f6572123fd3 is the sole --diff-filter=A, -S EventOccurrence::getByID($occurrence_id), and -S return true history hit for the controller on supplied clone refs. Although it is a broad 182-file calendar migration, it is the smallest surviving public Git object in the supplied clone that first writes both vulnerable operations."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "The BIC is single-parent with immediate parent 97b1daf25ba487a2b9ec53897f47dd4026eec8cd, and that parent tree has no concrete/controllers/dialog/frontend/event.php. The BIC adds the file with both the global occurrence lookup and canAccess() returning true."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The BIC is not a merge and no finer member introducing this file is present on supplied clone refs. For remediation history, non-ancestor PR member 6f7d4964a4ad627071697721c0ed8c77af1644c7 and landed squash f22b9dff59454391a50a255a39995bf635deea9e have identical stable patch-id 4cb6f4e7abf264f8d2082545d9daf272c3a4cd5c for this file."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "CORRECTION_REQUIRED",
+      "detail": "The BIC is an ancestor of affected tags 8.3.0 and 9.5.0. Landing f22b9dff59454391a50a255a39995bf635deea9e is an ancestor of 9.5.1 and not 9.5.0, while direct member 6f7d4964a4ad627071697721c0ed8c77af1644c7 is not an ancestor of 9.5.1. Reachability is established, but semantic fixed-release membership is not: tag 9.5.1 still accepts an arbitrary occurrence_id after checking only the block-bound calendar."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "CORRECTION_REQUIRED",
+      "detail": "The alleged direct and landed fixes add canViewCalendar() only for $controller->getCalendar(). They do not bind the globally loaded occurrence to that calendar or authorize $occurrence->getEvent()->getCalendar(). Therefore the advisory's public-calendar-to-private-calendar pivot remains possible when the block-bound calendar is guest-viewable; 9.5.1 is statically verified unpatched for the stated cross-calendar mechanism."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "AI attribution was checked only on BIC 66f16af85c73dc35d55302634ecd4f6572123fd3. Its raw commit object has human author and committer Andrew Embler <andrew@concrete5.org>, timestamp 2017-11-01, and no AI/co-author/bot trailer. Fix-side provenance is excluded. NOT_AI is confirmed."
+    }
+  },
+  "findings": [
+    {
+      "severity": "material",
+      "finding": "Primary incorrectly treats f22b9dff59454391a50a255a39995bf635deea9e / 6f7d4964a4ad627071697721c0ed8c77af1644c7 as a complete fix. Both identical patches authorize only the calendar selected by bID, then retain an unrestricted global occurrence lookup; they never compare the occurrence's calendar with the block calendar or authorize the occurrence's calendar."
+    },
+    {
+      "severity": "confirmed",
+      "finding": "The published, non-withdrawn CVE/GHSA describes cross-calendar disclosure using a public calendar block as a pivot, exactly the path left open by the 9.5.1 code. Vendor release notes label 9.5.1 fixed, but release metadata cannot override the contradictory sink-level code."
+    },
+    {
+      "severity": "confirmed",
+      "finding": "The vulnerable first write, immediate-parent absence, affected-tag reachability, and BIC-only human provenance support the primary introducer and NOT_AI verdict."
+    }
+  ],
+  "corrected_fields": {
+    "bug_semantics": "Unauthenticated CWE-639 cross-calendar IDOR in the Calendar Event Frontend Dialog: a caller supplies a calendar-block bID and an independent occurrence_id; the occurrence is loaded globally and rendered without membership or occurrence-calendar authorization. The 9.5.1 patch checks only the block-bound calendar and does not close the stated public-calendar-to-private-calendar pivot.",
+    "fix_sha": null,
+    "direct_fix_sha": null,
+    "reasoning": "66f16af85c73dc35d55302634ecd4f6572123fd3 is the first surviving public write in the supplied clone and its immediate parent lacks the controller; its human 2017 commit object has no AI marker, so NOT_AI remains correct. The proposed remediation commits are identical but incomplete for the advisory mechanism because they authorize only the bID calendar before globally loading an unrelated occurrence. They are remediation attempts, not direct fixes, and 9.5.1 cannot be recorded as semantically fixed from this evidence.",
+    "remaining_gap": "No commit or released tag in the supplied clone was identified that binds occurrence_id to the authorized block calendar or authorizes the occurrence's own calendar; vendor clarification or a closing patch is required."
+  },
+  "remaining_gap": "The advisory and vendor notes claim 9.5.1 is fixed, but the 9.5.1 source contradicts closure of the stated cross-calendar pivot. A genuinely closing fix commit/release is absent from the supplied clone."
+}

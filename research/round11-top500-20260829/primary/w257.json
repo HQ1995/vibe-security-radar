@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-5c08e1b57f6718120a20bd5f",
+  "case_id": "GHSA-gmwr-9j4p-96vm",
+  "repo": "processwire/processwire",
+  "advisory_ids": ["CVE-2026-40500", "GHSA-gmwr-9j4p-96vm"],
+  "bug_semantics": "Claimed CWE-918 SSRF in ProcessWire admin Modules > New > Add Module From URL: a user who can POST download_zip_url causes ProcessModule::executeDownloadURL to call ProcessModuleInstall::downloadModuleFromUrl, which WireHttp::download() fetches over http/https with no private-IP/allowlist check. Verbose WireHttp exceptions (unzip error 19 vs Connection refused vs getaddrinfo failed) distinguish reachable vs closed vs unresolvable hosts. The feature is gated by $config->moduleInstall['download'] (default false) and ProcessModule's module-admin permission.",
+  "flaw_origin": "Not a security issue. CVE-2026-40500 was rejected by CNA VulnCheck on 2026-07-09 and NVD marked it Rejected: Add Module from URL is an intentional superuser-equivalent module installer, already dominated by ZIP upload (arbitrary PHP execution), disabled by default, and enableable only by editing site/config.php on disk. GHSA-gmwr-9j4p-96vm remains listed with withdrawn_at null, but CVE.org/NVD disposition is authoritative. No BIC or fix is required.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; no BIC judged because the advisory is rejected as not a vulnerability",
+  "verdict": "FALSE_POSITIVE",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org/MITRE 5.2 record for CVE-2026-40500 (https://cveawg.mitre.org/api/cve/CVE-2026-40500): cveMetadata.state=REJECTED, assignerShortName=VulnCheck, dateRejected=2026-07-09T22:59:18.996Z.",
+    "CNA rejectedReasons: 'This CVE ID has been rejected or withdrawn by its CVE Numbering Authority. The \"Add Module from URL\" feature requires superuser privileges (root-equivalent in ProcessWire) who already has unrestricted arbitrary code execution via standard module upload, making the SSRF vector incapable of providing incremental attack surface. The feature is also disabled by default and requires direct filesystem access to enable.'",
+    "NVD CVE 2.0 API (https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-40500): vulnStatus=Rejected, lastModified=2026-07-09T23:17:05.123, same rejected reason text.",
+    "Snyk SNYK-PHP-PROCESSWIREPROCESSWIRE-16109594: advisory revoked ('doesn't affect any version'); Amendment 'This was deemed not a vulnerability.'; note 'CVE-2026-40500 was rejected by the CVE List.'",
+    "GHSA-gmwr-9j4p-96vm still published (bundle withdrawn_at=null; GitHub Advisory Database last updated 2026-04-16, before the 2026-07-09 rejection). Protocol treats GitHub withdrawn_at as non-authoritative versus CVE.org/NVD.",
+    "Researcher gist https://gist.github.com/thepiyushkumarshukla/7514e5eed526fd9d20fcfc42ce8d0a82: admin-auth PoC against 3.0.255; enable via $config->moduleInstallURL=true; POST download_module_url/download_zip_url to Modules > New; open host -> 'unzip: Unable to open ZIP file, error code: 19'; closed port -> 'Connection refused (tried: curl, fopen, socket)'.",
+    "Clone HEAD ed19baf6833a16e8612ee6f5eccb17f018ab2e35; tag 3.0.255=4bf3a6d09cfd2c5d3f8a1c195d768889434ba0b1. wire/config.php lines 1447-1451 default $config->moduleInstall download=>false, upload=>false, directory=>'debug'. ProcessModuleInstall::canInstallFromDownloadUrl() refuses unless that config is true or 'debug' with $config->debug.",
+    "ProcessModule.module: permission 'module-admin' (getModuleInfo); POST download_zip + download_zip_url CSRF-validated then ___executeDownloadURL -> installer()->downloadModuleFromUrl. ProcessModuleInstall::downloadModule() only requires preg_match('{^https?://}i',$url) then WireHttp::download($url,$tempZIP) with no RFC1918/loopback/link-local block; catch surfaces $e->getMessage(). Parallel uploadModule() is the existing ZIP ACE path.",
+    "WireHttp::___download() (wire/core/WireHttp.php ~1022-1098) validates http/https then curl/fopen/socket; on failure throws 'File could not be downloaded ($fromURL) ... (tried: $methods)', matching the gist oracle. Module.php documents permission as required only for non-superusers; superuser already has full module install/upload.",
+    "git log 3.0.255..HEAD -- ProcessModule.module ProcessModuleInstall.php WireHttp.php is empty through tags 3.0.256-3.0.259: no later security patch, consistent with CNA/NVD 'not a vulnerability' rather than an unpatched SSRF."
+  ],
+  "reasoning": "Vulnerability-first review of GHSA-gmwr-9j4p-96vm / CVE-2026-40500 shows the described Add Module From URL fetch is a real, intended admin installer: ProcessModule::executeDownloadURL -> ProcessModuleInstall::downloadModuleFromUrl -> WireHttp::download on attacker-supplied http(s) URLs, with differentiable transport errors. That behavior is not a security vulnerability relative to ProcessWire's trust model. CVE.org and NVD both record CVE-2026-40500 as REJECTED as of 2026-07-09 after CNA VulnCheck withdrew it: the actor must already be a superuser-equivalent module administrator who can execute arbitrary PHP via ZIP upload, the download option is off by default, and turning it on requires writing site/config.php. Snyk independently revoked the same advisory as 'not a vulnerability.' The still-listed GHSA (withdrawn_at null) is a stale GitHub mirror predating the CNA rejection and is not controlling. FALSE_POSITIVE is therefore the closed result; BIC/fix SHAs are omitted because the advisory itself is rejected, not because authorship is unknown.",
+  "remaining_gap": null
+}

@@ -1,0 +1,26 @@
+{
+  "worker": "w275",
+  "review_agent_id": "r389_w275",
+  "class_id": "alias-4e2f7550673eac0b45258c88",
+  "case_id": "GHSA-rfq2-gv2r-vgjg",
+  "repo": "riot-os/riot",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. dist/tools/ethos/ethos.c defines serial_t.frame[MTU] with MTU 9000, while _handle_char() wrote to frame[framebytes] and incremented framebytes without a bound; both normal and escaped input reach this helper. The Full Disclosure reproduction sends 9501 bytes and reports UBSan index 9000 plus an ASan stack-buffer-overflow write. CVE-2026-22214 is currently PUBLISHED and identifies versions through 2026.01-devel-317 as affected.",
+    "atomic_bic": "Confirmed as 52aec3ad32fbd175a0bae37ca6aa3eb24c671a8a. This single-parent commit creates dist/tools/ethos/ethos.c and first writes the fixed-size frame, unchecked indexed store, and increment together. git log -L and exact-string -S both trace the vulnerable statements to this commit; a52c7813393b7bf1e856e71652b341fc6c77df95 later adds TCP reachability but does not originate the sink.",
+    "immediate_parent_absence": "Confirmed. The BIC's immediate parent is 9e3e485ec0e1af0addaca3a1157e3771701ec057, and that tree has no dist/tools/ethos/ethos.c. Its drivers/ethos/ethos.c is a distinct MCU-side implementation using bounded tsrb_add_one handling, so it is not an earlier copy of this vulnerable host sink. The primary field introducer_parent_absent=false correctly denotes that the parent commit itself is available for inspection.",
+    "squash_member_decomposition": "Confirmed not required. 52aec3ad32fbd175a0bae37ca6aa3eb24c671a8a is an ordinary one-parent member commit, is reachable from PR #4438's second-parent tip c762a6fe7e8ba0caf94d0e33fa526b2ff82a02d7, and is then contained by merge 66dab58b8a0855b97d49803fdc1529180d0d2c3b. The merge aggregate is not substituted for the member BIC.",
+    "affected_release_membership": "Confirmed. The BIC is absent from tag 2015.12, present in 2016.04, and present in 2025.10. git describe identifies it as 2015.12-RC1-283-g52aec3ad32, while the CVE record's affected ceiling is 2026.01-devel-317.",
+    "fixed_release_membership": "Confirmed. Direct fix dc068a69433999644ea4316378f31ecf5e6dfc50 and merge ddff869df57bad2c7616c352613b5a044907451f are absent from 2025.10 and present in 2026.01-RC1 and 2026.01. git describe gives 2026.01-devel-317-g66a6eab997 for the direct fix parent and 2026.01-devel-318-gdc068a6943 for the fix, matching the advisory boundary.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. dc068a69433999644ea4316378f31ecf5e6dfc50 changes _handle_char() to perform the store and increment only when framebytes < sizeof(frame); its parent still has the unchecked two statements. The commit is the second parent of merge ddff869df57bad2c7616c352613b5a044907451f.",
+    "bic_only_ai_attribution": "Confirmed. The BIC commit object names Kaspar Schleiser as author and committer in 2016 and contains only the message 'dist: add ethos UNIX tool'; it has no Co-Authored-By, Generated-with, Signed-off-by, Copilot, ChatGPT, Claude, or bot marker. The fix's Co-authored-by trailer and unrelated repository AI-scan hits were not used to attribute the BIC. NOT_AI is therefore supported from BIC-only evidence."
+  },
+  "findings": [
+    "The advisory describes a real CWE-121 stack overwrite in the host ethos frame parser; CVE.org state is PUBLISHED, not rejected or withdrawn.",
+    "The primary selects the smallest reconstructable first-write commit rather than the later PR merge, TCP reachability commit, or fix.",
+    "All checked commit, parent, merge, tag, and direct-fix relationships support the primary record without a field correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

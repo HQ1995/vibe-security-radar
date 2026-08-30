@@ -1,0 +1,25 @@
+{
+  "worker": "w194",
+  "review_agent_id": "r389_w194",
+  "class_id": "alias-df693add9d8e1d6639f07692",
+  "case_id": "GHSA-xgr2-5837-hf48",
+  "repo": "novosga/novosga",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed CWE-521 at the affected user-creation sink: novosga/novosga v2.2.12 locks novosga/users-bundle v2.2.1 at 57d294b659a3fc7ba383af9027205cc25a8fd10c; UsuarioType accepts a new user's repeated senha with only NotNull and Length min 6, and DefaultController hashes and persists that form value. The published PoC's 123456 therefore passes. CVE.org reports CVE-2025-11322 as PUBLISHED and affected versions 2.2.0 through 2.2.12; GitHub reports withdrawn_at null.",
+    "atomic_bic": "Confirmed 556dde92fb3e8db1039d4f75336ceef32faea784 as the first surviving public write of the mechanism. It adds web/modules/sga/usuarios/UsuariosController.php::preSave with ctype_alnum plus strlen($senha) < 6, which accepts 123456. Although this is a 908-file init import, it is the smallest reconstructable public Git object containing the vulnerable lines.",
+    "immediate_parent_absence": "Confirmed. The BIC has immediate parent c79bf1fdbadda75ddf6a0b1d942cbd23e9651af5; that parent's recursive tree contains only README.md, so the controller and password-policy lines are absent.",
+    "squash_member_decomposition": "Confirmed no finer member decomposition is available. The BIC is a single-parent 2012 init commit, not a merge; its immediate parent is README-only. Later commits 96bc77f07c229741c725243d9c1bf7aab5594581 and fd2be95a4679ed1934197522cdf86a1420c617cc extract or relocate the same min-6 check, while users-bundle commits 821255e152075b1400a5e9e0d5e6c8b0a4df8bf7 and d2c13a6b5963baf71bda961ba63aaf2ee4aff9b9 copy then restore the policy; none is an earlier BIC member.",
+    "affected_release_membership": "Confirmed. 556dde92fb3e8db1039d4f75336ceef32faea784 is an ancestor of tags v2.2.0 and v2.2.12. Tag v2.2.12 locks the vulnerable users-bundle v2.2.1 commit 57d294b659a3fc7ba383af9027205cc25a8fd10c, matching CVE.org's affected-version list and GHSA's <= 2.2.12 range.",
+    "fixed_release_membership": "Confirmed that no fixed release is identified. GHSA first_patched_version is null. v2.2.13 still locks users-bundle v2.2.1 at 57d294b659a3fc7ba383af9027205cc25a8fd10c; v2.3.0 and v2.3.2 lock v2.3.0 at bf4ad35a7ff3d256df54190b60bdccc62b9300d5, whose UsuarioType still has only Length min 6. Current NovoSGA HEAD locks users-bundle v2.4.x-dev at d788254bc074209ce13806347d8ccfa9e4b64ede, which retains the same constraint.",
+    "direct_fix_or_unpatched_state": "Confirmed unpatched state and null fix_sha/direct_fix_sha. Besides the current user-creation form retaining min-6-only validation, NovoSGA HEAD still checks only strlen($password) < 6 in ProfileController and InstallCommand; current users-bundle v2.4 ChangePasswordType also retains Length min 6. No direct upstream fix was found in the verified release/dependency state.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. git cat-file shows 556dde92fb3e8db1039d4f75336ceef32faea784 authored and committed by rogeriolino@gmail.com on 2012-12-03 with message init and no AI trailer or marker. The 2025 Copilot-authored users-bundle commit 57d294b659a3fc7ba383af9027205cc25a8fd10c changes only username regex support for hyphens and underscores; it does not introduce or alter the password constraint and is not the BIC."
+  },
+  "findings": [
+    "The primary record's vulnerability lifecycle, BIC, parent, unpatched state, and BIC-only NOT_AI attribution are independently reproduced and supported.",
+    "No correction is required; the later Copilot commit is correctly excluded from causal attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "No remaining gap affecting the NOT_AI judgment. The vulnerability remains unpatched in the verified upstream and dependency state, so no fix or fixed-release SHA can be supplied."
+}

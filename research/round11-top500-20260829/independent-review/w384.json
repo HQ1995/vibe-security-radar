@@ -1,0 +1,27 @@
+{
+  "worker": "w384",
+  "review_agent_id": "r389_w384",
+  "class_id": "alias-2903320f52c25b2573632839",
+  "case_id": "GHSA-rxrq-fv76-26pr",
+  "repo": "free5gc/free5gc",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. At vulnerable nef commit 5ce35eab62b49b46c02be55d0c8ab23ce0300bee, PfdChangeNotifier.FlushNotifications invokes NnefPFDmanagementNotify for the stored notifyUri and calls logger.PFDManageLog.Fatal(err) on delivery failure. PFDManageLog is a *logrus.Entry; logrus v1.9.3 Entry.Fatal calls Logger.Exit(1), so an unreachable attacker-controlled callback terminates NEF rather than containing the asynchronous error.",
+    "atomic_bic": "Confirmed. free5gc/nef a39681cbb8e982ede4e7f36eef7b09f38c0df3db is the single-parent public first-write object: its patch creates PfdNotifyContext/flushNotifications and adds both NotificationPost and logger.PFDManageLog.Fatal(err). This is the smallest surviving public commit containing the vulnerable first write, not the later umbrella gitlink addition.",
+    "immediate_parent_absence": "Confirmed. The complete tree for immediate parent 3d054a1804771d9c6296368093c0f04941b1e62f has no PfdNotifyContext, NotificationPost, or PFDManageLog.Fatal occurrence; the BIC API object names that exact sole parent.",
+    "squash_member_decomposition": "Confirmed not applicable. a39681cbb8e982ede4e7f36eef7b09f38c0df3db has one parent, a one-line feature commit message, and GitHub's associated-pulls endpoint returns an empty list. No public merge/squash members exist to substitute or decompose.",
+    "affected_release_membership": "Confirmed. GitHub compare shows a39681cbb8e982ede4e7f36eef7b09f38c0df3db is an ancestor of nef v1.0.0 and v1.2.2; v1.2.2 resolves to vulnerable 5ce35eab62b49b46c02be55d0c8ab23ce0300bee. The umbrella free5gc v4.2.0 and v4.2.1 trees both point NFs/nef to that vulnerable commit. This agrees with GHSA range < 1.2.3 and CVE affected free5gc < 4.2.2.",
+    "fixed_release_membership": "Confirmed. Direct fix d61f4d147a9bc56e32401abe79a7cd615ea82526 and merge f110517b1189801950b50668a593398687049074 are ancestors of nef v1.2.3, while d61f4d1 is not an ancestor of v1.2.2. Tag v1.2.3 resolves to 2969433db45e813d65af3f43fe16e6bba750824a, and free5gc v4.2.2 points NFs/nef to that same patched commit.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. Parent 72a47f3fab4dffbd227f8d92c5f69dca93b610cb retains the delivery-error Fatal branch. d61f4d147a9bc56e32401abe79a7cd615ea82526 replaces it with sendPFDChangeNotification, logs delivery errors with Errorf, and changes recovered panics from Fatalf to Errorf; f110517b1189801950b50668a593398687049074 is the two-parent PR merge carrying that content.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. The a39681cbb8e982ede4e7f36eef7b09f38c0df3db commit object identifies author and committer briasp8210 <briantaipei8210@gmail.com>, maps the author to GitHub user briansp8210 of type User, and contains only subject 'feat(nef): Implement notification mechanism' with no Co-Authored-By, Generated-with, bot, or other AI marker. Later 2026 fix authorship is irrelevant to introducer attribution."
+  },
+  "findings": [
+    "CVE.org reports CVE-2026-44319 state PUBLISHED with free5gc versions < 4.2.2 affected; the live GHSA is not withdrawn and reports github.com/free5gc/nef < 1.2.3 vulnerable, first patched in 1.2.3.",
+    "Commit 381e68c12e532781e611e29bbd8324d899576550 preserves the same NotificationPost error-to-Fatal branch while moving notification management into a dedicated notifier package, so it is a refactor rather than the BIC.",
+    "The umbrella repository first added NFs/nef at 3022243710ee2ace9bb9e60c0d3500e62ffebd92 pointing to nef 6e29dc5f112264f2c576e6f90e74192c698227d7, already downstream of the nef BIC; e607765d87c9736de6a1f97671c9261a420ca5eb updates the gitlink to patched nef v1.2.3 and belongs to free5gc v4.2.2, not v4.2.1.",
+    "Independent replay supports every material field and the primary NOT_AI conclusion; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

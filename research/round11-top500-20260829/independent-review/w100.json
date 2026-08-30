@@ -1,0 +1,27 @@
+{
+  "worker": "w100",
+  "review_agent_id": "r389_w100",
+  "class_id": "alias-3addaa4f5eaf80c7d9c16572",
+  "case_id": "GHSA-g5gc-h5hp-555f",
+  "repo": "adonisjs/lucid",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed CWE-915: merge() and later $consumeAdapterResult() accepted arbitrary payload keys that were own instance properties and assigned them directly. Because $attributes, $original, $isPersisted, $isDeleted, and related ORM state are initialized own fields, unfiltered input could overwrite internal state; save() branches on $isPersisted. CVE-2026-22814 remains PUBLISHED and describes the same mechanism.",
+    "atomic_bic": "Confirmed 3d36a661b32da1071de2b94e31a80f14f9345213 as the smallest first-write commit. Its functional patch adds the hasOwnProperty(key) assignment branch to merge(), with focused tests proving direct assignment to a non-column instance property; git log -S identifies it as the first such change on the original BaseModel path.",
+    "immediate_parent_absence": "Confirmed immediate parent 478fd7df48fc28aaa50dba18685050a7828d5e44. The parent already initializes $attributes, $original, $isPersisted, and $isDeleted, but its merge() proceeds from column/relation handling directly to rejection or $extras and contains no hasOwnProperty(key) assignment branch.",
+    "squash_member_decomposition": "Confirmed no decomposition is required: the BIC has exactly one parent, is not a merge, move, revert, release, or squash aggregate, and its small source change and matching tests directly implement the vulnerable behavior. The later 918a4bc99ad1d249c3de776128a97b98b715289a copies the sink into $consumeAdapterResult(); the 2023 path migration is only a carrier.",
+    "affected_release_membership": "Confirmed the BIC is an ancestor of v16.0.0 (the first containing version tag), v21.8.1, and v22.0.0-next.5. The npm gitHead objects for 21.8.1 (66a88f35a5f8b5bce03aaf65dbe16a674dbc6e2a) and 22.0.0-next.5 (ccc08514892ff15d650b655b2525a1e0fd3f7290) both contain the two hasOwnProperty(key) sinks and no INTERNAL_INSTANCE_PROPERTIES guard.",
+    "fixed_release_membership": "Confirmed the BIC remains in v21.8.2 and v22.0.0-next.6, while their npm gitHead objects 6e8a2170db9e6a137d644affabf08403698c1770 and 480cc25d10be236bb887a1c81fd12b34b95c1153 contain INTERNAL_INSTANCE_PROPERTIES guards before both sinks. CVE and GHSA data identify these as the fixed releases.",
+    "direct_fix_or_unpatched_state": "Confirmed direct 21.x fixes b007b12b40cc4a033bc06402b2e40d30fc9f3b85 (merge) and fff9b46462953c3311d8dc337cceedd55a3d4c4f ($consumeAdapterResult) are after v21.8.1 and before v21.8.2. Parallel 22.x fixes ff67a357ba8477e2c56b4b5c062eea4fd289ce25 and 480cc25d10be236bb887a1c81fd12b34b95c1153 are absent from next.5 and present in next.6.",
+    "bic_only_ai_attribution": "Confirmed using only BIC evidence: the commit object has matching author and committer Harminder Virk, GitHub maps both to thetutlage with type User, the message and trailers contain no AI, bot, Co-Authored-By, Generated-with, Made-with, Cursor, Copilot, or ChatGPT marker, and the focused feature tests show an intentional human-authored behavior change. NOT_AI is supported independently of later fixes."
+  },
+  "findings": [
+    "The advisory mechanism, vulnerable source, and direct fixes agree; the advisory is not rejected or withdrawn under the authoritative CVE state check.",
+    "The primary record correctly distinguishes the first vulnerable merge() write from the later sibling sink and from the 2023 path-only migration.",
+    "Affected and fixed release boundaries were independently checked against both Git tags and npm package gitHead objects.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

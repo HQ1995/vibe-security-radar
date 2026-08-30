@@ -1,0 +1,28 @@
+{
+  "class_id": "alias-bb9221fb3bacaa4409bb135d",
+  "case_id": "GHSA-3MM3-WFPV-Q85G",
+  "repo": "clerk/javascript",
+  "advisory_ids": [
+    "CVE-2025-63700",
+    "GHSA-3mm3-wfpv-q85g"
+  ],
+  "bug_semantics": "The withdrawn report alleged that an attacker could begin an OAuth sign-in, reach an OTP challenge, alter the factor strategy in the attempt request, and complete authentication without the correct code. A browser can always alter its request, so the alleged bypass would require the Frontend API server to accept a factor that was not valid for the prepared sign-in state. The CNA subsequently rejected CVE-2025-63700 after determining that it was not a security issue.",
+  "flaw_origin": "No verified flaw exists in clerk/javascript. At @clerk/clerk-js 5.88.0 the public SDK only sends the selected strategy and entered code to the Frontend API; the authentication decision and factor-to-state binding are server-side. The relevant client transport predates 5.88.0, and the authoritative rejection establishes no vulnerable server behavior or repository-local origin.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "unverified — BIC commit-object AI marker could not be established; see remaining_gap",
+  "verdict": "EVIDENCE_GAP",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "Advisory disposition re-check: https://cveawg.mitre.org/api/cve/CVE-2025-63700 currently returns cveMetadata.state=REJECTED, dateRejected=2025-12-23, and the CNA reason 'Further investigation showed that it was not a security issue.' The GitHub advisory API remains stale: https://api.github.com/advisories/GHSA-3mm3-wfpv-q85g still says @clerk/clerk-js <= 5.88.0 but reports first_patched_version=null and withdrawn_at=null. Thus there is no verified vulnerable-to-patched boundary or security fix.",
+    "Version-boundary re-check in the validated clone: `git rev-parse '@clerk/clerk-js@5.88.0^{}'` returned c3facf1d1877261c01be5a446458f37e75c6d354. `git for-each-ref` peeled 5.87.0, 5.88.0, and 5.89.0 to 6a1fb13a389b2b97db286539f0e9a7ef018ea5ab, c3facf1d1877261c01be5a446458f37e75c6d354, and 3cb634c4a9431a4680350351ffc1516b99e4157e. `git diff --name-status '@clerk/clerk-js@5.87.0' '@clerk/clerk-js@5.88.0' -- packages/clerk-js/src/core/resources/SignIn.ts packages/clerk-js/src/ui/components/SignIn` showed only SignInAccountSwitcher.tsx and SignIn/index.tsx changes, not the factor-attempt transport.",
+    "Smallest-BIC and direct-parent re-check: `git log --format=fuller -L '182,199:packages/clerk-js/src/core/resources/SignIn.ts' '@clerk/clerk-js@5.88.0'` traced the generic attempt_first_factor POST back to 8b00a66c18924a2a99afdb3539bd6663d68eb673. That commit added the file as part of the multi-package aggregate 'More Clerk packages going Open Source' and is an import, not an atomic introducer. `git cat-file -p 8b00a66c18924a2a99afdb3539bd6663d68eb673` identified its direct parent as 679ab0e0054250cf9269d28b097cac043ac761a1; `git ls-tree -r 679ab0e0054250cf9269d28b097cac043ac761a1 -- packages/clerk-js/src/core/resources/SignIn.ts` returned no entry. Parent absence only proves the public-source import boundary, not that the aggregate introduced a real vulnerability, so the import is rejected as a BIC and there is nothing to squash-decompose.",
+    "marker_state disagreement resolved: the primary stored the explanatory string 'not applicable: ... no smallest BIC exists' in ai_marker, while the reviewer stored null. BIC-only attribution permits a marker only from a verified smallest BIC commit object. No BIC exists here. The only inspected commit object, `git cat-file -p 8b00a66c18924a2a99afdb3539bd6663d68eb673`, belongs to the rejected import aggregate and therefore cannot supply attribution. The reviewer wins on the canonical field state: ai_marker=null; the primary's explanation belongs in evidence/reasoning, not in ai_marker."
+  ],
+  "reasoning": "Vulnerability-first analysis ends without a BIC. The alleged security decision is server-side, the public client merely serializes caller-controlled factor parameters, release 5.88.0 did not add that transport, and the CNA affirmatively rejected the CVE as not a security issue. The earliest public-history appearance is a wholesale source import whose direct parent lacks the file; protocol forbids treating imports or aggregates as the smallest real BIC. With no verified vulnerable lines, no BIC/direct-parent absence proof for a flaw, and no patched version or fix, EVIDENCE_GAP is gate-complete. For the sole marker_state disagreement, both audits agreed semantically that no BIC can be attributed, but only the reviewer's null is the valid field value: a narrative non-applicability string is not commit-object AI evidence. Contract normalization note: the canonical audit contract represents an inspected marker absence with the explicit ai_marker string above; the prior null representation was superseded and is not the accepted field value.",
+  "remaining_gap": "Closing attribution would require a reproducible authentication bypass, the causal server-side validation code and history, a smallest real introducer with its immediate parent, and a corresponding security fix or verified unpatched disposition. The public report and clerk/javascript provide none of those, while the CNA says the report was not a security issue; therefore no BIC commit-object AI signal can be recorded."
+}

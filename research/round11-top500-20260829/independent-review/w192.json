@@ -1,0 +1,49 @@
+{
+  "worker": "w192",
+  "review_agent_id": "r389_w192",
+  "class_id": "alias-d3d4ec30daea2d9b395ab407",
+  "case_id": "GHSA-c96f-x56v-gq3h",
+  "repo": "delvedor/find-my-way",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "lookup() forwards req.method to find(); acf1283552c1e0fc5e5939dc1f23f195fadd3676 stores method roots in a normal object and reads this.trees[method]. Inherited keys such as constructor are truthy, bypass the missing-root return, and are treated as nodes until currentNode.prefix.length throws. The live CVE record is PUBLISHED and the live GHSA is not withdrawn."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "acf1283552c1e0fc5e5939dc1f23f195fadd3676 is the smallest public first-write: its diff introduces both this.trees = {} and find()'s this.trees[method] lookup. Later rewrites retain the same sink and are not introducers."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC's verified immediate parent is 57e7a6d6f1bb26ac3239bbfd839c81311e3dd9a4. That parent has no this.trees reference; it initializes this.tree as a Node and find() traverses this.tree, so the vulnerable method-to-plain-object lookup is absent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "GitHub PR #168 exposes exactly two members: benchmark-only 57e7a6d6f1bb26ac3239bbfd839c81311e3dd9a4 and BIC acf1283552c1e0fc5e5939dc1f23f195fadd3676. The latter's tree 75bd52aba7c0a1cfae6d7e2d4a8bb7fe87f09d72 equals squash landing b9337ca6c437b6491922602e00596b8b488ad8f6's tree, so the squash itself is not substituted for the atomic BIC."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "v3.0.4 resolves to ce6d38b8a9430048934ddadb74a33950e7344101 and still uses this.tree; b9337ca6c437b6491922602e00596b8b488ad8f6 is an ancestor of v3.0.5 and v9.6.0. The v9.6.0 source still initializes this.trees with {} and performs this.trees[method]."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "cfe3fd6168b5ac1594c0820fb83fce251a533fc1 is not an ancestor of v9.6.0 and is an ancestor of v9.7.0. The v9.7.0 source uses Object.create(null) at both initialization sites, matching the live GHSA's first patched version 9.7.0."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix cfe3fd6168b5ac1594c0820fb83fce251a533fc1 changes constructor and reset() from {} to Object.create(null) and adds constructor-method lookup/find and HTTP/2 regression tests. Its parent a21e332f69c82684cdd130b79164236ef7c15684 remains vulnerable. Advisory-linked PR #434 is closed, unmerged, and unrelated to this fix."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC object and live GitHub commit record identify Harry Brundage as author and committer, carry a valid GPG verification, and contain no AI/co-author/generated-with trailer or AI marker. Attribution was evaluated on acf1283552c1e0fc5e5939dc1f23f195fadd3676 only, not on the GitHub-committed squash or the 2026 fix."
+    }
+  },
+  "findings": [
+    "Independent replay confirms the primary causal chain, atomic BIC, NOT_AI verdict, and direct fix without a field-level correction.",
+    "The CVE description's final sentence says 9.0.7, but its affected data says < 9.7.0 and the GHSA, Git tags, ancestry, and patched source all establish 9.7.0 as the fixed release."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

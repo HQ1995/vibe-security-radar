@@ -1,0 +1,30 @@
+{
+ "class_id": "alias-554c009134e1f17453711cbd",
+ "case_id": "GHSA-prj9-97mp-mwh2",
+ "repo": "olivetin/olivetin",
+ "advisory_ids": [
+  "CVE-2026-53541",
+  "GHSA-prj9-97mp-mwh2"
+ ],
+ "bug_semantics": "filterToDefinedArgumentsOnly kept any argument whose name started with ot_, not only the two OliveTin-injected keys. User-supplied extra ot_* values skipped defined-argument type checks, survived into req.Arguments, were exported by buildEnv as OT_* environment variables, and were available in template context. injectSystemArgs overwrote only ot_executionTrackingId and ot_username.",
+ "flaw_origin": "4bbd2eab153287dc744ad061c58af7693f0c3ddc first wrote filterToDefinedArgumentsOnly with `ok || strings.HasPrefix(k, \"ot_\")` while adding a defined-name filter for GHSA-49gm-hh7w-wfvf. Parent 1db6509288bb356c6b9128a2318c91fc16e80d83 already injected the two system keys and passed req.Arguments to buildEnv, but had no defined-name filter and no ot_ prefix exception. 38d6b57077028300a0c9bee9176a75dd4a44ba83 only extracted keepArgument with the same predicate. ebffd9f040f791208aee1db2e5a8aecd1e3e603d removed the prefix exception, injects the two system args after filtering, and validates them.",
+ "introducer_sha": "4bbd2eab153287dc744ad061c58af7693f0c3ddc",
+ "introducer_parent": "1db6509288bb356c6b9128a2318c91fc16e80d83",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent — BIC commit object author/committer jamesread <contact@jread.com>; message 'security: GHSA-49gm-hh7w-wfvf' with no Co-Authored-By, Generated-with, or bot identity",
+ "verdict": "NOT_AI",
+ "fix_sha": "ebffd9f040f791208aee1db2e5a8aecd1e3e603d",
+ "direct_fix_sha": "ebffd9f040f791208aee1db2e5a8aecd1e3e603d",
+ "evidence": [
+  "GHSA-prj9-97mp-mwh2 / CVE-2026-53541 (CVE.org state PUBLISHED; GHSA withdrawn_at null) describe CWE-20: keepArgument/filterToDefinedArgumentsOnly exempts any ot_ prefix; only ot_executionTrackingId and ot_username are injected; extra ot_* values skip type checks, enter buildEnv, and reach templates. First patched version named as ebffd9f040f791208aee1db2e5a8aecd1e3e603d.",
+  "git show --stat ebffd9f040f791208aee1db2e5a8aecd1e3e603d -- service/internal/executor/: executor.go keepArgument drops HasPrefix(name, \"ot_\") (return ok only); stepParseArgs filters before injectSystemArgs; injectSystemArgs validates the two system keys. git cat-file -p shows author/committer jamesread <contact@jread.com>, parent 41612c6bc6a8a6424e27e6a66fb0dae30524c768, subject names GHSA-prj9-97mp-mwh2.",
+  "git log -S 'strings.HasPrefix(name, \"ot_\")' and -S 'strings.HasPrefix(k, \"ot_\")' -- service/internal/executor/: first write is 4bbd2eab153287dc744ad061c58af7693f0c3ddc (inline in filterToDefinedArgumentsOnly). 38d6b57077028300a0c9bee9176a75dd4a44ba83 (chore: codefmt) only extracts keepArgument with the same predicate. git cat-file -e 1db6509288bb356c6b9128a2318c91fc16e80d83:service/internal/executor/executor.go succeeds. Parent grep has injectSystemArgs/buildEnv but no filterToDefinedArgumentsOnly, keepArgument, or HasPrefix ot_.",
+  "git show 4bbd2eab153287dc744ad061c58af7693f0c3ddc -- service/internal/executor/executor.go: adds filterToDefinedArgumentsOnly after injectSystemArgs with `if _, ok := definedNames[k]; ok || strings.HasPrefix(k, \"ot_\")`. Tests drop extra_undefined/webhook_path but TestFilterToDefinedArgumentsPreservesSystemArgs keeps ot_executionTrackingId and ot_username. git cat-file -p 4bbd2eab...: single parent 1db6509288bb356c6b9128a2318c91fc16e80d83, author/committer jamesread <contact@jread.com>, message 'security: GHSA-49gm-hh7w-wfvf', no Co-Authored-By/Generated-with/bot. git log -1 --format='%an %ae %cn %ce' same identities.",
+  "git show 76c917135621812a5f9b1f730b5ca30d9146e10a -- internal/executor/executor.go: first injects only ot_executionTrackingId and ot_username into req.Arguments; it does not write a prefix keep-exception. merge-base --is-ancestor 4bbd2eab... ebffd9f040... and 38d6b570... ebffd9f040... both exit 0.",
+  "ppa re-checked line-level 2026-08-29: numactl git show 4bbd2ea^:service/internal/executor/executor.go | grep -c 'HasPrefix(k, \"ot_\")' = 0 while BIC 4bbd2ea adds 'if _, ok := definedNames[k]; ok || strings.HasPrefix(k, \"ot_\")' at line 721 retaining arbitrary caller ot_* arguments — vulnerable filter line new at BIC. -> introducer_parent_absent=true."
+ ],
+ "reasoning": "The advisory is a real incomplete-filter hole, not a withdrawn/rejected record. The smallest commit that first wrote the ot_ prefix keep-exception described by the GHSA is 4bbd2eab153287dc744ad061c58af7693f0c3ddc; the parent executor already injected two system keys and built env from req.Arguments but had no defined-name filter and no prefix exemption. 38d6b57077028300a0c9bee9176a75dd4a44ba83 only extracted keepArgument and is not a first-write. Authorship on that BIC commit object is human (jamesread) with no AI marker, so the verdict is NOT_AI. Direct fix is ebffd9f040f791208aee1db2e5a8aecd1e3e603d.",
+ "remaining_gap": null
+}

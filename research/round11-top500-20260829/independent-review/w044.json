@@ -1,0 +1,24 @@
+{
+  "worker": "w044",
+  "review_agent_id": "r389_w044",
+  "class_id": "alias-6ddd858f402b023a1816e063",
+  "case_id": "GHSA-gpcr-p5wh-5x85",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE-2025-49180 is PUBLISHED and the X.Org advisory identifies an integer overflow in RRChangeProviderProperty. The request path accepts format 8/16/32 and attacker-controlled nUnits; RRChangeProviderProperty computes total_len from replacement or existing-size plus appended/prepended length, narrows total_len * size_in_bytes into int total_size for malloc, then copies len and existing property bytes, so wraparound can under-allocate before the memcpy operations.",
+    "atomic_bic": "CONFIRMED: git log -S on the vulnerable multiplication and --diff-filter=A on randr/rrproviderproperty.c both identify 66d92afeaeed9f4a19267d95a1f81b9bf27162a5. That commit creates RRChangeProviderProperty, its unchecked multiplication/allocation, and ProcRRChangeProviderProperty; later blame retains the multiplication at this commit. Although the commit adds the provider feature broadly, this is the smallest surviving public commit that first creates this vulnerable provider-property path.",
+    "immediate_parent_absence": "CONFIRMED: the BIC has the single immediate parent 44eae69f1df2d00e0c9f1ea8d3c4fae06bcacfbc. The parent tree has no randr/rrproviderproperty.c and git grep finds no RRChangeProviderProperty under randr, while the BIC adds the file and vulnerable function.",
+    "squash_member_decomposition": "CONFIRMED_NOT_APPLICABLE: 66d92afeaeed9f4a19267d95a1f81b9bf27162a5 is a normal single-parent public commit, not a merge or revert. Its v2-v7 notes describe patch revisions of the cohesive provider feature; no finer member commits exist in the repository DAG to substitute for the surviving first-write object.",
+    "affected_fixed_release_membership": "CONFIRMED: the BIC is an ancestor of xorg-server-1.12.99.901, xorg-server-1.13.0, and the vulnerable xorg-server-21.1.16 tag. Direct tree inspection shows the unchecked multiplication in xorg-server-21.1.16 and xwayland-24.1.6, and the MAXINT guard in xorg-server-21.1.17 and xwayland-24.1.7, matching the X.Org advisory's introduced and fixed releases.",
+    "direct_fix_or_unpatched": "CONFIRMED_DIRECT_FIX: 3c3a4b767b16174d3213055947ea7f4f88e10ec6 directly adds `if (total_len > MAXINT / size_in_bytes) return BadValue;` immediately before the vulnerable multiplication. Release cherry-picks 7c626aa63af274a347b91dd923027e715ed89023 and fce91bcbe20279bbb08f7d1c6b2d0730d1b4f7d6 have the same stable patch-id 6192a22362292c53a91f39005d119b947e88516f and are ancestors of xorg-server-21.1.17 and xwayland-24.1.7 respectively.",
+    "bic_only_ai_attribution": "CONFIRMED_NOT_AI: judgment is restricted to BIC 66d92afeaeed9f4a19267d95a1f81b9bf27162a5. Its 2012 commit object names Dave Airlie as human author and committer; trailers are human Reviewed-by entries for Keith Packard and Adam Jackson plus Dave Airlie's Signed-off-by. There is no Co-Authored-By, Generated-with, bot identity, or other AI marker on the BIC."
+  },
+  "findings": [
+    "Independent replay found no material discrepancy in the primary mechanism, BIC, parent, release, direct-fix, or BIC-only authorship conclusions.",
+    "The related 0235121c advisory commit is not needed to close this integer-overflow mechanism; 3c3a4b767b16174d3213055947ea7f4f88e10ec6 is the direct fix for the audited flaw."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

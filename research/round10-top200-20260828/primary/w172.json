@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-0fec759320056acea3b92e27",
+  "case_id": "GHSA-qgh7-j4r2-h63j",
+  "repo": "siyuan-note/siyuan",
+  "advisory_ids": [
+    "CVE-2026-73047",
+    "GHSA-qgh7-j4r2-h63j"
+  ],
+  "bug_semantics": "The attribute-view (database) Template calculation feature introduced in v3.7.0-beta.1 (rollup/footer template calculations in kernel/av/calc_template.go) renders user-supplied template formulas through text/template with an UNMODIFIED `sprig.TxtFuncMap()`. Sprig's map still exposes `env`, `expandenv`, and `getHostByName` — the same functions siyuan had already deleted from its document-template engine (filesys.BuiltInTemplateFuncs, after CVE-2024-55660 / issue #13426) and from SQL templates. A local, unauthenticated attacker (kernel binds 127.0.0.1 by default, no per-UID access control) injects a Template calculation formula like `.action{env \"AWS_SECRET\"}` to read environment variables of the siyuan process — including material belonging to other, unprivileged OS accounts visible in the process environment — and `.action{getHostByName ...}` to perform DNS lookups from the server's network position (CWE-200 Exposure of Sensitive Information).",
+  "flaw_origin": "Commit fbda8db9d88bcdb0183515195d754a39dc5b707f (\"Database rollup fields now support additional calculation methods\" #14394, 2026-06-17, author+committer Daniel <845765@qq.com>) created kernel/av/calc_template.go with `goTpl := template.New(\"\").Delims(\".action{\", \"}\").Funcs(sprig.TxtFuncMap())` — wiring raw Sprig into the calculation engine with no deletion of env/expandenv/getHostByName, unlike the hardened filesys.BuiltInTemplateFuncs() used by kernel/model/template.go since 2024. Parent e2a9f03604 has no calc_template.go (introducer_parent_absent=true). The sibling commit 669c95861576 (same day, same issue #14394) extended the same template machinery to footer calculations but did not create the unsafe FuncMap wiring. Both are parts of the #14394 template-calculation feature whose first shipped form (v3.7.0-beta.1) is the BIC window the advisory names.",
+  "introducer_sha": "fbda8db9d88bcdb0183515195d754a39dc5b707f",
+  "introducer_parent": "e2a9f0360457916fc1d8aa3cede2f5ffe2d23982",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "669c9586157674b60d1efcb22eaf4081319bed5c"
+  ],
+  "ai_marker": "absent — the BIC commit object names author and committer Daniel <845765@qq.com> (2026-06-17), human feature message with Signed-off-by; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "36c297bd656fb66b84ca7609c3a4cae7c3751ad3",
+  "direct_fix_sha": "36c297bd656fb66b84ca7609c3a4cae7c3751ad3",
+  "evidence": [
+    "Advisory (CVE-2026-73047 / GHSA-qgh7-j4r2-h63j, upstream advisory GHSA-v97v-gxxg-rhmq, VulnCheck): siyuan <= 3.7.3 (fixed v3.7.4) — attribute-view Template calculation (introduced v3.7.0-beta.1) uses Sprig's unmodified function map exposing env/expandenv/getHostByName that were removed elsewhere for CVE-2024-55660; local unauthenticated attacker reads process environment variables (including other unprivileged accounts') and performs DNS lookups; CWE-200.",
+    "BIC creation check: fbda8db9d88b (2026-06-17) creates kernel/av/calc_template.go with `goTpl := template.New(\"\").Delims(\".action{\", \"}\").Funcs(sprig.TxtFuncMap())` — the only template engine in the repo wired to raw Sprig; kernel/model/template.go and SQLTemplateFuncs use filesys.BuiltInTemplateFuncs(), which since 2024 (issue #13426, CVE-2024-55660 wave) does `delete(ret, \"env\"); delete(ret, \"expandenv\"); delete(ret, \"getHostByName\")` (verified at v3.7.3:kernel/filesys/template.go lines 38-41).",
+    "Fix commit 36c297bd656f (2026-08-01, Daniel, GHSA-v97v-gxxg-rhmq — the advisory's own reference): adds to the calc template path `delete(tplFuncs, \"env\"); delete(tplFuncs, \"expandenv\"); delete(tplFuncs, \"getHostByName\")` with comment '与 filesys.BuiltInTemplateFuncs 保持一致' (keep consistent with BuiltInTemplateFuncs); 6 added lines in kernel/av/calc_template.go; first tagged v3.7.4-alpha.5 → v3.7.4, matching the advisory's fixed-in v3.7.4.",
+    "Version boundary: BIC first tagged v3.7.0-beta.1 → v3.7.0 (tag --contains head), exactly the advisory's 'introduced in v3.7.0-beta.1'; vulnerable through v3.7.3.",
+    "Decomposition: 669c95861576 (2026-06-17, same issue #14394) extends template calculations to database footer fields, reusing evalRollupTemplate/rollup machinery — recorded as the second wave of the same feature; the unsafe Sprig wiring originates in fbda8db9.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1` on fbda8db9 and 669c9586 shows only Daniel with Signed-off-by trailers; grep for claude/copilot/anthropic/openai/generated/co-authored finds none; fix commit 36c297bd likewise plain human."
+  ],
+  "reasoning": "Vulnerability first: the advisory names Sprig's unmodified function map exposing env/expandenv/getHostByName in the attribute-view template feature; the BIC's `.Funcs(sprig.TxtFuncMap())` with no deletions is exactly that, and the fix's three delete() calls with the 'keep consistent with BuiltInTemplateFuncs' comment prove the missing hardening is the defect. BIC choice: the unsafe engine wiring originates with the feature creation fbda8db9 (2026-06-17, first tagged v3.7.0-beta.1 — the advisory's own introduction boundary); the footer-extension commit 669c9586 is the feature's second wave (decomposed_shas). Squash check: both commits are feature-PR squashes for issue #14394; the flaw is the feature design (raw Sprig) rather than a security fix decomposed into a squash, so squash_decomposed=true marking the multi-commit feature. AI decision: BIC-only attribution — the BIC object carries only the human maintainer Daniel with no AI marker, so NOT_AI.",
+  "remaining_gap": null
+}

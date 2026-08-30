@@ -1,0 +1,62 @@
+{
+  "worker": "w298",
+  "review_agent_id": "r389_w298",
+  "class_id": "alias-a7a4991b958fcea21bbb8e9c",
+  "case_id": "GHSA-f8vw-8vgh-22r9",
+  "repo": "xuxueli/xxl-job",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2025-7787 is PUBLISHED and GHSA-f8vw-8vgh-22r9 is not withdrawn. Tags 3.1.0 and 3.1.1 pass the job-controlled url directly to new URL(url) and HttpURLConnection.openConnection() without a destination restriction, enabling SSRF."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "a1755156e2da257b0c3708bfbf34d876d91dfb2c is the earliest all-history pickaxe hit for the vulnerable HttpGet(param) request and adds HttpJobHandler.java as new files in the sample executors. Later commits 573facc05051a30dbe858e643486b9f15bf85211, 9fed7b9c602560723ad07f3feb518308fa282345, 239200e52c5e5b69c559fd6c485a26d5c97b9d6d, and 4af184721446e81c417797b7025b93fd35acdc35 only refactor, move, or reformat the same unrestricted request."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent d6dc40b49e7243fb782009de451db390b67fd67c has no HttpJobHandler.java; its sample jobhandler trees contain DemoJobHandler and ShardingJobHandler but not the vulnerable HTTP handler."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "a1755156e2da257b0c3708bfbf34d876d91dfb2c has exactly one parent and directly introduces the vulnerable files; it is not a merge, move, revert, or squash aggregate requiring member decomposition."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "a1755156e2da257b0c3708bfbf34d876d91dfb2c is an ancestor of tags 3.1.0 and 3.1.1. Both tag trees contain the unrestricted new URL(url) sink, matching the CVE affected releases."
+    },
+    "fixed_release_membership": {
+      "status": "FAIL",
+      "evidence": "Although c741d8361ee91910c4198a70c646e92a70db7c45 first appears in tag 3.2.0, its allowlist accepts url.startsWith(prefix). The URL http://www.baidu.com@127.0.0.1/latest/meta-data/ passes the allowed http://www.baidu.com prefix while Java URL authority targets 127.0.0.1. The same check remains at clone HEAD e74c784f68f81fa89cb350913ef15794865d7b12, so 3.2.0 is not a verified fixed release."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "CORRECTION_REQUIRED",
+      "evidence": "c741d8361ee91910c4198a70c646e92a70db7c45 is an attempted direct remediation but does not close the SSRF sink because raw string-prefix validation does not validate URL authority. The repository is verified unpatched through HEAD e74c784f68f81fa89cb350913ef15794865d7b12; fix_sha and direct_fix_sha must be null and an explicit unpatched record is required."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC commit object names xuxueli <931591021@qq.com> as both author and committer on 2018-09-16 and has no AI, bot, Co-Authored-By, Generated-with, or similar trailer. Reporter credit is not BIC authorship; NOT_AI is confirmed."
+    }
+  },
+  "findings": [
+    "The primary BIC, parent, vulnerability mechanism, and NOT_AI attribution are independently confirmed.",
+    "The primary incorrectly treats c741d8361ee91910c4198a70c646e92a70db7c45 as a complete direct fix and tag 3.2.0 as fixed; its startsWith allowlist is authority-confusable and the bypass persists through the reviewed HEAD."
+  ],
+  "corrected_fields": {
+    "fix_sha": null,
+    "direct_fix_sha": null,
+    "unpatched": {
+      "confirmed": true,
+      "reason": "The attempted CVE-2025-7787 remediation uses raw url.startsWith(prefix), allowing userinfo or attacker-suffix authority confusion, and this implementation persists through clone HEAD e74c784f68f81fa89cb350913ef15794865d7b12.",
+      "potential_fix": {
+        "approach": "Parse the URL, require an allowed scheme, reject userinfo, compare the normalized host and port against an exact allowlist, and disable redirects or revalidate every redirect target before connecting.",
+        "rationale": "Authority-aware validation prevents a string that starts with an allowed textual prefix from resolving or redirecting to loopback, link-local, private, or attacker-controlled destinations.",
+        "reference_commit": null,
+        "reference_url": "https://github.com/xuxueli/xxl-job/issues/3749"
+      }
+    }
+  },
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-a3a98bb593e2b2a2e04ec138",
+  "case_id": "GHSA-f324-958x-jjg5",
+  "repo": "chaiscript/chaiscript",
+  "advisory_ids": [
+    "CVE-2026-3382",
+    "GHSA-f324-958x-jjg5"
+  ],
+  "bug_semantics": "The optimized standard integer for-loop exposed its stack-local C++ counter to ChaiScript with var(&i). ChaiScript's intentional := reference-assignment could therefore copy an alias to that counter into a returned Boxed_Value. Once the compiled loop lambda returned, the counter's stack lifetime ended, but an escaping value (including one transported through async/future) retained the raw pointer; interpolation then reached Boxed_Number::get_as and dereferenced dangling storage, producing garbage, an invalid read, or a segmentation fault.",
+  "flaw_origin": "Commit 683164650a462b6d5ea58bb899f4c2e668243a1d introduced the compiled-for-loop fast path and, within that new path, created int i on the lambda stack and registered var(&i). The existing reference-assignment semantics made the new stack-backed binding escapable. Later optimizer extraction and formatting commits only moved or reformatted this mechanism. The fix instead places the counter in an owning Boxed_Value and obtains the native int reference from that owned storage, so escaping aliases retain the allocation.",
+  "introducer_sha": "683164650a462b6d5ea58bb899f4c2e668243a1d",
+  "introducer_parent": "647f8842fd7174e8efc66da83c1a5559ac64fe70",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names author and committer Jason Turner <jason@emptycrate.com> and its complete message is only \"Add ability to 'compile' for loops\"; it has no Co-Authored-By, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "07d62aae9976528a93f5d6ca716c4fe79a808dc5",
+  "direct_fix_sha": "07d62aae9976528a93f5d6ca716c4fe79a808dc5",
+  "evidence": [
+    "First-party report https://github.com/ChaiScript/ChaiScript/issues/635 supplies the async PoC and ASan path through include/chaiscript/dispatchkit/boxed_number.hpp::Boxed_Number::get_as; maintainer follow-up identifies the optimized loop's stack counter and escaping := alias as the cause.",
+    "git show 683164650a462b6d5ea58bb899f4c2e668243a1d -- include/chaiscript/language/chaiscript_parser.hpp shows the new compiled-for-loop path adding `int i = for_loop_params.start;` and `t_ss.add_object(for_loop_params.id, var(&i));`; the commit is titled `Add ability to 'compile' for loops`.",
+    "git log -L 1779,1780:include/chaiscript/language/chaiscript_parser.hpp at 25575564c007047f726c489536b2c38709448360 identifies 683164650a462b6d5ea58bb899f4c2e668243a1d as the commit that introduced those two vulnerable lines. Blame across ff2ab6bb8dfc72f89128382d73b7d36ebcb4630a (optimizer split) and cff6a0acedbc1b8e53aeef118570929b50a711c9 (clang-format-only rewrite) leads back to the same BIC, so neither later move/reformat is treated as introduction.",
+    "Immediate-parent tree verification: `git grep -n -F 'standard_for_loop' 647f8842fd7174e8efc66da83c1a5559ac64fe70 -- include/chaiscript/language/chaiscript_parser.hpp` and the exact vulnerable `t_ss.add_object(for_loop_params.id, var(&i))` query both return no match; the parent uses the ordinary For_AST_Node path. The direct parent-to-BIC diff adds the compiled path and both vulnerable statements.",
+    "Version boundary: `git tag --contains 683164650a462b6d5ea58bb899f4c2e668243a1d` returns v6.0.0, v6.1.0, and wasm-latest; v6.0.0 contains the vulnerable optimizer binding at chaiscript_optimizer.hpp:391 and v6.1.0 at line 435, while v5.8.6 has no matching optimizer/parser var(&i) mechanism. This agrees with the advisory's affected releases through 6.1.0.",
+    "Fix PR https://github.com/ChaiScript/ChaiScript/pull/671 and commit https://github.com/ChaiScript/ChaiScript/commit/07d62aae9976528a93f5d6ca716c4fe79a808dc5 resolve issue #635. The direct diff replaces the stack-local pointer registration with `Boxed_Value bv_i(start_int)`, a native reference obtained from bv_i.get_ptr(), and `t_ss.add_object(id, bv_i)`, plus regression coverage for synchronous and async escape.",
+    "Fix boundary: `git tag --contains 07d62aae9976528a93f5d6ca716c4fe79a808dc5` returns no tags, while `git branch -a --contains` places it on develop/origin/develop. Thus the fix is after the last affected v6.1.0 tag and is presently untagged in the validated history.",
+    "BIC-only AI check: `git cat-file commit 683164650a462b6d5ea58bb899f4c2e668243a1d` shows author and committer Jason Turner <jason@emptycrate.com>, timestamp 1461247750 -0600, one human-authored subject, and no trailers or AI marker. No later commit, issue, or PR signal was used to attribute the BIC."
+  ],
+  "reasoning": "The report initially surfaces at get_as during async result interpolation, but that is the dereference site rather than the origin. The causal object is the optimized loop counter: := deliberately preserves an alias, and the optimization made that alias point to lambda-stack storage that died at loop completion. Tracing the fixed lines backward crosses a 2021 formatting rewrite and a 2016 optimizer-file extraction, both non-causal transformations, and reaches 683164650a462b6d5ea58bb899f4c2e668243a1d, where the compiled loop and stack-backed var(&i) binding first appear together. Its immediate parent lacks both the compiled standard-loop path and the exact pointer registration, proving parent absence. Release membership places the BIC after v5.8.6 and in v6.0.0 and v6.1.0; the direct fixing commit 07d62aae9976528a93f5d6ca716c4fe79a808dc5 lands later on develop and changes the storage lifetime to an owning Boxed_Value. Finally, the BIC commit object has only Jason Turner's human author/committer identity and no AI authorship marker, so the closed causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

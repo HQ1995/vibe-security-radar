@@ -1,0 +1,28 @@
+{
+  "worker": "w112",
+  "review_agent_id": "r389_w112",
+  "class_id": "alias-070fe58ed470532aedcac78d",
+  "case_id": "GHSA-g82f-9pw7-773w",
+  "repo": "concretecms/concretecms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed CWE-502: Concrete CMS 9.5.1 has five unrestricted unserialize() sinks over session, database, file-cache, configuration, and user-configuration data; 9.5.2 restricts allowed_classes at each sink. The live CNA record is PUBLISHED and the vendor 9.5.2 notes identify this mechanism.",
+    "atomic_bic": "Confirmed 6c4fb938c3b4b744a192bd7642db2962ab83de56 as the earliest case sink first-write: its patch adds IndexedSearch::getSavedSearchableAreas() and unserialize(Config::get('SEARCH_INDEX_AREA_LIST')). It is a single-parent commit and the smallest reachable public commit object writing that sink.",
+    "immediate_parent_absence": "Confirmed directly: parent 9c05cf931df1129ad755e3f39f51ce1d0032cd5f contains trunk/web/concrete/libraries/database_indexed_search.php but contains neither getSavedSearchableAreas nor unserialize.",
+    "squash_member_decomposition": "Confirmed no merge or squash-member ambiguity. The BIC has one parent. Former-commit-id 842b6b968eb7bac6de2681870f5701fc329370d3 is an unreachable rewritten duplicate with the same tree as the BIC, and its parent has the same tree as the reachable BIC parent; it is not a finer member.",
+    "affected_release_membership": "Confirmed 6c4fb938c3b4b744a192bd7642db2962ab83de56 is an ancestor of tag 9.5.1, whose five named sinks remain unrestricted. The CNA affected range is git 5 through 9.5.1 and GHSA declares versions below 9.5.2 vulnerable.",
+    "fixed_release_membership": "Confirmed direct fix d088e93b1f42fda632089b95e3e805d5206416f9 is not an ancestor of 9.5.1 and is an ancestor of tag 9.5.2; all five tag-9.5.2 sinks contain allowed_classes restrictions.",
+    "direct_fix_or_unpatched": "Confirmed d088e93b1f42fda632089b95e3e805d5206416f9 is a direct five-file fix, changing exactly the five vulnerable unserialize() calls to constrain allowed_classes.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC commit object only: author and committer are Andrew Embler <andrew@concrete5.org>, dated 2010-02-09, with only git-svn-id and Former-commit-id trailers and no AI, bot, co-author, or generated-by marker. The 2026 fix author was not used for attribution."
+  },
+  "findings": [
+    "The primary NOT_AI verdict, introducer SHA and parent, vulnerability mechanism, direct fix, and affected/fixed tag membership independently reproduce.",
+    "A factual sibling-history claim does not reproduce: 07137dd9c1cef15ea41b0efce10acd56af9f8af4 moved the existing Dashboard QUICK_NAV_BOOKMARKS unserialize call from web/concrete/controllers/dashboard/base.php to web/concrete/helpers/concrete/dashboard.php; its parent already contains that call. The actual Dashboard first-write is 5118c2eaa91086caceed6a0e410c2ed7875bbdb6, whose parent 12e422de62a9dc6f6289a76c3cff05e17c234b12 lacks it. This correction does not change the overall 2010 Search BIC or NOT_AI verdict."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "Replace the Dashboard sibling clause with: Dashboard quick-nav was first written by 5118c2eaa91086caceed6a0e410c2ed7875bbdb6 on 2011-10-04; 07137dd9c1cef15ea41b0efce10acd56af9f8af4 later moved the already-existing call.",
+    "evidence[5]": "Replace the Dashboard sibling evidence with: 5118c2eaa91086caceed6a0e410c2ed7875bbdb6 added unserialize($u->config('QUICK_NAV_BOOKMARKS')) to web/concrete/controllers/dashboard/base.php; immediate parent 12e422de62a9dc6f6289a76c3cff05e17c234b12 lacks QUICK_NAV_BOOKMARKS. Commit 07137dd9c1cef15ea41b0efce10acd56af9f8af4 is a relocation, not a first-write."
+  },
+  "remaining_gap": null
+}

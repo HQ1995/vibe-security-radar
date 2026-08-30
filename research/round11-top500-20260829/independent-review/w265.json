@@ -1,0 +1,46 @@
+{
+  "worker": "w265",
+  "review_agent_id": "r389_w265",
+  "class_id": "alias-bcb0733c55b345f57ef969de",
+  "case_id": "GHSA-3c93-g9g6-p5j4",
+  "repo": "velocidex/velociraptor",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE.org is PUBLISHED and the vendor advisory identifies the same CWE-639 GetUserRoles authorization bypass: an authenticated low-privilege caller controls UserRequest.Org and UserRequest.Name and receives the target policy. At 90208c6d9d29b64333ad2667285b1a9c39c6d72e, GetUserRoles authenticates the caller but performs GetOrgConfig(in.Org) and GetPolicy(org_config_obj, in.Name) without CheckAccess."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "The public PR #2212 head ref resolves to b119fe0d601d826e7f4beefc2c184c804d95c530. Its linear member history shows 6d785ecbde539a8c69e8e19b0dd96ebb999b47cc first added GetUserRoles with users.GetUser(ctx, caller, target), while member 90208c6d9d29b64333ad2667285b1a9c39c6d72e is the smallest commit that removed that gate and introduced caller-controlled Org/Name policy lookup."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC is a single-parent commit whose immediate parent is 20dabe0fa761fc7542b405e62bd9a8aa7ddc06c1. That parent still calls users.GetUser(ctx, user_record.Name, in.Name), restricts iteration to the returned user's organizations, and contains no GetOrgConfig(in.Org) path."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The PR #2212 member chain was independently enumerated from 6d785ec through b119fe0. GetUserRoles changes at 90208c6, and its extracted function SHA-256 is 2c1455b9d693b706f3893fc6719992bb4a866aed8b775d6896acd4b9c0403e33 in 90208c6, every later PR member, and master squash 7ee677176c05df346baaa39769cd31f7b9f8c66b. Therefore the squash is not substituted for the recoverable atomic BIC."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "Master squash 7ee677176c05df346baaa39769cd31f7b9f8c66b is an ancestor of v0.76.2, while neither master fix 3c84e6413e6989751857d42f4dd4aaa7409ce998 nor 0.76 backport a79bb66c6799bde0e9a67e955b07e409cd00c768 is an ancestor of v0.76.2. The v0.76.2 function retains the unguarded target-org policy lookup, matching the advisory's affected range below 0.76.5."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Backport a79bb66c6799bde0e9a67e955b07e409cd00c768 is an ancestor of tags v0.76.4, v0.76.6, and v0.76.7; master landing 3c84e6413e6989751857d42f4dd4aaa7409ce998 is an ancestor of v0.77.1 and v0.77.2. Their extracted fixed GetUserRoles bodies match. The vendor directs 0.76 users to the v0.76.5 binary asset; there is no git tag named v0.76.5, so the primary correctly distinguishes release-asset versioning from git-tag ancestry."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "PR #4795 member 2b0ea2deef0819ca7aae6bc85be17986188ade7b is the direct fix: it preserves the endpoint but adds READ_RESULTS authorization on the target org with root ORG_ADMIN fallback. Its parent 39500ff2903149c072db56544d1af134d576de35 still has no CheckAccess. The same fixed function survives the PR head, squash 3c84e6413e6989751857d42f4dd4aaa7409ce998, and 0.76 backport a79bb66c6799bde0e9a67e955b07e409cd00c768."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Raw commit object 90208c6d9d29b64333ad2667285b1a9c39c6d72e has human author and committer Mike Cohen <mike@velocidex.com>, no signature block, no trailers, and no AI or bot marker in its message. Squash authorship and the unrelated fix commit are excluded from attribution, supporting NOT_AI."
+    }
+  },
+  "findings": [],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

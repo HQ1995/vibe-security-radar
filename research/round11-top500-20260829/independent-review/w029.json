@@ -1,0 +1,61 @@
+{
+  "worker": "w029",
+  "review_agent_id": "r389_w029",
+  "class_id": "alias-5f8a2e7d0e048764bb0f852c",
+  "case_id": "GHSA-xm98-3vcf-fph7",
+  "repo": "ibm/mcp-context-forge",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "The authoritative repository advisory and local source agree: raw getattr/setattr/hasattr are exposed in safe_builtins, RestrictedPython execution has no _getattr_ guard, the merge lets project builtins override RestrictedPython builtins, and validate_code only detects literal dangerous dunder substrings. Runtime-built attribute names therefore reach class-hierarchy traversal and subprocess.Popen."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "cb5cd12a5882b59a8e441e84e636b2b960dc912f is a public, single-parent PR member that adds server_fastmcp.py as a new 677-line file with the complete vulnerable mechanism. The advisory's f855e54d5b7bc1c91b977574a03b91eff6b86bb6 is an unrelated later migration commit, not the BIC."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "The BIC's immediate parent is 7af39689f6d99b6659f064bd7bba78b7025279e1. That parent has no server_fastmcp.py at the sandbox path and no matching python_sandbox/RestrictedPython safe-builtin mechanism."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The nine public members form a linear chain from cb5cd12a5882b59a8e441e84e636b2b960dc912f through b224d445611b2998d0f9ac45ad9f990350a4a43c. Only the first member creates the mechanism; later members format, document, chmod, or add headers. b224d445611b2998d0f9ac45ad9f990350a4a43c has the same tree as alternate squash landing d2333551cd5907b56cfcdd2a244e095ab72512e4, while mainline landing 771ffb8ebc0b8f97cce470dbc7cbf41f5d12747b carries the same sandbox blob on a different base."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "FAIL",
+      "detail": "Primary release evidence is wrong about v0.9.0, v1.0.0-BETA-1, and v1.0.0-RC1. Each contains alternate landing d2333551cd5907b56cfcdd2a244e095ab72512e4 and the vulnerable raw getattr/setattr plus merged_builtins.update(our_builtins). v1.0.1 is likewise vulnerable. Fix 63a2900e6301b9c8a483a38d3737a1beb3a7ce89 is absent from v1.0.1 and an ancestor of v1.0.2; v1.0.2 removes the raw builtins and installs _guarded_getattr as _getattr_."
+    },
+    "direct_fix_or_verified_unpatched": {
+      "status": "PASS",
+      "detail": "63a2900e6301b9c8a483a38d3737a1beb3a7ce89 directly removes raw getattr/setattr/hasattr, reverses the builtins merge precedence, installs _getattr_/_setattr_ guards, replaces substring checking with AST inspection, fails closed without RestrictedPython, and requires bearer authentication for HTTP."
+    },
+    "bic_only_ai_attribution": {
+      "status": "GAP",
+      "detail": "The BIC object names Mihai Criveti as author and committer and contains only a matching Signed-off-by trailer. It has no Co-Authored-By, Generated-with, bot identity, or other explicit AI marker. Those facts are BIC-local, but absence of an AI marker and a human-looking identity do not independently prove that the vulnerable code was human-written, so NOT_AI is not closed."
+    }
+  },
+  "findings": [
+    "The atomic introducer, parent absence, squash/member lineage, mechanism, direct fix, and v1.0.2 fix boundary independently reproduce.",
+    "The primary record incorrectly excludes v0.9.0, v1.0.0-BETA-1, and v1.0.0-RC1 by following only landing 771ffb8ebc0b8f97cce470dbc7cbf41f5d12747b; those tags contain the equivalent d2333551cd5907b56cfcdd2a244e095ab72512e4 landing and remain vulnerable.",
+    "The primary NOT_AI conclusion relies on absent commit markers plus a human identity. That is insufficient causal authorship evidence under the BIC-only fail-closed gate."
+  ],
+  "corrected_fields": {
+    "verdict": "EVIDENCE_GAP",
+    "introducer_parent_absent": true,
+    "ai_marker": "No explicit AI marker is present on BIC cb5cd12a5882b59a8e441e84e636b2b960dc912f; this absence does not establish human-only authorship.",
+    "affected_release_membership": {
+      "v0.9.0": "vulnerable via d2333551cd5907b56cfcdd2a244e095ab72512e4",
+      "v1.0.0-BETA-1": "vulnerable via d2333551cd5907b56cfcdd2a244e095ab72512e4",
+      "v1.0.0-BETA-2": "vulnerable via d2333551cd5907b56cfcdd2a244e095ab72512e4",
+      "v1.0.0-RC1": "vulnerable via d2333551cd5907b56cfcdd2a244e095ab72512e4",
+      "v1.0.0-RC2": "vulnerable via 771ffb8ebc0b8f97cce470dbc7cbf41f5d12747b",
+      "v1.0.0-RC-3": "vulnerable via 771ffb8ebc0b8f97cce470dbc7cbf41f5d12747b",
+      "v1.0.0": "vulnerable",
+      "v1.0.1": "vulnerable",
+      "v1.0.2": "fixed by ancestor 63a2900e6301b9c8a483a38d3737a1beb3a7ce89"
+    }
+  },
+  "remaining_gap": "BIC-only evidence does not establish whether cb5cd12a5882b59a8e441e84e636b2b960dc912f's vulnerable code was authored with or without AI assistance; absent explicit commit markers cannot close NOT_AI."
+}

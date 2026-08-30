@@ -1,0 +1,25 @@
+{
+  "class_id": "alias-f0ea06a2fd505c6105ca278a",
+  "case_id": "GHSA-px44-p4fg-h68v",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-73613",
+    "GHSA-px44-p4fg-h68v"
+  ],
+  "bug_semantics": "Create-only TUS POST registers an incomplete upload under a lexical RealPath key. Default in-memory ttlcache eviction then calls raw os.Remove on that frozen path, bypassing ScopedFs/within() and Perm.Delete. During the 3-minute TTL an ancestor can be swapped for an escaping symlink so the unlink follows out of scope (CWE-59/CWE-367). Redis cache is not this sink.",
+  "flaw_origin": "PR #5270 member 99edda74cfa313d2737bcbd12ed558aa59e27e1e (feat: track active uploads with ttlcache) first replaced sync.Map upload tracking with ttlcache.OnEviction that does os.Remove(item.Key()). Parent 76cf7bd5c2357f7950617f6ea4b5e65e8b4e8429 still uses sync.Map and has no eviction delete. Squash 0f27c91eca581482ce4f82f6429f5dac12f8b64e landed that sink on master; 08d7a1504c42c115fdd82d3845694fe87147f1db later moved the same os.Remove into http/upload_cache_memory.go (parent b8da36e63033f137ef08cae2b109f267978c1461 already had the lines in tus_handlers.go).",
+  "introducer_sha": "99edda74cfa313d2737bcbd12ed558aa59e27e1e",
+  "introducer_parent": "76cf7bd5c2357f7950617f6ea4b5e65e8b4e8429",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "0f27c91eca581482ce4f82f6429f5dac12f8b64e"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "9bd79c3aaeb4a55b0e69cf8976c4a258db2f5e06",
+  "direct_fix_sha": "9bd79c3aaeb4a55b0e69cf8976c4a258db2f5e06",
+  "evidence": "CVE-2026-73613 is PUBLISHED (cve.org 5.2 state PUBLISHED, not rejected/withdrawn); GHSA-px44-p4fg-h68v withdrawn_at is null; vendor GHSA-m9f5-2232-frp6 names the sink as in-memory TUS eviction os.Remove and patched 2.63.19. Assigned clone git log -S os.Remove -- http/tus_handlers.go http/upload_cache_memory.go yields 0f27c91e then 08d7a150. git cat-file -e 7c716862c1bd3cdedd3c02d3a37207293db197ca:http/tus_handlers.go succeeds; parent of squash has no OnEviction/os.Remove eviction. 0f27c91e is GitHub squash of PR #5270 (11 commits). Public first-writer is ramiresviana/filebrowser 99edda74; GitHub commit object author/committer Ramires Viana <59319979+ramiresviana@users.noreply.github.com>, message 'feat: track active uploads with ttlcache' with no Co-Authored-By/Generated-with/Made-with trailers. Parent 76cf7bd5 http/tus_handlers.go uses sync.Map Store/Delete only; patch of 99edda74 adds os.Remove(item.Key()) in OnEviction. Later PR member e5d946ca only adds keepUploadActive Touch. Clone git cat-file -p 9bd79c3a is Henrique Dias <mail@hacdias.com> fix routing eviction through a scoped remove callback; merge-base --is-ancestor of that SHA is true for v2.63.19 and false for v2.63.18. Same-repo GHSA-8WC8-HF36-MJH9/CVE-2026-55668 is a different sink (ScopedFs.Remove, fix 64511ce) and does not close this os.Remove path.",
+  "reasoning": "The vulnerability is real and patched: raw os.Remove on a lexically frozen TUS cache key is a ScopedFs-bypassing unlink that follows a parent symlink after TOCTOU. The smallest first-write is squash-decomposed PR #5270 member 99edda74, not the later file-move 08d7a150 and not the squash aggregate 0f27c91e. AI is judged only from that BIC commit object: human author/committer ramiresviana, no bot author, no AI trailers. PR body, later Redis extraction, and the human fix commit do not attribute the introducer. Therefore NOT_AI.",
+  "remaining_gap": ""
+}

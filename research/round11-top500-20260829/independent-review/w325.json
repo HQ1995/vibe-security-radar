@@ -1,0 +1,26 @@
+{
+  "worker": "w325",
+  "review_agent_id": "r389_w325",
+  "class_id": "alias-df57e3cd613998b205c70e6c",
+  "case_id": "GHSA-8hjx-7pv7-rr27",
+  "repo": "squidex/squidex",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE.org state is PUBLISHED and the reporter PoC is UI redress against /identity-server/account/profile from an attacker-controlled Squidex HTML asset. At 7.21.0 and HEAD, the profile form has antiforgery protection but the default X-Frame-Options policy is SAMEORIGIN; assets are served inline unless download=1 with only CSP script-src 'none'; UpdateProfile reaches DefaultUserService.UpdateAsync, which immediately calls SetEmailAsync and SetUserNameAsync without out-of-band confirmation.",
+    "atomic_bic": "CONFIRMED: beb2a508bddfead9d9cbd495c1f24ce08d78ed1d is the smallest surviving public first-write of the vulnerable profile surface. Its diff creates the authenticated POST /account/profile and directly calls user.UpdateEmail(model.Email), while the new view posts the email and has neither antiforgery nor framing protection. Later route moves, IdentityServer refactors, asset-delivery changes, and antiforgery hardening do not supersede that first write; the original page was already frameable cross-origin.",
+    "immediate_parent_absence": "CONFIRMED: the BIC has the single parent 11d08acc906de349e5b812f7ffdeaa232f226037. That parent tree contains neither ProfileController nor Views/Profile and has no account/profile route; the BIC diff adds both controller and view as new files.",
+    "squash_member_decomposition": "NOT_APPLICABLE: beb2a508bddfead9d9cbd495c1f24ce08d78ed1d is an ordinary single-parent commit whose public diff itself adds the vulnerable endpoint and form. It is not a merge or a later move/squash aggregate, so there are no finer public members to substitute.",
+    "affected_release_membership": "CONFIRMED: git merge-base --is-ancestor succeeds from the BIC to 7.21.0 (69d1d1ac849e9b938c5b15304c36ea57ecc6c7ac), 7.22.0, 7.23.0, and HEAD. git describe --contains places the BIC by v1.0-beta1~165, consistent with the advisory's through-7.21.0 affected statement.",
+    "fixed_release_membership": "NOT_APPLICABLE_UNPATCHED: no fixed release or fix SHA is identified by CVE/GHSA metadata or repository evidence. 7.22.0, 7.23.0, and HEAD retain the relevant profile, asset-inline, SAMEORIGIN, and immediate-email-update behavior.",
+    "direct_fix_or_unpatched": "CONFIRMED_UNPATCHED: 2da3c41da82eb945832f22bb70dba567ac6ce969 adds AutoValidateAntiforgeryToken and view tokens and is in 7.4.0, but it does not add frame-ancestors 'none', X-Frame-Options DENY, or email re-verification. At HEAD bdff5054bbd8dd86932267f86e0543ed8d081810, assets still set SendInline when download!=1, FileCallbackResultExecutor still sends only CSP script-src 'none', antiforgery still defaults suppressXFrameOptionsHeader=false (SAMEORIGIN), and DefaultUserService still calls SetEmailAsync/SetUserNameAsync directly. Exact repository searches found no CVE/GHSA/clickjacking fix commit or vendor issue.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Sebastian Stehle <sebastian@squidex.io> as both author and committer, has message 'Profile page.', and has no Co-Authored-By, Generated-with, bot, Copilot, Cursor, or other AI marker. Later AI-related commits are irrelevant to BIC-only attribution."
+  },
+  "findings": [
+    "The advisory label says CSRF, but the supplied first-party PoC is specifically clickjacking/UI redress. This does not invalidate the case: the profile surface was frameable when introduced, and the later antiforgery/X-Frame-Options SAMEORIGIN hardening still permits the demonstrated same-origin asset iframe.",
+    "The primary correctly separates the 7.4.0 antiforgery change from a direct fix for this residual mechanism; treating 2da3c41da82eb945832f22bb70dba567ac6ce969 as the fix would be incorrect.",
+    "No correction is required to introducer_sha, introducer_parent, verdict, fix_sha, direct_fix_sha, or unpatched status."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "No adjudication gap. No upstream fix is present through HEAD bdff5054bbd8dd86932267f86e0543ed8d081810; that is a verified unpatched state rather than missing evidence."
+}

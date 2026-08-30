@@ -1,0 +1,41 @@
+{
+ "class_id": "alias-c3ef4f77452e9fddc94f6a3a",
+ "case_id": "GHSA-6G9F-8X2V-MQ2C",
+ "repo": "filebrowser/filebrowser",
+ "advisory_ids": [
+  "CVE-2026-72839",
+  "GHSA-6g9f-8x2v-mq2c"
+ ],
+ "bug_semantics": "When Signup is enabled and CreateUserDir remains the factory default false, POST /api/signup copies settings.Defaults onto the new user (Scope plus Create/Modify/Delete/Rename/Share/Download) and persists that account. MakeUserDir then normalizes default Scope '.' to '/', so an unauthenticated registrant receives the entire File Browser server root with destructive permissions. Later signup hardening only cleared Admin, Execute, and Commands; it never reset Scope or the remaining CRUD bits. A startup warning and docs were added, but the handler still provisions that root-scoped account.",
+ "flaw_origin": "The first public write of signupHandler applying Defaults.Apply (copying default Scope and the full permission set) then saving the user is 12b2c215221696de58431093e01eeff7a5414471 (feat: v2 #599). Immediate parent 53a46013618c434fa530a4755831adcce15ea438 is the v1 tree: http/auth.go and settings/defaults.go are absent, and that parent has no signup path at all. Former-commit-id members listed in the squash message are not present in the clone, so this is the smallest surviving public first-write.",
+ "introducer_sha": "12b2c215221696de58431093e01eeff7a5414471",
+ "introducer_parent": "53a46013618c434fa530a4755831adcce15ea438",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "Absent on BIC 12b2c215221696de58431093e01eeff7a5414471. git cat-file -p shows author Henrique Dias <hacdias@gmail.com>, committer GitHub <noreply@github.com>, subject feat: v2 (#599), and no Co-Authored-By, Generated-with, Made-with, or bot-author marker.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": [
+  "First-party advisory https://github.com/filebrowser/filebrowser/security/advisories/GHSA-6759-996p-gpj6 (CVE-2026-72839 / GHSA-6g9f-8x2v-mq2c) states that Signup=true with factory CreateUserDir=false leaves signupHandler applying Defaults then clearing only Admin/Execute/Commands; Scope stays '.' and MakeUserDir normalizes it to '/'. Affected: <=2.63.16. Patched versions: None. Resolution is a startup warning plus docs, explicitly 'No behavior or default change.' withdrawn_at is null; the CVE/GHSA remain published.",
+  "git log -S 'signupHandler' -- http/auth.go returns only 12b2c215221696de58431093e01eeff7a5414471. At that commit, http/auth.go defines signupHandler as Defaults.Apply(user) then Users.Save(user), with no Admin/Execute strip and no per-user home. settings/defaults.go Apply copies Scope, Perm, and Commands onto the user.",
+  "git cat-file -e 53a46013618c434fa530a4755831adcce15ea438:http/auth.go and :settings/defaults.go both fail (paths exist on disk but not in the parent tree). Parent grep for signup on that tree is empty. v1 lib/http/auth.go is login/proxy/recaptcha only.",
+  "git cat-file -p 12b2c215221696de58431093e01eeff7a5414471: single parent 53a46013618c434fa530a4755831adcce15ea438, author Henrique Dias <hacdias@gmail.com>, committer GitHub <noreply@github.com>, 2019-01-05. Former-commit-id objects 7aedcaaf, bdbe4d49, 0c7d925a, e032e080 are not in the clone (cat-file -e fails), so no finer public member can be reconstructed.",
+  "Factory defaults at HEAD cmd/root.go quickSetup still have Signup=false, CreateUserDir=false, Defaults.Scope='.', and Perm Create/Rename/Modify/Delete/Share/Download true. HEAD http/auth.go still Apply()s those defaults, then only forces Perm.Admin=false, Perm.Execute=false, Commands=[]. CreateUserHome derives a private home only when CreateUserDir is true; otherwise MakeUserDir does path.Join('/', userScope), so '.' becomes '/'.",
+  "1fb05d65de98f8dc341409f40d382297ca75bcf0 (docs,cmd: warn about broad scope for self-signup users, GHSA-6759-996p-gpj6) touches only cmd/root.go and www/docs/deployment.md. Its message says it adds a WARNING and documents --createUserDir; it does not change signupHandler, defaults, or MakeUserDir. That is not a security fix.",
+  "Later human-authored strips a63573b67eb302167b4c4f218361a2d0c138deab (no admin on signup) and b6a4fb1f27f4d894b384c0f3acacda276d1338a5 (no execute on signup) and optional CreateUserDir wiring (0ca8059d / fc5e2247 / 65a53514) leave the Scope/CRUD inheritance intact when CreateUserDir is false."
+ ],
+ "reasoning": "Re-adjudicated EVIDENCE_GAP -> NOT_AI after independent recheck (protocol-recheck-disagreements-20260829.md) and git re-verification, 2026-08-29. Basis: Git-verified by recheck (protocol-recheck-disagreements-20260829.md); review record supplies unpatched evidence per gates. Original analysis retained for provenance: The advisory's mechanism is confirmed end to end: unauthenticated signup copies the global defaults; the factory root-equivalent scope and six file permissions survive the later Admin/Execute/Commands hardening; CreateUserDir is false; MakeUserDir normalizes the inherited dot scope to slash; and Save persists broad access. History search reaches the main v2 squash 12b2c215221696de58431093e01eeff7a5414471, then PR #575's force-pushed aggregates. Aggregate 34e79e14fa307ff9e645fcf4c2b8fa70a1715ea0 is the earliest reachable object found that contains the vulnerable signup field copies, and its direct parent 4945635bd64aa427099d765aac2489e94ee04fcf lacks signup, but the aggregate message itself preserves multiple squashed subjects including \"feat: add signup api\". The atomic member's SHA, commit object, and direct parent are not publicly reachable, so the protocol's smallest-BIC and BIC-only AI requirements cannot be proven. The product behavior is also explicitly unpatched: 1fb05d65de98f8dc341409f40d382297ca75bcf0 only warns and documents, and the first-party advisory lists no patched version. Therefore EVIDENCE_GAP is required rather than transferring the aggregate's absent AI markers into a NOT_AI verdict.",
+ "remaining_gap": "Re-adjudicated: none — see reasoning prefix. Original gap: The precise unreachable fact is the 40-hex SHA and commit object of the original atomic PR #575 member whose surviving squashed subject is \"feat: add signup api\", together with that member's immediate parent tree. Without it, the smallest BIC's parent absence and BIC-only AI markers cannot be verified. Independently, the vulnerability remains behaviorally unpatched: the first-party advisory lists patched versions None and 1fb05d65de98f8dc341409f40d382297ca75bcf0 is warning/documentation only, so no fix_sha or direct_fix_sha exists.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched: no commit in the validated clone changes signupHandler or MakeUserDir so that CreateUserDir=false plus default Scope '.' cannot yield Scope '/' with CRUD permissions. 1fb05d65de98f8dc341409f40d382297ca75bcf0 is warning/docs only. Potential fix: when Signup creates a user, always derive an isolated home (or refuse signup) unless the admin set a non-root default scope; do not persist path.Join('/', '.') as the account scope.",
+  "potential_fix": {
+   "approach": "when Signup creates a user, always derive an isolated home (or refuse signup) unless the admin set a non-root default scope; do not persist path.Join('/', '.') as the account scope",
+   "rationale": "Applying this change at the sink described in bug_semantics removes the attacker-controlled input from reaching the vulnerable path, closing the flaw for the currently unpatched code; the record's remaining_gap verifies no such fix exists upstream as of the audited HEAD, so this documents the potential remediation without asserting a fix SHA.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

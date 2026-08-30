@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-0bb0c3c7ff1f50fab613510a",
+  "case_id": "GHSA-58JR-9C6G-55JQ",
+  "repo": "scriban/scriban",
+  "advisory_ids": [
+    "CVE-2026-74791",
+    "GHSA-58jr-9c6g-55jq"
+  ],
+  "bug_semantics": "TemplateContext.Reset() made a context appear safe to reuse but left its CachedTemplates dictionary intact. After one render cached a request-dependent include, a later render on the reset context found the same path in CachedTemplates and returned the old compiled Template without invoking ITemplateLoader.Load(), so content authorized for an earlier request, user, or tenant could cross the reuse boundary.",
+  "flaw_origin": "Commit 2e95889099c3ee5e7a4c0147b7355ecd309200af introduced the public Reset() API and explicitly promised safe same-thread reuse, but reset only output, global, culture, and source-file stacks. Scriban's include cache and loader-on-cache-miss path already existed in the immediate parent; omitting CachedTemplates from the newly defined reset boundary is therefore the smallest change that created the advisory's vulnerable lifecycle.",
+  "introducer_sha": "2e95889099c3ee5e7a4c0147b7355ecd309200af",
+  "introducer_parent": "a2fc52e704e9c929e166d3ab7046081dfa8ab1fa",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: `git cat-file -p 2e95889099c3ee5e7a4c0147b7355ecd309200af` shows human author and committer Alexandre Mutel <alexandre_mutel@live.com>, the single message `Add TemplateContext.Reset`, and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "099cb0491df92fafda95acb8c731c60d765bf41a",
+  "direct_fix_sha": "099cb0491df92fafda95acb8c731c60d765bf41a",
+  "evidence": [
+    "First-party advisory https://github.com/scriban/scriban/security/advisories/GHSA-x6m9-38vm-2xhf identifies src/Scriban/TemplateContext.cs Reset/CachedTemplates and the include loader path, demonstrates first=admin-only then second=admin-only after Reset(), lists affected versions <= 6.6.0, and lists 7.0.0 as patched.",
+    "`git log -L '/public virtual void Reset/',+40:src/Scriban/TemplateContext.cs f55280a09575e577fcf7f5629007e0814594e3ac` traces the entire vulnerable Reset body to 2e95889099c3ee5e7a4c0147b7355ecd309200af (`Add TemplateContext.Reset`); `git show` shows that focused one-file commit added the safe-reuse documentation and 58 lines implementing Reset without a cache clear.",
+    "At the BIC tree, src/Scriban/Functions/IncludeFunction.cs:156-185 checks CachedTemplates first, calls templateLoader.Load() only on a miss, then adds the parsed template to the dictionary. Thus retained state directly suppresses the request-dependent authorization/loading decision on subsequent renders.",
+    "Direct parent-tree check: `git grep -n -e 'void Reset' -e 'TemplateContext.Reset' a2fc52e704e9c929e166d3ab7046081dfa8ab1fa -- src/Scriban/TemplateContext.cs` finds only unrelated internal ResetPreviousNewLine and no public TemplateContext.Reset. The same parent does contain CachedTemplates construction/property and IncludeFunction.cs:156/185 cache lookup/add plus TemplateLoader.Load at line 162. The vulnerable Reset lines are therefore absent while all prerequisite cache behavior is present.",
+    "Version boundary: `git grep` finds no public Reset in tag 3.8.0 and finds it at src/Scriban/TemplateContext.cs:817 in 3.9.0; `git tag --contains 2e95889099c3ee5e7a4c0147b7355ecd309200af` starts at 3.9.0 and includes every release through the advisory's 6.6.0 upper bound.",
+    "Fix https://github.com/scriban/scriban/commit/099cb0491df92fafda95acb8c731c60d765bf41a adds `CachedTemplates.Clear()` to Reset in src/Scriban/TemplateContext.cs. `git tag --contains 099cb0491df92fafda95acb8c731c60d765bf41a` starts at 7.0.0; `git grep` finds no clear in 6.6.0 and finds it at TemplateContext.cs:981 in 7.0.0.",
+    "BIC object check: 2e95889099c3ee5e7a4c0147b7355ecd309200af has exactly one parent, a2fc52e704e9c929e166d3ab7046081dfa8ab1fa, a human author/committer, and no trailers. Its focused diff directly introduces Reset rather than moving, reverting, backporting, or aggregating earlier member commits, so squash decomposition is not applicable."
+  ],
+  "reasoning": "The cache itself predates the vulnerability-specific reuse boundary: before the BIC, includes were cached and loaded only on cache misses, but there was no public TemplateContext.Reset promising safe reuse. The BIC is the smallest causal introducer because it added that API and its complete reset implementation while omitting the already-existing CachedTemplates state. Direct inspection of the immediate parent proves the Reset method and safe-reuse promise were absent, while the cache lookup/load/add prerequisites were already present. The flaw shipped beginning with 3.9.0, remained in 6.6.0, and the direct fix added the missing clear before the patched 7.0.0 release. The single-parent, one-file BIC is not a squash or history-only movement. Its commit object contains only a human author/committer and no AI marker, so under BIC-only attribution the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

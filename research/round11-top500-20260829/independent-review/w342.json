@@ -1,0 +1,26 @@
+{
+  "worker": "w342",
+  "review_agent_id": "r389_w342",
+  "class_id": "alias-04bb99df869250f012854922",
+  "case_id": "GHSA-46g3-37rh-v698",
+  "repo": "step-security/harden-runner",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In Community mode, harden-runner v2.15.1 downloads step-security/agent v0.14.3. Its addBlockRules appends an ACCEPT for all TCP to each resolver IP without --uid-owner or --dport, so workflow code with execution can send DoH traffic to a permitted resolver and exfiltrate through DNS labels despite egress-policy:block. Enterprise agent-ebpf is not changed by the product fix.",
+    "atomic_bic": "Confirmed as step-security/agent c793555005be99a734737f7bf8ebce54e545f3c6. Its patch creates firewall.go and first writes dnsServerIP=8.8.8.8 plus the unrestricted TCP ACCEPT; the later dnsServers-slice expansion is not the mechanism's first write.",
+    "immediate_parent_absence": "Confirmed. GitHub commit metadata identifies the sole parent as 794340760181b0a57396ae8eaa9a3235f472994e; firewall.go returns 404 at that parent, while the BIC patch creates the file, so the vulnerable rule is absent from the immediate parent.",
+    "squash_member_decomposition": "Confirmed. The BIC is a single-parent public commit titled 'First commit', not a squash/merge with reconstructable public members, and is the smallest surviving public first-write object. Separately, product release commit fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 is the #646 squash result; its non-ancestral member 72f50d46fb446c15066338ef08ea5d11593570eb directly changes the Community agent pin.",
+    "affected_release_membership": "Confirmed. agent tag v0.14.3 resolves to 689409c83f4ac2a559d1cc60278197f33c0bb83d and its firewall.go contains the unrestricted resolver-IP TCP ACCEPT. harden-runner tag v2.15.1 resolves to 58077d3c7e43986b6b15fba718e8ea69e387dfcc and pins the Community non-TLS agent URL/checksum to v0.14.3.",
+    "fixed_release_membership": "Confirmed. agent v0.14.4 resolves to merge commit 206a878142929550e5382f5b977384f0c313f93d with parents v0.14.3 and direct-fix commit 7edc21b80b1df77131ce3dde5bfc450a7c20cd97. harden-runner v2.16.0 resolves to fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 and changes the Community pin from v0.14.3 to v0.14.4; the CVE record is PUBLISHED and marks versions below 2.16 affected.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. step-security/agent 7edc21b80b1df77131ce3dde5bfc450a7c20cd97 moves resolver exceptions to OUTPUT only and adds owner --uid-owner agentUID plus --dport 443, preventing arbitrary workflow processes from using those exceptions. harden-runner member 72f50d46fb446c15066338ef08ea5d11593570eb ships that agent release.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC alone. Public metadata for c793555005be99a734737f7bf8ebce54e545f3c6 shows human author and committer Varun Sharma, 2021-11-15, subject 'First commit', empty body, and no co-author, generated-with, bot, or AI marker. Fix and release authorship was not used for attribution."
+  },
+  "findings": [
+    "The advisory mechanism, BIC, parent-state, vulnerable release, direct fix, and fixed product release independently reproduce the primary record's causal chain.",
+    "The product-facing release commit is a squash result, but the primary correctly names its direct pin-change member and does not mistake that member for the BIC.",
+    "No correction to the NOT_AI verdict or recorded causal fields is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

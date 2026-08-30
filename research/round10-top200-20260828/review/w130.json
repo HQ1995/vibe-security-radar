@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-7539a7be8d94cc08c8d6384d",
+  "case_id": "GHSA-hm7r-c7qw-ghp6",
+  "repo": "nearform/fast-jwt",
+  "advisory_ids": [
+    "CVE-2026-35042",
+    "GHSA-hm7r-c7qw-ghp6"
+  ],
+  "bug_semantics": "fast-jwt createVerifier decoded the JWS header and then checked only alg/signature/claims. RFC 7515 section 4.1.11 requires that if header.crit lists any extension the recipient does not understand and support, the JWS is invalid. Through v6.1.0 src/verifier.js never inspected header.crit, so a token with crit:[\"x-custom-policy\"] and a matching custom header was accepted after a valid HMAC/signature. That is CWE-345 / CWE-636 failing-open on unknown critical extensions (split-brain vs jose, policy/cnf bypass).",
+  "flaw_origin": "The omission was present in the first implementation of src/verifier.js, commit 51fe1ea3feacb931cd66b0f915b046cbeab88790 (feat(wip): Initial version, author/committer Shogun <shogun@cowtech.it>). That commit added verifyJwt as decode then verifyAlgorithm then verifySignature then verifyPayload with no crit handling. Parent 5063678a36ff118da9671f1f1df3d67cc95d1169 is scaffolding only (no src/). Later verifier rewrites kept the same gap until 80b49c73cf708701e1e3da7c16ef735789cb269c added validateCrit and allowedCritHeaders, released in v6.2.0.",
+  "introducer_sha": "51fe1ea3feacb931cd66b0f915b046cbeab88790",
+  "introducer_parent": "5063678a36ff118da9671f1f1df3d67cc95d1169",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; git cat-file -p 51fe1ea3feacb931cd66b0f915b046cbeab88790 shows author/committer Shogun <shogun@cowtech.it> and message feat(wip): Initial version. with no Co-Authored-By, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "80b49c73cf708701e1e3da7c16ef735789cb269c",
+  "direct_fix_sha": "80b49c73cf708701e1e3da7c16ef735789cb269c",
+  "evidence": "CVE.org PUBLISHED (GitHub_M) CVE-2026-35042: fast-jwt <=6.1.0 does not validate crit; GHSA-hm7r-c7qw-ghp6 withdrawn_at=null, npm fast-jwt <=6.1.0, patched 6.2.0. Clone git log -S crit -- src/verifier.js has a single hit 80b49c73cf708701e1e3da7c16ef735789cb269c (parent 597c4b6e6af3bd823f624debdaa7f57fa92b1e2d, Antonio Attanasio, #591). Pre-fix 80b49c7^:src/verifier.js has no crit/validateCrit; post-fix adds validateCrit(header, allowedCritHeaders) and rejects unknown extensions. git log --reverse -- src/verifier.js first commit 51fe1ea3feacb931cd66b0f915b046cbeab88790; that blob is 218-line verifier with no crit. git cat-file -e 5063678a36ff118da9671f1f1df3d67cc95d1169:src/verifier.js fails (parent lacks path). git merge-base --is-ancestor 51fe1ea3 v6.1.0 yes; 80b49c7 in v6.1.0 no; 80b49c7 in v6.2.0 yes. Required BIC checks: git cat-file -p 51fe1ea3; git cat-file -e PARENT:src/verifier.js; git log -1 --format=%an %ae %cn %ce 51fe1ea3 => Shogun shogun@cowtech.it Shogun shogun@cowtech.it.",
+  "reasoning": "Vulnerability-first: the sink is createVerifier accepting a JWS whose crit names an unsupported extension. That behavior is an omission in the original verifier, not a later feature. 51fe1ea3 is the smallest public first-write of src/verifier.js; the parent tree has no verifier; later refactors are carriers. AI is judged only on that BIC commit object: human Shogun, no AI trailers or bot author. The RFC-compliant fix is 80b49c73 in v6.2.0. Closed NOT_AI.",
+  "remaining_gap": null
+}

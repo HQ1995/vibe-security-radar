@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-2ae2eefcec8475abdb79a1a5",
+  "case_id": "GHSA-pj24-vj9g-8vg8",
+  "repo": "jahlives/openssl_encrypt",
+  "advisory_ids": [
+    "CVE-2026-74893",
+    "GHSA-pj24-vj9g-8vg8"
+  ],
+  "bug_semantics": "The unified FastAPI server enabled both JWT-protected modules by default while supplying public, hardcoded 39-character HS256 signing secrets for each module. Startup validation checked only that each secret was at least 32 characters and that the two values differed, so both defaults passed. Because TokenAuth.verify_token() trusted any correctly signed token with the module issuer and the route dependencies returned the attacker-controlled sub claim without requiring that client_id to exist, anyone knowing the source could forge a bearer token for an arbitrary client_id and reach authenticated keyserver upload/revocation and telemetry event APIs.",
+  "flaw_origin": "Single-parent commit 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 created openssl_encrypt_server/config.py with the two known JWT defaults and the length-only validate_config(), and simultaneously created the HS256 TokenAuth and protected route dependencies that consumed those secrets. The immediate parent has no openssl_encrypt_server/config.py at all, and all-ref -S/log -L history identifies this commit as the first writer of the vulnerable defaults; no smaller pre-existing or reconstructable member commit contains them.",
+  "introducer_sha": "8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4",
+  "introducer_parent": "849da61d5e88aa901c6a8ec70859019a57156363",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "BIC commit object author and committer are Tobi <jahlives@gmx.ch>, and its message contains the exact AI signals: \"🤖 Generated with [Claude Code](https://claude.com/claude-code)\" and \"Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\".",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "6090a8e329230b5c4b941dcedee4cc4b78bb35a7",
+  "direct_fix_sha": "6090a8e329230b5c4b941dcedee4cc4b78bb35a7",
+  "evidence": [
+    "First-party advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-qc6h-gfjh-7qqg names openssl_encrypt_server/config.py, describes hardcoded defaults passing the >=32 check, states affected <1.4.0, and identifies resolution commit 6090a8e.",
+    "git log --all --full-history --reverse -S'keyserver-secret-change-me-min-32-chars' -- openssl_encrypt_server/config.py first returns 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4; git log -L 175,175:openssl_encrypt_server/config.py 6090a8e^ traces the keyserver default to that commit's creation of the file from /dev/null. The analogous telemetry default is blamed to the same commit.",
+    "At 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4, openssl_encrypt_server/config.py lines 75-83 set keyserver-secret-change-me-min-32-chars and telemetry-secret-change-me-min-32-chars. Each is 39 characters, so the same commit's validate_config() lines 143-159 accepts it under the only per-secret rule, len(secret) >= 32; server.py invokes validate_config(settings) during lifespan startup.",
+    "At the BIC, openssl_encrypt_server/core/auth/token.py signs and verifies HS256 JWTs using those configured secrets and validates only the module issuer cryptographically. modules/keyserver/routes.py and modules/telemetry/routes.py use payload.sub as authenticated client_id after best-effort update_last_seen(), without a required client lookup; protected sinks include POST /api/v1/keys, POST /api/v1/keys/{fingerprint}/revoke, and POST /api/v1/telemetry/events.",
+    "Direct parent-tree check `git cat-file -e 849da61d5e88aa901c6a8ec70859019a57156363:openssl_encrypt_server/config.py` fails because the path does not exist. The BIC is a one-parent commit, and all-ref content history exposes no earlier member commit containing either vulnerable default, so there is no reconstructable squash decomposition.",
+    "`git cat-file commit 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4` shows human author/committer Tobi plus the exact Claude Code generation line and Claude Sonnet 4.5 Co-Authored-By trailer. Only this BIC commit object was used for AI attribution.",
+    "6090a8e329230b5c4b941dcedee4cc4b78bb35a7 directly adds insecure-default marker checks to validate_config() and raises in the default non-debug mode before server startup, matching the first-party resolution. Later commit 8d0d91896ee19ea9c31951b39d72a364b594fd71 additionally removes the defaults, but it is subsequent hardening rather than the first direct fix.",
+    "Version cross-check: 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 is not an ancestor of v1.3.6, while both it and 6090a8e329230b5c4b941dcedee4cc4b78bb35a7 are ancestors of v1.4.0 (peeled tag commit 768df5cd1910e349509f07a27eeac6951e0003bf). Thus repository tags show the flaw existed on the v1.4 development line and was fixed before the v1.4.0 release boundary; no vulnerable pre-1.4 release tag contains the new unified server path."
+  ],
+  "reasoning": "The causal unit is not the February fix, a later refactor, or the v1.4.0 release commit. Commit 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 is the smallest reachable commit that first makes the exploit possible: it introduces the publicly known signing secrets, validation that those 39-character strings satisfy, HS256 token verification keyed by those secrets, and authenticated route dependencies that accept a forged subject. The parent tree lacks the server config, and line/content history finds no earlier writer or separable member commit. Commit 6090a8e329230b5c4b941dcedee4cc4b78bb35a7 is both the advisory-named and direct fix because its startup validation rejects the known defaults in normal operation; it is included in v1.4.0. Tag evidence narrows the vulnerable lifecycle to unreleased v1.4 development history despite the advisory's broad <1.4.0 range. Finally, the BIC commit object itself explicitly says it was generated with Claude Code and carries a Claude Sonnet 4.5 co-author trailer. Since that AI-attributed BIC first wrote the complete flawed mechanism, the protocol requires AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

@@ -1,0 +1,25 @@
+{
+  "worker": "w205",
+  "review_agent_id": "r389_w205",
+  "class_id": "alias-b41bfb6d8d97ab855af0d56b",
+  "case_id": "GHSA-p63x-hq5f-7f58",
+  "repo": "harry0703/moneyprinterturbo",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org currently records CVE-2025-49089 as PUBLISHED and describes path traversal through /api/v1/download//etc/passwd. At v1.2.6, the /api/v1 router prefix combines with /download/{file_path:path}; download_video passes attacker-controlled file_path to os.path.join(tasks_dir, file_path) and then FileResponse. An absolute second operand discards tasks_dir, and ../ segments can likewise escape it.",
+    "atomic_bic": "PASS: git log -S for the download route and function-line history both begin at 00052b4c503745ccefeb6241fe6b4cbc29e165c6. Its diff modifies one existing file with 20 insertions and first adds the route, handler, unsafe join, and FileResponse sink.",
+    "immediate_parent_absence": "PASS: the BIC has the single verified parent d13a3cf6e911d1573c62b1f6459c3c0b7a1bc18d. That parent tree contains neither /download/{file_path:path} nor download_video; its sibling stream route does not make the advisory's download surface pre-existing.",
+    "squash_member_decomposition": "PASS: 00052b4c503745ccefeb6241fe6b4cbc29e165c6 is a single-parent, one-file atomic feature commit, not a merge, move, revert, release aggregate, or squash object requiring member decomposition.",
+    "release_membership": "PASS: 00052b4c503745ccefeb6241fe6b4cbc29e165c6 is an ancestor of affected tag v1.2.6. Direct fix 18f5e478979bbb2606b1711289d410f89b1cffe9 is not an ancestor of v1.2.6 but is an ancestor of annotated tag v1.2.7, whose tag object peels to 475f21147f0808f5ffe3f58af9ab794b28a4da2c.",
+    "direct_fix_or_unpatched_state": "PASS: 18f5e478979bbb2606b1711289d410f89b1cffe9 is the first relevant history change replacing download_video's unsafe join with _resolve_path_within_directory, which uses realpath/commonpath confinement and rejects escapes. The same unsafe join remains visible in v1.2.6 and the confined resolver is used in v1.2.7.",
+    "bic_only_ai_attribution": "PASS: the raw BIC object identifies author and committer kevin.zhang <kevin.zhang@cardinfolink.com> and contains only the subject 'chore: add video download api endpoint'. It has no Co-Authored-By, Generated-with, bot identity, ChatGPT, Copilot, Cursor, or other AI marker. Later repository AI-marked commits and the fix commit were not used to attribute the BIC."
+  },
+  "findings": [
+    "The vulnerability mechanism, first-write BIC, parent-tree absence, direct fix, and v1.2.6-to-v1.2.7 boundary independently reproduce the primary record.",
+    "The advisory's referenced gist currently returns HTTP 404, but the authoritative CVE record and repository source/history independently establish the mechanism and lifecycle.",
+    "BIC-only metadata supports the primary NOT_AI verdict; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

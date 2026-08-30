@@ -1,0 +1,25 @@
+{
+  "worker": "w333",
+  "review_agent_id": "r389_w333",
+  "class_id": "alias-dc201851f836b74a75a740ae",
+  "case_id": "GHSA-3h96-34p3-xm76",
+  "repo": "rmosolgo/graphql-ruby",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In the Ruby lexer, Lexer#advance skipped IGNORE_REGEXP containing #.*$ before incrementing @tokens_count, so arbitrarily many comment lines were scanned without consuming max_query_string_tokens; the C lexer counted emitted COMMENT tokens and was unaffected.",
+    "atomic_bic": "PASS: c634445febcc93cf70bc4a38fe1f10aa2c40d495 is the single-parent PR member that first added the Ruby max-token counter immediately after comment-skipping; bounded -S history finds it as the first writer, not merge 2f46e14ec2b7e5700c0fb3a9b7bf34b0552c7418 or the older parser rewrite.",
+    "immediate_parent_absence": "PASS: Parent dc62848b424942ed463b16046bed1775eeec1dd1 already skipped comments as ordinary lexer behavior but has no tokens_count, max_tokens, or max_query_string_tokens implementation, so the incomplete throttle is absent there.",
+    "squash_member_decomposition": "PASS: The BIC has exactly one parent and is a reconstructable member of PR #4929; ancestry from c634445febcc93cf70bc4a38fe1f10aa2c40d495 through 8acc70892485da3a623afe955a3d875f2d8e14ec and later members reaches merge 2f46e14ec2b7e5700c0fb3a9b7bf34b0552c7418, so no squash aggregate is being used as the introducer.",
+    "affected_and_fixed_release_membership": "PASS: The BIC is absent from v2.3.0 and is an ancestor of v2.3.1, all checked vulnerable boundary tags, and the patched tags. The equivalent comment-counting fixes are ancestors of their first patched tags: 797bc7ac45529c1d5753357e8c94c1bd43a43552 in v2.3.23, f051b3867d88ecd8d6ef7337dfa5b3fce610954d in v2.4.18, 3dc2d44daafbd12b5dabf2143991916409f1a330 in v2.5.26, and 2a8d95680bf1ed9bb7c0d89345a736f57b10877b in v2.6.1; OSV and the vendor advisory list the same ranges.",
+    "direct_fix_or_verified_unpatched_state": "PASS: Direct fix 2a8d95680bf1ed9bb7c0d89345a736f57b10877b removes comments from IGNORE_REGEXP, loops over COMMENT_REGEXP while incrementing @tokens_count, and adds a 5000-comment regression test; merge 88d6c1ca51927556b3c9cd4377db2fa1089f3905 carries it to the v2.6 line, with equivalent inspected backports on the other maintained lines.",
+    "bic_only_ai_attribution": "PASS: Attribution is based on the exact BIC commit object and its public PR member, not the fix or repository-wide AI hits. The BIC is authored and committed by Robert Mosolgo <rdmosolgo@gmail.com>; its commit body contains no co-author, generated-with, AI-tool, or bot marker, and the public PR identifies rmosolgo as the author. This supports the primary NOT_AI verdict."
+  },
+  "findings": [
+    "The primary record correctly identifies the incomplete Ruby-lexer throttle, its smallest public first writer c634445febcc93cf70bc4a38fe1f10aa2c40d495, and the absence of the throttle in immediate parent dc62848b424942ed463b16046bed1775eeec1dd1.",
+    "Release ancestry and the inspected direct fix/backports agree with the advisory ranges 2.3.1-2.3.22, 2.4.0-2.4.17, 2.5.0-2.5.25, and 2.6.0, and first patched releases 2.3.23, 2.4.18, 2.5.26, and 2.6.1.",
+    "The BIC-only authorship evidence supports NOT_AI; no primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

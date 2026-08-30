@@ -1,0 +1,47 @@
+{
+  "worker": "w129",
+  "review_agent_id": "r389_w129",
+  "class_id": "alias-87a0d48b691557d3441892f7",
+  "case_id": "GHSA-7fxv-8wr2-mfc4",
+  "repo": "rancher/local-path-provisioner",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The advisory and clone agree on the complete path: an editor of local-path-config controls helperPod.yaml; loadHelperPodFile YAML-to-JSON decodes it into v1.Pod without security-field validation; createHelperPod DeepCopies that pod and submits it on a target node, preserving attacker-supplied privileged securityContext, hostPath volumes, capabilities, host namespaces, service account, and executable hooks."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "git log -L for loadHelperPodFile starts at 874088575ce38ca3fab3ed774e731c1c3b571dc8. Its diff simultaneously adds the unvalidated decoder, reads helperPod.yaml from the ConfigMap, stores the decoded pod, and replaces the fixed helper construction with p.helperPod.DeepCopy(); this is the smallest public first-write of the vulnerable sink."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "874088575ce38ca3fab3ed774e731c1c3b571dc8 has the single immediate parent c3192ec3f19f2bdb84a13a830d4160f44963c92c. That tree has no util.go and no loadHelperPodFile, helperPod.yaml, or FlagHelperPodFile match; createHelperPod constructs a fixed Pod in Go instead of accepting an attacker-controlled pod spec."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a non-merge single-parent commit. The exact PR #127 remote head is 33c1c20db4ad05766fe65d42932caf3bdf7aadcd, and the PR patch exposes one From/Subject entry with the same change title; public main history contains one rebased first-write rather than a squash aggregate needing member decomposition."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "CVE.org records versions < 0.0.36 as affected and 0.0.36 as fixed. Clone ancestry independently shows the BIC absent from v0.0.17 and present from v0.0.18 through v0.0.36; fix 28710fb09df4ab694f8e256983dfbd6e50da46c7 is absent from v0.0.34 and v0.0.35 and present in v0.0.36. This resolves the contradictory advisory prose mentioning v0.0.34 in favor of the structured range and repository history."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "28710fb09df4ab694f8e256983dfbd6e50da46c7 directly inserts validateHelperPodTemplate into both startup and hot-reload decoding and rejects unsafe pod/container fields by default. Follow-up 73c6566c1f5f63bfbf98cec5720a2bc5549fdc6a narrows blanket securityContext rejection to dangerous fields while retaining the privilege-escalation barriers; both commits are in v0.0.36."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was evaluated only on BIC 874088575ce38ca3fab3ed774e731c1c3b571dc8. Its commit object names human author nicktming <2279563278@qq.com> and human committer Sheng Yang <sheng@yasker.org>, and its message has no Co-Authored-By, Generated-with, Made-with, bot identity, or other AI marker."
+    }
+  },
+  "findings": [
+    "CVE-2026-44543 is PUBLISHED, not withdrawn or rejected, so FALSE_POSITIVE does not apply.",
+    "The primary correctly identifies 874088575ce38ca3fab3ed774e731c1c3b571dc8 as the atomic BIC and c3192ec3f19f2bdb84a13a830d4160f44963c92c as its verified clean immediate parent.",
+    "The primary correctly uses the structured advisory range and Git ancestry to identify v0.0.36, not the contradictory v0.0.34 prose, as the first fixed release.",
+    "The primary NOT_AI verdict is supported by BIC-only attribution evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

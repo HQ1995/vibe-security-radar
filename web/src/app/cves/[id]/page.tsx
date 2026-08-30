@@ -113,11 +113,13 @@ function PageHeader({
         className="border-l-2 border-primary bg-primary/[0.04] px-4 py-3 text-sm"
         role="status"
       >
-        <span className="font-semibold">
-          AI-contributed vulnerability
-        </span>
+        <span className="font-semibold">AI-contributed vulnerability</span>
         <span className="ml-2 text-muted-foreground">
-          Causal chain verified against first-party evidence.
+          {item.publication_status === "confirmed"
+            ? "Causal chain verified: all seven evidence gates pass."
+            : item.publication_status === "qualified"
+              ? "Evidence gates partially verified; remaining gates unresolved."
+              : "Gate verification in progress; treat as provisional evidence."}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-border py-3 text-xs text-muted-foreground">

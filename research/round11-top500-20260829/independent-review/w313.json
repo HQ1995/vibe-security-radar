@@ -1,0 +1,25 @@
+{
+  "worker": "w313",
+  "review_agent_id": "r389_w313",
+  "class_id": "alias-62829739710228997e8c4372",
+  "case_id": "GHSA-g2r8-97m7-62w9",
+  "repo": "duckdb/duckdb-aws",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: 07991443a7805840aa1c4783b13964c2a53c8700 made load_aws_credentials return secret_access_key when redact_secret=false and always return session_token; CVE-2026-58139 describes this SQL-accessible AWS credential disclosure as a bypass of allow_unredacted_secrets=false.",
+    "atomic_bic": "CONFIRMED: bounded -S history and the BIC diff identify 07991443a7805840aa1c4783b13964c2a53c8700 as the first writer of redact_secret, the secret/session result columns, and their plaintext output path.",
+    "immediate_parent_absence": "CONFIRMED: the BIC is single-parent with parent 428e7fba74a9833f9e2e771b3eb82ee0ab0bf7b5; that tree returns only loaded_key and has none of redact_secret, loaded_secret_access_key, set_secret_access_key, or set_session_token.",
+    "squash_member_decomposition": "CONFIRMED: GitHub PR #8 reports exactly one member, 07991443a7805840aa1c4783b13964c2a53c8700, with base 428e7fba74a9833f9e2e771b3eb82ee0ab0bf7b5; b215537e7820f5e4592b9b5a467ecfc023389c54 is the two-parent landing merge, not the BIC.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the PUBLISHED CVE record defines affected git versions as 0 lessThan 7d04119ee8d3f8836e278f0e8cbf21827ff5338b; the BIC is ancestral to the vulnerable pre-fix parent f15081e8708b78715a11391f33aea0c28b8c8d1a, and the repository has no tags to supply a finer release boundary.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: PR #156 has three members; 1000f983b0aa1aa045b4b86e38ef71bdcf98c687 directly deletes load_aws_credentials, is ancestral to landing merge 7d04119ee8d3f8836e278f0e8cbf21827ff5338b, and the landing tree has no load_aws_credentials or redact_secret match under src/.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC object names Sam Ansmink <samansmink@hotmail.com> as both author and committer, has only the message 'also fetch region, update duckdb', empty trailers, and no AI/bot/co-author marker; AI-authored later commits were not used for attribution.",
+    "advisory_disposition": "CONFIRMED: CVE.org reports CVE-2026-58139 state=PUBLISHED and GitHub reports withdrawn_at=null, so FALSE_POSITIVE does not apply."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic introducer, parent, direct fix, landing fix, and NOT_AI attribution independently match the advisory and repository evidence.",
+    "The 2026 allow_unredacted_secrets guard was a later incomplete mitigation; it did not alter the 2023 first-write determination, and complete remediation removed the function."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

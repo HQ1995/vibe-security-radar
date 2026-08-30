@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-b9c9ee85a11154b51e58be76",
+  "case_id": "GHSA-xm5m-wgh2-rrg3",
+  "repo": "sigstore/timestamp-authority",
+  "advisory_ids": [
+    "CVE-2026-39984",
+    "GHSA-xm5m-wgh2-rrg3"
+  ],
+  "bug_semantics": "VerifyTimestampResponse verified the PKCS#7 signature and certificate chain using the certificate identified by the SignerInfo, but then applied optional TSA identity and certificate constraints to an independently selected certificate from the untrusted certificate bag. An attacker could prepend a forged end-entity certificate that satisfied those constraints while retaining a valid signature by a different chain leaf, so authentication and authorization were decided on different certificates.",
+  "flaw_origin": "PR #153 was squash-merged as c9b8a1a42f98c0491bac2c73583607e469577614, but its 77 public member commits are reconstructable. The first member that creates the vulnerable source-to-sink combination is b7c9c9f82ee86559793fc5bb658c2078259aee2b: after verifyTSRWithChain validates the PKCS#7 signature, it newly routes verifyEmbeddedLeafCert, verifyLeafCertSubject, and verifyESSCertID through ts.Certificates[0], which is bag order rather than the verified signer. Its direct parent ccd6671e94d1605ff20ef898f0711a9c38d57241 performs verifyTSRWithChain but contains none of those authorization calls in VerifyTimestampResponse. Commit 3e30780b8626a4b860fda8dd32a83ae419a38473 later changed the independent selector from index zero to the first non-CA certificate, preserving rather than introducing the signer/authorization mismatch described by the advisory.",
+  "introducer_sha": "b7c9c9f82ee86559793fc5bb658c2078259aee2b",
+  "introducer_parent": "ccd6671e94d1605ff20ef898f0711a9c38d57241",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b7c9c9f82ee86559793fc5bb658c2078259aee2b"
+  ],
+  "ai_marker": "absent: the BIC commit object names Meredith Lancaster <malancas@github.com> as both author and committer and contains only Signed-off-by: Meredith Lancaster <malancas@github.com>; it has no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "9583b6186084a309cb6ccaf4323a29781901e962",
+  "direct_fix_sha": "71f1330d0422b6f2ea0cffe7354bf6f65477c3ba",
+  "evidence": [
+    "CVE.org API record CVE-2026-39984 is PUBLISHED and states that versions before 2.0.6 verify the chain signature but apply TSA constraints to the first non-CA certificate from the PKCS#7 bag; it names a prepended forged certificate as the bypass and version 2.0.6 as fixed: https://cveawg.mitre.org/api/cve/CVE-2026-39984",
+    "GitHub advisory GHSA-xm5m-wgh2-rrg3 describes the same VerifyTimestampResponse certificate-confusion mechanism, limits impact to users of timestamp-authority/v2/pkg/verification, and names 2.0.6 as the patch: https://github.com/sigstore/timestamp-authority/security/advisories/GHSA-xm5m-wgh2-rrg3",
+    "GitHub PR #153 metadata reports squash merge c9b8a1a42f98c0491bac2c73583607e469577614 and exposes 77 member commits; inspecting those members finds the first complete vulnerable call path in b7c9c9f82ee86559793fc5bb658c2078259aee2b: pkg/verification/verify.go lines 232-282 call verifyTSRWithChain at line 245, then apply embedded-certificate, EKU, subject, and ESSCertID checks using ts.Certificates[0] at lines 260-278: https://github.com/sigstore/timestamp-authority/pull/153/commits/b7c9c9f82ee86559793fc5bb658c2078259aee2b",
+    "Direct parent-tree verification against ccd6671e94d1605ff20ef898f0711a9c38d57241 shows pkg/verification/verify.go lines 168-188 call verifyTSRWithChain at line 181 and contain no leaf-certificate authorization or identity checks in VerifyTimestampResponse; b7c9c9f82ee86559793fc5bb658c2078259aee2b adds all of those calls, so the vulnerable combination is absent in the immediate parent: https://github.com/malancas/timestamp-authority/commit/b7c9c9f82ee86559793fc5bb658c2078259aee2b",
+    "The BIC commit object b7c9c9f82ee86559793fc5bb658c2078259aee2b has author and committer Meredith Lancaster <malancas@github.com>; its message is 'centralize verification function calls' with a Meredith Lancaster Signed-off-by trailer and no AI attribution trailer or bot identity: https://api.github.com/repos/malancas/timestamp-authority/commits/b7c9c9f82ee86559793fc5bb658c2078259aee2b",
+    "Mainline commit 3e30780b8626a4b860fda8dd32a83ae419a38473 changes verifyLeafCert from ts.Certificates[0] to the first certificate with IsCA false without tying it to the PKCS#7 SignerInfo; this evolution preserves the already-introduced independent-selection flaw: https://github.com/sigstore/timestamp-authority/commit/3e30780b8626a4b860fda8dd32a83ae419a38473",
+    "Direct fix commit 71f1330d0422b6f2ea0cffe7354bf6f65477c3ba makes verifyTSRWithChain return p7Message.GetOnlySigner() and passes that exact signerCert to verifyLeafCert, eliminating the certificate-identity split: https://github.com/sigstore/timestamp-authority/commit/71f1330d0422b6f2ea0cffe7354bf6f65477c3ba",
+    "The direct fix was squash-landed as 9583b6186084a309cb6ccaf4323a29781901e962. Local tag topology shows the PR #153 squash c9b8a1a42f98c0491bac2c73583607e469577614 is an ancestor of vulnerable tag v2.0.5 (tag commit 992e41243a7d41026ae980622c15bba41e7c9687), the fix is not an ancestor of v2.0.5, and v2.0.6 resolves directly to 9583b6186084a309cb6ccaf4323a29781901e962: https://github.com/sigstore/timestamp-authority/releases/tag/v2.0.6"
+  ],
+  "reasoning": "The vulnerability is real and published, and the version boundary matches repository topology. The vulnerable lifecycle begins when PR #153 first combines successful PKCS#7 chain/signature verification with authorization checks against a separately bag-selected certificate. Because the squash members remain public, the aggregate mainline commit is decomposed: b7c9c9f82ee86559793fc5bb658c2078259aee2b is the smallest member that wires both halves into VerifyTimestampResponse, while its immediate parent ccd6671e94d1605ff20ef898f0711a9c38d57241 has only the signature/chain check in that function. The later first-non-CA selector is a mutation of the same independent bag-selection error, not its origin. Fix member 71f1330d0422b6f2ea0cffe7354bf6f65477c3ba closes the flaw by returning the verified SignerInfo certificate and reusing that exact object for TSA checks; squash 9583b6186084a309cb6ccaf4323a29781901e962 ships it at v2.0.6. Finally, AI attribution is evaluated only on the atomic BIC commit object: its human author/committer and trailers contain no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

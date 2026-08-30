@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-1a096afd8759dc7a751cb41f",
+  "case_id": "GHSA-7JX3-JQCP-HHGC",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "CVE-2026-76219",
+    "GHSA-7jx3-jqcp-hhgc"
+  ],
+  "bug_semantics": "IndexFile.from_tree accepted one to three caller-controlled treeish values, appended them after GitPython's own --index-output=<temporary-index> argument, and passed the resulting argv to git read-tree without rejecting option-shaped treeish values or inserting --. An injected --index-output=<attacker-path> was therefore parsed as a later Git option and overrode the internal destination, clobbering any writable path with a Git index blob. IndexFile.reset inherited the same flaw by delegating its commit argument to from_tree, while IndexFile.merge_tree independently appended its caller-controlled base and rhs values to an unguarded read-tree invocation.",
+  "flaw_origin": "Commit babf5765da3e328cc1060cb9b37fbdeb6fd58350 introduced Index.from_tree in lib/git/index.py, including the causal ordering arg_list.append(\"--index-output=%s\" % tmp_index), arg_list.extend(treeish), then repo.git.read_tree(*arg_list, **kwargs), with no validation or argument terminator. This is the earliest and smallest history commit that created an exploitable advisory sink. Commit f6c8072daa942e9850b9d7a78bd2a9851c48cd2c later added the independently vulnerable merge_tree entry point, and 58fb1187b7b8f1e62d3930bdba9be5aba47a52c6 later exposed from_tree through reset; neither predates the root sink.",
+  "introducer_sha": "babf5765da3e328cc1060cb9b37fbdeb6fd58350",
+  "introducer_parent": "b9d6494f1075e5370a20e406c3edb102fca12854",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw commit object for babf5765da3e328cc1060cb9b37fbdeb6fd58350 names Sebastian Thiel <byronimo@gmail.com> as both author and committer, and its message contains no trailers, AI attribution, generated-with marker, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "9b5dcaf85da5946dbf69dcd53f9edba08f760b32",
+  "direct_fix_sha": "9b5dcaf85da5946dbf69dcd53f9edba08f760b32",
+  "evidence": [
+    "First-party advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-4gmw-gg2m-w46p identifies the unguarded read-tree calls in git/index/base.py, demonstrates --index-output path overwrite through from_tree/reset/merge_tree, declares <=3.1.57 affected and >=3.1.58 patched, and links this issue to CVE-2026-76219.",
+    "git log --all --reverse -S'read_tree' -- '*.py' reports babf5765da3e328cc1060cb9b37fbdeb6fd58350 as the first Python-history commit adding read_tree; its focused diff adds from_tree to lib/git/index.py with the internal --index-output first, caller treeish values afterward, and the unguarded read_tree call. Later occurrences are f6c8072daa942e9850b9d7a78bd2a9851c48cd2c (merge_tree), af32b6e0ad4ab244dc70a5ade0f8a27ab45942f8 (file split/move), and the fix.",
+    "Direct parent-tree check: git grep -n -E 'from_tree|read_tree|index-output' b9d6494f1075e5370a20e406c3edb102fca12854 -- lib/git/index.py returns no matches, while git show babf5765da3e328cc1060cb9b37fbdeb6fd58350 adds all three causal elements. The vulnerable lines are therefore absent from the immediate parent.",
+    "History decomposition excludes non-BIC movement: af32b6e0ad4ab244dc70a5ade0f8a27ab45942f8 split lib/git/index.py into lib/git/index/base.py, fafe8a77db75083de3e7af92185ecdb7f2d542d3 moved it to index/base.py, and cb68eef0865df6aedbc11cd81888625a70da6777 moved it to git/index/base.py; blame surviving lines to the later rewrite/move history does not supersede babf5765da3e328cc1060cb9b37fbdeb6fd58350 as the content origin.",
+    "Entry-point lifecycle: git show f6c8072daa942e9850b9d7a78bd2a9851c48cd2c adds merge_tree with args.append(base), args.append(rhs), and self.repo.git.read_tree(args); git show 58fb1187b7b8f1e62d3930bdba9be5aba47a52c6 changes reset to call type(self).from_tree(self.repo, commit).",
+    "Version boundary: git tag --contains babf5765da3e328cc1060cb9b37fbdeb6fd58350 includes 0.2.0-beta1 and subsequent releases. Tag 3.1.57 resolves to ccbd573ac4ab52ccdcf395c400e600d5809bcc88, where git/index/base.py still has unguarded read_tree at lines 291 and 388 and arg_list.extend(treeish) at line 381. Tag 3.1.58 resolves to 30be45d786e95023e23c616fec5cbabca861b44c, contains direct fix 9b5dcaf85da5946dbf69dcd53f9edba08f760b32, and has unsafe_git_read_tree_options=['--index-output'] plus Git.check_unsafe_options before both read-tree sinks. git tag --contains 9b5dcaf85da5946dbf69dcd53f9edba08f760b32 --list '3.1.5*' returns 3.1.58 and 3.1.59, not 3.1.57.",
+    "Direct fix https://github.com/gitpython-developers/GitPython/commit/9b5dcaf85da5946dbf69dcd53f9edba08f760b32 adds the --index-output unsafe-option guard and explicit opt-in to from_tree, merge_tree, and reset, with regression coverage for positional, keyword, reset, rhs, and base forms.",
+    "BIC-only AI check: git cat-file commit babf5765da3e328cc1060cb9b37fbdeb6fd58350 shows one parent b9d6494f1075e5370a20e406c3edb102fca12854, Sebastian Thiel <byronimo@gmail.com> as author and committer, and only the message 'Initial version of merge including tests for one-way, two-way and tree-way merge'; there are no commit-object AI markers or trailers."
+  ],
+  "reasoning": "The vulnerability begins when babf5765da3e328cc1060cb9b37fbdeb6fd58350 first creates from_tree's unguarded positional forwarding after an internal --index-output option. That ordering is itself sufficient for overwrite because Git parses an option-shaped treeish and the later --index-output wins; the immediate parent has none of from_tree, read_tree, or index-output. The candidate is a focused one-parent implementation commit, not a squash, move, refactor, revert, or release aggregate. Subsequent commits expanded the same advisory lifecycle to merge_tree and reset, while later file splits and moves only preserved the already vulnerable mechanism. The flaw is present in the last affected tag 3.1.57 and is guarded by direct code fix 9b5dcaf85da5946dbf69dcd53f9edba08f760b32 in the first patched tag 3.1.58. Because the raw commit object of the smallest BIC has a human author/committer and no AI marker, the BIC-only attribution rule yields NOT_AI; AI signals on any later commit, including the fix, are irrelevant to this verdict.",
+  "remaining_gap": null
+}

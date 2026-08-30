@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-1aac1b7bbe44596af066efa6",
+ "case_id": "GHSA-xpm6-xhxf-22h5",
+ "repo": "uber/kraken",
+ "advisory_ids": [
+  "CVE-2026-75625",
+  "GHSA-xpm6-xhxf-22h5"
+ ],
+ "bug_semantics": "P2P download path accepts torrent pieces after CRC32-IEEE checks only, then CADownloadStore.MoveDownloadFileToCache commits the assembled blob under the requested SHA-256 digest with no whole-blob hash. A peer or on-path attacker can forge CRC32-matching piece bytes so attacker-chosen layers/manifests land in the content-addressable cache and are re-seeded. Upload-side CAStore.verify already recomputes SHA-256; the download path does not. GHSA-xpm6-xhxf-22h5 / CVE-2026-75625 remain published (not withdrawn/rejected).",
+ "flaw_origin": "5296d690e069c78d2df5bedec24611a9bb298ca9 (2017-11-21) replaced SHA-1 piece hashes with CRC32-IEEE, adding torlib/piece_hash.go (crc32.NewIEEE) and switching LocalTorrent.verifyPiece from sha1.New() to PieceHash()/Sum32. Parent 9c2ea795 still used SHA-1 piece hashes and had no piece_hash.go. Later cd2fcfc5 moved the file to core/piece_hash.go; HEAD still uses CRC32 and still moves downloads to cache without digest verify. Unmerged 908f36e6 (PR #641, branch thijmv/download-digest-verification) is not an ancestor of HEAD.",
+ "introducer_sha": "5296d690e069c78d2df5bedec24611a9bb298ca9",
+ "introducer_parent": "9c2ea795e6e58680375e4132c31acc8ec54b6e65",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent on BIC 5296d690: author/committer Cody Gibb <codyg@uber.com>; Phabricator D1340079; no Co-Authored-By/Generated-with/bot trailers.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "Clone HEAD c76945b7: core/piece_hash.go PieceHash()=crc32.NewIEEE; agentstorage/torrent.go writePiece compares Sum32 to GetPieceSum then MoveDownloadFileToCache(digest.Hex()); lib/store/ca_download_store.go MoveDownloadFileToCache is MoveFile only. git cat-file -p 5296d690: author/committer Cody Gibb, parent 9c2ea795. git cat-file -e 9c2ea795:torlib/piece_hash.go fails; 5296d690:torlib/piece_hash.go exists. Parent localtorrent.go verifyPiece used sha1.New(); BIC switched it to CRC32. git merge-base --is-ancestor 908f36e6 HEAD fails. Issue uber/kraken#638 open; PR #641 (908f36e6) open, not merged. GHSA withdrawn_at null; CVE-2026-75625 published 2026-08-18. ppa re-checked line-level 2026-08-29: git show 9c2ea795:lib/torrent/storage/localtorrent.go verifyPiece uses sha1.New() and there is no PieceSums/PieceHash in the parent; the crc32.NewIEEE() PieceHash + 'sum != t.metaInfo.Info.PieceSums[pi]' verifyPiece is added by BIC 5296d690 -> introducer_parent_absent=true.",
+ "reasoning": "CWE-354 cache poisoning is real on current main: CRC32 piece checks plus no SHA-256 of assembled download content. The advisory exploit (forged CRC32 pieces cached under a trusted digest) first became the piece-integrity design in 5296d690; the parent still hashed pieces with SHA-1. That BIC is a 2017 human Phabricator commit (Cody Gibb) with no AI markers, so authorship is NOT_AI. c20cbd6d first built torrent storage with SHA-1 pieces and is not this CRC32 mechanism. 98c286a8/cd2fcfc5 are moves/refactors. No merged fix: 908f36e6/PR #641 is unmerged, so fix_sha/direct_fix_sha stay null.",
+ "remaining_gap": "Unpatched on origin/HEAD (c76945b7). Potential fix is unmerged 908f36e6e8f7eda4e33ef07857e8ad917fcbdaa8 (PR https://github.com/uber/kraken/pull/641, issue https://github.com/uber/kraken/issues/638): verify SHA-256 in MoveDownloadFileToCache before cache commit.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched on origin/HEAD (c76945b7). Potential fix is unmerged 908f36e6e8f7eda4e33ef07857e8ad917fcbdaa8 (PR https://github.com/uber/kraken/pull/641, issue https://github.com/uber/kraken/issues/638): verify SHA-256 in MoveDownloadFileToCache before cache commit.",
+  "potential_fix": {
+   "approach": "is unmerged 908f36e6e8f7eda4e33ef07857e8ad917fcbdaa8 (PR https://github.com/uber/kraken/pull/641, issue https://github.com/uber/kraken/issues/638): verify SHA-256 in MoveDownloadFileToCache before cache commit",
+   "rationale": "Applying this change at the sink described in bug_semantics removes the attacker-controlled input from reaching the vulnerable path, closing the flaw for the currently unpatched code; the record's remaining_gap verifies no such fix exists upstream as of the audited HEAD, so this documents the potential remediation without asserting a fix SHA.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

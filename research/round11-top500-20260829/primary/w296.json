@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-89fc55956ba0b4bc2bf0c0f5",
+  "case_id": "GHSA-565h-44m8-4c2v",
+  "repo": "xuxueli/xxl-job",
+  "advisory_ids": [
+    "CVE-2025-7789",
+    "GHSA-565h-44m8-4c2v"
+  ],
+  "bug_semantics": "xxl-job-admin login sets cookie XXL_JOB_LOGIN_IDENTITY from LoginService.makeToken, which JSON-serializes the full XxlJobUser (id, username, unsalted MD5 password, role, permission) and hex-encodes those bytes with BigInteger.toString(16). parseToken inverts the hex, so an intercepted cookie yields the MD5 password and admin identity (issue #3751 PoC). IndexController.loginDo only delegates to LoginService; makeToken is not in IndexController as VulDB claims. Stored passwords are unsalted MD5 (CWE-916) and the cookie encoding is reversible, not encryption (CWE-326).",
+  "flaw_origin": "The hex-JSON cookie token was first written in 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb (2019-05-04, '用户管理：支持在线维护系统用户') when LoginService.makeToken/parseToken replaced the prior config-user scheme. Parent 69d22f2c78fb90a3a006469749f72fbd8e6a0318 used PermissionInterceptor: MD5(username_'_'+password) then hex of that digest as a static cookie — no user JSON, no reversible credential blob. Later a2dc9011 (rename to service/impl) and 7b23fd2a (javax→jakarta) did not change makeToken. Removed in cb1bd548 by xxl-sso random UUID tokens plus SHA-256 passwords.",
+  "introducer_sha": "0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb",
+  "introducer_parent": "69d22f2c78fb90a3a006469749f72fbd8e6a0318",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author=xuxueli <931591021@qq.com>; committer=xuxueli <931591021@qq.com>; no Co-Authored-By, Generated-with, or bot trailers on the BIC commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "cb1bd548a6d9512aab6f1ba9c5686de62f863fcd",
+  "direct_fix_sha": "cb1bd548a6d9512aab6f1ba9c5686de62f863fcd",
+  "evidence": [
+    "CVE.org/MITRE CVE-2025-7789 state=PUBLISHED (not rejected/withdrawn); GHSA-565h-44m8-4c2v withdrawn_at=null; CNA VulDB names makeToken / IndexController.java / CWE-326+CWE-916; reporter credit ZAST.AI is not BIC authorship.",
+    "Issue https://github.com/xuxueli/xxl-job/issues/3751 (closed): XXL_JOB_LOGIN_IDENTITY hex-decodes to {\"id\":1,\"username\":\"admin\",\"password\":\"e10adc3949ba59abbe56e057f20f883e\",\"role\":1,\"permission\":null}; sample cookie hex 7b22696422...7d.",
+    "At tag 3.1.1 (cdb54254d0dc8cb3219102c095419c8b225c9e8a) makeToken is xxl-job-admin/src/main/java/com/xxl/job/admin/service/impl/LoginService.java:31-34: tokenJson=JacksonUtil.writeValueAsString(xxlJobUser); tokenHex=new BigInteger(tokenJson.getBytes()).toString(16). IndexController.loginDo:71 only calls loginService.login. login() uses DigestUtils.md5DigestAsHex.",
+    "git log -S makeToken -- '*.java' only 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb (add, 2019-05-04) and cb1bd548a6d9512aab6f1ba9c5686de62f863fcd (delete, 2025-08-24). Single parent 69d22f2c78fb90a3a006469749f72fbd8e6a0318; LoginService.java absent at parent; git grep makeToken|parseToken|tokenJson at parent: no matches.",
+    "Parent token was PermissionInterceptor.getLoginIdentityToken/login: DigestUtils.md5DigestAsHex(username+'_'+password) then BigInteger(1, md5.getBytes()).toString(16) of the digest string — not JSON of XxlJobUser. git blame -L 31,41 3.1.1 LoginService.java: all makeToken/parseToken lines still 0a3542dca (xuxueli 2019-05-04).",
+    "a2dc9011310628f3e18c3a5095e7e6a946d017bd is a 93% similar rename service/LoginService.java → service/impl/LoginService.java (package/@Service/comments only). 7b23fd2a62c0fe6909d4bc55de09bba1a139d585 is javax→jakarta. Neither rewrote makeToken.",
+    "git cat-file -p 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb: author/committer xuxueli <931591021@qq.com> 1556982067 +0800; message only '用户管理：支持在线维护系统用户'; no Co-Authored-By/Generated-with/bot trailers.",
+    "Ancestry: merge-base --is-ancestor BIC 3.1.0/3.1.1 = yes; BIC ancestor of fix = yes; fix not in 3.1.1; fix is ancestor of tag 3.2.0 (57b181b480b05f785826dfb14c5f5b9b1da7a580). First tag containing BIC is 2.1.0; advisory range <=3.1.1 / patched 3.2.0.",
+    "Fix cb1bd548a6d9512aab6f1ba9c5686de62f863fcd (xuxueli, 2025-08-24) '登录认证重构：密码加密算法从Md5改为Sha256；登录态改为登录后动态随机生成'. Parent e02f2c65c0985e27a0edc1e57e3a884856bf090d still has makeToken; after fix git grep makeToken is empty. LoginController.doLogin uses SHA256Tool.sha256(password) and XxlSsoHelper.loginWithCookie(new LoginInfo(userId, UUIDTool.getSimpleUUID()), ...). https://github.com/xuxueli/xxl-job/commit/cb1bd548a6d9512aab6f1ba9c5686de62f863fcd"
+  ],
+  "reasoning": "CVE-2025-7789 is a published VulDB record (not withdrawn/rejected); GHSA-565h-44m8-4c2v is live. The real mechanism is LoginService.makeToken hex-encoding the entire XxlJobUser JSON, including the unsalted MD5 password, as cookie XXL_JOB_LOGIN_IDENTITY, so cookie theft discloses credentials. That function was first written in 0a3542dc, a single-parent non-merge commit whose parent tree has no LoginService and no makeToken/parseToken/tokenJson; the parent used a different MD5-of-config-credentials cookie. Blame at 3.1.1 still points every makeToken/parseToken line at 0a3542dc; later LoginService commits are a move and a Jakarta import swap, not a rewrite. Therefore 0a3542dc is the BIC, not a squash/move. The vendor fix cb1bd548 (cited by GHSA) deletes makeToken and switches login state to xxl-sso random UUIDs plus SHA-256, and it is the first such change on the path into tag 3.2.0, matching first_patched_version 3.2.0. AI judgment is from the BIC commit object only: human author/committer xuxueli <931591021@qq.com>, 2019-05-04, no AI/co-author/bot trailers. ZAST.AI is the VulDB reporter, not the introducer. Verdict NOT_AI.",
+  "remaining_gap": null
+}

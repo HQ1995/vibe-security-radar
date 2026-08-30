@@ -1,0 +1,37 @@
+{
+  "class_id": "alias-62720f66229a6e06862f123e",
+  "case_id": "GHSA-9qx4-4584-p9h2",
+  "repo": "cachethq/cachet",
+  "advisory_ids": ["CVE-2026-69118", "GHSA-9qx4-4584-p9h2"],
+  "bug_semantics": "Cachet 3.x incident templates (implemented in dependency cachethq/core) store a user-authored template body and compile it when an incident is created from that template. BladeRenderer::render() passes the stored string to Laravel Blade::render(), so @php / raw Blade executes as PHP. TwigRenderer::render() builds a non-sandboxed Twig\\Environment and createTemplate()s the stored string, so callable filters (map/filter/reduce/sort) and source() can invoke PHP functions or read files. CreateIncident::parseTemplate() is the trigger. Any authenticated user who can create templates and incidents (Filament IncidentTemplate/Incident resources have no isAdmin canAccess; API tokens with incident-templates.manage / incidents.manage, defaulting to *) obtains RCE as the web server.",
+  "flaw_origin": "cachethq/core's initial commit (8173b931, 2023-08-23) only stubbed empty renderWithBlade/renderWithTwig methods. The first executable SSTI mechanism was written by James Brooks on 2023-09-18 in reconstructable PR #36 member f94b6e75e36d13d1e22c932e367514d935a9d8c4, which added src/Renderers/BladeRenderer.php (Blade::render) and src/Renderers/TwigRenderer.php (unsandboxed Twig Environment) and wired CreateIncident to IncidentTemplate::render(). Cachet 2.4.1 already sandboxed Twig after CVE-2023-43661; the 3.x reimplementation omitted that sandbox. PR #36's description deferred 'adding sandbox mode to the Twig renderer.' The member was squash-merged to core main as e98851b3 on 2024-03-26.",
+  "introducer_sha": "f94b6e75e36d13d1e22c932e367514d935a9d8c4",
+  "introducer_parent": "a411c9a355250e321b503aaeb8a641eff47e61cb",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "f94b6e75e36d13d1e22c932e367514d935a9d8c4",
+    "10a65cca8ff8bf862e2dcf2b42fad1c956edd865",
+    "68e12e3fe9f0c1da12012eb863c92268b8451808"
+  ],
+  "ai_marker": "absent: author James Brooks <james@alt-three.com>, committer James Brooks <james@alt-three.com>; commit message is the single line 'Incident Updates' with no Co-Authored-By, Generated-with, Signed-off-by, or bot identity on f94b6e75e36d13d1e22c932e367514d935a9d8c4. Squash landing e98851b3 is also author James Brooks / committer GitHub web-flow with message 'Incident templates (#36)' and no AI trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "beea6f1d4afa4406fbee1ec06e8436d47d111099",
+  "direct_fix_sha": "beea6f1d4afa4406fbee1ec06e8436d47d111099",
+  "evidence": [
+    "CVE.org CVE-2026-69118 state=PUBLISHED (assigner VulnCheck, datePublished 2026-08-10); GHSA-9qx4-4584-p9h2 type=unreviewed, withdrawn_at=null. Not rejected/withdrawn.",
+    "First-party mechanism: cachethq/cachet#4621 (geo-chen, 2026-07-01) with PoC @php system('id') for Blade and {{ ['id']|filter('system') }} / {{ source('/etc/passwd') }} for Twig; cites src/Renderers/BladeRenderer.php, src/Renderers/TwigRenderer.php, src/Actions/Incident/CreateIncident.php. Affected snapshot named as core commit d30447a4275edf51dfa47782ce6d2ae6fe3bca0f (asset compile, not a BIC).",
+    "cachethq/cachet 3.x is a Laravel wrapper (composer.json requires cachethq/core:dev-main). git log --all -- src/Renderers/* in cachethq/cachet is empty. v2.4.1 CreateIncidentCommandHandler.php already uses Twig SandboxExtension + SecurityPolicy (config/cachet.php twig filters=['escape'], tags=['if']); that is the CVE-2023-43661 mitigation, so the CVE 'through 2.4.1' range is a CNA mis-tag of a 3.x/core bug, not a false positive.",
+    "git log -L :BladeRenderer:src/Renderers/BladeRenderer.php on cachethq/core main: e98851b3becddaafef26178ae5f5e25ad02ca6d0 added the file from /dev/null, then beea6f1d4afa4406fbee1ec06e8436d47d111099 added the Blade opt-in guard. Same for TwigRenderer (sandbox added at beea6f1d).",
+    "e98851b3 is GitHub squash of cachethq/core#36 (merged 2024-03-26). Reconstructable members via refs/pull/36/head: f94b6e75e36d13d1e22c932e367514d935a9d8c4 'Incident Updates' (adds BladeRenderer/TwigRenderer/parseTemplate), 10a65cca8ff8bf862e2dcf2b42fad1c956edd865 'wip' (null-coalesce only), 68e12e3fe9f0c1da12012eb863c92268b8451808 'Merge branch main into incident-templates'.",
+    "BIC f94b6e75 parent a411c9a355250e321b503aaeb8a641eff47e61cb: src/Renderers/ absent; git grep Blade::render and createTemplate both empty; IncidentTemplate.php has empty renderWithBlade/renderWithTwig stubs only; CreateIncident.php has no parseTemplate. At BIC, BladeRenderer.php is `return Blade::render($template, $variables, deleteCachedView: true);` and TwigRenderer.php is unsandboxed Environment+createTemplate.",
+    "Squash parent 117f921b03fca3c76e10a2d572d81cbb04a698cc also lacks src/Renderers and parseTemplate, so the squash landing is not a move of already-vulnerable mainline code.",
+    "PR #36 body (jbrooksuk): 'It's also possible to use Twig or Blade to render the template. One thing I would like to address is adding sandbox mode to the Twig renderer.' Human-authored first write, sandbox knowingly deferred.",
+    "BIC commit object (git cat-file -p f94b6e75): author/committer James Brooks <james@alt-three.com>, message 'Incident Updates', no trailers. Not a bot.",
+    "Fix: cachethq/core#403 squash-merged as beea6f1d4afa4406fbee1ec06e8436d47d111099 'Sandbox incident template rendering (#403)' (2026-08-03). Adds Twig SandboxExtension+allowlisted tags/filters (callable filters omitted) and disables Blade unless cachet.renderers.blade / CACHET_BLADE_RENDERER=true. Parent a615653b still has the unsandboxed TwigRenderer. Issue #4621 closed by jbrooksuk: 'Twig incident templates run under an allowlisted sandbox, and Blade template rendering is disabled unless explicitly enabled by configuration.'",
+    "cachethq/cachet HEAD composer.lock pins cachethq/core 462102e5a8eb52ddc0c9f6f9121012fc0ca24213 (2026-08-23), which is a descendant of beea6f1d and contains the sandboxed TwigRenderer. cachethq/core VERSION=3.x-dev; no 3.x tags.",
+    "0643e1c8 on TwigRenderer is style-only (constructor brace) and is not a first-write."
+  ],
+  "reasoning": "CVE-2026-69118 is a published VulnCheck record whose GitHub issue and PoC describe unsandboxed Blade/Twig compilation of Cachet 3.x incident templates, not a withdrawn advisory. cachethq/cachet v2.4.1 is not this sink (it already sandboxes Twig after CVE-2023-43661); the live product path is cachethq/cachet 3.x depending on cachethq/core, where the named files live. git log -L on core main first shows squash e98851b3 adding BladeRenderer/TwigRenderer; that squash was decomposed via public PR #36 members. The smallest first-write of Blade::render and unsandboxed Twig createTemplate is f94b6e75; its immediate parent a411c9a was tree-checked and lacks those files and call sites, so it is the BIC rather than the later squash, the empty 8173b931 stubs, or the 0643e1c8 style commit. AI attribution is taken only from that BIC commit object: human author/committer James Brooks with no AI trailers or bot identity (the later GitHub squash committer on e98851b3 is web-flow, not an AI generator). The matching fix on core main is beea6f1d (#403), which is an ancestor of the cachethq/cachet lockfile pin. Therefore this is a real vulnerability with a proven human BIC and an upstream fix: NOT_AI.",
+  "remaining_gap": null
+}

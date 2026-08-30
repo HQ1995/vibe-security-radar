@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-0f6171862688d2d86fbd151e",
+  "case_id": "GHSA-qrjw-gxw5-x7q9",
+  "repo": "siyuan-note/siyuan",
+  "advisory_ids": [
+    "CVE-2026-74905",
+    "GHSA-qrjw-gxw5-x7q9"
+  ],
+  "bug_semantics": "isPrivateIP() in kernel/util/net.go is the IP allow/deny predicate behind SSRFSafeDialer, the SafeMode SSRF guard used by the network forward proxy (/api/network/forwardProxy), WebSocket proxy, and SSE proxy. The function checks only Go stdlib predicates — IsLoopback, IsLinkLocalUnicast, IsPrivate, IsUnspecified — which do NOT recognize IPv6 transition addresses embedding private IPv4: NAT64 (64:ff9b::/96), 6to4 (2002::/16), and Teredo (2001::/32). With SafeMode enabled, an authenticated attacker supplies a URL whose hostname resolves to such a transition address; the dialer's Control hook parses a global-looking IPv6 and permits the dial, and the kernel connects to the embedded private IPv4 — reaching internal services and cloud metadata endpoints (169.254.169.254) (CWE-918 SSRF).",
+  "flaw_origin": "Commit dda0fb91367ad6c523a72e5dfd4ceb88c04a9699 (\"Add Generic Streamed Proxy Responses for Kernel Plugins (#17748)\", 2026-05-29, author mm-o <fly.x@outlook.com>, committer GitHub) moved the SSRF guard into kernel/util/net.go as the reusable SSRFSafeDialer and relocated the exact vulnerable predicate `func isPrivateIP(ip net.IP) bool { return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsPrivate() || ip.IsUnspecified() }` from kernel/api/network.go into the shared guard. The predicate itself was created by 3284e10028de39c8afc21b020498144714503fe1 (\":lock: Fix\" GHSA-56cv-c5p2-j2wg, 2026-03-11, Daniel) as the anti-SSRF/dns-rebinding dialer for forwardProxy; both commits encode the same incomplete stdlib-only classification. The advisory targets the isPrivateIP function in kernel/util/net.go used by SSRFSafeDialer — that function object first exists at dda0fb91 in net.go (parent 899b8c6e has no isPrivateIP/SSRFSafeDialer in kernel/util — introducer_parent_absent=true for the named sink), with 3284e100 as the originating design.",
+  "introducer_sha": "dda0fb91367ad6c523a72e5dfd4ceb88c04a9699",
+  "introducer_parent": "899b8c6eb3580a346360a4d0b27c0b99a527a0ea",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "3284e10028de39c8afc21b020498144714503fe1"
+  ],
+  "ai_marker": "absent — the BIC commit object names author mm-o <fly.x@outlook.com>, committer GitHub <noreply@github.com>, human PR message (#17748); no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object. The originating fix-commit 3284e100 is likewise Daniel (human).",
+  "verdict": "NOT_AI",
+  "fix_sha": "ecdf6038054dcd60da7cbbf6622c2863843612f0",
+  "direct_fix_sha": "ecdf6038054dcd60da7cbbf6622c2863843612f0",
+  "evidence": [
+    "Advisory (CVE-2026-74905 / GHSA-qrjw-gxw5-x7q9, upstream advisory GHSA-qq8m-8p8v-x4xg, VulnCheck): SiYuan before v3.7.4 — isPrivateIP in kernel/util/net.go used by SSRFSafeDialer misses IPv6 transition addresses (NAT64 64:ff9b::/96, 6to4 2002::/16, Teredo 2001::/32) embedding private IPv4; authenticated attacker with SafeMode on reaches internal services and cloud metadata (169.254.169.254) via network forward proxy / WebSocket proxy / SSE proxy; CWE-918.",
+    "BIC creation check: dda0fb91367a (2026-05-29) adds SSRFSafeDialer to kernel/util/net.go whose Control hook calls isPrivateIP with the stdlib-only body; the parent tree 899b8c6e has no isPrivateIP or SSRFSafeDialer in kernel/util (moved from kernel/api/network.go where 3284e10028de created it 2026-03-11 for GHSA-56cv-c5p2-j2wg).",
+    "Fix commit ecdf6038054d (2026-08-04, Daniel, GHSA-qq8m-8p8v-x4xg — the advisory's own reference): replaces the one-line predicate with loopback/link-local-unicast/link-local-multicast/private/unspecified/multicast checks PLUS explicit transition-address decoding — NAT64 (RFC 6052/8215 64:ff9b::/96 low-32), 6to4 (RFC 3056 2002::/16 bits 16-47), Teredo (RFC 4380 2001::/32 inverted low-32) — each recursing isPrivateIP on the embedded IPv4; +90 lines of net_test.go covering the transition forms. First tagged v3.8.0-alpha.1 → v3.8.0.",
+    "BIC version boundary: 3284e100 first tagged v3.6.0; dda0fb91 first tagged v3.7.0; the vulnerable shared guard shipped in v3.7.0–v3.7.3 (the advisory's 'before v3.7.4' window covers the named SSRFSafeDialer-in-net.go form; SafeMode itself was enabled by default in this range).",
+    "Sibling hardening in the same wave (distinct advisories, distinct paths): a8d2cc4e4952 (2026-08-10, GHSA-rg26-cg95-gq6p, CheckHostSSRF transition bypass), dd2778b70d02 (2026-08-13, GHSA-x8gv-g2g3-65fj, DNS rebinding in agent HTTP tools) — neither replaces the ecdf6038 net.go predicate fix.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1` on dda0fb91367a shows mm-o (human, Outlook address) / GitHub committer with no trailers; grep for claude/copilot/anthropic/openai/generated/co-authored finds none on dda0fb91, 3284e100, or ecdf6038."
+  ],
+  "reasoning": "Vulnerability first: the advisory names isPrivateIP's inability to classify IPv6 transition addresses; the pre-fix body is literally the stdlib predicate list, and the fix decodes NAT64/6to4/Teredo embedded IPv4 with per-RFC comments and tests — proving the missing classification is the defect. BIC choice: the advisory names the function in kernel/util/net.go as used by SSRFSafeDialer; that named sink first exists at dda0fb91367a (moved+shared there by the #17748 PR); its predicate origin 3284e10028de (2026-03-11, itself a security fix for GHSA-56cv-c5p2-j2wg that introduced the same incomplete classification) is recorded as the decomposed origin, since the flaw is one design expressed across two commits — squash_decomposed=true with 3284e100 listed. AI decision: BIC-only attribution — both dda0fb91 and 3284e100 objects carry only human identities (mm-o; Daniel) with no AI markers, so NOT_AI.",
+  "remaining_gap": null
+}

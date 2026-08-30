@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-53086d69ef6d1b9c6f30bf6e",
+  "case_id": "GHSA-h9q6-hc68-35rp",
+  "repo": "shamaton/msgpack",
+  "advisory_ids": [
+    "CVE-2026-32284",
+    "GHSA-h9q6-hc68-35rp"
+  ],
+  "bug_semantics": "The byte-slice decoder dispatches MessagePack extension frames to the built-in timestamp decoder before proving that the complete frame is present. For a truncated fixext value (format byte 0xd4-0xd8 with a missing type byte and/or payload), timeDecoder.IsType and DecoderCommon.ReadSize1/ReadSize4/ReadSize8 index or slice beyond the supplied buffer. Untrusted input reaching Unmarshal, UnmarshalAsMap, UnmarshalAsArray, or struct decoding can therefore trigger a Go runtime panic and terminate the caller, causing denial of service.",
+  "flaw_origin": "Commit 22d35bc1e4ff27db21407bb7e705e06da95dfeea ('add ext function') atomically introduced the extension decoder API, unchecked DecoderCommon byte/slice readers in ext/ext.go, the timestamp extension decoder in exttime/time.go, and its decode-path wiring. Its immediate parent 3070a7ac9910c36462553a96a265390dbd11ed63 has neither ext/ext.go nor exttime/time.go. Later commit 30c7746b90336db9c9dc647a5256f0282eaa14fb only moved/refactored those already-vulnerable lines into ext/decode.go and is not the BIC. The v2 release lineage contains history-rewritten equivalent c15a20c8101342f895e8cc8782231fb63727b004 with the identical tree and stable patch-id; 22d35bc1e4ff27db21407bb7e705e06da95dfeea is used as the canonical main/v3 BIC object.",
+  "introducer_sha": "22d35bc1e4ff27db21407bb7e705e06da95dfeea",
+  "introducer_parent": "3070a7ac9910c36462553a96a265390dbd11ed63",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw BIC commit object names author and committer shamaton <shamaton77@gmail.com>, has subject 'add ext function', an empty body, and no Co-Authored-By, Generated-with, bot identity, or other AI trailer",
+  "verdict": "NOT_AI",
+  "fix_sha": "269f54e9483a09dc0c78f0a98c9858337a90d879",
+  "direct_fix_sha": "60a5450f42c21d75a7b17c4cd7074f9ab6065f46",
+  "evidence": [
+    "GitHub issue https://github.com/shamaton/msgpack/issues/59 identifies ext/decode.go ReadSize1 reading buf[1] on truncated fixext input, reports the index-out-of-range panic through timeDecoder.IsType and the Unmarshal paths, and was closed as completed by repository owner shamaton on 2026-05-14.",
+    "The live GitHub advisory API for GHSA-h9q6-hc68-35rp is reviewed and not withdrawn and lists github.com/shamaton/msgpack/v2 <=2.4.0 and /v3 <=3.1.0; the CVE.org API record for CVE-2026-32284 is PUBLISHED and describes the same truncated 0xd4-0xd8 out-of-bounds read and denial of service.",
+    "git show 22d35bc1e4ff27db21407bb7e705e06da95dfeea shows one atomic 'add ext function' commit adding ext/ext.go unchecked ReadSize1/2/4/8/N, exttime/time.go timestamp IsType/AsValue unchecked reads, and decode registration; git log -L traces the surviving ext/decode.go ReadSize1 line back through the later move 30c7746b90336db9c9dc647a5256f0282eaa14fb to this implementation.",
+    "Direct parent-tree checks with git cat-file -e show ext/ext.go and exttime/time.go are both absent at 3070a7ac9910c36462553a96a265390dbd11ed63, while both are added by 22d35bc1e4ff27db21407bb7e705e06da95dfeea; this verifies introducer_parent_absent=true.",
+    "git cat-file commit 22d35bc1e4ff27db21407bb7e705e06da95dfeea shows parent 3070a7ac9910c36462553a96a265390dbd11ed63, human author/committer shamaton <shamaton77@gmail.com>, subject 'add ext function', empty body, and no trailers or AI/bot marker.",
+    "The v2 historical object c15a20c8101342f895e8cc8782231fb63727b004 has the same tree d5b740ea8755bb1891ea425d29c53c9136ad1a6f, identical stable patch-id 0cf6341c28baebf892b44b8289dd433f0b6c8873, and identical human metadata/message as canonical BIC 22d35bc1e4ff27db21407bb7e705e06da95dfeea; its parent 048d5485a2925ebd4a2b16cb040cf83a9ac3950c likewise lacks both new files.",
+    "git merge-base --is-ancestor verifies canonical BIC 22d35bc1e4ff27db21407bb7e705e06da95dfeea is in vulnerable v3.1.0 and the equivalent v2 BIC c15a20c8101342f895e8cc8782231fb63727b004 is in vulnerable v2.4.0; the respective fixes are absent from those tags.",
+    "PR #60 history is publicly reconstructable from refs/pull/60/head 0d9400c5f3c00943cd9de087fdf7dd86434455ac: member 60a5450f42c21d75a7b17c4cd7074f9ab6065f46 first adds full ext-frame validation before custom/timestamp dispatch and safe short-buffer timestamp reads returning ErrTooShortBytes. The landed squash 269f54e9483a09dc0c78f0a98c9858337a90d879 has the same final tree as that PR head and states 'Fixes #59'.",
+    "git merge-base --is-ancestor verifies 269f54e9483a09dc0c78f0a98c9858337a90d879 is contained in patched tag v3.1.1 but not v3.1.0. Backport d20ec6cfe33e5e7153d6b0d8f4c426ce27942207 explicitly names 269f54e as its source and is contained in v2.4.1 but not v2.4.0."
+  ],
+  "reasoning": "This is a real, published vulnerability: malformed external MessagePack input can reach the extension/timestamp dispatch with fewer bytes than the decoder assumes, and the unchecked reads panic instead of returning an error. The smallest first-write on the canonical main/v3 history is 22d35bc1e4ff27db21407bb7e705e06da95dfeea, because it introduced both the unsafe primitives and the reachable timestamp decoder; its parent lacks that implementation. The same logical Git change exists as c15a20c8101342f895e8cc8782231fb63727b004 on the rewritten v2 lineage, while later ext-package refactors preserve rather than introduce the flaw. The fix lifecycle is closed: direct PR member 60a5450f42c21d75a7b17c4cd7074f9ab6065f46 validates complete frames and hardens timestamp reads, squash 269f54e9483a09dc0c78f0a98c9858337a90d879 lands it for v3.1.1, and d20ec6cfe33e5e7153d6b0d8f4c426ce27942207 backports it for v2.4.1. The BIC commit object has only human shamaton author/committer metadata and no AI marker, so under BIC-only attribution the closed verdict is NOT_AI; any later AI-related repository signal cannot change that attribution.",
+  "remaining_gap": null
+}

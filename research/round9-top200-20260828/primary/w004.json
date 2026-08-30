@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-0ae1e9b85f4a9eebb8ee56b3",
+  "case_id": "GHSA-ccp9-5g7c-pj86",
+  "repo": "jahlives/openssl_encrypt",
+  "advisory_ids": [
+    "CVE-2026-74872",
+    "GHSA-ccp9-5g7c-pj86"
+  ],
+  "bug_semantics": "When the normal Whirlpool import fails, openssl_encrypt searches sysconfig, user, and Flatpak site-packages with broad whirlpool*.so, pywhirlpool*.so, whirlpool-py311*.so, whirlpool*.pyd, and pywhirlpool*.pyd globs; it then chooses a matching candidate, creates an import-name symlink (or copies it on Windows), and imports the native extension. The vulnerable implementation authenticated neither the candidate's identity nor its integrity, ownership, or permissions, so an attacker able to place a matching native module in a searched location (or make a matching symlink there) could have attacker-controlled native code loaded during Whirlpool setup/use.",
+  "flaw_origin": "cb07e5f88a98f4459a5f828142e740c024810692 first added openssl_encrypt/modules/setup_whirlpool.py with the broad native-module discovery, first-match/fallback selection, symlink-or-copy, and subsequent import chain, and wired setup_whirlpool() into openssl_encrypt/modules/crypt_core.py and post-install handling. Later formatting and Flatpak-path commits preserved that mechanism; the later hash-registry implementation was an additional carrier, not the origin of the already-live flaw.",
+  "introducer_sha": "cb07e5f88a98f4459a5f828142e740c024810692",
+  "introducer_parent": "8633d63b97ae067fb020f5bfa9bfb117aaa3f561",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "BIC commit object has human author and committer Tobi <tobster@brain-force.ch>, plus the exact markers `🤖 Generated with [Claude Code](https://claude.ai/code)` and `Co-Authored-By: Claude <noreply@anthropic.com>`.",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "963d0d1278b722ea134272f9df65fddcd3e6ab47",
+  "direct_fix_sha": "963d0d1278b722ea134272f9df65fddcd3e6ab47",
+  "evidence": "First-party advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-j48q-4c78-rhf9 identifies broad Whirlpool .so discovery/loading, affects versions <1.4.0, names 1.4.0 as patched, and names fix 963d0d1. `git log -L '/def find_whirlpool_modules/,/^def create_whirlpool_symlink/':openssl_encrypt/modules/setup_whirlpool.py 963d0d1^` traces the vulnerable glob-and-return code through formatting commit f03ee1a2f042d22a18849132fcff3412d2c61341 and Flatpak-path commit 698856856d5795306eba20190b5f95b8c1cd80de to its creation in cb07e5f88a98f4459a5f828142e740c024810692. `git show cb07e5f...` shows that BIC added setup_whirlpool.py, broad `whirlpool*.so`/`pywhirlpool*.so`/`whirlpool-py311*.so` and Windows .pyd globs, arbitrary compatible/fallback selection, symlink/copy, and import, while also wiring setup into crypt_core.py and post_install.py. Direct parent verification: `git rev-parse cb07e5f^` returned 8633d63b97ae067fb020f5bfa9bfb117aaa3f561; `git cat-file -e 8633d63b97ae067fb020f5bfa9bfb117aaa3f561:openssl_encrypt/modules/setup_whirlpool.py` failed because the file did not exist, and `git grep` of that parent found none of the vulnerable discovery/symlink symbols or native-module glob pattern. `git cat-file commit cb07e5f...` supplies the exact Claude Code generation and Claude co-author markers. Version checks show cb07e5f is an ancestor of v1.0.0 and every later release tag, 963d0d1 is not an ancestor of v1.3.6, and 963d0d1 is an ancestor of v1.4.0. `git diff 963d0d1^ 963d0d1 -- openssl_encrypt/modules/setup_whirlpool.py` shows the direct remediation: resolve every discovered file with realpath and retain it only when it resolves within a known site-packages path. BIC is an ordinary single-parent commit, so no squash/member decomposition was required.",
+  "reasoning": "The exploitable lifecycle begins at cb07e5f, not at later formatting, Flatpak expansion, or the later registry copy: cb07e5f simultaneously created the permissive native-module search and the execution path that imports the chosen result. Its immediate parent lacks both the new module and any equivalent broad-glob/symlink setup, proving causal absence. The vulnerable lineage is present by v1.0.0 and remains through v1.3.6; the advisory's direct fix 963d0d1 lands on that lineage and is included in v1.4.0, matching the stated boundary. AI attribution is restricted to the BIC commit object: cb07e5f explicitly says it was generated with Claude Code and carries Claude as co-author. Because that same AI-attributed BIC first wrote the flawed discovery, selection, and load mechanism, the causal verdict is AI_ROOT_CAUSE; AI markers on later commits are unnecessary to the decision.",
+  "remaining_gap": null
+}

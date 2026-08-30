@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-b2029db0205a4be36ab58012",
+ "case_id": "GHSA-w385-33fw-3fww",
+ "repo": "misp/cti-transmute",
+ "advisory_ids": [
+  "CVE-2026-72760",
+  "GHSA-w385-33fw-3fww"
+ ],
+ "bug_semantics": "Authenticated GET /account/get_following returned each followed user's email in the JSON list. Email is not needed to render the following UI, and sibling followers/search lists already omitted it, so any logged-in user could harvest addresses by following accounts. The patch deletes the email field from that payload.",
+ "flaw_origin": "4fa058f3ea7275eb340ea751ab9908a071673f94 (ecrou-exact, add: [social] notifications, follows, reports, system logs and admin panels) first added get_following() in website/web/account/account.py with items including \"email\": user.email. Parent 45874f5d162c4dc640f1763cb9916bccaf62b261 already had that file but no get_following route and no that email field. The same BIC commit's get_followers/search_users responses omit email. The field is unchanged until fix 4bad9f105a824979e0ae79fd6115cd7a88c84ee5.",
+ "introducer_sha": "4fa058f3ea7275eb340ea751ab9908a071673f94",
+ "introducer_parent": "45874f5d162c4dc640f1763cb9916bccaf62b261",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+ "verdict": "AI_ROOT_CAUSE",
+ "fix_sha": "4bad9f105a824979e0ae79fd6115cd7a88c84ee5",
+ "direct_fix_sha": "4bad9f105a824979e0ae79fd6115cd7a88c84ee5",
+ "evidence": "CVE-2026-72760 is PUBLISHED (CIRCL; GHSA withdrawn_at null). Advisory fix 4bad9f10 (Christian Studer, human, no AI trailer) deletes only \"email\": user.email from get_following() in website/web/account/account.py. git log -S '\"email\": user.email' on that path hits only 4fa058f3 (write) and 4bad9f10 (removal). git log -S 'def get_following' and -S 'route(\"/get_following\"' also first hit 4fa058f3. Parent-tree check: git cat-file -e 45874f5d:website/web/account/account.py succeeds; grep of get_following / \"email\": user.email on the parent file exits 1. BIC is a single-parent commit, not a squash. git cat-file -p 4fa058f3 shows author/committer ecrou-exact <geffetheo@gmail.com> and trailer Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>. git log -1 --format='%an %ae %cn %ce' 4fa058f3: ecrou-exact geffetheo@gmail.com ecrou-exact geffetheo@gmail.com. At the fix parent, get_followers and search_users already omit email while get_following includes it. ppa re-checked line-level 2026-08-29: numactl git show 4fa058f^:website/web/account/account.py | grep -c 'get_following' = 0 while BIC 4fa058f adds '/get_following' GET route at line 269 serializing '\"email\": user.email' at line 282 — vulnerable email leak lines new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "The vulnerability is CWE-200 over-disclosure of followed users' emails from get_following. That email field and the endpoint first appear in 4fa058f3, which carries a canonical Claude Sonnet 4.6 co-author trailer. The parent already had account.py without this route. Sibling lists in the same commit omit email, so the leak is novel code on this surface, not a later copy. AI wrote the defective field, so the verdict is AI_ROOT_CAUSE. The later human fix only removes that field and does not change BIC authorship.",
+ "remaining_gap": null
+}

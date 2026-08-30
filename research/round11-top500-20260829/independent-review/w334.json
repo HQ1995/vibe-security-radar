@@ -1,0 +1,25 @@
+{
+  "worker": "w334",
+  "review_agent_id": "r389_w334",
+  "class_id": "alias-17c3175d7cad1b687072e156",
+  "case_id": "GHSA-fgmm-c43r-4vvc",
+  "repo": "the-events-calendar/the-events-calendar",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: at tag 6.15.9, the logged-in-only wp_ajax_tec_qr_code_modal action routes to QR_Code::render_modal(), which accepts request post_id and returns the post title and QR material without check_ajax_referer or current_user_can; no wp_ajax_nopriv registration was found. The current CVE.org record is PUBLISHED, identifies CWE-862, Subscriber-or-higher draft title/QR disclosure, and affects versions through 6.15.9.",
+    "atomic_bic": "PASS: d26394e9c59cf1ab5450e5c8811be5ace9f95734 is the smallest public first-write: it creates QR_Code.php with the vulnerable render_modal() implementation and adds the AJAX action in Controller.php. Exact-string -S histories for render_modal and wp_ajax_tec_qr_code_modal both begin at this commit; the change is a direct feature first-write, not a move or revert.",
+    "immediate_parent_absence": "PASS: the sole immediate parent is 8336fd0ec25aa3dcafe25ec1be706e6a160896da; its tree has no src/Events/QR/QR_Code.php and no tec_qr_code_modal string under src/Events/QR.",
+    "squash_member_decomposition": "PASS: the BIC has exactly one parent and directly introduces the new file, handler, and action in one ordinary five-file feature commit. It is not a merge or aggregate boundary requiring member decomposition, and no finer public first-write precedes it.",
+    "affected_release_membership": "PASS: the BIC is not an ancestor of tag 6.11.2.1, is an ancestor of 6.12.0 and 6.15.9, and the 6.15.9 handler still lacks nonce and capability checks. The handler is documented @since 6.12.0.",
+    "fixed_release_membership": "PASS: fix 03b53c73eb1787850547f42a55e0b2943cbd5e45 is not an ancestor of 6.15.9 and is an ancestor of 6.15.10; tag 6.15.10 contains both check_ajax_referer and current_user_can('edit_post', $post->ID), and its changelog says authorization checks in QR codes were improved.",
+    "direct_fix_or_verified_unpatched_state": "PASS: 03b53c73eb1787850547f42a55e0b2943cbd5e45 directly edits render_modal() to add nonce verification and the missing edit_post capability gate. It is the only first-parent commit touching QR_Code.php between tags 6.15.9 and 6.15.10.",
+    "bic_only_ai_attribution": "PASS: the raw BIC commit object has human author and committer George Pattichis <gpattihis@gmail.com>, subject 'QR modal in events table', empty body, and no trailers or AI/bot markers. Attribution therefore supports NOT_AI without borrowing signals from later commits."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, BIC, parent, release range, direct fix, and BIC-only attribution all reproduce from the advisory and clone.",
+    "No correction is required; NOT_AI is supported for this real published vulnerability."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

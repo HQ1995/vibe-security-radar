@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-b1eb0e4cc547b8a4c33d7ca4",
+  "case_id": "GHSA-jq42-7mfv-hm57",
+  "repo": "rust-lang/cargo",
+  "advisory_ids": [
+    "CVE-2026-5223",
+    "GHSA-jq42-7mfv-hm57"
+  ],
+  "bug_semantics": "A malicious .crate tarball served by a third-party registry can place a symlink under its own <crate>-<version> cache directory and then place a later entry whose syntactically valid in-crate path traverses that symlink. Cargo extracts registry crates beneath one shared registry source directory, so following the symlink can write one level below the malicious crate's directory and replace files in a sibling crate cache; a later build then compiles the attacker's replacement source. crates.io's upload policy rejects symlinks, but third-party registries need not do so.",
+  "flaw_origin": "Commit 9fba127e4feafdece943637a85ab67fa7af02b02 changed RegistrySource::unpack_package from a loop that copied every tar member into a newly created ordinary file to tar::Archive::unpack at the shared registry-source parent. That was the first surviving Git object to delegate entry-type handling and materialize archive symlinks. Its immediate parent 99c8768f801457fac6f56a6c1fe676e6d63aa529 contains only the ordinary-file copy loop, so the symlink-following mechanism is absent there. The later 0b9e38225957337997cde1270b3ad5f84a14182a path-prefix hardening retained entry.unpack_in(parent) without rejecting symlink entry types and therefore did not remove the mechanism.",
+  "introducer_sha": "9fba127e4feafdece943637a85ab67fa7af02b02",
+  "introducer_parent": "99c8768f801457fac6f56a6c1fe676e6d63aa529",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file -p 9fba127e4feafdece943637a85ab67fa7af02b02 shows human author and committer Alex Crichton <alex@alexcrichton.com> and no Co-Authored-By, Generated-with, bot, or other AI trailer in the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "312d5575ac924de000b3582ed0e7520dea216894",
+  "direct_fix_sha": "312d5575ac924de000b3582ed0e7520dea216894",
+  "evidence": [
+    "The Rust Security Response Team advisory https://blog.rust-lang.org/2026/05/25/cve-2026-5223/ states that a crafted third-party-registry tarball can extract one level below its own cache directory and overwrite another crate's cached source; crates.io is not affected because it forbids symlinks; all Cargo versions shipped before Rust 1.96.0 are affected.",
+    "The authoritative CVE.org record returned by https://cveawg.mitre.org/api/cve/CVE-2026-5223 is PUBLISHED, identifies Rust Project Cargo versions >=1.0.0 and <1.96.0 as affected, and names Rust 1.96.0's rejection of all tar symlinks as the solution; there is no rejected or withdrawn vendor disposition.",
+    "git log -L 168,182:src/cargo/sources/registry.rs 9fba127e4feafdece943637a85ab67fa7af02b02 and git diff 9fba127e4feafdece943637a85ab67fa7af02b02^ 9fba127e4feafdece943637a85ab67fa7af02b02 -- src/cargo/sources/registry.rs show that 9fba127e4feafdece943637a85ab67fa7af02b02 replaced the parent loop using File::create plus io::util::copy with tar.unpack(&dst.dir_path()), explicitly to preserve archive metadata such as executable bits.",
+    "Direct parent-tree verification with git show 9fba127e4feafdece943637a85ab67fa7af02b02^:src/cargo/sources/registry.rs shows no Archive::unpack or entry.unpack call: each member becomes an ordinary File::create destination and its bytes are copied. The vulnerable symlink-materialization mechanism is therefore absent at parent 99c8768f801457fac6f56a6c1fe676e6d63aa529.",
+    "git show 0b9e38225957337997cde1270b3ad5f84a14182a^:src/cargo/sources/registry/mod.rs and git show 0b9e38225957337997cde1270b3ad5f84a14182a:src/cargo/sources/registry/mod.rs show the 2017 hardening changed Archive::unpack into a lexical starts_with(prefix) check followed by entry.unpack_in(parent), but added no entry-type rejection; an in-prefix symlink plus later in-prefix path could therefore still escape through the filesystem.",
+    "git show 312d5575ac924de000b3582ed0e7520dea216894 -- src/cargo/sources/registry/mod.rs shows the direct fix adding an EntryType check before unpacking and allowing only Regular or Directory entries, so symlinks and other unexpected types are rejected.",
+    "Release topology checks show 9fba127e4feafdece943637a85ab67fa7af02b02 is an ancestor of Cargo tag 0.1.0; 312d5575ac924de000b3582ed0e7520dea216894 is not an ancestor of affected tag 0.96.0 but is an ancestor of patched tag 0.97.0, matching GHSA's Cargo <0.97.0 / first patched 0.97.0 and the vendor's Rust <1.96.0 / fixed 1.96.0 boundary.",
+    "GitHub PR https://github.com/rust-lang/cargo/pull/17031 identifies the CVE-2026-5223 patch, whose source commit is 285cebf58911eca5b7f177f5d0b1c53e1f646577; release-branch commit 312d5575ac924de000b3582ed0e7520dea216894 has the same direct patch and is the copy contained by the first patched Cargo 0.97.0 tag.",
+    "git cat-file -p 9fba127e4feafdece943637a85ab67fa7af02b02 gives parent 99c8768f801457fac6f56a6c1fe676e6d63aa529, author and committer Alex Crichton <alex@alexcrichton.com>, and a message with no AI/co-author/generated trailer; the BIC commit object has no AI marker."
+  ],
+  "reasoning": "The advisory describes a real cache-poisoning vulnerability, not a withdrawn or rejected report. The causal sink is registry tar extraction into a shared per-registry source-cache parent. History tracing does not stop at the 2017 lexical path guard: that change retained type-aware tar extraction and is not the first write. The smallest surviving introducing commit is 9fba127e4feafdece943637a85ab67fa7af02b02, because it replaced the immediate parent's ordinary-file-only member copying with Archive::unpack, enabling symlink entries to be created and followed during extraction. The immediate parent directly lacks that mechanism. Commit 312d5575ac924de000b3582ed0e7520dea216894 closes it by rejecting every entry type except regular files and directories, and tag ancestry places the BIC before Cargo 0.1.0 while placing the fix in 0.97.0 but not 0.96.0. The BIC is a normal one-parent public commit, not a merge, move, revert, or reconstructable squash, and its commit object has only a human author/committer with no AI marker. Therefore the real vulnerability's root cause is human-authored: NOT_AI.",
+  "remaining_gap": null
+}

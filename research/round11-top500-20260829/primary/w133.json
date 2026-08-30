@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-9c1dc487cc303e12be49dd74",
+  "case_id": "GHSA-8297-v2rf-2p32",
+  "repo": "apache/mina",
+  "advisory_ids": [
+    "CVE-2026-41635",
+    "GHSA-8297-v2rf-2p32"
+  ],
+  "bug_semantics": "Apache MINA IoBuffer.getObject() deserializes with a custom ObjectInputStream. After the CVE-2024-52046 allowlist, AbstractIoBuffer.resolveClass() still had two branches: if ObjectStreamClass.forClass() was non-null it consulted acceptMatchers, but if forClass() was null (primitive/type-0 and other unresolved descriptors) it called Class.forName(name, false, classLoader) with no filter. An attacker who can supply serialized bytes to getObject() therefore bypasses the classname allowlist and can cause arbitrary class loading / gadget deserialization (CWE-502 RCE). The 2026 patch applies acceptMatchers before any Class.forName, on both branches.",
+  "flaw_origin": "The two-branch resolveClass (null vs non-null forClass) dates to DIRMINA-990/991 commit c1792331521ec1f50e9c71228a20ca4ab21029fa (2014) with no allowlist on either path. The CVE-2024-52046 fix on 2.2.X, 691a9df5a0aff0dddeedc5181f6e5832ee90dcea (2024-11-04, subject 'pom.xml'), added acceptMatchers and attached the matcher loop only to the else branch, leaving the clazz==null Class.forName path unchanged. That incomplete pairing is this bypass. Immediate parent 23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25 has the two-branch Class.forName but no acceptMatchers. Parallel incomplete ports: 834396355766e0c8f6bbf0493d4588b3fa9d347d (2.0.X, first in 2.0.27) and cdb59eb6131696a440870ab89ad0e20804eb5ca7 (2.1.X, first in 2.1.10).",
+  "introducer_sha": "691a9df5a0aff0dddeedc5181f6e5832ee90dcea",
+  "introducer_parent": "23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author emmanuel lecharny <elecharny@apache.org>, committer emmanuel lecharny <elecharny@apache.org>, subject 'pom.xml'; cat-file shows no Co-Authored-By, Generated-with, Signed-off-by, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9",
+  "direct_fix_sha": "8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9",
+  "evidence": [
+    "CVE.org CVE-2026-41635 state=PUBLISHED (cvelistV5 2026/41xxx/CVE-2026-41635.json); CNA Apache; GHSA-8297-v2rf-2p32 withdrawn_at=null. Title: AbstractIoBuffer.resolveClass() null-clazz branch skips acceptMatchers. Affected 2.0.0-2.0.27 / 2.1.0-2.1.10 / 2.2.0-2.2.5; claimed patched 2.0.28 / 2.1.11 / 2.2.6.",
+    "Vendor: https://lists.apache.org/thread/1l91w1mqsb3lwfd504fs045ylxntt2tm and http://www.openwall.com/lists/oss-security/2026/04/27/4 (Emmanuel Lecharny, 2026-04-27, ZDRES-059). Mechanism: one resolveClass branch (static/primitive) does not check the class; fix applies allowlist before Class.forName. Reporter Venkatraman Kumar, Securin. Attack surface: IoBuffer.getObject().",
+    "Sibling incomplete-fix CVE-2024-52046 (no allowlist) was claimed fixed in 2.0.27/2.1.10/2.2.4; this CVE is the remaining null-clazz skip of that allowlist, not a withdrawn/false positive.",
+    "git show 691a9df5a0aff0dddeedc5181f6e5832ee90dcea -- mina-core/src/main/java/org/apache/mina/core/buffer/AbstractIoBuffer.java: adds acceptMatchers (line 93) and in resolveClass (lines 2196-2224) checks matchers only in the else (clazz != null) arm; clazz==null still does Class.forName(name, false, classLoader) at line 2204.",
+    "Parent verification: git grep acceptMatchers 23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25 -- AbstractIoBuffer.java -> absent. Parent resolveClass (lines 2183-2196) is two-branch Class.forName with no filter; the bypass pairing is first written at 691a9df5. Single parent, not a merge (rev-list --parents).",
+    "Predecessor structure only: c1792331521ec1f50e9c71228a20ca4ab21029fa (2014-10-20, DIRMINA-990/991) introduced if (clazz == null) Class.forName else return clazz, with no allowlist, so it is not this CVE's BIC.",
+    "Tag membership of BIC: 691a9df5 is ancestor of tag 2.2.4, not of 2.2.3; only on origin/2.2.X. Parallel first-writes of the same incomplete check: 83439635 first in 2.0.27 not 2.0.26; cdb59eb6 first in 2.1.10. Vendor 2.0.0/2.1.0/2.2.0 start is the older unrestricted-deserialization range (CVE-2024-52046), not the first presence of this skip.",
+    "First public code fix: 8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9 (2026-04-23, Emmanuel Lecharny <emmlec@worteks.com>, 'Added patch regarding whitelist bypassing backported from mina-2.2.X'). Parent 3ff6d5bc7a58487081a67743636fd5981cadc092 still has the null-branch skip. Patch applies acceptMatchers before Class.forName regardless of forClass(); adds IoBufferTest.testObjectSerializationReject (type-0 long not on the accept list must throw).",
+    "2.0.28 contains 8b1dadb5; 2.0.27 does not. resolveClass at tag 2.0.28 starts with the allowlist; 2.0.27 still has if (clazz == null) Class.forName.",
+    "Claimed 2.1.11 and 2.2.6 do not contain the resolveClass rewrite: tags 2.2.5 and 2.2.6 and 2.1.10 and 2.1.11 still have the null-branch skip. Actual later ports: cca24d646c898adf7e01a765ebf6d677cc02b696 ('Added a missing fix', 2026-04-29) first in 2.2.7; ba8c355d82a010d677455df43b49725d21dbd07a same day, first in 2.1.12.",
+    "BIC AI: git cat-file -p 691a9df5a0aff0dddeedc5181f6e5832ee90dcea author/committer emmanuel lecharny <elecharny@apache.org> 1730718366 +0100; message exactly 'pom.xml'; no Co-Authored-By, Generated-with, or bot. Verdict from this commit object only."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-41635 is a real CWE-502 allowlist bypass in AbstractIoBuffer.resolveClass used by IoBuffer.getObject(). The incomplete CVE-2024-52046 control checked acceptMatchers only when desc.forClass() was non-null; the null-clazz/type-0 branch loaded classes unfiltered. BIC is 691a9df5, the smallest 2.2.X commit that first wrote that incomplete pairing; parent 23e6ee17 lacks acceptMatchers so the skip-the-filter bug is absent there. c1792331 is not the BIC because it predates the allowlist. 83439635 and cdb59eb6 are later same-mechanism ports on 2.0.X/2.1.X, not finer members of 691a9df5 (independent branches; 691a9df5 is not a squash). First public fix is 8b1dadb5 on 2.0.X, present in 2.0.28 and absent from 2.0.27; vendor-claimed 2.1.11/2.2.6 do not actually rewrite resolveClass (landed in 2.1.12/2.2.7). AI is judged only on 691a9df5: human Apache author/committer, no commit-object AI trailers or bot identity, so NOT_AI.",
+  "remaining_gap": null
+}

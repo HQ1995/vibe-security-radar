@@ -1,0 +1,25 @@
+{
+  "worker": "w219",
+  "review_agent_id": "r389_w219",
+  "class_id": "alias-b2b14cc1f1ad84e6351a291a",
+  "case_id": "GHSA-4j2p-28q2-5m79",
+  "repo": "huggingface/accelerate",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed from the BIC, v0.8.0, v1.14.0, and origin/main trees: attacker-controlled weight_map shard names are passed to os.path.join(checkpoint_folder, f) without containment validation, so ../ escapes and absolute names discard the checkpoint folder before the resulting path is opened. Current load_state_dict uses safetensors.safe_open or torch.load(..., weights_only=True), supporting the advisory's file-read/parse-oracle and FIFO-denial-of-service scope rather than RCE.",
+    "atomic_bic": "Confirmed 6a74308ab4b2f4078c90d81e0fed69bd563db371 as the smallest reconstructable first-write: its diff creates src/accelerate/modeling_utils.py and introduces load_sharded_checkpoint_in_model with the weight_map join and torch.load sink. The later 7c238ee82fa333ce1e39d41c089c678ade571b13 is a 100% rename to utils/modeling.py, and 8a9e639e54204ac7c42324fa0cc52abecbb0cc9f renames/generalizes the function while retaining the join.",
+    "immediate_parent_absence": "Confirmed immediate parent b2956acbe925845bf202224797334cfe4da18396 exists and has no src/accelerate/modeling_utils.py; therefore the vulnerable loader and join are absent from the parent. primary introducer_parent_absent=false correctly denotes that the parent object itself is available.",
+    "squash_member_decomposition": "Confirmed mainline f56f4441b3d448f4a81d5131c03e7dd73eac3ba0 is a one-parent GitHub squash aggregate and therefore not the BIC. The reconstructable member lineage contains 6a74308ab4b2f4078c90d81e0fed69bd563db371, followed by the verified move 7c238ee82fa333ce1e39d41c089c678ade571b13 and later generalization 8a9e639e54204ac7c42324fa0cc52abecbb0cc9f; the squash tree contains the same unsanitized join in src/accelerate/utils/modeling.py.",
+    "affected_and_fixed_release_membership": "Confirmed f56f4441b3d448f4a81d5131c03e7dd73eac3ba0 is not in v0.7.1 but is an ancestor of v0.8.0, v1.14.0, and origin/main. v0.7.1 lacks the loader path, while v0.8.0 and v1.14.0 contain the vulnerable join. CVE-2026-69112 remains PUBLISHED and states affected through 1.14.0; its start-at-0 range is coarser than the repository-derived first affected tag v0.8.0. No fixed release exists in the checked history.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed unpatched at origin/main fd01e35c83d8cc43b88cf0896007716fc5986558, which matches the live GitHub main SHA and still contains the join. Candidate containment commits 429c14a626f4e53d45dcc7dcbe54fc679573b201 (PR #4070), ddc174ef07014924c19c845a1758be6637590515 (PR #4131), and 0b75fbd53d8d4173a092288714a325905ad43734 (PR #4138) are not ancestors of main; live API state is closed-unmerged, closed-unmerged, and open-unmerged respectively. Issue #4067 was closed by github-actions[bot], not by a merged fix.",
+    "bic_only_ai_attribution": "Confirmed from BIC 6a74308ab4b2f4078c90d81e0fed69bd563db371 only: author and committer are Sylvain Gugger <Sylvain.gugger@gmail.com>, the commit body has no trailers, and %(trailers) is empty. Co-authored-by trailers on the later squash aggregate are not BIC evidence. NOT_AI is therefore supported independently of the squash metadata."
+  },
+  "findings": [
+    "The primary record's vulnerability lifecycle and NOT_AI verdict are independently supported by the advisory, commit objects, trees, tags, live main SHA, and pull-request states.",
+    "The CVE's affected start version 0 is broader than the repository evidence; the primary already records the more precise v0.8.0 introduction, so no correction is required.",
+    "GHSA-4j2p-28q2-5m79 has withdrawn_at=null, and authoritative CVE.org state is PUBLISHED, so FALSE_POSITIVE does not apply."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

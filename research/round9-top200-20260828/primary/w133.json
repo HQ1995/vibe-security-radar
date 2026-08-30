@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-023607292733caf715b3d466",
+  "case_id": "GHSA-h79m-5jjm-jm4q",
+  "repo": "rucio/rucio",
+  "advisory_ids": [
+    "CVE-2026-25136",
+    "GHSA-h79m-5jjm-jm4q"
+  ],
+  "bug_semantics": "An attacker-controlled account value can be reflected by the REST error path in ExceptionMessage and the JSON response body. The account_rse_usage WebUI error callbacks passed the raw jqXHR.responseText through string concatenation to jQuery.html(), so the victim's browser parsed payload markup such as an img onerror handler in the Rucio WebUI origin instead of displaying it as text. A crafted link therefore executes script when an authenticated user opens it, exposing the WebUI token/session and permitting actions with the victim's authority.",
+  "flaw_origin": "Commit 045193619da3087de74d77ec0f715ce57c1ed035 created lib/rucio/web/ui/static/account_rse_usage.js and, in both nested request error callbacks, wrote $(\"#results\").html('<font color=\"red\">' + jqXHR['responseText'] + '</font>'). That new page combined an attacker-influenced server response with an HTML parsing sink without encoding it; this is the concrete sink exercised by the advisory's account_rse_usage?account= payload.",
+  "introducer_sha": "045193619da3087de74d77ec0f715ce57c1ed035",
+  "introducer_parent": "2fa7cd7ac7ece363ab8381e9a156d2acd38652c9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names Thomas Beermann <thomas.beermann@cern.ch> as both author and committer and contains only the subject '[RUCIO-640] add new account usage page + add human readable file sizes' plus Change-Id: I127ad60197cde1848035a1878b3369dec2f67c86; it has no Co-Authored-By, Generated-with, bot identity, or other AI marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "574a0b4787ab7dfd29ee0536c7da55b34e902788",
+  "direct_fix_sha": "574a0b4787ab7dfd29ee0536c7da55b34e902788",
+  "evidence": [
+    "First-party advisory https://github.com/rucio/rucio/security/advisories/GHSA-h79m-5jjm-jm4q identifies reflected XSS through raw ExceptionMessage rendering, gives the /ui/account_rse_usage?account=<img ... onerror=...> path, and declares patched boundaries 35.8.3, 38.5.4, and 39.3.1.",
+    "At tag 35.8.2, lib/rucio/web/rest/flaskapi/v1/common.py:248-297 has error_headers -> _error_response -> generate_http_error_flask place exc_msg into ExceptionMessage in headers and render_json(**data) in the response body. The WebUI's account_rse_usage.js:130 and :136 then concatenates jqXHR.responseText into #results via .html().",
+    "git log -L 130,130:lib/rucio/web/ui/static/account_rse_usage.js 574a0b4787ab7dfd29ee0536c7da55b34e902788^ traces the exact vulnerable sink directly to 045193619da3087de74d77ec0f715ce57c1ed035 and shows it added as a new line from /dev/null. git blame of the pre-fix file attributes both unsafe callbacks, lines 130 and 136, to that same commit.",
+    "git show 045193619da3087de74d77ec0f715ce57c1ed035 shows account_rse_usage.js created as a new 86-line file and both raw-response .html() callbacks added in that commit. git cat-file -p gives its sole parent as 2fa7cd7ac7ece363ab8381e9a156d2acd38652c9. git ls-tree -r --name-only 2fa7cd7ac7ece363ab8381e9a156d2acd38652c9 -- lib/rucio/web/ui/static/account_rse_usage.js returns no path, directly verifying that neither the page nor its sink exists in the immediate parent tree.",
+    "git merge-base of the BIC with each adjacent vulnerable tag 35.8.2 (eaebc315c5a4a6721c6744a27a07ad22a9586ff0), 38.5.3 (4fd064e67f4979bf83222a5ad95eb12054e63b59), and 39.3.0 (994beeb0dcad09b75bbb486cf9c58a7d469562e5) returns the BIC itself, proving it predates all three affected release lines. git grep confirms raw responseText-to-.html() sinks in account_rse_usage.js at those vulnerable boundaries.",
+    "Direct fix 574a0b4787ab7dfd29ee0536c7da55b34e902788 is titled 'fix(WebUI): fix XSS from url_param usage', explicitly names Advisory: GHSA-h79m-5jjm-jm4q, and replaces both account_rse_usage.js raw .html() calls with empty().append($('<font ...>').text(String(jqXHR.responseText))), causing jQuery to create text rather than parse attacker markup.",
+    "The equivalent maintained-branch fixes are 49e0c7c2255a9879c4fceed9fb2bcb1fc432d063 for 38.5.4 and 45cb01ca08ed60ee66c65618a64b73e16f4aad09 for 39.3.1. Tags resolve to 35.8.3=ba9203702629af7bb1f95d5cf9ba8fcf1f943105, 38.5.4=c851ad216e0e0e3d50405eab3331dfe21c96ddd3, and 39.3.1=ba2a7e66b1e3c73b5cf9e0000e6621e8dc45bfe7; merge-base checks return the corresponding fix SHA in every patched tag, while git grep shows the sanitizing text construction at all three patched boundaries.",
+    "BIC-only AI inspection used git cat-file -p 045193619da3087de74d77ec0f715ce57c1ed035: the 2015 commit object has human author/committer Thomas Beermann and no AI-authorship trailer or bot marker."
+  ],
+  "reasoning": "The causal path is user-controlled account parameter -> server exception text -> ExceptionMessage/raw JSON response -> account_rse_usage error callback -> jQuery.html() -> executable DOM. The smallest concrete introduction for the advisory's URL PoC is not a later refactor, backport, release, or the 2026 remediation series: it is 045193619da3087de74d77ec0f715ce57c1ed035, which created the page and both vulnerable callbacks. Line history converges on that commit, and the exact file is absent from its immediate parent. The BIC is an ancestor of each last-vulnerable release checked. The GHSA-specific direct fix 574a0b4787ab7dfd29ee0536c7da55b34e902788 changes the sink from HTML parsing to text construction, with equivalent commits present in the other two patched release lines. This is not a squash requiring member decomposition. Finally, the only admissible AI evidence is the BIC commit object; it has a human author/committer and no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

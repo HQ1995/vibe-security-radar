@@ -1,0 +1,27 @@
+{
+  "worker": "w101",
+  "review_agent_id": "r389_w101",
+  "class_id": "alias-51c2ec0bcd297fb5978eb9a2",
+  "case_id": "GHSA-px2c-r924-mwcc",
+  "repo": "couchbase/couchbase-net-client",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. The default KV and HTTP callbacks introduced by 35aefa5dfddc97f6e289a8a62d97d64fb415c7da fall through on RemoteCertificateNameMismatch to chain.Build-based validation, which can accept a trusted-chain certificate without validating its hostname. ForceIpAsTargetHost=true compounds the mismatch by supplying the peer IP as targetHost.",
+    "atomic_bic": "Confirmed. git log -S for ValidateWithDefaultCertificates and ValidatorWithIgnoreNameMismatch identifies 35aefa5dfddc97f6e289a8a62d97d64fb415c7da as the first write of the vulnerable default callback and its KV/HTTP wiring; earlier 19201d256c3eee28f899b0d1537bd834a52db255 only ignored mismatch when the explicit ignore options were true.",
+    "immediate_parent_absence": "Confirmed. Immediate parent 867e88ebc789234fa0fc5d32e27ef26c657c2117 lacks both vulnerable helper symbols and passes the user callback directly; null therefore retains framework default hostname verification.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC commit object has exactly one parent and a Gerrit Change-Id/review trail; no merge, revert, move, or squash aggregate was found, so there are no finer public members to decompose.",
+    "affected_release_membership": "Confirmed. 35aefa5dfddc97f6e289a8a62d97d64fb415c7da is absent from tag 3.2.9, present in 3.3.0 and 3.7.0, and 3.7.0 still contains the vulnerable validators and callback wiring. The vendor advisory separately lists 3.0.x through 3.7.0 because the related IP-as-targetHost default predates this BIC.",
+    "fixed_release_membership": "Confirmed. Direct fix 04d1679b2178f922036be6e595b3d91f972c5ba3 is absent from 3.7.0 and present in 3.7.1; original-branch commit af8e1fa08c70a70021363334fa781c9292b39255 is not an ancestor of 3.7.1 because 04d1679 is its patch-equivalent cherry-pick.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. Parent 6dd6409127df8c6a989eb436b31cf59876dbf126 still falls through to custom/default chain validation after name mismatch. 04d1679b2178f922036be6e595b3d91f972c5ba3 adds CallbackCreator.Callback, which returns false on RemoteCertificateNameMismatch unless ignore-name-mismatch is explicitly enabled; its stable patch-id matches af8e1fa08c70a70021363334fa781c9292b39255.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI. The BIC commit object names RiPont/Richard Ponton as human author and committer and contains only Gerrit Change-Id, Reviewed-on, Reviewed-by, and Build Bot Tested-by trailers; no AI authorship, generation, co-author, Copilot, Cursor, or comparable marker is present. Later commits were not used for attribution."
+  },
+  "findings": [
+    "Current CVE.org record CVE-2025-49015 is PUBLISHED and describes missing TLS hostname verification plus the incorrectly enabled IP-target option.",
+    "The Couchbase June 2025 vendor alert identifies Couchbase .NET SDK 3.0.x through 3.7.0 as affected and 3.7.1 as the fix version.",
+    "The frozen bundle SHA-256 matches manifest value b30b6db4ffa6e58e58bcea856a1d2dd3c6cf6b6e708647ce1df24e59bc3ca7e8.",
+    "The primary record's mechanism, BIC, immediate parent, direct fix, release membership, and BIC-only human attribution all independently replay against the clone."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-c2fbc2a6e069b24b0b2da43e",
+ "case_id": "GHSA-jx39-26rr-cwqp",
+ "repo": "gitlab.freedesktop.org/xorg/xserver",
+ "advisory_ids": [
+  "CVE-2026-50262",
+  "GHSA-jx39-26rr-cwqp"
+ ],
+ "bug_semantics": "CWE-125 OOB read in __glXDisp_ChangeDrawableAttributes / __glXDispSwap_ChangeDrawableAttributes: a reversed request-length check compares computed size LESS THAN client->req_len instead of GREATER THAN, so an undersized request whose numAttribs claims more attribute pairs than the buffer contains still passes. DoChangeDrawableAttributes then walks numAttribs pairs from the header and overreads (and can OOB-write eventMask on GLX_EVENT_MASK if a swapped client is enabled).",
+ "flaw_origin": "First write is 402b329c3aa8 (2011-02-15) 'glx: Work around wrong request lengths sent by mesa' by Julien Cristau. Parent 1137c11be0f8 still used REQUEST_FIXED_SIZE(xGLXChangeDrawableAttributesReq, req->numAttribs << 3) in both glx/glxcmds.c and glx/glxcmdsswap.c. That commit disabled the fixed-size check (#if 0) and inserted the reversed '>> 2) < client->req_len' test so oversized Mesa requests would be accepted; the inverted comparator is the sink. Later style/backport copies (e.g. 9838b703, 99520ddb) are not first writes. The 2026 fix 6d459e4daf71 restores REQUEST_FIXED_SIZE and cites 402b329c as Fixes; Assisted-by on the fix does not attribute the BIC.",
+ "introducer_sha": "402b329c3aa8ddbebaa1f593306a02d4cd6fed26",
+ "introducer_parent": "1137c11be0f82049d28024eaf963c6f76e0d4334",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "none",
+ "verdict": "NOT_AI",
+ "fix_sha": "6d459e4daf715bea8abdafa8fb130be2f8a1d145",
+ "direct_fix_sha": "6d459e4daf715bea8abdafa8fb130be2f8a1d145",
+ "evidence": "CVE-2026-50262 is PUBLISHED (cveawg state=PUBLISHED, assigner redhat); GHSA withdrawn_at is null. Advisory names __glXDisp_ChangeDrawableAttributes and points at 6d459e4daf71. git show of that fix on glx/glxcmds.c and glx/glxcmdsswap.c replaces the reversed comparator with REQUEST_FIXED_SIZE and states it reverts 402b329c3aa8. git cat-file -p 402b329c3aa8: author/committer Julien Cristau <jcristau@debian.org>, Signed-off-by/Reviewed-by only, no Co-Authored-By/Generated-with/Assisted-by. git cat-file -e 1137c11be0f8:glx/glxcmds.c and :glx/glxcmdsswap.c succeed. Parent grep has REQUEST_FIXED_SIZE for ChangeDrawableAttributes and no '>> 2) < client->req_len'; 402b329c grep hits that reversed line in both files. git log --reverse -S on that expression first hits 402b329c. git log -1 --format='%an %ae %cn %ce' 402b329c: Julien Cristau jcristau@debian.org Julien Cristau jcristau@debian.org. ppa re-checked line-level 2026-08-29: numactl git show 402b329^:glx/glxcmds.c req_len checks are only lines 1702/2361 (other handlers, '>' direction) while BIC 402b329 adds 'if (((sizeof(xGLXChangeDrawableAttributesReq) + (req->numAttribs << 3)) >> 2) < client->req_len)' — the reversed-comparison vulnerable lines new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "Real CWE-125, not withdrawn. BIC is the 2011 Mesa-workaround commit that first replaced a correct REQUEST_FIXED_SIZE with a reversed length comparison; parent tree lacks those lines. Authorship on that commit object is human (Julien Cristau, 2011). AI trailers exist only on the 2026 fix and cannot attribute the introducer. Therefore NOT_AI.",
+ "remaining_gap": ""
+}

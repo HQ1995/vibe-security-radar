@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-8c90a7c42d25e64dad4ef475",
+  "case_id": "GHSA-x4hp-vj3w-6w2m",
+  "repo": "scriban/scriban",
+  "advisory_ids": [
+    "CVE-2026-74795",
+    "GHSA-x4hp-vj3w-6w2m"
+  ],
+  "bug_semantics": "Recursive-descent ParseParenthesis/ParseExpression has no default depth bound. Nested ((...(1)...)) consumes the thread stack until StackOverflowException, which .NET cannot catch, so the host process dies. ExpressionDepthLimit is int? and defaulted to null; EnterExpression only checks HasValue, so Template.Parse of attacker templates is CWE-674 DoS.",
+  "flaw_origin": "Root 46054810 first wrote unbounded ParseParenthesis -> ExpectAndParseExpression with no depth counter. e0f646d8 later added optional ExpressionDepthLimit (default null) and EnterExpression that only logs if HasValue; that is incomplete control, not first-write. a6fe6074 (6.6.0) set default 250; b5ac4bf3 moved it to ?? 250 in EnterExpression.",
+  "introducer_sha": "46054810b50b03a6d19cd51886321cbbefa5d589",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "a6fe6074199e5c04f4d29dc8d8e652b24d33e3e4",
+  "direct_fix_sha": "a6fe6074199e5c04f4d29dc8d8e652b24d33e3e4",
+  "evidence": "CVE-2026-74795 / GHSA-wgh7-7m3c-fx25 not withdrawn. git rev-list --parents 46054810 is root; cat-file -e 46054810^ fails. Author/committer Alexandre Mutel 2016-01-25; cat-file -p has no Co-authored-by/Generated-with/bot. Initial Parser.Expressions.cs ParseParenthesis recursively calls ExpectAndParseExpression. Parent of e0f646d8 has StatementDepthLimit only. a6fe6074 author Dishan Sachin/committer Mutel sets ExpressionDepthLimit = 250; first in tag 6.6.0. b5ac4bf3 is the 6.6.0 tip (OSV git event) using ?? 250 after clearing the property initializer.",
+  "reasoning": "Real uncatchable StackOverflowException DoS from unbounded recursive descent. Smallest first-write is the 2016 root parser; parent tree does not exist. BIC is human with no AI marker. 2017 optional null limit and 2026 Copilot-marked array-initializer work are not this BIC. Direct fix matching the advisory (enable a default depth) is a6fe6074 in 6.6.0.",
+  "remaining_gap": "After a6fe/b5ac, EnterExpression still LogError and continues until 8fdbd687 throws FatalParserException; default 250 reduces but does not abort recursion by itself."
+}

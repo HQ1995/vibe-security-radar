@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-3d5214dba06f5732947a91bc",
+  "case_id": "GHSA-w92g-j683-fhvq",
+  "repo": "xpf0000/flyenv",
+  "advisory_ids": ["CVE-2026-69116", "GHSA-w92g-j683-fhvq"],
+  "bug_semantics": "FlyEnv's Electron renderer injects unsanitized HTML into Vue v-html. The exploitable network path is Ollama chat: untrusted model/server text is rendered with MarkdownItAsync({ html: true }) so raw HTML (for example <img src=x onerror=...>) survives into src/render/components/AI/Chat/Ollama/content.vue v-html=\"result\". Script then runs in the renderer, which can call FlyEnvNodeAPI.ipcSendToMain and reach AppNodeFn.exec_exec for RCE. A second patched sink is src/render/components/AI/Chat/Main/index.vue v-html of raw item.content (local assistant HTML). Other markdown v-html consumers (MarkdownPreview, CodeLibrary, SkillView) share the same unsanitized md.render() output.",
+  "flaw_origin": "The XSS mechanism first became complete on 2025-03-04 in d0259bcabf37947f9a2e27a60a26bddef95f2b57 (\"1. Add Ollama Module\"). That commit added a VitePress-style markdown stack at src/render/util/markdown/markdown.ts with html: true and rewired Ollama/content.vue from markdown-it() defaults (html: false, which escapes raw HTML) to createMarkdownRenderer() with no sanitizer. Parent 036c0e93 already had v-html of Ollama markdown, but not HTML pass-through. Later ade8411f only moved rendering behind IPC md.render; it did not introduce the flaw. The 2024 AI/Chat/Main v-html change is a weaker local-assistant sink, not the network markdown XSS.",
+  "introducer_sha": "d0259bcabf37947f9a2e27a60a26bddef95f2b57",
+  "introducer_parent": "036c0e93e3078572ce89e89fac0bdaca614cd2f4",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author 徐鹏飞 <250881478@qq.com>, committer 徐鹏飞 <250881478@qq.com>; empty body; no Co-Authored-By, Generated-with, Signed-off-by, or bot author/committer on the BIC commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "68fd6d7b200273ad0a8bce09424b8bd87134cfb6",
+  "direct_fix_sha": "68fd6d7b200273ad0a8bce09424b8bd87134cfb6",
+  "evidence": [
+    "CVE.org CVE-2026-69116 state=PUBLISHED (VulnCheck CNA, not rejected); GHSA-w92g-j683-fhvq withdrawn_at=null; title FlyEnv < 4.18.0 Cross-Site Scripting via v-html; affected FlyEnv < 4.18.0, patched 4.18.0.",
+    "Issue https://github.com/xpf0000/FlyEnv/issues/809 (v4.17.2): Ollama chat XSS-to-RCE PoC <img src=x onerror=\"FlyEnvNodeAPI.ipcSendToMain('command','App-Node-FN','','exec','exec',...)\">; root cause MarkdownItAsync({ html: true }) at markdown.ts plus v-html in Ollama/content.vue; other sinks include AI/Chat/Main/index.vue raw item.content.",
+    "Fix PR https://github.com/xpf0000/FlyEnv/pull/810 squash-merged as 68fd6d7b200273ad0a8bce09424b8bd87134cfb6 (author sysy/AAtomical, committer GitHub, subject has #810, single parent 6d43c51a85fb5aff904f618b02eefc67428b70ef). Patch wraps NodeFn.md.render with DOMPurify.sanitize and sanitizes AI/Chat/Main item.content; does not change html: true.",
+    "BIC d0259bcabf37947f9a2e27a60a26bddef95f2b57 added src/render/util/markdown/markdown.ts blob 4117da68f80e8e7b2463fc25a8b6974c37624e27 line 196: md = new MarkdownItAsync({ html: true, linkify: true, highlight, xhtmlOut: true }). Same blob still present at fix parent; git log and blame of that line both stop at d0259bca.",
+    "At BIC, Ollama/content.vue lines 2 and 22 wire v-html=\"result\" to createMarkdownRenderer()/md!.render(props.content) with only <think> escaping, no HTML sanitizer.",
+    "Parent 036c0e93e3078572ce89e89fac0bdaca614cd2f4 is a real commit object. git grep 'html: true' on that tree is empty; markdown.ts does not exist. Parent Ollama/content.vue uses const md = markdownit(); return md.render(props.content) (markdown-it 14.1.0 default html: false, so the reported raw-HTML PoC would be escaped).",
+    "ade8411fd35ce9d79fbcea4e7594f8c6e6e8cf40 (ESM/IPC) is a move, not BIC: Ollama/content.vue keeps v-html=\"result\" and switches to IPC md.render; AppNodeFn.md_render still returns unsanitized renderer.render(content).",
+    "Tag check: d0259bca is ancestor of v4.8.7 (first containing tag, 2025-03-05) and of v4.17.2 (issue version). Fix 68fd6d7 is ancestor of v4.18.0 and is not an ancestor of v4.17.2. Matches affected < 4.18.0 / patched 4.18.0.",
+    "git cat-file -p d0259bca: author/committer 徐鹏飞 <250881478@qq.com>, single parent, message \"1. Add Ollama Module\", no trailers. Direct push, not a GitHub merge/squash of AI-attributed members; no finer public member reconstructable.",
+    "Secondary sink first-write b0d10c7913913c59d2894870c3d2e94f407f4a9e (2024-01-06) switched AI/Chat/Main from {{ item.content }} to v-html=\"item.content\" for local assistant HTML (window.openDir/openUrl). That is not the network markdown html:true path the PoC uses."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-69116 / GHSA-w92g-j683-fhvq is a published CWE-79, not withdrawn or rejected. The confirmed mechanism is unsanitized HTML from markdown (html: true) and chat content reaching Vue v-html in the Electron renderer, with XSS escalating via the preload IPC exec bridge. Researcher PoC and root-cause lines are Ollama chat + MarkdownItAsync({ html: true }). BIC search used those sinks, not an AI-marker hunt. git log -L on Ollama/content.vue shows v-html first appearing in 036c0e93 (markdown-it defaults). git log -S / blame on markdown.ts html: true first-writes d0259bca, which also rewires Ollama to that renderer. Parent-tree verification shows html: true and markdown.ts absent at 036c0e93, so the raw-HTML XSS mechanism is not yet present there. d0259bca is therefore the smallest public commit that first wrote the flawed mechanism; it is a first-write, not a move/revert. The later IPC refactor only relocated the same unsanitized render. The 2024 AI/Chat/Main v-html is a related sink the same patch closed, but it is app-generated local-assistant HTML and is not the network markdown XSS. AI judgment is BIC-only: d0259bca is human maintainer 徐鹏飞 with no commit-object AI marker, so verdict is NOT_AI. Fix SHA is the GitHub squash landing 68fd6d7 referenced by the advisory and contained in v4.18.0.",
+  "remaining_gap": null
+}

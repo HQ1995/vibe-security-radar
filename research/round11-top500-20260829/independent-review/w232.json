@@ -1,0 +1,34 @@
+{
+  "worker": "w232",
+  "review_agent_id": "r389_w232",
+  "class_id": "alias-720672c2359e9ab914f671d7",
+  "case_id": "GHSA-pvgm-mg5q-xc76",
+  "repo": "fluentcms/fluentcms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: an authenticated administrator can upload raw SVG bytes while client-controlled image/svg+xml is stored; the public /files middleware uses a server-configured X-API-AUTH credential to fetch the file, copies the response Content-Type, and streams the body without Content-Disposition or CSP, enabling stored XSS for a visitor opening the file URL.",
+    "atomic_bic": "CORRECTION_REQUIRED: 0fdb790520a55b89f762babd97dc2765b6295411 introduced raw persistence and client MIME, but its only download endpoint remained policy-gated and passed fileDownloadName, so it did not yet create the advisory's public inline execution path. The smallest reconstructable commit completing that path is a80bdcf62f7c4e03763c3d35cc2ac535fef17148, which adds RemoteFileProviderMiddleware and registers it for /files.",
+    "immediate_parent_absence": "CONFIRMED for corrected BIC: parent d98d94aa05511d4510466c7c3ed212effade5b81 has no RemoteFileProviderMiddleware object and no /files UseWhen registration; the complete public inline source-to-sink path is absent.",
+    "squash_member_decomposition": "CONFIRMED: GitHub PR #2216 reports 27 commits and identifies a80bdcf62f7c4e03763c3d35cc2ac535fef17148 as the member with parent d98d94aa05511d4510466c7c3ed212effade5b81; the merged squash is 9517ad5a48e986acb81c6c42ad9e2cf9e0c1df9a, so the squash aggregate is not the BIC.",
+    "affected_fixed_release_membership": "CONFIRMED affected and no fixed release: the live CVE.org record is PUBLISHED and declares semver 0 through 0.0.5 affected. Tags v0.0.1, v0.0.2, v0.0.3, v0.0.4, and v0.0.5 each retain raw upload, client Content-Type, and public inline streaming. No fixed version is declared.",
+    "direct_fix_or_unpatched_state": "CONFIRMED unpatched: origin/dev c63d49cdbc1f4051d34bb71087d904c56e33951e has no SanitizeSvg or upload allowlist; issue #2404 is open, and draft PR #2407 is open and unmerged. Candidate fix 81dad4805df593dae8c22184b5a0533685287198 is not an ancestor of origin/dev or tags v0.0.1-v0.0.5.",
+    "bic_only_ai_attribution": "CONFIRMED NOT_AI on corrected BIC only: a80bdcf62f7c4e03763c3d35cc2ac535fef17148 is authored and committed by Amir Pournasserian <amir.pournasserian@live.com> and has no Co-Authored-By, Generated-with, Agent-Logs-Url, bot identity, or other AI marker. Copilot-authored 81dad4805df593dae8c22184b5a0533685287198 is only an unmerged fix candidate."
+  },
+  "findings": [
+    "The primary record stops BIC selection at the storage/source component, before the advisory-specific unauthenticated inline browser sink existed.",
+    "PR #2216 member a80bdcf62f7c4e03763c3d35cc2ac535fef17148 is finer than squash 9517ad5a48e986acb81c6c42ad9e2cf9e0c1df9a and is the first reconstructable commit that completes the public stored-XSS path.",
+    "Changing the BIC does not change the causal AI verdict: the corrected BIC is also human-authored with no AI marker, so NOT_AI remains supported after field correction."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "Raw file persistence and client-controlled MIME originated earlier, but the advisory's complete stored-XSS path first became vulnerable in reconstructable PR #2216 member a80bdcf62f7c4e03763c3d35cc2ac535fef17148 by Amir Pournasserian. It added RemoteFileProviderMiddleware and the public /files branch: a visitor request is fetched through an IFileClient carrying the configured X-API-AUTH credential, then returned with the upstream SVG Content-Type but without the upstream attachment disposition. Immediate parent d98d94aa05511d4510466c7c3ed212effade5b81 lacks both the middleware file and route. Squash 9517ad5a48e986acb81c6c42ad9e2cf9e0c1df9a landed the member on dev.",
+    "introducer_sha": "a80bdcf62f7c4e03763c3d35cc2ac535fef17148",
+    "introducer_parent": "d98d94aa05511d4510466c7c3ed212effade5b81",
+    "decomposed_shas": [
+      "a80bdcf62f7c4e03763c3d35cc2ac535fef17148"
+    ],
+    "ai_marker": "absent; author Amir Pournasserian <amir.pournasserian@live.com>, committer Amir Pournasserian <amir.pournasserian@live.com>; no Co-Authored-By, Generated-with, Agent-Logs-Url, bot identity, or other AI marker on corrected BIC a80bdcf62f7c4e03763c3d35cc2ac535fef17148",
+    "reasoning": "Vulnerability-first review requires the full advisory mechanism, not only the earliest unsafe storage primitive. Commit 0fdb790520a55b89f762babd97dc2765b6295411 stored raw bytes and client MIME, but its download action was policy-gated and requested a download filename. The public inline sink was first completed by PR #2216 member a80bdcf62f7c4e03763c3d35cc2ac535fef17148, whose middleware is registered for /files, fetches through the configured API-token client, propagates SVG Content-Type, and streams the body without attachment disposition or CSP. Its immediate parent lacks this path, and the member is reconstructable beneath squash 9517ad5a48e986acb81c6c42ad9e2cf9e0c1df9a. AI attribution on corrected BIC a80bdcf62f7c4e03763c3d35cc2ac535fef17148 remains negative, so verdict NOT_AI survives while introducer fields require correction."
+  },
+  "remaining_gap": "No landed direct-fix SHA or fixed release exists: draft PR #2407 head 81dad4805df593dae8c22184b5a0533685287198 remains open and unmerged; this is a verified unpatched state, not an attribution blocker."
+}

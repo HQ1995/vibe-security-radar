@@ -1,0 +1,26 @@
+{
+  "worker": "w300",
+  "review_agent_id": "r389_w300",
+  "class_id": "alias-dcab1727eca653bdc9f6b9b9",
+  "case_id": "GHSA-gjx6-h8hm-c9rq",
+  "repo": "xuxueli/xxl-job",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In 3.1.1, authenticated non-admin requests reach POST /jobinfo/remove with a client-controlled numeric id; JobInfoController forwards only that id and XxlJobServiceImpl loads and deletes the referenced job and related data without checking the caller's job-group permission. PermissionInterceptor requires login by default but not admin, while XxlJobUser.validPermission and controller filtering establish the per-group authorization boundary. CVE-2025-9264 is currently PUBLISHED, GHSA-gjx6-h8hm-c9rq has withdrawn_at=null, and vendor issue 3773 is closed after the maintainer stated that repaired code would ship in the next version.",
+    "atomic_bic": "PASS: git log --all --reverse -S'return xxlJobService.remove(id);' over the controller history identifies d66bdc88113ed9e25b09b6a3b547338e794b0f0a as the first surviving public commit to write the advisory's numeric-id removal call. Its matching service change loads and deletes by id without an authorization input or check. Later blame/rewrite commits are not first writers.",
+    "immediate_parent_absence": "PASS: d66bdc88113ed9e25b09b6a3b547338e794b0f0a has the single resolvable parent f3573c8643b02b61a108d7d803d3f1af958e7260. The parent controller and service use remove(jobGroup, jobName), not the advisory's numeric-id sink; the exact remove(int id) controller/service lines first appear in d66bdc88113ed9e25b09b6a3b547338e794b0f0a.",
+    "squash_member_decomposition": "PASS: d66bdc88113ed9e25b09b6a3b547338e794b0f0a is a normal single-parent commit object, not a merge, move-only commit, revert, or identifiable squash carrier. The local clone is complete and non-shallow, its parent is available, and no finer public member object is present to decompose; the commit is the smallest surviving public first-write object.",
+    "affected_release_membership": "PASS: d66bdc88113ed9e25b09b6a3b547338e794b0f0a is an ancestor of tags 3.1.0 (ce642929120d1f50b8252d35961e1d4bf1ae2ef9) and 3.1.1 (cdb54254d0dc8cb3219102c095419c8b225c9e8a). The earliest release tag containing it by tag creation date is v1.6.0, consistent with the GHSA range <=3.1.1.",
+    "fixed_release_membership": "PASS: b683e65168d17f87ba4cbabdee444e19c4824e65 is not an ancestor of tag 3.1.1 and is an ancestor of tag 3.2.0 (57b181b480b05f785826dfb14c5f5b9b1da7a580), matching the GHSA first patched version 3.2.0.",
+    "direct_fix_or_unpatched_state": "PASS: b683e65168d17f87ba4cbabdee444e19c4824e65 directly changes JobInfoController.remove to pass the authenticated LoginInfo and XxlJobServiceImpl.remove to reject callers lacking hasJobGroupPermission(loginInfo, xxlJobInfo.getJobGroup()) before deletion. Tag 3.1.1 is an ancestor of this fix, and the fix is contained in 3.2.0.",
+    "bic_only_ai_attribution": "PASS: The exact BIC object d66bdc88113ed9e25b09b6a3b547338e794b0f0a is authored and committed by xueli.xue <xueli.xue@dianping.com> on 2017-03-12. Its raw commit object has one parent, a single Chinese subject, and no Co-Authored-By, bot, generated-with, or other AI marker. AI-marked commits elsewhere in the repository and the 2025 human-authored fix are not used for attribution. NOT_AI is supported for this real, non-withdrawn vulnerability.",
+    "clone_integrity": "PASS: /home/hanqing/agents/ai-slop/.ai-slop/state/repos/xuxueli_xxl-job is a valid non-shallow Git worktree with resolvable HEAD, BIC, BIC parent, fix, and release-tag commits; git count-objects reports 33065 packed objects and no garbage."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, BIC, parent, direct fix, release topology, and BIC-only NOT_AI attribution independently reproduce from the assigned clone and current official advisory records.",
+    "The BIC parent contains an older two-identifier removal API without a job-group check, but it does not contain the advisory's numeric-id removal sink. Executor-group permissions were introduced later; this lifecycle nuance is already disclosed in the primary record and does not change the exact first-writer result."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

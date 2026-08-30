@@ -1,0 +1,28 @@
+{
+  "worker": "w241",
+  "review_agent_id": "r389_w241",
+  "class_id": "alias-112fc07547642be4ffc556a9",
+  "case_id": "GHSA-cq87-8r7h-962v",
+  "repo": "apple/swift-nio",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CLOSED: in 2.99.0 the default outbound validators check only HTTP header names and values, while HTTPRequestEncoder serializes request.uri and HTTPMethod.RAW verbatim and HTTPResponseEncoder serializes a custom status.reasonPhrase verbatim. Attacker-controlled CR/LF in any of those HTTP/1.1 start-line fields therefore reaches the wire and can create an additional request or response.",
+    "atomic_bic": "CLOSED FOR ALL PATHS: 976f4752dfffe5b07e53562226a3e180f82a95d6 first adds HTTPRequestEncoder's request.uri write and HTTPMethod.RAW write; 537cbf224f94a1cfc76fd00fe4c26cfecc741063 independently first adds HTTPResponseStatus.write of a custom reasonPhrase. Reverse -S history confirms later changes are refactors or API renames, not first writers.",
+    "immediate_parent_absence": "CLOSED: request BIC parent c18db56fc29dc0aabe6e7503798056eaf3365a6d contains neither HTTPRequestEncoder nor a RAW-method wire writer; response BIC parent 164cf244aca5a9699badbe1265688e32f5c62a92 contains no HTTP sources. Both parent objects resolve locally.",
+    "squash_member_decomposition": "CLOSED: both BICs are ordinary single-parent commits, so no BIC squash decomposition is required. The direct fix dd16365724d55cdcb2b8b2d11ebba1fcb7e9cf33 is a single-parent public fork squash; an all-ref exact-message search finds no reconstructable public member object, but that does not alter either atomic BIC.",
+    "affected_fixed_release_membership": "CLOSED: both 2017 BICs are ancestors of tag 2.0.0; 2.99.0 still contains all three unvalidated writes. Fix dd16365724d55cdcb2b8b2d11ebba1fcb7e9cf33 is not an ancestor of 2.99.0 and is an ancestor of 2.100.0 (tag commit 57c0a08a331aaea9f5d7a932ad94ef43be942a95). The vendor security release identifies 2.100.0 as fixed; CVE.org currently has no CVE-2026-28970 record, but the vendor has not withdrawn or rejected the issue.",
+    "direct_fix_or_unpatched_state": "CLOSED: dd16365724d55cdcb2b8b2d11ebba1fcb7e9cf33 directly adds request-target character validation, custom-method token validation, and custom-reason-phrase validation; its parent 6338e9fb5e136af8337b48eee65f8868d571a3d7 lacks all three controls, and tests for the forbidden fields are added in the same commit.",
+    "bic_only_ai_attribution": "PRIMARY INCOMPLETE, REVIEW CLOSED: both BIC objects were authored and committed by Norman Maurer in 2017, and their exact author, committer, subject, and body contain no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, OpenAI, or bot marker. The primary ai_marker and final inference explicitly cover only 976f4752dfffe5b07e53562226a3e180f82a95d6, despite the advisory's independent response-path BIC at 537cbf224f94a1cfc76fd00fe4c26cfecc741063. The independently completed second check preserves NOT_AI but requires correcting the primary record."
+  },
+  "findings": [
+    "The NOT_AI outcome is supported for every vulnerable path after independent review: neither atomic 2017 BIC has an AI marker.",
+    "The primary record identifies the response-reason BIC in flaw_origin/evidence, but its ai_marker and verdict reasoning formally inspect only the request URI/method BIC. That is incomplete under the protocol's multi-path and BIC-only attribution gates.",
+    "introducer_parent_absent=false is correct here: both Git parents are available; the vulnerable writes themselves are absent from the relevant immediate parents."
+  ],
+  "corrected_fields": {
+    "ai_marker": "absent on both atomic BICs: 976f4752dfffe5b07e53562226a3e180f82a95d6 and 537cbf224f94a1cfc76fd00fe4c26cfecc741063 were each authored and committed by Norman Maurer <norman_maurer@apple.com>; each exact commit message has no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, OpenAI, or bot marker",
+    "reasoning": "The advisory has three start-line injection paths. Request URI and RAW method first reach the wire in 976f4752dfffe5b07e53562226a3e180f82a95d6; custom response reasonPhrase first reaches the wire in 537cbf224f94a1cfc76fd00fe4c26cfecc741063. Each immediate parent lacks its corresponding sink, both BICs precede 2.0.0, and 2.99.0 remains vulnerable. dd16365724d55cdcb2b8b2d11ebba1fcb7e9cf33 directly validates all three fields and is contained in 2.100.0 but not 2.99.0. Neither atomic BIC carries an AI marker, so the corrected verdict remains NOT_AI."
+  },
+  "remaining_gap": null
+}

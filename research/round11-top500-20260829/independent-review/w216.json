@@ -1,0 +1,25 @@
+{
+  "worker": "w216",
+  "review_agent_id": "r389_w216",
+  "class_id": "alias-5addbf343b520d2a95313dce",
+  "case_id": "GHSA-p84g-83m7-53p6",
+  "repo": "op-tee/optee_os",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: a signed user TA could set pseudo-TA-only TA_FLAG_CONCURRENT because the loader accepted every bit in inclusive TA_FLAGS_MASK GENMASK_32(8, 2); tee_ta_try_set_busy() then skipped serialization while tee_mmu_map_param() cleared, inserted, traversed, and freed ephemeral nodes in the shared vm_info.regions list, enabling concurrent use-after-free.",
+    "atomic_bic": "CONFIRMED: 387b0ee39b1b8d5a8a0db68a0a4535d2d621342d is the single-parent landed commit that first introduced TA_FLAGS_MASK including bit 8 and replaced the user-TA whitelist with the permissive mask check. c7c4b6e31b3ba5b1c92a50fc00680fc07755e4ef only created the pseudo-TA flag and skip-lock path while the user-TA whitelist still rejected that bit.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 027f050651f1729eac3c50ecd8e8d3941463bf51 has TA_FLAG_CONCURRENT but no TA_FLAGS_MASK, and ta_load() accepts only an explicit optional_flags whitelist that omits TA_FLAG_CONCURRENT, so the user-TA trigger is absent.",
+    "squash_member_decomposition": "CONFIRMED: PR #1597 has three original members; original member 6dc14778540c282b15a6aa284599099680b3395e is patch-id-equivalent to landed 387b0ee39b1b8d5a8a0db68a0a4535d2d621342d. The landed commit is already the individual vulnerable member, not a squash/merge aggregate; the following landed 35964dc977ab5f569544a119952043eaddc448db changes only unrelated pseudo-TA cleanup.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is absent from 3.0.0 and an ancestor of 3.1.0-rc1 and 4.10.0. The direct fix is not an ancestor of 4.10.0 and no local release tag contains it, but it is an ancestor of repository HEAD. This matches the CVE record: affected through 4.10.0 and unaffected at git commit 8794043c4065c26a2b8b1313794ba5ba5f06d296.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: 8794043c4065c26a2b8b1313794ba5ba5f06d296 directly adds TA_FLAG_CONCURRENT rejection in both core/kernel/ldelf_loader.c and ldelf/ta_elf.c. The 4.10.0 versions have only the ~TA_FLAGS_MASK checks and remain unpatched.",
+    "bic_only_ai_attribution": "CONFIRMED: the landed BIC commit object and patch-equivalent original PR member identify Etienne Carriere and contain only Signed-off-by, Reviewed-by, and Acked-by trailers; there is no Co-Authored-By, Generated-with, bot identity, or other AI marker. The NOT_AI judgment is based on the BIC, not the 2026 fix."
+  },
+  "findings": [
+    "CVE.org currently reports CVE-2026-71968 as PUBLISHED, with OP-TEE optee_os versions through 4.10.0 affected and git commit 8794043c4065c26a2b8b1313794ba5ba5f06d296 unaffected; the GitHub advisory has withdrawn_at null.",
+    "Local source and history independently reproduce the complete causal chain: pseudo-TA-only concurrent behavior existed first, 387b0ee39b1b8d5a8a0db68a0a4535d2d621342d made it reachable from signed user-TA headers, later ldelf commits preserved the mask check as moves/refactors, and 8794043c4065c26a2b8b1313794ba5ba5f06d296 directly closes both loader paths.",
+    "The primary record's introducer, parent, direct fix, release boundary, vulnerability semantics, and NOT_AI verdict are supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

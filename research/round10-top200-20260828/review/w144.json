@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-001063c2a6980a9d3f7d0036",
+  "case_id": "GHSA-f72g-52v7-mg3p",
+  "repo": "mattermost/mattermost-plugin-boards",
+  "advisory_ids": [
+    "CVE-2025-9081",
+    "GHSA-f72g-52v7-mg3p"
+  ],
+  "bug_semantics": "GET /files/teams/{teamID}/{boardID}/{filename} authorized the caller only for the board ID in the URL, then loaded the file by the filename UUID. After teamless storage, GetFile preferred FileInfo.Path (a global boards/YYYYMMDD/uuid path) over teamID/boardID/filename, so any user who could view some board could enumerate another board's file UUID and download it. The same UUID lookup also served /info metadata without proving the file belonged to that board.",
+  "flaw_origin": "Original teamless-storage feature. Focalboard PR #4577 member f5a57f44bcf2c699a709df796dcd82ffbf930199 first added App.GetFile that uses fileInfo.Path when set, switched SaveFile to utils.GetBaseFilePath(), and pointed handleServeFile at GetFile. Parent cc9a689c8bd0b01194c423726a5ef0fc812cb8a1 still served files only via GetFileReader(filepath.Join(teamID, rootID, filename)). Landing squash fa72286427d0d11bc10638625ad581795cfbc46f and later GetFilePath extract 888c169910687a171e0f4e86f7c7ed4b24acb310 are not the first write. Direct fix 3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b adds ValidateFileOwnership on GetFile and getFileInfo.",
+  "introducer_sha": "f5a57f44bcf2c699a709df796dcd82ffbf930199",
+  "introducer_parent": "cc9a689c8bd0b01194c423726a5ef0fc812cb8a1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "f5a57f44bcf2c699a709df796dcd82ffbf930199"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b",
+  "direct_fix_sha": "3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b",
+  "evidence": [
+    "GHSA-f72g-52v7-mg3p / CVE-2025-9081 (CWE-639) state Mattermost 10.5.x <= 10.5.8 and 9.11.x <= 9.11.17 fail access control so any authenticated user can download files via the boards file endpoint using UUID enumeration. CVE.org cveMetadata.state is PUBLISHED with title 'IDOR in board file download allows any user to download any file by UUID' and no rejectedReasons; GHSA withdrawn_at is null. References name https://github.com/mattermost/mattermost-plugin-boards/commit/3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b and PR #114.",
+    "git show 3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b -- server/app/files.go server/api/files.go adds ValidateFileOwnership (GetFileInfo plus path/board-block reference checks) and calls it from App.GetFile and API getFileInfo. git grep ValidateFileOwnership on 3f3e3bec^ -- server/app/files.go server/api/files.go is empty. Pre-fix handleServeFile only required HasPermissionToBoard(view) or a read token on the URL boardID, then called a.app.GetFile(board.TeamID, boardID, filename).",
+    "Pre-fix GetFile/GetFilePath (3f3e3bec^:server/app/files.go) resolved fileInfo via GetFileInfo(fileName) and, if fileInfo.Path was set and not 'empty', used that path as the filestore key. That path is boards/YYYYMMDD/<uuid>.ext, not teamID/boardID/filename, so the URL board did not bind the blob.",
+    "git log -S 'func (a *App) GetFile(' -- server/app/files.go first hits fa72286427d0d11bc10638625ad581795cfbc46f (Board teamless file path #4577). git cat-file -e 7cf0a88cc683db3588e3133e7bfe071b07e48201:server/app/files.go succeeds, but git grep on that parent finds GetFileReader(filepath.Join(teamID, rootID, filename)) and no GetFile / fileInfo.Path download branch. Pre-change handleServeFile used GetFileReader(board.TeamID, boardID, filename), so a guessed UUID on a viewable board could not open another board's blob.",
+    "GET https://api.github.com/repos/mattermost-community/focalboard/pulls/4577/commits lists f5a57f44bcf2c699a709df796dcd82ffbf930199 ('Updated upload and donwload code') as the first member. GET .../git/commits/f5a57f44bcf2c699a709df796dcd82ffbf930199: author and committer Harshil Sharma <harshilsharma63@gmail.com>, parent cc9a689c8bd0b01194c423726a5ef0fc812cb8a1, message only that subject, no Co-authored-by/Generated-with/bot identity. The member patch first inserts GetFile with `if fileInfo != nil && fileInfo.Path != \"\" { filePath = fileInfo.Path } else { filePath = filepath.Join(teamID, rootID, fileName) }`, sets SaveFile Path to GetBaseFilePath(), and switches handleServeFile to GetFile. git cat-file -e cc9a689c8bd0b01194c423726a5ef0fc812cb8a1:server/app/files.go succeeds; git grep on that parent has no GetFile and no fileInfo.Path retrieval. Later PR members only drop archived-file handling, lint, tests, and a Path column. The assigned clone contains squash fa722864 but not f5a57f44; the GitHub commit object and parent-tree check reconstruct the finer first-write. Squash fa722864 has Co-authored-by: Mattermost Build; that is not the BIC. 888c169910687a171e0f4e86f7c7ed4b24acb310 only extracts GetFilePath around the same Path preference."
+  ],
+  "reasoning": "The advisory is a real published IDOR: board-file download authorized the URL board, then opened whatever blob FileInfo.Path recorded for the filename UUID. That binding break was first written in reconstructed PR #4577 member f5a57f44bcf2c699a709df796dcd82ffbf930199; its parent still path-joined teamID/boardID/filename. The GitHub squash is not the BIC. The decomposed BIC commit object is human-authored with no AI trailer, so the verdict is NOT_AI. Ownership checks in 3f3e3becfe1d66db0d0f4fd235f04afd6e1ec40b close the sink.",
+  "remaining_gap": ""
+}

@@ -1,0 +1,24 @@
+{
+  "worker": "w378",
+  "review_agent_id": "r389_w378",
+  "class_id": "alias-24131b767a6b39eb756f4700",
+  "case_id": "GHSA-cmpj-2x3g-m7g3",
+  "repo": "free5gc/free5gc",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: at the advisory-tested nef commit 5ce35eab62b49b46c02be55d0c8ab23ce0300bee, NewServer mounts getOamRoutes on NefOamResUriPrefix without middleware; GET / dispatches to GetOamIndex, which unconditionally returns HTTP 200 with null. The vendor issue records no-token runtime requests reaching this path while OAuth2 was enabled, and CVE-2026-44327 remains PUBLISHED while GHSA-cmpj-2x3g-m7g3 has withdrawn_at=null.",
+    "atomic_bic": "CONFIRMED: vulnerability-first git -S and exact-diff replay identifies nef commit 84a33e9458e9209c5c379af05d4834c151b2e2d1 as the smallest first-write: it adds internal/processor/oam_handler.go with GetOamIndex returning StatusOK and changes getOamEndpoints from empty to GET / -> apiGetOamIndex. The earlier 3ae828b1315fde7e0d9da74ae25b23816aad4a08 created only an empty OAM group and no reachable handler.",
+    "immediate_parent_absence": "CONFIRMED: 84a33e9458e9209c5c379af05d4834c151b2e2d1 has immediate parent 4bc48a893a7f7dff47be51ddec4efcf5faf52b4b. That parent contains getOamEndpoints() returning an empty slice, has no internal/processor/oam_handler.go, and has no GetOamIndex or apiGetOamIndex symbol, so the no-token HTTP 200 sink is absent.",
+    "squash_member_decomposition": "CONFIRMED: the BIC object has exactly one parent and directly contains the vulnerable route and handler additions; it is neither a merge/squash aggregate nor a move. Later 0bcbd0d982fbfc7f979719c4f69d5723f65fbb18 is a 100% path rename, b0a2d430d799af6c81f248bc0740c637bc923eec is a naming refactor, and cc71387f0e77a7fe85640742f5b3a8d25f9bd0ec is a response-handling refactor.",
+    "affected_fixed_release_membership": "CONFIRMED: the BIC is an ancestor of nef v1.2.1 through v1.2.5. nef v1.2.4 (a7b8320e0a6d33f9865000cb4a7424c177a8b084) still mounts the OAM routes without auth; v1.2.5 (6e27bc78a4696835da6d99d065696690701ba995) contains the fix. free5gc v4.2.0 and v4.2.1 point NFs/nef at vulnerable 5ce35eab62b49b46c02be55d0c8ab23ce0300bee; v4.2.2 still points at unfixed 2969433db45e813d65af3f43fe16e6bba750824a; v4.2.3 points at fixed 6e27bc78a4696835da6d99d065696690701ba995. This independently confirms the primary's warning that the CVE/GHSA version ranges understate affected releases.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: advisory-linked nef PR #23 closed unmerged. PR #30 merged as 6e27bc78a4696835da6d99d065696690701ba995 and contains direct member c38a82fd01702b7297ab0b91d231d457edf53ff2, which adds inbound AuthorizationCheck and attaches NewRouterAuthorizationCheck to the nnef-oam group; failed checks return 401 and abort. free5gc commit 882458ba1309f548d47e58bdada21271543e03f7 updates the nef gitlink from a7b8320e0a6d33f9865000cb4a7424c177a8b084 to the fixed merge.",
+    "bic_only_ai_attribution": "CONFIRMED: the raw BIC object names human organization identity free5gc-org <free5gc.org@gmail.com> as both author and committer, has subject 'Add oam service', and contains no Co-Authored-By, Generated-with, Signed-off-by, bot identity, or other AI marker. Fix-side PR/review activity and later commits were excluded from attribution; the BIC-only verdict is NOT_AI."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, atomic BIC, immediate-parent proof, release/tag mapping, actual direct fix, and BIC-only NOT_AI attribution all reproduced independently from the scoped advisory and Git objects.",
+    "The public metadata is internally stale on versions: GitHub lists github.com/free5gc/nef <=1.2.3 and CVE.org lists free5gc <4.2.2, but repository trees show nef v1.2.4 and free5gc v4.2.2 remain unpatched. The primary already identifies this discrepancy accurately, so no primary-field correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

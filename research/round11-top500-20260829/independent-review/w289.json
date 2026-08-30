@@ -1,0 +1,29 @@
+{
+  "worker": "w289",
+  "review_agent_id": "r389_w289",
+  "class_id": "alias-f5fb798bcd081371c625de96",
+  "case_id": "GHSA-w4x2-2pcx-2cpc",
+  "repo": "fishcodetech/muteki",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: the root tree stages challenge attachments by basename into the same worker cwd used for claude -p --dangerously-skip-permissions; the referenced PoC archive plants .claude/settings.json and directs a later Claude Code launch, whose SessionStart command hook executes as the local worker user. The PoC explicitly limits the demonstrated path to worker extraction and relaunch in local mode.",
+    "atomic_bic": "CONFIRMED_AS_SMALLEST_SURVIVING_PUBLIC_OBJECT: git -S finds both _stage_attachments and --dangerously-skip-permissions first in 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260. It is a 243-file, 70762-insertion initial public snapshot, but no finer pre-root public member is exposed by the local refs or current remote refs.",
+    "immediate_parent_absence": "CONFIRMED: git rev-list --parents -n 1 returns only 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 and rev-parse SHA^ fails; the GitHub commit object also reports an empty parents array.",
+    "squash_member_decomposition": "CONFIRMED_FOR_PUBLIC_HISTORY: later snapshot 01544da9f523642ba1ea93528796933b77bad7bc has Cursor co-authorship but follows a585a2943a15efc4de78b00a385335fc9b1f23f1 and is not the first writer. Current public PR refs all postdate the root commit and do not reconstruct a pre-root member.",
+    "affected_and_fixed_release_membership": "PARTIAL: BIC ancestry and the live mechanism are verified in public tags v0.2.0, v0.2.1, v0.2.3, v0.2.4, and v0.2.5. CVE.org lists v0.2.2 as affected, but the upstream repository exposes no v0.2.2 tag, so that release's Git membership is not independently verifiable. Tags v0.3.0 through v0.3.2 also retain both mechanism components; no fixed release is identified by GHSA or public Git history.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED_UNPATCHED: issue 7 was closed by a repository member with a refactor-later comment and no patch. HEAD d1093c1f96381488c1baef5ea1fde2a9b46bc9ae still contains _stage_attachments and ClaudeCodeDriver --dangerously-skip-permissions; direct_fix_sha and fix_sha correctly remain null.",
+    "bic_only_ai_attribution": "EVIDENCE_GAP: the BIC object is unsigned and names jiayuqi7813 as author and committer with no AI trailer. That establishes absence of a visible commit-object marker, not positive human authorship of the 70762-line parentless snapshot. The later Cursor trailer is correctly excluded, but the primary has no independent evidence that closes the BIC's causal-writer provenance as human."
+  },
+  "findings": [
+    "The primary's NOT_AI conclusion overstates the available attribution evidence: a human-looking GitHub identity plus absent trailers is insufficient to prove that the parentless initial snapshot was human-written.",
+    "The primary says the full affected range follows the BIC, but upstream has no v0.2.2 tag. CVE.org's affected-version assertion is advisory evidence, not verified Git release membership for that version.",
+    "The vulnerability mechanism, public-history BIC, root-parent absence, exclusion of the later Cursor squash, and unpatched state through HEAD are independently reproduced."
+  ],
+  "corrected_fields": {
+    "verdict": "EVIDENCE_GAP",
+    "ai_marker": "No visible AI marker on 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260; causal-writer human authorship remains unproven because the BIC is an unsigned, parentless 70762-line public snapshot.",
+    "affected_release_membership": "Verified for public tags v0.2.0, v0.2.1, v0.2.3, v0.2.4, and v0.2.5; v0.2.2 is named affected by CVE.org but has no upstream Git tag to test."
+  },
+  "remaining_gap": "Obtain provenance that positively attributes the contents of root BIC 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 to a human causal writer, rather than merely showing no AI trailer, and obtain an authoritative v0.2.2 source/tag if exact release membership must be closed."
+}

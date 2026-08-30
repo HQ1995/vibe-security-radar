@@ -1,0 +1,26 @@
+{
+  "worker": "w346",
+  "review_agent_id": "r389_w346",
+  "class_id": "alias-061f945bb5500d9e15321a52",
+  "case_id": "GHSA-g699-3x6g-wm3g",
+  "repo": "step-security/harden-runner",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE-2026-32946 is PUBLISHED and identifies DNS-over-TCP as the Community-tier egress-policy:block bypass. In agent v0.14.3, addBlockRules ACCEPTs all TCP to 8.8.8.8, 8.8.4.4, and 1.1.1.1 without --dport or --uid-owner, while the local proxy listens only on UDP/53 and audit rules drop UDP/53, so dig +tcp can bypass allowed-endpoints.",
+    "atomic_bic": "CONFIRMED: GitHub blame at agent v0.14.3 attributes the surviving unrestricted resolver ACCEPT mechanism to c793555005be99a734737f7bf8ebce54e545f3c6. Its patch creates firewall.go and first writes the TCP ACCEPT to 8.8.8.8; later commits only expand/restructure the resolver list.",
+    "immediate_parent_absence": "CONFIRMED: c793555005be99a734737f7bf8ebce54e545f3c6 has first parent 794340760181b0a57396ae8eaa9a3235f472994e. That parent's patch creates only .gitignore, LICENSE, and README.md, and firewall.go is absent (raw lookup returns 404), so the vulnerable mechanism is absent in the immediate parent.",
+    "squash_member_decomposition": "CONFIRMED: c793555005be99a734737f7bf8ebce54e545f3c6 is a normal single-parent public first-code commit, not a merge/revert/move; its verifiable parent lacks firewall.go. No finer public member is exposed, so no squash decomposition is applicable.",
+    "affected_release_membership": "CONFIRMED: agent tag v0.14.3 resolves to 689409c83f4ac2a559d1cc60278197f33c0bb83d, GitHub comparison places it 490 commits after c793555005be99a734737f7bf8ebce54e545f3c6, and its firewall.go retains the unrestricted resolver TCP ACCEPT. harden-runner v2.15.1 resolves to 58077d3c7e43986b6b15fba718e8ea69e387dfcc and pins agent v0.14.3.",
+    "fixed_release_membership": "CONFIRMED: agent v0.14.4 resolves to merge 206a878142929550e5382f5b977384f0c313f93d, whose parents include direct fix 7edc21b80b1df77131ce3dde5bfc450a7c20cd97 and v0.14.3 689409c83f4ac2a559d1cc60278197f33c0bb83d. harden-runner v2.16.0 resolves to fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594, directly follows v2.15.1, and changes the community-agent pin from v0.14.3 to v0.14.4.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 7edc21b80b1df77131ce3dde5bfc450a7c20cd97 removes the resolver-wide ACCEPT from both chains and adds an OUTPUT-only rule constrained by --uid-owner to the agent UID and --dport 443. The v0.14.4 tag contains this exact restriction, directly closing DNS-over-TCP from workflow processes.",
+    "bic_only_ai_attribution": "CONFIRMED: the c793555005be99a734737f7bf8ebce54e545f3c6 commit patch names human author Varun Sharma <varunsh@stepsecurity.io>, subject 'First commit', and contains no Co-Authored-By, Generated-with, bot, ChatGPT, Copilot, Cursor, or other AI marker/trailer. The NOT_AI judgment is based only on this BIC object, not on fix or later commits."
+  },
+  "findings": [
+    "The primary record correctly distinguishes the harden-runner wrapper release from the step-security/agent repository where the firewall mechanism and direct fix live.",
+    "The claimed BIC, immediate parent, affected and fixed tags, product pin transition, direct fix, and BIC-only NOT_AI attribution all independently reproduce.",
+    "The frozen GHSA bundle says <=2.15.1 and first patched 2.16.0; the current CVE.org record independently states affected <2.16.0 and PUBLISHED, with the same DNS-over-TCP mechanism."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

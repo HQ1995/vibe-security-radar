@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-15cfd1dfca485ce4fe3fdca2",
+  "case_id": "GHSA-6pr3-cx3j-4949",
+  "repo": "rapid7/metasploit-framework",
+  "advisory_ids": [
+    "CVE-2025-37164",
+    "GHSA-6pr3-cx3j-4949"
+  ],
+  "bug_semantics": "HPE OneView exposes PUT /rest/id-pools/executeCommand without authentication. The controller deserializes attacker-controlled JSON into ExecutableCommand, passes exeCmd.getCmd() to RuntimeExecutorService.execute(), and that service calls Runtime.exec(command), giving an unauthenticated network attacker command execution in the appliance's unconfined Trusted RM Container context. The flaw is reachable only where the ID Pools endpoint is enabled.",
+  "flaw_origin": "The flawed mechanism originates in HPE's proprietary OneView appliance code, specifically guidserver.jar com.hp.ci.mgmt.guidpools.controllers.PoolController.executeCommand together with com.hp.ci.mgmt.guidpools.service.RuntimeExecutorService, not in rapid7/metasploit-framework. The assigned repository first added a post-disclosure exploit client for the already-existing HPE flaw; it contains neither the vulnerable HPE implementation nor the vendor fix history needed to select a real BIC.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "unavailable: the real HPE OneView BIC commit object is not public or present in the assigned clone, so its author, committer, and trailers cannot be inspected. The post-disclosure Metasploit exploit commit is not the BIC and is excluded from AI attribution.",
+  "verdict": "BLOCKED",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "The HPE-authored CVE record at https://cveawg.mitre.org/api/cve/CVE-2025-37164 names HPE OneView as the affected product, marks versions less than 11.00 affected, and lists the rapid7/metasploit-framework URL only in CISA ADP enrichment with tag 'exploit'. It does not identify a source repository or commit.",
+    "Rapid7's first-party analysis at https://www.rapid7.com/blog/post/ra-cve-2025-37164-analysis/ reports that the hotfix HPE_OneView_CVE_37164_Z7550-98077.bin adds 'RewriteRule ^/rest/id-pools/executeCommand$ - [R=404,L]' to /etc/httpd/conf.d/crypto/dynamic-ssl.conf. Its decompilation shows @DocAuthSpecial(SpecialAuthType.NO_AUTH), an optional Auth header, exeCmd.getCmd() flowing into runtimeExecutor.execute(), and Runtime.exec(command).",
+    "The same Rapid7 analysis demonstrates a PUT with attacker-controlled cmd returning HTTP 200 and an interactive shell as uid 1063 (trm3) with an unconfined SELinux context; it also explains that some non-6.x OneView VM editions do not enable ID Pools although the code is present.",
+    "Rapid7's mitigation article at https://www.rapid7.com/blog/post/etr-cve-2025-37164-critical-unauthenticated-rce-affecting-hewlett-packard-enterprise-oneview/ states the vendor boundary as OneView 5.20 through 10.20, fixed by upgrading to 11.0 or applying the vendor hotfix. This verifies the product version boundary, but HPE publishes the remediation as a product release/binary hotfix rather than a Git commit.",
+    "In the assigned clone, exact search for com.hp.ci.mgmt.guidpools.controllers.PoolController and com.hp.ci.mgmt.guidpools.service.RuntimeExecutorService returned no matches. The clone contains an exploit module and documentation, not the vulnerable appliance classes.",
+    "git log --follow -- modules/exploits/linux/http/hpe_oneview_rce.rb shows the file first appears in a4dba967122de40dc3e4cba554dc4fa2be73ca48 (2025-12-19, 'add in the HPE OneView exploit'), whose immediate parent is 2bb30ba7a3eae4560a7e8ac34e09339804ddef2e. That is three days after the HPE CVE publication date 2025-12-16 and therefore cannot be the vulnerability introducer.",
+    "git diff-tree --no-commit-id --name-status -r a4dba967122de40dc3e4cba554dc4fa2be73ca48 reports both documentation/modules/exploit/linux/http/hpe_oneview_rce.md and modules/exploits/linux/http/hpe_oneview_rce.rb as added. git show of the Ruby file confirms it sends the malicious PUT to the HPE endpoint. This verifies only that the exploit module is absent from the Metasploit parent; it cannot establish absence of the vulnerable HPE lines from their unknown BIC parent.",
+    "Because no HPE source commit, parent tree, squash members, or source tag graph is available, git log -L/-S and direct-parent/tree verification for the real vulnerable lines cannot be performed in this repository. Likewise, neither the 11.0 remediation nor the binary hotfix has a public fix SHA that can be mapped to this clone."
+  ],
+  "reasoning": "The vulnerability lifecycle is: HPE shipped an unauthenticated ID Pools command-execution route in affected OneView releases; HPE disclosed CVE-2025-37164 on 2025-12-16 and supplied a binary hotfix that blocks the route, while OneView 11.0 is outside the affected range; Rapid7 then added a Metasploit exploit on 2025-12-19 and later documented its decompiled analysis. The smallest real BIC must be the HPE source commit that first connected the NO_AUTH executeCommand route to Runtime.exec, not Rapid7's later exploit-module addition. The assigned Git history cannot expose that proprietary commit or its immediate parent, so introducer_parent_absent must remain false and squash decomposition cannot be attempted. The same boundary prevents a source-level fix SHA and BIC commit-object AI inspection. Treating the clearly labeled exploit commit as the BIC would reverse causality and violate the vulnerability-first and BIC-only attribution rules; therefore BLOCKED is the only supported verdict.",
+  "remaining_gap": "HPE OneView's source/commit history is not public in the assigned repository. Needed to close the audit are the full commit object and immediate parent for the first HPE change that introduced the NO_AUTH executeCommand-to-Runtime.exec path, any squash-member history, product tag membership for that commit, and the source commit corresponding to OneView 11.0 or hotfix HPE_OneView_CVE_37164_Z7550-98077.bin. Without those objects, parent absence and BIC-only AI attribution are genuinely unobservable."
+}

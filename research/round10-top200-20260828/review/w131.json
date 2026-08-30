@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-7571de669b8698f0df8668e9",
+ "case_id": "GHSA-gmvf-9v4p-v8jc",
+ "repo": "nearform/fast-jwt",
+ "advisory_ids": [
+  "CVE-2026-44351",
+  "GHSA-gmvf-9v4p-v8jc"
+ ],
+ "bug_semantics": "On the function-typed async key-resolver path, a resolver that returns '' or Buffer.alloc(0) is converted to a zero-length HMAC secret. With default algorithms, fast-jwt assigns HS256/HS384/HS512, wraps the empty buffer in crypto.createSecretKey, and verifies attacker-computable empty-key HMAC signatures as authentic, minting arbitrary JWTs. Sync key:'' is rejected as falsy at setup; only the async resolver path is exploitable.",
+ "flaw_origin": "e3ff09f (2020-04-16) first added prepareKeyOrSecret and rewired the async resolver to Buffer.from(currentKey) -> detectPublicKeyAlgorithms -> createSecretKey before verifyToken. Empty Buffers are truthy objects, so detectPublicKeyAlgorithms treats them as HMAC secrets and createSecretKey produces a KeyObject that bypasses verifyToken's hasKey = (Buffer ? length : !!key) check. Parent a750d50 used keyToBuffer then hasKey on Buffer.length, which rejected empty secrets as MISSING_KEY. Later 5844024 only dropped the useNewCrypto gate; 4e5b570 is the empty-length guard, not the introduction.",
+ "introducer_sha": "e3ff09f07b55414e1fdaad2b8f225aa94832b45a",
+ "introducer_parent": "a750d50bd339b0f01cd74dd8e029a51f0a5c1c16",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author Shogun <shogun@cowtech.it>, committer Shogun <shogun@cowtech.it>; git cat-file -p shows no Co-Authored-By, Generated-with, or bot trailers on the BIC (2020-04-16). Claude co-authorship on fix 4e5b570 is ignored for BIC attribution.",
+ "verdict": "NOT_AI",
+ "fix_sha": "4e5b5708b6a9bfa5b06b5b10f888084b754c740d",
+ "direct_fix_sha": "4e5b5708b6a9bfa5b06b5b10f888084b754c740d",
+ "evidence": "Advisory GHSA-gmvf-9v4p-v8jc / CVE-2026-44351 (withdrawn_at null; npm fast-jwt <=6.2.3, first patched 6.2.4). Fix: git show 4e5b5708b6a9bfa5b06b5b10f888084b754c740d -- src/verifier.js adds `if (isSecret && key.length === 0) throw TokenError invalidKey` inside prepareKeyOrSecret; message Closes GHSA-gmvf-9v4p-v8jc. v6.2.3=ab7e46cd66b1ddff689c0b91a0392fef52a37df6 ancestor of BIC, not of fix; v6.2.4=044bf42c8e0a2eda8afc0819f97ae435c4214e3c contains 4e5b570. BIC hunt: git log -L :prepareKeyOrSecret:src/verifier.js first-writes the function at e3ff09f07b55414e1fdaad2b8f225aa94832b45a (`feat: Use newer crypto features if available.`); git cat-file -p e3ff09f (single parent a750d50bd339b0f01cd74dd8e029a51f0a5c1c16); git cat-file -e a750d50:src/verifier.js succeeds; parent grep has no prepareKeyOrSecret/createSecretKey. Parent async path: getAsyncKey -> verifyToken(keyToBuffer(currentKey)); verifyToken hasKey uses Buffer.length, so '' -> empty Buffer -> MISSING_KEY. e3ff09f async path: Buffer.from(currentKey) -> detectPublicKeyAlgorithms (empty non-PEM => hsAlgorithms) -> prepareKeyOrSecret(..., createSecretKey) -> verifyToken(KeyObject) where !!key is true. git log -1 --format='%an %ae %cn %ce' e3ff09f: Shogun shogun@cowtech.it Shogun shogun@cowtech.it. git merge-base --is-ancestor e3ff09f v6.2.3; 4e5b570 not ancestor of v6.2.3. ppa re-checked line-level 2026-08-29: git show a750d50b:src/verifier.js getAsyncKey passes currentKey via keyToBuffer straight into verifyToken with no string->Buffer conversion + detectPublicKeyAlgorithms path; BIC e3ff09f0 adds 'currentKey = Buffer.from(currentKey, 'utf-8')' followed by detectPublicKeyAlgorithms(currentKey)/prepareKeyOrSecret which returns hsAlgorithms for the empty buffer -> introducer_parent_absent=true.",
+ "reasoning": "The authentic vulnerability is empty-HMAC acceptance on the async resolver, not a withdrawn advisory. The smallest first-write of that mechanism is e3ff09f: it introduced wrapping resolver keys in createSecretKey before the existing hasKey length check, so a zero-length secret became a truthy KeyObject and HMAC-verified. That is not a move/refactor/release; parent tree still rejected empty Buffers. 5844024 later made createSecretKey unconditional (Node-version gate removal) but did not first write the lines. Fix 4e5b570 is the length guard landing between 6.2.3 and 6.2.4. AI is judged only from the BIC object: human author/committer Shogun in 2020, no AI trailers. Co-Authored-By Claude on the fix does not attribute the introducer. Verdict NOT_AI.",
+ "remaining_gap": null
+}

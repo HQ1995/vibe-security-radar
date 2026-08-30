@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-d9b463a522ac3009ac44e871",
+  "case_id": "GHSA-mmm3-jq63-7mw5",
+  "repo": "libcsp/libcsp",
+  "advisory_ids": [
+    "CVE-2025-51823",
+    "GHSA-mmm3-jq63-7mw5"
+  ],
+  "bug_semantics": "Heap buffer overflow in csp_eth_init() (src/drivers/eth/eth_linux.c): the Linux Ethernet driver calloc()s eth_context_t with name[CSP_IFLIST_NAME_MAX+1] (11 bytes; CSP_IFLIST_NAME_MAX=10) and then strcpy(ctx->name, ifname) with no length check. A caller-supplied ifname longer than 10 bytes writes past the heap object. Issue #850 includes an ASan heap-buffer-overflow on that strcpy; PR #852 restores a bounded strncpy.",
+  "flaw_origin": "The overflow was first written by 307f4077288fe0da04843ef26b98ab0b5cf44596 (Troels Jessen, 2023-09-05), a one-line edit that replaced the existing bounded strncpy(ctx->name, ifname, sizeof(ctx->name)-1) with unbounded strcpy(ctx->name, ifname). Parent be2fc46417fee1c5180b0c33345a86024692d966 still has the strncpy. The original bounded copy was introduced with csp_eth_init in 378dc98e2a19a6bccc8c24c251efb4248cc691b3; 307f407 is the smallest commit that first wrote the vulnerable strcpy line.",
+  "introducer_sha": "307f4077288fe0da04843ef26b98ab0b5cf44596",
+  "introducer_parent": "be2fc46417fee1c5180b0c33345a86024692d966",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author and committer Troels Jessen <troels@space-inventor.com>; git cat-file -p 307f4077288fe0da04843ef26b98ab0b5cf44596 has no Co-Authored-By, Generated-with, Signed-off-by, or bot trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "dd1ad4d2c5c5c1135af68ee846be82c2863f75e5",
+  "direct_fix_sha": "dd1ad4d2c5c5c1135af68ee846be82c2863f75e5",
+  "evidence": [
+    "CVE.org CVE-2025-51823 state=PUBLISHED (cveMetadata.state, datePublished 2025-08-11); NVD vulnStatus=Analyzed, lastModified 2026-06-17; GHSA-mmm3-jq63-7mw5 withdrawn_at=null. Advisory describes strcpy of ifname into ctx->name without length validation (CWE-120).",
+    "First-party report https://github.com/libcsp/libcsp/issues/850 (Reodus, 2025-05-21): ASan heap-buffer-overflow WRITE in strcpy from csp_eth_init; reporter linked 307f4077288fe0da04843ef26b98ab0b5cf44596. Maintainer comment confirms overflow when ifname exceeds CSP_IFLIST_NAME_MAX and identifies 307f407 as the introducer.",
+    "Fix PR https://github.com/libcsp/libcsp/pull/852 merged 2025-07-19 as dd1ad4d2c5c5c1135af68ee846be82c2863f75e5 (rebase of 2c1be01f66c1b80bd55a60b072070acd155a3ff5, identical patch-id e4544220574111ea73a278d7db74d78f0eac137c). Diff: -strcpy(ctx->name, ifname); +strncpy(ctx->name, ifname, sizeof(ctx->name)-1); at src/drivers/eth/eth_linux.c. Single parent a8649782b05f67701c736dba0c51289dfa33eb7e; not a merge commit.",
+    "git log -G 'strcpy\\(ctx->name' -- src/drivers/eth/eth_linux.c and git log -S 'strcpy(ctx->name, ifname)' return only 307f4077288fe0da04843ef26b98ab0b5cf44596 (add) and dd1ad4d2c5c5c1135af68ee846be82c2863f75e5 (remove).",
+    "BIC 307f4077288fe0da04843ef26b98ab0b5cf44596 is a 1-line, single-parent, non-squash commit (rev-list count 1; author=committer Troels Jessen, authorDate=committerDate 2023-09-05). Diff: -strncpy(ctx->name, ifname, sizeof(ctx->name)-1); +strcpy(ctx->name, ifname);.",
+    "Parent verification: git show be2fc46417fee1c5180b0c33345a86024692d966:src/drivers/eth/eth_linux.c line 77 is strncpy(ctx->name, ifname, sizeof(ctx->name)-1); git grep strcpy(ctx->name on that parent tree is empty. BIC tree line 77 is strcpy(ctx->name, ifname); blame -L 77,77 on BIC attributes that line to 307f40772. ctx->name is char name[CSP_IFLIST_NAME_MAX+1] at eth_linux.c:24; include/csp/csp_interface.h:#define CSP_IFLIST_NAME_MAX 10.",
+    "Original bounded copy first appeared with csp_eth_init in 378dc98e2a19a6bccc8c24c251efb4248cc691b3 (Troels Jessen, 2023-07-31, 'SI-2407 Aligned ETH implementation with CAN'). 307f407 is therefore a regression to unbounded strcpy, not a move/refactor/squash of that earlier write.",
+    "Tag/version membership: BIC is an ancestor of origin/develop and origin/libcsp-2-1 / tag v2.1 (48f7fb0b57f610bf65bab1aa2d1357c3b9722782, 2025-10-10) but not of tag v2.0 / origin/libcsp-2-0 (eth_linux.c does not exist on v2.0; merge-base with v2.0 is ae3e4b6e7d823820e4f609ad07143d8326d6b0af from 2021). meson.build at BIC is version: '2.0'; develop was bumped to '2.1' in 470b855709163b8e2a19ee85defe8cb4d838cdd2 (2024-04-19) after v2.0 was tagged. Fix dd1ad4d is an ancestor of v2.1 and develop; v2.1 and develop HEAD have strncpy, not strcpy. NVD CPE cpe:2.3:a:libcsp:libcsp:2.0 names the 2.0-versioned develop line that actually carried this driver; the v2.0 git tag never had the file.",
+    "BIC commit-object AI check: git cat-file -p 307f4077288fe0da04843ef26b98ab0b5cf44596 yields author/committer Troels Jessen <troels@space-inventor.com> and message 'Include integer in ETH IF name' with no trailers. Regex over the commit object for Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, GPT, OpenAI, Anthropic, Gemini, Grok, bot authors returned no matches. AI-on-fix (PR #852) is not used for BIC attribution."
+  ],
+  "reasoning": "CVE-2025-51823 / GHSA-mmm3-jq63-7mw5 is a real, still-published CWE-120: csp_eth_init copies a caller-controlled ifname into a fixed 11-byte heap field with strcpy. Vendor issue #850 reproduces it under ASan; PR #852 / dd1ad4d2c5c5c1135af68ee846be82c2863f75e5 restores strncpy. The smallest first-write of the vulnerable line is 307f4077288fe0da04843ef26b98ab0b5cf44596, which replaced a working strncpy at parent be2fc46417fee1c5180b0c33345a86024692d966; that parent tree does not contain strcpy(ctx->name, ifname). The commit is not a move, revert, backport, or squash (one parent, one-line diff). The Linux ETH driver lived on develop (meson 2.0 at BIC, later 2.1) and shipped patched in v2.1; the separate v2.0 tag never contained eth_linux.c, so the advisory's '2.0' label is the 2.0-versioned develop line rather than the v2.0 tag, but the overflow itself is confirmed. AI is judged only on the BIC commit object: human author/committer Troels Jessen, no AI/co-author/bot trailers, so the verdict is NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-116193e4f8838773de3b5e0a",
+  "case_id": "GHSA-m662-56rj-8fmm",
+  "repo": "prebid/prebid-universal-creative",
+  "advisory_ids": [
+    "CVE-2025-59039",
+    "GHSA-m662-56rj-8fmm"
+  ],
+  "bug_semantics": "CWE-506 embedded malicious code in the npm artifact prebid-universal-creative@1.17.3 only. On 2025-09-08 that version was published to npm (and briefly served as dist-tag latest, including jsDelivr) with the same crypto-theft backdoor as the chalk/debug maintainer-account hijack (Sonatype sonatype-2025-003716). It is not an in-repo logic bug: public git never contains version 1.17.3 or the payload. Maintainers unpublished 1.17.3; consumers of latest were told to pin 1.17.2.",
+  "flaw_origin": "The malware was injected at npm publish time via account takeover, outside git. RELEASE_PROCESS.md separates GitHub tagging from a later Jenkins/npm distribute step. Clone and origin have tags 1.17.0/1.17.1/1.17.2 then 1.18.0; no 1.17.3 tag, GitHub release, or package.json version string. git log -S '1.17.3' -- package.json is empty. npm packument still has time['1.17.3']=2025-09-08T04:08:25.659Z but versions['1.17.3'] is gone and the tarball 404s. No git object is a BIC for the embedded payload.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: no public git commit object exists for npm 1.17.3, so author/committer/trailer AI signals cannot be judged on a BIC.",
+  "verdict": "BLOCKED",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": "GHSA-m662-56rj-8fmm / CVE-2025-59039 (NVD vulnStatus Deferred, not withdrawn/rejected; GHSA withdrawn_at null, type reviewed) : npm users of PUC 1.17.3 or latest briefly got crypto malware; patch is unpublish; pin 1.17.2. Repo advisory published 2025-09-09 by patmmccann, vulnerable_version_range = 1.17.3, patched_versions empty. Sonatype 2025-09-09 blog lists prebid-universal-creative 1.17.3 among hijacked packages with identical backdoor to chalk/debug (account takeover, not a git patch). Clone /home/hanqing/agents/ai-slop/.ai-slop/state/repos/prebid_prebid-universal-creative: git show-ref/ls-remote origin lack refs/tags/1.17.3; GitHub git/refs/tags/1.17.3 and releases/tags/1.17.3 return 404; releases list 1.17.2 (2025-05-22) then 1.18.0 (2026-07-14). 1.17.2 is 6621f8ecad668de5b5a8accf3b96081573e8bdff (author/committer Prebid.js automated release <prebidjs-release@prebid.org>, parent e6d61a34307f79a99d49a4f0c7088e8abbf841f1); package.json there is 1.17.2. npm packument dist-tags.latest=1.17.2, 1.17.3 not in versions, tarball HEAD 404, jsDelivr @1.17.3 404; 1.17.2 tarball 200 with gitHead 6621f8ec. Scoped git grep of 1.17.3 and known payload markers at HEAD/1.17.2/1.18.0 is empty. Vendor remediation is unpublish, not a source fix commit.",
+  "reasoning": "The advisory is a real supply-chain malware event, not a false positive. Vulnerability-first search for a git BIC fails because the malicious lines were never in public history: no 1.17.3 tag/release/commit, and package.json never advanced to 1.17.3. The npm time field proves a 2025-09-08 publish that was later stripped from versions. Without a surviving tarball or git object, there is no smallest first-write commit to attribute, and no in-repo fix SHA (1.18.0 is a later legitimate release, not removal of in-tree malware). AI cannot be judged. That is a public-history boundary (BLOCKED), not EVIDENCE_GAP for a missing in-repo fact and not NOT_AI without a BIC.",
+  "remaining_gap": "npm 1.17.3 tarball and versions[] entry are unpublished (registry and jsDelivr 404); no git SHA wrote the malware. Payload bytes and the hijacked publisher identity on that publish are not reconstructable from public git. Unpublish plus pin 1.17.2 is the documented remediation."
+}

@@ -1,0 +1,25 @@
+{
+  "worker": "w244",
+  "review_agent_id": "r389_w244",
+  "class_id": "alias-251db8dc68c8acdab3dadaac",
+  "case_id": "GHSA-97r5-pg8x-p63p",
+  "repo": "pallets-eco/flask-security",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: oauth_verify_response() accepted any datastore-resolved OAuth user and then set session['fs_paa']; it did not require that the OAuth-resolved user match current_user, so a different account could refresh a stale authenticated victim session.",
+    "atomic_bic": "CONFIRMED: 51a02457447387ca213f7b6c5fe90f158ebd3c6e is the sole PR #1183 member and first writes oauth_verify_response() with the vulnerable if user / fs_paa path.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 0c152879e2f877d9d00d4dfb88ab3dd73c68ab19 has neither oauth_verify_response nor an fs_paa write in flask_security/oauth_glue.py.",
+    "squash_member_decomposition": "CONFIRMED: member 51a02457447387ca213f7b6c5fe90f158ebd3c6e and landing squash 82575494312957332f9361cb8711af04d44a7a09 have the same parent and tree 4208664b9a0c3c6874d48de881a7de2032e45907; the reconstructable member is the BIC, not the squash wrapper.",
+    "affected_and_fixed_release_membership": "CONFIRMED: tag 5.8.0 (08288dff6907e413d848a16aaf43fc2c2b2a3b72) contains the unguarded path and descends from the landing commit; tag 5.8.1 (362ae3f102f2a6c4eb8c8b20b233c8a2cad61c75) contains the guarded path and descends from fix 8e69f3a94a463c0e8ddc46e31743717559fd8d48. The fix is not an ancestor of 5.8.0. CVE.org lists >=5.8.0,<5.8.1 as affected.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct fix 8e69f3a94a463c0e8ddc46e31743717559fd8d48 changes the sink guard to require user.email == current_user.email and adds test_verify_evil_user; its parent 18808e1e642c4466f8daa46a68d4e1f77a6d1713 still has the vulnerable if user guard.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object and the one-member PR patch identify Chris Wagner as author/committer and contain no Co-Authored-By, Generated-with, Copilot, bot, or other AI-generation marker. An unrelated earlier repository commit mentioning Copilot is excluded under the BIC-only rule."
+  },
+  "findings": [
+    "CVE-2026-46715 is currently PUBLISHED, not rejected or withdrawn; its CNA record describes the same cross-user OAuth reauthentication bypass and references the direct fix.",
+    "The vulnerable source-to-sink path, atomic first write, immediate-parent absence, member/squash identity, release gates, and direct fix all independently match the primary record.",
+    "The BIC-only evidence supports NOT_AI; repository-level AI hits outside the BIC do not alter attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

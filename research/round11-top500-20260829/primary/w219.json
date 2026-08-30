@@ -1,0 +1,44 @@
+{
+  "class_id": "alias-b2b14cc1f1ad84e6351a291a",
+  "case_id": "GHSA-4j2p-28q2-5m79",
+  "repo": "huggingface/accelerate",
+  "advisory_ids": [
+    "CVE-2026-69112",
+    "GHSA-4j2p-28q2-5m79"
+  ],
+  "bug_semantics": "load_checkpoint_in_model (and load_checkpoint_and_dispatch, which calls it) reads a sharded checkpoint *.index.json, takes untrusted weight_map values, and joins them onto the checkpoint directory with os.path.join and no sanitization. Relative ../ segments escape the directory; an absolute shard name discards the folder prefix. Those paths are then opened by load_state_dict (safetensors.safe_open for .safetensors, else torch.load(..., weights_only=True)). A malicious checkpoint can open files outside the folder as an existence/parse oracle, or point a shard at a FIFO so the torch.load branch blocks indefinitely. Not RCE: safetensors uses safe_open and the torch branch already passes weights_only=True.",
+  "flaw_origin": "GitHub squash f56f4441b3d448f4a81d5131c03e7dd73eac3ba0 (Big model inference #345, 2022-05-12) landed the loader on main, but a squash aggregate is not a BIC. PR #345 members are reconstructable in the object database. The smallest first-write is member 6a74308ab4b2f4078c90d81e0fed69bd563db371, which added src/accelerate/modeling_utils.py:load_sharded_checkpoint_in_model with checkpoint_files = sorted(list(set(index['weight_map'].values()))); checkpoint_files = [os.path.join(checkpoint_folder, f) for f in checkpoint_files] then torch.load(checkpoint_file). Immediate parent b2956acbe925845bf202224797334cfe4da18396 has no modeling_utils.py, no load_sharded_checkpoint_in_model, and no weight_map join. Later 7c238ee82fa333ce1e39d41c089c678ade571b13 is a file move to utils/modeling.py; 8a9e639e54204ac7c42324fa0cc52abecbb0cc9f renamed the function to load_checkpoint_in_model and generalized index discovery but kept the unsanitized join.",
+  "introducer_sha": "6a74308ab4b2f4078c90d81e0fed69bd563db371",
+  "introducer_parent": "b2956acbe925845bf202224797334cfe4da18396",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "6a74308ab4b2f4078c90d81e0fed69bd563db371"
+  ],
+  "ai_marker": "absent; author Sylvain Gugger <Sylvain.gugger@gmail.com>, committer Sylvain Gugger <Sylvain.gugger@gmail.com>; git cat-file -p / %(trailers) empty (no Co-Authored-By, Generated-with, Cursor, Copilot, or bot)",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-69112 state=PUBLISHED (assigner VulnCheck, datePublished 2026-08-10, not rejected/withdrawn). GHSA-4j2p-28q2-5m79 withdrawn_at=null; GitHub withdrawn_at is not authoritative.",
+    "First-party mechanism: huggingface/accelerate#4067 (geo-chen, 2026-06-09; July 10 update) names src/accelerate/utils/modeling.py joining weight_map values with os.path.join and opening via load_state_dict. PoC A ../ escape, B absolute path, C FIFO hang. Maintainer SunMarc invited a PR (issuecomment-4660611996). Issue closed 2026-08-12 by github-actions stale bot, not a merge (closed_by_pull_requests includes open #4138).",
+    "HEAD origin/main fd01e35c83d8cc43b88cf0896007716fc5986558 still has the sink at src/accelerate/utils/modeling.py:1938-1941 (if weight_map: index=index['weight_map']; checkpoint_files=sorted(list(set(index.values()))); checkpoint_files=[os.path.join(checkpoint_folder, f) for f in checkpoint_files]). load_state_dict at modeling.py:1646 opens checkpoint_file via safe_open or torch.load(..., weights_only=True) at L1738.",
+    "git log -L 1933,1941:src/accelerate/utils/modeling.py and git log -S 'os.path.join(checkpoint_folder, f)' both first show squash f56f4441b3d448f4a81d5131c03e7dd73eac3ba0 (Big model inference #345; author Sylvain Gugger, committer GitHub; single parent 45359a73fffbc19df73e0af6ed48841925287539). Parent-tree grep of 45359a73 for weight_map/load_checkpoint_in_model/os.path.join(checkpoint_folder is empty.",
+    "PR #345 members are all in the clone. First member 6a74308ab4b2f4078c90d81e0fed69bd563db371 (single parent b2956acbe925845bf202224797334cfe4da18396) added modeling_utils.py:399-416 load_sharded_checkpoint_in_model with index['weight_map'].values() joined unsanitized then torch.load. git cat-file -e b2956ac:src/accelerate/modeling_utils.py fails; git grep weight_map|load_sharded_checkpoint|os.path.join(checkpoint_folder on the parent is empty. That is the BIC; 7c238ee is a move; 8a9e639 is a later rename/generalize of the same join.",
+    "Tag/version: squash f56f444 is ancestor of v0.8.0 (31ebcbe5, 2022-05-12, first containing tag; name-rev tags/v0.8.0~1) through v1.14.0 (09228237). v0.7.1 (e3bc9c84) lacks the loader. v1.14.0 modeling.py:1932 still has the unsanitized join. Advisory range through 1.14.0 matches; CVE CNA start version 0 is coarser than v0.8.0 introduction.",
+    "Unpatched: merge-base --is-ancestor 0b75fbd53d8d4173a092288714a325905ad43734 HEAD fails; same for 429c14a626f4e53d45dcc7dcbe54fc679573b201 (#4070) and ddc174ef07014924c19c845a1758be6637590515 (#4131). GitHub API: #4070/#4131 merged=false closed; #4138 state=open merged=false. No -S 'escape the checkpoint' hit on main modeling.py.",
+    "https://github.com/huggingface/accelerate/issues/4067 ; https://github.com/huggingface/accelerate/pull/4070 ; https://github.com/huggingface/accelerate/pull/4138 ; https://www.cve.org/CVERecord?id=CVE-2026-69112"
+  ],
+  "reasoning": "Vulnerability first: CVE-2026-69112 remains PUBLISHED at CVE.org and GHSA-4j2p-28q2-5m79 is not withdrawn; maintainer invited a fix, so this is a real CWE-22 path-traversal plus FIFO DoS, not FALSE_POSITIVE. The flawed mechanism is unsanitized join of sharded-checkpoint weight_map values onto checkpoint_folder, then open via load_state_dict. BIC search used git log -L/-S from that join, not an AI-marker hunt. The mainline first appearance is squash f56f444 (#345), which is not a BIC. Decomposed PR members show 6a74308 as the smallest first-write of those lines; parent b2956ac was checked directly and lacks the file and symbols (introducer_parent_absent=false because the parent object exists). 7c238ee/8a9e639 are move/rename/generalize of the already-vulnerable join. Tag check: the squash precedes v0.8.0–v1.14.0; v0.7.1 is clean. AI is judged only on BIC 6a74308: human author=committer Sylvain Gugger, empty trailers, no bot. Co-authored-by names on the later squash are review suggestions on #345, not BIC markers. Closed NOT_AI with no landed fix: origin/main HEAD and v1.14.0 still contain the join; unpatched.confirmed records the still-open containment PR #4138.",
+  "remaining_gap": "unpatched: no merged security fix through HEAD fd01e35c83d8cc43b88cf0896007716fc5986558 or latest tag v1.14.0 (09228237b95789ea2ad87e669e7b885855b97f97, modeling.py:1932 still the unsanitized join). Issue #4067 was closed 2026-08-12 by github-actions stale bot, not a merge. PRs #4070 and #4131 closed unmerged; #4138 remains open (head 0b75fbd53d8d4173a092288714a325905ad43734 is not an ancestor of HEAD).",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "No merged containment check on weight_map shard names through origin/main HEAD fd01e35c83d8cc43b88cf0896007716fc5986558 or latest tag v1.14.0; advisory-linked PRs #4070 and #4138 are unmerged (#4138 still open), and issue #4067 was stale-bot closed.",
+    "potential_fix": {
+      "approach": "Validate each sharded-checkpoint weight_map value before join: reject empty/non-string and absolute names, normalize the joined path without realpath, and raise ValueError unless it stays inside checkpoint_folder. Optionally reject non-regular shard files so torch.load cannot block on FIFOs.",
+      "rationale": "os.path.join follows .. segments and discards the checkpoint folder when the shard name is absolute, so load_state_dict opens attacker-chosen paths. A string-normalized containment check closes CWE-22 without breaking Hugging Face hub-cache symlink layouts; a regular-file check closes the named-pipe hang.",
+      "reference_commit": "0b75fbd53d8d4173a092288714a325905ad43734",
+      "reference_url": "https://github.com/huggingface/accelerate/pull/4138"
+    }
+  }
+}

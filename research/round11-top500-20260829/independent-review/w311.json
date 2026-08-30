@@ -1,0 +1,26 @@
+{
+  "worker": "w311",
+  "review_agent_id": "r389_w311",
+  "class_id": "alias-4f401d448319feb66dd70aa2",
+  "case_id": "GHSA-9848-6qgw-2748",
+  "repo": "webmin/webmin",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: User-Agent matching /webmin/i disables cookie-session authentication, after which HTTP Basic validation accepts a password for a 2FA-protected account without validating the second factor. The vendor page and the published CVE record describe this same password-required 2FA bypass.",
+    "atomic_bic": "CONFIRMED: b30868ce165f57b25300cfc45f3504c1be07e202 deletes the four-line HTTP-auth rejection while converting session-login 2FA lookup to get_user_details(). The earlier 2013 session-only integration gap was closed by b178d99667227da4288ed9019125e74a4c2b55e8 before their first common release tag 1.700; b30868ce165f57b25300cfc45f3504c1be07e202 is the atomic regression starting the affected released lineage.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 6862d147f1400f7087989d0aa00ade7021c78487 contains the Basic-auth guard rejecting users present in the two-factor map, while b30868ce165f57b25300cfc45f3504c1be07e202 removes it. The vulnerability is absent in the parent, so introducer_parent_absent must be true.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: b30868ce165f57b25300cfc45f3504c1be07e202 is a single-parent commit whose only parent is 6862d147f1400f7087989d0aa00ade7021c78487, not a merge, move, or squash aggregate; no member decomposition is required.",
+    "affected_fixed_release_membership": "CONFIRMED: b30868ce165f57b25300cfc45f3504c1be07e202 is an ancestor of affected tag 2.630; da18a16c84ae5c0b78cad79609cb0efb174000ec is not. The fix is an ancestor of tags 2.640 and 2.641, and 2.640 contains twofactor_blocked. CVE.org currently states affected versions below 2.640 and unaffected 2.640; the vendor security page places the issue under prior to 2.640. The GHSA description's 2.641 text is stale.",
+    "direct_fix_or_unpatched_state": "CONFIRMED DIRECT FIX: da18a16c84ae5c0b78cad79609cb0efb174000ec adds a get_user_details(...)->{twofactor_provider} check immediately after Basic credential validation, clears the validated user for 2FA accounts, and records a twofactor-required error. Its parent 0424a98a9b7b8c5a6166eff48a0f427dd53d31fa lacks that check.",
+    "bic_only_ai_attribution": "CONFIRMED: the exact BIC object names Jamie Cameron as author and committer on 2017-12-24 and has only the LDAP two-factor bug-fix subject, with no co-author, generated-with, bot, or other AI marker. Attribution does not rely on the 2026 fix, so NOT_AI is supported."
+  },
+  "findings": [
+    "The primary's mechanism, BIC, direct fix, release boundary, and NOT_AI verdict independently reproduce from the advisory and clone.",
+    "The structured field introducer_parent_absent is false even though the primary evidence and independent parent-tree check establish that the vulnerable state is absent in the immediate parent."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

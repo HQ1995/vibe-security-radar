@@ -1,0 +1,26 @@
+{
+  "worker": "w094",
+  "review_agent_id": "r389_w094",
+  "class_id": "alias-ddc393c85932b2b9370f4a23",
+  "case_id": "GHSA-x628-p4h4-vf39",
+  "repo": "owen2345/camaleon-cms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed CWE-862 IDOR: profile is excluded from validate_role, accepts an authenticated caller-controlled user_id, resolves that other user's object, and renders edit without an ownership or users-management authorization check. The route exists as GET admin/profile.",
+    "atomic_bic": "Confirmed 3415939272499a06c64d6ae8f641e4a9cfca43ba as the smallest public first-write of the vulnerable lookup. Exact-string history shows this commit introduced current_site.the_user(params[:user_id].to_i).object; later hits are a RuboCop rewrite and the fix.",
+    "immediate_parent_absence": "Confirmed immediate parent 083fa8a7170f96f83fa8cfbe391957f579f220db has the same validate_role exemption but profile assigns only current_user.object; the attacker-controlled cross-user lookup is absent. The BIC-to-parent controller diff is the one-line assignment change.",
+    "squash_member_decomposition": "The BIC is a single-parent 41-file aggregate, not a merge. No finer public member is exposed by the clone refs; the exact vulnerable hunk first exists in this surviving commit, so there is no reconstructable member to substitute or decompose.",
+    "affected_release_membership": "Confirmed the BIC is an ancestor of tag 2.9.2, while patch merge ae10da7cfce902a8552927c57b0a562fb1676040 is not. The 2.9.2 tree retains the unauthorised user_id lookup, matching CVE.org's affected range 0 through 2.9.2.",
+    "fixed_release_membership": "Confirmed both the BIC and patch merge ae10da7cfce902a8552927c57b0a562fb1676040 are ancestors of tag 2.9.3; the 2.9.3 tree performs authorization before the cross-user load. CVE.org identifies ae10da7 as unaffected/patch.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 1fa227bc5a6246ef47469094380a7d2ebb76c24d adds authorize! :manage, :users for a requested non-self profile. It is an ancestor of PR merge ae10da7cfce902a8552927c57b0a562fb1676040, whose first-parent diff contains that guard.",
+    "bic_only_ai_attribution": "Confirmed on BIC object only: author and committer are Owen <owenperedo@gmail.com>, dated 2015-10-17, with one parent, no trailers, no bot identity, and no Generated-by/Generated-with/Co-Authored-By marker. Later remediation commits are excluded from attribution."
+  },
+  "findings": [
+    "CVE-2026-56720 is currently PUBLISHED in the CVE.org record, not rejected or withdrawn; its mechanism, affected range, and patch reference agree with the frozen advisory bundle.",
+    "The older validate_role exemption alone was not the vulnerability because the parent loaded only the current user; the BIC is the later first-write that combined the exemption with arbitrary user_id lookup.",
+    "The primary causal chain, release gates, direct fix, and BIC-only human attribution independently reproduce from the permitted clone and advisory evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

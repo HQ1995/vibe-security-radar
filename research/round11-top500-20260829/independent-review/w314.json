@@ -1,0 +1,26 @@
+{
+  "worker": "w314",
+  "review_agent_id": "r389_w314",
+  "class_id": "alias-6d9b7e7f3b75552edf8715ff",
+  "case_id": "GHSA-25qx-69jj-jfcj",
+  "repo": "alseambusher/crontab-ui",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed: unauthenticated GET /crontab passes Express-decoded req.query.env_vars to set_crontab; embedded newlines are copied verbatim before scheduled entries into the file installed by crontab(1), permitting injected cron records.",
+    "atomic_bic": "Confirmed 0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43 as the smallest first-write: it simultaneously passes req.query.env_vars at the route and prefixes the generated crontab with env_vars plus a newline.",
+    "immediate_parent_absence": "Confirmed parent ed99f4b5418144d6bf31a6b9373aad5c5f0d1689: set_crontab took no argument, app.js called it without an argument, and the reviewed parent paths contained no env_vars/envVars identifier or user-controlled crontab prefix.",
+    "squash_member_decomposition": "Confirmed no decomposition is needed: the BIC is a normal single-parent commit, and GitHub PR #4 reports exactly one member commit, the same 0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43.",
+    "affected_release_membership": "Confirmed: every repository release tag present after introduction, from v0.1.8 through v0.4.2, contains the BIC; v0.4.2 still contains the vulnerable route-to-crontab sink. CVE-2026-72590 marks semver 0 through 0.4.2 affected.",
+    "fixed_release_membership": "Confirmed no fixed release is identified: the CVE record has no unaffected/patched version and the repository has no tag after v0.4.2.",
+    "direct_fix_or_unpatched_state": "Confirmed unpatched: GitHub main remains 870d958669d64dca1d27ff7bf5d616d17ee7553b as of review, and that tree still writes raw envVars plus a newline into the installed crontab; no post-disclosure main commit or direct fix exists.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only: its 2016 commit object has human Fantoccini as author and committer, message 'Add textarea for environment variables', and no AI, bot, generated-with, or co-author marker. The unrelated Made-with: Cursor marker on current HEAD is explicitly excluded by the protocol."
+  },
+  "findings": [
+    "CVE-2026-72590 is PUBLISHED, not rejected; its mechanism and affected range agree with the source and tag replay.",
+    "The later ecfe9faa586674dccfa20aab3d95f7e7ab5a48a2 rewrite preserves the same raw envVars newline concatenation and is a carrier/refactor, not the BIC.",
+    "The primary NOT_AI verdict, introducer, parent, release state, and null fix fields are supported by independent replay."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "Upstream remains unpatched through main 870d958669d64dca1d27ff7bf5d616d17ee7553b and release v0.4.2; no fix SHA or fixed release is available to record."
+}

@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-eb5825f0250cdf8b9c93d963",
+  "case_id": "GHSA-ccjw-whgg-h4gh",
+  "repo": "budibase/budibase",
+  "advisory_ids": [
+    "CVE-2026-72850",
+    "GHSA-ccjw-whgg-h4gh"
+  ],
+  "bug_semantics": "Authenticated builders can store S3 object keys whose filename component contains '..' segments. sanitizeKey (sanitize-s3-objectkey@0.0.1 plus a backslash-to-slash replace) preserves those segments. Workspace export (POST /api/backups/export) calls retrieveDirectory, which splits the listed Key on '/' and writes via path.join(writePath, ...segments) with no containment check, so Node resolves '..' and the object body is written outside the export temp directory to any path writable by the process (CWE-22 arbitrary file write).",
+  "flaw_origin": "First write of the unsanitized retrieveDirectory sink is 1f36eec89a7faa297b6a589536b0110c6327639c (2022-10-10, mike12345567, 'Some updates towards supporting attachments in app exports') in packages/backend-core/src/objectStore/index.ts: it lists object keys, splits on '/', mkdirSync/join(writePath, ...dirs), and fs.writeFileSync(join(writePath, ...possiblePath), data) with no resolve/startsWith containment. Parent 9efb8f98bc4a105e00680eae97ed6d0916ada783 has that index.ts path but no retrieveDirectory/possiblePath there and no retrieveDirectory anywhere in the tree. d3c4c99e167 later moved the same loop into objectStore.ts (TypeScript conversion, not a first-write). 00a3c630ef4/e23ad3dd26c only switched the write to createWriteStream/tracing while keeping join(writePath, ...possiblePath). Later AI knowledge-file upload is a reachability surface, not the sink origin.",
+  "introducer_sha": "1f36eec89a7faa297b6a589536b0110c6327639c",
+  "introducer_parent": "9efb8f98bc4a105e00680eae97ed6d0916ada783",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none; BIC author and committer are mike12345567 <me@michaeldrury.co.uk>; cat-file -p and log body have no Co-Authored-By, Generated-with, or bot author.",
+  "verdict": "NOT_AI",
+  "fix_sha": "80d1ad98e801cfb1808489d2b5eb8a64da9d0544",
+  "direct_fix_sha": "80d1ad98e801cfb1808489d2b5eb8a64da9d0544",
+  "evidence": "Vendor GHSA-pxwc-66g3-5f27 and CVE-2026-72850 (NVD vulnStatus Received, not withdrawn/rejected) describe retrieveDirectory joining unsanitized S3 keys during export. git log -S retrieveDirectory / possiblePath on packages/backend-core/src/objectStore/{index.ts,objectStore.ts}: first retrieveDirectory write is 1f36eec89a7 (single parent 9efb8f98bc4). Required trio: git cat-file -p 1f36eec89a7; git cat-file -e 9efb8f98bc4:packages/backend-core/src/objectStore/index.ts (exists); git log -1 --format='%an %ae %cn %ce' 1f36eec89a7 -> mike12345567 me@michaeldrury.co.uk (both). Parent git grep retrieveDirectory/possiblePath on backend-core objectStore paths and server export.ts is empty (exit 1). Fix 80d1ad98e80 (2026-06-30, Dom Barker, 'Contain object store retrieval paths', parent efb1a5432e5, not a merge) adds getSafeRetrieveDirectoryPath (resolve + startsWith root) and rejects '.'/'..' segments in sanitizeKey; parent tree still has the join(writePath, ...possiblePath) write. Ancestor of tag 3.40.0 (also in 3.39.24). 39a0fec4f12 is a later cubic-dev-ai[bot] key-validation tweak, not the BIC and not the containment first-fix.",
+  "reasoning": "Real CWE-22: export retrieveDirectory writes attacker-controlled object keys without path containment; advisory is live. BIC is the 2022 human first-write of that sink, not the later TS move, stream refactor, or AI-knowledge upload surface. BIC commit object has human author/committer and no AI trailer/bot. Direct fix 80d1ad98e80 is also human (Dom Barker). AI on a later follow-up or on a different same-repo case does not attribute this BIC. Verdict NOT_AI.",
+  "remaining_gap": null
+}

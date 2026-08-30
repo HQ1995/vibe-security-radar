@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-c80c47cfc3e8d2e3a731011e",
+  "case_id": "GHSA-m39p-34qh-rh3w",
+  "repo": "keichi/binary-parser",
+  "advisory_ids": [
+    "CVE-2026-1245",
+    "GHSA-m39p-34qh-rh3w"
+  ],
+  "bug_semantics": "Parser field names and string encoding names were interpolated without validation into JavaScript source text that compile() passed to the Function constructor. A caller able to supply either parser-definition value could break out of the generated property or string expression and execute arbitrary JavaScript in the Node.js process when the parser was compiled.",
+  "flaw_origin": "Commit 93759332a744c53258827a86b3b660be3c0963cf introduced the JIT compiler and, in the same atomic commit, generated assignments such as vars.%s and buffer.toString('%s', ...) from unchecked this.varName and this.options.encoding before executing the result with new Function. Its immediate parent 54deec261b00825bd452f0e4cba435781c6264c6 used bracket-based interpreted assignments such as ctx.vars[this.varName] and contained neither the Function constructor nor these generated-code interpolation sinks.",
+  "introducer_sha": "93759332a744c53258827a86b3b660be3c0963cf",
+  "introducer_parent": "54deec261b00825bd452f0e4cba435781c6264c6",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names human author and committer Keichi Takahashi <keichi.t@me.com> and its message has no Co-Authored-By, Generated-with, bot identity, or other AI trailer",
+  "verdict": "NOT_AI",
+  "fix_sha": "7811fab5d061173fe2f1d54049836ece7a48933c",
+  "direct_fix_sha": "fd24894054136e17b405fc490c4434adec5cc3b6",
+  "evidence": [
+    "CVE.org record https://www.cve.org/CVERecord?id=CVE-2026-1245 is PUBLISHED and states that binary-parser versions below 2.3.0 directly interpolate untrusted field names or encoding parameters into dynamically generated code, permitting arbitrary JavaScript execution.",
+    "CERT/CC VU#102648 https://kb.cert.org/vuls/id/102648 marks binary-parser Affected, identifies the Function-constructor path and both attacker-controlled parameters, and says the vendor resolved the issue in 2.3.0.",
+    "git log -L 294,294:lib/bang.js and git log -L 338,344:lib/bang.js at 93759332a744c53258827a86b3b660be3c0963cf both resolve the Function sink and unsafe string generator to that commit; git log -S'new Function' independently identifies the same first-writing commit.",
+    "git show 93759332a744c53258827a86b3b660be3c0963cf:lib/bang.js lines 279-295 and 311-348 shows compile() calling new Function and code generators inserting this.varName and this.options.encoding into executable source without escaping.",
+    "git rev-list --parents -n 1 gives the sole parent 54deec261b00825bd452f0e4cba435781c6264c6; direct parent-tree grep finds neither new Function nor the unsafe generated string assignment, while parent lib/bang.js lines 148-175 assigns through ctx.vars[this.varName] in the non-code-generating interpreter.",
+    "git cat-file commit 93759332a744c53258827a86b3b660be3c0963cf shows human author and committer Keichi Takahashi <keichi.t@me.com> and no trailers; the atomic BIC has one parent and is not a merge or squash aggregate.",
+    "git merge-base --is-ancestor confirms the BIC is contained in tag 0.0.1 (e2461285304633139e7c85a5891750bb8083d1bf), consistent with the advisory range covering every release below 2.3.0.",
+    "GitHub PR #283 https://github.com/keichi/binary-parser/pull/283 identifies merged head fd24894054136e17b405fc490c4434adec5cc3b6 and merge commit 7811fab5d061173fe2f1d54049836ece7a48933c; the direct commit validates field names with an identifier regex and encoding names with an allowlist before code generation.",
+    "git diff --exit-code between fd24894054136e17b405fc490c4434adec5cc3b6 and merge 7811fab5d061173fe2f1d54049836ece7a48933c for the changed source and test files is empty, proving the merge carries the direct fix unchanged.",
+    "git merge-base --is-ancestor confirms both the direct fix and merge fix are ancestors of v2.3.0 tag 5efc2c051572e38cd248a53a02482c1382b1142d; that tagged package.json declares version 2.3.0."
+  ],
+  "reasoning": "The advisory is a confirmed vulnerability, not a withdrawn or rejected report: CVE.org is PUBLISHED and CERT/CC records the vendor as affected. The vulnerable lifecycle begins at 93759332a744c53258827a86b3b660be3c0963cf, where executable-source generation, unchecked field-name and encoding interpolation, and the Function-constructor sink first appear together. The immediate parent instead performs ordinary bracket-property assignments and lacks the source-generation sink, so direct parent-tree verification establishes absence. The BIC is already in the first 0.0.1 release and therefore precedes the full affected range. PR #283 directly adds both validations in fd24894054136e17b405fc490c4434adec5cc3b6; merge 7811fab5d061173fe2f1d54049836ece7a48933c carries the same tree changes and both precede the v2.3.0 patched tag. The BIC commit object contains only human author/committer identity and no AI marker, so BIC-only attribution requires NOT_AI regardless of unrelated AI-marked commits elsewhere in the repository.",
+  "remaining_gap": null
+}

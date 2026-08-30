@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-dc55896ec769693b2520c63e",
+  "case_id": "GHSA-43w2-q5cj-hwmq",
+  "repo": "classroomio/classroomio",
+  "advisory_ids": [
+    "CVE-2025-65669",
+    "GHSA-43w2-q5cj-hwmq"
+  ],
+  "bug_semantics": "Missing authorization on course deletion (CWE-862): an authenticated student can soft-delete any course by calling the client Supabase update (status=DELETED) that Settings/Explore-card delete uses; RLS only requires some organizationmember.role_id, not admin/tutor.",
+  "flaw_origin": "6ef33cbfd09d01181423861182561692f08ca116 first added unguarded deleteCourse (supabase.from('course').delete().match({id})) and a Settings UI that calls it with no role check. Parent b3e68119a79c9dbbd7498afa2416a793ab680762 has updateCourse but no deleteCourse and no Settings file. Later bd2f647ca switched to soft-delete; df7a5818b RLS UPDATE uses is_user_in_group_with_role (any org member). 1e9a82e912736d87092715fae13329b76254d052 replaced the client sink with DELETE /course/:courseId behind authMiddleware+courseTeamMemberMiddleware. CVE-2025-65669 remains PUBLISHED (CVE.org) / Modified (NVD), not withdrawn.",
+  "introducer_sha": "6ef33cbfd09d01181423861182561692f08ca116",
+  "introducer_parent": "b3e68119a79c9dbbd7498afa2416a793ab680762",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none",
+  "verdict": "NOT_AI",
+  "fix_sha": "1e9a82e912736d87092715fae13329b76254d052",
+  "direct_fix_sha": "1e9a82e912736d87092715fae13329b76254d052",
+  "evidence": "At v0.1.13 (876a785b, 2025-10-11) Settings handleDeleteCourse awaits deleteCourse($course.id) with no isStudent/admin gate; deleteCourse in apps/dashboard/src/lib/utils/services/courses/index.ts does supabase.from('course').update({ status: 'DELETED' }).match({ id: courseId }). Explore (+page.svelte) renders Courses with isExplore=true; Card overflow Delete is hidden when isLMS (isOrgSite), but handleDeleteCourse still goto /courses/:id/settings#delete, CourseContainer permits enrolled students, and Navigation only hides the Settings link (return !isStudent) rather than blocking the route. supabase/migrations/20240717053936_rls.sql policy 'User must be an org member to UPDATE' uses is_user_in_group_with_role(group_id), which is true for any organizationmember with role_id IS NOT NULL — not admin-only. git log -S 'export async function deleteCourse' first hits 6ef33cbfd09d01181423861182561692f08ca116 (2021-08-24, author/committer rotimi-best <best@classroomio.com>): adds deleteCourse and new Settings/index.svelte calling it. git cat-file -p has no Co-Authored-By/Generated-with/bot; git cat-file -e b3e68119:src/utils/services/courses/index.js succeeds and that parent file has no deleteCourse; parent lacks Settings/index.svelte. 1e9a82e912736d87092715fae13329b76254d052 (feat: complete rewrite of course #622, Rotimi Best / GitHub, 2026-03-09) is first in apps/api/src/routes/course/course.ts to DELETE with courseTeamMemberMiddleware (isCourseTeamMemberOrOrgAdmin). Parent a42565ad still has the unguarded client deleteCourse. GHSA withdrawn_at null; CVE.org PUBLISHED; NVD vulnStatus Modified. PoC: https://github.com/Rivek619/CVE-2025-65669",
+  "reasoning": "The missing-authorization delete is real at the claimed 0.1.13 tree: the client write is not role-gated and RLS is membership-not-admin. The smallest first-write of those unguarded delete lines is 6ef33cbfd, not the later Explore page (98575e4dd, UI surface) or the soft-delete swap (bd2f647ca). Parent tree lacks deleteCourse/Settings. BIC commit object is human (rotimi-best, 2021) with no AI markers, so NOT_AI. The closing change is the 2026 course API rewrite that requires course team or org admin. Advisory is not withdrawn/rejected, so not FALSE_POSITIVE.",
+  "remaining_gap": ""
+}

@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-650b4469f893770df058965e",
+  "case_id": "GHSA-8jx5-5rq8-69m2",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-72835",
+    "GHSA-8jx5-5rq8-69m2"
+  ],
+  "bug_semantics": "Access rules treated the request path as a case-sensitive, slash-separated string and performed literal/prefix matching before the same path was resolved by the host filesystem. On case-insensitive filesystems, a case variant of a denied path therefore missed the rule but named the denied file; on Windows, backslashes and traversal components likewise missed the rule but were normalized by the filesystem. An authenticated user could consequently disclose or mutate an administrator-denied file within the user's filesystem scope.",
+  "flaw_origin": "Commit 9c36dea485ddd16a90f0a615e20baddaee6b9cde first added the access-rule model and its vulnerable enforcement in one change: filemanager.go's User.Allowed compared the uncanonicalized URL with strings.HasPrefix(url, rule.Path), while newly added http.go passed raw request-derived paths to Allowed and then performed filesystem operations. Its immediate parent 780f1bc16e4e5270fed2a6b7da442a47084d8c4b contains none of Rule, User.Allowed, or that comparison. Later commits only moved, extracted, or broadened this mechanism, and the v2 rewrite aggregate preserved it.",
+  "introducer_sha": "9c36dea485ddd16a90f0a615e20baddaee6b9cde",
+  "introducer_parent": "780f1bc16e4e5270fed2a6b7da442a47084d8c4b",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "9c36dea485ddd16a90f0a615e20baddaee6b9cde",
+    "174330929ad7231b95b30acb98ad2033d697590f",
+    "5b619337df9e9dd04e47d9c2da29a92c31adfed3",
+    "42227d9edd7ce613e8b6c0ad62c8cad16cf77266",
+    "9adb60206c0cfd1592eada3955d4e87bc2edf27c",
+    "6811f205b43414fe74d1a9fbbb28e54f3318ff55"
+  ],
+  "ai_marker": "absent: the BIC commit object names human author and committer Henrique Dias <hacdias@gmail.com>, has the message \"updates\", and contains no Co-Authored-By, Generated-with, bot identity, or other AI trailer; the object contains only a PGP signature in addition to ordinary commit metadata",
+  "verdict": "NOT_AI",
+  "fix_sha": "e6d70cf24c0cd79a1787601dc99104ec7e7ca3ef",
+  "direct_fix_sha": "4bc6aca02f0ef8db01f200ed39027ffc2e9d9ddb",
+  "evidence": "The first-party advisory https://github.com/filebrowser/filebrowser/security/advisories/GHSA-fgm5-pw99-w2p7 identifies rules/rules.go Rule.Matches and http/data.go data.Check, explains the case-variant and Windows-backslash equivalences, states affected versions <=2.63.20 and patched version v2.63.21, and names PR #6045. In the validated clone, git log -L on Rule.Matches reaches the v2 rewrite aggregate 12b2c215221696de58431093e01eeff7a5414471; that commit explicitly points to PR #575. The still-public refs/pull/575/head object graph was fetched read-only and decomposed: blame and -L follow the same literal comparison through 6811f205b43414fe74d1a9fbbb28e54f3318ff55 (Rule.Matches extraction), 9adb60206c0cfd1592eada3955d4e87bc2edf27c (isAllowed extraction), 42227d9edd7ce613e8b6c0ad62c8cad16cf77266 and the 2017 relocations, to 9c36dea485ddd16a90f0a615e20baddaee6b9cde. `git show 9c36... -- filemanager.go http.go` shows that commit adding User.Allowed with `strings.HasPrefix(url, rule.Path)` and adding request handlers that call it on `r.URL.Path` before accessing the filesystem. Direct parent-tree command `git grep -n -E 'func \\(u User\\) Allowed|HasPrefix\\(url, rule.Path\\)|type Rule struct' 780f1bc16e4e5270fed2a6b7da442a47084d8c4b -- '*.go'` returned no matches, while the BIC diff creates all of that code. `git cat-file commit 9c36...` gives parent 780f..., Henrique Dias as both author and committer, message `updates`, and no AI trailer. Version checks in the validated history give `git describe --contains --tags 12b2...` = `v2.0.0-rc.1~42`, so the carried flaw predates the entire affected 2.x line. PR #6045 records direct patch head 4bc6aca02f0ef8db01f200ed39027ffc2e9d9ddb; the repository landed its patch as e6d70cf24c0cd79a1787601dc99104ec7e7ca3ef. `git describe --contains --tags e6d70...` = `v2.63.21~1`, and `git tag --contains e6d70... --list 'v2.63.2*'` begins at v2.63.21 (v2.63.20 is absent), matching the advisory boundary.",
+  "reasoning": "The security failure is the semantic disagreement between authorization and filesystem resolution, not the later directory-boundary bug or any particular handler. Starting from the advisory's fixed functions, current-history -L reaches a v2 rewrite aggregate rather than a genuine small origin. Decomposing that aggregate through its referenced surviving PR #575 history shows an uninterrupted causal lineage: the literal raw-path rule matcher was moved and extracted several times but was first written together with its request-to-filesystem enforcement in 9c36dea485ddd16a90f0a615e20baddaee6b9cde. The immediate parent lacks the rule type, matcher, and vulnerable comparison, proving introduction rather than a move. The v2 aggregate carried the mechanism before the first v2 prerelease, and the canonicalization/case-folding fix first appears in the v2.63.21 line, so both version boundaries agree with the advisory. Finally, only the BIC commit object was used for attribution: it has a human author/committer and no AI marker, yielding NOT_AI regardless of later refactors or the fix's provenance.",
+  "remaining_gap": null
+}

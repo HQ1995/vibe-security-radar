@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-ddec734b1bb1dfab2ff3968f",
+  "case_id": "GHSA-3g76-f9xq-8vp6",
+  "repo": "eclipse-vertx/vert.x",
+  "advisory_ids": [
+    "CVE-2026-6860",
+    "GHSA-3g76-f9xq-8vp6"
+  ],
+  "bug_semantics": "With server-side SNI enabled and a wildcard or otherwise broad certificate mapping, an unauthenticated TLS client can submit arbitrarily many distinct matching server names. Each name becomes a key in an unbounded SslContext map, retaining contexts and allowing memory-exhaustion denial of service.",
+  "flaw_origin": "Commit 58238be403a9a073aeaa47813bf0151ac1ff0d14 changed SSLHelper from a non-SNI supplied context to two unbounded ConcurrentHashMap<String, SslContext> caches and populated them with computeIfAbsent(serverName, ...), thereby first writing the vulnerable server-name retention mechanism.",
+  "introducer_sha": "58238be403a9a073aeaa47813bf0151ac1ff0d14",
+  "introducer_parent": "b83f2c1f2e358d8e66c193675b68398267472dbd",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "c64a707b6de83feeb0317e848345684860f0ab2f",
+  "direct_fix_sha": "c64a707b6de83feeb0317e848345684860f0ab2f",
+  "evidence": [
+    "The vendor advisory GHSA-3g76-f9xq-8vp6 and the PUBLISHED CVE-2026-6860 record identify unbounded server-side SNI SslContext caching as a denial-of-service flaw and bound affected releases to 4.3.4 through 4.5.26 and 5.0.0 through 5.0.11.",
+    "Local git diff 58238be403a9a073aeaa47813bf0151ac1ff0d14^..58238be403a9a073aeaa47813bf0151ac1ff0d14 shows SSLHelper adding ConcurrentHashMap<String, SslContext> sslContextMaps and computeIfAbsent(serverName, ...); parent b83f2c1f2e358d8e66c193675b68398267472dbd lacks that server-name-keyed cache.",
+    "Local tag topology shows 58238be403a9a073aeaa47813bf0151ac1ff0d14 is not an ancestor of 4.3.3 but is an ancestor of 4.3.4; the tagged source likewise changes from a certificate-keyed cache in 4.3.3 to the vulnerable serverName-keyed cache in 4.3.4.",
+    "Commit 58238be403a9a073aeaa47813bf0151ac1ff0d14 has exactly one parent, author and committer Julien Viet, subject NetClientBuilder, and no AI attribution, generator marker, Co-Authored-By trailer, or other AI evidence in its commit metadata.",
+    "PR 6102 merged the one-commit 5.0 fix c64a707b6de83feeb0317e848345684860f0ab2f, replacing the unbounded maps with bounded LruCache instances; it is absent from tag 5.0.11 and present in 5.0.12. The parallel 4.x fix a459d30df85b70e8f62e80b2d2aaac79ca767e63 is absent from 4.5.26 and present in 4.5.27."
+  ],
+  "reasoning": "The advisory's resource-exhaustion mechanism is causally present only after 58238be403a9a073aeaa47813bf0151ac1ff0d14 makes arbitrary accepted SNI names persistent map keys; the immediate parent does not contain that mechanism, and release ancestry independently matches the advisory's 4.3.4 lower bound. The commit is an ordinary single-parent public commit rather than a merge or unreconstructable squash. The bounded LRU changes directly remove unbounded retention and align with the first fixed tags. Because AI-role classification is restricted to the BIC and that commit contains no AI marker, this real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

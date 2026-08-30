@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-8a8ea4f84e27a4809ca64836",
+  "case_id": "GHSA-vmph-pw37-x65f",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-72834",
+    "GHSA-vmph-pw37-x65f"
+  ],
+  "bug_semantics": "An authenticated user whose same-scope account has Perm.Download=false can call GET /api/resources/<path>?checksum=<md5|sha1|sha256|sha512>. resourceGetHandler invokes FileInfo.Checksum, which opens and reads the file, then serializes the digest, without first enforcing Perm.Download. The response is therefore a same-scope content-hash oracle that can confirm guessed content, reveal changes, and support offline brute force of low-entropy files; it does not bypass path/scope authorization.",
+  "flaw_origin": "The first reachable v2 implementation commit, 42227d9edd7ce613e8b6c0ad62c8cad16cf77266, added both the granular Download permission in types/user.go and the new http/resource.go checksum branch, but the branch checked no Download permission. The old immediate-parent model had no Download permission, so this member commit first created the relevant permission-bypass mechanism. Master later squashed PR #575 into 12b2c215221696de58431093e01eeff7a5414471. The 2026 commit 1e03feadb550e4414b5589a6a8df57f538efba15 fixed content-returning paths for CVE-2026-35606 but merely left the older checksum flaw in place; it did not write the vulnerable checksum lines.",
+  "introducer_sha": "42227d9edd7ce613e8b6c0ad62c8cad16cf77266",
+  "introducer_parent": "c01ebf33efed835680373668e54d9ddafc90a6b1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "42227d9edd7ce613e8b6c0ad62c8cad16cf77266"
+  ],
+  "ai_marker": "absent: the exact BIC commit object names Henrique Dias <hacdias@gmail.com> as both author and committer; its message has License: MIT and Signed-off-by: Henrique Dias <hacdias@gmail.com> trailers only, with no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "6c69b5cd895e15b29e563200a9a6dfc27b06525e",
+  "direct_fix_sha": "6c69b5cd895e15b29e563200a9a6dfc27b06525e",
+  "evidence": [
+    "The GitHub advisory record for GHSA-vmph-pw37-x65f/CVE-2026-72834 describes the pre-2.63.19 ?checksum= Download-permission bypass and its same-scope hash-oracle impact. Its b7dc392838f11d188f0bc0f2a1a99fad3f7dca03 reference is not a security change: git show identifies that object as an unrelated www/docs/installation.md PID-to-UID typo fix.",
+    "git log -L 69,83:http/resource.go traces the checksum branch back through non-causal lint/package-name edits to aggregate commit 12b2c215221696de58431093e01eeff7a5414471 and shows direct fix 6c69b5cd895e15b29e563200a9a6dfc27b06525e adding the missing guard.",
+    "Aggregate 12b2c215221696de58431093e01eeff7a5414471 is titled 'feat: v2 (#599)' and explicitly points to PR #575, so it is not treated as the smallest BIC. The first PR #575 member is 42227d9edd7ce613e8b6c0ad62c8cad16cf77266. Its commit API diff reports http/resource.go and types/user.go as added relative to its sole parent c01ebf33efed835680373668e54d9ddafc90a6b1.",
+    "At 42227d9edd7ce613e8b6c0ad62c8cad16cf77266, http/resource.go lines 95-108 call file.Checksum(checksum) and clear file.Content without checking user.Perm.Download, while types/user.go line 27 declares Download bool. These two additions create the vulnerable authorization mismatch in one smallest reachable member commit.",
+    "Direct parent verification used the exact parent commit/tree objects: c01ebf33efed835680373668e54d9ddafc90a6b1 has tree ffa00c471a28cdb72ebf6e5dc46c57c945d241a4, whose root contains neither http nor types; the BIC diff marks both vulnerable files added. The parent's lib/filebrowser.go User fields are AllowCommands, AllowEdit, AllowNew, and AllowPublish and contain no Download permission. Thus the combined Download-permission/checksum-bypass mechanism is absent from the immediate parent.",
+    "Version-boundary checks show 12b2c215221696de58431093e01eeff7a5414471 is an ancestor of v2.0.0. git grep at v2.0.0 finds the unguarded checksum branch at http/resource.go:36, the Download permission at users/permissions.go:12, and a contrasting Download guard at http/raw.go:60, proving the flaw was present at the first v2 release boundary.",
+    "Commit 1e03feadb550e4414b5589a6a8df57f538efba15 ('fix: check download permission in resource handler') changed FileOptions.Content to d.user.Perm.Download and guarded the X-Encoding path, but did not modify the checksum branch. This explains why CVE-2026-72834 is a residual/incomplete-fix issue without making 1e03feadb550e4414b5589a6a8df57f538efba15 the BIC.",
+    "Direct fix 6c69b5cd895e15b29e563200a9a6dfc27b06525e adds if !d.user.Perm.Download { return http.StatusAccepted, nil } immediately before file.Checksum in http/resource.go. git merge-base --is-ancestor returns false for this fix against v2.63.18 and true against v2.63.19; the repository changelog names the same commit as 'enforce download permission on the checksum branch'.",
+    "The exact 42227d9edd7ce613e8b6c0ad62c8cad16cf77266 commit object (not the later squash, fixes, PR prose, or branch name) has human author/committer Henrique Dias and only conventional License/Signed-off-by trailers. No commit-object AI signal is present."
+  ],
+  "reasoning": "The vulnerable behavior is the checksum branch's full-file read and digest disclosure under a user model that separately denies downloads. Earlier v1 history did have a checksum endpoint, but its User model had no Download permission, so it could not yet embody this specific permission bypass. PR #575 member 42227d9edd7ce613e8b6c0ad62c8cad16cf77266 is the smallest reconstructable commit that simultaneously introduced the Download permission and rewrote the checksum operation without enforcing it. The member's direct diff and parent tree establish immediate-parent absence. The later master squash 12b2c215221696de58431093e01eeff7a5414471 merely aggregated that member and is excluded as the BIC. The vulnerable combination is demonstrably present in v2.0.0, survives the incomplete 1e03feadb550e4414b5589a6a8df57f538efba15 remediation, and is removed by 6c69b5cd895e15b29e563200a9a6dfc27b06525e at the v2.63.19 boundary. Because the only admissible attribution evidence is the BIC commit object and that object contains human identities and no AI marker, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

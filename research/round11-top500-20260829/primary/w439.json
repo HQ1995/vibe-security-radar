@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-7e21407cc08de7646d210ce7",
+  "case_id": "GHSA-87m4-826x-3crx",
+  "repo": "phpoffice/phpspreadsheet",
+  "advisory_ids": [
+    "CVE-2026-45034",
+    "GHSA-87m4-826x-3crx"
+  ],
+  "bug_semantics": "Attacker-controlled input reaches IOFactory::load(), which calls createReaderForFile() and File::assertFile(). File::prohibitWrappers() tried to reject stream wrappers by accepting parse_url($filename, PHP_URL_SCHEME) only when it returned a string longer than one character. For a valid PHP stream path such as phar:///path/file.phar/inner, parse_url returns false, so the guard is skipped while PHP still opens the phar wrapper. On PHP 7.x the ensuing is_file/is_readable path can deserialize attacker-controlled phar metadata and invoke magic methods for RCE; on PHP 8.x the library-level consequence is wrapper access/file read unless a downstream Phar::getMetadata call restores deserialization.",
+  "flaw_origin": "93c94eb31d59b8248b1d510e1fb5f2f46bc77dce is the earliest surviving public commit object that writes the flawed parse_url/is_string/strlen implementation and routes assertFile() and testFileNoThrow() through it. Its direct parent 36013a3db550618f331c5ae5a64c5e555428bf24 has neither prohibitWrappers nor that parse_url check. The commit is a one-parent aggregate whose message lists three member subjects, but the assigned clone's reachable and unreachable objects expose no finer member commit carrying the helper, so it is the smallest reconstructable first-write object. Later commits including b6c44a4ce907c4a861db040999eb58fb59570c14 copy the mechanism to maintained branches and are backports, not the BIC.",
+  "introducer_sha": "93c94eb31d59b8248b1d510e1fb5f2f46bc77dce",
+  "introducer_parent": "36013a3db550618f331c5ae5a64c5e555428bf24",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names author oleibman <10341515+oleibman@users.noreply.github.com>, committer GitHub <noreply@github.com>, and only the trailer Co-authored-by: calligraf0 <115566010+calligraf0@users.noreply.github.com>; it contains no AI/bot author, AI co-author, or Generated-with/AI-assistance trailer",
+  "verdict": "NOT_AI",
+  "fix_sha": "1433b34843af9f572cb4ad6b3ff92efce32e6c71",
+  "direct_fix_sha": "1433b34843af9f572cb4ad6b3ff92efce32e6c71",
+  "evidence": [
+    "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-45034 is PUBLISHED, describes the phar:/// parse_url false bypass, marks versions < 1.30.5 affected, and states that 1.30.5 fixes it; this is a real vulnerability, not a withdrawn or rejected advisory.",
+    "git log --all --reverse -S'parse_url($filename, PHP_URL_SCHEME)' -- src/PhpSpreadsheet/Shared/File.php identifies 93c94eb31d59b8248b1d510e1fb5f2f46bc77dce as the earliest first-write object, followed by branch copies 4331d3af1b276b1e40b85a349f57134e81d7d6a5, 1f8d2fd7f2709fb63c495c3b30d601796fded029, 1eb5deca30b529393da75ab05ae00e5069b5c277, and b6c44a4ce907c4a861db040999eb58fb59570c14.",
+    "git diff 36013a3db550618f331c5ae5a64c5e555428bf24..93c94eb31d59b8248b1d510e1fb5f2f46bc77dce -- src/PhpSpreadsheet/Shared/File.php shows the BIC adding prohibitWrappers(), the parse_url/is_string/strlen guard, and calls from assertFile() and testFileNoThrow(); git grep on the parent returns no prohibitWrappers or matching parse_url line.",
+    "At 93c94eb31d59b8248b1d510e1fb5f2f46bc77dce, src/PhpSpreadsheet/IOFactory.php:143-147 sends load($filename) through createReaderForFile(), and lines 179-182 call File::assertFile($filename); src/PhpSpreadsheet/Shared/File.php:142-159 then skips the throw when parse_url returns false before reaching is_file/is_readable.",
+    "git cat-file commit 93c94eb31d59b8248b1d510e1fb5f2f46bc77dce verifies sole parent 36013a3db550618f331c5ae5a64c5e555428bf24, author oleibman, committer GitHub, and only a human Co-authored-by calligraf0 trailer; no commit-object AI marker is present.",
+    "The BIC message lists three member subjects, but exact git log searches plus a full reachable/unreachable commit-object scan in the assigned clone find only 93c94eb31d59b8248b1d510e1fb5f2f46bc77dce for those subjects/helper names; no finer member SHA is reconstructable, hence squash_decomposed=false and decomposed_shas=[].",
+    "Tag containment shows the original BIC in 5.6.0 and later mainline tags, while the branch backport b6c44a4ce907c4a861db040999eb58fb59570c14 is contained in 1.30.3 and 1.30.4; this preserves the causal first-write/backport distinction while matching the affected 1.x release line.",
+    "1433b34843af9f572cb4ad6b3ff92efce32e6c71 has direct parent 02970383cc12e7bf0bc0707ea6e2e8ed23a7aec9 (the 1.30.4 tag commit), removes parse_url from File::prohibitWrappers(), replaces it with explicit phar/wrapper rejection, and adds a '3 slashes' phar:/// regression case in tests/PhpSpreadsheetTests/Reader/NoPharTest.php.",
+    "Annotated tag 1.30.5 points to 97bcabd32a64924688487dcd64aceaf158affb5c and contains 1433b34843af9f572cb4ad6b3ff92efce32e6c71; its tag message explicitly says File::prohibitWrappers now rejects phar paths with extra leading slashes that escaped the prior parse_url-based filter."
+  ],
+  "reasoning": "The vulnerability lifecycle closes from attacker-controlled filename to wrapper access: IOFactory::load() delegates to createReaderForFile(), which invokes File::assertFile(); the BIC made assertFile() call prohibitWrappers(), but its parse_url result-type check misclassified phar:/// as wrapper-free and allowed PHP file operations on the phar path. Direct parent-tree inspection proves the flawed helper absent before 93c94eb31d59b8248b1d510e1fb5f2f46bc77dce. Although that public object aggregates three stated member changes, no finer member object is reconstructable from the assigned clone, making it the smallest surviving BIC; later branch copies are excluded as backports. Commit 1433b34843af9f572cb4ad6b3ff92efce32e6c71 directly removes the faulty predicate on the affected 1.x line, adds phar:/// coverage, and is contained in the official patched boundary 1.30.5. Finally, the BIC commit object has only human author/co-author identities and no AI marker, so the real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

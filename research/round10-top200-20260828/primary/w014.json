@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-88efbe8b407955d4addafec2",
+  "case_id": "GHSA-6cm2-456v-hrq7",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "CVE-2026-73624",
+    "GHSA-6cm2-456v-hrq7"
+  ],
+  "bug_semantics": "Diffable.diff accepted both an option-like caller-controlled other value and arbitrary keyword options, placed other in the git diff/diff-tree argument vector before any path separator, converted kwargs into Git options, and executed without Git.check_unsafe_options. Therefore output='/attacker/path' or other='--output=/attacker/path' reached git --output, which opens or truncates the chosen file and writes attacker-influenced diff bytes with the victim process's privileges.",
+  "flaw_origin": "Commit b372e26366348920eae32ee81a47b469b511a21f created the generic Diffable.diff implementation in lib/git/objects/base.py, mixed it into Commit and Tree, accepted **kwargs, inserted other before the path delimiter, and forwarded both channels directly to self.repo.git.diff. This was not merely the later aed099a73025422f0550f5dd5c3e4651049494b2 file move: b372e26366348920eae32ee81a47b469b511a21f first introduced the generic unguarded kwargs sink and broadened the callable surface; subsequent moves and diff/diff-tree refactors preserved that mechanism until the fix.",
+  "introducer_sha": "b372e26366348920eae32ee81a47b469b511a21f",
+  "introducer_parent": "bb24f67e64b4ebe11c4d3ce7df021a6ad7ca98f2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the exact BIC commit object names author Sebastian Thiel <byronimo@gmail.com> and committer Sebastian Thiel <byronimo@gmail.com>; its message contains no Co-Authored-By, Generated-with, AI, or bot trailer, and neither identity is a bot.",
+  "verdict": "NOT_AI",
+  "fix_sha": "1d51b891d7f236044a6aa17498ec682b63dad6e6",
+  "direct_fix_sha": "1d51b891d7f236044a6aa17498ec682b63dad6e6",
+  "evidence": [
+    "The repository's first-party advisory, https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-fjr4-x663-mwxc (API: https://api.github.com/repos/gitpython-developers/GitPython/security-advisories/GHSA-fjr4-x663-mwxc), identifies CVE-2026-73624, CWE-88, GitPython <=3.1.53 as affected, >=3.1.54 as patched, and both output= kwargs and other='--output=...' as file-overwrite paths through Diffable.diff.",
+    "At tag 3.1.53, git/diff.py lines 188-283 define Diffable.diff(..., **kwargs), insert a non-null other at the front of the pre-separator argument list (line 265), and invoke diff_cmd(*self._process_diff_args(args), **kwargs) without check_unsafe_options (line 277). This reaches git diff or git diff-tree and lets git's --output option select and truncate the destination.",
+    "History mining used blame only as a lead, then git log -L on the forwarding line and git log -S'class Diffable'. The -L chain passes through formatting changes and the aed099a73025422f0550f5dd5c3e4651049494b2 move into lib/git/diff.py; the pre-move -L/-S history terminates at b372e26366348920eae32ee81a47b469b511a21f, not at that move. The BIC patch adds Diffable.diff in lib/git/objects/base.py lines 175-243, including **kwargs, args.insert(0, other), and self.repo.git.diff(*args, **kwargs), and adds Diffable to Commit and Tree.",
+    "Direct-parent tree verification against bb24f67e64b4ebe11c4d3ce7df021a6ad7ca98f2 found no class Diffable anywhere under lib/git, and the b372e26366348920eae32ee81a47b469b511a21f parent-to-child diff shows the complete generic Diffable class and vulnerable forwarding lines as additions. The parent had only a separate legacy Commit.diff classmethod with no **kwargs; it did not contain the generic key-controlled output-option sink introduced by the BIC.",
+    "The BIC is an ordinary single-parent commit, not a squash aggregate. Its first release membership begins with 0.2.0-beta1; git merge-base --is-ancestor confirms it is in 3.1.53. Thus it predates the advisory's affected upper boundary rather than being a later move, release, backport, or fix commit.",
+    "Atomic fix 1d51b891d7f236044a6aa17498ec682b63dad6e6 (https://github.com/gitpython-developers/GitPython/commit/1d51b891d7f236044a6aa17498ec682b63dad6e6) changes git/diff.py and git/index/base.py to call Git.check_unsafe_options on Git._option_candidates([other], kwargs) before command execution, with an explicit allow_unsafe_options opt-in. This directly guards both advisory-controlled channels.",
+    "Version-boundary checks resolve tag 3.1.53 to faf3c09038b03bc2bdd8545ef34bbf6d7f1cd11f and tag 3.1.54 to e59d9bab02b095a97e179f47019afee95f4e3c18. The fix is not an ancestor of 3.1.53 (merge-base --is-ancestor exit 1), is an ancestor of 3.1.54 (exit 0), and git tag --contains lists 3.1.54 through 3.1.59 for the fix, matching the first-party <=3.1.53 / >=3.1.54 boundary.",
+    "The only AI-attribution inspection was git cat-file commit b372e26366348920eae32ee81a47b469b511a21f (https://github.com/gitpython-developers/GitPython/commit/b372e26366348920eae32ee81a47b469b511a21f). The exact object has human author and committer Sebastian Thiel <byronimo@gmail.com> and a two-line feature message with no AI/coauthor/generation trailer."
+  ],
+  "reasoning": "The first-party advisory and vulnerable 3.1.53 source establish two argument-injection routes into git --output: an arbitrary kwarg becomes an option, while an option-like other value is positioned where git parses options. Tracing the live forwarding line across later formatting and the aed099 move leads to the pre-move implementation. b372e26366348920eae32ee81a47b469b511a21f is the smallest causal BIC because it newly created the generic Diffable.diff API, newly accepted and forwarded **kwargs without a safety check, retained the pre-separator other channel, and exposed the method on Commit and Tree. Its direct parent lacks that class and exact vulnerable lines. Later commits moved the code and expanded subclasses but did not originate the unguarded sink. Fix 1d51b891d7f236044a6aa17498ec682b63dad6e6 directly screens both other and kwargs before execution and lands exactly in 3.1.54, after the last affected 3.1.53 tag. Finally, the BIC commit object has no AI marker and human author/committer identities, so the BIC-only attribution rule requires NOT_AI.",
+  "remaining_gap": null
+}

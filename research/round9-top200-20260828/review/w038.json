@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-4d7f48179dbbadc00ab4b0b6",
+  "case_id": "GHSA-wx2x-g9fw-53fc",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-73612",
+    "GHSA-wx2x-g9fw-53fc"
+  ],
+  "bug_semantics": "File Browser applies path rules to only the requested source root (and, for copy/rename, the destination root), then recursively copies, renames, or removes the entire source tree without checking each descendant. An authenticated restricted user can therefore operate on an allowed parent containing a denied child: copy or rename makes the denied child accessible at an allowed destination, while delete destroys it.",
+  "flaw_origin": "The earliest persistent resource-API vector is f6816c9a39702484ad7c5c3672209bbc4ce5f948: serveAPI checks c.us.Allowed(r.URL.Path) once, then the newly added deleteHandler calls fileSystem.RemoveAll recursively. Commit 15f997faf0ff629d8da490c52c023e68a2eb7154 subsequently added rename under the same root-only authorization, and 05896697fa2730e59b8bcf6f1253da0f6fb8b5a9 subsequently added recursive copy under the same model. Later commits b4067cc423b1a0a9d24441bd52e2a53207a49fe9, 4b602be5e32d91d16bf30cbd87c4ef39d4b81197, and the v2 aggregate 12b2c215221696de58431093e01eeff7a5414471 moved/rewrote the handlers rather than originating the flaw; 5bf15548d0ad147acfad5000277531be2671f7ce added explicit source/destination root checks but still omitted descendants.",
+  "introducer_sha": "f6816c9a39702484ad7c5c3672209bbc4ce5f948",
+  "introducer_parent": "d4a43db187d7fb9a2eed650abb89f0011842f93a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent on the BIC commit object. `git cat-file commit f6816c9a39702484ad7c5c3672209bbc4ce5f948` shows author and committer Henrique Dias <hacdias@gmail.com>, subject `Major changes on API`, and only Former-commit-id provenance lines; it contains no Co-Authored-By, Generated-with, AI bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "72faf6dd3c85628e332d3e567124b86708ce2695",
+  "direct_fix_sha": "72faf6dd3c85628e332d3e567124b86708ce2695",
+  "evidence": "First-party advisory https://github.com/filebrowser/filebrowser/security/advisories/GHSA-77x8-73f4-5485 states affected versions <=2.63.21, patched v2.63.22, describes root-only authorization followed by unchecked recursive CopyDir/MoveFile/RemoveAll, and names fix 72faf6dd3c85628e332d3e567124b86708ce2695. Reproduce the origin with `git show f6816c9a39702484ad7c5c3672209bbc4ce5f948 -- api.go`: the commit adds api.go, a single `if !c.us.Allowed(r.URL.Path)` in serveAPI, and deleteHandler calling `c.us.fileSystem.RemoveAll(..., r.URL.Path)`. `git log --oneline --no-patch -L :deleteHandler:api.go f247a5560fd599db352b187b7ba25ade64690cf0` reaches f6816c9a, while `git log --all --follow --reverse -S'fileSystem.RemoveAll' -- api.go` independently identifies f6816c9a; analogous -S history identifies 15f997faf0ff629d8da490c52c023e68a2eb7154 for fileSystem.Rename and 05896697fa2730e59b8bcf6f1253da0f6fb8b5a9 for FileSystem.Copy. Direct parent verification: `git grep -n -E 'RemoveAll|resourceHandler|deleteHandler' d4a43db187d7fb9a2eed650abb89f0011842f93a -- '*.go'` finds only the unrelated temporary-download cleanup and no resource delete handler. `git tag --contains f6816c9a39702484ad7c5c3672209bbc4ce5f948 --sort=version:refname` begins at v1.0.0 and includes the v2 line. At the closing boundary, v2.63.21 resolves to f6fb8f6bf52d714b2215534033a3c96316069efc and has no `checkDescendants`; v2.63.22 resolves to afeb478ee1b9d6800d438891d7d56e69204b81f4 and `git grep -n checkDescendants v2.63.22 -- http/resource.go` shows checks before delete and patch plus the descendant walk. `git tag --contains 72faf6dd3c85628e332d3e567124b86708ce2695 --sort=version:refname` starts at v2.63.22.",
+  "reasoning": "The security invariant is per-path rule enforcement, but the mutation handlers authorized only roots and then delegated recursive filesystem work with no checker. f6816c9a is the smallest persistent first-writer for the earliest affected operation, and its immediate parent lacks that resource delete path; later rename and copy commits extend the same flaw, while the 2019 v2 rewrite and 2021 root-check patch are not origins. The direct fix pre-walks every source descendant and its projected destination and rejects the mutation if any rule denies a path, closing all three vectors in v2.63.22. Because the BIC is a 2017 human-authored commit whose raw commit object has no AI marker, the causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

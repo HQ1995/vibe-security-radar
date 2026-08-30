@@ -1,0 +1,24 @@
+{
+  "worker": "w348",
+  "review_agent_id": "r389_w348",
+  "class_id": "alias-06d6d55842cbfd997f678dea",
+  "case_id": "GHSA-3g6v-2r68-prfc",
+  "repo": "traefik/traefik",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Verified in the affected v3 Gateway HTTPRoute path: a single internal backend checks crossProviderNamespaces against route.Namespace, but the mixed/WRR path overwrites namespace with backendRef.Namespace before loadHTTPBackendRef checks the allowlist. A disallowed route namespace can therefore pass the TraefikService @internal check by naming an allow-listed backend namespace when a ReferenceGrant permits the reference.",
+    "atomic_bic": "Verified 8c7634bcde599dd14d4d5c1346acd734f3a007a1 as the smallest surviving public first-write. Its conflict resolution adds the vulnerable allowlist check to v3.6 pkg/provider/kubernetes/gateway/httproute.go; exact-string history and v3.7.4 blame both resolve the flawed lines to this merge.",
+    "immediate_parent_absence": "Verified. First parent 801eb2f149fb0d50cfa706abb741a1c0ae4c7800 already passes the backendRef-overwritten namespace into loadHTTPBackendRef but has no crossProviderNamespaces check there. Second parent 28604083a41b6d6e8c206d71e0bce464bff1edb7 has no v3 httproute.go and its v2.11 implementation passes route.Namespace to loadServices, so neither parent contains the vulnerable binding.",
+    "squash_member_decomposition": "Verified not applicable to the BIC: 8c7634bcde599dd14d4d5c1346acd734f3a007a1 is a two-parent merge whose vulnerable v3 httproute.go lines exist only in the merge result. The second-parent squash 28604083a41b6d6e8c206d71e0bce464bff1edb7 implements a different, non-vulnerable route-namespace check and cannot be substituted as a finer BIC member.",
+    "affected_and_fixed_release_membership": "Verified by tag ancestry. The BIC is absent from v3.6.16 and v3.7.0-ea.1/v3.7.0, present without the fix in v3.6.17 through v3.6.20 and v3.7.1 through v3.7.4. Fix 8447bfc71e971ed150d610d67ca261d64253695c is absent from v3.6.20/v3.7.4 and present in v3.6.21/v3.7.5.",
+    "direct_fix_or_unpatched_state": "Verified direct fix 8447bfc71e971ed150d610d67ca261d64253695c. It rejects an @ cross-provider name whenever backendRef.Namespace is explicitly set before the overwritten namespace reaches loadHTTPBackendRef, covering HTTPRoute and parallel TCPRoute/TLSRoute paths; its regression fixtures and tests landed in the same commit.",
+    "bic_only_ai_attribution": "Verified only on BIC 8c7634bcde599dd14d4d5c1346acd734f3a007a1. The commit object has author and committer romain <rtribotte@users.noreply.github.com>, body 'Merge branch v2.11 into v3.6', and no AI marker or co-author trailer. The Co-authored-by trailer on second parent 28604083a41b6d6e8c206d71e0bce464bff1edb7 is not attributable to the BIC."
+  },
+  "findings": [
+    "CVE-2026-54761 is PUBLISHED in the live CVE.org record and has no rejection reason; the frozen first-party advisory has withdrawn_at=null.",
+    "The primary NOT_AI verdict, introducer, immediate parent, direct fix, and release boundaries are independently reproduced and require no correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

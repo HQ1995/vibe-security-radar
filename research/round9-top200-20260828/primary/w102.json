@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-fc553786375c20ffbf7195d4",
+  "case_id": "GHSA-vgr8-rqwx-wqrp",
+  "repo": "rapid7/metasploit-framework",
+  "advisory_ids": [
+    "CVE-2026-77806",
+    "GHSA-vgr8-rqwx-wqrp"
+  ],
+  "bug_semantics": "In SPIP 4.4.20, analyse_resultat_skel() examined the inner text of each PHP block with an anchored header() regular expression that mistakenly retained PCRE's multiline modifier. Because ^ and $ therefore matched individual lines rather than the whole PHP block, an unauthenticated attacker could inject a newline-delimited header(\"X-Spip-Filtre: intval|_request|system\") line into generated template code. SPIP extracted that attacker-selected filter chain, intval reduced the body to the key 0, _request read attacker-controlled POST parameter 0, and system executed it, yielding pre-authentication remote code execution.",
+  "flaw_origin": "The vulnerable product code is in the upstream spip/ecrire repository, not in the bundled rapid7/metasploit-framework reference. Commit d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d rewrote public/composer.php to collect individual PHP blocks and first added the vulnerable /^...$/ims match over each block's innerHtml. Its immediate parent used a materially different whole-page preg_match_all implementation and did not contain this vulnerable collector-plus-multiline-anchors mechanism. Rapid7 commit b16eca819abb8f1401f21d115e71e3dfc67b847c only added an exploit module and documentation after the SPIP flaw existed; it neither introduced nor fixed SPIP.",
+  "introducer_sha": "d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d",
+  "introducer_parent": "a03a523e479082b16c829ad7612d2938c492fed9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file -p d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d shows author Cerdic <cedric@yterium.com>, committer marcimat <marcimat@rezo.net>, and only a Refs: security-work-item line in the message; there is no Co-Authored-By, Generated-with, bot identity, AI attribution, or other AI trailer in the BIC commit object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "36b9847a7c14e5a069425d7d3104d22ccfecc680",
+  "direct_fix_sha": "36b9847a7c14e5a069425d7d3104d22ccfecc680",
+  "evidence": [
+    "The bundled GHSA and SPIP's first-party 4.4.21 advisory (https://blog.spip.net/Mise-a-jour-critique-de-securite-sortie-de-SPIP-4-4-21.html) identify unauthenticated RCE through mishandled X-Spip-Filtre headers; the vendor says 4.4.20 is affected, 4.4.21 is fixed, exploitation was observed in the wild, and the security screen does not mitigate it.",
+    "In the validated rapid7/metasploit-framework clone, git show b16eca819abb8f1401f21d115e71e3dfc67b847c shows a two-file addition: modules/exploits/multi/http/spip_x_spip_filtre_rce.rb and its documentation. The module sends a newline-injected X-Spip-Filtre header and POST parameter 0; the commit is exploit tooling, not vulnerable SPIP source or a remediation. Its parent is 9f74eb0a48ca7f8039c2618e359c2e80f998ac89. The landed Rapid7 variant 9c9078b5dc99ec4951c008e00e4f1a65bd7351b3 differs only by removing the request timeout and likewise is not a BIC or fix.",
+    "Upstream spip/ecrire git log -L 206,224:public/composer.php 4.4.20 identifies d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d as the commit that first wrote the vulnerable collector callback and /^...$/ims header regex over $bloc['innerHtml']; it is a direct one-parent, one-file source commit, not a move, release commit, revert, merge, or squash aggregate.",
+    "Direct parent-tree comparison git show d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d^..d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d -- public/composer.php resolves the parent as a03a523e479082b16c829ad7612d2938c492fed9 and proves the vulnerable lines absent there: the parent instead used whole-page preg_match_all and had neither CollecteurPhp::remplacer($corps, ...) nor the anchored /^...$/ims match against a PHP block's innerHtml.",
+    "git log 4.4.20..4.4.21 -- public/composer.php finds direct fix 36b9847a7c14e5a069425d7d3104d22ccfecc680. Its message states 'Le modificateur m était en trop' and its one-line patch changes the regex flags from /ims to /is, so the anchors must match the complete PHP block rather than an injected line.",
+    "Version membership is exact: git tag --contains d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d returns 4.4.20 and 4.4.21 but not 4.4.19; git tag --contains 36b9847a7c14e5a069425d7d3104d22ccfecc680 returns only 4.4.21. The peeled release commits are caf95af25a70cfa37bc6e2c34dac30adc9037203 (4.4.19), 74a3d926c272783d106637ab4c2371c0cc7b7ceb (4.4.20), and be104d012aceda0049347121ddc2477c91a79487 (4.4.21).",
+    "The referenced Rapid7 PR https://github.com/rapid7/metasploit-framework/pull/21790 documents the working intval|_request|system exploit chain against SPIP 4.4.20 and explicitly distinguishes the module author from the anonymously reported SPIP vulnerability. This supports the attack path but is not used for AI attribution; the NOT_AI judgment uses only the upstream BIC commit object."
+  ],
+  "reasoning": "CVE-2026-77806 is the regression/variant created while SPIP was changing header extraction for 4.4.20, not the later Metasploit exploit implementation referenced by the advisory. The smallest causal change is d369f5a49c3593f18b1c81fc3a3051bd0bed1e1d: it introduced the exact combination that matters, extraction of each PHP block's inner text plus ^/$ anchors interpreted per-line because of /m. The immediate parent directly lacks that combination, while 4.4.20 contains it. Commit 36b9847a7c14e5a069425d7d3104d22ccfecc680 removes only m, precisely closing the injection primitive, and is contained in fixed release 4.4.21 but not vulnerable 4.4.20. The BIC is a normal direct source commit and needs no squash decomposition. Its raw commit object has non-bot author and committer identities and no AI marker or trailer, so under BIC-only attribution the closed verdict is NOT_AI. The Rapid7 commits are retained only as exploit/reference evidence and are excluded from both causal and AI attribution.",
+  "remaining_gap": null
+}

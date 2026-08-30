@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-6c4e7f2b0f7f275b96c3a230",
+  "case_id": "GHSA-4887-2gc3-6j9r",
+  "repo": "cisagov/malcolm",
+  "advisory_ids": [
+    "CVE-2026-19670",
+    "GHSA-4887-2gc3-6j9r"
+  ],
+  "bug_semantics": "With RBAC enabled, check_rbac() matched role-restricted paths against the raw, percent-encoded ngx.var.request_uri using ngx.re.find(). Nginx selected its serving location from a decoded and normalized URI, so an authenticated low-privilege request such as /%68tadmin.php could reach the htadmin location while the Lua pattern missed; the unmatched-path branch then returned ngx.HTTP_OK.",
+  "flaw_origin": "Commit eb4e64da6da1ee764d0ac9c83e1f0a9280003211 introduced the percent-encoding mismatch by replacing ngx.var.uri with ngx.var.request_uri:match(\"^[^?]+\") in check_rbac(). Its immediate parent e87c50c30d60551185305e2d045c11c3509dbda0 used ngx.var.uri, so the raw-URI source did not exist there. The commit is a one-parent, two-line change rather than a merge, move, revert, or squash aggregate.",
+  "introducer_sha": "eb4e64da6da1ee764d0ac9c83e1f0a9280003211",
+  "introducer_parent": "e87c50c30d60551185305e2d045c11c3509dbda0",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker is present on the introducer: the commit object names Seth Grover as author and committer, is PGP-signed, has only the message 'cisagov/Malcolm#460, work in progress for roles', and contains no AI, Copilot, generated-by, assisted-by, or co-author trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "82b5fc5271fe6844520afca6ef68cf615b67113f",
+  "direct_fix_sha": "82b5fc5271fe6844520afca6ef68cf615b67113f",
+  "evidence": [
+    "CVE.org record CVE-2026-19670 is PUBLISHED and describes the raw percent-encoded request URI versus nginx decoded-location mismatch; it marks Malcolm versions through 26.07.1 affected and states that 26.08.0 addresses the issue.",
+    "git show eb4e64da6da1ee764d0ac9c83e1f0a9280003211 shows check_rbac() changing exactly from 'local uri = ngx.var.uri' to 'local uri = ngx.var.request_uri:match(\"^[^?]+\") or \"\"'.",
+    "git show e87c50c30d60551185305e2d045c11c3509dbda0:nginx/lua/nginx_auth_helpers.lua confirms the parent used ngx.var.uri before matching path_role_envs and returned ngx.HTTP_OK when no rule matched.",
+    "git show 82b5fc5271fe6844520afca6ef68cf615b67113f adds ngx.unescape_uri(path) before slash/traversal normalization and lowercasing; its parent 538057a7c0776010efe40aa71874db06f1c7d42d still passed the raw request URI through normalization without percent-decoding.",
+    "git merge-base --is-ancestor confirms the introducer is an ancestor of the direct fix. Tag containment shows v26.07.1 contains the introducer but not the fix, while v26.08.0 contains the fix, matching the CVE release boundary.",
+    "git cat-file -p eb4e64da6da1ee764d0ac9c83e1f0a9280003211 shows one parent, a Seth Grover author/committer identity, a PGP signature, and no AI-related message or trailer."
+  ],
+  "reasoning": "The advisory's vulnerable source-to-sink path is present in the clone: raw request_uri enters check_rbac(), path_role_envs is matched with ngx.re.find(), and a percent-encoded miss reaches the fail-open HTTP_OK branch. The smallest public commit that first writes the decisive raw-URI source is eb4e64da6da1ee764d0ac9c83e1f0a9280003211; its parent uses nginx's normalized ngx.var.uri. The later traversal-only normalizer does not remove the percent-encoding flaw. Commit 82b5fc5271fe6844520afca6ef68cf615b67113f directly closes it with ngx.unescape_uri and is included in the stated fixed release. Because the BIC itself has no AI marker and is signed under a human author/committer identity, this real vulnerability is classified NOT_AI.",
+  "remaining_gap": "The CVE and GitHub Advisory Database entries cite cisagov/Malcolm GHSA-f2v6-8cj4-mhr6, but that vendor advisory currently describes an unrelated raw-stream/lzip archive-bomb issue and fix. The CVE's vulnerability text and release boundary independently match clone commit 82b5fc5271fe6844520afca6ef68cf615b67113f, but the vendor-advisory cross-reference conflict remains unresolved."
+}

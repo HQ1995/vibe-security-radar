@@ -1,0 +1,25 @@
+{
+  "worker": "w032",
+  "review_agent_id": "r389_w032",
+  "class_id": "alias-d0236c4fef46a57778dbf6c5",
+  "case_id": "GHSA-6q5m-63h6-5x4v",
+  "repo": "harttle/liquidjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: replace_first uses JavaScript string-replacement semantics, so attacker-controlled $& expands to the matched input; chaining it causes exponential allocation, and the later memoryLimit accounting charges inputs rather than the expanded result. The sibling replace and replace_last implementations do not provide this replacement-pattern amplification path.",
+    "atomic_bic": "CONFIRMED: bounded all-ref -S history identifies 4595e2872e7800b93b0d6e487430431a0402f0b2 as the first implementation of replace_first, registered as lodash 4.13.1 _.replace. Later native-replace rewrites, TypeScript/file moves, and the 2024 limiter wrapper preserve rather than originate the replacement-pattern behavior.",
+    "immediate_parent_absence": "CONFIRMED: the BIC has immediate parent b478c798fdd5aba96b1fa279dd78410d4844584c. The parent tree has no replace_first implementation; its only replace_first occurrence is an unchecked README TODO.",
+    "squash_member_decomposition": "CONFIRMED: 4595e2872e7800b93b0d6e487430431a0402f0b2 is a single-parent commit, not a merge, and the assigned clone exposes no finer public member object or matching member ref. It is therefore the smallest surviving first-write object in the available public history.",
+    "affected_fixed_release": "CONFIRMED: CVE-2026-33287 is PUBLISHED and the CNA record marks versions <10.25.1 affected and 10.25.1 patched. The BIC is an ancestor of affected tags including v1.2.0, v10.24.0, and v10.25.0; fix 35d523026345d80458df24c72e653db78b5d061d is absent from v10.25.0 and first appears in v10.25.1.",
+    "direct_fix_or_unpatched": "CONFIRMED: 35d523026345d80458df24c72e653db78b5d061d directly changes replace_first from str.replace(arg1, arg2) to str.replace(arg1, () => arg2), making $& literal; its parent remains vulnerable, and no later assigned-clone history reintroduces the string replacement form.",
+    "bic_only_ai_attribution": "CONFIRMED: judgment is based only on BIC 4595e2872e7800b93b0d6e487430431a0402f0b2. Its 2016 commit object names harttle as author and committer, has subject 'filters: all', no body or trailers, and no bot, Co-Authored-By, Generated-with, Cursor, Copilot, Claude, or GPT marker. AI-marked activity elsewhere in the repository is not transferred to this BIC."
+  },
+  "findings": [
+    "The advisory mechanism, atomic first writer, immediate-parent absence, release topology, and direct fix independently match the primary record.",
+    "The 2024 memoryLimit commit e443068cb9281883ff0fe9f755a15f52ada4e7e2 is not the BIC: it wraps the already-existing amplification primitive, while the direct fix removes replacement-pattern interpretation and the CNA affected range extends to all versions before 10.25.1.",
+    "GHSA currently displays affected <=10.24.x with no patched version, but the authoritative CVE CNA record and local tag ancestry close the fixed-release gate at v10.25.1."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

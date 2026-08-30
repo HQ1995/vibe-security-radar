@@ -1,0 +1,27 @@
+{
+  "worker": "w364",
+  "review_agent_id": "r389_w364",
+  "class_id": "alias-1681ed2c64ca89b8f0c075fb",
+  "case_id": "GHSA-p688-r7jv-fm6f",
+  "repo": "rust-lang/cargo",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Verified. CanonicalUrl at the vulnerable tree strips a trailing .git before removing sparse+; SourceId::new then interns SourceIdInner values through a HashSet keyed by kind, precise, and CanonicalUrl. Thus sparse+https://host/index and sparse+https://host/index.git collapse to one inner identity and the second construction reuses the first raw URL, enabling credential reuse across distinct HTTPS paths.",
+    "atomic_bic": "Verified as 412b6339147265743488cb2fe6073cc250fdf7f0. It is the smallest public commit that adds sparse SourceId parsing, HttpRegistry, sparse registry dispatch, and sparse+ handling in CanonicalUrl while retaining unconditional .git stripping.",
+    "immediate_parent_absence": "Verified. Immediate parent 109bfbd055325ef87a6e7f63d67da7e838f8300b retains intentional git URL .git normalization but has no sparse protocol arm, no sparse+ registry dispatch, and no src/cargo/sources/registry/http_remote.rs, so this vulnerability mechanism is absent.",
+    "squash_member_decomposition": "Verified. GitHub's PR #10470 commits view reports commitsCount=1 and names only 412b6339147265743488cb2fe6073cc250fdf7f0; refs/pull/10470/head resolves to the same SHA. There is no finer public PR member to substitute.",
+    "affected_fixed_release_membership": "Verified. The BIC is an ancestor of Cargo tags 0.62.0, 0.69.0, 0.96.0, and 0.97.0; sparse stabilization commit 7dc55067569e99bf8fe4a23f38e1ec511f71e27d is absent from 0.68.0 and present in 0.69.0. The 1.96 backport 3c51f26a26501ac51fd593db0d21f88719c65b1b is absent from 0.96.0 and present in 0.97.0. CVE.org currently states PUBLISHED and affected Cargo 1.68.0 through versions below 1.96.0, consistent with the vendor advisory.",
+    "direct_fix_or_verified_unpatched_state": "Verified direct fix c4d63a44234de22dc745231c416b80ed848d997f. It gates GitHub lowercasing and .git chopping on schemes without '+', and adds a sparse .git distinction test. Its canonical_url.rs blob is identical in master merge 03cb632e247389fc4555ea7d97b8ea9905be69b1 and backport 3c51f26a26501ac51fd593db0d21f88719c65b1b/0.97.0 landing 30a34c6821b57de0aaec83a901aca39f88f6778c.",
+    "bic_only_ai_attribution": "Verified on the BIC object only. Author and committer are Arlo Siemsen <arsiem@microsoft.com>; the message is only 'HTTP registry implementation', with no Co-Authored-By, Generated-with, AI-tool, bot, or signature marker. The NOT_AI verdict is supported independently of the later fix authorship."
+  },
+  "findings": [
+    "The causal BIC, immediate-parent absence, one-member PR decomposition, affected/fixed release boundaries, direct fix, and BIC-only human attribution are all independently confirmed.",
+    "The primary reaches the correct NOT_AI conclusion but inaccurately says outer SourceId equality and hashing directly use kind plus CanonicalUrl. At this revision, non-Git SourceId cmp/hash use the raw URL; the collision occurs earlier because SourceId::wrap interns SourceIdInner by kind, precise, and CanonicalUrl and reuses the first inner pointer/raw URL."
+  ],
+  "corrected_fields": {
+    "bug_semantics": "Cargo's CanonicalUrl unconditionally stripped a trailing .git, including from sparse registry URLs whose HTTPS paths are distinct. SourceId::new passed each sparse URL through CanonicalUrl and SourceId::wrap interned SourceIdInner in a HashSet whose equality/hash keys are kind, precise, and canonical_url. Consequently sparse+https://host/index and sparse+https://host/index.git retrieved the same interned inner value, including the first raw URL, so Cargo treated the attacker-controlled sibling registry as the credential-bearing registry. Outer non-Git SourceId cmp/hash themselves use the raw URL; the identity collapse is caused by SourceIdInner interning.",
+    "evidence[7]": "At 412b6339147265743488cb2fe6073cc250fdf7f0, SourceId::new computes CanonicalUrl and SourceId::wrap interns SourceIdInner through HashSet. SourceIdInner Hash/PartialEq use kind, precise, and canonical_url, while outer non-Git SourceId Hash/Ord use the raw URL after a pointer-equality fast path. The two sparse URLs therefore collide during interning and share one inner pointer/raw URL; they do not collide because outer SourceId directly hashes CanonicalUrl."
+  },
+  "remaining_gap": null
+}

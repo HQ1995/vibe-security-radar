@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-a0121df1f42f4a996a45328f",
+  "case_id": "GHSA-gwwr-j923-vq7r",
+  "repo": "lsfusion/platform",
+  "advisory_ids": [
+    "CVE-2025-13262",
+    "GHSA-gwwr-j923-vq7r"
+  ],
+  "bug_semantics": "The remotely reachable /uploadFile multipart handler parsed an uploaded FileItem and constructed its destination name by concatenating the request-controlled sid, an underscore, and the client-controlled upload filename beneath an intended temporary upload directory. Because sid was not validated and the resulting path was not canonicalized or checked for containment, ../ segments in sid escaped the upload directory; an attacker could select the uploaded bytes and filename (for example a JSP) and place the file in a web-accessible location.",
+  "flaw_origin": "Commit 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0 introduced the /uploadFile servlet mapping and the first upload handler in one feature commit. Its new UploadFileHandler passed request.getParameter(\"sid\") + \"_\" + item.getName() directly to a java.io.File rooted at WEB-INF/temp and wrote attacker bytes there. Later package moves and the 2022 conversion to FileUtils.writeFile preserved the same unvalidated path composition, so they are not origins of the flaw.",
+  "introducer_sha": "7436c2f0b67128a558e3ac3a820ef8e0a01f59c0",
+  "introducer_parent": "be5f2d4b7523e6d2178c9ef56205c24d3389f71f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw BIC commit object names human author and committer pavel-miniutka <asphalt.by@gmail.com> and contains only the subject '[Web]: file upload'; it has no Co-Authored-By, Generated-with, bot identity, AI attribution, or other trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "35248bf209dc32755ee529da2cb1e66f373ab69c",
+  "direct_fix_sha": "e257d15e55eefdcd1606c6a041e19a8bd1f74fde",
+  "evidence": [
+    "The first-party disclosure https://github.com/lsfusion/platform/issues/1544 identifies /uploadFile and UploadFileRequestHandler, explains that unvalidated sid is appended to the upload base, and demonstrates traversal plus upload of a JSP; it reports affected versions <= 6.1. The issue was opened 2025-11-05 and closed 2026-03-26.",
+    "The GitHub advisory https://github.com/advisories/GHSA-gwwr-j923-vq7r identifies CVE-2025-13262/GHSA-gwwr-j923-vq7r, CWE-22, lsfusion.platform:web-client <= 6.1, request argument sid, and a remotely executable path traversal. It still says 'Patched versions: None' because its displayed last update is 2025-11-27, before the repository fix.",
+    "git log -L 31,36:web-client/src/main/java/lsfusion/http/controller/file/UploadFileRequestHandler.java 6.1 traces the vulnerable sink through cf725e7a33d07e6a176e29b812d95fd6ed57be7b, 9c61e52693e3dcf02d794bc05d6e8aacce08590c, moves/refactors, and finally 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0. Exact-string git log -S over all historical handler paths likewise finds 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0 as the first addition of request.getParameter(\"sid\") + \"_\" + item.getName(); intermediate delete/add commits reproduce the already-vulnerable file and are not BICs.",
+    "git show 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0 shows new platform/web-api/src/main/java/platform/gwt/base/server/handlers/UploadFileHandler.java lines 27-31 constructing new File(request.getRealPath(\"WEB-INF/temp\"), request.getParameter(\"sid\") + \"_\" + item.getName()) and calling item.write(file); the same commit adds the /uploadFile servlet and mapping in platform/web-client/src/main/webapp/WEB-INF/web.xml.",
+    "Immediate-parent tree verification: git ls-tree -r --name-only be5f2d4b7523e6d2178c9ef56205c24d3389f71f for both historical upload-handler paths returns no entry, while git diff --name-status be5f2d4b7523e6d2178c9ef56205c24d3389f71f 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0 marks UploadFileHandler.java as A. Thus the vulnerable endpoint, path composition, and write are absent from the immediate parent.",
+    "Version boundary: tags containing the BIC begin with 1.0.0 (tag date 2013-06-14), and git show 6.1:web-client/src/main/java/lsfusion/http/controller/file/UploadFileRequestHandler.java still passes request.getParameter(\"sid\") + \"_\" + item.getName() to FileUtils.writeFile. Tag 6.1 resolves to release commit cbbef9c5ac9ea6365164cd94914026d608ea832d dated 2025-10-29, so the BIC predates and is present in the advisory's upper affected boundary.",
+    "Direct fix e257d15e55eefdcd1606c6a041e19a8bd1f74fde ('Fixed arbitrary file upload (closes #1544)') stores sid, rejects non-null sid containing '..' with HTTP 400, and then uses the checked variable. Commit 35248bf209dc32755ee529da2cb1e66f373ab69c applies the identical patch to the v6 lineage and explicitly records '(cherry picked from commit e257d15e55eefdcd1606c6a041e19a8bd1f74fde)'.",
+    "Patched boundary: git tag --contains e257d15e55eefdcd1606c6a041e19a8bd1f74fde returns no release tag, whereas git tag --contains 35248bf209dc32755ee529da2cb1e66f373ab69c returns 6.2. Tag 6.2 resolves to release commit dd4dbe5bf9b136e73e18fe25d741253929324350 dated 2026-04-23, and its handler contains the sid '..' rejection; therefore the v6 backport is fix_sha and the original patch is direct_fix_sha.",
+    "BIC-only AI check: git cat-file -p 7436c2f0b67128a558e3ac3a820ef8e0a01f59c0 shows parent be5f2d4b7523e6d2178c9ef56205c24d3389f71f, author and committer pavel-miniutka <asphalt.by@gmail.com>, timestamp 2013-02-07, and only the message '[Web]: file upload', with no trailers or AI/bot marker."
+  ],
+  "reasoning": "The vulnerable lifecycle starts with the 2013 upload feature, not with the later current-path file creation or the 2022 FileUtils refactor: the BIC itself exposed /uploadFile, accepted multipart bytes, and joined two attacker-controlled path components to the intended temp root without validation or containment. Line history and exact-string pickaxe follow that same semantic mechanism across renames, delete/re-add moves, and sink refactoring. Direct inspection of the BIC's parent tree proves that neither historical handler path existed immediately before it. Release membership establishes that the flaw shipped by 1.0.0 and remained byte-for-byte in the relevant path at tag 6.1. The original March 2026 correction rejects traversal tokens in sid; its identical v6 cherry-pick is contained in tag 6.2, establishing the post-advisory patched boundary even though the stale advisory still lists no patched version. Finally, attribution is restricted to the smallest BIC's commit object: it has a human author/committer and no AI marker, so the closed causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

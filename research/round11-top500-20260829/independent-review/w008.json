@@ -1,0 +1,38 @@
+{
+  "worker": "w008",
+  "review_agent_id": "r389_w008",
+  "class_id": "alias-8e92c18748b743d8804419d4",
+  "case_id": "GHSA-jw8h-gwjw-g7rc",
+  "repo": "jahlives/openssl_encrypt",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "FAIL: the advisory and primary omit a blocking data-flow fact. Every nonce assignment reaching the pre-fix fallback produces exactly 12 bytes (remaining_data[:12], sha256(... )[:12], TESTNONCE123, or an at-most-8-byte value padded to 12). The fallback passes nonce[:16], still 12 bytes, to cryptography.hazmat.primitives.ciphers.modes.CTR. CTR construction rejects it with ValueError('Invalid nonce size (12) for CTR.'); the inner fallback handler catches that error and line 1447 raises ValueError('Decryption failed: authentication error'). No unauthenticated plaintext can be returned by the alleged path.",
+    "atomic_bic": "FAIL: 5e3104481d9842d3d6989332ae32bee4b010d2db is the first public commit to write the apparent CTR fallback, but it first wrote dead fail-closed code, not the alleged authentication-bypass mechanism. It therefore is not a vulnerability-introducing commit. Pickaxe for both 'Last resort - attempt unauthenticated AES' and 'modes.CTR' finds only 5e310448 (addition) and 65134868 (deletion).",
+    "immediate_parent_absence": "PASS AS HISTORY, NOT CAUSATION: 5e310448 has the single verified parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. That parent has no modes.CTR fallback and raises on AES-GCM failure. Parent absence proves first-write of the dead fallback only; it cannot turn that code into a BIC.",
+    "squash_member_decomposition": "PASS: 5e310448 is a non-merge single-parent public object; rev-list 295bf5f3..5e310448 contains only 5e310448, so there is no finer reachable public member to decompose. The broad 820-addition commit remains the smallest surviving first-write, but decomposition does not cure the missing vulnerable execution path.",
+    "affected_fixed_release_membership": "FAIL: tags v1.0.0 through v1.3.6 contain the fallback and not 65134868, while v1.4.0 and later contain 65134868 and no fallback. However, inspection of every claimed affected tag shows only 12-byte nonce-producing assignments, so the source does not support the advisory's affected <1.4.0 claim. v1.4.0 marks dead-code removal, not a demonstrated security boundary.",
+    "direct_fix_or_unpatched": "FAIL AS SECURITY FIX: 65134868c092f1c3f0b75751413acc94031d0535 directly deletes the CTR block and raises on AEAD failure, and 5e310448 is its ancestor. But before that deletion the 12-byte nonce already made CTR construction fail and the function already raised the same authentication error. The commit is direct hardening/dead-code removal, not proof that an exploitable path was fixed.",
+    "bic_only_ai_attribution": "FAIL: the 5e310448 commit object contains both the Claude Code generation footer and Claude co-author trailer, independently confirming AI participation in writing the dead fallback. Because there is no atomic BIC for a real vulnerability, that marker cannot support AI_ROOT_CAUSE. The Claude marker on 65134868 is fix-only and is excluded as required."
+  },
+  "findings": [
+    "The authoritative CVE record is PUBLISHED and the repository GHSA is not withdrawn, but publication status does not override the contradicted source-level mechanism.",
+    "At 65134868^, nonce is locally assigned before the AEAD call and every control-flow branch yields length 12; nonce[:16] cannot extend it to the 16-byte AES block required by CTR.",
+    "A minimal runtime check of the same cryptography API rejects modes.CTR(b'0' * 12) with ValueError and accepts 16 bytes. The repository pins cryptography 44.0.3 throughout the claimed v1.0.0-v1.3.6 affected endpoints; its code invokes the same strict CTR mode contract.",
+    "The fallback's own except catches the CTR construction failure, after which the outer path raises 'Decryption failed: authentication error'; ciphertext modification therefore does not reach the alleged unauthenticated return.",
+    "The primary correctly reconstructed first-write, immediate parent, public-history granularity, deletion commit, tag containment, and the BIC commit's AI marker, but incorrectly treated syntactically present dead code as a working authentication bypass."
+  ],
+  "corrected_fields": {
+    "verdict": "FALSE_POSITIVE",
+    "bug_semantics": "The advisory-described AES-GCM-to-AES-CTR authentication bypass is not executable in the claimed affected releases. PQCipher.decrypt() parses or constructs a 12-byte AEAD nonce on every path. After AEAD failure, the apparent fallback calls modes.CTR(nonce[:16]); slicing leaves the nonce at 12 bytes, so CTR mode construction raises before decrypting or returning plaintext. That exception is caught and the function fails closed with ValueError('Decryption failed: authentication error').",
+    "introducer_sha": null,
+    "introducer_parent": null,
+    "introducer_parent_absent": false,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "ai_marker": null,
+    "fix_sha": null,
+    "direct_fix_sha": null
+  },
+  "remaining_gap": null
+}

@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-4caa37dabf3f0bfc9c9e66f7",
+  "case_id": "GHSA-gf2q-c269-pqgc",
+  "repo": "harttle/liquidjs",
+  "advisory_ids": [
+    "CVE-2026-45618",
+    "GHSA-gf2q-c269-pqgc"
+  ],
+  "bug_semantics": "LiquidJS resolved template-controlled filter and tag names with bracket lookup on a prototype-inheriting registry (plain {}). Unregistered names such as valueOf therefore resolved to Object.prototype.valueOf. The filter pipeline then invoked that function as a handler with this bound to a FilterImpl object ({context, later also liquid and token}). Native valueOf returns its receiver, so {{ 1 | valueOf }} leaked engine internals (Context, Liquid, parser, loader, fs, filter table) into template data. Combined with group_by/where property extraction, assign-to-__proto__, and Comparable operators that call lhs.equals/gt/... with this equal to the current scope, a crafted template could obtain Function and execute arbitrary code. Same prototype lookup on liquid.tags made {% constructor %} bypass the missing-tag assertion. CWE-94 RCE. Affected <=10.25.7; 10.26.0 stores filters/tags with Object.create(null).",
+  "flaw_origin": "The smallest first write of the advisory gadget (prototype-inherited valueOf invoked as a filter with FilterImpl as this, so valueOf returns that receiver) is 00bc1efe6a514b24b0bfc2e4196ab2211e7d9fa8 (2019-04-17, harttle). It changed Filter.render from impl.apply(null, ...) to impl.apply({ context }, ...). Immediate parent 6fb47962021bcf5ade0e2b7733883e6690da4df3 still has apply(null, ...) on src/template/filter/filter.ts, so Object.prototype.valueOf could not return a FilterImpl. The prototype-inheriting registry (filters={} / Filter.impls={} / later liquid.filters={}) is older, including the 677e8511e TypeScript class extraction and the 92992689c FilterMap-to-plain-{} refactor; those are carriers/refactors, not the first write of the this-binding that turns valueOf into a leak. f9f595f0f later put the Liquid instance on this (needed for the published parser/fs RCE PoC); d705888c8 added token. Direct fix 457fae0736c3ec862539b9dbf7f477e6c08fb6c6 (in v10.26.0, not v10.25.7) switches liquid.filters and liquid.tags to Object.create(null). Cursor co-authorship is on that fix only.",
+  "introducer_sha": "00bc1efe6a514b24b0bfc2e4196ab2211e7d9fa8",
+  "introducer_parent": "6fb47962021bcf5ade0e2b7733883e6690da4df3",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "457fae0736c3ec862539b9dbf7f477e6c08fb6c6",
+  "direct_fix_sha": "457fae0736c3ec862539b9dbf7f477e6c08fb6c6",
+  "evidence": "First-party advisory GHSA-gf2q-c269-pqgc / CVE-2026-45618: {{ 1 | valueOf }} yields FilterImpl this (context/liquid/token); comparable operators plus assign __proto__ reach Function/child_process. git show 00bc1efe6a514b24b0bfc2e4196ab2211e7d9fa8 -- src/template/filter/filter.ts replaces this.impl.apply(null, [value, ...argv]) with this.impl.apply({ context }, [value, ...argv]). git cat-file -e 6fb47962021bcf5ade0e2b7733883e6690da4df3:src/template/filter/filter.ts; parent file still has apply(null, ...) and no apply({ context }. git cat-file -p 00bc1efe6: author/committer harttle <yangjvn@126.com>, single parent, message 'feat: pass context to filters', no Co-authored-by Copilot/Cursor/Generated-with/bot. git show 457fae0736c3ec862539b9dbf7f477e6c08fb6c6 -- src/liquid.ts changes filters/tags from {} to Object.create(null); parent 3616a744b9abeb425c217b340a2397d46176afb8 still has = {}. merge-base: 457fae073 is an ancestor of v10.26.0, not of v10.25.7. 457fae073 commit message documents the valueOf/FilterImpl leak and carries Co-authored-by: Cursor <cursoragent@cursor.com> on the fix only. 92992689c is a later refactor that inlined FilterMap/TagMap into public {} fields; FilterMap.impls was already {}. f9f595f0f and d705888c8 only enlarge the leaked this object.",
+  "reasoning": "Vulnerability-first: this is a real CWE-94 template RCE, not a withdrawn advisory. The vendor-fixed lookup (plain {} registries) is an old carrier; the first write that makes Object.prototype.valueOf return engine this is 00bc1efe6, whose parent still applies filters with this=null (valueOf cannot leak FilterImpl). That commit is a focused human feature change, not a move/squash/release. Later liquid/token fields and the 92992689c {} inlining are not the BIC. AI-second: the BIC commit object is harttle-authored with no AI trailers, so NOT_AI. Cursor markers on 457fae073 are AI-only-on-fix and do not attribute the introducer.",
+  "remaining_gap": ""
+}

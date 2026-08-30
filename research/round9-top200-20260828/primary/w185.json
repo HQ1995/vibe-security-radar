@@ -1,0 +1,36 @@
+{
+  "class_id": "alias-1c25a76cd723c5906801dfb4",
+  "case_id": "GHSA-px6j-wc84-gwhf",
+  "repo": "classroomio/classroomio",
+  "advisory_ids": [
+    "CVE-2025-65672",
+    "GHSA-px6j-wc84-gwhf"
+  ],
+  "bug_semantics": "Course-management authorization was enforced only by hiding navigation and buttons, not by guarding the management routes or the URL-controlled modal. A student who is a legitimate course member can supply a course ID and browse /courses/{id}/settings#share or /courses/{id}/people?add=true; the course layout admits any course member, the settings route renders its management component, and the add=true query value alone opens the invitation dialog containing tutor-selection and student invite-link controls.",
+  "flaw_origin": "The share/settings surface was already directly routable without a role guard when 103a2eda7b039f6ee1fb9ea524c41b0a85fe158e added src/routes/courses/[id]/settings/+page.svelte. The smallest BIC for the advisory's explicit URL-controlled invite path is reconstructed squash member 0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a: it replaced the role-gated store binding with page-query parsing and open={addPeopleParm === 'true'}, so direct navigation—not only the protected Add button—rendered the management dialog. Squash commit 82eee93417616e4dce0cec9ef30a988da07231c9 later landed the member sequence on main.",
+  "introducer_sha": "0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a",
+  "introducer_parent": "9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7",
+    "0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a",
+    "6baf98eb39415f4e99030d307453b99338a8a357"
+  ],
+  "ai_marker": "absent: BIC commit object 0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a has human author and committer tunny17 <tvnji01@gmail.com>, message 'code refactor', no Co-Authored-By or Generated-with trailer, and no bot author",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "Advisory sources https://github.com/Rivek619/CVE-2025-65672 and https://nvd.nist.gov/vuln/detail/CVE-2025-65672 identify ClassroomIO 0.1.13, CWE-639, and direct student access to /courses/{course-id}/settings#share and /courses/{course-id}/people?add=true.",
+    "git diff 0b61becd^..0b61becd shows apps/dashboard/src/lib/components/Course/components/People/InvitationModal.svelte changing from bind:open={$invitationModal.open} to parsing $page.url.search and using open={addPeopleParm === 'true'}; the same commit keeps the Add button inside RoleBasedSecurity in apps/dashboard/src/routes/courses/[id]/people/+page.svelte, demonstrating that only the normal trigger—not the direct URL—was role-gated.",
+    "Immediate-parent verification against 9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7: git grep found no addPeopleParm or open={addPeopleParm === 'true'} in the people route/components (exit 1). The parent instead had bind:open={$invitationModal.open}; checkQueryParamAndOpenModal() was called only from the role-gated button handler, so loading ?add=true directly did not open the dialog.",
+    "Squash decomposition: 9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7 ('feat add') -> 0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a ('code refactor') -> 6baf98eb39415f4e99030d307453b99338a8a357 ('Update +page.svelte'). The landed GitHub squash 82eee93417616e4dce0cec9ef30a988da07231c9 lists those three members, and git rev-parse proves its InvitationModal.svelte and people/+page.svelte blobs exactly match 6baf98e (40d4f7caf4239d719a383a634984ef94cfceef28 and 681a9210b6ab7632fecab622a0ffe2414f1a55ba respectively).",
+    "Version boundary: git merge-base --is-ancestor 82eee93417616e4dce0cec9ef30a988da07231c9 v0.1.13 succeeded. Tag v0.1.13 resolves to 876a785b3c467b809804f56e0981bff448fcfdb5 and git grep at that tag finds query.get('add') at InvitationModal.svelte:179 and open={addPeopleParm === 'true'} at line 188.",
+    "The companion settings exposure predates the affected release: 103a2eda7b039f6ee1fb9ea524c41b0a85fe158e is an ancestor of v0.1.13, its parent e44353ac0a429694405e0b13494c6041d842bcb1 has no src/routes/courses/[id]/settings/+page.svelte, and v0.1.13 renders <Settings /> at apps/dashboard/src/routes/courses/[id]/settings/+page.svelte:13 without a route role guard.",
+    "No patched boundary is present in the validated history. At origin/main f08f6c6838259ca440299a82f5d100d44d5349cd, apps/dashboard/src/lib/features/course/components/people/invitation-modal.svelte:33 still defines isOpen solely as addPeopleParm === 'true'; the settings route still renders CourseSettingsPage at line 41; and the shared course layout admits any member via return $isOrgAdmin || user at line 92. The BIC's landed squash is also an ancestor of v1.0.0. No advisory reference names a fix or patched version.",
+    "BIC-only AI check: git cat-file -p 0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a records tree 0cc51933168961358264d50d2f3eddd77fb9ec99, parent 9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7, author/committer tunny17 <tvnji01@gmail.com>, and only the message 'code refactor'; there are no trailers or AI/bot markers. Squash-commit metadata was not used for attribution."
+  ],
+  "reasoning": "The vulnerability is an authorization failure rather than mere discoverability: students need ordinary course membership to consume course content, but management-only controls are hidden client-side instead of protected at the route boundary. The settings route began that pattern earlier; for the advisory's concrete ?add=true attack, history is more precise. The mainline commit 82eee93417616e4dce0cec9ef30a988da07231c9 is a squash aggregate and therefore not the BIC. Its recoverable member chain shows that 9f04d4e3a7dd3335ea8fc7db10efe78eab1431a7 only synchronized a query parameter with a role-gated click, while 0b61becdbe1e5d4f7c5d03a3819ff4e0b6792d1a first made the query value itself the modal-open authority. Direct inspection of the immediate parent proves that predicate absent; identical final blobs tie the decomposed chain to the landed squash, and the squash precedes v0.1.13 where the lines remain. The validated mainline still exposes both route surfaces, so there is no honest fix SHA or patched boundary to report. Finally, the BIC commit object contains only human author/committer metadata and no AI marker, yielding NOT_AI despite the vulnerability remaining unpatched.",
+  "remaining_gap": "Unpatched: neither the advisory nor the validated repository history provides a fixing commit or patched version, and origin/main f08f6c6838259ca440299a82f5d100d44d5349cd still contains the URL-only invitation predicate, the unguarded settings renderer, and course-layout admission for any course member. Accordingly fix_sha and direct_fix_sha are null."
+}

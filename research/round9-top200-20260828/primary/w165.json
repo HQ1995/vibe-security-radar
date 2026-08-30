@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-62fa21191c0825ea125062bc",
+  "case_id": "GHSA-hf8w-x9h5-5gf9",
+  "repo": "mattermost/mattermost-plugin-boards",
+  "advisory_ids": [
+    "CVE-2026-2461",
+    "GHSA-hf8w-x9h5-5gf9"
+  ],
+  "bug_semantics": "An authenticated board editor could send a single-block or batch PATCH naming a comment block created by another member. The handlers checked only the caller's general ability to manage board cards and the target block's board, then applied the caller-controlled patch; they never enforced comment ownership or the elevated permission for acting on other users' comments. This let an editor alter another member's comment and caused unauthorized integrity loss.",
+  "flaw_origin": "The atomic PR-member commit 7c1d63a9d9ee6a5f82655f780196d96f35cdd12e first added the PATCH route, handlePatchBlock, App.PatchBlock, BlockPatch.Patch, and SQLStore.PatchBlock. handlePatchBlock accepted any authenticated workspace member resolved by getContainer and passed the requested block ID and patch to storage without comparing the caller to the comment creator. The later mainline squash c734cfb8d16b1a4a20e3fb03b3afdf052fa53fce preserved that vulnerable handler; 3450eb6d4ffda75d303f53795b3d7c38cecd2330 later added the similarly vulnerable batch endpoint but was not the first exposure.",
+  "introducer_sha": "7c1d63a9d9ee6a5f82655f780196d96f35cdd12e",
+  "introducer_parent": "81166b56e4199a04925db8c0e7eb0afcde14d91a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "7c1d63a9d9ee6a5f82655f780196d96f35cdd12e",
+    "44e1b409b9e5491c2e8bb3087c2cb21089b894fc",
+    "96ef8312053d79d3aaeeeee02a4b905ed42776e7",
+    "850186640231e5285d2c1c3e47dc18c37e5fa20b",
+    "9e12afa5d3a044e5f799b1c4f5610dfbce544be8",
+    "59c5a07a28518c5f1a76850f67cda90118bda75e",
+    "113f3a13d4171bbfd05392167beb6c400b04eb45",
+    "c94a750f6ae96f2532fa1484c0a22f6336dc6d1c",
+    "66c1be896f9f3d973accf63b3e1f10f9562bc53c"
+  ],
+  "ai_marker": "absent — the raw commit object for BIC 7c1d63a9d9ee6a5f82655f780196d96f35cdd12e has human author and committer Jesús Espino <jespinog@gmail.com> and message 'Adding support for patch blocks', with no Co-Authored-By, Generated-with, AI-tool, or bot marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "57c5be5b6ef59d02dd72e35094d1fae8ba6e9619",
+  "direct_fix_sha": "8e404dc1fdfdb4694775f92fcf76398ec7cccd9f",
+  "evidence": "The reviewed GHSA at https://github.com/advisories/GHSA-hf8w-x9h5-5gf9 identifies CWE-639, an editor modifying other members' comments, vulnerable Go versions <0.0.0-20260108044135-57c5be5b6ef5, and 57c5be5b6ef59d02dd72e35094d1fae8ba6e9619 as the patch. `git show 57c5be5b...` adds CreatedBy/PermissionDeleteOthersComments checks to server/api/blocks.go handlePatchBlock and handlePatchBlocks and preserves original creator metadata in server/services/store/sqlstore/blocks.go. `git log -L` traced handlePatchBlock through later moves to squash c734cfb8d16b1a4a20e3fb03b3afdf052fa53fce. The public focalboard PR #877 ref (refs/pull/877/head=66c1be896f9f3d973accf63b3e1f10f9562bc53c) decomposes that squash: its first functional member 7c1d63a9d9ee6a5f82655f780196d96f35cdd12e adds the PATCH route and complete mutation stack; subsequent non-merge members are listed in decomposed_shas and only add client/docs/tests/generated code, error handling, or formatting. `git grep` against immediate parent 81166b56e4199a04925db8c0e7eb0afcde14d91a found no handlePatchBlock, PatchBlock, or BlockPatch under server, while that parent already contains the 'comment' block type in webapp/src/blocks/block.ts and commentBlock.ts, proving the exploitable mutation path was absent in the parent and active when introduced. Diffing 7c1d63a... to mainline squash c734cfb... shows server/api/api.go and server/app/blocks.go unchanged; only later non-security model comments/formatting and a not-found guard differ in the relevant server files. `git tag --contains` shows c734cfb... in releases beginning v8.0.0 and still in v9.2.1; the fix is absent from v9.2.1 and first appears in containing tag v9.2.2. The advisory pseudo-version timestamp/hash exactly names 57c5be5b.... refs/pull/152/head resolves to direct remediation 8e404dc1fdfdb4694775f92fcf76398ec7cccd9f, and its relevant tree is identical to squash 57c5be5b.... Raw `git cat-file commit 7c1d63a...` supplies the BIC-only authorship finding.",
+  "reasoning": "The vulnerability existed because a general block-patching primitive trusted possession of workspace/board edit access as sufficient authority over every target block. Comment blocks already existed before the primitive. The first PR member 7c1d63a... is therefore the smallest causal commit: it creates both the reachable PATCH endpoint and the mutation implementation without an ownership check, whereas its immediate parent has neither any block-patch API nor model/store primitive. The mainline c734cfb... is a squash aggregate, so it is not used as the BIC; reconstructing PR #877 identifies 7c1d63a... as the first writer, and later batch support merely widened the same flaw. The vulnerability persisted through v9.2.1. Direct fix 8e404dc... (landed as advisory commit 57c5be5b...) gates modifications of another creator's comment on PermissionDeleteOthersComments and preserves original creator metadata; v9.2.2 contains it and the advisory's first-patched pseudo-version points to it. Finally, attribution is restricted to the raw 7c1d63a... commit object: it is human-authored/committed and contains no AI trailer or bot identity. Therefore the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

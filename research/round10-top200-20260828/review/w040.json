@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-5ed58b4d29558108a471e206",
+  "case_id": "GHSA-5v96-p23j-5mwq",
+  "repo": "roskus/prospero-flow-crm",
+  "advisory_ids": [
+    "CVE-2026-77780",
+    "GHSA-5v96-p23j-5mwq"
+  ],
+  "bug_semantics": "CWE-639 IDOR on POST /transaction/save: bank_account_id and bank_card_id were accepted as nullable integers and fill()-persisted onto the caller's own transaction without any company_id ownership check. The transaction row itself is scoped to Auth::user()->company_id, but the bankAccount and bankCard belongsTo relations are unscoped, so submitting another tenant's sequential integer FK causes TransactionIndexController and the listing view to disclose that tenant's bank account name, bank name, and card last-four.",
+  "flaw_origin": "The unvalidated bank foreign keys were first written in a9c4845f24e969789360bb711bbf16f2280bf7d5 (APP_VERSION 4.9.1) when AccountSaveController::save() gained 'bank_account_id'/'bank_card_id' => ['nullable','integer'] and fill() of those fields, and Account gained the matching fillable columns plus unscoped bankAccount()/bankCard() relations. Later Account→Transaction rename (49d4979babf0a8863a5d68b8a9703cf1e29134f8) and extraction of TransactionSaveRequest (8b2633ddb2178c2f79718efdfb906e051ba2f03c) copied the same type-only rules; they did not introduce the mechanism. Parent b4cbb51057dcc4eb49798267d6a9d25d694cb1d9 has no bank_account_id/bank_card_id anywhere in the tree.",
+  "introducer_sha": "a9c4845f24e969789360bb711bbf16f2280bf7d5",
+  "introducer_parent": "b4cbb51057dcc4eb49798267d6a9d25d694cb1d9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "5fd1fe862bbdcbacf5d7e05c1c123981d8809674",
+  "direct_fix_sha": "5fd1fe862bbdcbacf5d7e05c1c123981d8809674",
+  "evidence": "Advisory GHSA-5v96-p23j-5mwq / CVE-2026-77780 (CVE.org state=PUBLISHED, withdrawn_at=null; https://cveawg.mitre.org/api/cve/CVE-2026-77780) names TransactionSaveController::save() and TransactionSaveRequest::rules() at POST /transaction/save, affected 4.9.1 through 5.14.0, patch 5fd1fe862bbdcbacf5d7e05c1c123981d8809674 / PR 261. git show a9c4845f -- AccountSaveController.php adds 'bank_account_id'/'bank_card_id' => ['nullable','integer'] and fill() of those keys; Account.php adds fillable columns and unscoped belongsTo bankAccount()/bankCard(); version.php 4.9.0→4.9.1. git grep on parent b4cbb510 finds no bank_account_id/bank_card_id. git log -S bank_account_id on the save path: a9c4845f (introducer), 49d4979 (rename Account→Transaction), 8b2633dd (moves type-only rules into TransactionSaveRequest), 5fd1fe86 (ownership Rule::exists scoped to company_id). a9c4845f is a single-parent non-merge commit (parent b4cbb510); rev-list count parent..commit = 1; no reconstructable member commits. AI marker is the commit-message trailer Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>; author/committer Gustavo Novaro <gnovaro@gmail.com>. Tag membership: a9c4845f is ancestor of v5.5.3 and v5.14.0; 5fd1fe86 is not contained in any tag (describe v5.14.0-1-g5fd1fe862); v5.14.0 version.php is 5.14.0, fix bumps to 5.14.2. Pre-fix TransactionSaveRequest still has type-only bank_* rules; pre-fix TransactionSaveController fill($request->validated()) with no ownership check.",
+  "reasoning": "The vulnerability is the missing company ownership check on bank_account_id/bank_card_id at write time, first written when those FKs were added to the accounting save path. The smallest public commit that first wrote those lines is a9c4845f; the immediate parent tree lacks the fields entirely. Subsequent rename and FormRequest extraction preserved the type-only validation and are not BICs. The advisory is published, not withdrawn. AI attribution is taken only from the BIC commit object, which carries an explicit Claude Sonnet 4.6 Co-Authored-By trailer on the same commit that first wrote the flawed mechanism, so the verdict is AI_ROOT_CAUSE. The direct fix is 5fd1fe86.",
+  "remaining_gap": null
+}

@@ -1,0 +1,26 @@
+{
+  "worker": "w179",
+  "review_agent_id": "r389_w179",
+  "class_id": "alias-5a21f357f433c1977460060b",
+  "case_id": "GHSA-xrcf-6jh3-ggvx",
+  "repo": "julien040/anyquery",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: server mode exposes a Vitess MySQL listener, defaults to AuthServerNone, and passes client SQL to SQLite. At the BIC, MySQL parse failures become StmtUnknown and execute the original statement via DB.Query, so SQLite ATTACH DATABASE can create an attacker-selected file without an authorizer restriction.",
+    "atomic_bic": "CONFIRMED: 90e7eaa8f3d7cc4b4dffa3fb4ac111284a8e81ab is the first commit adding namespace/mysql.go, namespace/mysql_handler.go, and namespace/mysql_rewriter.go, including AuthServerNone, the TCP listener, ComQuery, unrestricted DB.Query, and StmtUnknown pass-through. Later 3993837954bf7e23de54703d740ee76f6df02a59 wires the already-existing server into the CLI and is not the first write of the vulnerable mechanism.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is e01a128eb5d7da13b20bcfe8ae591ff35d11115a; its namespace tree has namespace.go and tests/assets but none of the mysql implementation files, so the vulnerable network SQL path is absent.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent ordinary commit and GitHub reports no associated pull request; no public merge or member set exists to decompose. The commit itself is the smallest surviving public first-write object.",
+    "affected_release_membership": "CONFIRMED: the BIC and the later CLI server wiring are ancestors of tag 0.1.0, the BIC is an ancestor of 0.4.4, and 0.4.4 still has AuthServerNone plus ATTACH/StmtUnknown execution with no SQLite authorizer gate.",
+    "fixed_release_membership": "CONFIRMED: direct fix 27f84fc168310455eaf81ec4ba87eed20298670c is not in 0.4.4 and is an ancestor of tag 0.4.5; the 0.4.5 release explicitly lists this commit and CVE-2026-50006.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: 27f84fc168310455eaf81ec4ba87eed20298670c directly registers a SQLite authorizer that denies SQLITE_ATTACH unless Restrictions.AllowAttachPath permits it, enables sandboxing by default for server mode, and adds a MySQL ATTACH-denial/no-file-created regression test.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object identifies human author and committer julien040 and contains no AI/bot/co-author/generated-with trailer. AI signals on other repository commits are irrelevant under BIC-only attribution, so NOT_AI is supported."
+  },
+  "findings": [
+    "GitHub's live reviewed GHSA has withdrawn_at null and affected range < 0.4.5. CVE.org currently returns CVE_RECORD_DNE, but the vendor's 0.4.5 security release explicitly names CVE-2026-50006 and GHSA-xrcf-6jh3-ggvx; this is not evidence of withdrawal or rejection.",
+    "Independent clone replay confirms introducer 90e7eaa8f3d7cc4b4dffa3fb4ac111284a8e81ab, parent e01a128eb5d7da13b20bcfe8ae591ff35d11115a, and direct fix 27f84fc168310455eaf81ec4ba87eed20298670c with the stated release ancestry.",
+    "The primary NOT_AI verdict and all causal fields needed for that verdict are supported; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

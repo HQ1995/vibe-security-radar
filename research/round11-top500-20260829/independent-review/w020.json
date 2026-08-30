@@ -1,0 +1,25 @@
+{
+  "worker": "w020",
+  "review_agent_id": "r389_w020",
+  "class_id": "alias-e03a488b396dbfba39fde27d",
+  "case_id": "GHSA-wcrg-p6mv-jx2j",
+  "repo": "scriban/scriban",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: the template-exposed ArrayFunctions.InsertAt fills index minus list.Count slots with null in a tight C# loop; through 7.1.0 that loop has no TemplateContext and therefore cannot call StepLoop or enforce LoopLimit, allowing attacker-controlled allocation and process-level denial of service.",
+    "atomic_bic": "CONFIRMED: 46054810b50b03a6d19cd51886321cbbefa5d589 is the earliest public object found by reverse -S searches for the InsertAt signature and vulnerable fill loop. It creates src/Textamina.Scriban/Helpers/ArrayFunctions.cs with the loop and registers ArrayFunctions into the array builtins; later hits are namespace moves or edits of the surviving mechanism.",
+    "immediate_parent_absence": "CONFIRMED: git cat-file shows no parent line, git rev-parse 46054810b50b03a6d19cd51886321cbbefa5d589^ fails, and git rev-list --max-parents=0 --all returns exactly this commit.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: the BIC is the parentless public-history root, not a squash, merge, revert, move, or release aggregate. The clone has no refs/pull members from which a finer pre-root writer can be reconstructed.",
+    "affected_fixed_release_membership": "CONFIRMED: annotated tag 7.1.0 peels to 41e94911e662a8fa385f0679b221da209ca2f465 and retains the unbounded loop; annotated tag 7.2.0 peels to 7fdf19df7db01c5e57888c5cc31e4d05f3d75440. The BIC is an ancestor of both tags, while the fix is not an ancestor of 7.1.0 and is the 7.2.0 tag commit, matching the first-party advisory range <= 7.1.0 and patched version 7.2.0.",
+    "direct_fix_or_unpatched": "CONFIRMED DIRECT FIX: 7fdf19df7db01c5e57888c5cc31e4d05f3d75440 has single parent c8094b09f35a9a6249a050011076400f8d76625d, whose InsertAt remains unbounded. Its diff hides the unsafe overload from script binding and adds a TemplateContext/SourceSpan overload that calls context.StepLoop for both input copying and null filling, plus ArrayInsertAtShouldRespectLoopLimitForInternalIteration.",
+    "bic_only_ai_attribution": "CONFIRMED NOT_AI: the exact BIC is dated 2016-01-25, authored and committed by Alexandre Mutel, has message 'Initial version', an empty trailer block, and no bot or AI-generation marker. AI signals on later sibling hardening or fix commits are irrelevant to the BIC-only judgment."
+  },
+  "findings": [
+    "The first-party advisory GHSA-24c8-4792-22hx independently identifies the same array.insert_at allocation sink, affected range <= 7.1.0, and first patched version 7.2.0.",
+    "The root BIC already contains LoopLimit=1000 and enforcement for script loops, but the registered InsertAt builtin does not receive TemplateContext; this establishes the bypass rather than merely an expensive loop.",
+    "The primary record's introducer, root-parent absence, release boundary, direct fix, and NOT_AI conclusion all match the independent clone replay."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

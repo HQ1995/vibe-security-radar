@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-75a536bcc033e5afa3af2b82",
+ "case_id": "GHSA-245w-hx5r-x6jq",
+ "repo": "appneta/tcpreplay",
+ "advisory_ids": [
+  "CVE-2024-22654",
+  "GHSA-245w-hx5r-x6jq"
+ ],
+ "bug_semantics": "tcprewrite hangs in get_layer4_v6's while (!done) walk of IPv6 extension headers (get.c). get_ipv6_next computes extlen = IPV6_EXTLEN_TO_BYTES(ip_len) = (ip_len*4)+8 into a uint8_t. For ip_len values such as 62, that product wraps to 0, so ptr = exthdr + 0 and the walker never advances. A crafted IPv6 packet therefore loops forever (CWE-835). The hang is reachable from tcprewrite on a crafted pcap.",
+ "flaw_origin": "The IPv6 extension walker and IPV6_EXTLEN_TO_BYTES macro date to 2009 (1894ec0b/36727c87/98c2a03d) but stored the byte length in int, so (ip_len*4)+8 could not wrap to 0. 49420cb (2022-08-04, Bug #718 heap-overflow / end_ptr work) first narrowed get_ipv6_next's extlen to uint8_t, writing the wrap-to-zero skip that issue #827 reproduces on v4.4.4. Parent ff643e96 still has int extlen = 0. Fix 52ed6332 (PR #842, Fixes #827) rejects extlen==0; 5b564435 later restages that guard plus extra bounds.",
+ "introducer_sha": "49420cb5297852bbe4e3efe846d2d42e134f858d",
+ "introducer_parent": "ff643e96a993758811a4cbf10092dcb639fcabef",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author Fred Klassen <fred.klassen@broadcom.com>, committer Fred Klassen <fred.klassen@broadcom.com>; git cat-file -p 49420cb shows no Co-Authored-By, Generated-with, or bot trailers (2022-08-04).",
+ "verdict": "NOT_AI",
+ "fix_sha": "52ed63329b37ae83cb86504db2c9deb6a91e2fe9",
+ "direct_fix_sha": "52ed63329b37ae83cb86504db2c9deb6a91e2fe9",
+ "evidence": "Advisory GHSA-245w-hx5r-x6jq / CVE-2024-22654 (withdrawn_at null; summary infinite loop via tcprewrite at get.c; CWE-835). First-party issue https://github.com/appneta/tcpreplay/issues/827 (v4.4.4, hang at get.c:569) closed by PR #842. v4.4.4=45cb093ed2698decb72254364abac99d3fc8aeba get.c:569 while (!done) in get_layer4_v6; get_ipv6_next uses uint8_t extlen and IPV6_EXTLEN_TO_BYTES with no zero check. BIC: git log -S uint8_t extlen -- src/common/get.c first writes it at 49420cb5297852bbe4e3efe846d2d42e134f858d (`Bug #718 improved heap-overflow protection`); git cat-file -p 49420cb parent ff643e96a993758811a4cbf10092dcb639fcabef; git cat-file -e ff643e96:src/common/get.c; parent has int extlen = 0, child has uint8_t extlen = 0. git log -1 --format='%an %ae %cn %ce' 49420cb: Fred Klassen fred.klassen@broadcom.com Fred Klassen fred.klassen@broadcom.com. git merge-base --is-ancestor 49420cb v4.4.4 and v4.4.3; describe --contains 49420cb starts v4.4.2-beta1. Fix: git show 52ed63329b37ae83cb86504db2c9deb6a91e2fe9 -- src/common/get.c adds `if (extlen == 0) return NULL` (`Fixes #827`); parent 43693c4a92dda227a5134ae5e71a7247ae345323 has no that guard. 52ed6332 not ancestor of v4.4.4; ancestor of v4.5.0 (docs/CHANGELOG: Infinite loop in tcprewrite at get.c (#827 #842)). 5b5644356693f5c68dd4295e86f24f1d0a515d60 restages the same zero check after merge 77f02cb3 of #842. ppa re-checked line-level 2026-08-29: git show ff643e96:src/common/get.c get_ipv6_next declares 'int extlen' with maxlen-based bounds; BIC 49420cb5 rewrites it as 'static void * get_ipv6_next(..., const u_char *end_ptr)' with 'uint8_t extlen = 0;' and 'extlen = IPV6_EXTLEN_TO_BYTES(exthdr->ip_len);' - the truncating uint8_t lines are added by BIC -> introducer_parent_absent=true.",
+ "reasoning": "The advisory is a real CWE-835 hang in the IPv6 extension walker, not withdrawn. The hang requires get_ipv6_next to return the same pointer, which happens when IPV6_EXTLEN_TO_BYTES wraps a uint8_t to 0. That wrap is impossible with the pre-#718 int extlen (minimum 8). 49420cb is therefore the smallest first-write of the vulnerable lines, not a move of the 2009 walker and not the later restage 5b564435. Immediate parent tree still has int extlen. Direct fix is 52ed6332 (PR #842 / Fixes #827) landing after 4.4.4 in 4.5.0. AI judged only from the BIC object: human author/committer Fred Klassen in 2022, no AI trailers. Verdict NOT_AI.",
+ "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-25d5e168479a99535e1c80af",
+  "case_id": "w381",
+  "repo": "mattiasw/exifreader",
+  "advisory_ids": [
+    "CVE-2026-53496",
+    "GHSA-g77h-45rf-hcx4"
+  ],
+  "bug_semantics": "Attacker-controlled HEIC/AVIF ISO-BMFF data reaches the public load path. The box walker accepts only an 8-byte top-level header, but getBoxLength reads absent 64-bit extended-size words and the later shared parseBox implementation also reads a full-box version byte past an 8-byte box. DataView raises an uncaught RangeError, allowing one malformed image to abort an unguarded request or worker.",
+  "flaw_origin": "51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c replaced the parent revision's bounded byte-by-byte HEIC metadata scan with atom traversal and first wrote getAtomLength/hasEmptyHighBits, which reads offset+8 and offset+12 for an extended-size atom without proving those bytes exist. Commit 8a750a635434a30d71f539ac41bfe7fa8ea474a3 only extracted that code, and 9497a58acc1c78b64c8d3de6ff3f77a6b14ca023 later moved it into the shared ISO-BMFF parser, added AVIF reachability, and added the version-byte variant; neither is the original BIC.",
+  "introducer_sha": "51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c",
+  "introducer_parent": "0a72456bf4693b20c5fb8f86ca62585287a64890",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": {
+    "present": false,
+    "evidence": "The BIC commit object names Mattias Wallander as author and committer, has a conventional performance-motivated message, and contains no AI attribution, generated-by marker, assistant reference, or co-author trailer. PR #87 is owner-authored with an empty body; its original member 2b9e8d11004e855120902ff7200541240cedb17f has the same human-authored message."
+  },
+  "verdict": "NOT_AI",
+  "fix_sha": "00878ca9df0e26480dda7a931c888048c9f7be45",
+  "direct_fix_sha": "00878ca9df0e26480dda7a931c888048c9f7be45",
+  "evidence": [
+    "Git diff 0a72456bf4693b20c5fb8f86ca62585287a64890..51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c shows the parent used a byte-by-byte HEIC scan bounded by dataView.byteLength, while the BIC introduced atom traversal and unchecked extended-size DataView reads.",
+    "Git history -S traces the vulnerable extended-size logic through extraction commit 8a750a635434a30d71f539ac41bfe7fa8ea474a3 and shared-parser commit 9497a58acc1c78b64c8d3de6ff3f77a6b14ca023 back to 51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c.",
+    "GitHub PR #87 lists two original branch members, 2b9e8d11004e855120902ff7200541240cedb17f and e44b136f4e763f25ffcde66911bd21c5fc7d8f7e; the landed history preserves corresponding separate commits 51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c and 8a750a635434a30d71f539ac41bfe7fa8ea474a3, so the BIC is not a squash aggregate.",
+    "Tag 3.2.0 resolves to parent-side history before the BIC; 3.3.0 contains the BIC and is the first affected release found by tag ancestry. GitHub's reviewed advisory declares <=4.40.0 affected and 4.40.1 first patched.",
+    "Commit 00878ca9df0e26480dda7a931c888048c9f7be45 directly adds hasBytes guards before box header, full-box version, and extended-size reads, catches deeper malformed-box bounds failures, and adds regression coverage for the advisory's truncated inputs. It is absent from v4.40.0 and an ancestor of v4.40.1."
+  ],
+  "reasoning": "The advisory is a real uncaught-exception denial of service. The earliest surviving public commit that introduced its extended-size out-of-bounds mechanism is the atomic, parent-verifiable 2020 HEIC performance commit 51ea66e9bfe72c14dbbc05ce08086e1d3e05ab2c. Later extraction and AVIF/shared-parser work preserved or broadened the flaw rather than originating it. Only the BIC controls AI attribution, and its commit plus associated PR/member metadata provide no AI marker; therefore the case is NOT_AI. The direct bounds-check fix is 00878ca9df0e26480dda7a931c888048c9f7be45 and shipped in v4.40.1.",
+  "remaining_gap": []
+}

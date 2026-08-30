@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-46f366c60c35ab53ade3713a",
+  "case_id": "GHSA-72f5-rr8c-r6gr",
+  "repo": "fluent/fluentd",
+  "advisory_ids": ["CVE-2026-44161", "GHSA-72f5-rr8c-r6gr"],
+  "bug_semantics": "Fluentd's out_http plugin treats the configured endpoint as a placeholder template. At flush time parse_endpoint calls extract_placeholders(@endpoint, chunk) and then URI.parse on the result with no hostname check, so an attacker-controlled tag (or other placeholder) can rewrite the host of the outbound POST/PUT (e.g. endpoint http://${tag}/path to 169.254.169.254 or an internal service). CWE-918 SSRF; patched by requiring allowed_hosts whenever the expanded host differs from the configured host.",
+  "flaw_origin": "The unvalidated expand-then-parse path was first written when Masahiro Nakagawa added the in-tree http output plugin on 2019-07-10: parse_endpoint in lib/fluent/plugin/out_http.rb already did extract_placeholders(@endpoint, chunk); URI.parse(endpoint). extract_placeholders already substituted ${tag} in lib/fluent/plugin/output.rb at that parent. The plugin landed via merge PR #2488 (3d96b15c) in v1.7.0.rc1/v1.7.0 and the mechanism was unchanged through v1.19.2; a 2020 whitespace trim on the extract_placeholders line is not a first-write.",
+  "introducer_sha": "832c0c22427b91eaed17f824158807c0fa5b5737",
+  "introducer_parent": "2ec546695a843a5751a1456ed6cdcdf22b300b8f",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Masahiro Nakagawa <repeatedly@gmail.com>, committer Masahiro Nakagawa <repeatedly@gmail.com>; sole trailer Signed-off-by: Masahiro Nakagawa <repeatedly@gmail.com>; no Co-Authored-By, Generated-with, Copilot/Cursor/ChatGPT/Claude, or bot author on the BIC commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "c6a01ea2e0ea01977f8d615f7c6dbfae4cba88c9",
+  "direct_fix_sha": "c6a01ea2e0ea01977f8d615f7c6dbfae4cba88c9",
+  "evidence": [
+    "CVE.org/MITRE CVE-2026-44161 state=PUBLISHED (cveMetadata.datePublished=2026-07-08T21:25:43.892Z, dateUpdated=2026-07-09); GHSA-72f5-rr8c-r6gr withdrawn_at=null. Not withdrawn/rejected.",
+    "GHSA/CVE: out_http endpoint placeholders such as ${tag} can control the outbound hostname (CWE-918). Affected RubyGems fluentd <=1.19.2, first patched 1.19.3. CVE references https://github.com/fluent/fluentd/pull/5394 and commit c6a01ea2e0ea01977f8d615f7c6dbfae4cba88c9.",
+    "Vulnerable sink at v1.19.2 lib/fluent/plugin/out_http.rb:279-281: def parse_endpoint(chunk); endpoint = extract_placeholders(@endpoint, chunk); URI.parse(endpoint). write() uses that URI for Net::HTTP.start.",
+    "git log -S 'extract_placeholders(@endpoint' -- lib/fluent/plugin/out_http.rb yields a single first-write: 832c0c22427b91eaed17f824158807c0fa5b5737 'Add out_http plugin' (Masahiro Nakagawa, 2019-07-10). Original lines 152-154: extract_placeholders(@endpoint, chunk); URI.parse(endpoint).",
+    "Parent 2ec546695a843a5751a1456ed6cdcdf22b300b8f is a real commit; git cat-file -e 2ec54669:lib/fluent/plugin/out_http.rb fails (file absent). Parent has in_http.rb only and no extract_placeholders(@endpoint. BIC is a single-parent non-merge, not a squash.",
+    "At BIC, lib/fluent/plugin/output.rb extract_placeholders already gsub'd '${tag}' from chunk metadata when @chunk_key_tag; the helper was not introduced with the plugin. Later 611db3e8e5deb4a8ff627c57afd1586e498f34a1 only stripped trailing whitespace on the extract_placeholders line.",
+    "Carrier, not BIC: merge 3d96b15c21ba2b4e4eb2ff514b2a11e2ffafe36c 'Merge pull request #2488 from fluent/out_http' (parents 73de02a5 + db3f859c). Feature-branch follow-ups 4fc5eb98/4c2ce13d/e17b5435/8523f62b did not rewrite parse_endpoint.",
+    "Tag membership: 832c0c22 is NOT an ancestor of v1.6.3; IS an ancestor of v1.7.0.rc1, v1.7.0, v1.19.2, v1.19.3. name-rev: tags/v1.7.0.rc1~33^2~7.",
+    "Fix: c6a01ea2e0ea01977f8d615f7c6dbfae4cba88c9 'Backport(v1.19) out_http: add strict host validation for dynamic endpoints (#5394)' (author Shizuo Fujita, committer GitHub). Ancestor of v1.19.3, not of v1.19.2. Adds allowed_hosts and rejects placeholder-changed hosts. Parallel master landing e175c1850980dc87d37add2026314924b2b51f29 ('Merge commit from fork') is not in v1.19.3. CHANGELOG v1.19.3 cites PR #5394.",
+    "BIC commit-object AI check: git cat-file -p 832c0c22 has author/committer Masahiro Nakagawa <repeatedly@gmail.com>, Signed-off-by only; no Co-Authored-By/Generated-with/bot. July 2019, before public coding assistants. PR #2488 body is a human feature request (KubeCon), not used for attribution."
+  ],
+  "reasoning": "The advisory is a real, published CWE-918 in out_http: placeholder expansion of endpoint is applied to the entire URL, including host, then the result is fetched. CVE-2026-44161 is PUBLISHED on CVE.org and GHSA-72f5-rr8c-r6gr is not withdrawn, so this is not FALSE_POSITIVE. The smallest public first-write of that sink is 832c0c22427b91eaed17f824158807c0fa5b5737, which created lib/fluent/plugin/out_http.rb with parse_endpoint doing extract_placeholders(@endpoint, chunk) then URI.parse with no host allowlist. Immediate parent 2ec546695a843a5751a1456ed6cdcdf22b300b8f lacks the file, so the lines are absent before the BIC. The later merge 3d96b15c and v1.19 backport are carriers/fixes, not first writes; blame's 611db3e8e hit is whitespace-only. extract_placeholders already expanded ${tag} at the parent, so the new mechanism is the plugin's choice to run that helper on a request URL. The BIC precedes first affected release v1.7.0 (absent from v1.6.3); the CVE-cited fix c6a01ea2 lands in v1.19.3 and not v1.19.2. AI is judged only from that BIC commit object: human author/committer Masahiro Nakagawa, Signed-off-by self, no AI trailers or bot identity, so verdict is NOT_AI.",
+  "remaining_gap": null
+}

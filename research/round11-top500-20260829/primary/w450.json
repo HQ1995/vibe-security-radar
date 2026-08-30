@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-9d5a14a2fb4939a00ef8f4fc",
+  "case_id": "GHSA-cphf-4846-3xx9",
+  "repo": "eclipse-vertx/vert.x",
+  "advisory_ids": [
+    "CVE-2026-1002",
+    "GHSA-cphf-4846-3xx9"
+  ],
+  "bug_semantics": "Vert.x's RFC 3986 dot-segment remover mishandled rule C when processing /../ or terminal /.. after an output segment containing no slash: the pos != -1 guard left that whole segment in the output instead of clearing it. Consequently a decoded path such as bar/../index.html normalized to bar/index.html rather than /index.html; a crafted static-handler request containing bar%2F..%2F could resolve a nonexistent offset and cache that negative result so later requests for the real static file returned HTTP 404, causing unauthenticated availability loss.",
+  "flaw_origin": "Commit d5f646b101377ed2a842dfef00139b509b3bbd71 first added HttpUtils.removeDots and both flawed rule-C branches, using lastIndexOf(\"/\") followed by deletion only when the slash existed. Its immediate parent 5a79bf707794078a842800be5ba862a218e64c6c contains HttpUtils.java but no removeDots implementation. The 2024 commit e75a0a15aea7a575ebf865b3ed0839dfd4c3e52c moved the already-vulnerable logic into RFC3986.removeDotSegments, so it is a refactor/copy rather than the BIC.",
+  "introducer_sha": "d5f646b101377ed2a842dfef00139b509b3bbd71",
+  "introducer_parent": "5a79bf707794078a842800be5ba862a218e64c6c",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names author Julien Viet <julien@julienviet.com> and committer Julien Viet <julien@julienviet.com>; its message is 'Start to implement http client redirection' and contains no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "d007e7b418543eb1567fe95cf20f5450a5c2d047",
+  "direct_fix_sha": "d007e7b418543eb1567fe95cf20f5450a5c2d047",
+  "evidence": [
+    "The Eclipse CNA record https://cveawg.mitre.org/api/cve/CVE-2026-1002 is PUBLISHED and describes network-triggered static-handler cache manipulation and availability loss; it marks Vert.x 4.0.0 through 4.5.23 and 5.0.0 through 5.0.6 affected.",
+    "Vendor issue https://github.com/vert-x3/vertx-web/issues/2836 demonstrates removeDotSegments(\"bar/../index.html\") returning \"bar/index.html\" instead of \"/index.html\" and records that a bar%2F..%2F request caches a nonexistent file result, after which the normal file request returns 404.",
+    "git blame on d007e7b418543eb1567fe95cf20f5450a5c2d047^ for src/main/java/io/vertx/core/http/impl/HttpUtils.java lines 405-418 attributes both vulnerable pos != -1/delete branches to d5f646b101377ed2a842dfef00139b509b3bbd71; git show of that commit shows it added the complete removeDots implementation with those branches.",
+    "Direct parent-tree verification: d5f646b101377ed2a842dfef00139b509b3bbd71^ resolves to 5a79bf707794078a842800be5ba862a218e64c6c; that tree has src/main/java/io/vertx/core/http/impl/HttpUtils.java but searching that blob finds no removeDots method or vulnerable rule-C implementation.",
+    "GitHub PR 1780's public commit list contains d5f646b101377ed2a842dfef00139b509b3bbd71 as an ordinary member commit between parent 5a79bf707794078a842800be5ba862a218e64c6c and later feature commits; the PR was merged separately as a1554ffe52e11af376fcc04627b82e9e7e8cc796, so the BIC is not a squash aggregate requiring decomposition.",
+    "Commit e75a0a15aea7a575ebf865b3ed0839dfd4c3e52c is titled 'Introduce internal RFC3986 helper class' and copies the same pos != -1/delete logic from HttpUtils into vertx-core/src/main/java/io/vertx/core/internal/net/RFC3986.java; blame before the 5.x fix therefore points to this move, not a new causal implementation.",
+    "The BIC commit object has one parent and exact author/committer lines 'Julien Viet <julien@julienviet.com>'; its full message contains no AI authorship/co-authorship trailer. AI attribution is therefore absent on the BIC itself.",
+    "For the 4.5 line, direct fix d007e7b418543eb1567fe95cf20f5450a5c2d047 replaces each conditional delete with obuf.setLength(pos == -1 ? 0 : pos); it is not an ancestor of tag 4.5.23 and is an ancestor of first patched tag 4.5.24. PR 5895 identifies this commit as its merge commit and describes the same rule-C defect.",
+    "For the 5.x line, parallel direct fix 5b67f5d17788b2483d277c760f3f8154f9b2fed0 makes the identical correction in RFC3986.removeDotSegments; it is not an ancestor of tag 5.0.6 and is an ancestor of first patched tag 5.0.7. PR 5894 identifies it as the merge commit.",
+    "Tag ancestry cross-check shows d5f646b101377ed2a842dfef00139b509b3bbd71 is an ancestor of affected tags 4.0.0 and 4.5.23, while the copied vulnerable implementation e75a0a15aea7a575ebf865b3ed0839dfd4c3e52c is an ancestor of affected tag 5.0.0."
+  ],
+  "reasoning": "The vendor and CNA evidence establish a real availability vulnerability, not a withdrawn or rejected advisory. The defective behavior is the rule-C output-buffer update itself: when no slash is present, retaining the segment violates RFC 3986 and enables the encoded traversal-shaped request to poison the static handler's negative cache entry. History follows that exact mechanism backward. The 2024 RFC3986 helper commit only relocates the already-flawed code; the smallest public first-write is the 2017 PR member d5f646b101377ed2a842dfef00139b509b3bbd71, and its immediate parent directly proves the implementation absent. The maintained 4.5 and 5.x fixes replace the guard with an unconditional setLength that clears the buffer when lastIndexOf returns -1, and tag ancestry matches the vendor's affected/patched boundaries. Because the BIC commit object is authored and committed by Julien Viet and has no AI marker or trailer, the causal verdict is NOT_AI; later repository AI signals and the 2026 fixes do not alter BIC attribution.",
+  "remaining_gap": null
+}

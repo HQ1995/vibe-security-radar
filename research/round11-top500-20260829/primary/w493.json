@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-ff8ff56caa4b32b54e6a346a",
+  "case_id": "GHSA-wphv-vfrh-23q5",
+  "repo": "authlib/joserfc",
+  "advisory_ids": [
+    "CVE-2026-48990",
+    "GHSA-wphv-vfrh-23q5"
+  ],
+  "bug_semantics": "Starting in 1.3.4, JWSRegistry imposed max_payload_length during deserialization, but the RFC7797 b64=false compact and flattened-JSON branches assigned the unencoded payload without calling validate_payload_size. Oversized lower-trust JWS payloads therefore bypassed the configured bound and could consume excess resources while equivalent b64=true inputs raised ExceededSizeError.",
+  "flaw_origin": "Commit 05ccff5d3c78e6e84175080ee5c44b713f733e42 introduced JWSRegistry payload-size enforcement and routed the registry into RFC7797 extraction, but placed validate_payload_size only in the b64=true else branches, atomically creating the b64=false enforcement gap.",
+  "introducer_sha": "05ccff5d3c78e6e84175080ee5c44b713f733e42",
+  "introducer_parent": "7d7733b54bc176c3de5138eaa2bf06a29d234de1",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "4d4ea2e787ed36a2190158d86d8470e3acbb349b",
+  "direct_fix_sha": "4d4ea2e787ed36a2190158d86d8470e3acbb349b",
+  "evidence": [
+    "The CVE.org CVE-2026-48990 record is PUBLISHED and identifies versions 1.3.4 through 1.6.5 as affected, version 1.6.7 as fixed, and the failure as omitted max_payload_length checks in RFC7797 b64=false compact and flattened JSON deserialization.",
+    "Git commit 05ccff5d3c78e6e84175080ee5c44b713f733e42 has the sole parent 7d7733b54bc176c3de5138eaa2bf06a29d234de1 and adds max_payload_length plus validate_payload_size, while its RFC7797 compact.py and json.py hunks call that validator only in b64=true else branches.",
+    "Tag 1.3.3 resolves to introducer parent 7d7733b54bc176c3de5138eaa2bf06a29d234de1; 05ccff5d3c78e6e84175080ee5c44b713f733e42 is absent from 1.3.3 and is an ancestor of tag 1.3.4 at 6b6642b7e0f13cb6d8dc4541c1d68ff8523ccf27, matching the first affected release boundary.",
+    "At tag 1.6.5, RFC7797 compact extraction assigns payload_segment directly under is_rfc7797_enabled and flattened JSON does the same, whereas both b64=true branches call registry.validate_payload_size(payload_segment).",
+    "Direct fix 4d4ea2e787ed36a2190158d86d8470e3acbb349b moves payload validation before the RFC7797 branch in both compact.py and json.py; merge 9186561fc40de112e3b3f01934b11d7ca54da142 incorporates it through PR #97, and the fix is an ancestor of tag 1.6.7 at 1e5b94da589c695f54abd9f1a0ad822dcffe0305.",
+    "The introducer's raw commit object and GitHub commit page attribute the single-parent, GPG-signed commit to Hsiaoming Yang <me@lepture.com>; its message is only 'fix(jws): validating content size to avoid DoS' and has no Co-authored-by trailer, AI-tool attribution, generated-by marker, or associated pull request shown. No AI marker exists on the BIC itself."
+  ],
+  "reasoning": "The vulnerability is not the older existence of RFC7797 itself: before 05ccff5d3c78e6e84175080ee5c44b713f733e42 there was no JWSRegistry payload limit to bypass. That commit introduced the limit and applied it asymmetrically, so it is the smallest public atomic introducer; its immediate parent is available and is the 1.3.3 release. The single-parent commit is not a merge or squash aggregate. Commit 4d4ea2e787ed36a2190158d86d8470e3acbb349b directly repairs the advisory's reproduced inline compact and flattened-JSON paths and reaches the declared fixed release. Because the BIC has human attribution and no AI marker in its commit metadata or public commit page, the case is NOT_AI.",
+  "remaining_gap": "The advisory's suggested remediation also mentions detached RFC7797 compact payloads supplied via the payload argument. Commit 4d4ea2e787ed36a2190158d86d8470e3acbb349b did not validate that empty-segment path; commit 683ca24a57c1d2cb25173e7b3eaa49bd68a63aef later added the missing check and first appears in tag 1.7.3. Thus 1.6.7 closes the advisory's demonstrated inline compact and flattened-JSON cases but not that separately described detached variant."
+}

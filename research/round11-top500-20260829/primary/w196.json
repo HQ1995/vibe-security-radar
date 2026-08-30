@@ -1,0 +1,40 @@
+{
+  "class_id": "alias-ec7e1d6ea3c9983abcb7450a",
+  "case_id": "GHSA-vqvv-2wj5-q34w",
+  "repo": "kuadrant/authorino",
+  "advisory_ids": [
+    "CVE-2025-25208",
+    "GHSA-vqvv-2wj5-q34w"
+  ],
+  "bug_semantics": "CWE-400 on Authorino's HTTP metadata path keyed by AuthConfig/AuthPolicy sharedSecretRef. A Developer-persona policy names a Kubernetes Secret (loaded in full with no size cap) and an attacker-controlled URL; on every authorization request Authorino injects that secret as outbound credentials (default Authorization Bearer) and then json.Decoder.Decode / io.ReadAll the entire HTTP response with no byte limit. A large secret or a large metadata body exhausts the single Authorino instance so every AuthPolicy on the cluster stops evaluating. CVSS UI:R is the victim request that triggers the outbound call. Sibling CVE-2025-25207 is unbounded callback count; CVE-2025-25209 is one-line secret leakage over the same HTTP+sharedSecretRef channel.",
+  "flaw_origin": "First written in a85b10f23537ab4434b5ccf99349f0e3fd86dfda (PR #100 member, not the merge). That commit added Metadata_GenericHTTP.sharedSecretRef, copied secret.Data into GenericHttp.SharedSecret with no size check, and decoded the metadata HTTP body with unbounded json.NewDecoder. Parent 494b306520ed9a8b208a0ec4a4501a86d56cdb3c has no generic_http.go and no sharedSecretRef. Follow-on 374fa29 only switched the secret key from hostname convention to SharedSecret.Key; later moves into pkg/evaluators/metadata/generic_http.go and controllers/auth_config_controller.go are refactors, not BICs. The same unbounded load+read is still present at v0.20.0 (GHSA last_affected) and HEAD.",
+  "introducer_sha": "a85b10f23537ab4434b5ccf99349f0e3fd86dfda",
+  "introducer_parent": "494b306520ed9a8b208a0ec4a4501a86d56cdb3c",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Guilherme Cassolato <guicassolato@gmail.com>, committer same (GPG-signed); no Co-Authored-By/Generated-with/Copilot/Cursor/Claude/GPT trailers; not a bot author",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2025-25208 state=PUBLISHED (not rejected/withdrawn), CNA Red Hat, title 'Rhcl: authorino denial of service through authpolicy with sharedsecretref severity', CWE-400, datePublished 2025-06-09; NVD vulnStatus Deferred not Rejected; GHSA-vqvv-2wj5-q34w withdrawn_at=null, affected github.com/kuadrant/authorino <=0.20.0, patched versions None; Bugzilla 2347436 status NEW, Fixed In Version empty.",
+    "Red Hat Connectivity Link 1 defaultStatus=affected; rhcl-operator-container 1.0.1 listed affected; GO-2025-3747 last_affected 0.20.0 / vulnerable_at 0.21.0 / review_status UNREVIEWED — no public patched version.",
+    "BIC a85b10f23537ab4434b5ccf99349f0e3fd86dfda (2021-05-25, PR https://github.com/Kuadrant/authorino/pull/100 member). First write of api/v1beta1/service_types.go Metadata_GenericHTTP.SharedSecret json:sharedSecretRef (line 174), controllers/service_controller.go lines 198-213 string(secret.Data[secretKey]) with no size cap, pkg/config/metadata/generic_http.go GenericHttp.Call lines 49-57 http.DefaultClient.Do + json.NewDecoder(resp.Body).Decode unbounded.",
+    "Parent 494b306520ed9a8b208a0ec4a4501a86d56cdb3c verified: pkg/config/metadata/generic_http.go absent; git grep sharedSecretRef/GenericHTTP/generic_http on parent tree empty. Merge 7a5dfdf6b484f4a257462a688bc11ecf9b2534d8 is a true merge (494b306 + 3a43208), not a squash; a85b10f is the smallest first-write member (later 374fa29 only replaced hostname-derived secret key with SharedSecret.Key).",
+    "git merge-base --is-ancestor a85b10f v0.20.0, v0.21.0, and HEAD all true. First containing tag v0.2.0. Surviving sink at v0.20.0: controllers/auth_config_controller.go buildGenericHttpEvaluator ~907-916 string(secret.Data[sharedSecretRef.Key]); pkg/evaluators/metadata/generic_http.go Call json.Decoder.Decode + io.ReadAll. HEAD still unbounded: controllers/auth_config_controller.go:1156-1161 and pkg/evaluators/metadata/generic_http.go:70-104.",
+    "Unpatched: no merged Authorino commit caps secret size or default-limits metadata response bodies. Open PR https://github.com/Kuadrant/authorino/pull/672 adds optional maxResponseBytes (omit=unlimited), so it is not a landed fix for CVE-2025-25208."
+  ],
+  "reasoning": "Vulnerability-first: CVE.org and Red Hat still publish this as a real CWE-400 in Authorino reached via AuthPolicy sharedSecretRef; GHSA withdrawn_at is not authoritative and is null anyway. The attack is a Developer AuthPolicy/AuthConfig HTTP metadata (or later HttpEndpointSpec callback/OPA) entry that references a Secret and a URL the attacker hosts. Authorino materializes the whole secret into the in-memory evaluator and, on each authz request, sends it as credentials then allocates the full response. That matches 'bring down the Authorino service, preventing the evaluation of all AuthPolicies' on a single instance. BIC is a85b10f, the first public write of sharedSecretRef plus the unbounded secret copy and HTTP body decode; the parent tree lacks those files/symbols. PR #100 is a merge with reconstructable members, so the merge itself is not the BIC. AI is judged only on that BIC commit object: human author/committer Guilherme Cassolato, GPG-signed, no AI trailers. Closed NOT_AI with unpatched because GHSA patched=None, Bugzilla NEW, and HEAD still has the unbounded ReadAll/Decode and uncapped secret load.",
+  "remaining_gap": "Unpatched: no merged fix SHA. Public bugzilla comments are login-gated so a reporter PoC dump was not readable; the sink is identified from the CNA title plus the surviving sharedSecretRef HTTP metadata path rather than from a vendor patch mapping.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "GHSA patched versions None / last_affected 0.20.0; CVE.org and Red Hat still mark Red Hat Connectivity Link 1 affected; Bugzilla 2347436 remains NEW with empty Fixed In Version; HEAD still loads sharedSecretRef secrets without a size cap and json-decodes/io.ReadAll metadata responses without a default byte limit.",
+    "potential_fix": {
+      "approach": "Enforce a default (not operator-opt-in) maxResponseBytes via io.LimitReader before json.Decode/io.ReadAll in GenericHttp.Call and the other HttpEndpointSpec evaluators, and reject or truncate Secret values loaded from sharedSecretRef above a small credential-sized cap before injecting them into outbound headers/query/cookies.",
+      "rationale": "The availability sink is unbounded allocation on the sharedSecretRef-authenticated outbound HTTP path. A mandatory response-body cap plus a secret-size cap stops a Developer-controlled AuthPolicy from OOMing the shared Authorino process. Open PR 672 is only a starting point because maxResponseBytes is omitted-unlimited.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/Kuadrant/authorino/pull/672"
+    }
+  }
+}

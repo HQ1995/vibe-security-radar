@@ -98,19 +98,17 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("Vibe Security Radar");
     expect(html).toContain("See the vulnerable code and fix");
     expect(html).toContain(
-      `${snapshot.confirmed_cases} confirmed AI-contributed vulnerabilities`,
+      `${snapshot.case_count} AI-contributed vulnerabilities cataloged`,
     );
     expect(html).toContain(
       `Browse all ${getResearchCases().length} findings`,
     );
     expect(html).toContain("Star on GitHub");
-    expect(html).toContain("Publication status");
     expect(html).toContain("Covered advisories");
     expect(html).toContain("2025-05 – 2026-08");
     expect(html).not.toContain("Covered Advisories (2025-05-01");
     expect(html).not.toContain("Research ledger");
     expect(html).toContain("completed");
-    expect(html).toContain("in progress");
     expect(html).toContain("not started");
     expect(html).not.toContain("under analysis");
     expect(html).not.toContain("flawed AI code");
@@ -147,7 +145,7 @@ describe("how we verify page", () => {
     expect(html).toContain("Confirm the release");
     const snapshot = getResearchSnapshot().snapshot;
     expect(html).toContain(
-      `This public index covers ${getResearchCases().length} findings: ${snapshot.confirmed_cases}`,
+      `This public index covers ${getResearchCases().length} findings.`,
     );
     expect(html).not.toContain("AI provenance signals");
     expect(html).not.toContain("Stage 6");
@@ -292,13 +290,14 @@ describe("canonical case evidence", () => {
     expect(html).not.toContain("cand=");
   });
 
-  it("does not put internal research notes in the contribution headline", () => {
+  it("shows the real AI contribution summary, not the generic headline", () => {
     const dump = getResearchCaseById("GHSA-8JQH-598V-RFXC");
     expect(dump).not.toBeNull();
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={dump!} />);
     expect(html).toContain("How AI contributed");
     expect(html).not.toContain("cand=b7b362");
-    expect(html).toContain("AI introduced the vulnerable behavior.");
+    expect(html).not.toContain("AI introduced the vulnerable behavior.");
+    expect(html).toContain((dump!.code_evidence?.summary ?? "").slice(0, 60));
   });
 
   it("shows audited fix authorship without unknown labels", () => {

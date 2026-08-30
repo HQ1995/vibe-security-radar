@@ -1,0 +1,27 @@
+{
+  "worker": "w102",
+  "review_agent_id": "r389_w102",
+  "class_id": "alias-6aede76126dee9ae1698b1e4",
+  "case_id": "GHSA-xx9g-fh25-4q64",
+  "repo": "adonisjs/bodyparser",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: PartHandler concatenates each chunk while extname is undefined and repeatedly performs magic-number detection. For non-magic content, 7bc00981abe82ee5cd87121edcce4c121256dd83 changed getFileType from a minimumBytes-bounded filename fallback to `if (!force) return null`; reportProgress always supplied force=false, so the buffer could grow for the entire multipart stream.",
+    "atomic_bic": "CONFIRMED: 7bc00981abe82ee5cd87121edcce4c121256dd83 is the smallest surviving public commit that first makes the existing buffering loop unbounded. The focused diff changes the decisive predicate in src/utils.ts while adapting file-type to its async API; earlier buffering, including 16f2d2712e2c7c468a89426806887160fc14786e and 0e88ef5031bd72f4f2cb0d288d0275b9186ae7b2, remained bounded by the minimumBytes fallback.",
+    "immediate_parent_absence": "CONFIRMED: the sole immediate parent is 82a5d3b06bb05d198d7ab88b241f8067a4ccfb80. Its src/utils.ts returns null only while fileContents.length is below fileType.minimumBytes and then falls back to the client filename and Content-Type, so the unbounded-null behavior is absent while the same Buffer.concat sink is present.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a regular one-parent commit, not a merge or revert. Its public commit object exposes no finer members; its coherent dependency/API migration directly contains the first vulnerable predicate, and the verifiable immediate parent contains the bounded behavior. No decomposition changes the atomic BIC.",
+    "affected_release_membership": "CONFIRMED: the BIC is not an ancestor of v3.2.0 but is an ancestor of v3.2.1, v10.1.2 (7728685025fc200d86ba46c1f5510198e4d3e9d2), and v11.0.0-next.8 (3017053886993908d181fd721ea1b7f66e91f470). The advisory identifies the corresponding affected 10.x and 11-next ranges.",
+    "fixed_release_membership": "CONFIRMED: 487de0da9df16bf38e261a31bf356871feb0ba69 is absent from v10.1.2 and present in v10.1.3 (f1fc24651f9813b8749db97b60225052ca6f191c); 7ad95e086b7c4af753a9065b5d41759932c231a0 is absent from v11.0.0-next.8 and present in v11.0.0-next.9 (05ccbc9933e70cb99c650d837e2d2c547df4eb64).",
+    "direct_fix_or_unpatched_state": "CONFIRMED: both release-line commits directly add a 4100-byte fallback to computeFileTypeFromName when magic detection returns null, plus an 8192-byte non-magic fake .png regression test. Their immediate parents lack that bound, making them direct fixes rather than release-only metadata.",
+    "bic_only_ai_attribution": "CONFIRMED: attribution uses only the BIC commit object. It was authored and committed by Harminder virk <virk.officials@gmail.com> on 2020-02-08, has an empty body and no AI/co-author/generated-with trailer or marker. Fix-side authorship was not used; NOT_AI is supported."
+  },
+  "findings": [
+    "Independent clone replay confirms the vulnerable mechanism, atomic introducer 7bc00981abe82ee5cd87121edcce4c121256dd83, and absence in its immediate parent 82a5d3b06bb05d198d7ab88b241f8067a4ccfb80.",
+    "Independent ancestry checks confirm both affected-to-fixed release boundaries and the two direct fix commits.",
+    "The current CVE.org record is PUBLISHED, not rejected; the frozen GHSA bundle has withdrawn_at=null and records patched versions 10.1.3 and 11.0.0-next.9.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

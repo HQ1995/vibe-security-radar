@@ -1,0 +1,26 @@
+{
+  "worker": "w224",
+  "review_agent_id": "r389_w224",
+  "class_id": "alias-033ccab37c7db0c611a0e1bb",
+  "case_id": "GHSA-hfqg-gq7v-xwpg",
+  "repo": "sparklemotion/nokogiri",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed two upstream libxml2 defects carried by packaged Nokogiri: CVE-2025-24928 is a stack overflow in valid.c xmlSnprintfElements because the old bounds checks did not account for prefix, colon, and local name together; CVE-2024-56171 is a use-after-free in xmlschemas.c because xmlSchemaItemListAdd can reallocate the items array while local dupls pointers remain stale. The upstream fixes 8c8753ad5280ee13aee5eec9b0f6eee2ed920f57 and 5880a9a6bd97c0f9ac8fc4f30110fe023f484746 directly repair those mechanisms.",
+    "atomic_bic": "Confirmed 131df0d6bf14a26f31c35f62de0d6b44f0328526 as the smallest public Nokogiri commit that first adds an affected libxml2 to the packaged build: its Rakefile adds libxml2-2.7.1.win32 to the downloaded externals and copies the resulting DLL into ext/nokogiri. The commit has one parent and is not a merge or squash aggregate. Earlier Nokogiri code already linked system libxml2 and exposed parser options, but that does not supersede this first-write for the vendor advisory's packaged-libxml2 scope.",
+    "immediate_parent_absence": "Confirmed parent 93761f9965b827fbf6585ee67fe50da75678a74c exists and its Rakefile has no libxml2-2.7.1.win32 or other bundled-libxml2 download entry; the vulnerable dependency packaging appears in the child diff.",
+    "squash_member_decomposition": "Not required: 131df0d6bf14a26f31c35f62de0d6b44f0328526 is a single-parent ordinary commit with no squash/member evidence, so there is no finer public member to substitute.",
+    "affected_release_membership": "Confirmed 131df0d6bf14a26f31c35f62de0d6b44f0328526 is an ancestor of affected tag v1.18.2 (aa54fa59544ceb224d3fe6e3a53d05d5c937b15b), whose dependencies.yml pins libxml2 2.13.5. CVE.org records for both upstream flaws mark versions before 2.12.10 and 2.13.0 through before 2.13.6 affected.",
+    "fixed_release_membership": "Confirmed fixed tag v1.18.3 (fd3ca2e22df67fd25fd5c25c466f6896b6547cb8) contains merge a8c526adf17716cf115e78995c815fc65f5937a2 and direct commit 11945c82df6fca8827c2914e585e8e3a7027dcb5; its dependencies.yml pins libxml2 2.13.6, matching the vendor advisory's patched version.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 11945c82df6fca8827c2914e585e8e3a7027dcb5 changes only the libxml2 dependency metadata from 2.13.5 to 2.13.6 and its checksum; merge a8c526adf17716cf115e78995c815fc65f5937a2 lands that branch before v1.18.3.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only: 131df0d6bf14a26f31c35f62de0d6b44f0328526 was authored and committed by Aaron Patterson on 2008-10-15, and its commit object contains no AI, bot, generated-with, or co-author marker. Fix authorship was not used for attribution."
+  },
+  "findings": [
+    "CVE-2025-71407 is PUBLISHED at CVE.org, and the corresponding Nokogiri vendor advisory GHSA-vvfq-8hwr-qm4m is published and not withdrawn; this is not a FALSE_POSITIVE case.",
+    "The candidate BIC is a dependency-packaging first-write, not the first Nokogiri validation API: its parent already links system libxml2, while the candidate first downloads and packages the affected libxml2 DLL. That distinction is consistent with the vendor advisory's packaged-libxml2 scope.",
+    "The affected v1.18.2 and fixed v1.18.3 tag trees, the direct dependency bump, both upstream mechanism patches, and BIC-only authorship evidence independently reproduce the primary record."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

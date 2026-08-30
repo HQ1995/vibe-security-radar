@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-87309aca08e97e031f07444b",
+  "case_id": "GHSA-c9w5-rwh3-7pm9",
+  "repo": "codeigniter4/codeigniter4",
+  "advisory_ids": [
+    "CVE-2026-63221",
+    "GHSA-c9w5-rwh3-7pm9"
+  ],
+  "bug_semantics": "Query Builder deleteBatch() compiled prior where() conditions by replacing each named placeholder with bind[0] directly. Because the accompanying bind escape flag in bind[1] was ignored, a user-controlled string such as nobody' OR 1=1 -- was inserted into the DELETE SQL without quoting or escaping and could turn the WHERE value into executable SQL; ordinary delete() did not use this vulnerable batch-only substitution path.",
+  "flaw_origin": "Commit ec2dc8b43e78375d354f83d2f0b7950144b943bf first added BaseBuilder::deleteBatch() and _deleteBatch(), including the exact nested loop whose str_replace() inserted bind[0] into QBWhere conditions without consulting bind[1]. Its immediate parent 672e1548ddbd98ce07a81832d510f61dd245d3b6 has no deleteBatch symbol or vulnerable block. The public PR #6734 merge 2477f08627fb02f69d69c1b0174937905c56e3bb preserves ec2dc8b43e78375d354f83d2f0b7950144b943bf as the atomic first member rather than collapsing it into the merge.",
+  "introducer_sha": "ec2dc8b43e78375d354f83d2f0b7950144b943bf",
+  "introducer_parent": "672e1548ddbd98ce07a81832d510f61dd245d3b6",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names human author and committer sclubricants <vaughnb@scoil.com>; its message is only 'Add deleteBatch() and _deleteBatch()' and contains no Co-authored-by, Generated-with, AI-assistance, or bot trailer/identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "f5e463b9a3e986389ce285963e51a7f1fab6559f",
+  "direct_fix_sha": "f5e463b9a3e986389ce285963e51a7f1fab6559f",
+  "evidence": [
+    "GitHub advisory GHSA-c9w5-rwh3-7pm9 and the published CVE.org record CVE-2026-63221 both describe the batch-only SQL injection: deleteBatch() with where() substituted bound values while ignoring escape flags; affected versions are >=4.3.0,<4.7.4 and the fixed version is 4.7.4.",
+    "git show ec2dc8b43e78375d354f83d2f0b7950144b943bf -- system/Database/BaseBuilder.php shows this one-parent commit adding deleteBatch(), _deleteBatch(), and str_replace(':' . $field . ':', $bind[0], $where['condition']) in the initial 96-line implementation.",
+    "git rev-list --parents -n 1 ec2dc8b43e78375d354f83d2f0b7950144b943bf returns only parent 672e1548ddbd98ce07a81832d510f61dd245d3b6; git grep deleteBatch 672e1548ddbd98ce07a81832d510f61dd245d3b6 -- system/Database/BaseBuilder.php returns no match, directly proving parent-tree absence.",
+    "git blame f5e463b9a3e986389ce285963e51a7f1fab6559f^ -L 2953,2958 -- system/Database/BaseBuilder.php attributes the complete vulnerable bind-substitution loop, including raw bind[0], to ec2dc8b43e78375d354f83d2f0b7950144b943bf.",
+    "git show 2477f08627fb02f69d69c1b0174937905c56e3bb and git rev-list 2477f08627fb02f69d69c1b0174937905c56e3bb^1..2477f08627fb02f69d69c1b0174937905c56e3bb^2 identify PR #6734 as a two-parent merge and preserve ec2dc8b43e78375d354f83d2f0b7950144b943bf as its first atomic member, so the merge is not used as the BIC.",
+    "git cat-file commit ec2dc8b43e78375d354f83d2f0b7950144b943bf shows author and committer sclubricants <vaughnb@scoil.com>, a GPG signature, the single-line subject, and no co-author, generated-with, AI, or bot marker.",
+    "git merge-base --is-ancestor confirms ec2dc8b43e78375d354f83d2f0b7950144b943bf is contained by v4.3.0 but not v4.2.12, matching the advisory's 4.3.0 affected boundary.",
+    "The advisory's direct fix f5e463b9a3e986389ce285963e51a7f1fab6559f replaces all raw batch WHERE substitutions in BaseBuilder, OCI8, and Postgre builders with convertWhereBindsForBatch(), which obeys bind[1], calls db->escape(), handles arrays, and substitutes via strtr; added tests exercise quoted injection strings and verify rows are not deleted.",
+    "git merge-base --is-ancestor confirms f5e463b9a3e986389ce285963e51a7f1fab6559f is contained by v4.7.4 but not v4.7.3; GitHub's release/advisory and CVE.org likewise name 4.7.4 as the patched boundary."
+  ],
+  "reasoning": "The vulnerable lifecycle begins in ec2dc8b43e78375d354f83d2f0b7950144b943bf, not in the later PR merge: that atomic member creates the batch-delete path and directly writes the unsafe raw bind[0] substitution, while its verified immediate parent lacks the entire method. The flaw survives into the first affected tag v4.3.0. The cited direct fix f5e463b9a3e986389ce285963e51a7f1fab6559f changes precisely that source-to-sink conversion so escape-enabled WHERE binds are quoted before SQL assembly and adds injection regression coverage; its membership begins at the patched tag v4.7.4. Finally, the BIC commit object has a human author/committer and no AI marker, regardless of any later repository AI signal or the fix's authorship, so the real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

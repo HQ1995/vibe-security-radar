@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-763adaa33b4ac5a3a77ce2bc",
+  "case_id": "GHSA-6fmw-7w5g-3pf9",
+  "repo": "gitlab.com/samba-team/samba",
+  "advisory_ids": [
+    "CVE-2026-15779",
+    "GHSA-6fmw-7w5g-3pf9"
+  ],
+  "bug_semantics": "When pam_winbind mkhomedir is enabled, _pam_mkhomedir() takes the target account's pw_dir from getpwnam() and, after _pam_create_homedir() treats an already-existing path as success, _pam_chown_homedir() chowns that path with no check that it is not a critical system directory. Accounts whose home is '/' (a common default for nobody and other system accounts) therefore have '/' reowned when a PAM session is opened as that account — by root su or by a non-root user with a narrow sudo run-as-that-account grant — breaking sshd StrictModes, sudo, and package-manager ownership checks. On RHEL '/' ships mode 0555, so the impact is availability loss rather than write privilege escalation.",
+  "flaw_origin": "The surviving vulnerable control flow was first written in 042df7f0b78d60a721fa35c42e950774261cea1d (2008-08-14, Günther Deschner, 'pam_winbind: re-add mkhomedir option'), which added _pam_create_homedir/_pam_chown_homedir/_pam_mkhomedir so that any successful create — including stat() success on an already-existing directory — is followed by chown(pw_dir, uid, gid) with no path allowlist. A 2006-era create_homedir path (removed in ca09263d00c7c5493f4ab7214c7cfb2cf8a28eea) returned early without chown when the directory already existed and is not the surviving sink. The 2020 TOCTOU refactor fd364b01e2defb5f48238db64d3ef7f6d828c517 switched mkdir-first/EEXIST but kept chown-on-existing-dir.",
+  "introducer_sha": "042df7f0b78d60a721fa35c42e950774261cea1d",
+  "introducer_parent": "d9efd52fd09af752b3b7fae2a88a522e05e7f672",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author and committer are Günther Deschner <gd@samba.org>; commit-object body is only 'Guenther' with no Co-Authored-By, Generated-with, Signed-off-by, or other AI/tool trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "79caa6ef08b9b333e17bb0762e95e18e250db463",
+  "direct_fix_sha": "79caa6ef08b9b333e17bb0762e95e18e250db463",
+  "evidence": [
+    "CVE.org record CVE-2026-15779 is state=PUBLISHED (CNA Red Hat, datePublished 2026-07-15); not rejected/withdrawn. GHSA-6fmw-7w5g-3pf9 withdrawn_at is null.",
+    "Red Hat Bugzilla 2499991 and access.redhat.com/security/cve/CVE-2026-15779 confirm the pam_winbind mkhomedir chown-of-existing-pw_dir mechanism, CWE-732, CVSS 6.1, discovery by Runar Lundgren (Red Hat); live reproduction on samba 4.19.x/4.23.x; RHEL 9.9/10.3 (samba 4.24.3) not affected because chown then fires only on newly created directories.",
+    "Advisory line anchors: samba-4.23.5 nsswitch/pam_winbind.c:1622 _pam_chown_homedir() unconditionally chown(dirname); _pam_mkhomedir() at 1662-1666 calls _pam_create_homedir(pw_dir) then always _pam_chown_homedir(pw_dir). _pam_create_homedir treats mkdir EEXIST + S_ISDIR as PAM_SUCCESS, so existing '/' is chowned.",
+    "git log -L :_pam_chown_homedir:nsswitch/pam_winbind.c samba-4.23.5 has a single first-write: 042df7f0b78d60a721fa35c42e950774261cea1d (single parent d9efd52fd09af752b3b7fae2a88a522e05e7f672, not a merge/squash). Parent tree source3/nsswitch/pam_winbind.c exists and has no _pam_chown_homedir/_pam_mkhomedir and no chown() calls.",
+    "BIC patch at source3/nsswitch/pam_winbind.c (later moved unchanged in 6821d898d7ecf10c6a9359560c5cf1c50a812b62) added _pam_create_homedir that returns PAM_SUCCESS when stat(dirname)==0, then _pam_mkhomedir chowns pwd->pw_dir on that success — the first surviving write of chown-existing-homedir including '/'.",
+    "Pre-2006 implementation at ca09263d00c7c5493f4ab7214c7cfb2cf8a28eea^ returned PAM_SUCCESS without chown when directory_exist(pw_dir); that safer code was deleted in 2006 and is not the 4.19/4.23 sink. 6a2d15f1de9fb7b93a31129139dea667303393db is a later v3-3-only re-add, not an ancestor of samba-4.23.5.",
+    "2020 fd364b01e2defb5f48238db64d3ef7f6d828c517 (CID 242274 TOCTOU) changed create to mkdir-first/EEXIST but left the caller chown-on-success path intact.",
+    "Tag membership: BIC is ancestor of samba-4.19.4, samba-4.23.5, samba-4.24.1 (first release tag samba-3.4.0pre1/samba-3.4.0). Function still present at those tags; absent after the 2026 fix on v4-24.",
+    "Master fix 79caa6ef08b9b333e17bb0762e95e18e250db463 (Stefan Metzmacher, 2026-05-08; BUG https://bugzilla.samba.org/show_bug.cgi?id=16073) 'pam_winbind: only chown the home directory if it was created' — commit message names the '/' / su - nobody case. Parent c63880a1ec3e930dca1a511f4610a94483418e01 still has _pam_chown_homedir. First master tag: samba-4.25.0rc1. HEAD contains the fix.",
+    "Stable backports of the same patch: 4b8ec478215551f5aa84d8a6f61ceea78c3ca21e (v4-24, first tag samba-4.24.2; present in advisory-cited samba-4.24.3), a7465333e8d54c71308835f9aadd96fcd3fbf849 (v4-23, first tag samba-4.23.8), 7e0bdc05237cdf10e5ee22aa884af8337a53607e (v4-22).",
+    "BIC commit object: author/committer Günther Deschner <gd@samba.org> 2008-08-14/2008-10-10; git cat-file -p shows no Co-Authored-By/Generated-with/AI-tool trailers."
+  ],
+  "reasoning": "The CVE is a published Red Hat CNA record of a real pam_winbind availability flaw, not a withdrawn/rejected advisory. The attack path is mkhomedir=yes plus a PAM session for an account whose pw_dir is '/', causing an unvalidated chown of the filesystem root. git log -L and parent-tree inspection place the first surviving write of that chown-existing-homedir sequence at 042df7f0b78d60a721fa35c42e950774261cea1d; the 2008 commit is a new implementation (always chown after create-success), not a revert of the 2006-era code that skipped chown when the directory already existed, and not the 2008 nsswitch path move. Later TOCTOU and explicit-PAM_SUCCESS edits did not introduce the sink. The 2026 Metzmacher commit on master, and its v4-23/v4-24 cherry-picks, close the sink by chowning only directories mkdir actually created, matching Red Hat's observation that 4.24.3 is unaffected. AI attribution is judged only from that 2008 BIC commit object: human Samba maintainer authorship with no AI/co-author/tool trailers, so the verdict is NOT_AI.",
+  "remaining_gap": null
+}

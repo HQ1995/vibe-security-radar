@@ -1,0 +1,26 @@
+{
+  "worker": "w195",
+  "review_agent_id": "r389_w195",
+  "class_id": "alias-e64afc2954aa7554424ab33b",
+  "case_id": "GHSA-xv9w-7v6q-hpjh",
+  "repo": "fluent/fluent-plugin-s3",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: in_s3 obtains the S3 object body and materializes extractor output before parsing. At the fix parent, GzipExtractor appends each unbounded gz.read result and joins all members; the command extractors use Open3.capture2 and return complete decompressed stdout. An authorized bucket writer can therefore submit a small compressed object whose expansion exhausts Fluentd memory.",
+    "atomic_bic": "PASS: de1ffbe1e6b9da6f4e09ddddd5cb94eb24239636 is the smallest surviving public first-write of the exploitable default gzip path: it creates in_s3.rb, defaults store_as to gzip, passes the S3 body to @extractor.extract, and implements GzipExtractor with an unbounded gz.read. git log -L independently traces the original extract method to this commit; c6acfac8d1efac1ff10f800fefc11d3c4c4faffd only rewrites it for concatenated gzip members while retaining unbounded gz.read. The later command-extractor commit 3208b05088af166ecd67f0827d8106a0240969c4 adds further affected formats but does not precede the already exploitable gzip origin.",
+    "immediate_parent_absence": "PASS: the BIC has the single immediate parent a6f2ddac8ab47b459357135b323213d702ca1320. git cat-file on parent:lib/fluent/plugin/in_s3.rb fails and the targeted parent tree contains none of in_s3.rb or the command-extractor files; the vulnerable input/extraction path is introduced by the BIC.",
+    "squash_member_decomposition": "PASS: the BIC is a one-parent atomic commit, not a merge or squash aggregate. It is an ancestor on the second-parent member chain of merge commit 47c45029dd23190005a9ac00144203451b345112 (PR #105); the merge has parents a6f2ddac8ab47b459357135b323213d702ca1320 and 2bf1da35a0cefa296316888fe6eaf48cb8c01bb0, so no decomposition beyond the member commit is required.",
+    "affected_release_membership": "PASS: tag dereferencing and merge-base checks show de1ffbe1e6b9da6f4e09ddddd5cb94eb24239636 is not an ancestor of v0.6.9 (a6f2ddac8ab47b459357135b323213d702ca1320), but is an ancestor of v0.7.0 (312274d67fded91d716553a056c9c916995d96cd) and v1.8.4 (c128c8124031b8fe025dd82bbf1cbe97b2f8a5e9), matching the vendor range >= 0.7.0, <= 1.8.4.",
+    "fixed_release_membership": "PASS: e085aee001d15bcc4bd073507e74075e30550fd0 is not an ancestor of v1.8.4 and is an ancestor of v1.8.5 (9dd608f7461db45f753f4c98ee8071fcb2b0de35). The v1.8.5 ChangeLog explicitly records enforcement of size limits on decompressed in_s3 payloads.",
+    "direct_fix_or_unpatched_state": "PASS: e085aee001d15bcc4bd073507e74075e30550fd0 directly adds a configurable 256 MiB decompression limit, 64 KiB bounded-read loops, SizeLimitError handling, bounded command stdout collection, documentation, and tests for gzip, text, and gzip_command paths. Its sole parent 61f24d361709e1dbd834e61350ecf38c471c0b8c still contains the unbounded reads. The repository advisory directly names this commit and v1.8.5 as patched.",
+    "bic_only_ai_attribution": "PASS: judgment uses only BIC de1ffbe1e6b9da6f4e09ddddd5cb94eb24239636. Its commit object names Kenji Okimoto <okimoto@clear-code.com> as both author and committer, dates the authored change to 2015-09-29, contains only the Add in_s3.rb message, has no co-author, bot, generated-with, Copilot, Cursor, Claude, or comparable AI marker, and has no git note. The later 2026 fix identity is not used for attribution."
+  },
+  "findings": [
+    "The primary causal chain is independently reproduced: unbounded full-buffer decompression is real, de1ffbe1e6b9da6f4e09ddddd5cb94eb24239636 is the atomic first-write, and e085aee001d15bcc4bd073507e74075e30550fd0 is the direct release fix.",
+    "The repository advisory endpoint currently returns HTTP 200 with state published, withdrawn_at null, affected range >= 0.7.0 through 1.8.4, and patched version 1.8.5. CVE.org currently returns HTTP 404 CVE_RECORD_DNE for CVE-2026-44162; this is absence of a CVE record, not a withdrawn or rejected disposition, and does not contradict the published vendor advisory.",
+    "The BIC-only attribution supports NOT_AI: the atomic 2015 commit is human-authored and human-committed with no AI marker or note. No correction to the primary verdict or causal fields is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

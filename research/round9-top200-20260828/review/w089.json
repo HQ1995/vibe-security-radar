@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-705999e0e45e6432548a369a",
+  "case_id": "alias-705999e0e45e6432548a369a",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "advisory_ids": [
+    "CVE-2026-55999",
+    "GHSA-h655-847g-q4f7"
+  ],
+  "bug_semantics": "An authenticated X client can use SetFontPath to expose a crafted PCF font, OpenFont to load it, and text drawing on a glamor-backed drawable to reach glamor_font_get(). The function sizes each heap-atlas slot from the PCF-declared font maxbounds but, before the fix, copied each glyph using the untrusted per-glyph GLYPHWIDTHBYTES and GLYPHHEIGHTPIXELS values without checking that they fit the slot. Because libXfont2's PCF parser does not recompute maxbounds from the glyph metrics, an oversized glyph writes attacker-controlled bytes beyond the heap allocation; negative width or height can also wrap the memcpy size or unsigned loop bound. Only glamor-backed Xorg/Xwayland servers are on this path.",
+  "flaw_origin": "Commit 732e3b9c08532f40656010eac9d128601cc88c3f replaced one glTexSubImage2D upload per glyph with a CPU-side atlas: it allocated bits using overall_width * overall_height derived from maxbounds, then introduced a row loop whose memcpy length and iteration count came directly from each glyph. That newly combined mismatched allocation/copy geometry is the smallest source change that created the reported heap overflow.",
+  "introducer_sha": "732e3b9c08532f40656010eac9d128601cc88c3f",
+  "introducer_parent": "ac94cdb9df94dd26688de6d3d9143ac48f7b3c7b",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker in the BIC commit object. `git cat-file commit 732e3b9c08532f40656010eac9d128601cc88c3f` shows human author Michel Dänzer, human committer Keith Packard, Reviewed-by and Signed-off-by trailers only; it has no Co-Authored-By, Assisted-by, Generated-with, bot identity, or other AI disclosure.",
+  "verdict": "NOT_AI",
+  "fix_sha": "fbf7bac22e2c6bd627fb042742a23318263edae1",
+  "direct_fix_sha": "fbf7bac22e2c6bd627fb042742a23318263edae1",
+  "evidence": [
+    "First-party X.Org security announcement https://www.openwall.com/lists/oss-security/2026/07/08/2 names CVE-2026-55999, describes the maxbounds/per-glyph mismatch and SetFontPath -> OpenFont -> glamor drawing attack path, identifies glamor-backed Xorg and Xwayland as affected, names fbf7bac22e2c6bd627fb042742a23318263edae1 as the fix, and states fixed releases xorg-server-21.1.24 and xwayland-24.1.13.",
+    "In the assigned clone, `git show --format=fuller --no-renames fbf7bac22e2c6bd627fb042742a23318263edae1 -- glamor/glamor_font.c` shows the direct repair: reject non-positive maxbounds dimensions; compute gw/gh once; reject negative per-glyph dimensions or gw > glyph_width_bytes / gh > glyph_height; otherwise use the checked values in the loop and memcpy. The commit message independently explains that PCF maxbounds are trusted and that malformed per-glyph dimensions overflow or wrap.",
+    "`git log -L ':glamor_font_get:glamor/glamor_font.c' fbf7bac22e2c6bd627fb042742a23318263edae1^` traces the vulnerable atlas allocation/copy back to 732e3b9c08532f40656010eac9d128601cc88c3f. `git log --all -S'memcpy(dst, src, GLYPHWIDTHBYTES(glyph))' -- glamor/glamor_font.c` independently identifies that commit on main history (alongside equivalent objects on other refs) as the addition of the exact unchecked memcpy and the 2026 fixes as its removal.",
+    "`git show --format=fuller --no-renames 732e3b9c08532f40656010eac9d128601cc88c3f` shows the BIC adding `bits = malloc(overall_width * overall_height)` and replacing the parent's glTexSubImage2D call with `for (y = 0; y < GLYPHHEIGHTPIXELS(glyph); y++) memcpy(dst, src, GLYPHWIDTHBYTES(glyph))`, while the atlas dimensions remain derived from maxbounds. The commit is a focused performance change, not a move, revert, backport, merge, or squash aggregate.",
+    "Direct parent verification: `git rev-parse 732e3b9c08532f40656010eac9d128601cc88c3f^` returns ac94cdb9df94dd26688de6d3d9143ac48f7b3c7b. The same `git show` diff and `git diff ac94cdb9df94dd26688de6d3d9143ac48f7b3c7b 732e3b9c08532f40656010eac9d128601cc88c3f -- glamor/glamor_font.c` directly show that the parent has neither the CPU heap atlas nor the vulnerable memcpy loop; it uploads glyphs with glTexSubImage2D instead.",
+    "Introduction boundary: `git tag --contains 732e3b9c08532f40656010eac9d128601cc88c3f --list 'xorg-server-*' --sort=version:refname` begins at xorg-server-1.17.99.901 and then xorg-server-1.18.0. `git diff xorg-server-1.17.2 xorg-server-1.17.99.901 -- glamor/glamor_font.c` shows precisely the BIC's heap-atlas/memcpy change, so 1.17.2 lacks it and the 1.18 development series contains it.",
+    "Closing release boundary: `git tag --contains f3df3c9a52b4f480cbcff45cc6569c19de6bfede --sort=version:refname` returns xorg-server-21.1.24, and `git tag --contains 28bf4097755f0f9e45e2cfc097e2bb49a714c227 --sort=version:refname` returns xwayland-24.1.13. Those are branch backports of the direct mainline fix. `git diff xorg-server-21.1.23 xorg-server-21.1.24 -- glamor/glamor_font.c` and the analogous xwayland-24.1.12..xwayland-24.1.13 diff both show the same bounds checks appearing only in the fixed release; tag objects are 18879ff57c263d79083a3e3ec5c2ec12ccb30984 -> 65f53e855f67a267d707238b8aeb87bd83c7e74f and 664f57476e2f630fd08a3a8e9f2216a9b3ca0a91 -> 948db950541effaab813e7fc188b7f20281fe91d.",
+    "BIC-only AI check: `git cat-file commit 732e3b9c08532f40656010eac9d128601cc88c3f` is the raw commit object and contains no AI marker. The later fix object's `Assisted-by: Claude:claude-opus-4-6` trailer is deliberately excluded from attribution because it is on the fix, not the BIC."
+  ],
+  "reasoning": "The causal boundary is the 2015 CPU-atlas optimization, not the original 2014 glamor text code: before 732e3b9c08532f40656010eac9d128601cc88c3f there was no heap backing buffer for per-glyph memcpy to overrun; that commit simultaneously introduced the maxbounds-sized heap allocation and unchecked per-glyph copy. Its immediate parent directly lacks both operations, and -L/-S history agrees. The 2026 mainline fix and its two release-branch backports close exactly that invariant violation and establish the published fixed versions. Because the BIC raw commit object has only human identities and conventional review/signoff trailers, the correct BIC-only verdict is NOT_AI even though the much later security fix discloses Claude assistance.",
+  "remaining_gap": null
+}

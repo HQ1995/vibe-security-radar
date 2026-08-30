@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-dce0bce1305aaf4c0414a565",
+  "case_id": "GHSA-4ph5-83mw-vm42",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "advisory_ids": [
+    "CVE-2026-50263",
+    "GHSA-4ph5-83mw-vm42"
+  ],
+  "bug_semantics": "CreateSaverWindow() snapshots the screen-saver private pointer in the local pPriv via SetupScreen(). After SetAttributes creates pPriv and a first forced saver creates its window, UnsetAttributes clears pPriv->attr. A second forced saver frees the old window, clears pPriv->hasWindow, and calls CheckScreenPrivate(); with attr and events NULL, hasWindow false, and installedMap None, that helper frees pPriv and clears the screen-private slot. CreateSaverWindow() nevertheless retains the non-NULL dangling local and immediately reads pPriv->attr, producing a client-triggerable use-after-free read and potential information disclosure.",
+  "flaw_origin": "Commit 9508a382f8a9f241dab097d921b6d290c1c3a776 is the earliest and smallest commit in the repository history that adds Xext/saver.c and writes the complete flawed lifetime pattern: the SetupScreen local, CheckScreenPrivate's conditional free, CreateSaverWindow's CheckScreenPrivate call followed by reuse of the stale local, and UnsetAttributes clearing attr. Pickaxe/history tracing reaches this file-addition commit; later changes that blame the formatted lines are style-only rewrites. Its direct parent ded6147bfb5d75ff1e67c858040a628b61bc17d1 has no Xext/saver.c entry.",
+  "introducer_sha": "9508a382f8a9f241dab097d921b6d290c1c3a776",
+  "introducer_parent": "ded6147bfb5d75ff1e67c858040a628b61bc17d1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the exact BIC commit object identifies author and committer as Kaleb Keithley <kaleb@freedesktop.org>, has the message \"Initial revision\", and contains no Co-Authored-By, Generated-with, Assisted-by, bot identity, or other AI marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "ecc634f1b2f7aa473d3a267eada98c4918bf9e05",
+  "direct_fix_sha": "ecc634f1b2f7aa473d3a267eada98c4918bf9e05",
+  "evidence": [
+    "The first-party X.Org advisory at https://lists.x.org/archives/xorg-announce/2026-June/003702.html describes the CreateSaverWindow use-after-free information disclosure, identifies ZDI-CAN-30168, states that releases before xorg-server 21.1.23 and Xwayland 24.1.12 are affected, and names https://gitlab.freedesktop.org/xorg/xserver/-/commit/ecc634f1b2f7aa473d3a267eada98c4918bf9e05 as the fix.",
+    "The direct fix ecc634f1b2f7aa473d3a267eada98c4918bf9e05 (parent 6d459e4daf715bea8abdafa8fb130be2f8a1d145) documents the four-request sequence SetAttributes, ForceScreenSaver(Active), UnsetAttributes, ForceScreenSaver(Active). Its Xext/saver.c patch re-fetches pPriv with GetScreenPrivate(pScreen) immediately after CheckScreenPrivate(), so a freed private becomes NULL before the pPriv->attr test; it also nulls pPriv after the analogous ScreenSaverFreeAttr call.",
+    "At 9508a382f8a9f241dab097d921b6d290c1c3a776, Xext/saver.c:232 defines SetupScreen as a local pPriv snapshot; lines 278-290 show CheckScreenPrivate freeing pPriv and clearing the screen slot when attr/events/window/map state is empty; lines 531-560 show CreateSaverWindow clearing hasWindow, calling CheckScreenPrivate, and then dereferencing the unchanged local in the pPriv->attr test; lines 1194-1211 show ProcScreenSaverUnsetAttributes setting attr to NULL.",
+    "Repository history searches (`git log --all --reverse -S 'CreateSaverWindow'` and `-S 'pPriv->hasWindow = FALSE'` on Xext/saver.c, plus blame as a lead) converge on 9508a382f8a9f241dab097d921b6d290c1c3a776 as the first addition of the causal code. Commit 9838b7032ea9792bec21af424c53c07078636d21 only reformatted it in 2012, and e6cdf08e9d5dba11e366dcc11eb9877399e1bb1d only performed later formatting cleanup.",
+    "Direct-parent tree verification with `git ls-tree -r ded6147bfb5d75ff1e67c858040a628b61bc17d1 -- Xext/saver.c` returned no entry, while 9508a382f8a9f241dab097d921b6d290c1c3a776 adds the file with the vulnerable mechanism. Thus the vulnerable lines are absent in the BIC's immediate parent.",
+    "BIC-only attribution used `git cat-file -p 9508a382f8a9f241dab097d921b6d290c1c3a776`: author and committer are both Kaleb Keithley <kaleb@freedesktop.org>, timestamp 1068828537 +0000, and the complete message is `Initial revision`; there are no trailers or AI/bot markers.",
+    "Tag ancestry places 9508a382f8a9f241dab097d921b6d290c1c3a776 in all four boundary tags xorg-server-21.1.22, xorg-server-21.1.23, xwayland-24.1.11, and xwayland-24.1.12. The prior tags lack the re-fetch, while `git grep` finds the fix comment and re-fetch only in xorg-server-21.1.23 and xwayland-24.1.12, at Xext/saver.c:485-486.",
+    "The security fix was backported onto the two release branches: 182c23f780402062ab31963776a19d5b87e25ac8 is contained by xorg-server-21.1.23 (not 21.1.22), and 2766bcf818674f5afda6b75fbd5caeb991afc46e is contained by xwayland-24.1.12 (not 24.1.11). Diffs from their respective parents 94341bd715d62ba8da4c1851f517018996da1af8 and 901da57abfde6bf2ae33859c2dd47b45d6dd5871 show the same Xext/saver.c re-fetch as direct fix ecc634f1b2f7aa473d3a267eada98c4918bf9e05, proving the advisory's patched boundaries despite the release branches using cherry-picked SHAs."
+  ],
+  "reasoning": "The vulnerability is a stale-local lifetime bug, not merely the later pPriv->attr read in isolation. The complete causal state transition already exists when Xext/saver.c first enters this Git history in 9508a382f8a9f241dab097d921b6d290c1c3a776: UnsetAttributes can clear attr, CreateSaverWindow can clear hasWindow, CheckScreenPrivate can then free the object and clear only the screen slot, and the caller's SetupScreen local remains dangling. History/pickaxe results show no smaller later semantic introducer; formatting commits only preserve the mechanism, and direct inspection proves the BIC parent lacks the file. The official advisory's affected boundaries agree with ancestry and source checks, while the mainline fix and two release-branch backports all restore the required post-call re-fetch. Finally, attribution is judged solely from the BIC object: its human author/committer and trailer-free `Initial revision` message contain no AI marker. The AI assistance disclosed on the 2026 fix does not attribute the 2003 BIC, so the causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,50 @@
+{
+  "worker": "w121",
+  "review_agent_id": "r389_w121",
+  "class_id": "alias-47d2f1cf18c1cdb6371ca640",
+  "case_id": "GHSA-gw2x-mfwr-h46p",
+  "repo": "xuxueli/xxl-job",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The reviewed advisory, issue 3936, and repository all identify the same authenticated cross-job-group log disclosure: logDetailCat accepts logId, loads the corresponding XxlJobLog, derives the executor and trigger time from that row, and returns executor log content without JobGroupPermissionUtil.validJobGroupPermission. The adjacent page/list paths enforce job-group authorization. CVE-2026-7303 remains PUBLISHED and GHSA-gw2x-mfwr-h46p has withdrawn_at=null."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "9293c61ca0a8d54afdfb27cc568885ae639a14dc is the single-parent, cohesive SSRF-remediation commit that first writes the disclosed logId-only resource lookup: it removes executorAddress and triggerTime from the request/UI, loads XxlJobLog by logId, and uses the stored executor and trigger time without a job-group permission check. Its four-file change is the matching server/UI parameter removal, not a release aggregate, move, revert, or merge."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Immediate parent 730c1066b80e8ab44503ed34ced19ef8e0471fec has logDetailCat(String executorAddress, long triggerTime, long logId, int fromLineNum) and contacts the caller-selected executor directly. It does not contain the advisory mechanism in which logId alone selects the stored log row, executor, and trigger time. The older endpoint is a distinct broader client-controlled SSRF surface, not this disclosed resource-identifier implementation."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "git rev-list and the raw commit object show exactly one parent for 9293c61ca0a8d54afdfb27cc568885ae639a14dc. The endpoint rewrite and removal of the two browser-supplied parameters land together in the same small functional commit; no merge, squash member, or finer public introducing object is present."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "9293c61ca0a8d54afdfb27cc568885ae639a14dc is not an ancestor of 2.3.1 and is an ancestor of 2.4.0, 3.3.0, 3.3.1, 3.3.2, v3.4.0, and 3.4.1. Inspection of v3.4.0 and 3.4.1 confirms logDetailCat still lacks the group-permission check, so the advisory's upper bound and claimed 3.4.0 patched status are incorrect; the primary record already captures that discrepancy."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Direct fix 7a5239f3b4275bc486490f8c835d10198ef4881e is not an ancestor of v3.4.0 or 3.4.1 and is an ancestor of 3.4.2. Tag 3.4.2 contains the request parameter plus JobGroupPermissionUtil.validJobGroupPermission(request, jobLog.getJobGroup()) in logDetailCat."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "7a5239f3b4275bc486490f8c835d10198ef4881e directly closes the sink by loading the log row and checking the requester's permission for jobLog.getJobGroup() before fetching executor content. Its immediate parent af48317887e8273592266000450824f21e7df3c2 lacks that check. The advisory-cited d24e4ccd6073cc75305e1d3b9c29bc8db7437e7a changes log list filtering/indexing only and leaves logDetailCat unchanged."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The raw BIC object attributes both author and committer to xuxueli <931591021@qq.com>; its message is only the CVE-2022-43183 SSRF-fix subject and contains no AI/bot identity, Co-Authored-By, Generated-with, or equivalent marker. The later feat(AI) commit 36332fd37490ab94fc101861c88bc927f2d88580 only adds permission to sibling logDetailPage and is correctly excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "The primary record correctly distinguishes the disclosed logId-only resource-selection mechanism from the immediate parent's older caller-supplied executorAddress/triggerTime SSRF surface.",
+    "The primary record correctly rejects advisory commit d24e4ccd6073cc75305e1d3b9c29bc8db7437e7a and version 3.4.0 as the fix: both v3.4.0 and 3.4.1 remain vulnerable, while 7a5239f3b4275bc486490f8c835d10198ef4881e first reaches tag 3.4.2.",
+    "No correction to the primary NOT_AI verdict or causal fields is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "worker": "w304",
+  "review_agent_id": "r389_w304",
+  "class_id": "alias-059d49cd14078f8455c9f065",
+  "case_id": "GHSA-vv96-h3xf-q33j",
+  "repo": "horilla-opensource/horilla-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In 1.0.2 an authenticated user can store attacker-controlled HTML in HorillaAttachment.description through HorillaAttachmentForm's SummernoteInplaceWidget. The documented Edit action loads that value into Summernote and executes event-handler HTML. A second source-to-sink path renders the same stored value with {{ obj.description|safe }} in notes_attachments_detail.html. The latter remains present in 1.0.3.",
+    "atomic_bic": "Confirmed as 14ca79728363441de177fdfb318f203113b816c5, the root [INIT] commit. It first contains HorillaAttachment.description, the SummernoteWidget binding, the Edit/View routes, and the unsafe detail rendering. History searches for the widget and safe rendering reach that root; 30f6428d558c5d2fa2c164f79f7714eb32e8e359 merely changes SummernoteWidget to SummernoteInplaceWidget.",
+    "immediate_parent_absence": "Confirmed. git rev-list --parents and git cat-file show no parent for 14ca79728363441de177fdfb318f203113b816c5; the clone is not shallow and has no replace refs or grafts.",
+    "squash_member_decomposition": "Not applicable beyond the fail-closed root check. The BIC is the first surviving public object in this clone, has no parent, replace ref, graft, or reconstructable finer member; the later widget rename is not an introducer.",
+    "affected_release_membership": "Confirmed. 14ca79728363441de177fdfb318f203113b816c5 is an ancestor of tags 1.0.0, 1.0.1, and 1.0.2. The named patch fc5c8e55988e89273012491b5f097b762b474546 is not an ancestor of those tags.",
+    "fixed_release_membership": "Commit membership confirmed but complete fixed-state claim rejected. fc5c8e55988e89273012491b5f097b762b474546 is an ancestor of tag 1.0.3, matching the published CVE record, but 1.0.3 retains the independent {{ obj.description|safe }} execution sink and lacks server-side description sanitization.",
+    "direct_fix_or_unpatched_state": "The advisory-named fc5c8e55988e89273012491b5f097b762b474546 directly adds DOMPurify and intercepts jQuery html(value) for .note-editable, so it addresses the published Edit-pencil PoC and its parent 38658f420d55de9b3f6e72d48e687683b5dafca3 lacks that protection. It is not a complete fix for the primary's stated two-sink mechanism: the detail template's |safe sink is byte-for-byte present in 1.0.3 and the model/form performs no server-side sanitization. That residual path is a verified unpatched state.",
+    "bic_only_ai_attribution": "Confirmed absent. The BIC object identifies author and committer as Horilla <support@horilla.com>, subject [INIT] Initial Commit, with empty trailers and no Co-Authored-By, Generated-with, bot, Copilot, Cursor, Claude, or GPT marker. Fix-commit signals were not used for attribution.",
+    "advisory_status": "Confirmed current on 2026-08-29: CVE-2026-3050 is PUBLISHED and lists 1.0.0-1.0.2 affected and 1.0.3 unaffected; GHSA-vv96-h3xf-q33j has withdrawn_at=null. The repository evidence contradicts only the breadth of the fixed-state claim, not the advisory's validity or the BIC authorship judgment."
+  },
+  "findings": [
+    "The primary's BIC, root-parent proof, tag ancestry, and BIC-only NOT_AI judgment independently reproduce.",
+    "The primary correctly notices the detail-view {{ obj.description|safe }} sink but then incorrectly sets direct_fix_sha to fc5c8e55988e89273012491b5f097b762b474546 and remaining_gap to null as though that same sink were closed.",
+    "At tag 1.0.3, DOMPurify is confined to client-side Summernote handling in static/assets/js/global.js. horilla_generics/templates/notes_attachments_detail.html still renders the stored description with |safe, while HorillaAttachmentForm and HorillaAttachment contain no bleach, DOMPurify, or other server-side sanitizer.",
+    "The public PoC's exact Edit-pencil trigger is addressed by fc5c8e55988e89273012491b5f097b762b474546, so the commit remains the advisory patch; it is not evidence that every source-to-sink path described by the primary is fixed."
+  ],
+  "corrected_fields": {
+    "direct_fix_sha": null,
+    "reasoning": "14ca79728363441de177fdfb318f203113b816c5 remains the atomic BIC and has no BIC-local AI marker, so NOT_AI remains supported. fc5c8e55988e89273012491b5f097b762b474546 is the direct remediation for the advisory's Edit-pencil PoC, but it does not close the primary's additional direct detail-render sink. A full direct-fix SHA for the complete stated mechanism is therefore not established.",
+    "remaining_gap": "No complete fix was established for the persistent notes detail-view sink: tag 1.0.3 still renders HorillaAttachment.description with |safe and has no server-side sanitization. Either narrow bug_semantics strictly to the Edit-pencil PoC or retain the two-sink semantics and mark the detail path unpatched."
+  },
+  "remaining_gap": "Primary verdict NOT_AI is supportable, but the primary record must correct its complete-fix claim: fc5c8e55988e89273012491b5f097b762b474546 fixes the documented editor trigger while leaving the separately stated detail-render sink unpatched in 1.0.3."
+}

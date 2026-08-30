@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-dcd30bce1e5bb1dbce0594f7",
+  "case_id": "GHSA-w5hq-g745-h8pq",
+  "repo": "uuidjs/uuid",
+  "advisory_ids": [
+    "CVE-2026-41907",
+    "GHSA-w5hq-g745-h8pq"
+  ],
+  "bug_semantics": "uuid v3()/v5() (shared helper src/v35.ts) and v6() accept a caller-supplied output buffer and offset, then copy 16 UUID bytes with buf[offset+i]=bytes[i] and return buf, without rejecting offset<0 or offset+16>buf.length. On Uint8Array, out-of-range index assignment is a silent no-op, so a too-small buffer or too-large offset yields a mixed/truncated identifier (new bytes plus stale tail) with no exception. v1()/v4()/v7() already throw RangeError on the same bounds, so callers that treat a returned buffer as a complete 16-byte UUID get integrity failures only on v3/v5/v6. This is CWE-787/CWE-1285 in JS typed-array terms (silent partial write), not a native memory smash.",
+  "flaw_origin": "v5() grew buf/offset parameters in 1d56dc9e80774f651602c53899a5f63cc304ed0f but ignored them (return buf || stringify). The first actual 16-byte copy into the caller buffer is PR #201 member 37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0, which added an unguarded loop in v5.js matching contemporaneous v4.js style. That loop was extracted into lib/v35.js (and reused for new v3()) by dc02a760a56e0cb22e743ccf42fb2d71cba63882, restyled, then ported to src/v35.ts by 1e0f9870db864ca93f7a69db0d468b5e1b7605e7. v6() independently first-wrote the same unguarded copy in c4ed13e7159d87c9e42a349bdd9dc955f1af46b6. e0ee90051ebd13475bbcff4d371330aa4f9bd1dd later added the RangeError guard only to v1/v4/v7; it did not write the v3/v5/v6 loops and is not the BIC.",
+  "introducer_sha": "37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0",
+  "introducer_parent": "c50ac88f098ecfbff9a940816c8e6825ffd7e05a",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0",
+    "77d906a403ba9067cd146aed7612431a18ad8c85",
+    "8bd29f6ccb1ee6bfb5b2b0893210cfd1bc1560f2"
+  ],
+  "ai_marker": "absent: BIC author Thanh-Phuong <python0429@gmail.com>, committer GitHub <noreply@github.com>; subject/body is only 'Fix buffer not being modified' with no Co-Authored-By, Generated-with, Copilot, or other AI trailers (2017-06-21).",
+  "verdict": "NOT_AI",
+  "fix_sha": "3d2c5b0342f0fcb52a5ac681c3d47c13e7444b34",
+  "direct_fix_sha": "3d2c5b0342f0fcb52a5ac681c3d47c13e7444b34",
+  "evidence": [
+    "CVE.org CVE-2026-41907 state=PUBLISHED (cveawg.mitre.org, datePublished 2026-04-24); GHSA-w5hq-g745-h8pq withdrawn_at=null. Duplicate MITRE CVE-2026-41988 is also PUBLISHED against the same GHSA. Not withdrawn/rejected.",
+    "GHSA: v3()/v5()/v6() write buf[offset+i] without bounds checks; v4()/v1()/v7() throw RangeError. Suggested guard: if (offset < 0 || offset + 16 > buf.length) throw RangeError. Affected npm uuid: <11.1.1, 12.0.0, 13.0.0; patched 11.1.1, 12.0.1, 13.0.1. Advisory also cites v14.0.0.",
+    "Pre-fix parent f2c235f93059325fa43e1106e624b5291bb523c4: src/v35.ts copies 16 bytes after `offset = offset || 0` with no RangeError; src/v6.ts copies with no check. Same parent already has the RangeError guard in src/v1.ts:163, src/v4.ts:50, src/v7.ts:91.",
+    "Main fix 3d2c5b0342f0fcb52a5ac681c3d47c13e7444b34 ('Merge commit from fork', single parent f2c235f93059325fa43e1106e624b5291bb523c4) inserts the v1/v4/v7 RangeError guard into src/v35.ts and src/v6.ts. Ancestor of v14.0.0; not of v11.1.1/v12.0.1/v13.0.1.",
+    "Backports with the same guard: 32389c887c9e75f90442ee4cc95bbab0c4e8346e in v11.1.1 (absent from v11.1.0); 3d61d6ac1f782cf6b1dd8661c60f11722cd49a0d in v12.0.1 (absent from v12.0.0); 9d27ddf7046ce496ef39569ff84d948eeff9cb2a in v13.0.1 (absent from v13.0.0). git grep RangeError on those tags matches the GHSA ranges.",
+    "BIC search (not inverted from AI markers): git log -S 'buf[offset' and git log -L on src/v35.js at 1e0f987^ show the v3/v5 copy appearing first as lib/v35.js in dc02a760a56e0cb22e743ccf42fb2d71cba63882 (extract from existing v5.js). Parent of that extract already had the unguarded v5.js loop.",
+    "First write of the unguarded v5 copy is GitHub PR #201 member 37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0 (v5.js +8): `if (buf) { for (var idx = 0; idx < 16; ++idx) { buf[off+idx] = bytes[idx]; } }`. Immediate parent c50ac88f098ecfbff9a940816c8e6825ffd7e05a v5.js still does `return buf || bytesToUuid(bytes)` with no buf[off+idx] write (git grep buf\\[off on parent: empty).",
+    "PR #201 squash landing on master is 8e2398111bc2e55c242502b95ac3bfd9fd4685f2; tree equals last member 8bd29f6ccb1ee6bfb5b2b0893210cfd1bc1560f2 (630a33c19e609514f6739067589b5f5d7eecbcfa). Members 77d906a403ba9067cd146aed7612431a18ad8c85 and 8bd29f6 are tests-only. Squash aggregate is not the BIC.",
+    "Tag membership: 8e23981 (content-equivalent mainline landing of 37a5efa) is an ancestor of v3.2.0 and of every later affected tag (v11.0.0, v11.1.0, v12.0.0, v13.0.0). v3.1.0 == c50ac88 does not contain the write. 37a5efa itself is not a mainline ancestor because GitHub squashed PR #201.",
+    "Later non-BIC mutations of the same loop: dc02a76 extract to v35; e8cb0a03a5408415d1f93a1499d8cda47246adc7 prettier; f6ce4bffc2b10d92f3164e76e877e5cdb7942474 var->let; 7476a6661ce67eab0148d4979024f795413f34c2 restyle; 1e0f9870db864ca93f7a69db0d468b5e1b7605e7 JS->TS move of the still-unguarded copy into src/v35.ts.",
+    "v6 independent first-write: c4ed13e7159d87c9e42a349bdd9dc955f1af46b6 added src/v6.js `if (buf) { for (...) buf[offset+i]=bytes[i] }` with no bounds check (v6 builds bytes via v1(..., new Uint8Array(16)) so v1's later guard never sees the caller buffer).",
+    "Missed-fix (not BIC): e0ee90051ebd13475bbcff4d371330aa4f9bd1dd (in v11.0.4) added the RangeError guard to v1/v4/v7 only. That commit did not touch v35/v6.",
+    "BIC commit-object AI check: git cat-file -p / git log --format=fuller 37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0 — author Thanh-Phuong <python0429@gmail.com>, committer GitHub <noreply@github.com>, no trailers. Human 2017 PR from Landmaster; GitHub committer is web-flow, not an AI bot."
+  ],
+  "reasoning": "The advisory is a real, still-published missing-bounds issue: v3/v5/v6 copy 16 bytes into a caller buffer and return it even when the range does not fit, producing silent partial UUID output, while v1/v4/v7 throw. CVE-2026-41907 is PUBLISHED on CVE.org; the GHSA is not withdrawn. The smallest first-write of that unguarded copy is not the 2024 TS port, not the 2017 v35 extract, and not the 2025 v1/v4/v7 guard. v5 accepted buf/offset from 1d56dc9 but did not write through them; 37a5efa (PR #201, reconstructed from the 8e23981 squash) is the first commit whose parent lacks buf[off+idx] and whose tree contains the 16-byte unguarded loop later shared by v3() via v35 and copied again by v6(). Parent-tree verification used c50ac88:v5.js. 8e23981 is the squash aggregate (same tree as the last PR member) and therefore not the BIC; member commits are public on the PR and present in the clone. That landing precedes the GHSA affected window (first tagged in v3.2.0; all listed unpatched 11/12/13 tags contain the write). The default-branch fix is single-parent 3d2c5b0, which adds the existing RangeError guard to v35.ts and v6.ts and is in v14.0.0; backports match 11.1.1/12.0.1/13.0.1. AI judgment is BIC-only: 37a5efa is a 2017 human GitHub-UI commit by Thanh-Phuong/Landmaster with no Co-Authored-By/Generated-with/bot author. Later AI-era refactors or the v1/v4/v7 fix do not reattribute the introducer.",
+  "remaining_gap": null
+}

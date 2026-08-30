@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-9acecdbe83768cf660dad333",
+  "case_id": "GHSA-5j7r-7m6v-52v3",
+  "repo": "app-auto-patch/app-auto-patch",
+  "advisory_ids": [
+    "CVE-2025-70341",
+    "GHSA-5j7r-7m6v-52v3"
+  ],
+  "bug_semantics": "App-Auto-Patch v3.4.2 and earlier run as root and recursively chmod the working directory ${appAutoPatchFolder} (/Library/Management/AppAutoPatch) to 777 during install. That world-writable tree holds downloaded packages, Installomator artifacts, and helper scripts used after signature checks, so a local low-privilege attacker can race the install window and replace a verified PKG or helper before the root installer consumes it, yielding arbitrary file write / root code execution. A secondary eval of Installomator label fragments is a command-injection surface the reporter treated as much harder without the world-writable directory.",
+  "flaw_origin": "New installer permission block first written on the Version_3.4.2/main lineage in 7dbb4c33c7edf553a29175038bdf713be0406665 (subject 3.0). Immediate parent 61b11c1c506278b9989dea6d88b9a8eedc91ff54 already contains App-Auto-Patch-via-Dialog.zsh but lacks chmod -R 777 on appAutoPatchFolder. Parallel 3.0-beta first-write dd0f4fcae4ce5951e541cb069ab5fe067e909575 is not an ancestor of Version_3.4.2 and is not the BIC for this advisory.",
+  "introducer_sha": "7dbb4c33c7edf553a29175038bdf713be0406665",
+  "introducer_parent": "61b11c1c506278b9989dea6d88b9a8eedc91ff54",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent on the BIC commit object. git cat-file -p 7dbb4c33c7edf553a29175038bdf713be0406665 shows author Andrew Spokes <132794591+TechTrekkie@users.noreply.github.com>, committer GitHub <noreply@github.com>, single parent, subject 3.0, and no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, or bot trailer. git log -1 --format='%an %ae %cn %ce' matches those identities.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7a0ef9af1a447c860bcb650a74eaeeb021f1c6af",
+  "direct_fix_sha": "7a0ef9af1a447c860bcb650a74eaeeb021f1c6af",
+  "evidence": "Advisory still live: CVE.org record CVE-2025-70341 state=PUBLISHED (not rejected/withdrawn); GHSA-5j7r-7m6v-52v3 has withdrawn_at null. Mechanism at Version_3.4.2 App-Auto-Patch-via-Dialog.zsh:2525 is `chmod -R 777 \"${appAutoPatchFolder}\"` after `chown -R root:wheel`, followed by `chmod -R go-w` which still leaves a world-writable race window during install. `git log --reverse -S 'chmod -R 777' --format='%H %ci %an %s' Version_3.4.2 -- App-Auto-Patch-via-Dialog.zsh` returns only 7dbb4c33c7edf553a29175038bdf713be0406665. `git cat-file -e 61b11c1c506278b9989dea6d88b9a8eedc91ff54:App-Auto-Patch-via-Dialog.zsh` succeeds; `git grep -n 'chmod -R 777' 61b11c1c506278b9989dea6d88b9a8eedc91ff54 -- App-Auto-Patch-via-Dialog.zsh` is empty, so the parent tree lacks the vulnerable lines. `git cat-file -p 7dbb4c33c7edf553a29175038bdf713be0406665` is a single-parent non-merge with subject 3.0 and no AI trailers. The same `chmod -R 777` string appears earlier on a disconnected 3.0-beta commit dd0f4fcae4ce5951e541cb069ab5fe067e909575, but `git merge-base --is-ancestor dd0f4fc... Version_3.4.2` is false, so it is not this advisory's BIC. Fix: `git log -S 'chmod -R 777' --format='%H %ci %an %s' Version_3.5.0 -- App-Auto-Patch-via-Dialog.zsh` and the hunk `git diff a562c4de516d786f17d6bbb6a1bb9b649a951726 7a0ef9af1a447c860bcb650a74eaeeb021f1c6af -- App-Auto-Patch-via-Dialog.zsh` change only `chmod -R 777` to `chmod -R 755`. Parent of the fix still has 777; Version_3.5.0 contains 7a0ef9a. Reporter PR #202 (unmerged, closed dirty) proposed the same 777->755 change; maintainer comment on issue #203 states the chmod line was already corrected in 3.5.0. Reporter then confirmed 3.5.0 fixes the main race.",
+  "reasoning": "The advisory describes a real local race from world-writable install-dir permissions, still published at CVE.org. The smallest public first-write of those lines on the affected 3.4.2 lineage is 7dbb4c33c7edf553a29175038bdf713be0406665; its parent has the script file but not chmod -R 777. That commit is a GitHub-committed human drop by Andrew Spokes with no AI authorship markers on the commit object, so attribution is NOT_AI. GitHub web-flow as committer is not an AI bot. The 3.0-beta twin is a parallel first-write, not an ancestor, and is not used as BIC. The closing permission change landed in 7a0ef9af1a447c860bcb650a74eaeeb021f1c6af (3.5.0), independently of the later unmerged reporter PR #202.",
+  "remaining_gap": null
+}

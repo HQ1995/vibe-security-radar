@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-0f0d5655e99b0393f340f88d",
+  "case_id": "GHSA-8prw-8m6x-8w6f",
+  "repo": "apache/airflow",
+  "advisory_ids": [
+    "CVE-2026-58076",
+    "GHSA-8prw-8m6x-8w6f"
+  ],
+  "bug_semantics": "CWE-502: BaseSerialization.deserialize reconstructed AIRFLOW_EXC_SER/BASE_EXC_SER nodes by import_string() on a class name from the serialized blob and instantiating it with blob args, with no allowlist. A DAG author can place a payload in executor_config (or other serialized DAG data) that imports and invokes an arbitrary callable (e.g. subprocess.check_output, or builtins.eval via the builtins-prefixed BASE_EXC_SER branch) in the Scheduler DAG-reconstruction loop and on authenticated API reads such as GET /api/v2/dags/{dag_id}/details \u2014 components the Airflow security model forbids from executing DAG-author code. Distinct from CVE-2026-33264 (trigger-node branch only).",
+  "flaw_origin": "AIRFLOW_EXC_SER deserialize originally called import_string(f\"airflow.exceptions.{exc_cls_name}\"), which could not import an arbitrary module. PR #41257 (b4b8a31df0) changed serialize() to emit fully-qualified names and dropped the prefix so deserialize called import_string(exc_cls_name) on the blob name with no restriction. That first-write of the unguarded sink is the BIC. BASE_EXC_SER (736ebfe3fe) later added a second unguarded builtins.{name} import_string path of the same class; it is not the first write.",
+  "introducer_sha": "b4b8a31df0b2f6438f8b1707662d661c5e0a7ebe",
+  "introducer_parent": "03263b68db03c7d4780e54f531273246b26d5d89",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "3a08a3d7792335ac9456cd44c92d8de3ae0d6ec1",
+  "direct_fix_sha": "3a08a3d7792335ac9456cd44c92d8de3ae0d6ec1",
+  "evidence": "CVE-2026-58076 / GHSA-8prw-8m6x-8w6f is PUBLISHED (cve.org state PUBLISHED, GHSA withdrawn_at null): unguarded import_string of exception-node class names in BaseSerialization.deserialize. Fix on main is 3a08a3d7792335ac9456cd44c92d8de3ae0d6ec1 (#68511), which removes import_string from the exception branches, resolves AIRFLOW_EXC_SER via already-loaded modules + issubclass(AirflowException), and resolves BASE_EXC_SER against a fixed {KeyError, AttributeError} map. Direct-fix path: airflow-core/src/airflow/serialization/serialized_objects.py. Historical first write of AIRFLOW_EXC_SER deserialize is b365cbd8ea5fbf79e30bb2c2c058a92c4a45ab3b with import_string(f\"airflow.exceptions.{exc_cls_name}\") \u2014 prefix-restricted, not the advisory sink. BIC is b4b8a31df0b2f6438f8b1707662d661c5e0a7ebe (PR #41257 squash on GitHub): deserialize becomes import_string(exc_cls_name) while serialize() starts returning f\"{cls.__module__}.{cls.__name__}\". Parent 03263b68db03c7d4780e54f531273246b26d5d89 contains airflow/serialization/serialized_objects.py (git cat-file -e exit 0) with the prefixed line only; grep for import_string(exc_cls_name) on the parent path exits 1. git log --all --grep=#41257 shows only this merge; no finer public members. Author Jens Scheffler 95105677+jscheffl@users.noreply.github.com, committer GitHub noreply@github.com; commit message has no Co-Authored-By / Generated-with / bot author. 736ebfe3fe later adds BASE_EXC_SER + import_string(f\"builtins.{exc_cls_name}\"); same human author, not first write of the unguarded AIRFLOW_EXC_SER sink. Fix commit trailers mention Claude Opus 4.8; AI-only-on-fix does not attribute the BIC.",
+  "reasoning": "Vulnerability is real (published CVE/GHSA, distinct exception-node sink, patched in 3.3.1). The security-relevant first write is the prefix drop in b4b8a31df0, which made import_string consume a fully-qualified name from the blob with no allowlist; the parent tree still prefixes airflow.exceptions. That commit is a GitHub squash of #41257 and is the smallest surviving public object. Authorship signals on the BIC object are human (Jens Scheffler / GitHub merge committer) with no AI markers, so the verdict is NOT_AI. Original exception serialization (b365cbd8ea) is not BIC because it could not import arbitrary modules. Later BASE_EXC_SER is an additional sink, not the introducer of the unguarded AIRFLOW_EXC_SER line the advisory leads with.",
+  "remaining_gap": null
+}

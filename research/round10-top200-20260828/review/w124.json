@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-317a9b681be9ea0c40260bfd",
+ "case_id": "GHSA-4675-36f9-wf6r",
+ "repo": "mmaitre314/picklescan",
+ "advisory_ids": [
+  "CVE-2025-71323",
+  "GHSA-4675-36f9-wf6r"
+ ],
+ "bug_semantics": "Picklescan is a denylist scanner: it extracts GLOBAL/STACK_GLOBAL imports from pickle bytecode and flags only modules/names in _unsafe_globals (originally _suspicious_globals). ctypes was never on that list before v0.0.33, so a pickle that REDUCE-calls ctypes.WinDLL/CDLL (or operator.itemgetter/methodcaller chains that invoke them) is reported clean. ctypes can load DLLs, call C functions, and touch raw memory, yielding RCE and sandbox escape without using blocked os/subprocess gadgets (CWE-184/CWE-913).",
+ "flaw_origin": "The first public scanner implementation c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e (2022-09-04, Implement Pickle scanner) introduced the denylist-plus-GLOBAL-extract design with a finite _suspicious_globals map that omitted ctypes. Immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 has no src/picklescan/scanner.py. Later commits grew the map (os, operator.attrgetter, etc.) but git log -S ctypes first hits the fix. Direct fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab (PR #53) adds ctypes wildcard and ctypes.CDLL test GHSA-4675-36f9-wf6r.pkl; first released in v0.0.33. GHSA remains published (withdrawn_at null); GitHub lists CVE-2025-71323 as alias.",
+ "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+ "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; BIC author/committer Matthieu Maitre <mmaitre314@users.noreply.github.com> 2022-09-04; cat-file -p subject Implement Pickle scanner with no Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, Gemini, Aider, or bot-author trailers.",
+ "verdict": "NOT_AI",
+ "fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+ "direct_fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+ "evidence": "Advisory GHSA-4675-36f9-wf6r / CVE-2025-71323: picklescan does not block ctypes; affected <0.0.33, patched 0.0.33; GHSA withdrawn_at null; PoC pickle via ctypes.WinDLL kernel32.dll plus operator.itemgetter/methodcaller. First write c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e added src/picklescan/scanner.py with _suspicious_globals containing __builtin__/builtins eval/compile/getattr/apply, webbrowser, httplib, requests.api, aiohttp.client, nt, posix and no ctypes. Immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 is scaffolding only (gitignore/LICENSE/README/conda/requirements/setup.cfg); git cat-file -e parent:src/picklescan/scanner.py fails. git log -S ctypes -- src/picklescan/scanner.py first hit is fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab. v0.0.32 grep ctypes scanner.py is empty; v0.0.33 has ctypes wildcard. merge-base --is-ancestor c1d5abdc v0.0.32 succeeds; 70c1c6c3 is ancestor of v0.0.33 and not of v0.0.32. BIC commit object is human Matthieu Maitre, no AI trailers. Not FALSE_POSITIVE: GHSA remains published with a matching denylist miss and a landed fix.",
+ "reasoning": "The vulnerability is an incomplete denylist: the scanner only flags listed pickle globals, and ctypes was omitted, so ctypes-based RCE gadgets scan clean. The smallest first-write of that denylist mechanism is the 2022 scanner introduction; later map expansions did not add ctypes, and the 2025 PR #53 is the first add. Parent-tree verification shows scanner.py absent immediately before c1d5abdc. AI judgment is BIC-only: human author, 2022, no AI trailers. Therefore NOT_AI. The multi-advisory squash fix also changes operator/numpy/etc.; those are other cases. For this GHSA the causal ctypes line is the missing denylist entry introduced with the original scanner.",
+ "remaining_gap": null
+}

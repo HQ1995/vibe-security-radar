@@ -1,0 +1,24 @@
+{
+  "worker": "w318",
+  "review_agent_id": "r389_w318",
+  "class_id": "alias-905c97025d1e12c3e2cdb067",
+  "case_id": "GHSA-h3jq-rqqh-3gvh",
+  "repo": "civicrm/civicrm-core",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Search Builder exposes RLIKE as Regex and passes the selected operator and staff-controlled value to CRM_Contact_BAO_Query::buildClause. Its RLIKE arm embeds $value inside a quoted SQL fragment without CRM_Utils_Type::escape, unlike the default valued-operator path, so a quote can escape the literal and produce CWE-89 SQL injection. CVE.org is PUBLISHED and identifies affected versions through 6.18.alpha1; GHSA withdrawn_at is null.",
+    "atomic_bic": "PASS: a047568869892f9af65002c1709af1931f5f4b0d is the one-parent commit that first adds the dedicated RLIKE arm and its unescaped interpolation. The later 0800bc59a47fd6cfe2f4463207e9e47d7a0edfc4 changes only the field-side BINARY expression and preserves the same unsafe value interpolation.",
+    "immediate_parent_absence": "PASS: direct parent 8b977676304e1d83f7f8608b87b2065c38de62d3 has no RLIKE case; RLIKE therefore reaches the default branch, which calls CRM_Utils_Type::escape before quoting the string value.",
+    "squash_member_decomposition": "PASS: a047568869892f9af65002c1709af1931f5f4b0d is the sole ancestry-path member after its direct parent. c57fce721d8594eca18f5a12558b1ca4580a80bd is a two-parent merge whose second parent is a047568869892f9af65002c1709af1931f5f4b0d, so the merge is not the first-write BIC and no hidden squash aggregate is being substituted.",
+    "affected_fixed_release_membership": "PASS: tags containing the BIC begin at 5.5.0. The BIC is an ancestor of the repository snapshot whose xml/version.xml is 6.18.alpha1, and that snapshot retains the unsafe RLIKE line. No fixed release is identified by CVE/GHSA or present in the reviewed history; remote master equals local 549bc564222f26ed894f34b4e0f2212334cad09a, whose version is 6.19.alpha1 (unreleased) and whose RLIKE arm remains vulnerable.",
+    "direct_fix_or_unpatched_state": "PASS: git log over all local refs since the 2026-08-11 advisory date shows no change to CRM/Contact/BAO/Query.php, remote master is exactly the reviewed HEAD, and HEAD still interpolates the raw value. The vendor advisory index through CIVI-SA-2026-37 has no RLIKE/CVE/GHSA match. fix_sha and direct_fix_sha correctly remain null because the case is verified unpatched.",
+    "bic_only_ai_attribution": "PASS: the raw BIC object names deb.monish <monish.deb@jmaconsulting.biz> as both author and committer and contains only the message 'dev/core#210: Regex filter broken in Search Builder'. It has no AI/bot identity or AI-generation/co-author trailer. Repository-level ai_commits signals are irrelevant under the BIC-only rule; NOT_AI is supported by the BIC itself."
+  },
+  "findings": [
+    "Independent replay confirms the primary record's vulnerability mechanism, atomic introducer a047568869892f9af65002c1709af1931f5f4b0d, direct parent 8b977676304e1d83f7f8608b87b2065c38de62d3, and NOT_AI attribution.",
+    "Independent remote and advisory checks also confirm the primary record's unpatched disposition through remote master 549bc564222f26ed894f34b4e0f2212334cad09a on 2026-08-29."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "Upstream has not published a direct fix or fixed release for this vulnerability; this is an open remediation gap, not an evidence gap in the NOT_AI judgment."
+}

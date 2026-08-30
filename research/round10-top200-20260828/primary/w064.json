@@ -1,0 +1,42 @@
+{
+ "class_id": "alias-e9d2a63025e6f21dd728a939",
+ "case_id": "GHSA-hp97-5x6g-q538",
+ "repo": "eclipse-ee4j/glassfish",
+ "advisory_ids": [
+  "CVE-2024-10031",
+  "GHSA-hp97-5x6g-q538"
+ ],
+ "bug_semantics": "Stored XSS in the GlassFish management REST HTML response: a local attacker who can edit the file realm's admin-keyfile can store HTML/JavaScript in a user's group field; list-users copies that group string into ActionReport extraProperties, and the text/html provider recursively appends scalar values to HTML without contextual encoding, so an administrator who visits the list-users management endpoint executes the payload in the administration session.",
+ "flaw_origin": "The unsafe generic HTML renderer already existed when 43cd2412a1bcc34d185df04d175b705ce8d38932 added REST-oriented user metadata to ListFileUser. That commit newly copied FileRealm group names into a nested users map and attached it as ActionReport extraProperties. Because the pre-existing renderer traversed collections/maps and returned scalar object.toString() verbatim, this was the smallest commit that completed the advisory's specific admin-keyfile-group-to-HTML attack path.",
+ "introducer_sha": "43cd2412a1bcc34d185df04d175b705ce8d38932",
+ "introducer_parent": "c9c7395474572d34fef25a9e6c8528f38a788ca0",
+ "introducer_parent_absent": true,
+ "squash_decomposed": true,
+ "decomposed_shas": [
+  "43cd2412a1bcc34d185df04d175b705ce8d38932"
+ ],
+ "ai_marker": "absent; the BIC commit object names Jason Lee as both author and committer and contains no Co-Authored-By, Generated-with, bot, or other AI-attribution marker; its only body metadata is svn path=/trunk/; revision=40129 and Former-commit-id: 24d2ddd3986d7491be1a99d693818c34da6a9059",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": [
+  "The first-party report at https://gitlab.eclipse.org/security/vulnerability-reports/-/work_items/229 documents GlassFish 7.0.15, an admin-keyfile entry whose group is asadmin<img src=x onerror=alert(1)>, and execution on /management/domain/configs/config/server-config/security-service/auth-realm/admin-realm/list-users when a victim visits the affected page.",
+  "The archived project history shows 43cd2412a1bcc34d185df04d175b705ce8d38932 (Add user information to extraProperties for REST clients, 2010-08-25). Its one-file diff in v3/security/core/src/main/java/com/sun/enterprise/security/cli/ListFileUser.java adds userMap.put(\"groups\", Collections.list(fr.getGroupNames(userName))), nests the maps in userList, and calls report.setExtraProperties(extraProperties).",
+  "Direct parent-tree verification against c9c7395474572d34fef25a9e6c8528f38a788ca0 shows the same execute loop only calls part.setMessage((String) users.nextElement()); it has no group lookup, users map/list, extraProperties, or setExtraProperties call. The BIC diff therefore writes the source-side vulnerable lines for the first time.",
+  "At the BIC tree, v3/admin/rest/src/main/java/org/glassfish/admin/rest/provider/ActionReportResultHtmlProvider.java already feeds ActionReport extraProperties into processMap; getHtmlRepresentation returns scalar object.toString(), and processCollection/processMap append that result directly into <li>/<td> HTML. Thus the renderer sink predates the BIC and 43cd2412a1bcc34d185df04d175b705ce8d38932 is the later, chain-completing commit rather than the renderer's earlier commit.",
+  "The Eclipse repository's root import 571714739b23e16c4c90d5229b806433920b3bcb contains both reconstructed upstream lines, and `git merge-base --is-ancestor 571714739b23e16c4c90d5229b806433920b3bcb 7.0.15` exits 0. The upstream BIC was recovered through the archived javaee/glassfish history rather than misattributing the squash-like Eclipse Initial Contribution aggregate.",
+  "GitHub Advisory GHSA-hp97-5x6g-q538 lists Maven org.glassfish.main.admingui:console-common <= 7.0.25 as affected and lists Patched versions: None. There is therefore no advisory fix commit or patched boundary to map.",
+  "Public release-tree verification also finds no causal fix: `git diff 7.0.25 7.0.26 --` for ActionReportResultHtmlProvider.java and ListFileUser.java is empty. Tag 7.0.26 still copies raw group names into extraProperties and still returns object.toString() and appends it directly into HTML. The audited public history is unpatched, so fix_sha and direct_fix_sha are null.",
+  "The BIC commit object at https://github.com/javaee/glassfish/commit/43cd2412a1bcc34d185df04d175b705ce8d38932 identifies human author/committer Jason Lee and contains only SVN migration metadata, with no commit-object AI attribution marker."
+ ],
+ "reasoning": "The advisory's exploitable value is not merely any message rendered by the generic REST provider; it is the group token loaded from the editable file realm and exposed by list-users. The renderer's raw scalar HTML behavior was present before the source supplied group metadata. Commit 43cd2412a1bcc34d185df04d175b705ce8d38932 is therefore the smallest causal BIC because it first joins the attacker-controlled group value to the already-unsafe extraProperties HTML sink, while its immediate parent lacks every new group/extraProperties line. Later path moves and the Eclipse Initial Contribution import preserve rather than originate the flaw, so the archived upstream commit is the decomposed BIC. The import is an ancestor of affected tag 7.0.15. The BIC commit object has a human author/committer and no AI marker, yielding NOT_AI. This is a closed unpatched result: the advisory explicitly says there is no patched version, no causal fix SHA is published, and even 7.0.26 retains both ends of the vulnerable data flow.",
+ "remaining_gap": "Unpatched in the audited public history: GHSA-hp97-5x6g-q538 lists no patched version, and tag 7.0.26 still contains the vulnerable source and sink unchanged. No fix_sha or direct_fix_sha can be recorded unless Eclipse publishes a causal patch.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "GHSA-hp97-5x6g-q538 lists no patched version and tag 7.0.26 still copies raw group names into extraProperties and appends object.toString() directly into the management REST HTML response.",
+  "potential_fix": {
+   "approach": "HTML-escape or drop the extraProperties group-name fields in the management REST HTML response before writing them into the page.",
+   "rationale": "Escaping the injected group-name field at the response boundary prevents the stored script payload from reaching the HTML sink."
+  }
+ }
+}

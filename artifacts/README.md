@@ -1,7 +1,7 @@
 # Artifact ledger
 
-Single source of truth for the 23,861-class research account (window
-2025-05-01 .. 2026-08-16, CVE+GHSA deduped, withdrawn/rejected excluded).
+Single source of truth for the 24,124-class research account (window
+2025-05-01 .. 2026-08-26, CVE+GHSA deduped, withdrawn/rejected excluded).
 
 ## Files
 

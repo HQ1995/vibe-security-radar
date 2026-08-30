@@ -1,0 +1,45 @@
+{
+  "worker": "w229",
+  "review_agent_id": "r389_w229",
+  "class_id": "alias-2e589975108dd9d8709e9dab",
+  "case_id": "GHSA-vp8m-mf3r-82q9",
+  "repo": "mmaitre314/picklescan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The reviewed vendor advisory GHSA-f54q-57x4-jg88 shows a REDUCE payload whose only outer global is lib2to3.pgen2.grammar.Grammar.loads and whose bytes argument is an inner malicious pickle. At the v0.0.28 tree, _build_scan_result_from_raw_globals increments issues_count only for _unsafe_globals matches (or synthetic unknown names); an unlisted real global is merely SafetyLevel.Suspicious, so Grammar.loads evades the issue count before pickle.load executes the inner payload. CVE-2025-71359 is PUBLISHED and names this vendor advisory."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e is the earliest surviving commit that creates src/picklescan/scanner.py and writes both the finite _suspicious_globals denylist and the rule that issues_count increases only on a denylist match. The full clone is not shallow; reverse -S/-G history and blame trace the surviving denylist-only control back to this commit, while later commits rename or extend it."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326. Its tree contains only .gitignore, LICENSE, README.md, conda.yaml, requirements.txt, and setup.cfg; src/picklescan/scanner.py and therefore the vulnerable scanner control are absent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a one-parent non-merge public commit, its commit object and GitHub commit view identify the same direct parent, and no finer public member object is available in the full local refs. It directly adds scanner.py from /dev/null, so no merge, move, revert, release aggregate, or decomposable squash displaces it as the atomic first writer."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The vendor advisory states affected <0.0.29 and patched 0.0.29. The BIC is an ancestor of v0.0.2 and v0.0.28. Fix aecd11be98702caa9ba9b12189d91ad596a36114 is not an ancestor of v0.0.28 and is exactly the v0.0.29 commit, so tag ancestry matches the advisory range."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "At fix parent 7f994d62084fe43f1cffdef2f9bae6923344ef53, exact grep finds neither lib2to3.pgen2.grammar nor Grammar.loads. Commit aecd11be98702caa9ba9b12189d91ad596a36114 directly adds lib2to3.pgen2.grammar: {Grammar.loads}, adds the GHSA-f54q-57x4-jg88 regression pickle/test, and cites that advisory in its message."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Attribution was checked only on BIC c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e. Its raw commit object has sole author and committer Matthieu Maitre, message 'Implement Pickle scanner', and no trailers or AI-generation marker; GitHub's exact commit view maps the sole author and committer to user profile mmaitre314 and lists no coauthors. This supports NOT_AI independently of the later fix."
+    }
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, atomic BIC, parent, direct fix, release boundary, and BIC-only authorship conclusion are independently reproduced.",
+    "GHSA-vp8m-mf3r-82q9 is an unreviewed mirror, but CVE-2025-71359 is PUBLISHED and links the reviewed vendor advisory GHSA-f54q-57x4-jg88; the advisory is not rejected or withdrawn."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-2c8c6ec2d6dc687c56124cb9",
+  "case_id": "GHSA-xc5w-4v5w-7x65",
+  "repo": "olivetin/olivetin",
+  "advisory_ids": [
+    "CVE-2026-67438",
+    "GHSA-xc5w-4v5w-7x65"
+  ],
+  "bug_semantics": "A caller-supplied value for an action argument whose type is configured as regex:<pattern> is accepted when Go regexp.MatchString reports a match, then substituted verbatim into the action's Shell command and executed through sh -c. A regex can therefore admit shell syntax such as POSIX command substitution; even after OliveTin added a Shell-mode unsafe-type guard, that guard compared only a fixed set of exact type names and did not recognize the regex: prefix, so the value still reached the shell unescaped.",
+  "flaw_origin": "PR #244 member commit 90cf98357843a303153525cd117d9ca5b5bf48fc first taught typeSafetyCheckRegex to accept arbitrary regex:-prefixed argument types. Its parent already performed raw strings.ReplaceAll interpolation in parseActionArguments and passed the result to sh -c, but rejected regex:<pattern> as an unknown type. The new prefix branch made that previously impossible configuration executable without adding a shell-safety constraint, creating the command-injection path. GitHub squash-landed the member as c97fd60c2508ddf99ebc7c03570683811c476de9 with the same tree and parent. Later commit c917d1b1e7a2a90acec79760cb1ff18ffae82409 added checkShellArgumentSafety but omitted regex: types, preserving rather than originating the flaw.",
+  "introducer_sha": "90cf98357843a303153525cd117d9ca5b5bf48fc",
+  "introducer_parent": "2fb40ff44312b310aa11f85db0de1a641ee245ec",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "90cf98357843a303153525cd117d9ca5b5bf48fc"
+  ],
+  "ai_marker": "absent: the BIC commit object 90cf98357843a303153525cd117d9ca5b5bf48fc names human author and committer jamesread <contact@jread.com>; its message is only 'feature: #56 custom tegex for arguments' and has no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "995ff79736f2bccc364448a3ece84087b550b232",
+  "direct_fix_sha": "0e45f3b0e3c9e81685bc85b7c4f21187bb0df085",
+  "evidence": [
+    "First-party advisory https://github.com/OliveTin/OliveTin/security/advisories/GHSA-xc5w-4v5w-7x65 identifies service/internal/executor/arguments.go, the regex: bypass of checkShellArgumentSafety, direct template interpolation into the Shell command, affected range >= 0.0.0-20251025234746-ef5a67e7b8ea and < 0.0.0-20260708084548-995ff79736f2, and patched release 3000.17.0.",
+    "GitHub's first-party PR commit endpoint https://api.github.com/repos/OliveTin/OliveTin/pulls/244/commits returns exactly one member, 90cf98357843a303153525cd117d9ca5b5bf48fc, with parent 2fb40ff44312b310aa11f85db0de1a641ee245ec and tree 7f78916840be2e3b325a13108cf50e36fbad01b0. git cat-file -p confirms those values. Squash landing c97fd60c2508ddf99ebc7c03570683811c476de9 has the same parent and tree, and git diff --stat between the member and landing is empty.",
+    "git diff 2fb40ff44312b310aa11f85db0de1a641ee245ec 90cf98357843a303153525cd117d9ca5b5bf48fc -- internal/executor/arguments.go webui.dev/js/ArgumentForm.js proves direct-parent absence: the parent used only the typecheckRegex map and returned 'argument type not implemented' for unknown types; the BIC adds strings.HasPrefix(argumentType, \"regex:\") and extracts the caller-configured pattern.",
+    "At the BIC tree, internal/executor/arguments.go:25-64 parseActionArguments validates and then inserts argValue verbatim with strings.ReplaceAll at line 53. internal/executor/executor.go:270-276 passes the resulting command to cmd /C or sh -c. internal/executor/arguments.go:111-139 contains the newly expanded typeSafetyCheckRegex; blame assigns its regex: branch at lines 112 and 114-122 to 90cf98357843a303153525cd117d9ca5b5bf48fc.",
+    "git show c917d1b1e7a2a90acec79760cb1ff18ffae82409 shows the later Shell safety guard's unsafeTypes list contained url, email, raw_string_multiline, and very_dangerous_raw_string but no regex: prefix; this commit is an ancestor of the advisory fix, so the incomplete guard preserved the BIC's exploit path.",
+    "git show 0e45f3b0e3c9e81685bc85b7c4f21187bb0df085 shows the direct fix adding isUnsafeShellArgumentType, whose first check rejects strings.HasPrefix(arg.Type, \"regex:\"), and making checkShellArgumentSafety call it. Advisory reference 995ff79736f2bccc364448a3ece84087b550b232 is a two-parent merge of that direct fix; both have first/base parent ec114e95d297b806c3ca0c37bc139b3c9c517b3f and their trees are identical.",
+    "Version checks: git merge-base c97fd60c2508ddf99ebc7c03570683811c476de9 ef5a67e7b8eadf1d5fe1a5b5ba08e41e15b503f2 returns c97fd60c2508ddf99ebc7c03570683811c476de9, proving the squash landing predates and is contained in the first affected pseudo-version boundary. git merge-base ef5a67e7b8eadf1d5fe1a5b5ba08e41e15b503f2 995ff79736f2bccc364448a3ece84087b550b232 returns ef5a67e7b8eadf1d5fe1a5b5ba08e41e15b503f2. Tag 3000.17.0 resolves to d0075a7a8d44028793ea3384b34062b940841f24, and git merge-base of the fix with that tag returns 995ff79736f2bccc364448a3ece84087b550b232, proving patched-release membership.",
+    "BIC-only AI check: git cat-file -p 90cf98357843a303153525cd117d9ca5b5bf48fc shows author jamesread, committer jamesread, and no trailers or AI/bot marker. The squash landing's GitHub committer and any signals on later commits are not used for attribution."
+  ],
+  "reasoning": "The pre-BIC program already interpolated validated action values directly into a shell command, but the immediate parent could not validate or accept a custom regex: type, so the advisory's custom-regex attack path was absent. The sole PR #244 member added that capability and is therefore the smallest causal introducer; the public mainline commit is only its tree-identical GitHub squash landing, so the member commit is recorded as the BIC and the squash is explicitly decomposed. The vulnerable tree landed well before the advisory's lower version boundary and remained on that ancestry. A later attempt to separate unsafe Shell arguments from direct Exec missed regex:-prefixed types and left the path reachable. The direct security commit closes it by classifying every regex: type as unsafe for Shell mode, and the advisory merge is exactly the first patched pseudo-version and is included in release 3000.17.0. Because the decomposed BIC's own commit object is wholly human-attributed and contains no AI marker, the closed verdict is NOT_AI regardless of attribution on the fix or other later commits.",
+  "remaining_gap": null
+}

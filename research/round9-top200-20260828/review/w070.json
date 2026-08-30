@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-1c1a302765a6aff16a32eb52",
+  "case_id": "alias-1c1a302765a6aff16a32eb52",
+  "repo": "eclipse-ee4j/glassfish",
+  "advisory_ids": [
+    "CVE-2026-2587",
+    "GHSA-29wv-cv7p-xjc2"
+  ],
+  "bug_semantics": "The Admin Console gadget endpoint embeds the request parameter in gf.getGadgetModule(\"#{param.gadget}\", ...). JSFTemplating Handler.getInputValue resolves that outer expression through ComponentUtil.resolveValue; after param.gadget becomes an attacker string, resolveValue treats a resulting #{...} string as another ValueExpression and evaluates it. Thus a request to the gadget.jsf XML-loader endpoint can make attacker-supplied EL execute server-side before the resulting value is treated as the gadget path/URL. The vulnerable EL resolver allowed class/getClass, static method, constructor, and static-field access, turning the double evaluation into RCE; a cross-site request supplies the UI interaction reflected by CVSS UI:R.",
+  "flaw_origin": "A 2009 human-authored dashboard/gadget feature commit created the reachable sink by adding gadget.jsf with an attacker-controlled request parameter passed into a JSFTemplating handler. The generic gadget loader existed immediately beforehand, but the parent had no gadget.jsf endpoint. Eclipse's 2018 Initial Contribution is only a later history-squash/import of this older code.",
+  "introducer_sha": "ece6ab82e495d2cf87cbf4ec78170727adf2c7f1",
+  "introducer_parent": "5c957a61e840840475827b6954bcf05fb93d81e2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "ece6ab82e495d2cf87cbf4ec78170727adf2c7f1"
+  ],
+  "ai_marker": "BIC commit object has author and committer Ken Paulsen <kenpaulsen@java.net>, timestamp 1246514107 (2009-07-02), an SVN provenance line (revision 28433), and Former-commit-id 348f99e60bb3ffdf78eea90658295640bff74480. It has no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "cafaeae1b29b0552ca283e62004c047ea7082b34",
+  "direct_fix_sha": "c0eff55a82a96eeea9933104ae5003e9220dfb93",
+  "evidence": [
+    "First-party GHSA-29wv-cv7p-xjc2/CVE-2026-2587 describes unauthenticated, UI-assisted server-side EL injection in the gadget handler and declares org.glassfish.main.admingui:admingui < 8.0.2 and org.glassfish.jsftemplating:jsftemplating < 4.2.0 vulnerable, with 8.0.2 and 4.2.0 first patched.",
+    "In the archived predecessor repository https://github.com/javaee/glassfish.git, run: git log -L 43,45:v3/admingui/common/src/main/resources/gadgets/gadget.jsf ece6ab82e495d2cf87cbf4ec78170727adf2c7f1. It attributes the complete <!afterCreate / gf.getGadgetModule(\"#{param.gadget}\", module=\"#{pageSession.gadget}\") sink to ece6ab82e495d2cf87cbf4ec78170727adf2c7f1. git log --all --reverse -S'gf.getGadgetModule(\"#{param.gadget}\"' -- '*gadget.jsf' reaches the same feature commit after following the historical path.",
+    "Run git diff-tree --no-commit-id --name-status -r ece6ab82e495d2cf87cbf4ec78170727adf2c7f1 -- v3/admingui/common/src/main/resources/gadgets/gadget.jsf: it reports A. Run git cat-file -e 5c957a61e840840475827b6954bcf05fb93d81e2:v3/admingui/common/src/main/resources/gadgets/gadget.jsf: it fails because the file does not exist. This directly verifies parent absence, and the BIC's five-file diff is a coherent new dashboard/gadget feature, not a move, revert, release, or aggregate.",
+    "In the validated Eclipse clone, git log --follow -- appserver/admingui/common/src/main/resources/gadgets/gadget.jsf stops at root commit 571714739b23e16c4c90d5229b806433920b3bcb (Initial Contribution). The archived javaee/glassfish predecessor preserves the pre-transfer lineage back to ece6ab82e495d2cf87cbf4ec78170727adf2c7f1; this decomposes the 2018 aggregate instead of mislabeling it as the BIC. The old 3.0 tag already contains the same vulnerable gadget.jsf route, showing the flaw predates Eclipse releases.",
+    "At jsftemplating 4.1.0, jsftemplating/src/main/java/com/sun/jsftemplating/layout/descriptors/handler/Handler.java getInputValue calls ComponentUtil.resolveValue on handler input. ComponentUtil.resolveValue first resolves custom variables and then, if the resulting String is a JSF value reference, creates and evaluates a ValueExpression. That second stage evaluates an EL payload returned by #{param.gadget}.",
+    "In https://github.com/eclipse-ee4j/glassfish-jsftemplating.git, c0eff55a82a96eeea9933104ae5003e9220dfb93 adds RestrictedELResolver and registers it in faces-config.xml, blocking static methods, constructors, getClass(), and the class property; follow-up 5f2daacc561e9a3a16b9b46ad462437f287dfd1b blocks static fields. Pull request #105, merged by 18bfb4a3d3d41390a22b0998e2e5ba46d5d707dd, states that these restrictions close both vulnerability reports. Release tag 4.2.0 contains that complete fix series.",
+    "In the validated GlassFish clone, git show cafaeae1b29b0552ca283e62004c047ea7082b34 changes appserver/pom.xml jsftemplating.version from 4.1.0 to 4.2.0. git tag --contains cafaeae1b29b0552ca283e62004c047ea7082b34 starts with 8.0.2 and excludes 8.0.1; tag 8.0.1 points to ff828fde4a080f2c2a867d7149b853a26749baed and still resolves 4.1.0, while tag 8.0.2 points to 5225f2e584d7eff969cd39ca26aa67e5dd828736 and resolves 4.2.0.",
+    "Run git cat-file -p ece6ab82e495d2cf87cbf4ec78170727adf2c7f1 in javaee/glassfish and inspect only that BIC commit object: it names Ken Paulsen as both author and committer and contains no AI attribution/trailer or bot identity. The commit date is 2009, independently predating modern code-generating assistants."
+  ],
+  "reasoning": "The exploit requires both JSFTemplating's two-stage handler-input resolution and a reachable template that feeds attacker-controlled data into it. The smallest commit that first makes that composition reachable is ece6ab82e495d2cf87cbf4ec78170727adf2c7f1: it adds gadget.jsf and the exact param.gadget handler invocation, whereas its direct parent lacks that file. Later path restructuring and Eclipse's history-squashed initial import merely carry those lines forward. The direct library restriction lands in the 4.2.0 fix series, and GlassFish closes its packaged exposure at cafaeae1b29b0552ca283e62004c047ea7082b34 by upgrading from vulnerable 4.1.0 to fixed 4.2.0; 8.0.2 is the first containing release. The BIC commit object is unambiguously human and has no permitted AI signal, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

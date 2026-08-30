@@ -1,0 +1,43 @@
+{
+  "class_id": "alias-14cf4e0a4ab182b9a957901e",
+  "case_id": "GHSA-x98j-gh4v-7p7g",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79672",
+    "GHSA-x98j-gh4v-7p7g"
+  ],
+  "bug_semantics": "An admin-issued access JWT carrying only a minimal capability such as echo:read was accepted by JWTAuthMiddleware and reached all nine /api/panel/comments/* routes because those AuthRouterGroup registrations had no RequireScopes middleware. The comment service's requireAdmin checked only the viewer's database user role, not the token's scopes, so the limited token could list/get comments, change status or hot state, delete or batch-moderate comments, read/write comment settings, and send a test email.",
+  "flaw_origin": "The smallest causal commit is reconstructed PR #195 member bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7. It first made least-privilege access tokens real: it defined and accepted comment:read, comment:write, and comment:moderate scopes and changed CreateAccessToken from issuing unrestricted CreateClaimsWithExpiry claims to issuing CreateAccessClaimsWithExpiry claims containing caller-selected scopes and audience. It did not add enforcement to the already-existing comment panel routes. Its immediate parent could issue only the old unrestricted token and therefore did not contain the scoped-token authorization contract that could be bypassed. Later member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 added RequireScopes to other route families but still left comment.go untouched, preserving the flaw when the member chain landed as squash 3f8fb150158723aca31df2ae937a1aa7b31ac254.",
+  "introducer_sha": "bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7",
+  "introducer_parent": "387667192911c86db1e1bcb3f544ce12d340ffdb",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "387667192911c86db1e1bcb3f544ce12d340ffdb",
+    "bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7",
+    "1b280c252d1ef2ee69bf09f890d2da673b4b0a68",
+    "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939",
+    "1bc64ada5c7bacbd72d5c8de427ac2b8e260e9e9",
+    "bd497e57303453ffafcd15b61e72c38356344379",
+    "97d7f6cd15822dce93df6a71c89a46fbb05b7f19",
+    "ce6dcad85a2b3312a250fe9eef90b7c7156f27a8",
+    "be5041a7b82d8f2be3da7ee0a707a44923a600ad",
+    "a6694c05376391d46d98bd1057b498cfb245ce07",
+    "462f551df4603dca8490d878f497661cb1c17bdc"
+  ],
+  "ai_marker": "BIC commit object bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7 is authored and committed by L1nSn0w <l1nsn0w@qq.com> and contains the exact trailer-like disclosure \"Made-with: Cursor\"; it has no bot author or Co-Authored-By AI identity.",
+  "verdict": "AI_CODE_FLAWED",
+  "fix_sha": "6df5673010720847e35d8bb8f60403e2cc4ab313",
+  "direct_fix_sha": "6df5673010720847e35d8bb8f60403e2cc4ab313",
+  "evidence": [
+    "The repository's first-party advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-fwg7-53p4-g33c identifies the nine unguarded routes in internal/router/comment.go, explains the limited-scope-token -> JWTAuthMiddleware -> role-only requireAdmin attack path, and names 4.4.3 as patched (the bundle's public advisory references this repository advisory).",
+    "Clone command `git show v4.2.1:internal/router/comment.go` shows all nine panel routes registered directly on AuthRouterGroup with handlers and no RequireScopes argument. `git show v4.2.1:internal/router/router.go` shows that group used only NoCache and JWTAuthMiddleware. `git show v4.2.1:internal/service/comment/comment.go` at requireAdmin shows only UserID lookup plus IsAdmin/IsOwner checks, with no token-scope check.",
+    "PR #195's first-party commit list reconstructs the squash member chain after mainline parent 45693330c7733364027e0aa07c102c4f01aab88a. `git show -s --format='%H %T %P' 3f8fb150158723aca31df2ae937a1aa7b31ac254` reports tree e9484ebf85c66a09c425d8407ebfa79f57da39fa and parent 45693330c7733364027e0aa07c102c4f01aab88a; the final PR member 462f551df4603dca8490d878f497661cb1c17bdc has that same tree, proving the squash decomposition.",
+    "Direct parent-tree verification used raw files at 387667192911c86db1e1bcb3f544ce12d340ffdb and bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7. The parent CreateAccessToken calls CreateClaimsWithExpiry(user, expiry) and its request/model has no scope selection; the BIC adds ScopeCommentRead/Write/Mod as valid scopes, validates Scopes/Audience, and calls CreateAccessClaimsWithExpiry(user, expiry, scopes, audience, jti). Thus the limited-scope contract—and this bypass—was absent in the immediate parent.",
+    "The BIC's first-party commit page https://github.com/lin-snow/Ech0/commit/bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7 gives parent 387667192911c86db1e1bcb3f544ce12d340ffdb, the scoped-token schema/service diff, human author/committer L1nSn0w, and exact commit-object marker `Made-with: Cursor`.",
+    "Version-boundary checks in the validated clone: `git tag --contains 3f8fb150158723aca31df2ae937a1aa7b31ac254 --sort=version:refname` first includes v4.2.1 and excludes v4.2.0; `git tag --contains 6df5673010720847e35d8bb8f60403e2cc4ab313 --sort=version:refname` first includes v4.4.3 and excludes v4.4.2. Peeled commits are v4.2.0=7f236aed761da27f971ad289c4a26af0d9eb3e92, v4.2.1=77f371df9cca25ac856ad42afc43ea035dc4bf1d, v4.4.2=7b7890cbe294659df39c36feb51fcfbe9ec9bdb2, and v4.4.3=b934467d26b91c96dc7c937b6a4e47d8d01484eb.",
+    "`git show 6df5673010720847e35d8bb8f60403e2cc4ab313 -- internal/router/comment.go` shows the direct fix adding middleware.RequireScopes(authModel.ScopeCommentMod) to each of the nine panel routes; its parent af835afe05c75bd16c7220425782ee2cd1423892 has the unguarded registrations. The fix is therefore causal and is contained in the first patched tag v4.4.3."
+  ],
+  "reasoning": "The original comment routes (mostly introduced before scoped tokens existed) are not by themselves the BIC: an ordinary access token then represented full user authority. Decomposing squash 3f8fb150158723aca31df2ae937a1aa7b31ac254 shows that bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7 is the first member whose tree lets an administrator mint a JWT that explicitly promises restricted scopes while the existing comment admin routes and role-only service check still treat it as full authority. The direct parent lacks scope-bearing token issuance, satisfying parent absence. Subsequent member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 proves the intended per-route enforcement model by guarding other route families but does not touch comment.go; mainline fix 6df5673010720847e35d8bb8f60403e2cc4ab313 closes the bypass on all nine routes and lands at v4.4.3. The BIC alone carries `Made-with: Cursor`. Because the commit object names a human author/committer and discloses AI-tool assistance rather than an AI bot or AI Co-Authored-By identity, the causal AI linkage is explicit but shared/weaker, so AI_CODE_FLAWED is more precise than AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

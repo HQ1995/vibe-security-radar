@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-e768c838603f0312734fd037",
+  "case_id": "GHSA-gc8m-9gpv-3rpr",
+  "repo": "appneta/tcpreplay",
+  "advisory_ids": [
+    "CVE-2025-9384",
+    "GHSA-gc8m-9gpv-3rpr"
+  ],
+  "bug_semantics": "Local DoS NULL-pointer dereference in tcprewrite/tcpedit port-map parsing. tcpedit_post_args() in src/tcpedit/parse_args.c hands --portmap to parse_portmap() -> ports2PORT() in src/tcpedit/portmap.c. For a source token that contains '-' (including a leading minus such as --portmap=-43:4443), the range branch strtok_r(from_s, \"-\") leaves from_end NULL and then calls strtol(from_end) with no NULL check, crashing in libc strtol. GHSA-gc8m-9gpv-3rpr / CVE-2025-9384 (CWE-476); CVE.org state PUBLISHED, not rejected. Vendor reproduced on 6fcbf032 (2024-07-12 master) and not on 4.5.2-beta2.",
+  "flaw_origin": "First write of the unguarded range parser is 97a9237005642cf530b0b7d63c906b02460cf4dc (Aaron Turner, 2010-03-27, 'first pass at improved portmap code. refs #417'). That commit added strtok_r(from_s, \"-\") plus strtol(from_end) in ports2PORT(). Parent e5e6e686560627898831f679fad91755d6d1235e still has src/tcpedit/portmap.c but only the simple port:port path (strtol(from_s)/strtol(to_s)); it contains no from_end and no '-' range split. Later edits (b58b23a52 Coverity, b5315e580 Codacy C99 decls, df18c488 strtok_r NULL on the comma loop) did not introduce the strtol(from_end) call. Direct fix f6e6ee460ad9fe01e24a1579166b3f7a8c2158a7 (2025-07-06, 'Bug #94 stop on --portmap syntax error') changes the range guard to if (!from_begin || !from_end || strlen(badchar) != 0) and is an ancestor of v4.5.2-beta2.",
+  "introducer_sha": "97a9237005642cf530b0b7d63c906b02460cf4dc",
+  "introducer_parent": "e5e6e686560627898831f679fad91755d6d1235e",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none; BIC author/committer Aaron Turner <synfinatic@gmail.com> 2010-03-27; commit message has no Co-Authored-By/Generated-with/Assisted-by/bot author.",
+  "verdict": "NOT_AI",
+  "fix_sha": "f6e6ee460ad9fe01e24a1579166b3f7a8c2158a7",
+  "direct_fix_sha": "f6e6ee460ad9fe01e24a1579166b3f7a8c2158a7",
+  "evidence": "Issue #971 PoC: tcprewrite --portmap -43:4443 -i <pcap> -o /dev/null; ASan stack ports2PORT portmap.c:112 strtol(from_end) via parse_portmap parse_args.c:188. git show 6fcbf032:src/tcpedit/portmap.c range branch calls strtol(from_begin) then strtol(from_end) without NULL check. git blame -L 101,116 6fcbf032 -- src/tcpedit/portmap.c attributes strtok_r/from_end/strtol(from_end) first-write to 97a923700. git cat-file -p 97a923700: author/committer Aaron Turner, parent e5e6e686. git cat-file -e e5e6e686:src/tcpedit/portmap.c succeeds; parent tree has ports2PORT but no from_end (git grep from_end on parent is empty). git show f6e6ee46 -- src/tcpedit/portmap.c is a 1-line guard !from_begin || !from_end; git merge-base --is-ancestor f6e6ee46 v4.5.2-beta2. CVE.org CVE-2025-9384 state PUBLISHED, dateRejected none, 4.5.2-beta2 listed unaffected. GHSA withdrawn_at null.",
+  "reasoning": "Vulnerability-first: the crash is a real CWE-476 in the --portmap range parser, reproduced by the vendor on 6fcbf032 and closed by f6e6ee46 before 4.5.2-beta2. The smallest commit that first wrote the vulnerable strtol(from_end) lines is 97a923700 (2010 range-parser addition), not a later move/refactor/Codacy/strtok_r-comma check. Parent tree still has portmap.c but lacks those lines (introducer_parent_absent=true). AI-second: BIC commit object is human Aaron Turner 2010 with no AI trailer or bot author; later AI on a fix would not attribute the BIC. Verdict NOT_AI.",
+  "remaining_gap": null
+}

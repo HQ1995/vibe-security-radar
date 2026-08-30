@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-d242c0123c1fed0e0f67ee78",
+ "case_id": "GHSA-fqw6-gf59-qr4w",
+ "repo": "containerd/containerd",
+ "advisory_ids": [
+  "CVE-2026-46680",
+  "GHSA-fqw6-gf59-qr4w"
+ ],
+ "bug_semantics": "WithUser treats a numeric USER string that fails 32-bit uid/gid bounds as a username and looks it up in the image /etc/passwd, so a crafted passwd mapping that digit-string to UID 0 can run the container as root and evade Kubernetes runAsNonRoot (CWE-269/CWE-843).",
+ "flaw_origin": "validate uid/gid folded out-of-range Atoi results into the existing username fallback (if err != nil || v < minUserID || v > maxUserID then WithUsername) instead of rejecting numeric overflow.",
+ "introducer_sha": "de1341c201ffb0effebbf51d00376181968c8779",
+ "introducer_parent": "9deb0b8f748ee038dfd48c51d7aee6b55e34e9c1",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "9439355c2bffd12d9e15f1fa57cdd1c6da677cd2",
+ "direct_fix_sha": "9439355c2bffd12d9e15f1fa57cdd1c6da677cd2",
+ "evidence": "CVE-2026-46680 is PUBLISHED on CVE.org (state PUBLISHED, dateRejected None). GHSA-fqw6-gf59-qr4w describes numeric USER not parseable as a 32-bit integer treated as a username. Direct fix 9439355c2bffd12d9e15f1fa57cdd1c6da677cd2 (author LEI WANG, committer Samuel Karp) returns an explicit error on strconv.ErrRange and on uid/gid outside [0, MaxInt32] instead of WithUsername; identical-message backports a05ae78850384eb24effbc597ebc5b19a5e4ba04, d20c6267b, 1a3d1c85e, 503f47946 match first_patched 2.3.1/2.2.4/2.0.9/1.7.32. Pre-fix WithUser used if err != nil || v < minUserID || v > maxUserID { return WithUsername(userstr) }. git log -S maxUserID and -S the int32 username-fallback comment first write that conjunction on pkg/oci/spec_opts.go at de1341c201ffb0effebbf51d00376181968c8779 (backports 11504c3fc v1.7.27, 07a0b5419 v2.0.4, 9639b9625 v1.6.38 matching vulnerable floors 1.7.27/2.0.4/2.1.0-beta.0). git cat-file -e 9deb0b8f748ee038dfd48c51d7aee6b55e34e9c1:pkg/oci/spec_opts.go succeeds; parent WithUser only fell back on Atoi err != nil, without the int32 range-as-username path. git cat-file -p de1341c201ffb0effebbf51d00376181968c8779 is a single-parent commit (parent 9deb0b8f748ee038dfd48c51d7aee6b55e34e9c1) by Craig Ingram <Cjingram@google.com> with subject-only message and no Co-Authored-By/Generated-with/bot author. ppa re-checked line-level 2026-08-29: git show 9deb0b8f:pkg/oci/spec_opts.go WithUser has 'if err != nil' only with no minUserID/maxUserID constants; the bound-check lines 'err != nil || v < minUserID || v > maxUserID' are added by BIC de1341c2 -> introducer_parent_absent=true.",
+ "reasoning": "The advisory is a real published runAsNonRoot bypass: large numeric USER strings were looked up as names after the int32 bound check. The smallest public first-write of those range-as-username lines is de1341c201ffb0effebbf51d00376181968c8779; the parent tree lacks them, and later validate uid/gid commits are backports, so this is not a move/refactor/revert. The BIC commit object is a human Google author with no AI trailer, so the verdict is NOT_AI.",
+ "remaining_gap": ""
+}

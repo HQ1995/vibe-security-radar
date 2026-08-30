@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-2853f2ef631b870d94110172",
+  "case_id": "GHSA-7ww4-jpp4-x9fw",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "advisory_ids": [
+    "CVE-2026-50259",
+    "GHSA-7ww4-jpp4-x9fw"
+  ],
+  "bug_semantics": "A client can issue XKB SetMap requests with XkbSetMapResizeTypes so that CheckKeyTypes() computes nMaps from the client-controlled sum firstType + nTypes but checks only a lower bound. After growing num_types to 255, a request with firstType=255 and nTypes=10 passes the firstType > num_types test because equality is allowed, computes nMaps=265, and writes mapWidthRtrn[i + firstType] for indices 255 through 264. The caller supplies the fixed 256-byte stack array mapWidths[XkbMaxLegalKeyCode + 1], so indices 256 through 264 overwrite nine bytes beyond it into adjacent stack state, permitting denial of service and potentially privilege escalation when the X server runs privileged.",
+  "flaw_origin": "The repository's initial X.Org R6.6 baseline commit ded6147bfb5d75ff1e67c858040a628b61bc17d1 added xkb/xkb.c with the complete vulnerable composition: a fixed XkbMaxLegalKeyCode+1 mapWidths stack buffer, client-controlled nMaps = firstType + nTypes with no upper bound, and the mapWidthRtrn[i + req->firstType] write. Whitespace/style changes and the 2010 zero-initialization of the same fixed-size array did not originate the mechanism.",
+  "introducer_sha": "ded6147bfb5d75ff1e67c858040a628b61bc17d1",
+  "introducer_parent": "cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names author and committer Kaleb Keithley <kaleb@freedesktop.org> and contains only the message 'R6.6 is the Xorg base-line'; it has no Co-Authored-By, Assisted-by, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "867b59b33bee669cb412f1314e47c52eacf6e00b",
+  "direct_fix_sha": "867b59b33bee669cb412f1314e47c52eacf6e00b",
+  "evidence": [
+    "The first-party X.Org advisory at https://lists.x.org/archives/xorg-announce/2026-June/003702.html identifies the XKB SetMap stack overflow, states that versions before xorg-server 21.1.23 and Xwayland 24.1.12 are affected, and names 867b59b33bee669cb412f1314e47c52eacf6e00b as the fix.",
+    "git show 867b59b33bee669cb412f1314e47c52eacf6e00b shows the direct five-line fix in xkb/xkb.c: CheckKeyTypes() now rejects nMaps > XkbMaxLegalKeyCode + 1. Its commit message documents the two-request 255/265 exploit and the nine-byte overwrite beyond mapWidths into symsPerKey.",
+    "git blame -w at 867b59b33bee669cb412f1314e47c52eacf6e00b^ attributes the unchecked nMaps arithmetic at xkb/xkb.c:1614-1627 and the exact out-of-bounds-capable assignment at xkb/xkb.c:1728 to ded6147bfb5d75ff1e67c858040a628b61bc17d1. The fixed-size declaration at xkb/xkb.c:2550 retains the size introduced in that baseline; ca21a266224b6eff4fd817c2082d2e144f1ea58c only added zero initialization.",
+    "git blame on ded6147bfb5d75ff1e67c858040a628b61bc17d1 confirms that xkb/xkb.c:1680 computes req->firstType + req->nTypes without an upper bound, xkb/xkb.c:1772 writes mapWidthRtrn[i + req->firstType], and xkb/xkb.c:2599 declares mapWidths[XkbMaxLegalKeyCode+1], all in the same commit.",
+    "Direct parent-tree verification: git cat-file -e cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941:xkb/xkb.c fails because the path is absent, while git diff-tree -r --name-status cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 ded6147bfb5d75ff1e67c858040a628b61bc17d1 -- xkb/xkb.c reports A xkb/xkb.c.",
+    "git cat-file -p ded6147bfb5d75ff1e67c858040a628b61bc17d1 provides the full parent SHA and the BIC-only identity/message evidence used for attribution; no later fix marker was used. Although fix commit 867b59b33bee669cb412f1314e47c52eacf6e00b says Assisted-by: Claude:claude-opus-4-6, that marker is on the fix and is therefore irrelevant to BIC attribution.",
+    "Release ancestry and patch identity establish the boundary: xorg-server-21.1.22 (38efdcada1609139cb6673e1a4d0ebc8a96306f0) lacks the fix backport, while xorg-server-21.1.23 (8570e9fcec845f68f0c90caa51fd7a24764ea220) contains 54c3d9fad0f2f97835da9d275b53255f4963029f; xwayland-24.1.11 (a0241c1d38297a800d2aae3d8ca7213b7b873879) lacks its backport, while xwayland-24.1.12 (af4b3d7250366e1a3822919e41fcf66da4966af2) contains cb0e17cc7890d41bfee39f5bfcfeec521b0d513d. git patch-id --stable yields the same patch id 9a7f74b0f3b6ab30d43154158ae3eef7ae1bb399 for 867b59b33bee669cb412f1314e47c52eacf6e00b and both backports. The BIC is an ancestor of both vulnerable predecessor tags and both patched tags."
+  ],
+  "reasoning": "The advisory's described sink and the direct fix identify the causal invariant: any ResizeTypes request must keep firstType + nTypes within the 256-entry mapWidths buffer. Whitespace-insensitive blame traces the unchecked sum, permissive equality check, and indexed write back through later refactors to the initial baseline commit; inspecting that commit shows the fixed-size caller buffer was added simultaneously. The immediate parent has no xkb/xkb.c at all, so the vulnerable composition is directly absent there. The repository begins this path at the R6.6 baseline import, and no smaller predecessor commit exists in the repository DAG to decompose; this is an initial-history boundary rather than a later move, revert, or squash obscuring an in-repository member commit. The direct fix adds the missing upper bound, and byte-identical patch backports first appear in the announced patched release tags while their immediate predecessor releases lack them. Finally, only the introducer commit object controls attribution: it has a human author/committer and no AI marker. The Claude marker on the 2026 fix cannot make the 2003 BIC AI-authored, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

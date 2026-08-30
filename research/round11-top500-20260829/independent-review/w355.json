@@ -1,0 +1,25 @@
+{
+  "worker": "w355",
+  "review_agent_id": "r389_w355",
+  "class_id": "alias-0da24584af05eef9b01b84db",
+  "case_id": "GHSA-2c5c-chwr-9hqw",
+  "repo": "netty/netty",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-42582 is PUBLISHED and GHSA-2c5c-chwr-9hqw is not withdrawn. In netty-4.2.12.Final, QpackDecoder.decodeHuffmanEncodedLiteral decodes a wire-controlled length and the non-Huffman branch executes new byte[length] before checking readableBytes, allowing a tiny QPACK literal to request an excessive allocation.",
+    "atomic_bic": "PASS: GitHub's exact commit object for abe017c47b0e13994071fee2cc9576d7ea338ec3 shows that this PR #3 member added QpackDecoder.java with decodeStringLiteral reading the prefixed length and executing new byte[length] without a readableBytes guard. It is the smallest public first writer, not the later squash or rename.",
+    "immediate_parent_absence": "PASS: The BIC API object names sole parent 395caf29ef629d5ccafec3bf1eac5dcfc0060dc6; that commit exists locally, and its complete tree contains no Qpack path, so the vulnerable decoder and allocation are absent from the immediate parent.",
+    "squash_member_decomposition": "PASS: The merged netty-incubator-codec-http3 PR #3 reports merge_commit_sha 8110eccd9637f8c2836e7b1ab0d24d9a8bb15bbd, 15 commits, and head 7b0d4b374152691638a3846760d551bc5ee76a7c. Its ordered public member list exactly matches the primary decomposition and begins with abe017c47b0e13994071fee2cc9576d7ea338ec3; the squash itself is not treated as the BIC.",
+    "affected_and_fixed_release_membership": "PASS: QpackDecoder is absent from netty-4.2.0.Final and netty-4.2.1.Final, first appears at netty-4.2.2.Final, and the vulnerable sink remains in netty-4.2.12.Final. Squash 8110eccd9637f8c2836e7b1ab0d24d9a8bb15bbd is an ancestor of 4.2.2, 4.2.12, and 4.2.13. Fix 541ca7c645b8bd04901b54136b745622be289d19 is not an ancestor of 4.2.12 but is an ancestor of netty-4.2.13.Final, matching the advisory's patched version.",
+    "direct_fix_or_verified_unpatched_state": "PASS: The single-parent diff of 541ca7c645b8bd04901b54136b745622be289d19 directly inserts if (in.readableBytes() < length) throw INVALID_LENGTH_ENCODED_LITERAL immediately before new byte[length]; the guard is present in netty-4.2.13.Final and absent in 4.2.12.Final.",
+    "bic_only_ai_attribution": "PASS: Attribution is evaluated only on abe017c47b0e13994071fee2cc9576d7ea338ec3. Its exact object records Oleksii Kachaiev <kachayev@gmail.com> as author and committer on 2020-11-28, with the one-line message 'Basic implementation with only static table support' and no Co-Authored-By, Generated-with, bot identity, or other AI marker. AI properties of the 2026 fix are irrelevant."
+  },
+  "findings": [
+    "The primary reconstructs the complete vulnerability lifecycle and correctly identifies a real, non-withdrawn vulnerability whose atomic public first writer is abe017c47b0e13994071fee2cc9576d7ea338ec3.",
+    "The local blob:none promisor clone does not contain the BIC commit object and GitHub no longer serves it through netty/netty upload-pack; the exact netty-incubator-codec-http3 commit and PR API objects independently close the BIC, parent, member, metadata, and patch gates without modifying the clone.",
+    "The advisory range starts earlier than the monorepo's first QpackDecoder-bearing final tag, but the primary explicitly records this tag-level distinction; it does not affect the BIC, direct-fix, or NOT_AI conclusion."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

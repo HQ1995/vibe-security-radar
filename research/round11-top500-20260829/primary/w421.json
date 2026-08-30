@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-5f52522c6f016b598fd4dd0b",
+  "case_id": "GHSA-hrmw-qprp-wgmc",
+  "repo": "phpoffice/phpspreadsheet",
+  "advisory_ids": [
+    "CVE-2026-40296",
+    "GHSA-hrmw-qprp-wgmc"
+  ],
+  "bug_semantics": "The HTML writer passed an attacker-controlled cell value through a custom number format and escaped the result only when the formatted string exactly equalled the original value. For an unquoted @ text placeholder plus any literal text, such as '. @' or '@ ', Formatter substituted the raw cell value and returned early without invoking the HTML writer's escaping callback; the added literal made the formatted value unequal to the original, so Writer/Html.php also skipped htmlspecialchars(). An uploaded spreadsheet could therefore emit a raw script-capable tag into generated HTML and cause stored XSS when that HTML was viewed.",
+  "flaw_origin": "The reconstructable PR #1464 member commit 62da380674d68bd6bc432c88146fd965246d9085 changed non-RichText HTML cell rendering from unconditional htmlspecialchars() after number formatting to a conditional escape only when $cellData === $origData, in order to preserve formatter-produced HTML such as color spans. Its direct parent 1861412d608f5e66ed0155632b5b93d9ba5c94bc unconditionally escaped every formatted non-RichText cell. GitHub later squash-landed the PR as 97a80f383c1487e18c70a097b6ba2352dfd764cf, but the smaller reconstructed member is the causal BIC.",
+  "introducer_sha": "62da380674d68bd6bc432c88146fd965246d9085",
+  "introducer_parent": "1861412d608f5e66ed0155632b5b93d9ba5c94bc",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "62da380674d68bd6bc432c88146fd965246d9085"
+  ],
+  "ai_marker": "absent: BIC commit object 62da380674d68bd6bc432c88146fd965246d9085 has author and committer Owen Leibman <eclipsechasers2@yahoo.com>; its full message contains no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "f1eb4e6980d537ec85fc20be5950f9ad65d47ffd",
+  "direct_fix_sha": "f1eb4e6980d537ec85fc20be5950f9ad65d47ffd",
+  "evidence": [
+    "CVE.org record CVE-2026-40296 is PUBLISHED and describes stored XSS caused by Writer/Html skipping escaping when custom @ number formats make the formatted value differ; it lists affected ranges through 1.30.3, 2.1.15, 2.4.4, 3.10.4, and 5.6.0 and fixes 1.30.4, 2.1.16, 2.4.5, 3.10.5, and 5.7.0.",
+    "GitHub PR #1464 /commits exposes the pre-squash member history. git diff 1861412d608f5e66ed0155632b5b93d9ba5c94bc..62da380674d68bd6bc432c88146fd965246d9085 -- src/PhpSpreadsheet/Writer/Html.php shows unconditional '$cellData = htmlspecialchars($cellData)' removed and the equality-guarded escape added around the NumberFormat::toFormattedString result.",
+    "Direct parent-tree verification: 1861412d608f5e66ed0155632b5b93d9ba5c94bc:src/PhpSpreadsheet/Writer/Html.php lines 1247-1260 unconditionally call htmlspecialchars() after either formatted-value path; the vulnerable equality guard is absent.",
+    "BIC object verification: git cat-file -p 62da380674d68bd6bc432c88146fd965246d9085 gives sole parent 1861412d608f5e66ed0155632b5b93d9ba5c94bc, author/committer Owen Leibman <eclipsechasers2@yahoo.com>, and no trailers or AI marker.",
+    "Squash decomposition: repository commit 97a80f383c1487e18c70a097b6ba2352dfd764cf is the one-parent GitHub squash for PR #1464; its reconstructed member 62da380674d68bd6bc432c88146fd965246d9085 is the first PR commit that writes the equality guard, while later PR members do not change that mechanism.",
+    "Vulnerable tag membership: git merge-base --is-ancestor confirms squash 97a80f383c1487e18c70a097b6ba2352dfd764cf is contained in tags 1.30.3, 2.1.15, 2.4.4, 3.10.4, and 5.6.0.",
+    "Direct mainline fix: f1eb4e6980d537ec85fc20be5950f9ad65d47ffd changes src/PhpSpreadsheet/Style/NumberFormat/Formatter.php so the unquoted-@ early-return path invokes the supplied callback; Writer/Html::formatColorStatic then applies htmlspecialchars(), and the commit expands AtSignFormatTest to '. @' and '@ ' payload cases.",
+    "Patched-boundary topology: f1eb4e6980d537ec85fc20be5950f9ad65d47ffd is absent from 5.6.0 and contained in 5.7.0. Equivalent maintenance-line Security Patches commits 02970383cc12e7bf0bc0707ea6e2e8ed23a7aec9, c91ff54b743e3f70f880e7145a9821474cd82f16, ec7815be350e03df90f3e2ace92653fa6cb4327c, and 13f709c73e417c3c8cadc87ac88f809fd8d1fa45 are absent from their respective vulnerable tags and contained in 1.30.4, 2.1.16, 2.4.5, and 3.10.5.",
+    "Advisory source: https://github.com/PHPOffice/PhpSpreadsheet/security/advisories/GHSA-hrmw-qprp-wgmc; authoritative CVE record: https://cveawg.mitre.org/api/cve/CVE-2026-40296; BIC member: https://github.com/PHPOffice/PhpSpreadsheet/pull/1464/commits/62da380674d68bd6bc432c88146fd965246d9085; direct fix: https://github.com/PHPOffice/PhpSpreadsheet/commit/f1eb4e6980d537ec85fc20be5950f9ad65d47ffd."
+  ],
+  "reasoning": "The vulnerability is real and published, and the release boundaries agree with the repository topology. The unsafe lifecycle begins when PR #1464 member 62da380674d68bd6bc432c88146fd965246d9085 replaces the parent's unconditional post-format escaping with equality-conditional escaping. The custom unquoted-@ formatter path can preserve attacker HTML, alter the surrounding string so equality fails, and bypass the callback, closing the source-to-sink mechanism. Although GitHub squash-landed the PR as 97a80f383c1487e18c70a097b6ba2352dfd764cf, the publicly reconstructable member is the smaller causal BIC and its direct parent proves absence. Fix f1eb4e6980d537ec85fc20be5950f9ad65d47ffd routes the previously early-returning unquoted-@ path through the callback that HTML writer uses to escape PCDATA; branch-equivalent fixes align with every advisory patched boundary. The BIC commit object has ordinary human author/committer identity and no AI marker, so the proper closed verdict is NOT_AI regardless of unrelated AI-marked commits elsewhere in the repository.",
+  "remaining_gap": null
+}

@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-4f18d6b89e282fac75ef5628",
+  "case_id": "GHSA-jr3w-9vfr-c746",
+  "repo": "rancher/local-path-provisioner",
+  "advisory_ids": ["CVE-2025-62878", "GHSA-jr3w-9vfr-c746"],
+  "bug_semantics": "StorageClass parameters.pathPattern is expanded as an unsanitized Go template (PV name plus PVC metadata) and the result is used as folderName in filepath.Join(basePath, folderName). Because the template output may contain relative segments such as ../, Join resolves the volume path outside the configured node base directory, so a helper-pod create can place a PersistentVolume on an arbitrary host path (advisory example: {{ .PVC.Namespace }}/{{ .PVC.Name }}/../../../../../etc/new-dir). CWE-23; CVSS 9.9.",
+  "flaw_origin": "The pathPattern feature added pathFromPattern() that Parse/Execute's the StorageClass parameter and returns buf.String() with no IsLocal/prefix/Clean-under-base check, then overwrites the previously underscore-joined folderName before the existing filepath.Join. That is the first write of attacker-controlled relative path elements into the volume path. The Join line itself predates the feature and was not a traversal sink while folderName was only PVName_PVC.Namespace_PVC.Name.",
+  "introducer_sha": "af85381fd304f3a65999687a5da18536e8a1b1ea",
+  "introducer_parent": "2d1a70949065cb46fadd98628cd341c0f6e19a60",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: BIC author Alban Bedel <alban.bedel@aerq.com> (GitHub user AlbanBedel, type User), committer Derek Su <derek.su@suse.com> (derekbit, type User); commit message has Signed-off-by: Alban Bedel <alban.bedel@aerq.com> only; no Co-Authored-By, Generated-by/Generated-with, Copilot/ChatGPT/Claude/Cursor/Aider trailers, and neither identity is a bot.",
+  "verdict": "NOT_AI",
+  "fix_sha": "1ed6b546b8db0424b64f761666c8eb1bd87b5f32",
+  "direct_fix_sha": "1ed6b546b8db0424b64f761666c8eb1bd87b5f32",
+  "evidence": [
+    "CVE.org CVE-2025-62878 cveMetadata.state=PUBLISHED (datePublished 2026-02-25, not rejected/withdrawn); NVD vulnStatus=Deferred (not Rejected); GHSA-jr3w-9vfr-c746 withdrawn_at=null. Real CWE-23, not FALSE_POSITIVE.",
+    "Advisory pin https://github.com/rancher/local-path-provisioner/blob/d4f71b4b03a321e9f54be00808e9de42b8bfd35a/provisioner.go#L381 is path := filepath.Join(basePath, folderName) after pathPattern overwrite; pathFromPattern at that snapshot (L303-321) returns buf.String() with no sanitization.",
+    "git log -S pathFromPattern -- provisioner.go yields two same-patch first-writes: af85381fd304f3a65999687a5da18536e8a1b1ea (master) and c5c666df3a3ed0ee2d352f5357c62b990503863e (origin/v0.0.x cherry-pick). git show | git patch-id --stable is d1f7e45a3ed8eb0cab8e413d18321ff96d79af07 for both.",
+    "BIC af85381fd304f3a65999687a5da18536e8a1b1ea 'Add support for custom path patterns' (author 2024-01-23, committed 2024-05-27 by Derek Su) inserts pathFromPattern plus the pathPattern branch in provisionFor; parent 2d1a70949065cb46fadd98628cd341c0f6e19a60: git grep pathFromPattern/pathPattern -- provisioner.go is empty; parent tree blob 2d1a7094:provisioner.go exists. git blame on advisory snapshot attributes pathFromPattern and the pathPattern block to af85381f; L381 Join remains 655eac796 (Stephen Ball, 2020).",
+    "PR #385 (https://github.com/rancher/local-path-provisioner/pull/385) rebased two members onto master: d64279f5389cb8e25a67df23984dba819c51fbe5 (same patch-id as af85381f; helm-unrelated chart commit is 056e35801cee57f86c95b3211aa914a270dcb630). Not a squash; squash_decomposed=false. Cherry-pick c5c666df is later (committed 2024-05-29) and is a carrier onto v0.0.x, not a smaller first-write.",
+    "Tag membership: pathFromPattern absent at v0.0.26; present at v0.0.27/v0.0.28 via c5c666df and at v0.0.29+ via af85381f. BIC precedes GHSA affected range < 0.0.34. Advisory snapshot d4f71b4 is a descendant of af85381f.",
+    "Direct fix 1ed6b546b8db0424b64f761666c8eb1bd87b5f32 (PR #542, https://github.com/rancher/local-path-provisioner/pull/542) adds if !filepath.IsLocal(folderName) { return error } immediately after pathFromPattern; parent 39b98b998f50a06cdd906e5cdb522ae1bc400f7a has unsanitized pathFromPattern and no IsLocal. Follow-on f74fa75179121eedb0fceac0c5238f3307ce4ffd (same PR, parent=1ed6b546) only enforces a {{ .PVC.Namespace }}/{{ .PVC.Name }}/ prefix and does not stop the advisory ../ example.",
+    "filepath.IsLocal present at v0.0.33:provisioner.go:386 and absent at v0.0.32. v0.0.33 release notes list PR #542; v0.0.34 is an ancestor of that fix plus later allowUnsafePathPattern opt-out (#547/#548). GHSA first_patched_version 0.0.34 is conservative; the traversal reject landed in v0.0.33 and is contained in v0.0.34.",
+    "BIC-only AI: git cat-file -p af85381f trailers are Signed-off-by human only; GitHub commit API author AlbanBedel type=User, committer derekbit type=User, unsigned, no generated markers."
+  ],
+  "reasoning": "CVE-2025-62878 / GHSA-jr3w-9vfr-c746 is a published (not withdrawn) relative path traversal: a StorageClass pathPattern containing ../ is templated and joined onto the node base path, so the helper pod can create a PV at an arbitrary host location. The mechanism begins when pathPattern made folderName user-controlled; the older filepath.Join(basePath, folderName) was not itself the BIC. git log -S/-L and blame at the advisory snapshot converge on af85381fd304f3a65999687a5da18536e8a1b1ea as the smallest master first-write of pathFromPattern and the unsanitized overwrite; the immediate parent 2d1a70949065cb46fadd98628cd341c0f6e19a60 lacks those lines. PR #385 was a rebase of that single feature commit plus an unrelated helm commit, not a squash. The later v0.0.x cherry-pick c5c666df has the same patch-id and is not earlier. The CWE-23 close is 1ed6b546b8db0424b64f761666c8eb1bd87b5f32 (filepath.IsLocal), first released in v0.0.33 and present in the GHSA patched tag v0.0.34. AI authorship was judged only on the BIC commit object: human author/committer and no AI trailers, so NOT_AI.",
+  "remaining_gap": null
+}

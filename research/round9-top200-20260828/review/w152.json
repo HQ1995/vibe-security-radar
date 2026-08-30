@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-2e662d822e0d6c12a76b1af5",
+  "case_id": "alias-2e662d822e0d6c12a76b1af5",
+  "repo": "chaiscript/chaiscript",
+  "advisory_ids": [
+    "CVE-2026-3383",
+    "GHSA-4x4r-mq42-wwmf"
+  ],
+  "bug_semantics": "A script-controlled integer right operand reaches Boxed_Number::go for assign_remainder. In the vulnerable implementation, the assign_remainder arm executes *t_lhs %= c_rhs without first calling check_divide_by_zero(c_rhs); a zero operand therefore invokes integer remainder by zero and terminates the process with SIGFPE. The public PoC reaches this path with ret %= i when i is initially zero, including from an async script task, making this an availability flaw.",
+  "flaw_origin": "Commit dd918c524d0bc9d081df723f42e18874874e4cf7 rewrote boxed-number dispatch to use if constexpr and inlined the assignment switch. During that rewrite it replaced the previously protected binary_int_go assign_remainder path with a newly written bare *t_lhs %= c_rhs, dropping the existing zero-divisor guard. Commit 9bbe7238278f96141b51ab4c6e5313ffc2879bea shortly afterward restored guards for ordinary remainder and quotient assignment but accidentally put the intended assign-remainder guard in the assign_bitwise_and arm, so this specific regression persisted through 4804fb6e036dc325f56eecde8e875717a357e187.",
+  "introducer_sha": "dd918c524d0bc9d081df723f42e18874874e4cf7",
+  "introducer_parent": "8568b61014e9ede0afb24d064aefba3204836106",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker on the BIC. `git cat-file -p dd918c524d0bc9d081df723f42e18874874e4cf7` shows human author and committer Jason Turner <jason@emptycrate.com>, subject `Use if constexpr in boxed_number`, and no message body, Co-Authored-By/Generated-with trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "9237acbbb94814bd94c1effb8b10f3a6eb0b15fe",
+  "direct_fix_sha": "d7d3981bbce55cea5c9e0e9e05b8ac2a198ee252",
+  "evidence": [
+    "First-party report https://github.com/ChaiScript/ChaiScript/issues/634 gives the PoC `ret %= i` with i starting at zero and an ASan/SIGFPE stack whose top frame is Boxed_Number::go<int,int> at boxed_number.hpp:236. The issue was closed after the maintainer triggered leftibot on 2026-04-12.",
+    "In the validated clone, `git log -L 240,242:include/chaiscript/dispatchkit/boxed_number.hpp dd918c524d0bc9d081df723f42e18874874e4cf7` shows dd918c524d0bc9d081df723f42e18874874e4cf7 replacing the old dispatch through binary_int_go with the three newly written lines `case ... assign_remainder`, `*t_lhs %= c_rhs`, and `return t_bv`. `git log --all -S'*t_lhs %= c_rhs;' -- .../boxed_number.hpp` returns only that commit, cross-checking the first write of the exact vulnerable sink.",
+    "Direct parent verification: `git show 8568b61014e9ede0afb24d064aefba3204836106:include/chaiscript/dispatchkit/boxed_number.hpp` shows binary_int_go's assign_remainder arm calling `check_divide_by_zero(u);` immediately before `t %= u;`. Thus the reported mechanism is absent in the immediate parent.",
+    "The BIC object is a single-parent ordinary commit: `git cat-file -p dd918c524d0bc9d081df723f42e18874874e4cf7` records parent 8568b61014e9ede0afb24d064aefba3204836106, Jason Turner as both author and committer, and only the subject `Use if constexpr in boxed_number`; it is not a squash aggregate and contains no AI trailer or bot identity.",
+    "`git show 9bbe7238278f96141b51ab4c6e5313ffc2879bea -- include/chaiscript/dispatchkit/boxed_number.hpp` shows the attempted 2017 follow-up adding check_divide_by_zero to remainder and assign_quotient, but adding the assignment-side guard under assign_bitwise_and while leaving assign_remainder bare. `git show 4804fb6e036dc325f56eecde8e875717a357e187:include/chaiscript/dispatchkit/boxed_number.hpp` confirms that exact misplaced-guard state immediately before the 2026 fix.",
+    "`git show 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe` moves check_divide_by_zero(c_rhs) from assign_bitwise_and to assign_remainder, rethrows arithmetic_error instead of masking it as unsupported arithmetic, and adds tests for both `% 0` and `%= 0`. Its parent is the vulnerable 4804fb6e036dc325f56eecde8e875717a357e187, so this is the closing landed fix.",
+    "PR https://github.com/ChaiScript/ChaiScript/pull/672 identifies direct commit d7d3981bbce55cea5c9e0e9e05b8ac2a198ee252. `git cat-file -p` on d7d3981bbce55cea5c9e0e9e05b8ac2a198ee252 and landed 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe shows both have parent 4804fb6e036dc325f56eecde8e875717a357e187 and identical tree c2647377e524b64a37ddb3fd420a4057b2dd9cb4; GitHub rewrote metadata/message when landing the direct patch.",
+    "Version boundary is branch-specific. The advisory says `up to 6.1.0`, but `git rev-parse 'v6.1.0^{commit}'` resolves ac0d7ce94925f8eac367533b276d9d7db13a77ae, `git tag --contains dd918c524d0bc9d081df723f42e18874874e4cf7` does not list v6.1.0, and direct inspection of the v6.1.0 tag shows its assign_remainder arm still guarded by check_divide_by_zero(u). The vulnerable BIC is on develop; the only containing tag is wasm-latest at 340e7d4b1607c05d91b7eb81c67e3316938da8b1. `git tag --contains 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe` returns no tags. Therefore numbered v6.1.0 is demonstrably safe despite the advisory wording, affected develop/wasm-latest snapshots close at 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe, and no numbered release tag contains the fix.",
+    "The fixing PR/commits disclose Claude Opus 4.6 and leftibot, but the protocol limits AI judgment to the BIC commit object. Those 2026 fix-only markers do not alter the marker-free 2017 BIC judgment."
+  ],
+  "reasoning": "The smallest causally relevant commit is dd918c524d0bc9d081df723f42e18874874e4cf7: it newly wrote the unguarded assignment-remainder sink, while its direct parent performed the same operation only after the zero check. Later formatting commit cff6a0acedbc1b8e53aeef118570929b50a711c9 merely reflowed the already vulnerable code and is not the BIC; 9bbe7238278f96141b51ab4c6e5313ffc2879bea was an incomplete repair, not the first introduction. The direct PR patch d7d3981bbce55cea5c9e0e9e05b8ac2a198ee252 and landed commit 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe close the mechanism by restoring the guard at the correct arm. Since the BIC is a 2017 human-authored commit with no AI marker in its commit object, the required verdict is NOT_AI; AI participation is present only on the later fix and must be ignored for attribution.",
+  "remaining_gap": null
+}

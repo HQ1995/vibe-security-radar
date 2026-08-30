@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-077cc4b3147cc625c47b1f29",
+  "case_id": "GHSA-5rvc-5cwx-g5x8",
+  "repo": "free5gc/free5gc",
+  "advisory_ids": [
+    "CVE-2026-33192",
+    "GHSA-5rvc-5cwx-g5x8"
+  ],
+  "bug_semantics": "In free5GC UDM's Nudm_SDM PATCH /{ueId}/sdm-subscriptions/{subscriptionId} path, an empty UE identifier was accepted without SUPI/GPSI validation and forwarded to UDR. UDR rejected the malformed downstream path with HTTP 400, but UDM surfaced HTTP 500 SYSTEM_FAILURE, exposing internal error-handling behavior and preventing the caller from distinguishing malformed input from a server failure. The observed downstream request used PUT although the inbound request was PATCH.",
+  "flaw_origin": "The vulnerable behavior is first present in the UDM repository's public root release commit 058e9e86db172c8265d45c00440064a81b5f8955: subscriberdatamanagement/api_subscription_modification.go reads the path SUPI and forwards it without validating that it is non-empty or a valid SUPI/GPSI. Later commits 058e9e86 -> aef8bceb -> dfb83129 only refactor or move the surviving handler and are not introducers.",
+  "introducer_sha": "058e9e86db172c8265d45c00440064a81b5f8955",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": false,
+  "verdict": "NOT_AI",
+  "fix_sha": "88de9fa74a1b3f3522e53b4cfa2d184712ffa4ee",
+  "direct_fix_sha": "1e47510c3eae27cbcadebc410366bd23b3895621",
+  "evidence": [
+    "CVE.org records CVE-2026-33192 as PUBLISHED, affected before UDM 1.4.2, and fixed in 1.4.2; the GitHub advisory gives the same boundary.",
+    "Issue free5gc/free5gc#784 reproduces on free5GC v4.0.1: inbound PATCH with // produces a UDR 400 PUT followed by a UDM 500 PATCH response.",
+    "Blame at pre-fix commit 9308405abd0ddc01ce9499a125536002bca9b5cc traces HandleModify through move/refactor commits dfb83129fa93938bf4ab8411291e8b48abaa227e and aef8bceb762d6bb5c6d7111182011d3af46fb052 to root commit 058e9e86db172c8265d45c00440064a81b5f8955; that root has no parent.",
+    "Root commit 058e9e86db172c8265d45c00440064a81b5f8955 has message 'Release v1.0.0', no body or co-author/AI trailer, and the vulnerable handler forwards c.Params.ByName(\"supi\") without validation; no AI marker is present on the BIC.",
+    "PR free5gc/udm#79 contains exactly one member commit, 1e47510c3eae27cbcadebc410366bd23b3895621. Mainline merge 88de9fa74a1b3f3522e53b4cfa2d184712ffa4ee has parents 9308405abd0ddc01ce9499a125536002bca9b5cc and 1e47510c3eae27cbcadebc410366bd23b3895621, so this is a non-squash merge.",
+    "The direct fix adds validator.IsValidGpsi/IsValidSupi before HandleModify forwards the request and returns HTTP 400 MANDATORY_IE_INCORRECT for invalid UE IDs. Tag v1.4.1 (a9d40fb1cb1a29a7d667d4a0081196a439383d82) lacks this guard; tag v1.4.2 (65d7070f4bfd016864cbbaefbd506bbc85d2fa92) contains it."
+  ],
+  "reasoning": "The security-relevant first write is the public-history root commit, not either later structural move. Its absent parent is directly verified, so there is no public predecessor to test and introducer_parent_absent is true. The one-commit PR directly adds the missing boundary validation; its merge commit is the mainline landing object and its sole second parent is the direct fix. Because AI attribution is judged only on the BIC and that root commit has no explicit AI marker, the case is NOT_AI.",
+  "remaining_gap": "The PR and v1.4.2 fix the empty-identifier 400-to-500 path by rejecting it at UDM, but the patch does not alter the separately observed PATCH-to-PUT downstream translation; whether that translation is an independent still-open defect is not established by the advisory's direct fix. No finer public commit predating the root release can be reconstructed from this repository."
+}

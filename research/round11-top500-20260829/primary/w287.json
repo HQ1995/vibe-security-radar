@@ -1,0 +1,38 @@
+{
+  "class_id": "alias-b4ec3138287d9cd939470cea",
+  "case_id": "GHSA-2gmr-vqp5-r9qg",
+  "repo": "quickjs-ng/quickjs",
+  "advisory_ids": ["CVE-2026-1144", "GHSA-2gmr-vqp5-r9qg"],
+  "bug_semantics": "js_atomics_store and js_atomics_op (and the other Atomics ops that share that pointer-cache pattern) call js_atomics_get_ptr, which returns a raw pointer into a TypedArray's ArrayBuffer. They then convert argv[2] with JS_ToIntegerFree / JS_ToUint32 / JS_ToBigInt*, which can run attacker-controlled JS via valueOf. That JS can rab.resize() a resizable ArrayBuffer; js_array_buffer_resize js_realloc()s the backing store (freeing the old allocation) and updates TypedArray views, but does not set abuf->detached. After conversion the atomics code only re-checks abuf->detached, then performs atomic_store / atomic_fetch_* on the stale pointer — heap use-after-free. PoC: new ArrayBuffer(1024, {maxByteLength: ...}); Atomics.store/add(i32, 0, {valueOf(){ rab.resize(0); return 123; }}). Detach-during-conversion was already handled; resize-without-detach was not.",
+  "flaw_origin": "The Atomics pointer-cache-then-convert pattern existed before resizable ArrayBuffers and was not a UAF then, because detach was re-validated after conversion and buffers could not otherwise move. PR #646 first implemented RABs with realloc-based resize and updated TypedArray prototype methods for valueOf-driven resize, but left Atomics unchanged. The smallest first-write is member 878647e21dec1a101a5d7ced6134e70a8e2ffca8 (parent e569f39bf18b4670dd526b11ea09cd00d7be3e91 has no js_array_buffer_resize / maxByteLength). GitHub squash-merged that PR as 37fe427d59043d70f92c70d315592232ad8cb358 onto master; later PR fixups did not touch atomics. The UAF remains through v0.11.0 until ea3e9d77454e8fc9cb3ef3c504e9c16af5a80141 re-resolves the pointer after conversion.",
+  "introducer_sha": "878647e21dec1a101a5d7ced6134e70a8e2ffca8",
+  "introducer_parent": "e569f39bf18b4670dd526b11ea09cd00d7be3e91",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "878647e21dec1a101a5d7ced6134e70a8e2ffca8",
+    "8d3babe2c3a51332df20aa6594e6955e6b44c34b",
+    "611b1abdfc2a076b3ae459d36cc4669e172800ff",
+    "ab40bdb0e9fe33e9f492b55010dc7a15e0112226",
+    "fda205a23d2d8d40e7f8ffa28b6d3308db09141b"
+  ],
+  "ai_marker": "absent; author=Ben Noordhuis <info@bnoordhuis.nl>; committer=Ben Noordhuis <info@bnoordhuis.nl>; commit object 878647e21dec1a101a5d7ced6134e70a8e2ffca8 has no Co-Authored-By, Generated-with, or bot trailers (message ends after the RAB description). Squash landing 37fe427d59043d70f92c70d315592232ad8cb358 is the same author with committer GitHub <noreply@github.com> and likewise no AI trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "ea3e9d77454e8fc9cb3ef3c504e9c16af5a80141",
+  "direct_fix_sha": "ea3e9d77454e8fc9cb3ef3c504e9c16af5a80141",
+  "evidence": [
+    "CVE.org CVE-2026-1144 state=PUBLISHED (not rejected/withdrawn); CNA VulDB; GitHub GHSA-2gmr-vqp5-r9qg withdrawn_at=null. Vendor merged https://github.com/quickjs-ng/quickjs/pull/1303 as a real fix for issues 1301/1302.",
+    "https://github.com/quickjs-ng/quickjs/issues/1301: heap UAF in js_atomics_store — js_atomics_get_ptr caches a heap pointer; JS_ToIntegerFree runs valueOf which rab.resize()s; ASAN WRITE at atomic_store on freed region (js_array_buffer_resize -> js_realloc).",
+    "https://github.com/quickjs-ng/quickjs/issues/1302: same mechanism in js_atomics_op for Atomics.add/sub/and/or/xor/exchange/compareExchange via JS_ToUint32(argv[2]).",
+    "Fix ea3e9d77454e8fc9cb3ef3c504e9c16af5a80141 (author Saúl Ibarra Corretgé) replaces js_atomics_get_ptr with js_atomics_get_buf returning the JSObject+index, then after conversion re-checks idx >= p->u.array.count and only then computes ptr. Message: Fix OOB access in atomic ops. Fixes #1301 and #1302. Tests tests/bug1301.js and tests/bug1302.js.",
+    "v0.11.0 still has the vulnerable pattern: js_atomics_store at quickjs.c:57016 caches ptr at 57025-57026, converts at 57044, checks only abuf->detached at 57051, then atomic_store at 57053-57060. js_atomics_op at 56873 caches ptr at 56884-56885, JS_ToUint32 at 56904, detached-only check at 56913.",
+    "git log -S js_atomics_get_ptr -- quickjs.c: symbol added in 91459fb6723e29e923380cec0023af93819ae69d (2020-01-05 release dump) and removed only by the fix. Pre-RAB js_atomics_store already re-checked abuf->detached after conversion (parent of RAB, quickjs.c:53958-53960 / 53971-53972), so detach was not this UAF.",
+    "git log -S js_array_buffer_resize -- quickjs.c: first appearance 37fe427d59043d70f92c70d315592232ad8cb358 'Add resizable ArrayBuffers (#646)'. git show 37fe427 -- quickjs.c has no atomics hunks; git diff 878647e^ 878647e | rg js_atomics also empty.",
+    "PR #646 member 878647e21dec1a101a5d7ced6134e70a8e2ffca8 (parent e569f39bf18b4670dd526b11ea09cd00d7be3e91, same parent as the squash) first writes js_array_buffer_resize at quickjs.c:51539 with js_realloc at 51588 for non-shared RABs, and a warning at 38384-38387 that TA memory is invalid after any JS call because code may resize the RAB. Parent tree: git grep js_array_buffer_resize / maxByteLength on e569f39 returns no hits.",
+    "Squash landing 37fe427d59043d70f92c70d315592232ad8cb358 is not a BIC (GitHub squash-merge, single parent e569f39). Reconstructable members via refs/pull/646/head=fda205a23d2d8d40e7f8ffa28b6d3308db09141b: 878647e (RAB), 8d3babe (SAB serdes), 611b1ab (init var), ab40bdb (review), fda205a (fixups). git diff 878647e 37fe427 is SAB serde / throw-message / style only; atomics still pointer-cache.",
+    "Tag membership: 37fe427 (content of 878647e) is in v0.7.0 and later, not in v0.6.1; git describe --contains 37fe427 = v0.7.0~42. v0.11.0 contains 37fe427 and js_atomics_get_ptr, not the fix. ea3e9d7 is an ancestor of v0.12.0 and of later tags, not of v0.11.0. CVE/VulDB listing 0.1–0.11.0 is broader than exploitability; the resize PoC requires RABs from v0.7.0.",
+    "BIC-only AI: cat-file -p 878647e21dec1a101a5d7ced6134e70a8e2ffca8 — author/committer Ben Noordhuis <info@bnoordhuis.nl>, no Co-Authored-By/Generated-with/bot trailers. Human maintainer; not inverted from an AI-marked commit."
+  ],
+  "reasoning": "CVE-2026-1144 is a real, published use-after-free in quickjs-ng Atomics, confirmed by first-party issues #1301/#1302, ASAN traces, merged PR #1303, and CVE.org state PUBLISHED. The attack is valueOf during Atomics.store/add/... resizing a resizable ArrayBuffer so a pointer cached by js_atomics_get_ptr is freed before atomic_store/fetch. The BIC is not the original Atomics implementation (91459fb is a 2020 release dump; that code re-checked detach after conversion and could not realloc the buffer). The smallest commit that first wrote the realloc-resize capability while leaving Atomics on a stale pointer is PR #646 member 878647e21dec1a101a5d7ced6134e70a8e2ffca8; its immediate parent e569f39bf18b4670dd526b11ea09cd00d7be3e91 has no RAB symbols. The master landing 37fe427 is a squash aggregate of that PR and is therefore not the BIC; members are reconstructable from the clone and GitHub PR commits, with later fixups not touching atomics. Between 37fe427 and the fix, js_atomics_get_ptr is unchanged except the fix itself. AI is judged only on 878647e: human author/committer, no commit-object AI markers. Verdict NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,38 @@
+{
+  "worker": "w206",
+  "review_agent_id": "r389_w206",
+  "class_id": "alias-04ff4a2ae20f049dd85b8235",
+  "case_id": "GHSA-5gr5-vmmr-82g6",
+  "repo": "erupts/erupt",
+  "primary_verdict": "FALSE_POSITIVE",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "The primary correctly showed that GoodsCategory.image is authenticated and ImageIO-gated, so the advisory's PR:N/plain-webshell narrative is inaccurate. It missed a surviving same-endpoint write primitive in tag 1.12.19: with erupt.keepUploadFileName=true, EruptFileService.createPath retains attacker-controlled ../ segments from MultipartFile.getOriginalFilename(), upload concatenates that path to erupt.uploadPath without normalization, and a valid image/polyglot passes ImageIO.read before transferTo writes outside the upload root. This is configuration-dependent authenticated arbitrary file write, not an unauthenticated unrestricted non-image upload.",
+    "atomic_bic": "1405b8b1fe76842514d915f360c731db14b80324 is the smallest surviving public commit that introduced POST /upload/{erupt}/{field}, the original-filename path, File(uploadPath + path), and transferTo in one single-parent commit. Later 8389cc152b593dca76898050517cb23706c14f58 made randomized names the default but deliberately retained the unsafe original-name branch behind keepUploadFileName.",
+    "immediate_parent_absence": "Verified against 1405b8b1fe76842514d915f360c731db14b80324 parent 539a56a29cb22f871bafce3ff64572a276d505ec: EruptFileController.java existed only as a stub and had no upload method, MultipartFile source, original-filename path construction, or transferTo sink.",
+    "squash_member_decomposition": "1405b8b1fe76842514d915f360c731db14b80324 has one parent and is not a merge. Its exact diff introduces the source-to-sink upload implementation; no aggregate or move was substituted for the BIC, so member decomposition is not applicable.",
+    "affected_fixed_release_membership": "The BIC is an ancestor of tag 1.12.19 (ea793f7143eb474a02faab43c60306d4b2223d6e) and 1.12.20 (922847d72a473ce5238ae68610a998a790f411bd). The direct fix is absent from 1.12.20 and first appears in the inspected containing tags at 1.13.1 (a2ffd1164e53d96811f3506fdc66515c4e5fb378). GHSA currently lists <=1.12.19 and no first_patched_version, so it does not supply the actual fixed-release boundary.",
+    "direct_fix_or_verified_unpatched_state": "58ed8631700f82c2d079e969b4ecbc2279eb2fde is a direct fix: relative to parent dcd8080924ec65b987401f00212d2adf6c9a6636, it replaces File(uploadPath + path) with uploadRoot.resolve(...).normalize(), rejects targets not starting with uploadRoot, and transfers only to the checked target. The same commit also closes analogous download traversal. The target upload files have no diff between 1.12.19 and 1.12.20.",
+    "bic_only_ai_attribution": "Judged only on BIC 1405b8b1fe76842514d915f360c731db14b80324: author and committer are 122339792@qq.com <Lyp19824135>, dated 2019-01-17, with no AI trailer, bot identity, or AI marker in the commit message. The 2025 Qodana-marked fix was not used to attribute the 2019 BIC. This supports NOT_AI."
+  },
+  "findings": [
+    "CVE.org remains PUBLISHED and GHSA withdrawn_at remains null; the four-line gist has no PoC, but absence of a PoC is not proof that the code path is safe.",
+    "GoodsCategory.image in erupt-example uses AttachmentType.Type.IMAGE and authVerify defaults true, so the primary is right that the published PR:N and plain-webshell description overstate the reachable mechanism.",
+    "The primary's conclusion that static resource serving and ImageIO eliminate all code-execution risk ignores attacker-controlled path escape when original filenames are retained; ImageIO accepts parseable image/polyglot content and does not sanitize the filename used by transferTo.",
+    "The later exact path-normalization fix contradicts the primary assertion that there was nothing to patch and supplies a direct source-to-sink closure absent from the primary record."
+  ],
+  "corrected_fields": {
+    "bug_semantics": "The advisory wording is inaccurate: GoodsCategory.image is authenticated and rejects content that ImageIO cannot parse. Nevertheless, erupt 1.12.19 has a configuration-dependent arbitrary-file-write path on that endpoint when keepUploadFileName=true: a crafted original filename can escape erupt.uploadPath, while a valid image/polyglot satisfies the IMAGE check. Treat this as a real authenticated path-traversal upload issue rather than an unauthenticated plain-webshell upload.",
+    "flaw_origin": "Commit 1405b8b1fe76842514d915f360c731db14b80324 first introduced the upload source-to-sink using the raw original filename and an unchecked destination under uploadPath. Its immediate parent lacked the upload implementation. Commit 8389cc152b593dca76898050517cb23706c14f58 later made random naming default but preserved the vulnerable behavior behind keepUploadFileName.",
+    "introducer_sha": "1405b8b1fe76842514d915f360c731db14b80324",
+    "introducer_parent": "539a56a29cb22f871bafce3ff64572a276d505ec",
+    "introducer_parent_absent": true,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "ai_marker": "Absent on BIC 1405b8b1fe76842514d915f360c731db14b80324; 2019 human author/committer metadata and no AI/bot trailer or message marker. Fix-side Qodana wording is not BIC attribution evidence.",
+    "verdict": "NOT_AI",
+    "fix_sha": "58ed8631700f82c2d079e969b4ecbc2279eb2fde",
+    "direct_fix_sha": "58ed8631700f82c2d079e969b4ecbc2279eb2fde"
+  },
+  "remaining_gap": null
+}

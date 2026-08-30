@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-dce0bce1305aaf4c0414a565",
+  "case_id": "GHSA-4ph5-83mw-vm42",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "advisory_ids": [
+    "CVE-2026-50263",
+    "GHSA-4ph5-83mw-vm42"
+  ],
+  "bug_semantics": "CWE-416 use-after-free in CreateSaverWindow (Xext/saver.c): SetupScreen captures pPriv; replacing an existing saver window sets pPriv->hasWindow=FALSE and calls CheckScreenPrivate(), which frees pPriv and NULLs the screen private when attr/events/installedMap are already unused (after UnsetAttributes). The next line still reads pPriv->attr on the freed block, disclosing memory (glibc tcache can make attr look non-NULL).",
+  "flaw_origin": "First write is 9508a382f8a9 (2003-11-14) 'Initial revision' by Kaleb Keithley, which added Xext/saver.c. CreateSaverWindow already did UninstallSaverColormap; pPriv->hasWindow=FALSE; CheckScreenPrivate(pScreen); then if (!pPriv || !(pAttr = pPriv->attr)). CheckScreenPrivate already xfree'd pPriv when !attr && !events && !hasWindow && installedMap==None. Parent ded6147bfb5d has no Xext/saver.c. Later style/xinerama/resource-free commits (including 842ca3ccef10 for CVE-2022-46343) did not first-write this UAF. The 2026 fix ecc634f1b2f7 only re-fetches pPriv after CheckScreenPrivate; Assisted-by on the fix does not attribute the BIC.",
+  "introducer_sha": "9508a382f8a9f241dab097d921b6d290c1c3a776",
+  "introducer_parent": "ded6147bfb5d75ff1e67c858040a628b61bc17d1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none",
+  "verdict": "NOT_AI",
+  "fix_sha": "ecc634f1b2f7aa473d3a267eada98c4918bf9e05",
+  "direct_fix_sha": "ecc634f1b2f7aa473d3a267eada98c4918bf9e05",
+  "evidence": "CVE-2026-50263 is PUBLISHED (cveawg state=PUBLISHED, assigner redhat); GHSA withdrawn_at is null. Advisory names CreateSaverWindow and points at ecc634f1b2f7. git show of that fix on Xext/saver.c adds pPriv = GetScreenPrivate(pScreen) after CheckScreenPrivate in CreateSaverWindow. git log --reverse -S 'pPriv->hasWindow = FALSE' -- Xext/saver.c first hits 9508a382f8a9. git cat-file -p 9508a382f8a9: author/committer Kaleb Keithley <kaleb@freedesktop.org>, message 'Initial revision', no Co-Authored-By/Generated-with/Assisted-by. git cat-file -t ded6147bfb5d is commit; git cat-file -e ded6147bfb5d:Xext/saver.c fails (path absent). 9508a382f8a9:Xext/saver.c contains CreateSaverWindow calling CheckScreenPrivate then immediately using pPriv->attr, and CheckScreenPrivate xfree(pPriv). git log -1 --format='%an %ae %cn %ce' 9508a382f8a9: Kaleb Keithley kaleb@freedesktop.org Kaleb Keithley kaleb@freedesktop.org. No finer public member: this is the smallest surviving first-write of the file.",
+  "reasoning": "Real CWE-416, not withdrawn. BIC is the 2003 Initial revision that first wrote CreateSaverWindow's CheckScreenPrivate-then-use-pPriv sequence; parent tree lacks Xext/saver.c. Authorship on that commit object is human (Kaleb Keithley). AI trailers exist only on the 2026 fix and cannot attribute the introducer. Therefore NOT_AI.",
+  "remaining_gap": ""
+}

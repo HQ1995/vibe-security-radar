@@ -1,0 +1,46 @@
+{
+  "worker": "w071",
+  "review_agent_id": "r389_w071",
+  "class_id": "alias-63a63d2ac404b72097a6e79e",
+  "case_id": "GHSA-cjxw-hmxq-h489",
+  "repo": "lobehub/lobe-chat",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-72594 is PUBLISHED and identifies authenticated stored SVG-avatar XSS through 2.2.13. At v2.2.13, v2.2.14, and clone HEAD 452a0896b28b92f24dc3ef4ed984dd486f34a6bb, updateAvatar accepts every data:image prefix, derives the extension from the attacker-controlled MIME subtype, and uploads the decoded bytes; the same-origin avatar GET maps .svg to image/svg+xml and returns it without Content-Disposition, nosniff, or a script-blocking CSP. The global CSP is only frame-ancestors 'none'."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "PR #7152 member 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 is the smallest surviving commit object that first adds src/app/(backend)/webapi/user/avatar/[id]/[image]/route.ts with svg -> image/svg+xml and changes stored avatar URLs to /webapi/user/avatar/<userId>/<uuid>.<fileType>. Earlier member bb4c4ed206bb442e2c3a991a01b7a2fcfa4fe286 added unrestricted data:image upload but returned getFullFileUrl; it did not add the application-origin document sink."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single immediate parent 5f0e6469bcb56de93164fc7c9b7ce42c702aaa0c. git ls-tree shows no webapi/user/avatar route in that parent, and the parent updateAvatar still uses getFullFileUrl rather than an application-origin /webapi/ URL."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The live GitHub PR #7152 commit list places 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 immediately after 5f0e6469bcb56de93164fc7c9b7ce42c702aaa0c. Main contains squash f15200d348ce2c0765c1459b1a19aa2f1f63ce90, while git merge-base confirms the member is not its ancestor; the squash is therefore correctly rejected as the aggregate BIC and the reconstructable member is used."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Squash f15200d348ce2c0765c1459b1a19aa2f1f63ce90 is absent from v1.82.4 (7f304df75c319a954d14d78a135d2f7273471f64), first contained by v1.82.5 (d7d5e6d4ea643a4f8495961156e242d96606b0c0; git describe --contains gives v1.82.5~4), and is an ancestor of v2.2.13 and v2.2.14. CVE.org marks versions <=2.2.13 affected; neither CVE.org nor GHSA supplies a fixed release, and v2.2.14 remains vulnerable."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "No direct fix exists through clone HEAD. v2.2.13, v2.2.14, and HEAD all retain svg: 'image/svg+xml', return only Cache-Control and Content-Type on the avatar response, and let assertSafeAvatarInput return for any data:image prefix. Later e7236c0169a5565c2fc01132cfed557743b48d3e scopes old-avatar deletion but does not restrict SVG upload or serving, so fix_sha and direct_fix_sha correctly remain null."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The local BIC object and live GitHub commit record both identify author and committer RICHQAQ (GitHub login RICHQAQ; 2206144600@qq.com). Its complete message is one sentence with no trailers, co-author, generator, Copilot, Cursor, Claude, GPT, or other AI marker. The later Claude Opus 4.7 co-authored e7236c0169a5565c2fc01132cfed557743b48d3e is neither the BIC nor a direct fix and is not transferred onto this attribution."
+    }
+  },
+  "findings": [
+    "The primary record correctly identifies 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 rather than squash f15200d348ce2c0765c1459b1a19aa2f1f63ce90 as the atomic BIC.",
+    "The primary NOT_AI verdict is supported by BIC-only metadata; the repository's later AI-marked avatar hardening commit is causally unrelated to introducing this XSS.",
+    "The unpatched conclusion is independently reproduced through v2.2.14 and clone HEAD 452a0896b28b92f24dc3ef4ed984dd486f34a6bb."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

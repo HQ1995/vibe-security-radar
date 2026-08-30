@@ -1,0 +1,26 @@
+{
+  "worker": "w190",
+  "review_agent_id": "r389_w190",
+  "class_id": "alias-c29c69e20b4ace9fc826779e",
+  "case_id": "GHSA-j9rx-rppg-6hh4",
+  "repo": "julien040/anyquery",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: in 0.4.4, authenticated POST /execute-query passes body.Query to executeQueryLLM and shell.Run; SQLite registers clear_plugin_cache(plugin), which path.Join's attacker-controlled plugin beneath the cache root and calls os.RemoveAll after only an empty-string check. Dot-dot traversal can therefore escape the intended root and recursively delete a writable directory.",
+    "atomic_bic": "CONFIRMED: bff740c2a2ae99a820479383dbe6902c15798737 is the earliest -S clear_plugin_cache and -S os.RemoveAll first-write in namespace/other_functions.go. Its introduced lines 45-53 remain blamed to that commit at tag 0.4.4.",
+    "immediate_parent_absence": "CONFIRMED: the BIC has the single parent 3c39a264926ac5181e075d645f91c37a5b9fb93a; that parent has neither namespace/other_functions.go nor any clear_plugin_cache symbol.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent public commit, not a merge; GitHub reports no associated pull request and exposes no member commits to decompose. Although it adds several standard-library files, it is the smallest surviving public object that first writes this function, with a verifiable immediate parent.",
+    "affected_release_membership": "CONFIRMED: bff740c2a2ae99a820479383dbe6902c15798737 is an ancestor of tags 0.1.0 and 0.4.4; tag 0.4.4 lacks the invalid-name, root-confinement, and sandbox-disable guards. GitHub reviewed GHSA and OSV both state affected <= 0.4.4; neither is withdrawn.",
+    "fixed_release_membership": "CONFIRMED: fix 27f84fc168310455eaf81ec4ba87eed20298670c is not an ancestor of 0.4.4 but is an ancestor of 0.4.5 through merge 32b6ee945033c4c36c08d2e5805e7747da9da8cf. GitHub reviewed GHSA and OSV identify 0.4.5 as the first fixed version.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: 27f84fc168310455eaf81ec4ba87eed20298670c directly changes clear_plugin_cache to reject separators and dot-dot, confines the resolved path under the plugin-cache root, and disables cache deletion under sandboxing; the commit message explicitly names CVE-2026-47253. The corresponding guards are absent at 0.4.4 and present at 0.4.5.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object and patch were checked independently. Author and committer are julien040 <48369040+julien040@users.noreply.github.com>; trailers are empty; no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, OpenAI, GPT, or bot marker occurs in the BIC. The NOT_AI judgment does not rely on the later fix."
+  },
+  "findings": [
+    "The primary correctly identifies the real CWE-22 source-to-sink lifecycle, atomic introducer, direct fix, and affected/fixed release boundary.",
+    "CVE.org currently returns CVE_RECORD_DNE for CVE-2026-47253, but that is an ingestion gap rather than rejection: the GitHub reviewed advisory is not withdrawn and OSV carries the CVE alias with withdrawn null.",
+    "No correction to the primary record is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

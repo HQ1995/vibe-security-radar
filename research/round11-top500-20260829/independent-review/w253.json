@@ -1,0 +1,23 @@
+{
+  "worker": "w253",
+  "review_agent_id": "r389_w253",
+  "class_id": "alias-4d702d4e4e38f6916e3360b2",
+  "case_id": "GHSA-2q7c-5gjm-7q23",
+  "repo": "spring-projects/spring-security",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: JdbcAssertingPartyMetadataRepository read attacker-writable verification_credentials and encryption_credentials BLOBs and passed them to Spring DefaultDeserializer, enabling unfiltered Java native deserialization on findByEntityId() or iterator(). CVE-2026-40993 is PUBLISHED and the Spring advisory identifies this mechanism.",
+    "atomic_bic": "CONFIRMED: 16fd24c0025f2c1d77eafd59ddd59a0a42730e81 is the single-parent commit that creates JdbcAssertingPartyMetadataRepository with DefaultDeserializer and the credential-BLOB deserialization calls; path-restricted pickaxe history has no earlier introduction.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 9b724377ce9210a2b8cef13f3fa545284a4fcbec has no repository file at that path and no DefaultDeserializer match under saml2/saml2-service-provider.",
+    "squash_member_decomposition": "CONFIRMED: the relevant public history is a linear four-commit sequence (16fd24c0025f2c1d77eafd59ddd59a0a42730e81, e2e42a5580bee84203ad9e1448269be91620dde2, 2bd05128ec614243f563a70fe0b6c09e726a29be, e8f920e0eeafff1af55427c13db054a3b6b13830), not an opaque squash; the first member already contains the vulnerable read sink, while later members do not precede it.",
+    "affected_fixed_release_membership": "CONFIRMED: the BIC is an ancestor of tags 7.0.0-M1, 7.0.0, 7.0.5, and 7.0.6; tags 7.0.0 and 7.0.5 still instantiate DefaultDeserializer. Fix 97a49aa3bf2380208ff0f1d96806b29fa2934327 is not an ancestor of 7.0.5, is an ancestor of 7.0.6, and the 7.0.6 tree uses the allowlisted deserializer. This matches the OSS advisory range 7.0.0 through 7.0.5 and fix 7.0.6.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: 97a49aa3bf2380208ff0f1d96806b29fa2934327 directly replaces DefaultDeserializer with Saml2X509CredentialCollectionDeserializer and installs AllowlistObjectInputFilter via ObjectInputStream.setObjectInputFilter; path-restricted pickaxe identifies this commit as the sole introduction of that fix class.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names human author chao.wang and maintainer committer Josh Cummings and contains only a Signed-off-by trailer; it has no AI-generation trailer, AI co-author, or bot author/committer identity. AI attribution is based only on this BIC, so NOT_AI is supported."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic BIC, parent state, release boundaries, direct fix, and BIC-only NOT_AI attribution all reproduce from the advisory and local Git objects; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

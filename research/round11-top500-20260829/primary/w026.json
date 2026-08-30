@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-bb9221fb3bacaa4409bb135d",
+  "case_id": "GHSA-3mm3-wfpv-q85g",
+  "repo": "clerk/javascript",
+  "advisory_ids": ["CVE-2025-63700", "GHSA-3mm3-wfpv-q85g"],
+  "bug_semantics": "Claimed authentication-strategy confusion in @clerk/clerk-js 5.88.0: during sign-in, an attacker was alleged to rewrite an OTP/TOTP verification request so that one strategy (email OTP vs TOTP vs OAuth) was substituted for another, and Clerk's backend supposedly failed to re-validate the authentication stage, completing login without a correct verification code. The public report (itsnishat08/CVE-2025-63700) supplies only that narrative; it contains no request traces, endpoints, payloads, or PoC. GHSA-3mm3-wfpv-q85g lists no patched version.",
+  "flaw_origin": "The claimed bypass never became a demonstrated clerk-js defect. MITRE first recorded a Supplier dispute (irreproducible; an OAuth-flow bug would live in the backend, not in the clerk-js frontend). On 2025-12-23 the CNA withdrew CVE-2025-63700 as not a security issue. Clerk's public security history independently states the filing was a disputed external report that NVD rejected and that it was never a real vulnerability. No BIC or fix is required.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "not evaluated; no BIC because the CVE was withdrawn as not a security issue (FALSE_POSITIVE does not require commit-object AI checks)",
+  "verdict": "FALSE_POSITIVE",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "MITRE CVE API https://cveawg.mitre.org/api/cve/CVE-2025-63700 : cveMetadata.state=REJECTED, dateRejected=2025-12-23T00:00:00.000Z, datePublished=2025-11-20, assignerShortName=mitre. rejectedReasons: 'DO NOT USE THIS CVE RECORD. ConsultIDs: none. Reason: This record was withdrawn by its CNA. Further investigation showed that it was not a security issue. Notes: none.'",
+    "CVE.org https://www.cve.org/CVERecord?id=CVE-2025-63700 : Published 2025-11-20, Rejected 2025-12-23, Updated 2025-12-23; rejected reason matches the CNA withdrawal text (not a security issue).",
+    "NVD REST https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2025-63700 : vulnStatus=Rejected, lastModified=2025-12-23T18:15:43.610, descriptions='Rejected reason: DO NOT USE THIS CVE RECORD. ... Further investigation showed that it was not a security issue.' metrics and references emptied.",
+    "Pre-rejection MITRE/NVD description (cvefeed.io / OpenCVE history, 2025-12-23 modification): 'NOTE: this is disputed by the Supplier because there is no available information to reproduce the issue, and because an OAuth authentication flow issue would be fixed in a backend component, not within clerk-js itself (which is solely a frontend component).' Tags then changed from MITRE:disputed to CNA REJECTED; CWE-290, CVSS, and references were removed.",
+    "Reporter writeup https://github.com/itsnishat08/CVE-2025-63700 README.md (fetched 2026-08-29): alleges strategy-switch at OTP verification for @clerk/clerk-js 5.88.0 / CWE-290, but ships no PoC, no HTTP traces, no vulnerable function names, and no patch pointer.",
+    "GitHub Advisory API https://api.github.com/advisories/GHSA-3MM3-WFPV-Q85G and advisory-database GHSA-3mm3-wfpv-q85g.json: github_reviewed=true, withdrawn_at=null, first_patched_version=null / patched versions None, repository_advisory_url=null. Protocol treats CVE.org/CNA disposition as authoritative over GHSA withdrawn_at.",
+    "Vendor disposition https://clerk.com/articles/clerk-security-how-we-protect-your-users : Clerk lists five real SDK CVEs and then: 'One other filing, CVE-2025-63700, was a disputed external report against @clerk/clerk-js that NVD rejected as \"not a security issue.\" ... it was never a real vulnerability.'",
+    "Bundle GHSA-3mm3-wfpv-q85g matches: package @clerk/clerk-js, range <=5.88.0, first_patched_version null, withdrawn_at null; no Clerk-owned repo advisory or patched clerk-js release is cited."
+  ],
+  "reasoning": "Vulnerability-first review of CVE-2025-63700 / GHSA-3mm3-wfpv-q85g shows the advisory never established a reproducible clerk-js flaw. The only technical story is a third-party README claiming an attacker could mutate an OTP verification request across authentication strategies (email OTP, TOTP, OAuth) and finish sign-in without a valid code because the backend did not re-validate the stage. That writeup has no exploit artifacts, and the GHSA lists no patched version, which is inconsistent with a confirmed client-library bug. MITRE then recorded the Supplier dispute: the issue could not be reproduced, and an OAuth authentication-flow failure would be fixed in Clerk's backend rather than in clerk-js (frontend only). On 2025-12-23 the CNA withdrew the CVE as not a security issue; NVD and CVE.org now show REJECTED with that exact reason. Clerk's own published security history repeats that this filing was investigated, withdrawn, and never a real vulnerability. GitHub's GHSA remains un-withdrawn (withdrawn_at null); that field is not authoritative against the CVE.org/CNA rejection. Under AUDIT-PROTOCOL, withdrawn/rejected advisories that are not a security issue are FALSE_POSITIVE, not NOT_AI. FALSE_POSITIVE does not require a BIC, so introducer_sha, introducer_parent, fix_sha, and direct_fix_sha are null and AI markers were not evaluated on a commit object.",
+  "remaining_gap": null
+}

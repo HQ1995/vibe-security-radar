@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-75a536bcc033e5afa3af2b82",
+  "case_id": "GHSA-245w-hx5r-x6jq",
+  "repo": "appneta/tcpreplay",
+  "advisory_ids": [
+    "CVE-2024-22654",
+    "GHSA-245w-hx5r-x6jq"
+  ],
+  "bug_semantics": "A crafted pcap can place an IPv6 extension header with ip_len=62 (or another value for which IPV6_EXTLEN_TO_BYTES(ip_len) is a multiple of 256) on tcprewrite's parsing path. IPV6_EXTLEN_TO_BYTES(x) is ((x * 4) + 8), but get_ipv6_next() stored that result in uint8_t, so 256 narrowed to 0. The helper consequently returned the same extension-header pointer; get_ipv6_l4proto() reread the same ip_nh in its unconditional loop and never advanced, hanging tcprewrite and causing availability loss.",
+  "flaw_origin": "Commit 49420cb5297852bbe4e3efe846d2d42e134f858d refactored IPv6 bounds handling from integer lengths to an end_ptr as part of heap-overflow hardening. In the same smallest source commit, src/common/get.c changed get_ipv6_next()'s extlen from int to uint8_t while leaving the potentially 256-or-larger IPV6_EXTLEN_TO_BYTES() result assigned to it. That unintended narrowing created the zero-progress loop; the direct parent retained int extlen and therefore did not contain the flawed mechanism.",
+  "introducer_sha": "49420cb5297852bbe4e3efe846d2d42e134f858d",
+  "introducer_parent": "ff643e96a993758811a4cbf10092dcb639fcabef",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object identifies human author Fred Klassen <fred.klassen@broadcom.com> and human committer Fred Klassen (@fklassen); its complete message is \"Bug #718 improved heap-overflow protection\\n\\nAdd end_ptr to key functions, which make it easier to implement\\noverflow protections.\" It has no Co-Authored-By, Generated-with, bot-author, or other AI-tool trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "2c435b9b9cf34acfc385c2a8e537e1d865557099",
+  "direct_fix_sha": "52ed63329b37ae83cb86504db2c9deb6a91e2fe9",
+  "evidence": [
+    "First-party report https://github.com/appneta/tcpreplay/issues/827 identifies tcprewrite's infinite loop in src/common/get.c, supplies a crafted-pcap reproduction, reports v4.4.4, and the maintainer states it was fixed by PRs #842 and #859. Advisory corroboration: https://github.com/advisories/GHSA-245w-hx5r-x6jq and https://nvd.nist.gov/vuln/detail/CVE-2024-22654.",
+    "The macro at src/defines.h.in:292 is `#define IPV6_EXTLEN_TO_BYTES(x) ((x * 4) + 8)`. In affected src/common/get.c, get_ipv6_next() declares `uint8_t extlen`, assigns that macro result, computes `ptr = exthdr + extlen`, and returns ptr without rejecting zero; get_ipv6_l4proto() then loops on the returned pointer. Reviewer source: https://github.com/appneta/tcpreplay/blob/2bf3b37a03d6a6c6090a47238c8dda9697eddb2d/src/common/get.c#L631-L715.",
+    "BIC diff https://github.com/appneta/tcpreplay/commit/49420cb5297852bbe4e3efe846d2d42e134f858d changes get_ipv6_next() from `int extlen = 0` to `uint8_t extlen = 0` and installs the end_ptr-based loop plumbing in src/common/get.c. Its sole parent is ff643e96a993758811a4cbf10092dcb639fcabef; the later merge ad346b7cb07336479f684d588124c7df0c67cfe4 is therefore not the smallest BIC.",
+    "Direct-parent tree verification: https://github.com/appneta/tcpreplay/blob/ff643e96a993758811a4cbf10092dcb639fcabef/src/common/get.c#L674-L721 shows `int extlen = 0`, not the vulnerable uint8_t narrowing. Thus the vulnerable line/mechanism is absent from the immediate parent and first appears in 49420cb5297852bbe4e3efe846d2d42e134f858d.",
+    "Tag boundary verification from the clone's packed refs and tag trees: v4.4.1 peels to ecf27bf73421c37efe75512e7e94eaf99049ba57 and still has `int extlen`; v4.4.2 peels to 1c0e25e64d8a3e3856c6427861502b849362bc4c and has `uint8_t extlen` without a zero guard. v4.4.3 and advisory-named v4.4.4 (peeled commit 2bf3b37a03d6a6c6090a47238c8dda9697eddb2d) retain the flaw. This establishes v4.4.2 as the first affected stable tag and v4.4.4 as affected.",
+    "Direct fix https://github.com/appneta/tcpreplay/commit/52ed63329b37ae83cb86504db2c9deb6a91e2fe9 adds `if (extlen == 0) { ... return NULL; }` immediately after the conversion, restoring loop progress/termination. PR #842 merged that commit into staging as 77f02cb3b1e5046ae8a6f914e10b01a68b181690; PR #859 then merged it to the canonical branch as 2c435b9b9cf34acfc385c2a8e537e1d865557099: https://github.com/appneta/tcpreplay/commit/2c435b9b9cf34acfc385c2a8e537e1d865557099.",
+    "Fixed boundary verification: v4.5.0-beta1 peels to bda0cadcd94cf1ecad73dcd3c91454799c661724 and contains the extlen==0 rejection; first fixed stable v4.5.0 peels to 6bf087d1c7b4f2509ab0a0b577777548615ae10a and contains the same guard. Release reference: https://github.com/appneta/tcpreplay/releases/tag/v4.5.0.",
+    "BIC-only AI attribution evidence: https://github.com/appneta/tcpreplay/commit/49420cb5297852bbe4e3efe846d2d42e134f858d and its mail patch https://github.com/appneta/tcpreplay/commit/49420cb5297852bbe4e3efe846d2d42e134f858d.patch show Fred Klassen's human identity, the exact subject/body, and no co-author, generation, bot, or AI trailer."
+  ],
+  "reasoning": "The advisory's claimed hang is a parser-progress failure, not merely a generic long loop. The BIC refactor made a computed extension length narrower: ip_len=62 makes ((62 * 4) + 8)=256, which becomes zero in uint8_t. get_ipv6_next() then returns its input address and the caller's while(TRUE) state does not change. History establishes 49420cb5297852bbe4e3efe846d2d42e134f858d as the smallest commit that wrote both the narrowing and the affected end_ptr traversal; its immediate parent uses int and lacks the flaw, while the later merge is only an aggregate. Stable tags corroborate the lifecycle: v4.4.1 is safe, v4.4.2 through the reported v4.4.4 are vulnerable, and the guard is present by v4.5.0-beta1 and stable v4.5.0. The direct source fix is 52ed63329b37ae83cb86504db2c9deb6a91e2fe9 and its canonical-branch landing is 2c435b9b9cf34acfc385c2a8e537e1d865557099. Finally, the BIC commit object contains only Fred Klassen's human authorship/committer identity and no AI marker, so the BIC-only verdict is NOT_AI.",
+  "remaining_gap": null
+}

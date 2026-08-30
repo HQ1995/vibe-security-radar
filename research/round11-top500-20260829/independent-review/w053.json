@@ -1,0 +1,31 @@
+{
+  "worker": "w053",
+  "review_agent_id": "r389_w053",
+  "class_id": "alias-00d9047abcf5bdf7d8144996",
+  "case_id": "GHSA-56rg-f4qq-ghhv",
+  "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS_WITH_CORRECTION: 28acb120 changed implicit-feedback sizing from actual_length / ep->stride to actual_length / sender->stride. With differing capture/playback strides, a device-controlled sync packet can yield a playback frame count above ep->maxframesize; that count enters ctx->packet_size and reaches playback/silence URB preparation. Historical code lacked adequate bounds, while later guards limited OOB consequences. The authoritative CNA is PUBLISHED and describes the same unclamped source-to-queue mechanism, but its July 2026 fixed boundary omits an earlier direct root-cause cap.",
+    "atomic_bic": "PASS: git -S finds 28acb12014fb0c3e1edfdab1b1e3e266cf651550 as the sole first writer of actual_length / sender->stride. Its one-file 9-insertion/3-deletion patch is the smallest commit introducing the stride-mismatch mechanism. The older 8fdff6a319e7dac757c558bd283dc4577e68cde7 wrote actual_length / ep->stride and is only a precursor; 28acb120 is absent from v3.7 and present in v3.8, matching the CNA start boundary.",
+    "immediate_parent_absence": "PASS: 28acb120 has the single immediate parent fde854bdaf603a99a80b9545c0aaca9ccd02dd31. The parent divides by ep->stride, contains no sender->stride conversion, and therefore lacks the cross-endpoint stride mismatch introduced by the BIC.",
+    "squash_member_decomposition": "PASS: 28acb120 is a single-parent, one-file source patch, not a merge, revert, move, backport, or squash aggregate; there is no finer public member to substitute and decomposed_shas=[] is correct.",
+    "affected_fixed_release_membership": "CORRECTION_REQUIRED: Git confirms 28acb120 is not in v3.7 and is in v3.8. It also confirms each CNA-nominated July fix first appears at its listed boundary (v5.10.265, v5.15.216, v6.1.183, v6.6.151, v6.12.103, v6.18.44, v7.1.8, and mainline v7.2-rc6). However, the direct human cap 7cb2a5422f5bbdf1cf32eae0eda41000485b9346 is already in v7.0-rc2 and v7.1, and its stable backports are already in v5.15.203, v6.1.167, v6.6.130, v6.12.78, v6.18.19, and v6.19.9. Thus those branches were not unpatched through the later CNA boundaries; only the 5.10 line lacks a located February backport.",
+    "direct_fix_or_unpatched": "CORRECTION_REQUIRED: 7cb2a5422f5bbdf1cf32eae0eda41000485b9346 directly caps ctx->packet_size at ep->maxframesize in snd_usb_endpoint_next_packet_size(), the common consumer used by both prepare_playback_urb() and prepare_silent_urb(). Its commit message explicitly says the implicit-feedback sizes can exceed the descriptor boundary and must be capped before URB submission. It is an ancestor of 8d7a30c50c2e58a6839634ed0acde14466d1dc61, and the cap remains present in 8d7a30c's parent. Therefore 8d7a30c's store-site cap is redundant hardening, not the first direct fix on mainline.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object names human author Eldad Zack and human committer Takashi Iwai and contains only their Signed-off-by trailers; it has no AI/bot marker. Assisted-by: Jetski:Gemini-3.6-Flash occurs only on the later redundant 8d7a30c fix and is excluded by the BIC-only rule. NOT_AI remains correct."
+  },
+  "findings": [
+    "The primary correctly identifies the atomic BIC, its parent, and the BIC-only NOT_AI attribution.",
+    "The primary incorrectly calls 8d7a30c the direct fix even though 7cb2a542 already capped the same queued frame count at the common consumer and is an ancestor of 8d7a30c.",
+    "The primary repeats the CNA's July fixed-release boundaries without reconciling earlier February human backports that already fixed v5.15 and newer maintained lines.",
+    "January/February 2026 playback and silence buffer guards separately reduced OOB consequences; the February maxframesize cap fixed the descriptor-limit/root-cause path, so the July source-site clamp must not be presented as the first remediation."
+  ],
+  "corrected_fields": {
+    "fix_sha": "7cb2a5422f5bbdf1cf32eae0eda41000485b9346",
+    "direct_fix_sha": "7cb2a5422f5bbdf1cf32eae0eda41000485b9346",
+    "bug_semantics": "The BIC's sender-stride conversion can turn a device-controlled implicit-feedback sync packet into a playback frame count above ep->maxframesize. That count is copied into the outbound URB context and historically could exceed transfer-buffer and endpoint descriptor bounds. Playback and silence OOB guards landed in January/February 2026; 7cb2a542 then fixed the remaining root cause at the common consumer by capping the count to ep->maxframesize. The July 8d7a30c commit adds the same cap earlier at the producer and is redundant on mainline.",
+    "reasoning": "28acb120 is the atomic BIC and has no AI marker, so NOT_AI is unchanged. The fix fields and lifecycle evidence require correction because repository ancestry and source inspection prove that human-authored 7cb2a542 directly removed the oversized-frame path months before AI-assisted 8d7a30c."
+  },
+  "remaining_gap": null
+}

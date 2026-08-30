@@ -1,0 +1,27 @@
+{
+  "worker": "w155",
+  "review_agent_id": "r389_w155",
+  "class_id": "alias-fa09a057be874ba9d2f4595c",
+  "case_id": "GHSA-r2g8-gx6q-pvxr",
+  "repo": "covesa/open1722",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. avtp_to_can() accepts no output capacity, iterates attacker-controlled valid ACF-CAN messages, and advances can_frames[i++] before payload stores; the Linux listener supplies a 15-element stack array. The official CVE is PUBLISHED, GHSA withdrawn_at is null, and issue #154 records an ASan-clean 15-message control versus a 16-message out-of-bounds write.",
+    "atomic_bic": "Confirmed as 67fd16fc27be8b5ae852229df743fff8558f4915. Pickaxe history first finds both can_frames[i++] and MAX_CAN_FRAMES_IN_ACF in this object; its diff newly changes the decoder from one local frame written immediately to a caller-provided array and adds the fixed 15-slot listener allocation.",
+    "immediate_parent_absence": "Confirmed against immediate parent 4412b5d9c371236cb66cb367da0c8c30faf15b27. That tree has neither MAX_CAN_FRAMES_IN_ACF nor can_frames[i++], and its decoder uses one frame_t with an immediate CAN write, so the reviewed overflow mechanism is absent.",
+    "squash_member_decomposition": "Confirmed. The BIC is an ordinary single-parent commit with a directly inspectable parent and exact first-write diff, not a merge or an unreconstructable squash aggregate; no finer surviving public object is needed for attribution.",
+    "affected_release_membership": "Confirmed. The BIC is an ancestor of v0.8.0, v0.9.0, v0.9.1, v0.9.2, and v0.9.3. Direct inspection of v0.9.2 and v0.9.3 shows the unbounded can_frames[i++] and no bound check; thus v0.9.3 is also unpatched even though the CNA range ends at 0.9.2.",
+    "fixed_release_membership": "Confirmed. No repository tag contains fix 67443714946028a60afc06482e587d5b8b914a32, so the frozen clone has no fixed release tag.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed. Commit 67443714946028a60afc06482e587d5b8b914a32 directly inserts i >= MAX_CAN_FRAMES_IN_ACF before can_frames[i++]; its parent still attributes the sink and 15-slot listener array to the BIC. The fix is on main, and its tree matches PR-head object c504550bf0fb3214df0e8f08b9c8865fc50d18bc.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI using the BIC only. The commit object names human author and committer Naresh Nayak <Naresh.Nayak@de.bosch.com>, and its complete message contains only the subject plus Signed-off-by; no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, OpenAI, or bot marker appears. Later fix-review activity is excluded from attribution."
+  },
+  "findings": [
+    "The primary record correctly separates CVE-2026-73522's bounded-array overflow from CVE-2026-73523's negative-return truncation defect.",
+    "The vulnerable first write, its immediate-parent absence, and the direct bound-check fix all reproduce from the frozen clone.",
+    "The CNA affected range stops at 0.9.2, but tag v0.9.3 is independently verified vulnerable; the primary record already discloses this release-range nuance.",
+    "The primary NOT_AI verdict is supported by BIC-only commit-object evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

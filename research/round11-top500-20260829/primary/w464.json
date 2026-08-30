@@ -1,0 +1,39 @@
+{
+  "class_id": "alias-b6d507cdcd65a2b033fcb04a",
+  "case_id": "GHSA-gcq2-9pq2-cxqm",
+  "repo": "chimurai/http-proxy-middleware",
+  "advisory_ids": [
+    "CVE-2026-55603",
+    "GHSA-gcq2-9pq2-cxqm"
+  ],
+  "bug_semantics": "When fixRequestBody re-emits a body as multipart/form-data, the vulnerable serializer interpolates attacker-controlled field names and values directly into boundary-delimited multipart syntax. CR/LF and boundary text in one parsed field can therefore terminate that part and inject a new field that the upstream multipart parser sees but the proxy-side non-multipart parser and policy did not see.",
+  "flaw_origin": "Public PR #896 was squash-merged as 5d9f46f72010c3512a859179ec43b54f521e7fa1, but its five-member history is reconstructable. The first member, a12a59df42507659e536ce60c04ee7f97dd5aad5, is the atomic BIC: it added the multipart branch and the unescaped template interpolation in src/handlers/fix-request-body.ts. Its immediate parent f2a9fe475d4d600587df7f5bb4e0740ffd79c798 contains only the JSON and urlencoded branches. The next substantive member, 526ae10f2d19b4f74b538aa438ab57bb6f7579e4, merely moved the same serializer out of fixRequestBody and added tests.",
+  "introducer_sha": "a12a59df42507659e536ce60c04ee7f97dd5aad5",
+  "introducer_parent": "f2a9fe475d4d600587df7f5bb4e0740ffd79c798",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "a12a59df42507659e536ce60c04ee7f97dd5aad5",
+    "526ae10f2d19b4f74b538aa438ab57bb6f7579e4",
+    "e0f64c368fa5114b037027f82aa35d50fbb126df",
+    "a55522263e4317f20fdfe52dd39203f3fc9ba855",
+    "e27265f1edceb82b8bc3a75e4099f7d1800e2dfe"
+  ],
+  "ai_marker": "absent: BIC a12a59df42507659e536ce60c04ee7f97dd5aad5 has human author and committer The Mark <sunduo3195@qq.com>; its commit-object message is only 'fix(utils): fixRequestBody support `multipart/form-data`' and contains no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "a1ac3158541d670c94699a615091f8e9101b7fe6",
+  "direct_fix_sha": "c13a99c5bfb5b446a3c0a5910b740740f341dea3",
+  "evidence": [
+    "GitHub advisory https://github.com/chimurai/http-proxy-middleware/security/advisories/GHSA-gcq2-9pq2-cxqm identifies CVE-2026-55603, affected ranges >=3.0.4 <3.0.7 and >=4.0.0 <4.1.1, and the CRLF-driven multipart field-injection mechanism in fixRequestBody.",
+    "CVE.org API https://cveawg.mitre.org/api/cve/CVE-2026-55603 returned cveMetadata.state=PUBLISHED and the same affected ranges and CWE-93 mechanism; the advisory is not rejected or withdrawn.",
+    "GitHub PR API https://api.github.com/repos/chimurai/http-proxy-middleware/pulls/896 reports five commits and squash merge 5d9f46f72010c3512a859179ec43b54f521e7fa1; its commits endpoint reconstructs a12a59df42507659e536ce60c04ee7f97dd5aad5, 526ae10f2d19b4f74b538aa438ab57bb6f7579e4, e0f64c368fa5114b037027f82aa35d50fbb126df, a55522263e4317f20fdfe52dd39203f3fc9ba855, and e27265f1edceb82b8bc3a75e4099f7d1800e2dfe.",
+    "GitHub commit API for a12a59df42507659e536ce60c04ee7f97dd5aad5 shows parent f2a9fe475d4d600587df7f5bb4e0740ffd79c798 and a patch adding handlerFormDataBodyData plus direct `${key}` and `${value}` interpolation to src/handlers/fix-request-body.ts; the raw parent tree at that path has no multipart branch or serializer, directly proving parent absence.",
+    "The next member 526ae10f2d19b4f74b538aa438ab57bb6f7579e4 deletes the inline helper and re-adds the same interpolation as a file-level helper while adding tests, so it is a relocation/test commit rather than the first writer.",
+    "Local full-history git -S handlerFormDataBodyData finds integration commit 5d9f46f72010c3512a859179ec43b54f521e7fa1 and the two later hardening commits; merge-base checks show 5d9f46f72010c3512a859179ec43b54f521e7fa1 is absent from v3.0.3, present in v3.0.4, and present in v4.0.0, matching the affected lower boundaries.",
+    "On the 3.x line, c13a99c5bfb5b446a3c0a5910b740740f341dea3 replaces handlerFormDataBodyData with stringifyFormData, rejects CR/LF and embedded boundary delimiters, is absent from v3.0.6, and is an ancestor of patched tag v3.0.7.",
+    "On the 4.x line, a1ac3158541d670c94699a615091f8e9101b7fe6 applies the same direct validation and fail-closed serializer replacement, is absent from v4.1.0, and is an ancestor of patched tag v4.1.1.",
+    "The BIC commit object at https://api.github.com/repos/chimurai/http-proxy-middleware/commits/a12a59df42507659e536ce60c04ee7f97dd5aad5 names The Mark <sunduo3195@qq.com> as both author and committer and has no AI, bot, Co-Authored-By, or Generated-with marker. The later squash object's human Co-authored-by trailer does not alter the BIC-only attribution check."
+  ],
+  "reasoning": "The vulnerability is real and requires a non-multipart input parser, an outgoing multipart content type, fixRequestBody, and attacker control of a key or value. Under those conditions, a single proxy-visible field containing CR/LF and the chosen boundary becomes multiple upstream-visible parts because the serializer writes untrusted text as multipart framing. Decomposing PR #896 avoids misclassifying its 2025 squash aggregate: member a12a59df42507659e536ce60c04ee7f97dd5aad5 first wrote the vulnerable interpolation, while its direct parent lacks the entire multipart path and 526ae10f2d19b4f74b538aa438ab57bb6f7579e4 only relocates it. The squash integration is first released in v3.0.4 and remains in the v4 line. Parallel direct fixes c13a99c5bfb5b446a3c0a5910b740740f341dea3 and a1ac3158541d670c94699a615091f8e9101b7fe6 reject CR/LF or boundary injection and enter v3.0.7 and v4.1.1 respectively. Finally, only the atomic BIC commit object is used for AI attribution; its human author/committer and marker-free message establish NOT_AI.",
+  "remaining_gap": null
+}

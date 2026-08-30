@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-0076cbf23fbdef33d9a991cf",
+ "case_id": "GHSA-f9jq-9v6w-22v9",
+ "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+ "advisory_ids": [
+  "CVE-2026-68399",
+  "GHSA-f9jq-9v6w-22v9"
+ ],
+ "bug_semantics": "Use-after-free of a live parent socket's BPF local storage on sock-clone early bailout. sock_copy() memcpy's struct sock except the sock_common dontcopy window; sk_bpf_storage sits near the end of struct sock, so the clone inherits the parent's pointer. If sk_clone()/sk_clone_lock() fails after sock_copy() and before that pointer is wiped or replaced (classic case: sk_filter_charge() fails when optmem_max changed), sk_free() -> __sk_destruct() -> bpf_sk_storage_free() destroys the parent's still-referenced bpf_local_storage.",
+ "flaw_origin": "BIC 6ac99e8f23d4 first wrote sk_bpf_storage onto struct sock and hooked bpf_sk_storage_free() into __sk_destruct(). Immediate parent 3745dc24aa7a already has net/core/sock.c and include/net/sock.h, but those blobs have no sk_bpf_storage / bpf_sk_storage_free, and net/core/bpf_sk_storage.c does not exist. Pre-existing sk_clone_lock already did sock_copy then sk_free_unlock_clone() on sk_filter_charge/xfrm failure, so the new field plus destructor created the UAF without a NULL before those bailouts. f12dd75959b0 later NULLed the pointer only after the bailout; 8f51dfc73bf1 moved that NULL into bpf_sk_storage_clone(), still after the same bailouts. 151b98d10ef7 only split sk_clone_lock into sk_clone.",
+ "introducer_sha": "6ac99e8f23d4b10258406ca0dd7bffca5f31da9d",
+ "introducer_parent": "3745dc24aa7a6a45771a6b441194b857ac615cfc",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "none; author Martin KaFai Lau <kafai@fb.com>, committer Alexei Starovoitov <ast@kernel.org>; no Co-Authored-By/Generated-with/bot on the BIC object",
+ "verdict": "NOT_AI",
+ "fix_sha": "7cbd0c4cebe4c9f678d15e6b9ba975e1155a107f",
+ "direct_fix_sha": "7cbd0c4cebe4c9f678d15e6b9ba975e1155a107f",
+ "evidence": "CVE-2026-68399 is PUBLISHED on CVE.org (not rejected/withdrawn). Advisory and git describe a UAF: sock_copy() shallow-copies sk_bpf_storage; early sk_clone bailout before bpf_sk_storage_clone() leaves the clone pointing at the parent; sk_free/__sk_destruct/bpf_sk_storage_free then frees the parent's storage. Direct fix 7cbd0c4cebe4 (Matt Bobrowski / Daniel Borkmann, 2026-07-09) RCU_INIT_POINTER(newsk->sk_bpf_storage, NULL) immediately after sock_copy() in sk_clone() and drops the later NULL in bpf_sk_storage_clone(); stable backport is 14b49b5ab299 (Upstream commit 7cbd0c4cebe4). git cat-file -p 6ac99e8f23d4 and git log -1 --format='%an %ae %cn %ce' 6ac99e8f23d4: Martin KaFai Lau <kafai@fb.com> / Alexei Starovoitov <ast@kernel.org>. git cat-file -e 3745dc24aa7a:net/core/sock.c and include/net/sock.h succeed; parent tree lacks sk_bpf_storage and bpf_sk_storage_free; 3745dc24aa7a:net/core/bpf_sk_storage.c is absent. 6ac99e8f23d4 is a single-parent first-write of those lines, not a move/refactor/squash. ppa re-checked line-level 2026-08-29: git show 3745dc24:net/core/sock.c and sock.h have 0 matches for bpf_sk_storage/sk_bpf_storage and net/core/bpf_sk_storage.c 'exists on disk, but not in 3745dc24'; the BIC 6ac99e8f introduces sk_bpf_storage in struct sock, the bpf_sk_storage_free(sk) call in __sk_destruct, and the sock_copy pointer aliasing that creates the UAF. -> introducer_parent_absent=true.",
+ "reasoning": "Vulnerability first: the UAF is real and matches the published CVE. The smallest commit that first wrote the vulnerable lines is 6ac99e8f23d4 (new sk_bpf_storage field + destructor free into an existing clone path that already bailed out after sock_copy). Later commits (f12dd75959b0, 8f51dfc73bf1, 151b98d10ef7) are incomplete mitigations or a rename/split, not the first write. AI second: the BIC object has human kernel authors/committers and no AI trailers/bot identity, so the role is NOT_AI. Do not attribute from the 2026 fix or from analogous commit 9b51a6155d14.",
+ "remaining_gap": null
+}

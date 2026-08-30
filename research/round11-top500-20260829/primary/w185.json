@@ -1,0 +1,44 @@
+{
+  "class_id": "alias-a83e2f6a59be7805a5098d4e",
+  "case_id": "GHSA-r8xr-pgv5-gxw3",
+  "repo": "kuadrant/authorino",
+  "advisory_ids": ["CVE-2025-25207", "GHSA-r8xr-pgv5-gxw3"],
+  "bug_semantics": "Authorino's AuthConfig spec.callbacks (originally spec.notify) is an unbounded collection of HTTP endpoints executed concurrently as phase 5 of every auth pipeline, after identity, metadata, authorization, and response. A developer-persona actor who can create or edit an AuthConfig, or a Kuadrant AuthPolicy that compiles into one, can attach arbitrarily many HTTP callbacks. Each Check request then fans out one goroutine and one outbound HTTP call per callback with no CRD maxItems/maxProperties, no controller count cap, and no executor throttle, so a single Authorino instance can be DoS'd while processing post-authorization callbacks (CWE-770/CWE-400).",
+  "flaw_origin": "The unbounded notify/callback surface was first written in f8895e464ed34300b8aa0e43c410b765c73ff6b4 (PR #368, 2023-01-03) as AuthConfigSpec.Notify []*Notify with no kubebuilder MaxItems, pkg/evaluators/notify.go wrapping GenericHttp, and evaluateNotifyConfigs() driving evaluateAnyAuthConfig (one goroutine per item). Immediate parent 5d1eeea6f0e4cfcfb94fff3cf1fb39b4e1a74565 has no notify/callback types, files, or pipeline phase. Later 1f58b037 only renamed notify to callbacks; v1beta2/v1beta3 conversions kept an unbounded map.",
+  "introducer_sha": "f8895e464ed34300b8aa0e43c410b765c73ff6b4",
+  "introducer_parent": "5d1eeea6f0e4cfcfb94fff3cf1fb39b4e1a74565",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author/committer Guilherme Cassolato <guicassolato@gmail.com>; git cat-file trailers have no Co-Authored-By, Generated-with, Signed-off-by, Copilot, Cursor, ChatGPT, Claude, or similar markers; GPG-signed by the same human; PR #368 opened and merged by guicassolato",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2025-25207 state=PUBLISHED (not rejected/withdrawn); CNA Red Hat; CWE-770; affected Red Hat Connectivity Link 1 / rhcl-operator-container 1.0.1 with no fixed version; https://www.cve.org/CVERecord?id=CVE-2025-25207 and https://cveawg.mitre.org/api/cve/CVE-2025-25207",
+    "GHSA-r8xr-pgv5-gxw3 withdrawn_at=null; affected github.com/kuadrant/authorino <= 0.20.0; patched versions None; https://github.com/advisories/GHSA-r8xr-pgv5-gxw3",
+    "Bugzilla 2347421 still NEW, no Fixed In Version: AuthPolicy (developer persona) can add a large number of post-authorization callbacks that DoS the single Authorino instance; https://bugzilla.redhat.com/show_bug.cgi?id=2347421",
+    "BIC f8895e464ed34300b8aa0e43c410b765c73ff6b4 is a single-parent non-merge commit (parent 5d1eeea6f0e4cfcfb94fff3cf1fb39b4e1a74565) from PR #368 (https://github.com/Kuadrant/authorino/pull/368); second PR commit 03c7201bff8d59a2a8e9e492dc3bfdc4f6b92e4b is docs only; merge fc315fa1976aa3c4767ae69ece7364eaf0a95c87 is not the first-write",
+    "Parent tree verification: git grep/ls-tree on 5d1eeea6f0e4cfcfb94fff3cf1fb39b4e1a74565 show no notify/callback paths; api/v1beta1/auth_config_types.go AuthConfigSpec ends at Response then DenyWith; pkg/evaluators/notify.go does not exist (cat-file exit 128)",
+    "BIC first-write of unbounded API: api/v1beta1/auth_config_types.go Notify []*Notify `json:\"notify,omitempty\"` (lines 140-142) and type Notify (lines 560-581) with HTTP *Metadata_GenericHTTP and no +kubebuilder:validation:MaxItems; CRD install/crd/authorino.kuadrant.io_authconfigs.yaml spec.notify is type array without maxItems (around line 1348)",
+    "BIC first-write of unbounded sink: pkg/evaluators/notify.go added; pkg/service/auth_pipeline.go evaluateNotifyConfigs() lines 350-375 calls evaluateAnyAuthConfig; Evaluate() phase 5 lines 490-491; evaluateAuthConfigs() lines 149-163 WaitGroup.Add(len(authConfigs)) then one goroutine per config; controller translates every spec.Notify entry with no cap",
+    "Rename 1f58b03783bc4d0d4115b62ae64678b17d018350 ('notify' becomes 'callbacks') is a rename, not a BIC; git blame -L 354,379 pkg/service/auth_pipeline.go still attributes the concurrent evaluateAnyAuthConfig loop to f8895e46",
+    "HEAD 2649c9a10dbdff85dce6a7db6a1b534f54c38242 still unbounded: api/v1beta3/auth_config_types.go:149 Callbacks map[string]CallbackSpec with only +optional (no MaxProperties); CRD callbacks is type object additionalProperties without maxProperties; controllers/auth_config_controller.go:802-828 ranges the whole map; pkg/service/auth_pipeline.go:354-365 executeCallbacks still evaluateAnyAuthConfig",
+    "Tag membership: BIC not ancestor of v0.11.0; ancestor of v0.12.0 (first containing tag, 2023-03-17), v0.20.0, and v0.27.0; v0.20.0 and v0.27.0 both still have Callbacks map[string]CallbackSpec",
+    "No callback-count fix in history: git log -S MaxItems on go/yaml is unrelated vendor noise; git log --grep callback-limit/CVE-2025-25207 empty; 9eac615dbe695f7dadb3eeb7240f2ab4266649f7 (branch max-response-bytes, not on HEAD) only caps outbound HTTP response body size, not callback cardinality",
+    "BIC AI-marker check: git log -1 --format author/committer/trailers and git cat-file -p f8895e464ed34300b8aa0e43c410b765c73ff6b4 show Guilherme Cassolato <guicassolato@gmail.com> for both, empty trailers, no Co-Authored-By/Generated-with; PR #368 user and merged_by guicassolato",
+    "unpatched: GHSA patched versions None, CVE/RHCL list no fixed release, Bugzilla NEW; HEAD still has the unbounded callbacks map and concurrent HTTP fan-out"
+  ],
+  "reasoning": "Vulnerability-first: CVE-2025-25207 remains PUBLISHED at CVE.org (withdrawn_at on GHSA is null and is not authoritative). The sink is CWE-770 on post-auth HTTP callbacks: AuthConfig.callbacks/notify is an attacker-controlled unbounded collection, and Authorino executes every entry concurrently on each auth request, so a developer-persona AuthPolicy/AuthConfig with a large callback set can exhaust the single Authorino instance. The smallest first-write of that mechanism is f8895e464ed34300b8aa0e43c410b765c73ff6b4, which added the unbounded spec.notify slice, the notify evaluator, and evaluateNotifyConfigs/evaluateAnyAuthConfig fan-out. Parent 5d1eeea6f0e4cfcfb94fff3cf1fb39b4e1a74565 was checked directly and lacks those types/files/phase, so introducer_parent_absent is false. PR #368 is not a squash (feature commit plus docs commit, then merge); 1f58b037 is a rename and is not the BIC. The BIC precedes first affected tag v0.12.0 and is in the GHSA window through v0.20.0; no later tag/HEAD commit adds a count cap, so there is no fix_sha. AI judgment is BIC-object-only: author and committer are Guilherme Cassolato with no AI trailers, so the verdict is NOT_AI on a real unpatched vulnerability.",
+  "remaining_gap": "unpatched: no upstream commit caps AuthConfig callback count; GHSA patched versions None; Bugzilla 2347421 still NEW; HEAD 2649c9a10dbdff85dce6a7db6a1b534f54c38242 still executes the unbounded callbacks map.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "No Authorino commit, tag, or GHSA patched version adds a cardinality cap or throttle on spec.callbacks/notify. CVE-2025-25207 is still PUBLISHED with Red Hat Connectivity Link 1 affected and no fixed release; GHSA-r8xr-pgv5-gxw3 lists patched versions None; Bugzilla 2347421 remains NEW. HEAD and v0.27.0 still expose Callbacks map[string]CallbackSpec without maxProperties and still fan out evaluateAnyAuthConfig per callback. The max-response-bytes branch only limits outbound body size and is not this CVE's fix.",
+    "potential_fix": {
+      "approach": "Add a CRD/admission cap (kubebuilder MaxProperties on spec.callbacks, and MaxItems if any list form remains) plus the same hard limit in the AuthConfig controller and executeCallbacks path so post-auth HTTP fan-out cannot exceed a small bound; optionally run remaining callbacks through a bounded worker pool rather than one goroutine per callback.",
+      "rationale": "The DoS is allocation of goroutines and outbound HTTP without limits on an attacker-controlled callback map executed on every auth request. Bounding the collection at the API and the executor closes the CWE-770 sink even when a developer-persona AuthPolicy compiles into AuthConfig.",
+      "reference_commit": null,
+      "reference_url": "https://bugzilla.redhat.com/show_bug.cgi?id=2347421"
+    }
+  }
+}

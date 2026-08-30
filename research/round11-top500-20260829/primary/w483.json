@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-e65ab0afd50c091aa8290563",
+  "case_id": "GHSA-v74m-68w4-83qm",
+  "repo": "seopanel/seo-panel",
+  "advisory_ids": [
+    "CVE-2021-47872",
+    "GHSA-v74m-68w4-83qm"
+  ],
+  "bug_semantics": "An authenticated request to archive.php supplied order_col to ReportController::showOverallReportSummary, which copied it into WebMasterController::viewWebsiteSearchSummary. That method interpolated the value into the SQL UNION query's ORDER BY clause; addslashes does not constrain an SQL identifier/expression, so a crafted order_col could execute a time-based blind SQL-injection expression.",
+  "flaw_origin": "Commit b8092087fd04ee3ac119f91d36cf1275fdb6a4b0 first added the archive.php webmaster-report route and getWebsiteSearchReportSummary implementation, including the unvalidated assignment from searchInfo['order_col'] and its interpolation into ORDER BY. Its immediate parent 8436edbbab8792a043b1125459ff898a6800d675 has no getWebsiteSearchReportSummary function, so this single-parent public commit is the atomic Git introducer.",
+  "introducer_sha": "b8092087fd04ee3ac119f91d36cf1275fdb6a4b0",
+  "introducer_parent": "8436edbbab8792a043b1125459ff898a6800d675",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker appears in the BIC metadata or patch: it is a 2018 commit authored and committed by sendtogeo <sendtogeo@gmail.com>, with the ordinary message '3.1.4.0 - webmaster tools search resports' and no trailers or AI attribution.",
+  "verdict": "NOT_AI",
+  "fix_sha": "440a00b6874152636669c4ebbbe12f92cd1e3fa3",
+  "direct_fix_sha": "f9be6f464c3e06002b6c5d60d940004b61b7289b",
+  "evidence": [
+    "GitHub issue #209, opened 2021-03-13, gives an authenticated archive.php request with report_type=website-search-reports and a time-based payload in order_col; the reported request sleeps for ten seconds.",
+    "At tag 4.8.0, archive.php passes request data to ReportController::showOverallReportSummary; controllers/report.ctrl.php copies searchInfo into filterList and calls viewWebsiteSearchSummary; controllers/webmaster.ctrl.php assigns searchInfo['order_col'] to orderCol and concatenates addslashes(unionOrderCol) into ORDER BY before database execution.",
+    "git show b8092087fd04ee3ac119f91d36cf1275fdb6a4b0 adds archive.php's webmaster-controller include, the report-controller dispatch, and the vulnerable webmaster report query together; git grep of parent 8436edbbab8792a043b1125459ff898a6800d675 finds no getWebsiteSearchReportSummary function.",
+    "Commit f9be6f464c3e06002b6c5d60d940004b61b7289b is a single-parent commit titled 'To fix #213 #209' and adds removal of spaces from searchInfo['order_col'] at the shared report entry point. Merge commit 440a00b6874152636669c4ebbbe12f92cd1e3fa3, titled 'sp 4.9.0 - sql injection fix', extends that filter to remove both spaces and asterisks.",
+    "Tag 4.8.0 resolves to 2e0fd822f8c613b65d81362cf3e252fd55ac7a6f and contains the BIC without either sanitizer. Tag 4.9.0 resolves to 7c107c789be74bdb284f857cd6a51877f0e0c11b, contains both fix commits, and the vendor release notes list security bug fixes. NVD and VulnCheck describe 4.8.0 as affected and versions before 4.9.0 as vulnerable.",
+    "The BIC is an ordinary non-merge commit with one parent, so there is no squash aggregate to decompose. Its raw commit object contains no Co-Authored-By trailer, generated-by marker, bot identity, or AI-tool reference."
+  ],
+  "reasoning": "The advisory's exact source-to-sink path exists in 4.8.0 and was introduced atomically by b8092087fd04ee3ac119f91d36cf1275fdb6a4b0, whose parent lacks the new report function. The issue-linked f9be6f464c3e06002b6c5d60d940004b61b7289b is the direct remediation, and 440a00b6874152636669c4ebbbe12f92cd1e3fa3 is the final pre-release hardening carried by 4.9.0. Because AI attribution is judged only on the BIC and that 2018 BIC has no AI marker, this real vulnerability is NOT_AI.",
+  "remaining_gap": ""
+}

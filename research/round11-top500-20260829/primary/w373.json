@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-200ff0d776891de9e55c4307",
+  "case_id": "GHSA-5x9f-6vg5-qg4m",
+  "repo": "siderolabs/omni",
+  "advisory_ids": [
+    "CVE-2026-45720",
+    "GHSA-5x9f-6vg5-qg4m"
+  ],
+  "bug_semantics": "SAML.getSession in internal/pkg/auth/interceptor/saml.go treats a saml-session token as single-use by reading SAMLAssertionSpec.used via safe.StateGet and only later writing Used=true in a separate safe.StateUpdateWithConflicts that does not re-check the flag. Concurrent gRPC requests carrying the same token can both observe Used==false, both pass expiry/validation, and both receive an authenticated context as the token owner's email (CWE-367 TOCTOU enabling CWE-294 replay). An attacker who intercepts a victim-issued ephemeral token can authenticate multiple times in the race window, including ConfirmPublicKey of attacker-controlled keys under the victim identity.",
+  "flaw_origin": "The non-atomic get-then-mark-used sequence is already present in the first public write of getSession. Public git log -L :getSession, pickaxe on 'session was already used' / 'Value.Used = true', and blame on the pre-fix file all attribute those lines to the BUSL open-source root dfcbaae7d0b7d61d3af526f510db7e233cfb6807 (2024-02-29). CHANGELOG at that root names a private-era c0fa5d46 'feat: add support for SAML authentication' in Omni 0.11.0-alpha.0 (2023-06-08), but that SHA is not in the public object store and 404s on GitHub, so no finer public member can be reconstructed. Later public edits to the function are a namespace refactor (c6aaff0f) and the 2026 atomic consume-once fix; they did not introduce the race.",
+  "introducer_sha": "dfcbaae7d0b7d61d3af526f510db7e233cfb6807",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Andrey Smirnov <andrey.smirnov@siderolabs.com>, committer Andrey Smirnov <andrey.smirnov@siderolabs.com>; trailers are Signed-off-by plus human Co-Authored-By names only; no Copilot, Cursor, Claude, ChatGPT, Generated-by, or bot author/committer on the BIC commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "ced79da6c032d2103803eb53343d0916cc957d2a",
+  "direct_fix_sha": "ced79da6c032d2103803eb53343d0916cc957d2a",
+  "evidence": [
+    "Vendor GHSA-5x9f-6vg5-qg4m (github_reviewed, withdrawn_at=null) and OSV GHSA-5x9f-6vg5-qg4m describe the TOCTOU in SAML.getSession; GitHub also lists alias CVE-2026-45720. MITRE cveawg GET /api/cve/CVE-2026-45720 returns CVE_RECORD_DNE and NVD cves/2.0?cveId=CVE-2026-45720 returns totalResults=0; vendor GHSA remains published and is not a false positive.",
+    "Pre-fix getSession (ced79da6^ and v1.6.5/v1.7.2) does StateGet, then if acs.TypedSpec().Value.Used { reject }, then StateUpdateWithConflicts that only sets r.TypedSpec().Value.Used=true with no inner re-check.",
+    "BIC file lines at dfcbaae7d0b7d61d3af526f510db7e233cfb6807:internal/pkg/auth/interceptor/saml.go getSession L94-L129: Used check L111-L115 then Used=true update L123-L127; SAMLAssertionSpec.used is bool used=3 at client/api/omni/specs/auth.proto L45-L46 in the same commit.",
+    "git log -L :getSession:internal/pkg/auth/interceptor/saml.go yields only dfcbaae7 (add), c6aaff0f (NewSAMLAssertion namespace refactor), ced79da6 (fix). git log -S 'session was already used' and -S 'Value.Used = true' on that file yield only dfcbaae7. git blame -L 110,135 ced79da6^ attributes the Used check/update to ^dfcbaae7.",
+    "git rev-parse dfcbaae7^ fails (root). git rev-list --max-parents=0 --all is only dfcbaae7. CHANGELOG at the root cites c0fa5d46f705e73d904b78a5ce4e98dc0b787d0e; git cat-file on that SHA returns 'not our ref'; https://github.com/siderolabs/omni/commit/c0fa5d46f705e73d904b78a5ce4e98dc0b787d0e is 404. squash_decomposed=false.",
+    "Tag ancestry: BIC is ancestor of v0.30.1 and of vulnerable v1.6.5 / v1.7.2. Main fix ced79da6 is not in v1.6.6/v1.7.3; cherry-picks 4c4c1e2d8226914f26774a309a91595f168ee921 (v1.6.6, 'cherry picked from commit ced79da6') and 272d3f4dd00e778b39fde09afde35575fe13ef13 (v1.7.3, same) land the inner Used check. v1.6.6/v1.7.3 release notes list 'fix: consume SAML sessions once'.",
+    "Canonical fix https://github.com/siderolabs/omni/commit/ced79da6c032d2103803eb53343d0916cc957d2a via PR https://github.com/siderolabs/omni/pull/2816: moves Used detection into StateUpdateWithConflicts and rejects errSAMLSessionAlreadyUsed. Author/committer Utku Ozdemir; Signed-off-by only. Backports: PRs 2825 and 2830. Advisory patched versions 1.6.6 and 1.7.3.",
+    "BIC commit object has no AI authorship marker (human author/committer, human Co-Authored-By trailers only)."
+  ],
+  "reasoning": "The advisory is a real, vendor-published GitHub-reviewed GHSA (CWE-367/CWE-294) with matching code: getSession's Used flag is checked on a snapshot and then set in a later non-atomic update, so concurrent uses of one saml-session both succeed. CVE.org/NVD do not yet host CVE-2026-45720, but the GHSA is not withdrawn and the vendor shipped consume-once patches, so this is not FALSE_POSITIVE. Public history of the vulnerable lines begins at the 2024-02-29 BUSL root dfcbaae7, a 227k-line initial dump with no parent; the changelog's 2023 SAML-intro SHA c0fa5d46 is not reconstructable from the public repo or GitHub, so that root is the smallest surviving public BIC (introducer_parent_absent after direct parent-tree verification; not a later move/refactor). c6aaff0f only dropped the namespace argument and did not add the race. The 2026 fix ced79da6 is the first write of the inner Used check-and-set and is the direct/canonical fix; release-branch cherry-picks close the advisory ranges. AI role is judged only from the BIC commit object: Andrey Smirnov authored and committed it with human Co-Authored-By trailers and no tool/bot marker, so the verdict is NOT_AI. Copilot review on the later fix PR does not attribute the introducer.",
+  "remaining_gap": null
+}

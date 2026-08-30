@@ -1,0 +1,25 @@
+{
+  "worker": "w009",
+  "review_agent_id": "r389_w009",
+  "class_id": "alias-9402a2a390a2eb47bc0e4e2c",
+  "case_id": "GHSA-w672-239g-c3gr",
+  "repo": "gitpython-developers/gitpython",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: IndexFile.remove() and Head.checkout() forwarded caller kwargs through transform_kwargs into git rm/checkout before positional arguments. pathspec_from_file plus pathspec_file_nul therefore selected a caller-readable file as one pathspec, and GitPython preserved Git's quoted unmatched-pathspec error in GitCommandError.stderr. The vendor advisory demonstrates full in-band disclosure at exactly these two sinks.",
+    "atomic_bic": "CONFIRMED: 0cd09bd306486028f5442c56ef2e947355a06282 is the earliest public commit that implements IndexFile.remove() with self.repo.git.rm(args, paths, **kwargs); pickaxe history starts there. It is a single-parent implementation commit with a contemporaneous test, not a later whitespace or move commit. ace1fed6321bb8dd6d38b2f58d7cf815fa16db7a independently adds the later Head.checkout() member.",
+    "immediate_parent_absence": "CONFIRMED: parent 13a26d4f9c22695033040dfcd8c76fd94187035b contains only an IndexFile.remove() NotImplementedError stub and no git.rm call. The parent f1e9df152219e85798d78284beeda88f6baa9ec7 of the second member has class Head but no checkout method or git.checkout sink.",
+    "squash_member_decomposition": "CONFIRMED: neither introducer is a merge or squash aggregate. The disclosed two-site mechanism decomposes into atomic public members 0cd09bd306486028f5442c56ef2e947355a06282 (IndexFile.remove, earliest/BIC) and ace1fed6321bb8dd6d38b2f58d7cf815fa16db7a (Head.checkout, later member). Pickaxe and blame distinguish later package moves and formatting from first writes.",
+    "affected_fixed_release_membership": "CONFIRMED: both introducer members are ancestors of tag 3.1.57. Direct fix f2550b65bf60ca087190981e2c7b6865e201f40c is not an ancestor of 3.1.57 but is an ancestor of 3.1.58 and 3.1.59; 3.1.58 is its first containing release tag. This matches the PUBLISHED CVE range <3.1.58 affected and 3.1.58 unaffected, and the vendor advisory's <=3.1.57 affected / >=3.1.58 patched range.",
+    "direct_fix_or_unpatched": "CONFIRMED: f2550b65bf60ca087190981e2c7b6865e201f40c directly adds the shared unsafe pathspec-from-file option list and check_unsafe_options gates to IndexFile.remove() and Head.checkout(), with explicit trusted opt-in and regression tests. Merge 9a8f6fef579912bc8b10ab513c33ca6ea1f687ef contains that fix commit.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC object 0cd09bd306486028f5442c56ef2e947355a06282 names Sebastian Thiel as author and committer and has no AI, bot, Co-Authored-By, Generated-with, or Assisted-by marker. The GPT 5.6 trailers occur only on the 2026 fix and are excluded from BIC attribution. NOT_AI is therefore supported."
+  },
+  "findings": [
+    "The vulnerability is real and the authoritative CVE record is PUBLISHED, not rejected or withdrawn.",
+    "The primary correctly selects the earliest atomic first-write as introducer while separately identifying the second same-mechanism sink member.",
+    "The primary's parent, release, direct-fix, and BIC-only AI conclusions all reproduce from the assigned clone and vendor advisory."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

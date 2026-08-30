@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-003f3153231a3d1db8e2f8d3",
+  "case_id": "GHSA-8jrf-fhpg-2ggp",
+  "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+  "advisory_ids": [
+    "CVE-2026-74629",
+    "GHSA-8jrf-fhpg-2ggp"
+  ],
+  "bug_semantics": "In the dibs layer (net/dibs, drivers/dibs), dmb_clientid_arr was allocated in dibs_dev_alloc()/dibs_dev_add() but freed in dibs_dev_del() (and once more on the dibs_lo_dev_probe() failure path), i.e., at device removal rather than at object release. Two consequences: (1) a dibs device interrupt handler (dibs_client_ops->handle_irq consumers introduced with the data-path move) can still be running and dereference dibs->dmb_clientid_arr after dibs_dev_del() frees it — use-after-free; (2) the probe-failure unwind path frees dmb_clientid_arr twice — double free (CWE-415/CWE-416).",
+  "flaw_origin": "Commit cc21191b584c6f7836b0f10774f8278b7cbfba10 (\"dibs: Move data path to dibs layer\", 2025-09-18, author Alexandra Winter <wintera@linux.ibm.com>, committer Paolo Abeni) introduced all the advisory-named lifecycle lines: allocation `dibs->dmb_clientid_arr = kzalloc(max_dmbs, GFP_KERNEL); memset(dibs->dmb_clientid_arr, NO_DIBS_CLIENT, max_dmbs);` in the dibs_dev_add path, use by the interrupt/IRQ path `client_id = dibs->dmb_clientid_arr[sba_idx]`, and frees `kfree(dibs->dmb_clientid_arr)` placed in the del/unwind paths instead of dibs_dev_release(). The parent tree (719c3b67bb7ea95bb8158b03c75641c8fc8f94a0) lacks net/dibs/dibs_main.c entirely (cat-file -e fails) — dmb_clientid_arr does not exist before this commit (the sibling creation commit 35758b0032c0 'dibs: Create drivers/dibs' contains zero dmb_clientid_arr lines). The fix commit's own Fixes: tag cites cc21191b584c, confirming the BIC.",
+  "introducer_sha": "cc21191b584c6f7836b0f10774f8278b7cbfba10",
+  "introducer_parent": "719c3b67bb7ea95bb8158b03c75641c8fc8f94a0",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names author Alexandra Winter <wintera@linux.ibm.com> and committer Paolo Abeni (2025-09-18), message and patch.msgid.link reference entirely human; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "9e6869be49064915edb6c8776b27c376cfdb0df5",
+  "direct_fix_sha": "9e6869be49064915edb6c8776b27c376cfdb0df5",
+  "evidence": [
+    "Advisory (CVE-2026-74629 / GHSA-8jrf-fhpg-2ggp, kernel CVN entry): 'net/dibs: Correct freeing of dmb_clientid_arr'; interrupt handler can be active after dibs_dev_del() and may still access dmb_clientid_arr (UAF); failure path in dibs_dev_add() frees dmb_clientid_arr twice (double free); fix moves the free to dibs_dev_release() after last reference is gone; stable backports at git.kernel.org/stable/c/7a1df20a..., 9e6869be..., ece6426b....",
+    "Fix commit 9e6869be49064915edb6c8776b27c376cfdb0df5 (2026-08-10, Alexandra Winter, Cc stable, Co-developed-by Hidayath Khan, Signed-off-by Jakub Kicinski): carries `Fixes: cc21191b584c (\\\"dibs: Move data path to dibs layer\\\")`. Diff: removes `kfree(dibs->dmb_clientid_arr)` from dibs_dev_del()/unwind (dibs_loopback.c and two removals in dibs_main.c) and adds it in dibs_dev_release() — matching the advisory text verbatim.",
+    "BIC creation check: `git show cc21191b584c` contains every first occurrence: `dibs->dmb_clientid_arr = kzalloc(max_dmbs, GFP_KERNEL);` (alloc path), `client_id = dibs->dmb_clientid_arr[sba_idx];` (IRQ/data path), `kfree(dibs->dmb_clientid_arr);` (del/unwind paths). Parent 719c3b67 lacks net/dibs/dibs_main.c (introducer_parent_absent=true); the immediately preceding series commit 35758b0032c0 (same day, same author, 'dibs: Create drivers/dibs') has 0 dmb_clientid_arr lines, proving the array lifecycle originates in cc21191b584c.",
+    "Version boundary: the BIC is a 2025-09-18 mainline commit in the dibs series (Link: https://patch.msgid.link/20250918110500.1731261-14-wintera@linux.ibm.com); the advisory's affected window is 2025-09 through the 2026-08 fix; all three advisory-listed stable shas (7a1df20a on stable branches, ece6426b 2026-08-10) are backports of the same patch — 7a1df20a's message reads 'commit 9e6869be49064915edb6c8776b27c376cfdb0df5 upstream'.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1 cc21191b584c` shows only Alexandra Winter / Paolo Abeni with a human sign-off chain (no claude/copilot/anthropic/openai/generated/co-authored); the fix commit's Co-developed-by Hidayath Khan is a human IBM identity, not an AI marker."
+  ],
+  "reasoning": "Vulnerability first: dmb_clientid_arr is freed at del time while the IRQ path can still reference it (UAF) and the probe-failure unwind frees it twice (double free); the fix relocates the free into dibs_dev_release(), proving the misplaced free is the flaw. BIC choice: the fix's Fixes: tag and the code both point at cc21191b584c (2025), which introduced the array's allocation, IRQ-path use, and misplaced frees in one commit; the parent tree lacks the file and the preceding series commit lacks the array, making the BIC the unique introducer. Squash check: the BIC is one cohesive layer-move commit in a 14-patch series with coherent single purpose (move dmb data path to dibs layer); the flaw is intrinsic to its lifecycle placement, not a decomposed squash; squash_decomposed=false. AI decision: BIC-only attribution — the 2025 commit object carries only human identities with no AI marker, so NOT_AI.",
+  "remaining_gap": null
+}

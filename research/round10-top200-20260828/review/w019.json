@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-79eff75f146e0f095855c194",
+  "case_id": "GHSA-4279-f6cf-4g7r",
+  "repo": "scriban/scriban",
+  "advisory_ids": [
+    "CVE-2026-73061",
+    "GHSA-4279-f6cf-4g7r"
+  ],
+  "bug_semantics": "TypedObjectAccessor.TrySetValue (and TrySetItem) reflectively writes live CLR members after preparing the member map from public getters only. The write path called PropertyInfo.SetValue / FieldInfo.SetValue with no GetSetMethod(nonPublic:false) or IsExternalInit check, so templates can overwrite private/internal/init-only setters and public-setter properties on the host object.",
+  "flaw_origin": "Root commit 46054810b50b03a6d19cd51886321cbbefa5d589 created src/Textamina.Scriban/Runtime/TypedMemberAccessor.cs with TrySetValue that looks up a public-getter member and immediately SetValue's it. Later moves/refactors (namespace/path splits, TrySetValue return-value change, indexers, ToObject conversion, nullable) kept that unguarded write; they did not first-write the missing setter-visibility check.",
+  "introducer_sha": "46054810b50b03a6d19cd51886321cbbefa5d589",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none on BIC: author/committer Alexandre Mutel <alexandre_mutel@live.com>; subject 'Initial version'; no Co-authored-by/Generated-with/bot trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "c7377a60c6e067c97f9ffe0e7821fb5b11f8eb76",
+  "direct_fix_sha": "c7377a60c6e067c97f9ffe0e7821fb5b11f8eb76",
+  "evidence": "GHSA-4279-f6cf-4g7r / CVE-2026-73061 published (withdrawn_at null); reviewed GHSA-7jvp-hj45-2f2m describes the same TypedObjectAccessor write-path (CWE-284/CWE-915). git cat-file -p 46054810 shows root (no parent line); git cat-file -e PARENT:path fails with invalid object name 46054810^. First file content includes TrySetValue calling fieldAccessor.SetValue / propertyAccessor.SetValue and PrepareMembers gated on CanRead/public getters only. git log -S GetSetMethod on TypedObjectAccessor/TypedMemberAccessor first hits c7377a60. 7.2.1 and 7.2.2 blobs of TypedObjectAccessor.cs are identical (4f779433); 7.2.3 is 72a3d1a2 after c7377a60 adds GetSetMethod(false)+IsInitOnly. Fix commit object: author/committer Alexandre Mutel, parent 34d1cd12, subject 'Restrict reflected writes to public setters'. BIC git log -1 authors: Alexandre Mutel alexandre_mutel@live.com both sides.",
+  "reasoning": "The advisory is a real access-control/mass-assignment bug in the reflected write path, not withdrawn. The smallest public-history first-write of those unguarded SetValue lines is the 2016-01-25 root commit by Alexandre Mutel; the parent tree is absent because the commit has no parent. No AI authorship signal exists on that commit object. Later human refactors preserved the missing setter check rather than introducing it. The code-level closure of restricted/init writes is c7377a60 (first in tag 7.2.3). Public-setter assignment remains possible by design after the visibility check; that residual is not an unpatched restricted-setter bypass.",
+  "remaining_gap": "Advisory/NVD text says patched before 7.2.2, but 7.2.2 did not change TypedObjectAccessor.cs; GetSetMethod/IsInitOnly land in c7377a60 / 7.2.3. Does not change BIC or NOT_AI."
+}

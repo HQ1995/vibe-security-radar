@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-113734af995969c6c674ebd0",
+  "case_id": "GHSA-f643-3rc2-j27w",
+  "repo": "apache/airflow",
+  "advisory_ids": [
+    "CVE-2026-59244",
+    "GHSA-f643-3rc2-j27w"
+  ],
+  "bug_semantics": "Apache Airflow's task-SDK Variable masking path (task-sdk/src/airflow/sdk/execution_time/context.py, `_get_variable`) masked a Variable value only when `isinstance(var_val, str)` — but for a JSON Variable the value is first deserialized via json.loads, so a dict-valued `var.json` Variable fails the isinstance check and is NEVER passed to mask_secret. A secret stored as a JSON Variable and referenced in a template via `var.json` is then displayed in cleartext to any user with access to that task's Rendered Templates view (CWE-312 Cleartext Storage of Sensitive Information).",
+  "flaw_origin": "Commit 98f918150e717777088c884f6ee275d1912f9209 (\"Mask secrets when retrieving variables from secrets backend (#50895)\", 2025-05-23, author Amogh Desai <amoghrajesh1999@gmail.com>, committer GitHub) wrote the masking with the type-narrow guard baked in: inside the `if deserialize_json:` branch the value is json.loads-ed first and THEN `if isinstance(var_val, str): mask_secret(var_val, key)` — the added lines structurally exclude dict (and list) values from masking from day one. Parent e23f980acd has no mask_secret call in _get_variable. The SecretCache refactor 049123e8c730 (2025-09-23, Kaxil Naik) duplicated the same flawed pattern but did not introduce it.",
+  "introducer_sha": "98f918150e717777088c884f6ee275d1912f9209",
+  "introducer_parent": "e23f980acdaa4074cb222140edb62b0c330bdff1",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "049123e8c730ea471dc5e93b69a21d6b1fddba91"
+  ],
+  "ai_marker": "absent — the BIC commit object names author Amogh Desai, committer GitHub, human PR message (#50895); no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "cd28fbde0bef19837d2e85d1de256c7bc1d7d370",
+  "direct_fix_sha": "cd28fbde0bef19837d2e85d1de256c7bc1d7d370",
+  "evidence": [
+    "Advisory (CVE-2026-59244 / GHSA-f643-3rc2-j27w; Apache announcement lists.apache.org/thread/fncod6vttfo5fvmfs3h9r8s2kmm9j1n6 and oss-security 2026/08/12/7; fix PR #68975): secrets masker did not mask var.json Variable values whose value is a dict in the Rendered Templates UI — the dict failed an isinstance(str) guard; users advised to upgrade to apache-airflow 3.3.1 or later which masks nested Variable values regardless of type.",
+    "BIC creation check: 98f918150e71 (2025-05-23, #50895) adds to _get_variable in task-sdk context.py: inside the deserialize branch `var_val = json.loads(var_val)` precedes `if isinstance(var_val, str): mask_secret(var_val, key)` — a JSON-dict value deserializes to dict and skips masking; the diff context confirms the isinstance guard is nested AFTER json.loads. The test added in the same commit only exercises the str case. Parent e23f980acd lacks the mask_secret call.",
+    "Fix commit cd28fbde0bef (2026-07-22, juan-pablo-guereca, #68975 \"Fix secrets not masked in Rendered Templates view with KubernetesPodOperator\"): introduces `_mask_and_deserialize_variable(raw, key, deserialize_json)` which masks the raw string, then after json.loads additionally `elif isinstance(val, dict): mask_secret(val)` — masking nested dict values regardless of type; both Variable retrieval call sites replaced. Mainline backport aee182636d0b (2026-07-30, Jarek Potiuk, #70756) merges it to main; follow-up b968192cd3ae (#70891) extends to list-shaped values (2026-08-04).",
+    "Version boundary: BIC first tagged 3.1.0 (3.1.0b1) via tag --contains; fix commit cd28fbde0bef is NOT contained in tags 3.3.0/3.3.1 (backport branch flow), but its mainline merge aee182636d0b IS in 3.3.1 (merge-base --is-ancestor), matching the advisory's fixed boundary 3.3.1.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1` on 98f918150e71 and cd28fbde0bef — human author/committer only; grep for claude/copilot/anthropic/openai/generated/co-authored/cursor/junie finds nothing (NONE sentinels)."
+  ],
+  "reasoning": "Vulnerability first: the advisory names the isinstance(str) guard failing dict values; the BIC's added lines show the guard applied after json.loads so dict-valued JSON Variables are never masked, and the fix's _mask_and_deserialize_variable masks dicts explicitly — proving the type-narrow guard is the defect. BIC choice: the flawed masking was first written by 98f918150e71 (2025-05-23, #50895) — its parent has no masking at all, so the guard that excludes dicts is born there; the 2025-09-23 SecretCache refactor (049123e8c730) is a moved equivalent, recorded in decomposed_shas per protocol (a refactor is not the BIC). Squash check: BIC is a single-purpose PR, but the flaw's live copies span the BIC and its refactor twin, so squash_decomposed=true with the twin listed. AI decision: BIC-only attribution — the BIC object carries only the human identity Amogh Desai with no AI marker, so NOT_AI.",
+  "remaining_gap": null
+}

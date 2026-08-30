@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-29efd4ddf3f9c9aad7a4ced9",
+  "case_id": "GHSA-44hj-4m45-frj3",
+  "repo": "fluent/fluentd",
+  "advisory_ids": [
+    "CVE-2026-44024",
+    "GHSA-44hj-4m45-frj3"
+  ],
+  "bug_semantics": "Fluentd output path templates expanded attacker-controlled ${tag} and other chunk-key values without rejecting absolute paths or parent-directory components. With an untrusted input tag and a file output path containing ${tag}, traversal could escape the configured directory and write or overwrite attacker-controlled files, potentially enabling remote code execution.",
+  "flaw_origin": "The vulnerable mechanism first appeared when the v0.14 Output plugin implementation added extract_placeholders and directly substituted metadata.tag into output templates without path-boundary validation.",
+  "introducer_sha": "1f53273438dbecdee50f55836d3afbe5df7b3c26",
+  "introducer_parent": "e82c40d64188a66b049a9a2ef04911454621a104",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437",
+  "direct_fix_sha": "45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437",
+  "evidence": [
+    "Git commit 1f53273438dbecdee50f55836d3afbe5df7b3c26 adds lib/fluent/plugin/output.rb and extract_placeholders; its ${tag} branch directly calls rvalue.gsub('${tag}', metadata.tag) with no path validation.",
+    "Parent e82c40d64188a66b049a9a2ef04911454621a104 has no lib/fluent/plugin/output.rb and no output-plugin extract_placeholders implementation, establishing the atomic first write in public history.",
+    "The BIC is a normal one-parent commit, not a squash aggregate; its full metadata and message contain no AI attribution, generated-by marker, bot author, or AI co-author trailer.",
+    "Git ancestry shows v0.14.0 and v1.19.2 contain the BIC; v1.19.2 does not contain 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437, while v1.19.3 does.",
+    "Direct fix 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437 adds strict path-boundary checks before placeholder substitution and tests traversal, absolute-path, split-variable, and safe-path cases.",
+    "The published CVE record names versions before 1.19.3 as affected and references GHSA-44hj-4m45-frj3, pull request 5391, commit 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437, and release v1.19.3."
+  ],
+  "reasoning": "The advisory mechanism maps directly to the unvalidated ${tag} substitution first written by 1f53273438dbecdee50f55836d3afbe5df7b3c26. The immediate parent lacks that output placeholder implementation, later edits only refactor or extend it, and the BIC is not a decomposable squash. The released direct fix validates path boundaries at the shared extraction point. Because AI attribution is judged only on the atomic BIC and that commit has no AI marker, this real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

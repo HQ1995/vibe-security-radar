@@ -1,0 +1,26 @@
+{
+  "worker": "w184",
+  "review_agent_id": "r389_w184",
+  "class_id": "alias-97ba1bb04896d21a51d86e41",
+  "case_id": "GHSA-587r-mc96-6f2p",
+  "repo": "datadog/guarddog",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: scan_remote accepts a caller-controlled repository URL, blindly replaces the substring github with raw.githubusercontent, appends the branch and requirements path, and sends the request with GIT_USERNAME/GH_TOKEN Basic auth. The advisory PoC rewrites to a URL whose parsed host is 127.0.0.1, causing SSRF and credential disclosure.",
+    "atomic_bic": "CONFIRMED: b198bdef92abad9a4815d90fda561e45f206fc00 is the first surviving public commit that adds scan_repo(url, branch, requirements_name), url.replace(\"github\", \"raw.githubusercontent\"), and requests.get(..., auth=token) together. Git history -S checks identify that commit as the first write of both the caller-controlled scan method and vulnerable rewrite line.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent 580941e2aab8873d912c5fcdb188af618e489c0f has no scan_repo/scan_remote caller-URL sink and no authenticated raw-content request. Its similar replace operates only on GitHub API html_url values and requests the result without auth.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a non-merge, single-parent commit preserved as an individual member of PR #29, not a squash aggregate. The PR commit list exposes b198bdef92abad9a4815d90fda561e45f206fc00 directly; later 1e947bd6f94c629bb531774f3cefc3f1aee283de renames scan_repo to scan_remote, and 50ff5e76db9708427fbf21b3e6f7cdde8195c590 moves already-vulnerable code whose parent 67963ee21cf4f4f970ee1d501085b6ee23142936 contains the same sink.",
+    "release_membership": "CONFIRMED: b198bdef92abad9a4815d90fda561e45f206fc00 is an ancestor of v1.0.0 and v2.9.0; v2.9.0 contains the blind rewrite and authenticated request. Direct fix d53fe3a642e4993cee9353f297673cbe8c40ac55 is not an ancestor of v2.9.0 but is an ancestor of v2.10.0, and merge 5d15a38a03950bc19274a2ffab16e5640f3674ba is on the v2.10.0 first-parent path. v2.10.0 uses the validated URL builder instead.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: d53fe3a642e4993cee9353f297673cbe8c40ac55 directly removes the blind replace/concatenation and adds scheme, userinfo, hostname, port, and owner/repo validation before credentials are read or a request is made. Its parent still contains the vulnerable lines, and its regression test covers GHSA-587r-mc96-6f2p. Merge 5d15a38a03950bc19274a2ffab16e5640f3674ba lands that fix.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Ellen Wang as both author and committer, has only the subject 'requirements scanning and one repo scanning done', and contains no Co-Authored-By, generated-with, Cursor, Copilot, Claude, GPT, OpenAI, Anthropic, Gemini, Codex, Aider, or comparable AI marker. Later commits and the remediation were not used to attribute the BIC.",
+    "advisory_status": "CONFIRMED: the current CVE.org record is PUBLISHED and identifies guarddog >= 1.0.0 through <= 2.9.0 as affected; the current GitHub advisory has withdrawn_at null. This is a real vulnerability, not a withdrawn or rejected advisory. GitHub's null first_patched_version is stale relative to the verified v2.10.0 tag contents and ancestry."
+  },
+  "findings": [
+    "The vulnerability mechanism, BIC, immediate parent, refactor exclusions, release boundary, direct fix, and BIC-only authorship evidence independently reproduce the primary record.",
+    "The primary NOT_AI verdict is supported: the real vulnerability first appears in b198bdef92abad9a4815d90fda561e45f206fc00, and that BIC has no AI marker.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

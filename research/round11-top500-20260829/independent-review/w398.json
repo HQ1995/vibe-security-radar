@@ -1,0 +1,26 @@
+{
+  "worker": "w398",
+  "review_agent_id": "r389_w398",
+  "class_id": "alias-36cf156a616c2d7c972ba960",
+  "case_id": "GHSA-rhr9-hgcm-x289",
+  "repo": "gravitl/netmaker",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: the shipped POST /api/server/shutdown handler directly sent SIGINT to the Netmaker process and lacked the per-route authorization wrappers used by neighboring handlers; the router-wide HttpMiddlewares slice at the carrier commit supplied no authentication.",
+    "atomic_bic": "PASS: 57f19cdc8f6a499167c6a2b28496a4bf7cda22dd is the smallest reconstructable commit that first added the unauthenticated syscall.Kill(Getpid(), SIGINT) handler.",
+    "immediate_parent_absence": "PASS: immediate parent 27378b9c5299c40726fc4018cade5880622e940d is present and its controllers/server.go contains no syscall, SIGINT, Kill, or shutdown handler.",
+    "squash_member_decomposition": "PASS: GitHub PR 2672 exposes the four-commit chain 57f19cdc -> 68d387a5 -> 59add9dd -> b1ece5f7; 944405f0 is the squash carrier, while only 57f19cdc first writes the vulnerable mechanism and b1ece5f7 merely renames the route and method.",
+    "affected_release_membership": "PASS: carrier 944405f0 is an ancestor of v0.22.0, v1.1.0, and v1.2.0; direct inspection confirms v1.1.0 and v1.2.0 retain the unauthenticated shutdown handler.",
+    "fixed_release_membership": "PASS: neither direct fix f5752fa60dd107be8d8fcd72d3c16579d9363794 nor merge db2f005ea034b227a3f3797f6678fcc96dfa93c7 is an ancestor of tag v1.2.0; both are ancestors of v1.4.0, whose handler is wrapped in logic.SecurityCheck(true). This confirms the primary's explicit warning that the advisory's patched-version label conflicts with repository tag contents.",
+    "direct_fix_or_verified_unpatched_state": "PASS: f5752fa60dd107be8d8fcd72d3c16579d9363794 directly wraps the same shutdown handler in logic.SecurityCheck(true), and db2f005ea034b227a3f3797f6678fcc96dfa93c7 merges that commit through PR 3776.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object names gabrielseibel1 as both author and committer and has no AI or bot trailer; no fix, squash-carrier, or unrelated repository signal was used to attribute the BIC."
+  },
+  "findings": [
+    "The live GitHub advisory and published CVE record independently match the unauthenticated network-reachable SIGINT denial-of-service mechanism and are not withdrawn or rejected.",
+    "The primary correctly selects the reconstructable PR member rather than the squash aggregate as BIC and correctly records the parent, carrier, direct fix, and NOT_AI judgment.",
+    "The upstream affected/fixed version metadata says <1.2.0 and patched 1.2.0, but tag v1.2.0 still contains the vulnerable handler; the primary already reports this repository-evidenced metadata mismatch without using it to alter BIC attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

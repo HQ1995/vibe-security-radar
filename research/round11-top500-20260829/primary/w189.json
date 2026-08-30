@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-c19a6318057f9e3f0a63be9a",
+  "case_id": "GHSA-4xh5-jcj2-ch8q",
+  "repo": "controlplaneio-fluxcd/flux-operator",
+  "advisory_ids": [
+    "CVE-2026-23990",
+    "GHSA-4xh5-jcj2-ch8q"
+  ],
+  "bug_semantics": "Flux Operator Web UI OIDC login accepts a valid token, evaluates impersonation CEL, and then builds a Kubernetes client from the resulting username/groups with no non-empty check. Default expressions `has(claims.email) ? claims.email : ''` and `has(claims.groups) ? claims.groups : []` yield empty string and empty slice when those claims are absent (custom CEL can do the same). client-go then sets rest.ImpersonationConfig{UserName:\"\", Groups:[]} and omits impersonation headers, so subsequent Web UI API calls run as the flux-operator service account instead of the authenticated user.",
+  "flaw_origin": "First written in the original Web UI authentication commit eba38678 (PR #519 member, not the later claims.go extract). That commit added the empty-fallback CEL defaults, the OIDC claims extractor that returned username/groups with only CEL-eval errors checked, and newUserClient which always copied those values into rest.ImpersonationConfig. The same commit already rejected empty username+groups for Anonymous config validation, but never applied an equivalent runtime check to the OIDC evaluation path. Later package moves/refactors (936c575, d85f2b0, 01779b5, e197b2a) relocated the same mechanism; they did not introduce it.",
+  "introducer_sha": "eba38678c032e2846edaae9ad2f9987ea82178ad",
+  "introducer_parent": "c0ec979278f5b0affa562a6189262a2597f987f0",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Matheus Pimenta <matheuscscp@gmail.com>, committer Matheus Pimenta <matheuscscp@gmail.com>; trailers only Signed-off-by: Matheus Pimenta <matheuscscp@gmail.com>; PGP-signed human commit object with no Co-Authored-By, Generated-with, or bot author/committer",
+  "verdict": "NOT_AI",
+  "fix_sha": "084540424f6de8ba5d88fb1fd1e8472ba29afd7e",
+  "direct_fix_sha": "c4c82e7f270200a81d99d16be32809fccfa3749e",
+  "evidence": [
+    "CVE.org CVE-2026-23990 state=PUBLISHED (cveMetadata.datePublished=2026-01-21T22:25:57.025Z, dateUpdated=2026-01-22T16:49:21.454Z); GHSA-4xh5-jcj2-ch8q withdrawn_at=null; not rejected/withdrawn.",
+    "GHSA/CVE describe empty OIDC username+groups skipping client-go impersonation headers; affected >=0.36.0 <0.40.0, patched 0.40.0; references PR #610 and commit 084540424f6de8ba5d88fb1fd1e8472ba29afd7e.",
+    "git show eba38678:internal/web/config/authentication_types.go ImpersonationSpec.ApplyDefaults lines 349-358 first-wrote defaults Username=`has(claims.email) ? claims.email : ''` and Groups=`has(claims.groups) ? claims.groups : []`. git log -S that string on internal/web first hits eba38678.",
+    "Same commit internal/web/oidc.go lines 118-133 extract impersonation via CEL EvaluateString/EvaluateStringSlice and return username, groups with no emptiness check. internal/web/oauth2.go ServeProtectedResource line 188 then calls getUserClientFromCache(username, groups).",
+    "Same commit internal/web/client.go newUserClient lines 141-144 set kubeConfig.Impersonate = rest.ImpersonationConfig{UserName: username, Groups: groups} unconditionally. git log -S ImpersonationConfig -- internal/web first hits eba38678 (later afe7b548 is 2026-05, after the fix).",
+    "Contrast in the same BIC: AnonymousAuthenticationSpec.Validate lines 137-140 already required at least one of username or groups; OIDC runtime evaluation had no equivalent guard.",
+    "Parent-tree verification: git cat-file -e eba38678^:internal/web/oidc.go|client.go|oauth2.go|config/authentication_types.go all ABSENT. Parent c0ec979 internal/web listing has no auth/oauth/oidc/client files. git log -L on newUserClient at eba38678 shows add from /dev/null.",
+    "eba38678 is a single-parent regular commit (not a GitHub squash/merge). It is the first member of reconstructable PR #519 (merge 9b3e45c39a4377c046ab761234cbb387ba774a93). Later 01779b5/e197b2a only moved the extractor into internal/web/auth/claims.go; git log -L on that extract until 0845404^1 shows no added empty-check before the fix.",
+    "Tag membership: eba38678 is NOT an ancestor of v0.36.0 (v0.36.0 has no internal/web). It IS an ancestor of v0.37.0/v0.38.0/v0.39.0. SanitizeAndValidate is absent at v0.37.0 and v0.39.0. Advisory >=0.36.0 over-approximates; first tagged vulnerable release is v0.37.0.",
+    "Fix: c4c82e7f270200a81d99d16be32809fccfa3749e (PR #610, author/committer Matheus Pimenta) adds Impersonation.SanitizeAndValidate and calls it after CEL extract in claims.go. Merge 084540424f6de8ba5d88fb1fd1e8472ba29afd7e lands it. merge-base --is-ancestor fix v0.40.0 YES; v0.39.0 NO. v0.40.0 contains SanitizeAndValidate in claims.go:139, user.go:38.",
+    "BIC AI check: git cat-file -p / git log -1 --format on eba38678; author and committer are Matheus Pimenta <matheuscscp@gmail.com>; body is only Signed-off-by that same identity; no Co-Authored-By/Generated-with/bot. GHAS AI review comments on PR #519 are not BIC commit-object markers."
+  ],
+  "reasoning": "CVE-2026-23990/GHSA-4xh5-jcj2-ch8q is a real published privilege-escalation in Flux Operator Web UI OIDC impersonation: empty post-CEL username and groups cause client-go to skip impersonation headers, so authenticated users act as the operator service account. The smallest first-write of that mechanism is eba38678c032e2846edaae9ad2f9987ea82178ad (`web: introduce authentication`), which simultaneously added the empty-fallback default CEL, the unvalidated OIDC extractor, and the impersonating kube client. Parent c0ec979278f5b0affa562a6189262a2597f987f0 exists and lacks those files/strings, so this is not a move onto an already-vulnerable path. 01779b5 and later auth-package extracts are refactors of the same lines and are not the BIC. PR #519 is a merge of reconstructable members, not a squash that needs decomposition. The code first appears in tag v0.37.0 and remains unpatched through v0.39.0; GHSA `>= 0.36.0` is a range over-approx because v0.36.0 has no Web UI. The patch is c4c82e7, merged as 0845404 into v0.40.0, adding the missing non-empty impersonation validation. AI authorship is judged only from that BIC object: human author/committer Matheus Pimenta, Signed-off-by only, no commit-object AI marker, therefore NOT_AI.",
+  "remaining_gap": null
+}

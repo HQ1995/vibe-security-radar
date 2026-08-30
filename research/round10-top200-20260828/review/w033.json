@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-df74ac92f66828bba0029e12",
+ "case_id": "GHSA-rqxq-f5cc-3xp6",
+ "repo": "budibase/budibase",
+ "advisory_ids": [
+  "CVE-2026-73617",
+  "GHSA-rqxq-f5cc-3xp6"
+ ],
+ "bug_semantics": "MongoDB datasource queries interpolate end-user handlebars parameters into the builder JSON body, JSON.parse the result, and pass it to collection.find/update/delete with no $ operator filtering. With noEscaping, {{name}} inside {\"name\":\"{{name}}\"} is rendered as a raw triple-stache, so a BASIC user can break the JSON string (duplicate-key / $comment) and inject operators ($ne, $where, $lookup, etc.), collapsing per-user filters. SQL goes through interpolateSQL bind variables; MongoDB did not.",
+ "flaw_origin": "original_write of unescaped embedded-binding interpolation on the existing JSON.parse query path. Enrichment+JSON.parse+collection.find already existed (2021 query controller / mongodb.js). 6904e6a1 (2021-12-21) only triple-stashed whole-field {{var}} templates (IS_HANDLEBARS anchored at start/end), which does not match Mongo JSON like {\"name\":\"{{name}}\"}. f946f2f68d54e370013e28efa4cb6517067e5b18 (PR #4313 / #4308, 2022-02-03) first added processStringSync(..., {noEscaping:true}) in packages/server/src/threads/query.js and disableEscaping() in string-templates, converting every {{ }} to {{{ }}} so quotes in embedded bindings reach JSON.parse. Parent 86ffa65d938d80133038b85346f209d0e2fc5084 still has the whole-field wrap and no noEscaping/disableEscaping. Parallel reapply f2a025013ea034a86c841e7151c5d38cfdb6acd4 is the same human patch on a later develop parent, not a finer first-write.",
+ "introducer_sha": "f946f2f68d54e370013e28efa4cb6517067e5b18",
+ "introducer_parent": "86ffa65d938d80133038b85346f209d0e2fc5084",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent: author/committer mike12345567 <me@michaeldrury.co.uk>; git cat-file -p f946f2f68d54e370013e28efa4cb6517067e5b18 has no Co-Authored-By/Generated-with/bot",
+ "verdict": "NOT_AI",
+ "fix_sha": "dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80",
+ "direct_fix_sha": "dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80",
+ "evidence": "CVE-2026-73617 is PUBLISHED at cveawg.mitre.org (VulnCheck CNA; not withdrawn). First-party GHSA-pmpg-2mxq-6xwr (affected <3.40.0, patched 3.40.0) names noEscaping:true enrichment then JSON.parse of query.json, mongodb.ts createObjectIds without stripping $ keys, and the duplicate-key PoC; tested on 3.35.8. Clone 3.35.8 queries.ts still does processStringSync(..., {noEscaping:true}) then JSON.parse(json|customData|requestBody). Pickaxe -S noEscaping on 3.40.0 packages/server/src/threads/query.js first hits f946f2f68d54e370013e28efa4cb6517067e5b18 and f2a025013ea034a86c841e7151c5d38cfdb6acd4 (same subject/author timestamp; f946 is PR #4313 second parent of 56f027e4). git cat-file -p f946: author/committer mike12345567 <me@michaeldrury.co.uk>, no Co-Authored-By/Generated-with/bot. git cat-file -e 86ffa65d:packages/server/src/threads/query.js and string-templates/src/index.js succeed; parent grep of noEscaping/disableEscaping on those paths is empty. 3.39.32..3.40.0 does not touch this path; tag 3.40.0 is a version bump. dd8c0654b35 (Mel O'Hagan, 2026-06-02) adds processJsonStringSync (quoteRawJsonBindings + parse + value substitution) and routes json/customData/requestBody through it; parent b7e63df737ee has no processJsonStringSync. That commit is in 3.39.9 and 3.40.0, absent from 3.39.8. PR #18847 operator-strip (ddef68abaf8) was reverted by 910f6d29ff3. Later b374d16853f (post-3.40.0, Co-authored-by Cursor) only fail-closes the multi-object JSON fallback that 3.40.0 still sent through processStringSync. ppa re-checked line-level 2026-08-29: numactl git show f946f2f^:packages/string-templates/src/index.js | grep -c 'disableEscaping|noEscaping' = 0 while BIC f946f2f adds 'noEscaping: true' in threads/query.js line 186 and the disableEscaping double-to-triple-brace converter in string-templates — vulnerable lines new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "Real CWE-943 NoSQL injection: the advisory PoC is a quote-break of builder JSON that only works once embedded {{bindings}} are triple-stashed. That first-write is f946f2f6 on a human author/committer with no AI trailers; PR body and later Cursor work on b374 do not attribute the BIC. 6904e6a1 is not the BIC (whole-field wrap only). The advertised single-object path is closed by dd8c0654b35 (JSON-tree binding, in 3.39.9/3.40.0), matching vendor patched=3.40.0 even though the tag itself is a bump. Incomplete strip in #18847 was reverted and is not the surviving fix.",
+ "remaining_gap": null
+}

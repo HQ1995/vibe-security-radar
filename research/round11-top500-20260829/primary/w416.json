@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-56fd2b54c66f104a9bad64b8",
+  "case_id": "GHSA-rr89-w3h9-m66j",
+  "repo": "mattiasw/exifreader",
+  "advisory_ids": [
+    "CVE-2026-8814",
+    "GHSA-rr89-w3h9-m66j"
+  ],
+  "bug_semantics": "The asynchronous PNG metadata path accepted attacker-controlled zTXt and compressed iTXt chunks and passed their deflate streams to DecompressionStream, then materialized the entire result with Response.text() without any decompressed-size bound. A small image chunk could therefore expand by orders of magnitude and consume excessive heap and CPU. Later JPEG XL Brotli and custom decompressor paths shared the same unbounded utility, widening reachability but not originating the flaw.",
+  "flaw_origin": "Commit 88e93582f71a32c1a02e49e58796363cdf05ad37 first made compressed PNG zTXt/iTXt parsing reachable in asynchronous loads and introduced getDecompressedValueChars(), whose DecompressionStream output was fully materialized with no running or final size check. Its direct parent eb53cfa2e6d485aa26be6db1e7cc1f7dfa9d96ff has neither compressed-chunk support nor the decompression helper. Commit 505fa4725c7d41cd9e1baa6d70fb4940d7f603fc later moved that already-vulnerable logic into src/utils.js and is not the BIC.",
+  "introducer_sha": "88e93582f71a32c1a02e49e58796363cdf05ad37",
+  "introducer_parent": "eb53cfa2e6d485aa26be6db1e7cc1f7dfa9d96ff",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names author Mattias Wallander <mattias@wallander.eu> and committer Mattias Wallander <mattiasw@users.noreply.github.com>; its message contains only the subject and #236, with no Co-Authored-By, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "5f116128adc19f674902f8bf582bfe7dd0a36375",
+  "direct_fix_sha": "5f116128adc19f674902f8bf582bfe7dd0a36375",
+  "evidence": [
+    "CVE.org API record CVE-2026-8814 is PUBLISHED and describes unbounded PNG zTXt decompression before 4.39.0; it references the patch https://github.com/mattiasw/ExifReader/commit/5f116128adc19f674902f8bf582bfe7dd0a36375.",
+    "The assigned GHSA-rr89-w3h9-m66j bundle identifies asynchronous ExifReader.load(file) and load(buffer, {async: true}) as the attack paths, affected npm versions >=4.20.0 and <4.39.0, and 4.39.0 as the first patched release.",
+    "git show 88e93582f71a32c1a02e49e58796363cdf05ad37 -- src/exif-reader.js src/image-header-png.js src/png-text-tags.js shows the BIC adding async metadata promises, admission of zTXt/compressed iTXt, and src/png-text-tags.js:129-135, where DecompressionStream('deflate') feeds new Response(decompressedStream).text() with no output limit.",
+    "git show 88e93582f71a32c1a02e49e58796363cdf05ad37^:src/png-text-tags.js plus searches for DecompressionStream, getDecompressedValueChars, compression-method constants, zTXt, and compressed iTXt find no such decompression path; git cat-file identifies the immediate parent as eb53cfa2e6d485aa26be6db1e7cc1f7dfa9d96ff.",
+    "git log -S'DecompressionStream' across src/png-text-tags.js and src/utils.js finds 88e93582f71a32c1a02e49e58796363cdf05ad37 as the first source commit; 505fa4725c7d41cd9e1baa6d70fb4940d7f603fc only relocates the existing unbounded code, and 2af0b4d9f67384d267dfbcf948f18ca3da9c1629 later adds the Brotli/JPEG XL path.",
+    "git cat-file commit 88e93582f71a32c1a02e49e58796363cdf05ad37 shows one parent, human author/committer Mattias Wallander, and no AI, co-author, generated-with, or bot marker; the linear clone topology supplies no finer public member to decompose.",
+    "git tag --contains 88e93582f71a32c1a02e49e58796363cdf05ad37 begins at v4.20.0; merge-base checks show the BIC is not an ancestor of v4.19.1 but is an ancestor of v4.20.0. The resolved v4.19.1 commit is the BIC parent eb53cfa2e6d485aa26be6db1e7cc1f7dfa9d96ff.",
+    "The parent of fix 5f116128adc19f674902f8bf582bfe7dd0a36375 still fully materializes deflate and Brotli streams with Response(...).arrayBuffer() and accepts unchecked custom decompressor results in src/utils.js:154-201.",
+    "git show 5f116128adc19f674902f8bf582bfe7dd0a36375 -- src/utils.js shows a default 128 MiB maximum, custom-result byteLength validation, and readBoundedDecompressedStream(), which reads chunks, cancels when the running total exceeds the cap, and only then concatenates output.",
+    "Merge-base checks show fix 5f116128adc19f674902f8bf582bfe7dd0a36375 is not an ancestor of v4.38.1 and is an ancestor of v4.39.0; git tag --contains starts with v4.39.0, matching the patched boundary."
+  ],
+  "reasoning": "The vulnerability lifecycle begins at 88e93582f71a32c1a02e49e58796363cdf05ad37: that atomic source commit simultaneously exposes compressed PNG text chunks to asynchronous parsing and writes the unbounded deflate materialization. Direct inspection of parent eb53cfa2e6d485aa26be6db1e7cc1f7dfa9d96ff proves that mechanism absent. The later utility extraction and Brotli support preserve or widen the same flaw, so neither supersedes the first-writing BIC. Tags independently align the BIC with the 4.20.0 lower boundary. Fix 5f116128adc19f674902f8bf582bfe7dd0a36375 directly closes every shared decompression path by bounding streamed and custom output and first ships in 4.39.0. Because the BIC commit object contains only human author/committer identities and no AI marker or trailer, this real, published vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

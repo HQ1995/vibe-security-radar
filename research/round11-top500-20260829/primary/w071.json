@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-63a63d2ac404b72097a6e79e",
+  "case_id": "GHSA-cjxw-hmxq-h489",
+  "repo": "lobehub/lobe-chat",
+  "advisory_ids": ["CVE-2026-72594", "GHSA-cjxw-hmxq-h489"],
+  "bug_semantics": "Authenticated stored XSS in the server-database avatar pipeline. user.updateAvatar accepts any data:image* payload (including data:image/svg;base64,...) with no MIME allowlist or SVG sanitization, derives the object extension from the attacker-controlled subtype, and stores the bytes at user/avatar/<userId>/<uuid>.svg. GET /webapi/user/avatar/[id]/[image] then returns those bytes with Content-Type image/svg+xml (CONTENT_TYPE_MAP.svg), no Content-Disposition: attachment, no nosniff, and no script-blocking CSP. A victim who navigates to that same-origin URL (or any embed that parses the SVG as a document) executes the attacker's script in the LobeChat origin. UI avatar widgets rasterize uploads to WebP via canvas, but the tRPC mutation and CLI path do not. CVE.org CVE-2026-72594 is PUBLISHED (TuranSec, not rejected/withdrawn); GHSA-cjxw-hmxq-h489 withdrawn_at is null. Affected through v2.2.13 as stated; the same sink is still present at clone HEAD.",
+  "flaw_origin": "PR #7152 added server-side avatar upload. Member bb4c4ed206bb442e2c3a991a01b7a2fcfa4fe286 first stored unrestricted data:image* bytes on S3 and exposed them via getFullFileUrl (S3 public/presigned origin). Member 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 is the BIC: it first wrote the same-origin proxy src/app/(backend)/webapi/user/avatar/[id]/[image]/route.ts mapping svg -> image/svg+xml and switched the stored avatar URL to /webapi/user/avatar/<userId>/<uuid>.<fileType>. That is the first public write of the application-origin SVG document sink. Squash f15200d348ce2c0765c1459b1a19aa2f1f63ce90 landed the same lines on main in v1.82.5. Later e7236c0169a5565c2fc01132cfed557743b48d3e only scoped old-avatar deletion URLs and still allows every data:image* prefix.",
+  "introducer_sha": "7f13f6afb8e79e07a80f77dec881ba0d4c2491c6",
+  "introducer_parent": "5f0e6469bcb56de93164fc7c9b7ce42c702aaa0c",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": ["7f13f6afb8e79e07a80f77dec881ba0d4c2491c6"],
+  "ai_marker": "absent. BIC 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 author/committer RICHQAQ <2206144600@qq.com>; message is a single human sentence with no Co-Authored-By, Signed-off-by, Generated-with, Copilot, Cursor, Claude, GPT, or other AI trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-72594 state=PUBLISHED assigner=TuranSec datePublished=2026-08-10; affected lobehub/lobe-chat 0 <= 2.2.13; CWE-79 CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:L/A:N; finder Bobur Abdugafforov; not rejected/withdrawn. GHSA-cjxw-hmxq-h489 withdrawn_at=null, NVD-imported, no patched versions.",
+    "Sink at HEAD and v2.2.13: src/app/(backend)/webapi/user/avatar/[id]/[image]/route.ts CONTENT_TYPE_MAP.svg='image/svg+xml'; GET returns Cache-Control + Content-Type only (no Content-Disposition, nosniff, or script CSP). Global Next headers CSP is only frame-ancestors 'none' (src/libs/next/config/define-config.ts).",
+    "Source at HEAD: apps/server/src/routers/lambda/user.ts updateAvatar; assertSafeAvatarInput returns on any data:image prefix; mimeType taken from the data: URL; fileName=`${uuid}.${mimeType.split('/')[1]}`; uploadBuffer with that mimeType. data:image/svg;base64,... yields <uuid>.svg served as image/svg+xml.",
+    "git log --follow on the avatar route; git show 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6:src/app/(backend)/webapi/user/avatar/[id]/[image]/route.ts first adds the file including svg: 'image/svg+xml'.",
+    "Parent verification: git ls-tree 5f0e6469bcb56de93164fc7c9b7ce42c702aaa0c has no webapi/user/avatar path; parent updateAvatar still uses getFullFileUrl (S3 public/presigned URL, not /webapi/).",
+    "Squash decomposition: GitHub PR #7152 members include bb4c4ed (unrestricted data:image upload to S3) then 7f13f6a (same-origin GET + /webapi/ URL). Squash f15200d348ce2c0765c1459b1a19aa2f1f63ce90 is not an ancestor of 7f13f6a; 7f13f6a is the reconstructable first-write of the XSS sink.",
+    "Tag membership: f15200d is not in v1.82.4; first contained by v1.82.5 (git describe --contains => v1.82.5~4). git merge-base --is-ancestor f15200d v2.2.13 succeeds, matching CVE through v2.2.13.",
+    "Not a later AI commit: 8a679aa772 only translated comments; e7236c0169 (#13982) added assertSafeAvatarInput for S3 delete scoping and still allowlists data:image*.",
+    "Unpatched: git log f15200d..HEAD -- avatar route is comment translation/prettier/moves only; HEAD 452a0896b28b92f24dc3ef4ed984dd486f34a6bb (2026-08-24) and v2.2.14 still ship the svg mapping and unrestricted data:image upload. Advisory lists no patched version.",
+    "BIC AI check: git log -1 --format=fuller/body on 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6; author/committer RICHQAQ; no AI trailers. Squash Co-authored-by is arvinxx <arvinx@foxmail.com> (human maintainer), not an AI marker on the BIC member."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-72594/GHSA-cjxw-hmxq-h489 is a published CWE-79 for stored XSS via a crafted SVG user avatar through v2.2.13. The live mechanism is the pair of (1) updateAvatar persisting attacker-chosen data:image bytes under a derived extension and (2) the same-origin avatar GET mapping .svg to image/svg+xml without forcing download or blocking script. UI canvas-to-WebP is not a control on the tRPC/CLI API. First-party advisory references stop at the product repo; there is no vendor patch commit. BIC search used the avatar GET route and updateAvatar, then git log --follow/-L and PR #7152 members rather than scanning for AI authors. The squash on main is f15200d348ce2c0765c1459b1a19aa2f1f63ce90; protocol forbids treating that aggregate as BIC. Reconstructable member 7f13f6afb8e79e07a80f77dec881ba0d4c2491c6 is the smallest commit that first wrote the vulnerable serving lines; its parent 5f0e6469bcb56de93164fc7c9b7ce42c702aaa0c lacks the route and still served avatars off S3. AI is judged only on that BIC commit object: human RICHQAQ, no AI authorship/co-authorship trailers. Therefore NOT_AI. No public fix exists through clone HEAD, so fix_sha/direct_fix_sha remain null with an explicit unpatched record.",
+  "remaining_gap": "Unpatched: no upstream commit removes SVG from the avatar content-type map or rejects image/svg at updateAvatar through clone HEAD 452a0896b28b92f24dc3ef4ed984dd486f34a6bb / tag v2.2.14. Potential fix: MIME-allowlist raster images only, drop svg from CONTENT_TYPE_MAP, and serve avatars with attachment + nosniff + CSP script-src 'none'.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "CVE-2026-72594 lists affected through v2.2.13 with no patched version; GHSA-cjxw-hmxq-h489 has unknown patched versions; avatar GET still maps svg to image/svg+xml and updateAvatar still accepts any data:image* at clone HEAD 452a0896b28b92f24dc3ef4ed984dd486f34a6bb (2026-08-24) and v2.2.14.",
+    "potential_fix": {
+      "approach": "In updateAvatar, allowlist only non-scriptable raster MIME types (e.g. image/png, image/jpeg, image/webp, image/gif) and reject image/svg and image/svg+xml; rasterize any accepted image server-side. Remove svg from CONTENT_TYPE_MAP in the avatar GET route (or always emit image/png). Add Content-Disposition: attachment, X-Content-Type-Options: nosniff, and Content-Security-Policy: script-src 'none'; sandbox on that route.",
+      "rationale": "The XSS fires because attacker-controlled SVG is stored and then served as an executable image/svg+xml document on the application origin. Blocking SVG at upload and never labeling leftover objects as SVG XML closes the sink even if a victim opens the avatar URL.",
+      "reference_commit": null,
+      "reference_url": null
+    }
+  }
+}

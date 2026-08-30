@@ -1,0 +1,41 @@
+{
+ "class_id": "alias-20e6f05453ae6a3856984a6a",
+ "case_id": "GHSA-r232-48q8-3598",
+ "repo": "asyncfuncai/deepwiki-open",
+ "advisory_ids": [
+  "CVE-2026-72567",
+  "GHSA-r232-48q8-3598"
+ ],
+ "bug_semantics": "The api/api.py /api/wiki_cache endpoints (GET read, POST save, DELETE delete) build the on-disk cache file path directly from user-controlled query/body fields: get_wiki_cache_path(owner, repo, repo_type, language) formats them into `f\"deepwiki_cache_{repo_type}_{owner}_{repo}_{language}.json\"` and joins onto WIKI_CACHE_DIR with os.path.join, with NO sanitization. Because os.path.join discards everything before an absolute component and the fields are never checked for '..', '..', '/', leading '/' or absolute forms, an unauthenticated remote attacker controls the joined path: os.remove(cache_path) in delete_wiki_cache deletes ARBITRARY FILES (e.g. owner='../../../../' + target file, or absolute /etc/... in a field), and read_wiki_cache/save_wiki_cache likewise read/write attacker-chosen paths — arbitrary file write/delete with the API process's (in deployments, root) privileges (CWE-22). DELETE additionally guards only an optional static authorization_code (WIKI_AUTH_MODE off by default); the GET endpoint has no auth at all.",
+ "flaw_origin": "Commit 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c (\"Move localstorage cache from browser to server side. Cached generated wiki content\", 2025-05-08, author/committer davideuler <davideuler@github.com>) first wrote the vulnerable sink: it introduced get_wiki_cache_path() with the unsanitized f-string + os.path.join construction and the GET/POST /api/wiki_cache endpoints consuming user-controlled owner/repo/repo_type/language. The advisory's named sink — 'wiki-cache endpoint constructs file paths from user-controlled owner, repo, and repo_type fields without sanitization' — is born in this commit; no prior server-side wiki-cache path construction existed. The follow-up commit 9df12b238312 (2025-05-09, davideuler) added the DELETE variant with os.remove() on the same unsanitized path, completing the arbitrary-delete primitive named in the advisory; recorded in decomposed_shas.",
+ "introducer_sha": "36d7fa915ecb08f4b19123796ee4af95c1a0eb2c",
+ "introducer_parent": "9f76ddd1f58fa3b4661efa93953c001dc35d9f97",
+ "introducer_parent_absent": true,
+ "squash_decomposed": true,
+ "decomposed_shas": [
+  "9df12b2383125a17f5fa55561b432e2ab8a0cc71"
+ ],
+ "ai_marker": "absent — BIC author/committer davideuler (human GitHub account), plain feature commit message, no AI trailers; marker grep (claude/copilot/anthropic/openai/generated/co-authored/cursor/junie/manus) on 36d7fa91 and 9df12b23 returns no hits (sentinels printed).",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": [
+  "Advisory (CVE-2026-72567 / GHSA-r232-48q8-3598): AsyncFuncAI/deepwiki-open through commit 16f35a0 — improper path validation lets unauthenticated remote attackers write to or delete arbitrary files with root privileges; api/api.py wiki-cache endpoint constructs file paths from user-controlled owner, repo, repo_type without sanitization (CWE-22).",
+  "Sink at advisory floor: `git show 16f35a0:api/api.py` — :405 WIKI_CACHE_DIR, :408-411 `def get_wiki_cache_path(...): filename = f\"deepwiki_cache_{repo_type}_{owner}_{repo}_{language}.json\"; return os.path.join(WIKI_CACHE_DIR, filename)`; :477 read via that path (no auth); :428 save; :504-540 DELETE endpoint with `cache_path = get_wiki_cache_path(owner, repo, repo_type, language)` then `os.remove(cache_path)`. No '..' filtering, no basename extraction, no startswith/commonpath containment check anywhere in the file.",
+  "BIC introduction: `git log -S 'get_wiki_cache_path' -- api/api.py --all` → introduced by 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c (2025-05-08, davideuler, parent 9f76ddd1f58f); `git show 36d7fa91:api/api.py` already contains the identical unsanitized f-string join (:276-279) plus the consuming endpoints. `git merge-base --is-ancestor 36d7fa91 16f35a0` → True (BIC ancestor of advisory floor). DELETE primitive added by 9df12b238312 (2025-05-09), also ancestor of 16f35a0.",
+  "Persistence: refactor cbd1ebd137dd9968ca917080e5e878a6518c6f66 (2026-08-04, GdoongMathew, #568) moved the same unsanitized get_wiki_cache_path/delete_wiki_cache into api/services/wiki/io.py; at HEAD (c6bea82b, 2026-08-16) io.py:26-29 still builds the path with the identical unsanitized f-string join and :83-89 still os.remove()s it — no realpath/commonpath containment exists (the only such check in the tree, os.path.commonpath, is in api/services/codemap.py for a DIFFERENT sink added post-16f35a0).",
+  "Unfixed status: no commit after 16f35a0fc0284e99b7963bbf4e8585e9957e2fe1 modifies the wiki-cache path construction or adds sanitization; `git log --all -i --grep='traversal|sanitiz|72567|r232'` finds no fix; repo has no tags; advisory 'through commit 16f35a0' with no fixed version → fix_sha/direct_fix_sha null; the vulnerable pattern persists at HEAD in api/services/wiki/io.py (same logic, refactored location), so the flaw is unfixed on the default branch as of the clone snapshot.",
+  "Marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1` on 36d7fa915ecb08f4b19123796ee4af95c1a0eb2c (BIC) and 9df12b2383125a17f5fa55561b432e2ab8a0cc71 — author/committer davideuler both, no AI trailers, no co-author lines (NONE sentinels printed after each grep).",
+  "ppa re-checked line-level 2026-08-29 against clone history: git show 9f76ddd1:api/api.py has 0 matches for wiki_cache/get_wiki_cache_path (grep exit 1); the BIC 36d7fa91 adds WIKI_CACHE_DIR, get_wiki_cache_path's unsanitized f-string join, and the /api/wiki_cache endpoints as new lines. -> introducer_parent_absent=true."
+ ],
+ "reasoning": "Vulnerability first: the advisory pins the sink — api/api.py wiki-cache endpoints building paths from unsanitized user-controlled owner/repo/repo_type, enabling arbitrary file write/delete, through commit 16f35a0. Code archaeology: get_wiki_cache_path's unsanitized f-string + os.path.join construction first appears in 36d7fa915ecb (2025-05-08, davideuler), which also wired the first user-facing endpoints; the DELETE os.remove primitive followed one day later in 9df12b238312. BIC = 36d7fa91 (first-write of the named sink), with 9df12b23 as the decomposed wave completing the write/delete surface (squash_decomposed=true). The advisory floor 16f35a0 is a later commit (2026-06-03, LiteLLM feature) that merely still contained the flaw — all three wave commits are ancestors of it, verified by merge-base. AI decision: BIC-only attribution — both wave commits carry only the human identity davideuler with no AI markers, so NOT_AI. Fix status: none exists anywhere reachable in the clone (no tags, no post-16f35a0 remediation, vulnerable code relocated intact into api/services/wiki/io.py at HEAD) — unpatched case, fix_sha null with evidence commands documenting the search.",
+ "remaining_gap": "No fixed release exists to cite: the project has no tags in the clone, the advisory names no fixed version ('through commit 16f35a0'), and the vulnerable path construction persists at HEAD (api/services/wiki/io.py, refactored but unsanitized) — backfill fix_sha if a remediation lands. The 'root privileges' deployment context is advisory-disclosed (Docker deployment) and not independently verifiable from the clone; the code-level primitive (unsanitized join + os.remove/open) is fully verified.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "No fixed release exists to cite: the project has no tags in the clone, the advisory names no fixed version ('through commit 16f35a0'), and the vulnerable path construction persists at HEAD (api/services/wiki/io.py, refactored but unsanitized).",
+  "potential_fix": {
+   "approach": "Canonicalize and jail generated output paths under a dedicated cache root with realpath checks before any file write or delete in /api/wiki_cache.",
+   "rationale": "Path jailing prevents attacker-controlled identifiers from escaping the cache directory to arbitrary write/delete targets."
+  }
+ }
+}

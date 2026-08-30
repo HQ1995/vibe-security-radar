@@ -1,0 +1,45 @@
+{
+  "worker": "w024",
+  "review_agent_id": "r389_w024",
+  "class_id": "alias-ff0bc356cfdad14a17563556",
+  "case_id": "GHSA-3qxv-x8gq-wgff",
+  "repo": "scriban/scriban",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "At tag 6.6.0, StringFunctions.PadLeft and PadRight pass template-controlled width directly to System.String.PadLeft/PadRight. LimitToString is consulted later in TemplateContext.ObjectToString, after the padded string has already been allocated. The vendor advisory identifies the same CWE-770 denial-of-service mechanism."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "779161586560786e835d27bffe70016357e980d8 is the first -S history hit for both exact two-argument declarations, and 6.6.0 blame assigns both vulnerable bodies to it. Its patch directly adds the two wrappers and their examples/tests; it is not a move, refactor, or revert."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single immediate parent 68fc3aa26b24e6a5b4cdfd87b93ad53b6539caa1. A parent-tree search finds no PadRight, pad_left, or pad_right and only unrelated fixed-width DateTimeFunctions PadLeft calls; neither vulnerable template wrapper exists there."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The public clone exposes one parent and exactly one commit on the parent..BIC edge. The commit itself is the atomic 44-line first-write of the paired pad builtins plus their examples/tests; no finer public history member is present or needed to isolate the vulnerable lines."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is an ancestor of v1.2.6, 6.6.0, and 7.0.0. Fix 4227fdee198e7176ff974cfee13dc300f5babe9d is not an ancestor of 6.6.0, is an ancestor of 7.0.0, and the first containing release tag is 7.0.0. This matches the vendor range <=6.6.0 and patched version 7.0.0, and CVE-2026-74788 remains PUBLISHED."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "4227fdee198e7176ff974cfee13dc300f5babe9d directly marks the unsafe two-argument overloads ScriptMemberIgnore, adds context-aware overloads that call VerifyPaddingWidth before PadLeft/PadRight, and adds LimitToString regression tests. Its parent and 6.6.0 lack this guard; 7.0.0 contains it."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The raw BIC object names human author and committer Michael Wolfenden and contains no Co-Authored-By, Copilot, generated-with, bot, or other AI marker. The Copilot co-author trailer belongs only to the 2026 fix and is excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "Independent clone replay confirms introducer 779161586560786e835d27bffe70016357e980d8 and direct fix 4227fdee198e7176ff974cfee13dc300f5babe9d.",
+    "The advisory, vulnerable and fixed release topology, immediate-parent tree, and BIC-only authorship evidence all support the primary NOT_AI verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

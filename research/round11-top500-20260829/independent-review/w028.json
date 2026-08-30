@@ -1,0 +1,46 @@
+{
+  "worker": "w028",
+  "review_agent_id": "r389_w028",
+  "class_id": "alias-e1f5d74fde29fa9707d2396a",
+  "case_id": "GHSA-fq55-48v3-mc95",
+  "repo": "misp/cti-transmute",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "At a584a9da2a2f6540b240470347666b70494f1aad, parseMisp maps attacker-supplied MISP category/type strings and parseStix maps STIX type, relationship_type, and indicator pattern prefixes into ECharts tree node names. buildSunburstOption and buildTreemapOption then interpolate p.name, p.data.value, and p.value into function-formatter HTML without escaping. The published CIRCL CVE record identifies the same CWE-79 source-to-sink mechanism."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Full-history -S/-G searches and --follow path history identify a584a9da2a2f6540b240470347666b70494f1aad as the first surviving commit to add both vulnerable tooltip formatters in the newly created convertSunburst.js. Commit 3b521470283e5af0e13a9f6b10c134f530e6210f only compacts the same interpolation, and 772374333db626456cfb65bdd0b9b857c006ad90 is a 96% path rename, so neither is the BIC."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "git rev-list shows the sole immediate parent f09f10ab6378ad8d8fab3de1590f51f27f28ab32. That parent object resolves, lacks website/web/static/js/graph/convertSunburst.js, has no sunburst/treemap path, and has no <strong>${p.name}</strong> formatter token."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a single-parent ordinary commit that creates the vulnerable file directly, not a merge aggregate. The local full-history clone has no replace ref or note for it and exposes no finer member object; under the protocol it is the smallest reconstructible public first-write object, so member decomposition is not applicable."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The CIRCL CNA record marks semver <=1.4.0 affected. Git ancestry independently shows the BIC, but not c5b024a8ef5632f8939cfe2dad9026064698f4bb, in v1.4; v1.4 still contains both raw tooltip interpolations. Both BIC and fix are ancestors of v1.5, whose file contains escapeHtml-based tooltip formatters. The BIC is not in v1.3."
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": "The advisory-linked c5b024a8ef5632f8939cfe2dad9026064698f4bb directly replaces both raw tooltip lambdas with sunburstTooltipFormatter and treemapTooltipFormatter, each escaping p.name and the displayed value through an existing helper that encodes &, <, >, and double quotes. The fix is a descendant of the BIC and remains in HEAD."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Attribution was checked only on a584a9da2a2f6540b240470347666b70494f1aad. Its raw commit object names ecrou-exact <geffetheo@gmail.com> as both author and committer, has no trailers, notes, bot identity, Generated-with marker, or AI co-author marker. Same-repository AI-marked commits and the human-authored fix were not transferred to this BIC."
+    }
+  },
+  "findings": [
+    "The primary mechanism, BIC, immediate parent, refactor/rename exclusions, affected/fixed release topology, and direct fix all replay against the assigned full-history clone.",
+    "The authoritative CVE record is published, identifies CWE-79, marks versions <=1.4.0 affected, and links the same direct fix; the assigned GHSA is not withdrawn.",
+    "No BIC-local AI marker was found, so the primary NOT_AI verdict is confirmed without relying on other repository cases."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

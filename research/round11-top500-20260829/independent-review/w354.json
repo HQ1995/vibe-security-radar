@@ -1,0 +1,29 @@
+{
+  "worker": "w354",
+  "review_agent_id": "r389_w354",
+  "class_id": "alias-0d52629e388fec1055cdcaca",
+  "case_id": "GHSA-xhjw-95fp-8vgq",
+  "repo": "traefik/traefik",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: at df00d82^, createChainMiddleware accepts spec.chain.middlewares[].namespace and emits makeID(foreignNamespace, name) without consulting allowCrossNamespace; pkg/server/middleware/middlewares.go then qualifies and builds every config.Chain.Middlewares entry. The direct IngressRoute path is separately checked by makeMiddlewareKeys, so a local Chain CRD bypasses the intended namespace boundary.",
+    "atomic_bic": "PASS: 75e0baf2f4a7ceaa24f25bc67011c47d80741391 is the smallest public PR #5290 member that adds MiddlewareRef-based Chain plus createChainMiddleware and first writes the unrestricted namespace selection and makeID call. The later member 422d2cf34d5177b77ef9530c385ba93ad52efe75 only reuses a computed local id and does not introduce or alter the resolver.",
+    "immediate_parent_absence": "PASS: 75e0baf2^ resolves to 261e7c174494b3327780361c2cae2cf46ee437f9. Its diff shows that the parent assigned middleware.Spec directly, used dynamic.Chain with string entries, and had no createChainMiddleware or nested MiddlewareRef namespace resolution.",
+    "squash_member_decomposition": "PASS: the live GitHub PR #5290 commits API independently returns exactly 75e0baf2 followed by 422d2cf3; 422d2cf3^ is 75e0baf2, and 422d2cf3^{tree} equals squash carrier 770b3739e05d46a4d8442577267ef571d70a0452^{tree} (9bd56846459530348d1777ea1a9db3d6fc76f8b9). The squash is therefore a carrier, not the atomic BIC.",
+    "affected_release_membership": "CORRECTION_REQUIRED: carrier 770b3739 is absent from v2.0.0-rc1 and present in v2.0.0-rc2, v2.11.42, v3.0.0-beta1, v3.6.13, v3.7.0-ea.1, and v3.7.0-rc.1. However, the GHSA also marks legacy module github.com/traefik/traefik <=1.7.34 affected; carrier 770b3739 is not an ancestor of v1.7.34, and that tag has only the old provider/kubernetes Ingress provider, with no pkg/provider/kubernetes/crd tree, createChainMiddleware, or MiddlewareRef mechanism. The primary evidence's claim that its tag checks match the GHSA ranges is therefore incomplete and must exclude or explicitly challenge the v1 range.",
+    "fixed_release_membership": "PASS for the mechanism-bearing v2/v3 lines: df00d82fc7f12e07199551832b54de6d0e55414d is absent from v2.11.42, v3.6.13, and v3.7.0-rc.1, and is an ancestor of patched tags v2.11.43, v3.6.14, and v3.7.0-rc.2.",
+    "direct_fix_or_verified_unpatched_state": "PASS: df00d82 threads AllowCrossNamespace into createChainMiddleware, rejects a foreign mi.Namespace with isNamespaceAllowed, rejects ambiguous @kubernetescrd chain references when cross-namespace access is disabled, and adds matching allowed/disallowed Chain fixtures and expectations. This directly closes the vulnerable resolver path.",
+    "bic_only_ai_attribution": "PASS: the raw 75e0baf2 commit object identifies human author Julien Salleyron and traefiker as committer, with the single message 'The chain middleware in k8s use middlewareRef' and no AI-generation or AI co-author marker. The NOT_AI attribution is based on this atomic BIC, not on the later hardening or fix."
+  },
+  "findings": [
+    "The primary NOT_AI verdict, atomic BIC 75e0baf2, immediate parent 261e7c17, squash decomposition, and direct fix df00d82 are independently supported.",
+    "The primary release evidence does not cover all advisory-declared affected packages: GHSA-xhjw-95fp-8vgq includes github.com/traefik/traefik <=1.7.34, but v1.7.34 cannot contain this CRD Chain mechanism and does not contain the BIC carrier.",
+    "CVE.org currently reports CVE-2026-41174 as PUBLISHED and the GitHub advisory currently has withdrawn_at=null, so this is not a FALSE_POSITIVE disposition; the correction is limited to release-range evidence and reasoning."
+  ],
+  "corrected_fields": {
+    "evidence": "Replace the claim that the checked tags match all GHSA ranges with a scoped claim covering the mechanism-bearing v2/v3 lines, and record that the separate legacy github.com/traefik/traefik <=1.7.34 advisory entry is incompatible with this BIC and source path.",
+    "reasoning": "Retain NOT_AI, introducer_sha=75e0baf2f4a7ceaa24f25bc67011c47d80741391, introducer_parent=261e7c174494b3327780361c2cae2cf46ee437f9, and fix_sha=df00d82fc7f12e07199551832b54de6d0e55414d, but do not characterize the release-membership proof as covering the GHSA's v1 module range."
+  },
+  "remaining_gap": "The current GHSA and CVE records do not explain why the legacy github.com/traefik/traefik <=1.7.34 package range is listed for a v2-era Kubernetes CRD Chain mechanism; authoritative upstream clarification or advisory-range correction remains needed."
+}

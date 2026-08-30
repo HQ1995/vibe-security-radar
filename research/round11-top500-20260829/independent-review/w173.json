@@ -1,0 +1,26 @@
+{
+  "worker": "w173",
+  "review_agent_id": "r389_w173",
+  "class_id": "alias-239587fb81e2be1bee0bcff9",
+  "case_id": "GHSA-hrj8-hjv8-mgwc",
+  "repo": "julien040/anyquery",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. At app tag 0.4.4, SQL-controlled tab URLs reach fmt.Sprintf(newTabScript, url) and fmt.Sprintf(setURLScript, pk, url), placing unescaped values inside AppleScript/JXA source passed to osascript -e; quote/newline input can terminate the URL literal and inject statements.",
+    "atomic_bic": "Confirmed d2ecb36e6375c0bf61d3de3da4e252e1f84a0445 for the advisory's Chrome sink. git log -L and blame at 0.4.4 identify that commit, whose diff adds chrome/brave/edge tabs.go as new files with the vulnerable interpolation.",
+    "immediate_parent_absence": "Confirmed. The sole parent is c8eeb12eb862b49c965aa53dbae137791f6a088a; its tree lacks plugins/chrome/tabs.go, plugins/brave/tabs.go, and plugins/edge/tabs.go. Safari's earlier sibling implementation is present but is not a move of the cited Chrome lines.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC has one parent, adds the relevant files rather than moving them, has no associated GitHub pull request, and exposes no finer public member commits to reconstruct.",
+    "affected_release_membership": "Confirmed. d2ecb36e6375c0bf61d3de3da4e252e1f84a0445 is an ancestor of app tag 0.4.4, whose Chrome plugin manifest is 0.1.2 and whose Insert/Update paths retain the vulnerable fmt.Sprintf sinks.",
+    "fixed_release_membership": "Confirmed. Direct fix 33769e03bd4b0f76d7a20a4188cce7153f6db1c9 is not in 0.4.4 but is an ancestor of 0.4.5; 0.4.5 carries Chrome plugin version 0.2.0 and the argv-based implementation. The GHSA-listed c651df0b87674da1231a9db007558548034bd4a1 pseudoversion still contains the sinks, exactly as the primary records.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. Parent cdcd194a079aaaf08d3346c7dcb12e016eda2504 still interpolates URL values into browser script source; 33769e03bd4b0f76d7a20a4188cce7153f6db1c9 passes them as osascript argv and updates the embedded scripts accordingly.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI. The BIC commit object and GitHub commit record identify human user julien040 as author and committer; the message is only '✨ Add chromium based plugin' and contains no Co-Authored-By, Generated-with, bot identity, or other AI/tool marker. No evidence from later commits was used for AI attribution."
+  },
+  "findings": [
+    "The advisory is live and not withdrawn; CVE.org currently returns CVE_RECORD_DNE, while the vendor GHSA and source-level fix establish the vendor disposition.",
+    "The GHSA package version metadata incorrectly labels c651df0b87674da1231a9db007558548034bd4a1 as first patched even though that tree still contains all four browser interpolation sinks; the primary already discloses and resolves this conflict using the actual direct fix and release ancestry.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

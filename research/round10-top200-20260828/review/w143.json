@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-3c6638f05b2d7f295c63a82c",
+ "case_id": "GHSA-785c-v4m5-q4wg",
+ "repo": "appwrite/templates",
+ "advisory_ids": [
+  "CVE-2026-72861",
+  "GHSA-785c-v4m5-q4wg"
+ ],
+ "bug_semantics": "github-issue-bot verifyWebhook returns typeof signature !== \"string\" || await verify(secret, body, signature). When X-Hub-Signature-256 is absent, the first operand is true, OR short-circuits, and the function reports success with no HMAC. main.js/main.ts rejects only when verifyWebhook is false, so an unsigned request is treated as authenticated. Processing continues to postComment, which takes repository and issue from the request body and posts with the deployed GITHUB_TOKEN (CWE-347). The node-typescript template copies the same inverted helper. The original inlined check in 59fa20b used the same OR as a reject-if-true test, so a missing header was rejected; extracting it as a success boolean and negating at the call site flipped that path to accept.",
+ "flaw_origin": "The missing-header bypass was first written in 7840536b88784d791ee19461ff091528d6fb5b81 (fix: esm migration). That commit added GithubService.verifyWebhook returning the OR expression as a boolean success value and changed main.js to if (!(await github.verifyWebhook(req))). Parent 59fa20b14997f155cd0980cf50579977b2ccdfc9 inlined if (typeof signature !== \"string\" || await verify(...)) { return 401 }, which rejects a missing header. Later class/path moves (1a585a21, 34d3aeed) and the TypeScript port 4d69364b copy the already-vulnerable helper; 9c03e690 only swaps bodyRaw for bodyBinary. No later commit inverts the condition. Issue #350 remains open and HEAD still matches 1.1.2 blobs.",
+ "introducer_sha": "7840536b88784d791ee19461ff091528d6fb5b81",
+ "introducer_parent": "59fa20b14997f155cd0980cf50579977b2ccdfc9",
+ "introducer_parent_absent": false,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author loks0n <22452787+loks0n@users.noreply.github.com>, committer loks0n <22452787+loks0n@users.noreply.github.com>; commit message is only \"fix: esm migration\" with no Co-Authored-By, Generated-with, Cursor, Copilot, ChatGPT, Claude, or bot trailer.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "CVE-2026-72861 / GHSA-785c-v4m5-q4wg: CVE.org state PUBLISHED, not rejected; VulnCheck and GHSA describe inverted verifyWebhook in node/github-issue-bot/src/github.js and node-typescript/github-issue-bot/src/github.ts; affected templates <=1.1.2; no patched version. GitHub issue https://github.com/appwrite/templates/issues/350 is state=open, closed_at=null. git show 59fa20b:github-issue-bot/src/main.js uses if (typeof signature !== \"string\" || await verify(...)) { 401 } so missing header is rejected. git show 7840536 adds verifyWebhook returning that OR and main if (!(await github.verifyWebhook(req))); parent 59fa20b has no verifyWebhook (git grep). 7840536 is a single-parent commit (rev-list --count ^.. = 1), author/committer loks0n, cat-file has no AI trailers. 4d69364b copies the helper into node-typescript. HEAD and tag 1.1.2 share github.js blob 5d6e877e and github.ts blob 72a324cd; git log 1.1.2..HEAD on those paths is empty; HEAD still has typeof signature !== \"string\" ||. Tag membership: 7840536 is ancestor of 1.1.2 and HEAD (describe 0.1.0~122^2~11). Unpatched: no commit inverts the condition; potential fix is return typeof signature === \"string\" && await verify(...).",
+ "reasoning": "The advisory is a real CWE-347: missing X-Hub-Signature-256 makes verifyWebhook true, so unsigned webhooks reach postComment. That success-on-missing-header pairing did not exist in the first template add (59fa20b), which used the OR as a reject condition. 7840536 is the smallest first-write of verifyWebhook-as-success plus the negated call site; later structure/TypeScript commits only carry it. Authorship on 7840536 is human loks0n with no commit-object AI marker, so NOT_AI. The finding is unpatched: issue #350 is open, 1.1.2 and HEAD still contain the inverted helper, so fix_sha is null.",
+ "remaining_gap": "Unpatched as of clone HEAD dcb00987a777afb3d29f20ea8023070c30e6a949 and tag 1.1.2; GitHub issue #350 remains open with no linked fix commit. Potential fix: verifyWebhook should return typeof signature === \"string\" && await verify(secret, body, signature) so a missing header fails closed.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched as of clone HEAD dcb00987a777afb3d29f20ea8023070c30e6a949 and tag 1.1.2; GitHub issue #350 remains open with no linked fix commit. Potential fix: verifyWebhook should return typeof signature === \"string\" && await verify(secret, body, signature) so a missing header fails closed.",
+  "potential_fix": {
+   "approach": "verifyWebhook should return typeof signature === \"string\" && await verify(secret, body, signature) so a missing header fails closed",
+   "rationale": "Applying this change at the sink described in bug_semantics removes the attacker-controlled input from reaching the vulnerable path, closing the flaw for the currently unpatched code; the record's remaining_gap verifies no such fix exists upstream as of the audited HEAD, so this documents the potential remediation without asserting a fix SHA.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

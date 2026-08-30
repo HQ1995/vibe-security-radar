@@ -1,0 +1,26 @@
+{
+  "worker": "w377",
+  "review_agent_id": "r389_w377",
+  "class_id": "alias-23aa1eff20a6d2ef5b646538",
+  "case_id": "GHSA-vfx2-hv2g-xj5f",
+  "repo": "angular/angular-cli",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: at the landing BIC, AngularServerApp.handle() joins attacker-controlled X-Forwarded-Prefix into redirect Location; joinUrlParts('\\\\evil.com', '/home') yields '/\\\\evil.com/home', which WHATWG URL parsing resolves against the trusted origin as https://evil.com/home. The later /^[/\\\\]{2}/ validation rejects two leading slash-or-backslash characters but not one leading backslash.",
+    "atomic_bic": "CONFIRMED: 4dac5f25106162d9cbf20ec2bf4fe02c47409c41 is the single-parent landing commit that first wires X-Forwarded-Prefix into this redirect sink on main. Path-limited -S and -L history show no earlier use in the redirect; branch commits 03e231216d3b8ba0de81da53a446eff0c701658d and cceb862969e541a5f54b689a6439e32773eafe65 are later branch landings of the same change. f086eccc36d10cf01c426e35864bc32e1e292323 adds an incomplete control but does not first create the vulnerable source-to-sink composition.",
+    "immediate_parent_absence": "CONFIRMED: 59319b8d6f02f857ab375f330812ff430e90f059 exists and its packages/angular/ssr/src/app.ts builds redirect Location only from buildPathWithParams(redirectTo, url.pathname); the BIC diff adds the X-Forwarded-Prefix join.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: the landing BIC has one parent. PR #31904 exposes one head commit, 3d4954f7a0e40ade3c16168d42c4b56e42fe4631, whose four-file diff and app.ts patch are identical to the rebased landing commit; there is no multi-member squash to decompose.",
+    "affected_release_membership": "CONFIRMED WITH DISCLOSED ADVISORY RANGE IMPRECISION: 4dac5f25106162d9cbf20ec2bf4fe02c47409c41 is an ancestor of v22.0.0-next.0 and v22.0.0-next.1; branch landings 03e231216d3b8ba0de81da53a446eff0c701658d and cceb862969e541a5f54b689a6439e32773eafe65 are present by v21.0.3 and v20.3.14. The primary correctly notes that the official 21.x and 20.x lower bounds predate the actual branch sink landings.",
+    "fixed_release_membership": "CONFIRMED: 4d564f66f694011724d4933bf025f1c4fed55bca is absent from v22.0.0-next.1 and present in v22.0.0-next.2; its 21.x cherry-pick f3e0e82c2cecc3d9ebb5b8acc6e64d2d88c4efbd is absent from v21.2.2 and present in v21.2.3; the equivalent 20.x commit 1dc6992a5ae6c5a1f16f22f6c94690d5cf218c38 is absent from v20.3.20 and present in v20.3.21.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 4d564f66f694011724d4933bf025f1c4fed55bca changes INVALID_PREFIX_REGEX to reject a prefix beginning with one backslash and adds the exact '\\\\evil' regression input. Commit 998b8298e3106c95d77ced8090ab815365c462c7 independently adds Vary: X-Forwarded-Prefix and is also in v22.0.0-next.2.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Alan Agius as both author and committer and contains no Co-Authored-By, Generated-with, Made-with, bot, or other AI marker. The one-commit PR head is the same human-authored patch; later security-fix commits were not used to decide the BIC AI role."
+  },
+  "findings": [
+    "CVE-2026-33397 is currently PUBLISHED in the CVE record, which reproduces the single-backslash bypass, affected ranges, and fixed versions; the frozen case bundle has withdrawn_at=null.",
+    "The primary's introducer, parent, direct fix, branch fixes, and NOT_AI conclusion all survive independent replay.",
+    "The official advisory's broad 20.x/21.x lower bounds are imprecise relative to Git history, but the primary already states this rather than relying on those bounds as introducer evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

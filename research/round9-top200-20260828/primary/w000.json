@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-75cd9719ab0735dccfc8ffc3",
+  "case_id": "GHSA-r54r-wmmq-mh84",
+  "repo": "openclaw/openclaw",
+  "advisory_ids": [
+    "CVE-2026-28483",
+    "GHSA-r54r-wmmq-mh84"
+  ],
+  "bug_semantics": "During ZIP extraction, a local attacker who can mutate the extraction directory can replace an already-validated parent directory with a symlink before the destination pathname is opened. The path-based write then follows the rebound parent and creates or truncates a file outside the extraction root with the OpenClaw process's privileges.",
+  "flaw_origin": "The first shared ZIP extractor performed only a lexical path.resolve/string-prefix boundary check, then separately awaited mkdir and ZIP decoding before calling fs.writeFile(outPath, data). It never bound validation to the identity of the parent directory or opened output file, creating the parent-symlink TOCTOU window at the extractor's inception.",
+  "introducer_sha": "3a6ee5ee00176c88aee32bb8bfd543780014c079",
+  "introducer_parent": "5dc87a2ed4cf8bff1c76cddb2a1de76d333f4cc4",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw commit object for 3a6ee5ee00176c88aee32bb8bfd543780014c079 has author and committer 'Peter Steinberger <steipete@gmail.com>' and message 'feat: unify hooks installs and webhooks'; it contains no Co-Authored-By, Generated-with, bot identity, or other trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7dac9b05dd9d38dd3929637f26fa356fd8bdd107",
+  "direct_fix_sha": "7dac9b05dd9d38dd3929637f26fa356fd8bdd107",
+  "evidence": [
+    "The first-party advisory https://github.com/openclaw/openclaw/security/advisories/GHSA-r54r-wmmq-mh84 identifies src/infra/archive.ts, the parent-directory symlink rebind between validation and write, affected npm versions <= 2026.3.1, patched version 2026.3.2, and fix commit 7dac9b05dd9d38dd3929637f26fa356fd8bdd107.",
+    "git show and git blame at 3a6ee5ee00176c88aee32bb8bfd543780014c079 show the newly created src/infra/archive.ts lines 83-89: path.resolve(destDir, entryPath), a startsWith(destDir) check, mkdir(path.dirname(outPath)), await entry.async('nodebuffer'), and finally fs.writeFile(outPath, data). Every one of those lines is owned by 3a6ee5ee00176c88aee32bb8bfd543780014c079.",
+    "git log --all --reverse -S'await fs.writeFile(outPath, data)' -- src/infra/archive.ts finds 3a6ee5ee00176c88aee32bb8bfd543780014c079 as the addition. The later d3ee5deb87ee2ad0ab83c92c365611165423cb71 resource-limit refactor merely changed the sink to fs.writeFile/createWriteStream by pathname, preserving the same parent-rebind weakness; 4b226b74f5fd3b106a83a6347fd404172e2fd246 later added pre-open symlink checks and O_NOFOLLOW for the final component but still did not bind the checked parent identity to the write. Those later changes are therefore not the smallest BIC.",
+    "Direct parent-tree verification: git cat-file -e 5dc87a2ed4cf8bff1c76cddb2a1de76d333f4cc4:src/infra/archive.ts fails because the path does not exist. A git grep of that parent over the relevant src/plugin, src/hooks, and src/cli areas found no JSZip or extractArchive implementation, so the vulnerable ZIP extraction path is absent from the immediate parent rather than moved from an earlier in-tree extractor.",
+    "The raw BIC commit object (git cat-file commit 3a6ee5ee00176c88aee32bb8bfd543780014c079) has one parent, 5dc87a2ed4cf8bff1c76cddb2a1de76d333f4cc4, identical human author/committer Peter Steinberger, and no trailers. It is an ordinary one-parent commit, not a squash aggregate exposing member SHAs to decompose.",
+    "Version-boundary checks: git tag --contains 3a6ee5ee00176c88aee32bb8bfd543780014c079 shows the code first shipped by v2026.1.16-2 and is contained in v2026.3.1. v2026.3.1 resolves to d76b224e20c790b7223d4075abd087c9576a4661; its merge-base with the BIC is the BIC, while its merge-base with the fix is d76b224e20c790b7223d4075abd087c9576a4661, proving the fix is not in that last vulnerable tag.",
+    "v2026.3.2 resolves to 85377a28175695c224f6589eb5c1460841ecd65c; git merge-base 7dac9b05dd9d38dd3929637f26fa356fd8bdd107 v2026.3.2 returns the fix SHA, proving the direct fix is included at the patched boundary.",
+    "Fix diff 7dac9b05dd9d38dd3929637f26fa356fd8bdd107 replaces O_TRUNC-on-open with exclusive-create or existing-file opens, verifies the opened handle's stat/lstat/realpath identity and destination containment, truncates only after those checks, writes through that verified handle, and adds the regression 'does not clobber out-of-destination file when parent dir is symlink-rebound during zip extract' in src/infra/archive.test.ts."
+  ],
+  "reasoning": "The vulnerable lifecycle begins in 3a6ee5ee00176c88aee32bb8bfd543780014c079, which introduced the shared ZIP extractor and the exact unsafe separation between lexical destination validation and a later pathname-based file write. The asynchronous mkdir/decode interval gave a local filesystem adversary a rebind window; later streaming and attempted symlink-hardening commits changed implementation details but retained pathname resolution of mutable parents, so they are continuations rather than origins. The immediate parent lacks both src/infra/archive.ts and an equivalent ZIP extractor in the relevant pre-unification areas, satisfying direct parent absence. The BIC is in the release line through v2026.3.1, and the advisory's direct fix is present in v2026.3.2. Finally, attribution is based only on the BIC commit object: it records a human author/committer and no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

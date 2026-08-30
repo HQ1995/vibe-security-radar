@@ -1,0 +1,51 @@
+{
+  "worker": "w109",
+  "review_agent_id": "r389_w109",
+  "class_id": "alias-0408e626e12f5a6fc21adab1",
+  "case_id": "GHSA-fvc5-h4x4-cfv4",
+  "repo": "wpdevelopers/essential-addons-for-elementor-lite",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "Stored contributor-controlled eael_fancy_text_transition_type is emitted as data-fancy-text-transition-type, decoded by the initial HTML parse, read through jQuery .data(), passed as Morphext animation, and concatenated into a quoted class attribute via innerHTML. A literal quote recovered from an HTML entity can therefore terminate the generated class attribute and inject visitor-executed markup. CVE-2026-15145 is currently PUBLISHED and identifies affected versions through 6.6.11."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Commit 3a2ff8f2c42b63e60c2a17fb3657070db2f6e70c is the first exact-string history hit for data-fancy-text-transition-type and adds both the PHP data attribute and the JS .data()-to-Morphext wiring in one focused two-file change. The older vendored Morphext innerHTML sink alone did not create this breakout path."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Immediate parent 2671d9ce5d82427237a594826b05cdf9164f7e64 has no data-fancy-text-transition-type plumbing. It passes the setting through esc_attr() inside an HTML script raw-text JavaScript string, where character references are not decoded before reaching Morphext; the BIC's data-attribute round trip that restores literal metacharacters is absent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a single-parent, non-merge commit whose two touched files directly form the introduced source-to-sink path; it is not a release, move, revert, or apparent squash aggregate requiring a finer public member. Later rename and asset-split commits preserve or relocate the same wiring and are not introducers."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "3a2ff8f2c42b63e60c2a17fb3657070db2f6e70c is an ancestor of v6.6.11. That tag contains both data-fancy-text-transition-type and the unsafe Morphext innerHTML class concatenation, and its readme declares Stable tag 6.6.11."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Fix d88e08257f66180dee5d42cabb334a02fc1d290e is not an ancestor of v6.6.11 but is an ancestor of tag 6.7.0. Tag 6.7.0 contains ALLOWED_TRANSITIONS, lacks the unsafe innerHTML concatenation, and its readme records the Fancy Text stored-XSS fix."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix d88e08257f66180dee5d42cabb334a02fc1d290e has parent 391354a69eb3adaf6400ffff1e257711e55d7a94, where the unsafe sink remains. The fix allowlists animation names and replaces innerHTML construction with createElement, classList, and textContent, directly closing both the untrusted class-token path and markup sink."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was evaluated only on BIC 3a2ff8f2c42b63e60c2a17fb3657070db2f6e70c: author and committer are abdulhalimmanik <abdulhalimmanik@users.noreply.github.com>, the message is 'Fancy text updated', and the commit object has no AI-generation marker, bot identity, or AI-related trailer."
+    }
+  },
+  "findings": [
+    "The primary correctly identifies a real stored DOM XSS and the complete contributor-setting to visitor-side innerHTML lifecycle.",
+    "The independently replayed first-write and immediate-parent checks support 3a2ff8f2c42b63e60c2a17fb3657070db2f6e70c as the atomic BIC.",
+    "The release and direct-fix checks support affected v6.6.11 and fixed 6.7.0.",
+    "BIC-only attribution supports primary verdict NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

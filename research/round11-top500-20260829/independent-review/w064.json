@@ -1,0 +1,25 @@
+{
+  "worker": "w064",
+  "review_agent_id": "r389_w064",
+  "class_id": "alias-55959aa1f991e81f1e7ff1d7",
+  "case_id": "GHSA-gw74-gwm4-8crp",
+  "repo": "rocketchat/rocket.chat",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-65645 is PUBLISHED and GHSA-gw74-gwm4-8crp is not withdrawn. Before the fix, both authenticated DDP methods reuse an unvalidated rid/tmid in a findOneById authorization lookup and then in a broader Mongo query; BaseRaw.findOneById constructs {_id: value}, findThreadsByRoomId constructs {rid, tcount: {$exists: true}}, and findVisibleThreadByThreadId constructs {tmid, _hidden: {$ne: true}}, so an operator object can authorize against one accessible document and fan the downstream query across rooms.",
+    "atomic_bic": "PASS: source-repository PR #13996 member 4126d14b92f30790d97d66b5d7188749e18b7d05 is the smallest public first-writer. Its added getThreads.js and getThread.js already use raw rid/tmid for both authorization lookup and downstream query. Later rename, query-helper extraction, TypeScript conversion, and file moves preserve rather than introduce the mechanism.",
+    "immediate_parent_absence": "PASS: the commit object identifies sole parent 91f5fb2f550bff46acb3937930c598685eb483e1, and both app/threads/server/methods/getThreads.js and app/threads/server/methods/getThread.js return absent at that parent.",
+    "squash_member_decomposition": "PASS: local public history bottoms at squash carrier 14b79fe1acd1c73e13603a882d5f7f64fcc23688, whose parent 7d182786135bc20c240729e6486c2b75db72e047 lacks all four old/new method paths. The squash message identifies PR #13996; its public member list and per-commit patches reconstruct 4126d14b92f30790d97d66b5d7188749e18b7d05 as the added vulnerable methods, while 77171bc65d8de0dfe3f547a8bc30fb07d50d51fb only renames them and 17a064b7e7d6d12ef5c30852c35536b51380d737 only extracts findThreadsByRoomId.",
+    "affected_fixed_release_membership": "PASS: squash carrier 14b79fe1acd1c73e13603a882d5f7f64fcc23688 is an ancestor of every checked pre-fix tag 7.10.14, 8.1.7, 8.2.7, 8.3.7, 8.4.5, 8.5.2, 8.6.1, and 8.7.0, whose method bodies still lack typeof guards and retain raw sinks. Fixed tags 7.10.15, 8.1.8, 8.2.8, 8.3.8, 8.4.6, 8.5.3, 8.6.2, and 8.7.1 contain their respective backports and both string guards; 8.8.0-rc.0 contains the develop fix. No final 8.8.0 tag exists in the assigned clone.",
+    "direct_fix_or_verified_unpatched_state": "PASS: develop landing ea163f56b53b1dd40d49af39e0406397cbd24939 directly adds typeof rid/tmid string rejection and replaces downstream raw values with room._id/thread._id. The checked pre-fix tags remain unpatched; each checked fixed tag contains a path-touching backport with the same guards and canonical IDs.",
+    "bic_only_ai_attribution": "PASS: the exact BIC commit object for 4126d14b92f30790d97d66b5d7188749e18b7d05 records human author and committer Guilherme Gazzo <guilhermegazzo@gmail.com>, a 2019-03-29 timestamp, and message 'flextab threads and thread view' with no Co-Authored-By, Generated-with, bot, or other AI marker. AI or co-author signals on the 2026 fix are non-causal and excluded."
+  },
+  "findings": [
+    "The primary correctly identifies a real raw-parameter Mongo operator-injection mechanism spanning both DDP thread methods.",
+    "The atomic BIC, its immediate-parent absence, squash decomposition, release topology, and direct fix independently reproduce the primary record.",
+    "BIC-only provenance supports NOT_AI; no field correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

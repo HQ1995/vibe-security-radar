@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-61e7acdc0b664585406ec02b",
+  "case_id": "GHSA-9277-65xq-8gww",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79663",
+    "GHSA-9277-65xq-8gww"
+  ],
+  "bug_semantics": "Public Atom/RSS generation inserts attacker-controlled echo bodies into an HTML-typed feed summary after gomarkdown rendering without html.SkipHTML, so raw HTML including script tags survives into summary type=html. A later second sink interpolates stored tag names with fmt.Appendf %s into the same HTML summary with no html.EscapeString. An admin who can create echoes poisons /rss for anonymous subscribers and other users whose readers render HTML summaries.",
+  "flaw_origin": "Original RSS markdown feature. 40ec78229d937f2f6a1060b7a63a4b7f6e5eec3d first added pkg/md.go MdToHTML with html.CommonFlags|html.HrefTargetBlank (SkipHTML unset) and first called it from GenerateRSS, writing the rendered bytes into feeds.Item.Description and switching the feed to Atom. Parent de6fd07d5c45ae9f50582050eff365d4d73f810f already had GenerateRSS but emitted ToRss with unrendered msg.Content and had no markdown renderer. Later d1645e081c5a185e60e9a1ac68dedbced8c535f7 recopied those same renderer flags into internal/util/md/md.go during the 2.x rewrite (move, not BIC). Independent second sink cc147955fd05c7b88b70268b8f11dfcde7c01d72 added unescaped tag.Name interpolation; parent a0234859b9ec963e73a02e7a56bb71cbca50c0c2 lacked that span/tag Appendf.",
+  "introducer_sha": "40ec78229d937f2f6a1060b7a63a4b7f6e5eec3d",
+  "introducer_parent": "de6fd07d5c45ae9f50582050eff365d4d73f810f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent on BIC 40ec78229d937f2f6a1060b7a63a4b7f6e5eec3d. git cat-file -p shows author and committer L1nSn0w <l1nsn0w@qq.com> and only the subject updating the Docker image to v3.1.0, optimizing RSS generation, and adding Markdown rendering; no Co-Authored-By, Generated-with, Assisted-by, bot identity, or other AI trailer. AI on the later fix is not used to attribute the BIC.",
+  "verdict": "NOT_AI",
+  "fix_sha": "fd320fe3e9021c8d8d284fb274775c018690520e",
+  "direct_fix_sha": "fd320fe3e9021c8d8d284fb274775c018690520e",
+  "evidence": [
+    "First-party GHSA-3v85-fqvh-7rxf (CVE-2026-79663) describes stored XSS in the public /rss Atom feed: tag names interpolated via fmt.Appendf %s at internal/service/common/common.go and gomarkdown MdToHTML without html.SkipHTML at internal/util/md/md.go. NVD vulnStatus is Received, not withdrawn or rejected. GHSA-9277-65xq-8gww withdrawn_at is null.",
+    "git show 40ec78229d937f2f6a1060b7a63a4b7f6e5eec3d -- pkg/md.go shows a new file adding MdToHTML with htmlFlags := html.CommonFlags | html.HrefTargetBlank and no SkipHTML. The same commit adds GenerateRSS in internal/services/message_service.go calling pkg.MdToHTML([]byte(msg.Content)) and setting Description: string(renderedContent) then feed.ToAtom().",
+    "git cat-file -e de6fd07d5c45ae9f50582050eff365d4d73f810f:pkg/md.go fails (path absent). Parent GenerateRSS in internal/controllers/controllers.go used feed.ToRss() and Description: msg.Content with no MdToHTML. git log -1 --format='%an %ae %cn %ce' 40ec78229d937f2f6a1060b7a63a4b7f6e5eec3d is L1nSn0w l1nsn0w@qq.com L1nSn0w l1nsn0w@qq.com.",
+    "d1645e081c5a185e60e9a1ac68dedbced8c535f7 added internal/util/md/md.go with the same html.CommonFlags | html.HrefTargetBlank flags; parent 0c5d8226588c322f19668634624dcfc6efbe7c17 lacked that path but still carried Ech0_OLD/pkg/md.go with the 40ec flags. 7bf691e062fa17b33784310367985a5ed3a754b7 later added Safelink/HrefTargetBlank/NoopenerLinks/NoreferrerLinks still without SkipHTML.",
+    "cc147955fd05c7b88b70268b8f11dfcde7c01d72 first added unescaped tag.Name interpolation into the RSS HTML summary. Parent a0234859b9ec963e73a02e7a56bb71cbca50c0c2:internal/service/common/common.go has MdToHTML but no tag.Name/span class=tag interpolation.",
+    "fd320fe3e9021c8d8d284fb274775c018690520e (parent cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd) is the closing fix: html.EscapeString(tag.Name) in GenerateRSS, html.SkipHTML in MdToHTML, and isSafeTagName rejecting HTML metacharacters in echo.ProcessEchoTags/CreateTag. Ancestor of v4.7.3, not of v4.7.2. git cat-file -e on the fix parent confirms both sink paths existed unpatched."
+  ],
+  "reasoning": "The advisory is a real stored-XSS in HTML-typed RSS summaries, confirmed by vendor GHSA-3v85-fqvh-7rxf, NVD Received CVE-2026-79663, and a matching three-file patch in 4.7.3. The markdown/raw-HTML sink is the earlier of the two independent surfaces the advisory names; it first appears when 40ec7822 added MdToHTML without SkipHTML and wired the rendered HTML into Atom Description. Parent tree lacks pkg/md.go and the MdToHTML-to-Description path. d1645e08 and later util/md refactors are moves/rewrites of those same flags, not first-writes. The tag-name Appendf is a later independent first-write (cc147955, human Jinvic) that expands the same RSS HTML summary; it is not the BIC because the markdown sink already made the feed an HTML XSS surface. BIC commit object has human author/committer L1nSn0w and no AI marker. AI Co-Authored-By on the fix is ignored for attribution. Verdict NOT_AI.",
+  "remaining_gap": ""
+}

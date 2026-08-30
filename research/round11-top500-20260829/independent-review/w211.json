@@ -1,0 +1,25 @@
+{
+  "worker": "w211",
+  "review_agent_id": "r389_w211",
+  "class_id": "alias-04e2c4eadbef4c1efd1789ef",
+  "case_id": "GHSA-27p7-fq6v-hh4m",
+  "repo": "frrouting/frr",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: process_type2_route accepted one of six total NLRI sizes and independently accepted ipaddr_len 0, 32, or 128 without coupling the two. A longer allowed psize paired with a shorter declared IP length lets IP or trailing bytes be consumed as VNI label bytes or ignored while the malformed route is still installed. The 2020 STREAM_GET conversion made short-buffer reads fail closed but retained this inconsistent-length acceptance.",
+    "atomic_bic": "CONFIRMED: 128ea8abbd38eddd2a9bfa18b596acd95f081353 is the earliest public commit found by symbol and vulnerable-length-history tracing. It first adds process_type2_route with both the six-value psize whitelist and the independent ipaddr_len parse, with no cross-check. Later reindent, two-label support, and STREAM_GET conversion preserve rather than originate the missing validation.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is 0ee26848f37d44ca5f1285e05f06bedd975a851c; process_type2_route, the Type-2 receive diagnostic, and the psize whitelist are absent from both bgpd/bgp_evpn.c and bgpd/bgp_attr_evpn.c in that parent.",
+    "squash_member_decomposition": "CONFIRMED: 128ea8abbd38eddd2a9bfa18b596acd95f081353 is a single-parent public feature commit, not a merge or revert. Its commit object exposes no squash/member metadata, and no finer public first-write precedes it in the clone, so it is the smallest reconstructable public BIC despite the broader EVPN feature patch.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is an ancestor of frr-4.0 and frr-10.5.0 through frr-10.6.0. CVE.org lists frr-10.5.0 and frr-10.5.1 as affected; code inspection also finds the guard absent in frr-10.5.2 and frr-10.5.3. The stable/10.5 backport merge 9f4a9ac50d54e177b26158714907486912b86290 is in frr-10.5.4 and frr-10.5.5, and the stable/10.6 backport merge 571312f72f397543e6c4d54d346a7c51eb21658c is in frr-10.6.0; those tags contain the guard.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct fix 7676cad65114aa23adde583d91d9d29e2debd045 adds the exact psize == 33 + ipaddr_len/8 or psize == 36 + ipaddr_len/8 requirement in process_type2_route. Master merge 4825b5ba563368c9a8b8884080203d6ed2b8d9f3 has that commit as second parent, and refs/pull/21098/head resolves to the direct fix. CVE.org is PUBLISHED, names the same function and patch, and is not rejected or withdrawn.",
+    "bic_only_ai_attribution": "CONFIRMED: judgment is restricted to commit 128ea8abbd38eddd2a9bfa18b596acd95f081353. Its 2017 commit object names human author Vivek Venkatraman and human committer Donald Sharp, with Signed-off-by and two human Reviewed-by trailers; it contains no Co-Authored-By, Generated-with, bot identity, or AI-tool marker. This supports NOT_AI independently of the 2026 remediation metadata."
+  },
+  "findings": [
+    "Official CVE.org state is PUBLISHED and the named vendor patch closes the observed Type-2 length-consistency flaw; this is a real vulnerability, not FALSE_POSITIVE.",
+    "The vulnerable first-write and its sole parent are locally available at full 40-hex object IDs, and the parent lacks the parser, so the introducer gate is closed.",
+    "The primary record's NOT_AI verdict, introducer, parent, master landing merge, direct fix, and release-membership claims are supported; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

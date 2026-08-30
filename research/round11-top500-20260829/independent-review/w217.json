@@ -1,0 +1,25 @@
+{
+  "worker": "w217",
+  "review_agent_id": "r389_w217",
+  "class_id": "alias-88987297646cef164c60b322",
+  "case_id": "GHSA-hpx7-jm9p-88gh",
+  "repo": "swe-agent/swe-agent",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In v1.1.0 and current main 3ea751c087f32b16e039a2233dd6eefecef325d5, do_GET removes the /trajectory/ prefix and passes the remainder directly to serve_file_content, which opens Path(self.traj_dir) / file_path through load_content without resolving and checking containment. This bypasses SimpleHTTPRequestHandler path normalization; the server also binds TCPServer to all interfaces, sends wildcard CORS, and has no authentication. JSON parsing limits readable targets to compatible trajectory-shaped JSON but does not remove the CWE-22 disclosure.",
+    "atomic_bic": "PASS: Path-limited git -S and git log -L independently trace the vulnerable join to 5b143857cb7af8b22fd421a103429f76f5259f08, where inspector/server.py was added from no prior tree with the custom route, join, JSON sink, wildcard CORS, and all-interface bind. Later 70ba97190a781705203ba838bfe0fb8be7cfa32f reformats the file and 1876870ea707eea4a4592316537f4d24e05d7901 renames it into sweagent/inspector; neither is the introducer.",
+    "immediate_parent_absence": "PASS: git cat-file and rev-list show 5b143857cb7af8b22fd421a103429f76f5259f08 has no parent, and the GitHub commit API independently reports an empty parents array. Parent absence is therefore verified rather than inferred.",
+    "squash_member_decomposition": "PASS: The BIC is the public repository root commit, and no parent or finer public member is reconstructable from repository history. Although it is a large initial import, it is the smallest surviving public object that first adds the vulnerable file, so squash_decomposed=false is appropriate under the protocol.",
+    "affected_and_fixed_release_membership": "PASS: The CVE.org record is PUBLISHED and declares versions 0 through 1.1.0 affected. Git verifies the BIC is an ancestor of tag v1.1.0 (0f3acafacabc0def8cc76b4e48acb4b6cf302cb9), whose server.py retains the vulnerable join, route, wildcard CORS, and all-interface bind. No fixed release exists because the vulnerability remains on current main.",
+    "direct_fix_or_unpatched_state": "PASS: Current GitHub main is 3ea751c087f32b16e039a2233dd6eefecef325d5 and its raw server.py still contains the vulnerable path join and exposure conditions. Issue #1472 remains open; PRs #1414 and #1473 are closed unmerged, and PR #1505 is open unmerged. fix_sha=null and direct_fix_sha=null correctly encode a verified unpatched state.",
+    "bic_only_ai_attribution": "PASS: The BIC commit object names Carlos E. Jimenez <carlosejimenez@protonmail.com> as author and committer, GitHub maps both to human account closji, and the message is only 'init' with no AI, bot, Generated-with, or Co-Authored-By marker. Later AI-associated activity is excluded from attribution because it did not introduce the vulnerable join. NOT_AI is supported from BIC-only evidence."
+  },
+  "findings": [
+    "The advisory is live rather than withdrawn or rejected: CVE-2026-75482 is PUBLISHED and GHSA-hpx7-jm9p-88gh has withdrawn_at=null.",
+    "The primary record identifies the correct vulnerability mechanism and public atomic introducer, and its parent, release, unpatched-state, and BIC-only attribution claims were independently reproduced.",
+    "No field correction is required; the unresolved upstream remediation is an operational gap, not an evidence gap in the NOT_AI judgment."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "Upstream remains unpatched as of this review: issue #1472 is open and no fix has landed on main or in a fixed release."
+}

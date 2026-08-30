@@ -1,0 +1,38 @@
+{
+  "worker": "w007",
+  "review_agent_id": "r389_w007",
+  "class_id": "alias-877be5bb530812a4d6690884",
+  "case_id": "GHSA-243r-jm6r-f6pp",
+  "repo": "jahlives/openssl_encrypt",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "FAIL: the standalone servers use no Cookie, HTTP Basic/Digest, or other browser-ambient authentication. Protected telemetry and key-server routes require an Authorization: Bearer value explicitly added by the native requests clients from token files; a hostile origin cannot obtain or automatically send that token. Telemetry /stats and /register and key-server search are already unauthenticated, so CORS does not expose a victim's authenticated authority there. The advisory's claimed authenticated cross-origin action on behalf of a visiting user is therefore not demonstrated.",
+    "atomic_bic": "FAIL: 4c7ae852c784c9986d087c5956a77fa563a05a35 is the earliest commit adding CORSMiddleware plus the wildcard telemetry default, followed by the key-server copy in fafdfeed1b279cfe61e86cd8adc132b206eef8d4, but broad CORS configuration without ambient credentials or protected browser-readable data is not an atomic vulnerability BIC.",
+    "immediate_parent_absence": "PASS as lineage only: 4c7ae852c784c9986d087c5956a77fa563a05a35 has the single parent 457f88d09cc365cdbb85b083a29f0956804730be; both telemetry paths and all CORSMiddleware/cors_origins/allow_credentials strings are absent from that parent. This proves first write, not exploitability.",
+    "squash_member_decomposition": "PASS as lineage only: the candidate is a 50-file single-parent commit, GitHub reports no associated pull request for it, and no finer public member is reconstructable from clone refs; squash_decomposed=false is supported, but there is no valid vulnerability BIC to attribute.",
+    "affected_release_membership": "FAIL: neither 4c7ae852c784c9986d087c5956a77fa563a05a35 nor 809416b74d2749cdcffb484cd65b057e1685cc13 is an ancestor of v1.3.6, whose tree has no telemetry-server path; both are ancestors of v1.4.0. No tagged affected release was found, and the claimed victim-authority mechanism is absent even in the development interval.",
+    "fixed_release_membership": "PASS as hardening lineage: 809416b74d2749cdcffb484cd65b057e1685cc13 lands through merge c1cbb36416ca300f604b1ba2771f96556f06a9b1 and is an ancestor of v1.4.0.",
+    "direct_fix_or_unpatched": "PASS as hardening, not a vulnerability fix: 809416b74d2749cdcffb484cd65b057e1685cc13 directly changes both standalone cors_origins defaults from [\"*\"] to [] and rejects wildcard origins outside debug mode; its parent retains both wildcard defaults. It removes the advisory-named configuration but does not validate the missing ambient-credential premise.",
+    "bic_only_ai_attribution": "FAIL: the 4c7ae852c784c9986d087c5956a77fa563a05a35 commit object alone contains both a Claude Code generation marker and Co-Authored-By: Claude Sonnet 4.5, but an AI marker on a non-vulnerability first-write cannot support AI_ROOT_CAUSE. The AI marker on the later hardening commit was not used for root-cause attribution."
+  },
+  "findings": [
+    "The first-party GHSA is published and not withdrawn, and CVE-2026-74881 is PUBLISHED, but those metadata do not establish the missing browser credential flow.",
+    "Telemetry authentication uses FastAPI HTTPBearer and the native requests client reads its API key from a mode-0600 file and explicitly constructs the Authorization header.",
+    "Key-server protected routes likewise parse an explicit Authorization: Bearer header; its native client reads a token file and explicitly supplies the header. The server tree contains no cookie or browser-ambient authentication path.",
+    "The unauthenticated telemetry registration endpoint can mint a caller's own API key and the key-server verifier accepts any non-empty bearer token, but those independent authorization weaknesses are directly usable without a victim browser and do not make the advisory's cross-user CORS claim true.",
+    "The candidate and hardening lineage, parent absence, public-object granularity, and v1.4.0 membership in the primary record replay correctly; the error is treating permissive CORS alone as a demonstrated credentialed cross-origin vulnerability."
+  ],
+  "corrected_fields": {
+    "bug_semantics": "FALSE_POSITIVE: the servers configured permissive CORS, but protected operations require explicit bearer tokens stored and sent by native clients, not browser-ambient credentials. Public endpoints are already unauthenticated. No source-to-sink path lets an attacker origin act with a visiting user's authority.",
+    "flaw_origin": null,
+    "introducer_sha": null,
+    "introducer_parent": null,
+    "ai_marker": null,
+    "verdict": "FALSE_POSITIVE",
+    "fix_sha": null,
+    "direct_fix_sha": null,
+    "reasoning": "A wildcard CORS policy becomes a cross-user credentialed-request vulnerability only when the browser can attach victim authority or expose protected victim data. Clone replay shows no Cookie, HTTP Basic/Digest, or other ambient browser authentication in either standalone server. All protected routes require caller-supplied bearer headers, and the shipped native clients load those secrets from local files and add the headers explicitly. A hostile website neither receives nor automatically sends them. The remaining browser-callable routes are public by design. Thus 4c7ae852 is a Claude-marked first write of permissive configuration and 809416b is direct hardening, but neither establishes the advisory's claimed vulnerability lifecycle; AI_ROOT_CAUSE must be replaced by FALSE_POSITIVE."
+  },
+  "remaining_gap": null
+}

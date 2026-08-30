@@ -1,0 +1,22 @@
+{
+  "worker": "w306",
+  "review_agent_id": "r389_w306",
+  "class_id": "alias-1538e5138ecc7af29635c310",
+  "case_id": "GHSA-r4j6-x8h7-4f8w",
+  "repo": "alseambusher/crontab-ui",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-72589 is PUBLISHED and GHSA-r4j6-x8h7-4f8w is not withdrawn. POST /import overwrites the NeDB file without schema validation; a planted hook reaches makeCommand, which concatenates tab.hook into a shell command used by /runjob or installed through /crontab/autosave. Basic authentication is inactive unless both BASIC_AUTH_USER and BASIC_AUTH_PWD are configured.",
+    "atomic_bic": "PASS: b207df5332b9c6a017d6d12a6ca5b405d128b2c0 is the first history change found by git log --all -S'tab.hook' -- crontab.js and directly adds the vulnerable tab.hook shell interpolation. The 2026 ecfe9faa586674dccfa20aab3d95f7e7ab5a48a2 rewrite preserves the mechanism and is not the BIC.",
+    "immediate_parent_absence": "PASS: the BIC has the single immediate parent 4226311766b59d2c51b22238e4369b5d5a8e18b7, whose tree contains no tab.hook occurrence.",
+    "squash_member_decomposition": "PASS: b207df5332b9c6a017d6d12a6ca5b405d128b2c0 is a normal single-parent commit and the public first-write object; no merge, squash aggregate, move, revert, or finer public member requires decomposition.",
+    "affected_release_membership": "PASS: origin/v0.2.2 points exactly to the BIC and reports package version 0.2.2; the BIC is also an ancestor of tagged v0.3.5 through v0.4.2, matching the CNA affected range through 0.4.2. The preceding v0.2.1 tag lacks tab.hook.",
+    "fixed_release_membership": "PASS: no fixed release exists. v0.4.2 contains the BIC, main HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b has no crontab.js/app.js change from v0.4.2, and the untagged origin/v1.0.0 branch still contains the sink.",
+    "direct_fix_or_unpatched_state": "PASS: the repository has no commit after the 2026-08-10 disclosure and no direct fix. Current remote refs, checked read-only with git ls-remote, match the reviewed local main, v0.2.2, v1.0.0, and v0.4.2 objects; main still has both the raw database overwrite and unsanitized hook execution.",
+    "bic_only_ai_attribution": "PASS: attribution uses only b207df5332b9c6a017d6d12a6ca5b405d128b2c0. Its raw commit object names alseambusher <alseambusher@gmail.com> as both author and committer and has no trailers or AI markers; later 2026 commits were excluded. NOT_AI is supported."
+  },
+  "findings": [],
+  "corrected_fields": {},
+  "remaining_gap": "No review evidence gap. Upstream remains unpatched through remote main 870d958669d64dca1d27ff7bf5d616d17ee7553b and released v0.4.2."
+}

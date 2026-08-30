@@ -1,0 +1,28 @@
+{
+  "worker": "w296",
+  "review_agent_id": "r389_w296",
+  "class_id": "alias-89fc55956ba0b4bc2bf0c0f5",
+  "case_id": "GHSA-565h-44m8-4c2v",
+  "repo": "xuxueli/xxl-job",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: in affected releases LoginService.makeToken serializes the complete XxlJobUser, including the password hash and privilege fields, and converts the JSON bytes to hex; parseToken reverses that encoding. Issue #3751 supplies a cookie that decodes to the admin id, username, MD5 hash, role, and permission. IndexController merely delegates login, so the operative vulnerable code is LoginService.",
+    "atomic_bic": "PASS: 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb is the smallest surviving public commit that first writes LoginService.makeToken, parseToken, and the JSON-bearing cookie path. git log -S makeToken finds only this addition and the later deletion, and blame of the operative lines at tag 3.1.1 resolves to this commit.",
+    "immediate_parent_absence": "PASS: the BIC has exactly one parent, 69d22f2c78fb90a3a006469749f72fbd8e6a0318. That tree has no LoginService and no makeToken, parseToken, or tokenJson. Its PermissionInterceptor instead authenticates a static cookie computed from MD5(username + '_' + password), not a reversible XxlJobUser JSON blob.",
+    "squash_member_decomposition": "PASS: the BIC is a normal single-parent first-write commit, not a merge, move, revert, or later squash aggregate. No finer public member is present to decompose. a2dc9011310628f3e18c3a5095e7e6a946d017bd is a 93% rename and 7b23fd2a62c0fe6909d4bc55de09bba1a139d585 changes only javax imports to jakarta imports in the token file.",
+    "affected_and_fixed_release_membership": "PASS: the BIC is an ancestor of tags 2.1.0 through 3.1.1, including CNA-listed 3.1.0 and 3.1.1; the direct fix is not an ancestor of 3.1.1. Both BIC and fix are ancestors of tag 3.2.0, matching the GHSA range <= 3.1.1 and first patched version 3.2.0.",
+    "direct_fix_or_verified_unpatched_state": "PASS: parent e02f2c65c0985e27a0edc1e57e3a884856bf090d still contains reversible makeToken/parseToken. cb1bd548a6d9512aab6f1ba9c5686de62f863fcd deletes LoginService and replaces its cookie with XxlSsoHelper.loginWithCookie carrying a user id and a random UUID; the fixed tree has no makeToken or parseToken. The GHSA directly cites this commit.",
+    "bic_only_ai_attribution": "PASS: judgment uses only BIC 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb. Its local commit object and GitHub record identify author and committer xuxueli <931591021@qq.com>, linked to GitHub user xuxueli, with the sole message '用户管理：支持在线维护系统用户' and no Co-Authored-By, Generated-with, bot, or other AI marker. The ZAST.AI reporter identity is unrelated to BIC authorship. NOT_AI is supported."
+  },
+  "findings": [
+    "The causal verdict is supported: CVE-2025-7789 is currently PUBLISHED, GHSA-565h-44m8-4c2v is not withdrawn, the vulnerable mechanism is real, 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb is the atomic BIC, and its authorship is human with no BIC AI marker.",
+    "The primary incorrectly attributes the MD5-to-SHA-256 password-validation change to direct fix cb1bd548a6d9512aab6f1ba9c5686de62f863fcd. That change was introduced earlier by a9e2019495cfc89d091e6f4ddbc997a881d6da29; cb1bd548's immediate parent already calls SHA256Tool.sha256(password). cb1bd548 remains the correct direct fix for the reversible login token because it deletes that mechanism and introduces random UUID session state."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The hex-JSON cookie was first written in 0a3542dcac7b91aca5d3a6e0dd8deb45f41e3dcb. It was directly removed in cb1bd548a6d9512aab6f1ba9c5686de62f863fcd by deleting LoginService and replacing the reversible token with xxl-sso state containing a random UUID. The password-validation change from MD5 to SHA-256 occurred earlier in a9e2019495cfc89d091e6f4ddbc997a881d6da29, not in cb1bd548 itself.",
+    "evidence": "Replace the claim that cb1bd548 changes password validation from MD5 to SHA-256: diff a9e2019495cfc89d091e6f4ddbc997a881d6da29 changes DigestUtils.md5DigestAsHex(password.getBytes()) to SHA256Tool.sha256(password), and cb1bd548 parent e02f2c65c0985e27a0edc1e57e3a884856bf090d already contains the SHA-256 call. Keep cb1bd548 as direct_fix_sha for removal of makeToken/parseToken and introduction of random UUID login state.",
+    "reasoning": "Separate the two remediation steps: a9e2019495cfc89d091e6f4ddbc997a881d6da29 introduces SHA-256 password validation on the path to 3.2.0; cb1bd548a6d9512aab6f1ba9c5686de62f863fcd directly fixes the advisory's reversible credential-bearing cookie by deleting LoginService and using xxl-sso random UUID login state. This correction does not alter introducer_sha, direct_fix_sha, or verdict NOT_AI."
+  },
+  "remaining_gap": null
+}

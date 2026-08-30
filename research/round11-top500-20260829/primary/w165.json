@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-d05c668b4ff23b0fff488539",
+  "case_id": "GHSA-cqgm-j57m-cj34",
+  "repo": "tainacan/tainacan",
+  "advisory_ids": ["CVE-2026-6230", "GHSA-cqgm-j57m-cj34"],
+  "bug_semantics": "Unauthenticated time-based blind SQL injection in Tainacan's geocoordinate WP_Query filter. REST GET handlers copy request['geoquery'] into WP_Query args; GeoCoordinate_Helper::posts_where then interpolates attacker-controlled point, distance, key, and polygon values into ST_Distance_Sphere / ST_GEOMFROMTEXT fragments with no escaping or $wpdb->prepare. A public collection items request can therefore append SQL and extract database contents. CVE-2026-6230 / Wordfence: all versions <= 1.0.3; the sink first shipped in 0.20.0.",
+  "flaw_origin": "2dc5cf5c6f6eef3e24fcc07853d5e092766b6823 (2022-12-23, feat: add geoCoordinateHelper to processed geoquery #692) created class-tainacan-geocoordinate-helper.php and wired geoquery through REST_Items_Controller. posts_where DISTANCE/CONTAINS cases concatenated $params['point'], $params['distance'], $params['key'], and $params['polygon'] directly into SQL. Those concatenations are absent from parent 1ab2f8972aa2b002dc97fcee25c0551065cf2069 and were unchanged until the 2026 patch.",
+  "introducer_sha": "2dc5cf5c6f6eef3e24fcc07853d5e092766b6823",
+  "introducer_parent": "1ab2f8972aa2b002dc97fcee25c0551065cf2069",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author and committer vnmedeiros <vnicius.nm.ba@gmail.com>; git cat-file -p 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823 has no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, or bot trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "579d28d7752b27ed3407f5197abb6349b3efc3c9",
+  "direct_fix_sha": "579d28d7752b27ed3407f5197abb6349b3efc3c9",
+  "evidence": [
+    "CVE.org CVE-2026-6230 state=PUBLISHED (Wordfence CNA, not rejected); title 'Tainacan <= 1.0.3 - Unauthenticated SQL Injection via geoquery REST API Parameter'; NVD vulnStatus=Deferred; GHSA-cqgm-j57m-cj34 withdrawn_at=null.",
+    "Wordfence/NVD/GHSA describe time-based blind SQLi via geoquery in all versions <= 1.0.3 from insufficient escaping and lack of prepared SQL; references include https://github.com/tainacan/tainacan/commit/579d28d7752b27ed3407f5197abb6349b3efc3c9.",
+    "WPScan: 'Tainacan < 1.1.0 - Unauthenticated SQL Injection via geoquery REST API Parameter', fixed in 1.1.0.",
+    "Fix 579d28d7752b27ed3407f5197abb6349b3efc3c9 (2026-04-21, vnmedeiros) 'Fix SQL injection vulnerability in geocoordinate query builder' parent 4ca7f1bd185df20268b37718b6195ee120c3f6c1; only file src/views/admin/components/metadata-types/geocoordinate/class-tainacan-geocoordinate-helper.php. Replaces raw interpolation of point/distance/key/polygon with numeric validation plus $wpdb->prepare.",
+    "git log --follow on the helper is only 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823 then 579d28d7752b27ed3407f5197abb6349b3efc3c9. git log -L 35,77 on the helper at the BIC shows posts_where created from /dev/null.",
+    "BIC 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823 added helper posts_where DISTANCE (`point($point) <= $distance`, `meta_key = $key`) and CONTAINS (`POLYGON(($polygon))`) plus REST copy `if (isset($request['geoquery'])) { $args['geoquery'] = $request['geoquery']; }` in class-tainacan-rest-items-controller.php.",
+    "Parent-tree verification: `git cat-file -e 1ab2f8972aa2b002dc97fcee25c0551065cf2069:src/views/admin/components/metadata-types/geocoordinate/class-tainacan-geocoordinate-helper.php` fails (file absent); `git grep ST_Distance_Sphere` and `geoquery` on that parent are empty. Single-parent non-merge feature commit; no reconstructable public members.",
+    "Attack path still live at tag 1.0.3: helper posts_where still concatenates unsanitized geoquery fields (no $wpdb->prepare); REST_Items_Controller copies request geoquery at the 1.0.3 file's lines 699-701. get_items_permissions_check returns true for readable collections, so the GET collection items route is unauthenticated for public collections.",
+    "Tag membership: BIC is ancestor of 0.20.0 (2023-03-09) and of 1.0.3; not ancestor of 0.19.3. Fix is not ancestor of 1.0.3; is ancestor of 1.1.0 (2026-04-29) and 1.2.0. 1.1.0 helper uses $wpdb->prepare at lines 56 and 79.",
+    "BIC commit object: author/committer vnmedeiros <vnicius.nm.ba@gmail.com> 2022-12-23; message 'feat: add geoCoordinateHelper to processed `geoquery` #692'; empty trailers. AI judgment is BIC-only; issue #692 is a 2022 human feature request and does not mark the commit."
+  ],
+  "reasoning": "CVE-2026-6230 is a published Wordfence CWE-89 record, not withdrawn or rejected. The sink is GeoCoordinate_Helper::posts_where concatenating REST-supplied geoquery fields into MySQL spatial predicates. That function and the REST geoquery pass-through were first written in 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823; the parent tree lacks the helper file and any ST_Distance_Sphere/geoquery SQL, and no later commit rewrote the concatenation before 579d28d7752b27ed3407f5197abb6349b3efc3c9. The BIC is therefore the smallest public first-write, not a move, refactor, revert, or squash aggregate. It precedes affected tag 1.0.3 (from first release 0.20.0); the direct fix lands in 1.1.0, matching WPScan's patched boundary even though Wordfence's upper bound is the last vulnerable release 1.0.3. The BIC commit object has a human author/committer and no AI trailers, so authorship is NOT_AI.",
+  "remaining_gap": null
+}

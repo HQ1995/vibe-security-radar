@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-21b7018ceb0c1082fec1b21d",
+  "case_id": "GHSA-74m6-m3xx-3vmj",
+  "repo": "keras-team/keras",
+  "advisory_ids": [
+    "CVE-2026-12570",
+    "GHSA-74m6-m3xx-3vmj"
+  ],
+  "bug_semantics": "keras.models.load_model() / load_weights on a crafted .keras or .weights.h5 file walks H5IOStore and materializes HDF5 datasets without checking declared shape against on-disk storage size. H5IOStore.get() hands callers an h5py Group (later H5IOStore.__getitem__/safe_get_h5_dataset) so store[key] or np.array(dataset) allocates to the declared shape. A chunked gzip fill-value-only dataset can declare petabyte-scale shape while storing kilobytes, forcing an OOM kill (CWE-770). This is the main load_model path, not the KerasFileEditor-only CVE-2026-0897 guard.",
+  "flaw_origin": "Commit a3ba0b92a2596fbe699356af6fc44572c38c9695 first added keras_core/saving/saving_lib.py with H5IOStore.get() returning h5py groups/datasets and load_own_variables doing store[key] with no size bound. Parent 3788a9958261b3400e345972e53bb80ff2516b3e has no H5IOStore or saving_lib. Later a762b418bfc162d16b92670d938d53c28ad2766c wrapped that access in H5Entry.__getitem__ (bfloat16 np.array only); 7c3278ff/d865f5f0 folded it into H5IOStore.__getitem__; 9286df3460cb980992c392e9f0fa65f72ba010ba added unconditional np.array(value); d5a88bdb added safe_get_h5_dataset for link/virtual checks still without a shape-bomb bound. The first surviving keras-3 write of the unbounded load is a3ba0b92, not those later wrappers.",
+  "introducer_sha": "a3ba0b92a2596fbe699356af6fc44572c38c9695",
+  "introducer_parent": "3788a9958261b3400e345972e53bb80ff2516b3e",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author/committer Francois Chollet <francois.chollet@gmail.com>; cat-file -p and log body have no Co-Authored-By, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "4933ea4a5b3fcc24ceacdc276f5bb5dfbd06756c",
+  "direct_fix_sha": "4933ea4a5b3fcc24ceacdc276f5bb5dfbd06756c",
+  "evidence": "Advisory GHSA-74m6-m3xx-3vmj / CVE-2026-12570 (NVD 2026-08-10, withdrawn_at null) names H5IOStore.__getitem__ in keras/src/saving/saving_lib.py and cites fix https://github.com/keras-team/keras/commit/4933ea4a5b3fcc24ceacdc276f5bb5dfbd06756c. Pre-fix parent f937c535589df095b99f27d78a2cd92982f485d9 H5IOStore.__getitem__ calls safe_get_h5_dataset then np.array(value) with no declared-vs-stored check. git log -S \"class H5IOStore\" --all -- \"*.py\" first surviving keras-3 hit is a3ba0b92a2596fbe699356af6fc44572c38c9695 (\"Add saving_lib.\"); keras_core/saving/saving_lib.py is a 625-line add. Immediate parent 3788a9958261b3400e345972e53bb80ff2516b3e has no keras_core/saving/saving_lib.py and parent-tree grep for H5IOStore is empty. Single-parent commit. At a3ba, H5IOStore.get() returns h5py File/Group; keras_core/layers/layer.py load_own_variables does v.assign(store[f\"{i}\"]). git merge-base --is-ancestor a3ba0b92 4933ea4 is yes. Fix 4933ea4 (PR #22975, single parent f937c535) adds _H5_DATASET_BOMB_FLOOR_BYTES=4GiB and _H5_DATASET_MAX_EXPANSION=1000 in safe_get_h5_dataset; those symbols are absent at the fix parent. Tag check: v3.14.0 / v3.12.2 lack the bomb floor; v3.15.0 and v3.12.3 contain 4933ea4 (advisory \"<= 3.15.0\" is slightly wide). Keras-2 experimental H5IOStore in 0b393d4049afd187ed7d24ea70177a72cf4a3ce2 was deleted by ac9aadc and is not a git-move source of keras_core/saving/saving_lib.py.",
+  "reasoning": "The bug is unbounded HDF5 dataset materialization on the keras-3 load_model/load_weights path. That path first appears when a3ba0b92 added H5IOStore that returns raw h5py groups so load_own_variables indexing allocates to the declared shape. Parent-tree verification shows those symbols absent. Later commits only wrap the same unsized read (H5Entry.__getitem__, H5IOStore.__getitem__, safe_get_h5_dataset link checks, unconditional np.array) and are not first-writes. a3ba0b92 is a single-parent first-write of a new file, not a move/refactor/squash. The named fix 4933ea4 is the first commit that rejects shape-bomb datasets on this path and is the direct_fix. AI judgment is BIC-only: Francois Chollet authored and committed a3ba0b92 with no Co-Authored-By, Generated-with, or bot identity, hence NOT_AI.",
+  "remaining_gap": null
+}

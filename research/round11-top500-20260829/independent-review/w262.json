@@ -1,0 +1,54 @@
+{
+  "worker": "w262",
+  "review_agent_id": "r389_w262",
+  "class_id": "alias-9facb10815652e7cc3caa664",
+  "case_id": "GHSA-g36m-9g3m-2vmp",
+  "repo": "apache/ws-neethi",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "Policy normalization materializes the Cartesian product of attacker-controlled ExactlyOne alternatives. Repeated binary alternatives make the output 2^N, causing unbounded heap allocation. Commit 9069bcf9d401fbcfff834f26248845f8d51da4b5 adds MAX_ALTERNATIVES=10000 inside getCrossProduct, and child commit 3099a3f37885fc6fa5c69a7d41a097b78b6beb73 supplies a 75-level binary reproducer expecting RuntimeException."
+    },
+    "atomic_bic": {
+      "status": "CORRECTION_REQUIRED",
+      "evidence": "The atomic BIC is 05ce870322fb9c50d7cdf1c65e403a08379572b3, not repository root ae621abb456e212f7e4038c0ccae1bd5542c5805. The root implementation only formed pairwise products and omitted the full N-way alternative set. 05ce replaced that loop with recursive Policy.crossProduct over all terms, creating the exact exponential 2^N mechanism later ported and refactored into AbstractPolicyOperator.getCrossProduct."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Immediate parent 33d3be55ef6f8b96018dd683af8175adb080226b is locally present and contains the older pairwise i/j implementation; it has neither Policy.crossProduct nor the recursive all-terms expansion added by 05ce870322fb9c50d7cdf1c65e403a08379572b3."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "05ce870322fb9c50d7cdf1c65e403a08379572b3 is a single-parent patch landing, not a merge or squash with hidden commit members. Its message points to WSCOMMONS-19; the Jira record and attachment WS-COMMONS-19.zip (SHA-256 e82b482467daacf1ea0662a7ba4996b60881f6034c7a40bb71af22b7935b657d) contain the recursive crossProduct patch and attribute it to reporter/attachment author Paul Nolan. Later 64241dd3841a8fc137f48f1a1ef62fab7eaceef5, 24c60d6c359ca1b9dd7e1b830ab4f114683a3331, and 1a8ffd6d39234d3e9615de52f818a78d113e8029 are ports/refactors, not new BICs."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Annotated tag neethi-3.2.1 resolves to 9daf936fd3e3369307e773a6a8e492a3b64bfb22, contains BIC 05ce870322fb9c50d7cdf1c65e403a08379572b3, lacks MAX_ALTERNATIVES, and does not contain fix 9069bcf9d401fbcfff834f26248845f8d51da4b5. Annotated tag neethi-3.2.2 resolves to 2351df23093e1bd4b2d2c8f9630e95e929a5de4e and contains both the BIC and fix. This matches the Apache CNA CVE record's affected range 0 to less than 3.2.2."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix 9069bcf9d401fbcfff834f26248845f8d51da4b5 changes only AbstractPolicyOperator.java, adds MAX_ALTERNATIVES=10000, and throws after the accumulated cross-product exceeds the cap. The following test commit exercises the same exponential normalization path."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution is evaluated on BIC 05ce870322fb9c50d7cdf1c65e403a08379572b3 and its decomposed patch provenance, not on the 2026 fix. The 2006-05-05 Jira issue and attachment identify Paul Nolan as reporter and patch author; the Git commit identifies Sanka Samaranayake as author/committer and has no trailers or AI/bot markers. The 2006 provenance predates modern generative coding assistants, closing human authorship and supporting NOT_AI."
+    }
+  },
+  "findings": [
+    "Primary verdict NOT_AI is substantively correct, but its atomic introducer is wrong.",
+    "Repository root ae621abb456e212f7e4038c0ccae1bd5542c5805 had an uncapped but pairwise-only normalization loop; it did not implement the full recursive N-way Cartesian product described by the advisory and reproducer.",
+    "WSCOMMONS-19 commit 05ce870322fb9c50d7cdf1c65e403a08379572b3 first introduced the exact recursive all-terms product, and its immediate parent proves absence.",
+    "The external patch provenance changes the causal writer from the root commit's Sanjiva Weerawarana to Paul Nolan, with Sanka Samaranayake as landing committer."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The exact exponential N-way Cartesian-product mechanism was introduced by 05ce870322fb9c50d7cdf1c65e403a08379572b3 when the WSCOMMONS-19 patch replaced the prior pairwise loop with recursive Policy.crossProduct over every child ExactlyOne. The code was subsequently ported into Neethi 2 and refactored into getCrossProduct without removing the unbounded allocation.",
+    "introducer_sha": "05ce870322fb9c50d7cdf1c65e403a08379572b3",
+    "introducer_parent": "33d3be55ef6f8b96018dd683af8175adb080226b",
+    "introducer_parent_absent": false,
+    "ai_marker": "absent: WSCOMMONS-19 Jira and attachment metadata identify Paul Nolan as the 2006 patch author; commit 05ce870322fb9c50d7cdf1c65e403a08379572b3 identifies Sanka Samaranayake as author/committer and contains no AI/bot trailers or markers. The BIC predates modern generative coding assistants.",
+    "reasoning": "The advisory's 2^N behavior requires the full product across all child alternatives. The root implementation only combined pairs and was replaced by WSCOMMONS-19's recursive all-terms algorithm in 05ce870322fb9c50d7cdf1c65e403a08379572b3; that commit is therefore the smallest first-write of the exact mechanism. Parent-tree inspection, later port/refactor history, release topology, and the direct cap fix all close. Human patch provenance in 2006 keeps the causal verdict NOT_AI."
+  },
+  "remaining_gap": null
+}

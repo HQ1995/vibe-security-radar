@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-1418a5efffd8dfdca79c4199",
+  "case_id": "GHSA-7r39-6q8m-qw68",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "CVE-2026-78677",
+    "GHSA-7r39-6q8m-qw68"
+  ],
+  "bug_semantics": "Repo.clone() and Repo.clone_from() converted caller-supplied separate_git_dir/separate-git-dir input into git clone --separate-git-dir=<path> and executed it while allow_unsafe_options remained false. Because --separate-git-dir redirects the complete Git metadata directory, an attacker whose input is forwarded as a clone option can make Git create repository metadata outside the intended clone destination; the clone safety denylist omitted this option and therefore raised no UnsafeOptionError.",
+  "flaw_origin": "Commit 00c5497f190172765cc7a53ff9d8852a26b91676 generalized the former always-bare fork operation into public Repo.clone(), removed the mandatory bare=True option, and continued forwarding arbitrary **kwargs directly to git clone. The contemporaneous command wrapper rendered separate_git_dir as --separate-git-dir=<value>, so this was the first affected public clone API and the first commit whose default clone path could honor an attacker-controlled external metadata directory. Later commit b425301ad16f265157abdaf47f7af1c1ea879068 added clone_from() on the same _clone path, and later safety-denylist commits e6108c7997f5c8f7361b982959518e982b973230 and 5c59e0d63da6180db8a0b349f0ad36fef42aceed preserved the original flaw by omitting --separate-git-dir.",
+  "introducer_sha": "00c5497f190172765cc7a53ff9d8852a26b91676",
+  "introducer_parent": "806450db9b2c4a829558557ac90bd7596a0654e0",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names human author and committer Sebastian Thiel <byronimo@gmail.com>, contains only the ordinary subject/body, and has no Co-Authored-By, Generated-with, Assisted-by, bot identity, or other AI trailer/marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "b68afff45af0f49e79a3e2d2162018986b37ad5d",
+  "direct_fix_sha": "b68afff45af0f49e79a3e2d2162018986b37ad5d",
+  "evidence": [
+    "The first-party advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-8mcc-hrx5-hvxc identifies git/repo/base.py Repo.unsafe_git_clone_options and Repo._clone(), gives the public Repo.clone()/clone_from() attack path, reports affected versions <=3.1.58 and patched versions >=3.1.59, and demonstrates that a separate_git_dir kwarg creates a full Git metadata tree outside the destination with allow_unsafe_options at its default false.",
+    "git log -L 454,456:lib/git/repo.py at 00c5497f190172765cc7a53ff9d8852a26b91676 shows the causal change: options={'bare': True}; options.update(kwargs); self.git.clone(..., **options) became self.git.clone(..., **kwargs), while the method was renamed from fork_bare to clone. git grep at that tree locates Repo.clone at lib/git/repo.py:443 and the unfiltered invocation at line 456.",
+    "Direct parent-tree verification at 806450db9b2c4a829558557ac90bd7596a0654e0 finds no Repo.clone method: lib/git/repo.py:441 is fork_bare, line 454 forces options={'bare': True}, and line 456 invokes clone with those options. A direct Git experiment returned exit 128, 'options --bare and --separate-git-dir cannot be used together', and created no separate directory, confirming the affected default non-bare Repo.clone path is absent in the immediate parent.",
+    "At the BIC, lib/git/cmd.py:208-224 transform_kwargs/dashify renders a multi-character Python kwarg as --<dashified-name>=<value>; therefore separate_git_dir reaches Git as --separate-git-dir=<value>. Commit b425301ad16f265157abdaf47f7af1c1ea879068 later added Repo.clone_from() by routing its **kwargs through the same _clone implementation, and 57d053792d1cde6f97526d28abfae4928a61e20f later explicitly normalized separate_git_dir without introducing the already-existing pass-through.",
+    "git show b68afff45af0f49e79a3e2d2162018986b37ad5d directly adds '--separate-git-dir' to Repo.unsafe_git_clone_options in git/repo/base.py and adds rejection coverage for both keyword and multi-option forms through clone and clone_from. Its sole parent is 9729ed3b948f2bde09f1f188c5311e172212b67e, the vulnerable 3.1.58-era head cited by the first-party advisory.",
+    "Version ancestry checks show BIC 00c5497f190172765cc7a53ff9d8852a26b91676 is contained in the earliest containing release tag 0.2.0-beta1 (peeled commit 1019d4cf68d1acdbb4d6c1abb7e71ac9c0f581af) and in tag 3.1.58 (peeled commit 30be45d786e95023e23c616fec5cbabca861b44c). The fix is not an ancestor of 3.1.58 (merge-base --is-ancestor exit 1) but is an ancestor of tag 3.1.59 (peeled commit 66340d77aab9a7468f4aed3681d4ef1e3c0ec931).",
+    "git cat-file -p 00c5497f190172765cc7a53ff9d8852a26b91676 shows one parent, author Sebastian Thiel <byronimo@gmail.com>, committer Sebastian Thiel <byronimo@gmail.com>, and no trailers or AI marker. The fix commit's GPT 5.6 trailers are not relevant under the BIC-only attribution rule."
+  ],
+  "reasoning": "The vulnerability is an unsafe option-forwarding lifecycle, not a defect first created by the 2026 patch context. The smallest causal code change is 00c5497f190172765cc7a53ff9d8852a26b91676: it created the affected public Repo.clone API as a normal, non-bare clone and forwarded every kwarg, while the command layer converted separate_git_dir into Git's dangerous --separate-git-dir option. Its immediate parent only exposed fork_bare and forced --bare on the default call, which Git rejects when combined with --separate-git-dir; thus the affected default Repo.clone mechanism is absent there. The later clone_from addition expanded reachability, and the 2022/2023 denylist work created the allow_unsafe_options safety contract but failed to close the pre-existing hole; neither is earlier than the real BIC. Tag ancestry places the BIC before the affected line and the direct one-commit fix before 3.1.59 but outside 3.1.58. Finally, the BIC commit object has only a human author/committer and no AI signal, so the fix commit's explicit GPT assistance cannot attribute the root cause and the required verdict is NOT_AI.",
+  "remaining_gap": null
+}

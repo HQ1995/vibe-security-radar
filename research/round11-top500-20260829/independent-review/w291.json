@@ -1,0 +1,54 @@
+{
+  "worker": "w291",
+  "review_agent_id": "r389_w291",
+  "class_id": "alias-48fc20ef32757cb47993d255",
+  "case_id": "GHSA-8rw6-p7m8-63jp",
+  "repo": "surrealdb/surrealdb",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "At v3.1.3, all three RECORD-user element-permission paths expand wildcard array paths in ascending index order with Value::each and then mutate the same array with Value::cut; cut removes an indexed element with Vec::remove, shifting later indices and invalidating pending paths. The fix regression cases independently encode both observed consequences: deny-all leaked odd-indexed elements and a predicate selected the wrong element identities."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "c4386f1549baed416e8add1dc7498532d3777b19 is the first exact source-history hit for `for k in out.each(&fd.name)` and atomically adds the field SELECT-permission loop that combines pre-existing ascending wildcard expansion with indexed deletion. Earlier 9becf187f41725e116f4c85327c1a7987534bd5d supplied Value::each and was already its ancestor; those generic primitives alone were not the vulnerable permission-filtering lifecycle."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "The BIC has the single immediate parent 6b6d4f65f918305c8d81eff78aa1df0d0ab35781. Direct parent-to-BIC diff adds the entire permission loop; the parent version of lib/src/doc/pluck.rs ends after producing the output and contains no each-based permission filtering or deletion loop."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The BIC is an ordinary one-parent commit, not a merge or squash aggregate, so member decomposition is not applicable. Exact history confirms later extraction/split commits merely carry the same loop, while 15579bd2cc57a3f88074acf54b42008598d9c87f copies the established each-plus-cut mechanism into the streaming pipeline and is not the first write."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "detail": "The BIC is an ancestor of exact tag v3.1.3 (7db9a42083e164dcaede273a48bf22df53a3c8c6). That tag has forward iteration in doc/reduce.rs, doc/output.rs, and exec/operators/scan/pipeline.rs and indexed Vec::remove in Value::cut, matching the advisory's last-affected <=3.1.3 range."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "detail": "Direct fix 6881b18ddd0ef89e6a213b61e5008233d8a301ce is an ancestor of exact tag v3.1.4 (c9e039542e85c3853f26219198df1ae64291edda) but not v3.1.3. v3.1.4 contains reverse iteration at every affected filter site. Mainline fix 8f89b260bb9692e5b0d58930793d482a8207eedc is not in v3.1.4 but is in v3.2.0."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "detail": "8f89b260bb9692e5b0d58930793d482a8207eedc and 6881b18ddd0ef89e6a213b61e5008233d8a301ce have identical default patch-id 06a0168e797c2d85e8831450fd2cd9506a649967 (and identical stable patch-id 6e3208fde0ff9c61d28541e969389136afc84d37). The patch reverses each-expanded paths at all three sinks and adds focused deny-all and predicate regression cases."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "The raw BIC commit object names Tobie Morgan Hitchcock as author and committer, has one parent, and has no body or AI/bot/co-author marker. The Claude Opus 4.7 co-author trailer appears only on later carrier 15579bd2cc57a3f88074acf54b42008598d9c87f and is correctly excluded from BIC-only attribution."
+    },
+    "advisory_status": {
+      "status": "PASS",
+      "detail": "Fresh exact GitHub Advisory API and OSV reads confirm a live GHSA with withdrawn null, no CVE identifier or alias, affected <=3.1.3, and fixed 3.1.4; there is no withdrawn/rejected CVE disposition requiring FALSE_POSITIVE."
+    }
+  },
+  "findings": [
+    "The primary record's NOT_AI verdict, BIC, immediate parent, mechanism, carrier exclusions, mainline fix, release-line direct fix, and release membership are independently reproduced.",
+    "The primary's patch-id 06a0168e797c2d85e8831450fd2cd9506a649967 is the default/unstable git patch-id for both fix commits; stable mode also matches at 6e3208fde0ff9c61d28541e969389136afc84d37, so no correction is required.",
+    "Current advisory metadata remains consistent with the frozen bundle: GHSA-8rw6-p7m8-63jp is live, has no CVE alias, and declares <=3.1.3 affected with 3.1.4 first patched."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

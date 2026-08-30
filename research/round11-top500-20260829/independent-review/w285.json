@@ -1,0 +1,25 @@
+{
+  "worker": "w285",
+  "review_agent_id": "r389_w285",
+  "class_id": "alias-ab9acbb7c6030c57f8155aa5",
+  "case_id": "GHSA-gr63-2w3v-w2gp",
+  "repo": "quickjs-ng/quickjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. js_iterator_concat_next retains pointers to it->values across the user-controlled JS_GetIterator2 call before setting it->running; re-entrant return() frees and advances those slots, after which next resumes and frees the stale values again. Issue #1368 supplies the matching PoC and ASan heap-use-after-free; CVE-2026-3979 is PUBLISHED and names this UAF.",
+    "atomic_bic": "Confirmed as ef8dc076e01803d85cd5c771c289842fc2e18a47. Its diff against parent 4be46473cb6ee82ed337c20b8a0623f7400529d9 first adds Iterator.concat, including both the re-entrant next path and free-without-nulling return loop.",
+    "immediate_parent_absence": "Confirmed. The BIC has the single immediate parent 4be46473cb6ee82ed337c20b8a0623f7400529d9, and that tree contains neither js_iterator_concat nor the vulnerable free loop; the default-branch squash parent 3425c47bb7e67c1b3b2668a6f09d2b056597138e is likewise absent.",
+    "squash_member_decomposition": "Confirmed. PR #1158 consists of source member ef8dc076e01803d85cd5c771c289842fc2e18a47 followed by 8d2a1eb95e9c39b632dd467ad6f502d1039aeb08, which changes only generated binary files. The extracted concat implementation hashes identically in ef8dc07 and squash carrier bc7c58db82a45b735175dc7af8151422f0a55e09.",
+    "affected_and_fixed_release_membership": "Confirmed. Squash carrier bc7c58db82a45b735175dc7af8151422f0a55e09 is absent from v0.10.1 and is an ancestor of v0.11.0, v0.12.0, and v0.12.1; the named fix is not in v0.12.1 and is in v0.13.0. v0.12.1 contains the vulnerable GetIterator2/free sites, while v0.13.0 contains the nulling fix. This covers the CNA-listed affected releases 0.12.0 and 0.12.1.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. daab4ad4bae4ef071ed0294618d6244e92def4cd changes the return loop to free each slot and replace it with JS_UNDEFINED and adds tests/bug1368.js. Direct PR commit 7c1f9e238bd1715fbbef6817d12775d69dd5329b has the same parent and tree as the landed fix.",
+    "bic_only_ai_attribution": "Confirmed absent. BIC ef8dc076e01803d85cd5c771c289842fc2e18a47 is authored and committed by Ben Noordhuis <info@bnoordhuis.nl>; its commit message contains only the Iterator.concat subject and TC39 proposal URL, with no AI author, co-author, generator, or assistant marker. GitHub appears only as committer of the squash carrier and is not used for BIC attribution."
+  },
+  "findings": [
+    "The primary record correctly identifies ef8dc076e01803d85cd5c771c289842fc2e18a47 as the reconstructable smallest public first-write and bc7c58db82a45b735175dc7af8151422f0a55e09 as its default-branch squash carrier.",
+    "The primary NOT_AI verdict is supported exclusively by the unmarked human-authored BIC object; fix authorship and merge machinery are not substituted for introducer attribution.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

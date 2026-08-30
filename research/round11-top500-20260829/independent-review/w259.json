@@ -1,0 +1,27 @@
+{
+  "worker": "w259",
+  "review_agent_id": "r389_w259",
+  "class_id": "alias-86a1fe9e952cb04d5e675f9a",
+  "case_id": "GHSA-287c-fxr7-3w6c",
+  "repo": "apache/ws-neethi",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed: through neethi-3.2.1, PolicyReference.normalize() calls getRemoteReferencedPolicy() on a registry miss; that method passes the caller-controlled URI to URL.openConnection() without scheme or destination-address restrictions and follows HttpURLConnection redirects, enabling SSRF via arbitrary protocols and forbidden destinations.",
+    "atomic_bic": "Confirmed ee7f26a25bdb0bff6cbc611731159ba6f6f16032: bounded reverse -S searches for openConnection and getRemoteReferencedPolicy both identify this 2007 commit as the first Git write of the vulnerable remote-fetch path.",
+    "immediate_parent_absence": "Confirmed: the sole parent 8baf24289b8a2976f7df94adac1d1470ec80be13 exists and its PolicyReference only performs registry lookup then throws; tree-scoped search finds no openConnection or remote-policy fetch. The primary field introducer_parent_absent=false correctly denotes that the Git parent itself is present.",
+    "squash_member_decomposition": "Confirmed: the BIC is a single-parent non-merge commit, not a squash aggregate. Its message identifies an applied AXIS2-2451 patch; the public JIRA attachments attribute PolicyReference.diff to Nencho Lupanov in May 2007 and contain the same unrestricted URL.openConnection sink, with no finer Git member to substitute for the BIC.",
+    "affected_release_membership": "Confirmed: ee7f26a25bdb0bff6cbc611731159ba6f6f16032 is an ancestor of neethi-3.2.1^{commit}=9daf936fd3e3369307e773a6a8e492a3b64bfb22, whose PolicyReference still performs the unrestricted fetch; none of the remediation commits is an ancestor of 3.2.1.",
+    "fixed_release_membership": "Confirmed: 696e2489d2054eea01ba644ce4202121dd4ed6ef, 196862e97da09de193e5c663b6246a1cc476ce41, and 26f81a6b860135d557fb161850fb6d47e247a52f are ordered ancestors of neethi-3.2.2^{commit}=2351df23093e1bd4b2d2c8f9630e95e929a5de4e; CVE.org remains PUBLISHED and both CVE.org and Apache identify versions before 3.2.2 as affected.",
+    "direct_fix_or_unpatched": "Correction required: 696e2489d2054eea01ba644ce4202121dd4ed6ef adds the http/https allowlist and 196862e97da09de193e5c663b6246a1cc476ce41 adds the named address-class filter, but redirects remain enabled after both. Because the primary expressly includes redirect following in the mechanism, the complete direct-fix boundary is 26f81a6b860135d557fb161850fb6d47e247a52f, which calls setInstanceFollowRedirects(false).",
+    "bic_only_ai_attribution": "Confirmed NOT_AI: the exact BIC is dated 2007, has human Apache author/committer Sanka Samaranayake, no AI/bot/co-author/generated trailers, and points to contemporaneous JIRA patches submitted by Nencho Lupanov. No later AI-marked refactor or fix is used to attribute the BIC."
+  },
+  "findings": [
+    "The vulnerability, atomic BIC, parent-tree absence of the vulnerable mechanism, affected/fixed release topology, and NOT_AI attribution are independently confirmed.",
+    "primary fix_sha=196862e97da09de193e5c663b6246a1cc476ce41 is only the address-filter stage and does not close the primary's stated redirect-following mechanism; 26f81a6b860135d557fb161850fb6d47e247a52f is the first commit at which all stated SSRF mechanisms are closed."
+  ],
+  "corrected_fields": {
+    "fix_sha": "26f81a6b860135d557fb161850fb6d47e247a52f"
+  },
+  "remaining_gap": null
+}

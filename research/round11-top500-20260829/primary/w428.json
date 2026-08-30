@@ -1,0 +1,40 @@
+{
+  "class_id": "alias-69a56edd2872b02919a7aa96",
+  "case_id": "GHSA-4rm2-28vj-fj39",
+  "repo": "dedoc/scramble",
+  "advisory_ids": [
+    "CVE-2026-44262",
+    "GHSA-4rm2-28vj-fj39"
+  ],
+  "bug_semantics": "During public API-document generation, NodeRulesEvaluator evaluated controller-local assignments referenced by validation rules and injected their values with extract(). If a referenced local variable was named code and was populated from request input, extract() overwrote the evaluator's own $code string immediately before eval(\"return $code;\"), so attacker-supplied PHP was executed in the Laravel application context.",
+  "flaw_origin": "PR #1005 member f8cc090269b40fb360a42d8c7355a31713abdace first added collection and evaluation of local variables plus extract($injectableVariables) into the same scope as the evaluator's $code followed by eval. Its parent had the evaluator and eval but did not collect or inject controller-local values. The main-branch squash 0eb67ce3ea0396626365fb18821b3eec2f433afb has the same tree as the reconstructed PR head and carried this mechanism into v0.13.2.",
+  "introducer_sha": "f8cc090269b40fb360a42d8c7355a31713abdace",
+  "introducer_parent": "57dfa62237ec7b799916b26377a22a0e730eb2e5",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "f8cc090269b40fb360a42d8c7355a31713abdace",
+    "513f958518cffc0cbfe52b0b6bdef4acaac99880",
+    "c26b7ff5ab4a361e27024f9849780408f72d601c",
+    "2903828ac651191cacd79d3f08162b33dd320387",
+    "f27b904c502747617f83507a6658cba23db44d72"
+  ],
+  "ai_marker": "absent; BIC commit object author and committer are Petro Chaikivskyi <dmin@DESKTOP-BHJLRSI.>, and its message has no Co-Authored-By, Generated-with, bot, or other AI trailer",
+  "verdict": "NOT_AI",
+  "fix_sha": "b54b0c43bdebaa01f66cc3dfdd8f91e19b12da96",
+  "direct_fix_sha": "3469bcdfe08f3c85f202e37f363c2462933f9f42",
+  "evidence": [
+    "The published CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-44262 and first-party GHSA https://github.com/dedoc/scramble/security/advisories/GHSA-4rm2-28vj-fj39 identify CWE-94, the public documentation endpoints, affected >=0.13.2,<0.13.22, and patched 0.13.22; CVE state is PUBLISHED.",
+    "git diff 57dfa62237ec7b799916b26377a22a0e730eb2e5 f8cc090269b40fb360a42d8c7355a31713abdace -- src/Support/OperationExtensions/RulesEvaluator/NodeRulesEvaluator.php shows the BIC added collectVariableNames/evaluateVariableAssigment, extract($injectableVariables), and eval(\"return $code;\").",
+    "Direct parent-tree verification of 57dfa62237ec7b799916b26377a22a0e730eb2e5 shows no local-variable collection or extract($injectableVariables): it only pretty-printed the expression, extracted injectable typed parameters, and evaluated code that initialized $request internally.",
+    "git log -L 140,158:src/Support/OperationExtensions/RulesEvaluator/NodeRulesEvaluator.php f27b904c502747617f83507a6658cba23db44d72 traces the vulnerable local-variable extraction/eval hunk to f8cc090269b40fb360a42d8c7355a31713abdace; main-history -S searches locate its squash at 0eb67ce3ea0396626365fb18821b3eec2f433afb and removal at b54b0c43bdebaa01f66cc3dfdd8f91e19b12da96.",
+    "PR ref refs/pull/1005/head resolves to f27b904c502747617f83507a6658cba23db44d72. Its reconstructable member chain is f8cc090269b40fb360a42d8c7355a31713abdace, 513f958518cffc0cbfe52b0b6bdef4acaac99880, c26b7ff5ab4a361e27024f9849780408f72d601c, 2903828ac651191cacd79d3f08162b33dd320387, f27b904c502747617f83507a6658cba23db44d72; git diff --exit-code confirms the PR-head tree equals squash 0eb67ce3ea0396626365fb18821b3eec2f433afb.",
+    "git merge-base --is-ancestor confirms squash 0eb67ce3ea0396626365fb18821b3eec2f433afb is absent from v0.13.1 and present in v0.13.2 and v0.13.21. The decomposed member predates the squash, whose tree is the release-carried representation of its vulnerable mechanism.",
+    "At tag v0.13.21, NodeRulesEvaluator.php lines 192-199 assign pretty-printed source to $code, call extract($variables), and execute eval(\"return $code;\"); a variables entry named code therefore replaces the intended source string with the request-derived value.",
+    "Direct fix member 3469bcdfe08f3c85f202e37f363c2462933f9f42 replaces in-scope extract/eval with evaluateWithScopedVariables: a static runner receives source as $__scramble_code, renames injected variables with a __ suffix, rewrites expression references, and evaluates only the separately held source string.",
+    "refs/pull/1145/head is 7611607b6ec09fda5e369f5aa029b9e3b4f6ade9; its tree equals main fix b54b0c43bdebaa01f66cc3dfdd8f91e19b12da96. The main fix is the v0.13.22 tag target, is absent from v0.13.21, and is present in v0.13.22.",
+    "git show -s --format=raw f8cc090269b40fb360a42d8c7355a31713abdace records human author and committer Petro Chaikivskyi <dmin@DESKTOP-BHJLRSI.> and a message with no trailers or bot/AI marker."
+  ],
+  "reasoning": "The advisory mechanism closes against the code. The documentation generator first evaluates assignments for variables referenced by validation rules; request-derived data can therefore become an entry in the variables map. In the vulnerable evaluator, the internal source string was stored in $code before extract($variables). A controller-local variable named code replaced that internal value, and eval then treated the attacker's value as PHP source. The smallest reconstructable first-write is PR member f8cc090269b40fb360a42d8c7355a31713abdace: its immediate parent lacks local-variable collection/injection, while later members retain or refactor the same flaw. The main squash 0eb67ce3ea0396626365fb18821b3eec2f433afb is tree-equivalent to the PR head and marks inclusion in the first affected tag v0.13.2, but is not substituted for the atomic member BIC. Fix member 3469bcdfe08f3c85f202e37f363c2462933f9f42 isolates evaluator internals and renames injected variables; its tree reaches the v0.13.22 main fix b54b0c43bdebaa01f66cc3dfdd8f91e19b12da96. Because the BIC commit object has only human authorship/committer identity and no AI marker, this real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

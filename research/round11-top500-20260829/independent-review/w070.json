@@ -1,0 +1,68 @@
+{
+  "worker": "w070",
+  "review_agent_id": "r389_w070",
+  "class_id": "alias-632a622f8428e0e7a4b22ac5",
+  "case_id": "GHSA-f3c2-j7g8-vpp8",
+  "repo": "apache/airflow",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "CONFIRMED",
+      "evidence": "Task SDK var.json deserializes a Variable and returns the resulting Python value to task/template code. Before the direct fix, the masking dispatcher handled str and dict but not a top-level list; SecretsMasker.add_mask itself recursively handles Iterable values, so the missing dispatch left list contents unregistered and visible in task logs and Rendered Templates. CVE-2026-68970 is currently PUBLISHED and GHSA-f3c2-j7g8-vpp8 has withdrawn_at null."
+    },
+    "atomic_bic": {
+      "status": "CORRECTION_REQUIRED",
+      "evidence": "The first public commit that created the vulnerable Task SDK source-to-sink path is PR #45431 member 48a84add96dc83057a4334fababb69e1a295c54b. It adds VariableAccessor, activates context['var']['json'], calls JSON loads, and returns the value without any mask_secret call. The primary's 12b6fa60256e8a8f896e6ac338a01d63e7ca8469 is a later PR #50895 member that narrowed an unlanded sibling member's unconditional masking; main was already vulnerable before that PR."
+    },
+    "immediate_parent_absence": {
+      "status": "CONFIRMED_FOR_CORRECTED_BIC",
+      "evidence": "Immediate parent 413a1833c302e2409d2ac96c6521f97e6589a594 has no active VariableAccessor or _get_variable implementation and keeps the var context entries commented out, so the vulnerable Task SDK Variable path is absent."
+    },
+    "squash_member_decomposition": {
+      "status": "CONFIRMED_FOR_CORRECTED_BIC",
+      "evidence": "GitHub PR #45431 exposes six public members. The first member 48a84add96dc83057a4334fababb69e1a295c54b writes the vulnerable path. The cumulative head-to-base and squash-to-base diffs have identical stable patch-id 76c4de39bb59458bbd6a23d3ecf3f1a2b48e6683; squash carrier a6da8df0d7bb1958b7e3ab558e06d16ce72b5327 is therefore not the smallest public object."
+    },
+    "affected_release_membership": {
+      "status": "CONFIRMED",
+      "evidence": "Squash carrier a6da8df0d7bb1958b7e3ab558e06d16ce72b5327 is an ancestor of tags 3.0.0, 3.0.1, 3.0.2, 3.1.0, and 3.3.0. The Apache CNA record marks apache-airflow versions 0 through less than 3.3.1 affected."
+    },
+    "fixed_release_membership": {
+      "status": "CONFIRMED",
+      "evidence": "Main fix b968192cd3aeb55fad3bb5dc0d88917b4b29407f is not itself an ancestor of tag 3.3.1, but its v3-3-test backport 0de18f5ea722fdb0f3372d02cf0222348e83ddcf is an ancestor of 3.3.1 and not 3.3.0. The two context.py fixes have identical stable patch-id 8ca743eed5392490dc068a71740ea9dfc7eed871."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "CONFIRMED",
+      "evidence": "Direct fix b968192cd3aeb55fad3bb5dc0d88917b4b29407f adds the missing elif isinstance(val, list): mask_secret(val, key) branch and focused list tests. This is the exact source-level repair; 0de18f5ea722fdb0f3372d02cf0222348e83ddcf is its released 3.3.1 backport."
+    },
+    "bic_only_ai_attribution": {
+      "status": "CONFIRMED_NOT_AI_FOR_CORRECTED_BIC",
+      "evidence": "Atomic BIC 48a84add96dc83057a4334fababb69e1a295c54b has human author and committer Amogh <amoghrajesh1999@gmail.com>, an empty body/trailer set, and no AI, bot, Generated-by, Co-Authored-By, Copilot, Cursor, Claude, ChatGPT, or OpenAI marker. PR #70891 explicitly discloses Claude Opus 5, but that disclosure belongs only to the 2026 fix and cannot attribute the BIC."
+    }
+  },
+  "findings": [
+    "The vulnerability and direct fix are real, and the primary's final NOT_AI verdict remains correct.",
+    "The primary selected 12b6fa60256e8a8f896e6ac338a01d63e7ca8469 by comparing it with its unlanded PR parent 2ecd61b9b4ddabadf723016d3768b6db240ddbbe, but it did not test the pre-PR mainline state. Parent e23f980acdaa4074cb222140edb62b0c330bdff1 of the #50895 squash already returned deserialized Variables without masking, including lists.",
+    "The actual first vulnerable writer is PR #45431 member 48a84add96dc83057a4334fababb69e1a295c54b, whose immediate parent lacks the active Variable path. The corresponding mainline carrier is squash a6da8df0d7bb1958b7e3ab558e06d16ce72b5327.",
+    "Release topology independently confirms the corrected history: the #45431 squash is in 3.0.0 and later, while the exact fix reaches 3.3.1 through backport 0de18f5ea722fdb0f3372d02cf0222348e83ddcf and is absent from 3.3.0.",
+    "The corrected BIC has no AI marker. AI disclosure on the fix PR is non-causal for introduction."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "PR #45431 member 48a84add96dc83057a4334fababb69e1a295c54b first introduced and activated Task SDK Variable access in task context. Its var.json path deserialized JSON and returned the resulting value without calling mask_secret, so a top-level list's contents were never registered with the task log masker. PR #50895 member 12b6fa60256e8a8f896e6ac338a01d63e7ca8469 later removed unconditional masking added only in its preceding unlanded member; it did not first introduce the already-existing mainline exposure.",
+    "introducer_sha": "48a84add96dc83057a4334fababb69e1a295c54b",
+    "introducer_parent": "413a1833c302e2409d2ac96c6521f97e6589a594",
+    "introducer_parent_absent": true,
+    "squash_decomposed": true,
+    "decomposed_shas": [
+      "48a84add96dc83057a4334fababb69e1a295c54b",
+      "c6cf08b09076e934ff09d7e6b78744b6e64bce25",
+      "4486cccafe88c32528f35a98a919447461eabdfa",
+      "667e11c6163680bb72c03480b006a18ad23ce89a",
+      "9802544f48a4b99576388b94ead8ab8c5aca32d6",
+      "04605288337c61e0a0315e9d8f24b7f644e4cb76"
+    ],
+    "ai_marker": "absent; corrected atomic BIC 48a84add96dc83057a4334fababb69e1a295c54b has human author and committer Amogh <amoghrajesh1999@gmail.com>, empty body and trailers, and no AI or bot marker. Claude Opus 5 is disclosed only on direct-fix PR #70891.",
+    "reasoning": "The advisory's list leak predates PR #50895. PR #45431 first made VariableAccessor active in Task SDK task context and returned deserialized JSON without registering it in SecretsMasker; its first public member is therefore the smallest vulnerable writer, and the member's parent lacks the active path. The later #50895 PR briefly had unconditional masking in one member and then narrowed it before squash, but the squash landed onto a mainline parent that was already vulnerable, so that internal regression is not the BIC. The corrected BIC is human-authored with no AI marker, leaving the causal verdict NOT_AI."
+  },
+  "remaining_gap": null
+}

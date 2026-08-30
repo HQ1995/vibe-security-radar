@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-6fdb33117abfca26a9f0f504",
+  "case_id": "GHSA-49gm-hh7w-wfvf",
+  "repo": "olivetin/olivetin",
+  "advisory_ids": [
+    "CVE-2026-27626",
+    "GHSA-49gm-hh7w-wfvf"
+  ],
+  "bug_semantics": "OliveTin interpolates user-supplied action argument values into a command string and executes it with sh -c. TypeSafetyCheck for type password returns nil, so shell metacharacters are accepted. A later shell-mode denylist (checkShellArgumentSafety) blocked url/email/raw_string_multiline/very_dangerous_raw_string but omitted password, leaving an authenticated command-injection path through password-typed values. Independently, webhook JSON extraction copies extracted keys into ExecutionRequest.Arguments; parseActionArguments only type-checks config-defined ActionArgument entries, so undeclared webhook keys skip TypeSafetyCheck and are still templated into the shell command. Default webhook authType is none.",
+  "flaw_origin": "The first write of the password-type TypeSafetyCheck bypass is PR #340 member d88608c4948b5e44db10f806ac59b93b7d902f17 (GitHub-squash landing 943b4c75aa737226e48da4dc04d14899fb16a9d2). It added case \"password\": return nil in TypeSafetyCheck while wrapCommandInShell already used exec.CommandContext(..., \"sh\", \"-c\", finalParsedCommand). Parent eb4f28dfdaad49e0d97dd331269dd47fb2e4d1ac:internal/executor/arguments.go exists and has no password case. Later c917d1b1e7a2a90acec79760cb1ff18ffae82409 added checkShellArgumentSafety without listing password. Later f22b3953b1a744fb544f27a9077d79fdb80eb242 added webhook ExtractArguments and executeAction that copies extracted maps into ExecutionRequest.Arguments with no defined-arg filter. Fix 4bbd2eab153287dc744ad061c58af7693f0c3ddc adds password to the unsafe-type map, filters arguments to defined names, and refuses Shell for webhook-tagged requests.",
+  "introducer_sha": "d88608c4948b5e44db10f806ac59b93b7d902f17",
+  "introducer_parent": "eb4f28dfdaad49e0d97dd331269dd47fb2e4d1ac",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "d88608c4948b5e44db10f806ac59b93b7d902f17"
+  ],
+  "ai_marker": "absent: git cat-file -p d88608c4948b5e44db10f806ac59b93b7d902f17 shows author and committer jamesread <contact@jread.com>, subject \"feature: Password type (no validation)\", and no Co-Authored-By, Generated-with, bot identity, or other AI trailer. GitHub squash landing 943b4c75aa737226e48da4dc04d14899fb16a9d2 is authored by James Read <contact@jread.com> and committed by GitHub <noreply@github.com> with the same human patch and no AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "4bbd2eab153287dc744ad061c58af7693f0c3ddc",
+  "direct_fix_sha": "4bbd2eab153287dc744ad061c58af7693f0c3ddc",
+  "evidence": [
+    "CVE.org record CVE-2026-27626 is PUBLISHED (not rejected/withdrawn). GHSA-49gm-hh7w-wfvf withdrawn_at is null. The first-party advisory describes CWE-78 OS command injection via password-type bypass of checkShellArgumentSafety and via webhook JSON extraction skipping TypeSafetyCheck before sh -c.",
+    "git log -S \"case password\" --all -- **/arguments.go returns first-write 943b4c75aa737226e48da4dc04d14899fb16a9d2 (feature: Password type (no validation) (#340)). GitHub PR #340 is a 1-commit squash; member d88608c4948b5e44db10f806ac59b93b7d902f17 has parent eb4f28dfdaad49e0d97dd331269dd47fb2e4d1ac and the same two-file patch (internal/executor/arguments.go, webui.dev/js/ArgumentForm.js). git cat-file -e PARENT:internal/executor/arguments.go succeeds; git grep case \"password\" on that parent returns no match.",
+    "At the BIC, TypeSafetyCheck added case \"password\": return nil while wrapCommandInShell already did exec.CommandContext(ctx, \"sh\", \"-c\", finalParsedCommand). Other types still went through typeSafetyCheckRegex (ascii/unicode_identifier/etc). The password case is therefore the first write of an unvalidated user argument type into the existing shell sink.",
+    "git log -S checkShellArgumentSafety -- service/internal/executor/ first adds the denylist in c917d1b1e7a2a90acec79760cb1ff18ffae82409 with unsafeTypes url/email/raw_string_multiline/very_dangerous_raw_string and no password. That commit is incomplete remediation of other types, not the password first-write.",
+    "git log --follow -- service/internal/webhooks/handler.go first-writes f22b3953b1a744fb544f27a9077d79fdb80eb242 (feat: webhooks support). Parent efa964406abec65c1707c075d7cc88b8c2a9abc8 lacks service/internal/webhooks/handler.go. That commit executeAction copies ExtractArguments() output into ExecutionRequest.Arguments; parseActionArguments only type-checks action.Arguments entries, so undeclared extract keys skip TypeSafetyCheck and are still templated into Shell.",
+    "Fix commit 4bbd2eab153287dc744ad061c58af7693f0c3ddc (security: GHSA-49gm-hh7w-wfvf, parent 1db6509288bb356c6b9128a2318c91fc16e80d83) adds password to the unsafe map in checkShellArgumentSafety, adds filterToDefinedArgumentsOnly, and refuses Shell when a request tag is webhook. That is the advisory-linked closure for both vectors."
+  ],
+  "reasoning": "This is a real published CWE-78, not a withdrawn advisory. The BIC is the reconstructed PR #340 member that first wrote the password TypeSafetyCheck bypass into the existing sh -c sink; the GitHub squash is not used as BIC because the finer public member exists and its parent tree lacks the password case. Later denylist and webhook commits are subsequent incomplete-control / new-surface events, not the password first-write. AI attribution is taken only from that BIC commit object: human author/committer jamesread with no Co-Authored-By/Generated-with/bot marker. Therefore NOT_AI.",
+  "remaining_gap": ""
+}

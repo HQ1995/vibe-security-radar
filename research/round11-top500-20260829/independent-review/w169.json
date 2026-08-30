@@ -1,0 +1,26 @@
+{
+  "worker": "w169",
+  "review_agent_id": "r389_w169",
+  "class_id": "alias-0a2cc5322720d2111a6e0c03",
+  "case_id": "GHSA-ffj4-jq7m-9g6v",
+  "repo": "datadog/guarddog",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed: the ZIP branch extracted every namelist member without inspecting uncompressed size, compression ratio, or file count, enabling CWE-409 disk-exhaustion denial of service. CVE-2026-22870 remains PUBLISHED; CVE and GHSA both identify < 2.7.1 as affected and 2.7.1 as fixed.",
+    "atomic_bic": "Confirmed cd08be9a2e3fc7d2fc410684b425b36b44aa910f as the smallest surviving first-write commit: it directly added the unguarded ZipFile/namelist/extract loop to PackageScanner.download_compressed.",
+    "immediate_parent_absence": "Confirmed against immediate parent 37c7d0767ba28f4df46117d478f97652594c491c: product Python code had no ZIP extraction or safe_extract path; the only ZipFile hit was unrelated evaluator test-data handling.",
+    "squash_member_decomposition": "Confirmed: cd08be9a2e3fc7d2fc410684b425b36b44aa910f first wrote the flaw; 9337a8255606a739a8a30f2f3624279c02b78263 moved it into guarddog/utils/archives.py; mainline squash 72fe2dbf392e62d96de8609123ec59c08e99dd5b has the same tree as 9337a8255606a739a8a30f2f3624279c02b78263 and is not the BIC.",
+    "affected_release_membership": "Confirmed: 72fe2dbf392e62d96de8609123ec59c08e99dd5b is an ancestor of v2.7.0, whose safe_extract still iterates zip.namelist() and calls zip.extract() with no bomb check.",
+    "fixed_release_membership": "Confirmed: b2e10d2f5a0e1e0f2a14ade76cbec17d5cf4df35 and advisory-cited descendant c3fb07b4838945f42497e78b7a02bcfb1e63969b are ancestors of v2.7.1; b2e10d2f5a0e1e0f2a14ade76cbec17d5cf4df35 is not an ancestor of v2.7.0.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix b2e10d2f5a0e1e0f2a14ade76cbec17d5cf4df35: it is the first guarddog commit found by -S _check_compression_bomb and adds ZIP infolist file-count/file-size aggregation plus size, ratio, and count rejection. Its parent 9aa6a725b2c71d537d3c18d1c15621395ebb879c has no such helper. c3fb07b4838945f42497e78b7a02bcfb1e63969b only refactors the already-present checks.",
+    "bic_only_ai_attribution": "Confirmed from the BIC commit object only: author and committer are Christophe Tafani-Dereeper, the message is 'Support scanning ZIP PyPI packages (closes #104)', and there is no Co-Authored-By, Generated-with, AI-tool, or bot marker. Later squash and fix metadata were excluded from attribution."
+  },
+  "findings": [
+    "The primary record correctly identifies the vulnerability lifecycle, atomic BIC, parent state, squash/member relationship, affected and fixed tags, and first direct fix.",
+    "The primary NOT_AI verdict is supported by BIC-only attribution evidence; the later squash Co-authored-by trailer does not apply to the off-mainline BIC object.",
+    "No correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

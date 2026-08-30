@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-f023f924fd9f60a72dcafabb",
+ "case_id": "GHSA-7ff3-w2cq-gmpq",
+ "repo": "penpot/penpot",
+ "advisory_ids": [
+  "CVE-2026-17613",
+  "GHSA-7ff3-w2cq-gmpq"
+ ],
+ "bug_semantics": "The ::import-binfile RPC accepted an optional caller-controlled file-id for in-place v3 import but authorized only the separately supplied project-id. The overwrite branch loaded the target with an id-only get-minimal-file lookup, imported attacker content under the caller's project-id, and updated the existing file row by that id, so an authenticated user who could edit their own project could overwrite and re-parent a victim file. The advisory also mentions WebSocket subscription; the named import-binfile file-id gap and the BIC/fix here are the file-takeover path.",
+ "flaw_origin": "37cec8891f44b0c320006193783d8648d3f32d0f is the smallest commit that first wrote the vulnerable path end to end: optional :file-id on schema:import-binfile, assoc of that id onto ::bfc/file-id with no file-level permission check, import-file-and-overwrite* (id-only lookup), and save-file! update-vs-insert when ::overwrite is set while keeping the caller project-id. Direct parent fd62141c04817c2ae86d10ad41b130fe616cf789 had none of those lines and only created new imported files.",
+ "introducer_sha": "37cec8891f44b0c320006193783d8648d3f32d0f",
+ "introducer_parent": "fd62141c04817c2ae86d10ad41b130fe616cf789",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "9242556da6b87d646d766385c24575cc71a1c6a5",
+ "direct_fix_sha": "9242556da6b87d646d766385c24575cc71a1c6a5",
+ "evidence": "CVE.org CVE-2026-17613 state=PUBLISHED (not rejected/withdrawn); GHSA-7ff3-w2cq-gmpq withdrawn_at=null. Parent tree still has backend/src/app/rpc/commands/binfile.clj, backend/src/app/binfile/v3.clj, and backend/src/app/binfile/common.clj; git grep on the parent finds no [:file-id {:optional true}], import-file-and-overwrite*, or assoc ::bfc/file-id. BIC git cat-file -p and git log -1 --format='%an %ae %cn %ce' are Andrey Antukh <niwi@niwi.nz> / Andrey Antukh <niwi@niwi.nz> with subject ':tada: Add inplace binfile import support' and no Co-Authored-By/Generated-with/bot author. Pre-fix HEAD of 9242556^ still has optional :file-id, (uuid? file-id) (assoc ::bfc/file-id file-id), and only projects/check-edition-permissions! on project-id. Fix 9242556da6b87d646d766385c24575cc71a1c6a5 (#10994) removes the parameter, closes the schema, and adds import-binfile-schema-rejects-file-id; its body has AI-assisted-by: mimo-v2.5-pro which does not attribute the BIC. ppa re-checked line-level 2026-08-29: git show fd62141c:backend/src/app/rpc/commands/binfile.clj schema:import-binfile has no optional [:file-id] param and the handler destructures only project-id/version/file; the '[:file-id {:optional true} ::sm/uuid]' + '(assoc ::bfc/file-id file-id)' in-place import lines are added by BIC 37cec889 -> introducer_parent_absent=true.",
+ "reasoning": "Real CWE-862: in-place import took a client file-id and overwrote that row after checking only project edit rights. First write of that path is 37cec889 (single parent, not a squash/move/revert). BIC commit object is human (niwi@niwi.nz); later AI on the fix does not change BIC authorship. Verdict is NOT_AI, not FALSE_POSITIVE, because the CVE record is published and the code path matches the advisory.",
+ "remaining_gap": ""
+}

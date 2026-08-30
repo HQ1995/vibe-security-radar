@@ -1,6 +1,6 @@
 # Vibe Security Radar - canonical research ledger summary
 
-The JSONL ledger is the source of truth. Refreshed 2026-08-24 after completing the round6 causal wave over the full 1,182-case priority pool (`round6/priority-pool.jsonl`), fixing 5 malformed introducer fields, and normalizing JSONL serialization to compact form (`17fc98f`). Previous refresh: 2026-08-23 (checkpoint 9, 1114 cases) plus the Gogs causal closure and duplicate TP fold.
+The JSONL ledger is the source of truth. Refreshed 2026-08-26 after appending 5,469 leftover (0%-gate HAS_AI / keep_config) classes as UNANALYZED. Unique confirmed TPs unchanged at 234. Previous refresh: 2026-08-26 leftover intake; before that, window extension (+263 UNANALYZED) and round7 causal wave.
 
 ## Canonical status
 
@@ -8,14 +8,74 @@ Counts below treat `site_publication.publish: false` TP rows as folded duplicate
 
 | Status | Classes | Meaning |
 |---|---:|---|
-| AI_ROOT_CAUSE | 186 | Unique official IDs where AI code introduced or enabled the vulnerability. |
+| AI_ROOT_CAUSE | 189 | Unique official IDs where AI code introduced or enabled the vulnerability. |
 | AI_CODE_FLAWED | 59 | Unique official IDs where AI-written code was flawed. |
 | FOLDED_DUPLICATE_TP | 7 | Extra class rows for the same GHSA as another TP; kept in the book, not extra TPs. |
-| NOT_AI | 980 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
-| PARTIALLY_ANALYZED | 6357 | Some evidence exists, but the complete causal chain is not closed. |
+| NOT_AI | 1172 | AI attribution is resolved as not AI-caused; remediation and history are tracked separately below. |
+| PARTIALLY_ANALYZED | 6162 | Some evidence exists, but the complete causal chain is not closed. |
 | BLOCKED | 31 | A required implementation, fix, ownership, or history boundary is unavailable. |
-| UNANALYZED | 16248 | No individual causal research has been completed. |
-| Total | 23861 | One row per class_id. Unique confirmed TPs: 195. |
+| UNANALYZED | 21980 | No individual causal research has been completed. |
+| Total | 29593 | One row per class_id. Unique confirmed TPs: 234. |
+
+## Leftover intake as UNANALYZED - 2026-08-26
+
+Live 0% leftover was 28,691 product-source classes. 22,875 were already on the book (`class_id` match). The stable remainder — HAS_AI or keep_config, hash-proven, no advisory-ID collision with an existing row — was appended as UNANALYZED. Existing statuses were not touched. 0% droppable rows were not added.
+
+| Filter | Count | Ledger action |
+|---|---:|---|
+| Leftover already on the book | 22,875 | Untouched |
+| HAS_AI / keep_config, new `class_id`, new IDs | **5,469** (5,032 HAS_AI / 437 keep_config; 1,063 reviewed / 3,031 unreviewed / 1,375 NVD-only) | Appended as UNANALYZED |
+| Same advisory already booked under another `class_id` | 90 | Skipped (GHSA twins) |
+| Clone/scan failure (unknown) | 257 | Left off the book |
+| Unscanned (snapd / wpf / logstash / apm-server / kubesphere) | 9 | Already on the book; still unscanned |
+
+After intake: leftover 28,691; on the book by `class_id` 28,344; off the book 347 (257 unknown + 90 twins). Merge: `scripts/merge_funnel_lane.py` (`created: 5469, updated: 0`). Lane: `artifacts/leftover-unanalyzed-lane-20260826.jsonl`. Report: `artifacts/leftover-unanalyzed-merge-report-20260826.json`. Backup: `artifacts/funnel-account-20260817.jsonl.bak-leftover-unanalyzed-20260826`.
+
+## Advisory identity recovery - 2026-08-26 (from-source rebuild merged + user fill; 24,124/24,124 hash-proven)
+
+The funnel ledger's `advisory_ids` were recovered for every resolvable row from the from-source rebuild in `.ai-slop/state/refresh-20260826/` (125,928 upstream clusters, 110,054 GHSA records, 94,119 NVD records; generator `scripts/recover_advisory_ids_20260826.py`; lane + pins + report in `artifacts/advisory-recover-report-20260826.json`). Merge: `scripts/merge_funnel_lane.py` (`updated: 3004, created: 0`); report: `artifacts/advisory-lane-merge-report-20260826.json`.
+
+- Proof standard: a row is hash-proven iff `sha256(“\n”.join(sorted(census-case members)) + “\n”)[:24] == class_id suffix` (census-case = `GHSA-` + lowercase body, rest UPPERCASE). No inference pins were written; only census-map verbatim, cluster membership, or 96-bit hash matches.
+- EVIDENCE_GAP closure: 0 of 202 EVIDENCE_GAP-flagged no-ID rows remain without IDs. This merge pinned 202 (its entire null-source overlap with EVIDENCE_GAP rows); the 5 round7 identity-pinning failures (openclaw qG 1342-pool, mytube 4, fastgpt 23, ech0 22, coolify qJ 41) were already hash-pinned by the window-extend lane (`hash_pin_20260826`) and are hash-proven.
+- Result: 21,233 → **24,124** rows carry `advisory_ids`; all 24,124 pass the hash formula (248/248 TP rows). 2,890 previously-empty rows recovered (`hash_pin_aliasset_20260826` 2,503 / `hash_pin_k1_20260826` 383 / `hash_pin_repopool_20260826` 4); 114 pre-ID'd rows re-pinned over values that never hashed (`subset_of_existing` 51 over research_block/repo_cohort_exact/hash_pin_20260826/census_alias_map values, `hash_pin_aliasset_20260826` 54, `hash_pin_k1_20260826` 9); the final 1 row filled by the user (`manual_fill`).
+- Former honest-empty row resolved (2026-08-26, user-supplied): `alias-bd1066d6c07a95b9fb97e4a2` (meshtastic/firmware, UNANALYZED, `advisories: 1`) filled as `CVE-2024-47065` with `advisory_aliases` `GHSA-4hjx-54gf-2jh7`, source `hash_pin_k1_20260826`. Verified: `H("CVE-2024-47065\n") == bd1066d6c07a95b9fb97e4a2` (member set is the single CVE, not CVE+GHSA — `H([CVE,GHSA])` does not match, so the fill form is exactly right). External confirmation: GitHub **repository-level** advisory API `repos/meshtastic/firmware/security-advisories` pairs `GHSA-4hjx-54gf-2jh7 ↔ CVE-2024-47065` ("Traceroute_APP responses are not rate-limited", <2.5.1, CVSS 6.5). This is a repo-level advisory from 2024, absent from the global advisory-database clone, OSV, and the NVD 2025/2026 pool — the reason the local exhaustive sweep (GHSA database, NVD feeds, alias sets of all 7 meshtastic CVEs, cohort pools) found no candidate set. A structural gap, not a sweep miss. Diff vs pre-merge backup: only this one row gained 3 fields (additions only); row count, order, and status histogram unchanged.
+
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-advisory-lane-merge-20260826` (pre-merge). Earlier chain: `.bak-advisory-recover-20260826`, `.bak-advisory-correct-20260826`, `.bak-advisory-backfill-20260826`, `.bak-round7-correction2-20260826`.
+
+
+## Window extension to 2026-08-26
+
+Sources pulled 2026-08-26: GitHub `advisory-database` HEAD `c02e9c72` (commit date 2026-08-26 15:28 UTC), NVD 2025/2026 feeds, GitHub Advisories API `published>=2026-08-17`. Local clones (574) rescanned with Source v3 `author_identity-v3` + `explicit_attribution-v5` (`scripts` output under `.ai-slop/state/refresh-20260826/`).
+
+| Filter | Count | Ledger action |
+|---|---:|---|
+| GitHub advisories in 2026-08-17 .. 2026-08-26 | 4173 (290 reviewed / 3883 unreviewed) | — |
+| NVD 2026 published in window (non-REJECTED) | 3764 | — |
+| Alias clusters overlapping an existing class | 67 (42 case-fold only; 25 new GHSA twins) | Identity backfill on the 25; status untouched |
+| New github-reviewed + first-party repo, disjoint from the book | **263** | Appended as UNANALYZED |
+| Unreviewed / NVD-only with a weak GitHub URL | 4379 | **Not** added (would flood the book; original 23,861 was repo-narrowed reviewed-quality) |
+| Local clone AI commits (since 2025-05-01, new matcher) | 126,203 across 475/574 repos | Inventory only, not TPs |
+| GPT-display-name + Codex GitHub noreply recoveries | 0 | Matcher v3 still finds none on this clone pool |
+| `Made-with: Cursor` exclusive (no other module) | 1,926 commits | Inventory; do not auto-flip NOT_AI/TP |
+
+Of the 263 new UNANALYZED rows, 57 sit in a locally cloned repo that already has AI commits (17 unique repos, including mlflow, vm2, praisonai, mobsf, monai). That is HAS_AI on the repository, not AI-on-BIC. They stay UNANALYZED until a causal wave.
+
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-window-extend-20260826`. Site `coverage_to` / `source_cutoff` moved to 2026-08-26; published TP count unchanged at 234.
+
+## Round7 causal research wave - 2026-08-26 (complete: 200/200)
+
+Round7 is the prioritized wave over the 200 highest-opportunity PARTIALLY_ANALYZED cases (`round7/priority-pool.jsonl`, tier C=90/A=90/D=20), selected from the 6,357-row partial pool. Full causal method per `docs/AUDIT-PROTOCOL.md` on every case: minimal atomic BIC with parent-absence verification, fix identification, AI-role adjudication on the BIC's vulnerable lines only. Full report: `artifacts/round7-verdict-report-20260826.md`.
+
+- Final verdicts: 192 NOT_AI, 3 AI_ROOT_CAUSE, 0 AI_CODE_FLAWED, 5 EVIDENCE_GAP (EVIDENCE_GAP rows stay PARTIALLY_ANALYZED).
+- Archive fields: `round7_research`, `round7_verdict`, `round7_research_source` (per row).
+- New TPs: openclaw/openclaw GHSA-hhff-fj5f-qg48 (AI_ROOT_CAUSE; BIC b9b47f5002 with Claude Opus 4.6 Co-Authored-By on the vulnerable content_type detection lines). The two other AI attributions were reversed by the correction below.
+- EVIDENCE_GAP (5, stay PARTIALLY_ANALYZED): advisory-identity-pinning failures — openclaw 1342-id pool (qG), franklioxygen/mytube 4 candidates, labring/fastgpt 23, lin-snow/ech0 22, coollabsio/coolify 41 (qJ). No-inference rule forbids guessing among candidate advisories.
+- Quality control: 12 qZ lines repaired from truncated round6 SHAs to full 40-hex (clone `rev-parse` + `cat-file -e` verified); 4 orphaned-BIC policy rows (BIC unreachable from origin after force-push/rebase; `introducer_parent=null` + `remaining_gap`, verdicts stand on recorded evidence); 2 root-commit BICs; 12 squash-decomposed. Final reconciliation: 200/200 pool coverage, 0 duplicate class_ids, all 18 keys, all SHAs 40-hex, `direct_fix_sha == fix_sha` everywhere.
+- Ledger: `update_ledger_round7_20260825.py` → `archived=200, tp_duplicate_gate=pass`; `detect_duplicate_tps` clean post-write; no case_id clash among the 3 new TPs. Unique confirmed TPs at wave close: 232 → 235; after the correction below: 235 → 233; after correction round 2: 233 → **234**.
+- Correction (2026-08-26, external cross-check, Grok): two AI attributions pointed at non-BIC commits and were re-adjudicated NOT_AI via `scripts/apply_round7_correction_20260826.py`, each re-verified against local clones before writing. (1) pydantic/pydantic-ai CVE-2026-65975 AI_ROOT_CAUSE→NOT_AI: recorded BIC b31d6072b7 (#6169, Claude Opus 4.8 co-author) is a move refactor — `sanitize_messages` already exists in its parent 0e7401af and the commit is not an ancestor of fixed v1.107.1; true BIC 53964f0ea7 (#5228, Douwe Maan, no AI markers) first wrote the drop logic into ui/_adapter.py, absent from v1.87.0, present from v1.88.0; fix corrected to 54d51dbf31 (#6407; 54d51dbf^ == v1.107.0, not the previously recorded 86029861). (2) coder/coder GHSA-686C-7VGV-V3FX AI_CODE_FLAWED→NOT_AI: the Claude Opus 4.7 revert f2b9ec2b4b is not the minimal BIC of the vulnerable line (`git log -L` traces it to c8246e3e8a, #1064, 2022, pre-AI) and was never released — no tag contains the revert without fix 57b11d40 (all 20 tags containing carrier 9400eaa9 contain the fix). Status moves: NOT_AI 1172→1174, AI_ROOT_CAUSE 188→187, AI_CODE_FLAWED 60→59. Reconciliation re-run: 200/200, 0 problems; `detect_duplicate_tps`: none. Full detail in `artifacts/round7-verdict-report-20260826.md`.
+- Correction round 2 (2026-08-26, Grok second-pass audit of the 200 records, `scripts/apply_round7_correction2_20260826.py`): 3 rows re-verified against local clones. (1) relyra CVE-2026-49454 / GHSA-jv46-xfwm-36j7 stays NOT_AI — rejected: the only AI signal on BIC 2aeba972 (human szTheory) is `Made-with: Cursor`, which is non-canonical under the production source policy (`source_policy.py:480/:489`, `source_matcher.py:547-551`); its known fix 2e456897 (AI-written patch to the human `[candidate]` arm) is backfilled, verdict unchanged. (2) openclaw GHSA-VVGP-4C28-M3JM NOT_AI→AI_ROOT_CAUSE — BIC 20523b918ad (2026-02-24, `Made-with: Cursor` canonical first-writer of `trustedProxyAuthOk`); fix corrected to ec45c317 (human Steinberger, the advisory's actual fix; 96fba91b `[AI]` is later broader hardening, recorded in evidence); folded into existing TP alias-3f35b69d (no net-new TP). (3) better-auth GHSA-wxw3-q3m9-c3jr NOT_AI→AI_ROOT_CAUSE (net-new TP) — BIC corrected to b5f3bad6 (2025-10-21, #5470, `Co-authored-by: Copilot` canonical, first writer of the unverified cookie-state parse branch); human fix 9deb7936 adds the oauthState nonce + `state_security_mismatch`. Net: NOT_AI 1174→1172, AI_ROOT_CAUSE 187→189, unique TPs 233→**234**; `audit_record_gates.py` 30→26 (all on non-target pre-existing rows); `detect_duplicate_tps` none; reconciliation 200/200.
+- Site publication 2026-08-26 (`scripts/publish_tp_ledger.py`): `web/src/generated/research-data.json` refreshed 232 → **234** cases (AI_ROOT_CAUSE 175 / AI_CODE_FLAWED 59), 234/234 dated, preflight 0 errors. New on the site: better-auth GHSA-WXW3-Q3M9-C3JR (correction-round-2 net-new TP; advisory 2026-05-15, `< 1.6.2` → `1.6.2`, evidence b5f3bad6/9deb7936) and openclaw GHSA-HHFF-FJ5F-QG48 (wave-7 promotion; advisory 2026-04-03, `<= 2026.3.28` → `2026.3.31`, evidence b9b47f50/ee52f642). GHSA-VVGP-4C28-M3JM stays a single case (fold row `publish: false`). Inputs: `first-party-advisory-dates.json` +2, `first-party-advisory-releases.json` +2, `generated-code-evidence.json` 133 → 135 (`.bak-20260826` each).
+Backup: `artifacts/funnel-account-20260817.jsonl.bak-round7-correction2-20260826` (post-correction-round-2; pre: `artifacts/funnel-account-20260817.jsonl.bak-round7-correction-20260826`; pre-wave: `artifacts/funnel-account-20260817.jsonl.bak-round7-20260825`). Remaining pool: 0.
 
 ## Gogs causal closure - 2026-08-23
 
@@ -155,13 +215,13 @@ Status remains BLOCKED for all 22 rows; missing causal history is not evidence f
 
 ## Integrity
 
-- JSONL rows: 23861/23861 parse successfully.
-- Unique class_id: 23861/23861.
-- Status counts: {"AI_CODE_FLAWED": 59, "AI_ROOT_CAUSE": 186, "BLOCKED": 31, "NOT_AI": 980, "PARTIALLY_ANALYZED": 6357, "UNANALYZED": 16248}.
+- JSONL rows: 29593/29593 parse successfully.
+- Unique class_id: 29593/29593.
+- Advisory identity: 29,593/29,593 rows carry hash-proven `advisory_ids` (sha256 of sorted census-cased member IDs + trailing newline == class_id suffix; 248/248 TP rows pass). The leftover intake of 5,469 is hash-proven 5,469/5,469. The former no-ID row `alias-bd1066d6c07a95b9fb97e4a2` (meshtastic/firmware) was user-filled on 2026-08-26 as `CVE-2024-47065` (repo-level advisory; externally verified) — see "Advisory identity recovery" section.
 - BLOCKED boundary dossiers: 22/22 unique class_ids.
 - NOT_AI evidence audit: 39/39 passed; no row is counted as fully remediated unless remediation_status is FIX_VERIFIED.
 - NOT_AI dimension fields: notai_attribution_status, notai_remediation_status, notai_lineage_status, notai_causal_review_status.
-- Ledger backup: funnel-account-20260817.jsonl.bak-final-reconcile-20260819.
+- Ledger backups: leftover UNANALYZED intake (funnel-account-20260817.jsonl.bak-leftover-unanalyzed-20260826, pre-merge; latest); chain: .bak-advisory-lane-merge-20260826, .bak-advisory-recover-20260826, .bak-advisory-correct-20260826, .bak-advisory-backfill-20260826, .bak-window-extend-20260826, .bak-round7-correction2-20260826, .bak-round7-correction-20260826, .bak-round7-20260825 (pre-wave), .bak-final-reconcile-20260819.
 
 - Canonical manifest repair: 39/39 records rebuilt from ledger causal_research; direct_fix_sha/fix_sha unified and explicit no-fix preserved.
 - Direct-recheck overrides: 9; each retains newer targeted Git evidence while preserving canonical fields not covered by that recheck.
@@ -169,3 +229,45 @@ Status remains BLOCKED for all 22 rows; missing causal history is not evidence f
 - Projection repair script: reconcile_notai_projection_20260820.py; it applies canonical evidence first and non-empty direct-recheck fields second.
 - Direct Git recheck artifact: `.ai-slop/state/notai-review/notai-direct-recheck-20260819.jsonl`; generator: `reconcile_notai_direct_recheck_20260820.py`.
 - ImageMagick squash evidence: short 9d72f1a800 resolved to 9d72f1a800b88a59673d77b1da69d047daa88523 with parent b9cfe27bef51dbbd1f05aef89c767749d7e37864.
+
+## Round8 causal research wave - 2026-08-26
+
+- 202 PARTIALLY_ANALYZED targets researched (round8/cases-202.jsonl), one subagent per case, records at .ai-slop/state/research-queue/round8/records-wNNN.jsonl (w000-w201).
+- Verdicts: NOT_AI 195, AI_ROOT_CAUSE 3 (w076 anubissbe/projecthub-mcp, w080 hulupeep/mcp-ui-probe, w166 astralisone/rive-mcp-server-core - all Claude Code generated-with markers on BIC), AI_CODE_FLAWED 2 (w020 budibase codex/* branch convention, w195 dynatrace-oss/dynatrace-mcp Copilot co-author), BLOCKED 2 (w087 anthropics/claude-code closed-source; w189 guardrails-ai supply-chain publish with no in-repo introducer).
+- Unpatched (fix_sha null): 15 cases (w007, w023, w076, w078, w080, w087, w088, w092, w093, w129, w155, w166, w168, w183, w197).
+- Landing: scripts/update_ledger_round8_20260826.py; backup artifacts/funnel-account-20260817.jsonl.bak-round8-20260826; 202 archived, TP-duplicate gate pass; post-land 202/202 round8_research rows verified byte-identical to worker records, statuses flipped (NOT_AI 1367, AI_ROOT_CAUSE 192, AI_CODE_FLAWED 61, BLOCKED 33, PARTIALLY_ANALYZED 5960, UNANALYZED 16511).
+- Gates: 202/202 audit_record_gates.py ok; canon sweep 202/202 class_id == cases-202.jsonl.
+- Report: artifacts/round8-verdict-report-20260826.md.
+- Double-confirm packet for external review: artifacts/round8-double-confirm-packet-20260826.md (reviewer re-run commands, focus list, known soft spots).
+- Round8 correction 2026-08-27 (post double-confirm): 5 records revised (w020/w195 -> NOT_AI, w156/w186 -> BLOCKED, w147 BIC -> 5ba6f2ef87); final NOT_AI 195 / AI_ROOT_CAUSE 3 / BLOCKED 4; ledger backup .bak-round8-correction-20260827; published catalog 237 rows (+3 MCP TPs, preflight OK, zero ALIAS-*).
+
+## Evidence-envelope rule (canon, 2026-08-27)
+
+A ledger row may close to a terminal status (NOT_AI / AI_ROOT_CAUSE /
+AI_CODE_FLAWED) only if its payload carries the full re-derivation envelope,
+so any future model can re-scan and re-derive the verdict without session
+context:
+
+1. `advisory_ids` non-null (CVE/GHSA anchor);
+2. a single 40-hex `introducer_sha` (BIC) — BLOCKED rows exempt, but their
+   `reasoning` must state why no BIC exists (closed source / clone mismatch /
+   package mis-map);
+3. `ai_marker` describing the commit-object-level signal (or its absence);
+4. `reasoning` (plus `bug_semantics`/`evidence`) text chain.
+
+Mechanical requirements: `introducer_sha` holds exactly one 40-hex sha —
+multi-introducer cases split into `decomposed_shas[]` plus one primary BIC;
+no annotations, splices, or dirty characters in the sha field. Verdict
+payloads live in the row-level `*_research` dict (authoritative); lane
+arrays (`squash_audit[]`, `partial_wave[]`, `blocked535[]`) are supporting
+detail, never the sole carrier of the envelope. Every future landing gate
+must include `scripts/audit_envelope.py` over the affected rows; failures
+BLOCK the landing.
+
+Repayment executed 2026-08-27: all 1,653 closed rows now pass
+`scripts/audit_envelope.py` (backup .bak-envelope-repay-20260827). 354
+ai_marker fields normalized; 37 spliced sha fields canonicalized; 6 BICs
+re-derived and clone-verified (openclaw ×2, engram, mcp-memory-service,
+grackle, datamodel-code-generator); 5 no-BIC-by-nature rows documented;
+1 BLOCKED row envelope repaired. Ledger statuses, row count, and advisory
+coverage unchanged.

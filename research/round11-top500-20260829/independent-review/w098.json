@@ -1,0 +1,26 @@
+{
+  "worker": "w098",
+  "review_agent_id": "r389_w098",
+  "class_id": "alias-0f15ec2c666fb5c06fddb2eb",
+  "case_id": "GHSA-f5x2-vj4h-vg4c",
+  "repo": "adonisjs/bodyparser",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: multipart field names reach FormFields.add, whose lodash.get/set operates on a prototype-bearing plain object; __proto__ and constructor.prototype paths can therefore pollute Object.prototype. JSON and URL-encoded parsers do not use this FormFields path.",
+    "atomic_bic": "PASS: 436bb11c1f78e2c8e3465284713006962ca255f9 is the earliest public commit found by reverse -S history that adds both this._fields = {} with lodash.set and the multipart field-name call into FormFields.add. Later TypeScript and v6 rewrites preserve the mechanism and are not BICs.",
+    "immediate_parent_absence": "PASS: the sole parent a1a96a1d8681567fbddcaf643b5cab6c89a27446 exists; its tree lacks src/FormFields/index.js, and its BodyParser supports only co-body JSON, form, and raw parsing without multipart or lodash.set of attacker-controlled field names.",
+    "squash_member_decomposition": "PASS: 436bb11c1f78e2c8e3465284713006962ca255f9 is a single-parent, non-merge first-write of the multipart implementation. No finer public member is reconstructable from repository history, so no decomposed member supersedes it.",
+    "affected_fixed_release_membership": "PASS: the BIC is an ancestor of v10.1.2, v10.1.3, v11.0.0-next.8, and v11.0.0-next.9. Vulnerable tags v10.1.2 and v11.0.0-next.8 retain #fields = {}; patched tags v10.1.3 and v11.0.0-next.9 use Object.create(null). CVE-2026-25754 is PUBLISHED and names those patched boundaries.",
+    "direct_fix_or_unpatched_state": "PASS: 40e1c71f958cffb74f6b91bed6630dca979062ed directly changes the 11.x store to Object.create(null), adds both reserved-path regression tests, is absent from v11.0.0-next.8, and is present in v11.0.0-next.9. Equivalent backport 2515698a53899b8c761d43ac342d6a6271c852ad is absent from v10.1.2 and present in v10.1.3.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object has human author and committer Harminder Virk, a 2017-05-25 timestamp, the subject feat(*): implement body parser, and no co-author, generated-with, bot, or other AI marker. The NOT_AI judgment does not rely on later commits.",
+    "advisory_disposition": "PASS: the authoritative CVE record is PUBLISHED rather than rejected or withdrawn, and its multipart prototype-pollution mechanism and fixed releases agree with the repository evidence."
+  },
+  "findings": [
+    "The primary record identifies the correct vulnerability mechanism and closes the source-to-sink path.",
+    "The introducer, immediate parent, non-squash status, affected releases, direct fixes, and BIC-only authorship were independently reproduced from the assigned clone and advisory.",
+    "No correction to the NOT_AI verdict or supporting fields is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

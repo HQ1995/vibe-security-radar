@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-251db8dc68c8acdab3dadaac",
+  "case_id": "GHSA-97r5-pg8x-p63p",
+  "repo": "pallets-eco/flask-security",
+  "advisory_ids": [
+    "CVE-2026-46715",
+    "GHSA-97r5-pg8x-p63p"
+  ],
+  "bug_semantics": "Flask-Security-Too 5.8.0 OAuth reauthentication (verify) treats any datastore-resolved OAuth user as proof that the current session may be marked fresh. oauth_verify_response() calls _oauth_response_common(), then on a truthy user writes session['fs_paa']=time.time() with no check that that user is current_user. An attacker who already holds a stale authenticated victim session can start OAuth verify and complete the provider callback with a different account (attacker@example.com). The session identity stays the victim, but freshness is reset, so freshness-gated account actions (reproduced on built-in /change-username) succeed. oauthresponse() login is out of scope: it logs in as the OAuth user rather than minting freshness for a different session principal.",
+  "flaw_origin": "The verify surface was first written in the single PR #1183 member 51a02457447387ca213f7b6c5fe90f158ebd3c6e (identical tree later squash-landed on main as 82575494312957332f9361cb8711af04d44a7a09). That commit added oauth_verify_start/oauth_verify_response and the unguarded if user: session['fs_paa']=time.time() path. Immediate parent 0c152879e2f877d9d00d4dfb88ab3dd73c68ab19 had OAuth login only (oauthresponse) and no fs_paa update. The 5.8.1 patch 8e69f3a94a463c0e8ddc46e31743717559fd8d48 changes the gate to if user and user.email == current_user.email.",
+  "introducer_sha": "51a02457447387ca213f7b6c5fe90f158ebd3c6e",
+  "introducer_parent": "0c152879e2f877d9d00d4dfb88ab3dd73c68ab19",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "51a02457447387ca213f7b6c5fe90f158ebd3c6e"
+  ],
+  "ai_marker": "absent; member BIC author Chris Wagner <jwag.wagner@gmail.com> (GitHub jwag956), committer Chris Wagner <jwag.wagner@gmail.com>; cat-file/log show no Co-Authored-By, Generated-with, Signed-off-by, Copilot, or other AI/bot trailers. Landing squash 82575494312957332f9361cb8711af04d44a7a09 is the same author with committer GitHub <noreply@github.com> (web-flow) and likewise empty trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "8e69f3a94a463c0e8ddc46e31743717559fd8d48",
+  "direct_fix_sha": "8e69f3a94a463c0e8ddc46e31743717559fd8d48",
+  "evidence": [
+    "CVE.org cveMetadata.state=PUBLISHED for CVE-2026-46715 (not rejected/withdrawn); CNA GitHub_M; affected Flask-Security-Too >= 5.8.0, < 5.8.1; references GHSA-97r5-pg8x-p63p and commit 8e69f3a94a463c0e8ddc46e31743717559fd8d48. GHSA withdrawn_at is null (api.github.com/advisories/GHSA-97r5-pg8x-p63p).",
+    "Advisory/PoC: tag 5.8.0 commit 08288dff6907e413d848a16aaf43fc2c2b2a3b72; sink flask_security/oauth_glue.py oauth_verify_response if user / session['fs_paa']; missing current_user match; freshness bypass of /change-username.",
+    "git log -L :oauth_verify_response:flask_security/oauth_glue.py --reverse: first write is GitHub squash 82575494312957332f9361cb8711af04d44a7a09 'Add support for using Social Login (OAuth) for reauthentication (verify). (#1183)' adding if user: session['fs_paa']=time.time(); next touching commit is the GHSA fix.",
+    "PR #1183 is a 1-commit squash: member 51a02457447387ca213f7b6c5fe90f158ebd3c6e (head sverify1165), parent 0c152879e2f877d9d00d4dfb88ab3dd73c68ab19, author/committer Chris Wagner / jwag956. git rev-parse ^{tree} of member and squash both 4208664b9a0c3c6874d48de881a7de2032e45907 (content-identical). BIC is the reconstructable member first-write, not the squash aggregate.",
+    "Parent-tree absence: git grep oauth_verify_response|session[\"fs_paa\"] on 0c152879e2f877d9d00d4dfb88ab3dd73c68ab19 -- flask_security/oauth_glue.py is empty. Parent oauthresponse() only logs in the OAuth user (lines 87-142); no verify endpoints.",
+    "Member 51a02457 flask_security/oauth_glue.py:175-207 oauth_verify_response; lines 195-197 are the unguarded freshness write. Same snippet at 5.8.0 tag (08288dff) lines 202-204. git blame -L 201,205 5.8.0 -- flask_security/oauth_glue.py attributes those lines to landing squash 82575494.",
+    "Version membership: git merge-base --is-ancestor 82575494 5.8.0^{commit} (5.8.0~16). Feature absent at 5.7.1 (7aa8f7e5f5abaf306171223d34a4cf2f7e2065a6). CHANGES.rst 5.8.0 documents issue 1165 OAuth verification; 5.8.1 documents issue 1215 / GHSA-97r5-pg8x-p63p.",
+    "Fix: 8e69f3a94a463c0e8ddc46e31743717559fd8d48 (PR #1224 onto 5.8.x, CVE-cited) changes if user: to if user and user.email == current_user.email and adds test_verify_evil_user. Fix parent 18808e1e642c4466f8daa46a68d4e1f77a6d1713 still has if user: at oauth_glue.py:202. git merge-base --is-ancestor 8e69f3a 5.8.1^{commit} (5.8.1~1) and not ancestor of 5.8.0. Mainline equivalent is 24d5e347ef0c8ae6ff3a1acfa0423f0c93665183 (PR #1216), not on the 5.8.1 tag.",
+    "BIC-only AI: git cat-file -p 51a02457447387ca213f7b6c5fe90f158ebd3c6e has author/committer Chris Wagner <jwag.wagner@gmail.com>, no trailers. Not a bot identity."
+  ],
+  "reasoning": "CVE-2026-46715 / GHSA-97r5-pg8x-p63p is a real, published CWE-287: OAuth verify accepted a foreign identity and refreshed the victim session's fs_paa. The first write of that mechanism is PR #1183's member 51a02457447387ca213f7b6c5fe90f158ebd3c6e (decomposed from squash 82575494312957332f9361cb8711af04d44a7a09; identical trees, same parent 0c152879e2f877d9d00d4dfb88ab3dd73c68ab19). The parent tree has no oauth_verify_response and no fs_paa assignment; 5.7.1 also lacks the function; 5.8.0 carries the unguarded if user: path; 5.8.1 carries 8e69f3a94a463c0e8ddc46e31743717559fd8d48 which adds user.email == current_user.email. AI is judged only on that BIC commit object: human maintainer jwag956 / Chris Wagner, no AI authorship or co-authorship trailers. GitHub as squash committer is the merge web-flow identity, not an AI generator. Verdict is therefore NOT_AI.",
+  "remaining_gap": null
+}

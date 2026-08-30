@@ -1,0 +1,22 @@
+{
+  "worker": "w231",
+  "review_agent_id": "r389_w231",
+  "class_id": "alias-5dbb91d5a9bd3caa90a37292",
+  "case_id": "GHSA-xxw5-vgjv-jc6g",
+  "repo": "liftoff-sr/cipster",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: in an API-enabled deployment, the untyped AttributeInsert(CipDataType, void*) API can bind one ByteBuf object to writable kCipUdint and kCipByteArray attributes. SetAttrData dispatches the scalar view to DecodeData(kCipUdint), overwriting the low 32 bits of ByteBuf.start while limit remains unchanged; subsequent GetAttrData or SetAttrData dispatch through the byte-array view and BufWriter::append copies against the poisoned start/limit pair. Issue #48 records ASan-confirmed 80-byte out-of-bounds read and write; the default sample is not claimed exploitable.",
+    "atomic_bic": "CONFIRMED: 90721b00e44e461d14501bb20714a4d71d9e18e4 is the smallest surviving public first-write of this variant's ByteBuf metadata-trust mechanism. Its diff adds ByteBuf {start, limit}, constructs BufReader/BufWriter from ByteBuf in EncodeData/DecodeData(kCipByteArray), and appends through that view. Blame at affected commit e8e9dba09bf56962807d3504b783ccdb6287f3e4 attributes the relevant casts and append path to 90721b0. Earlier untyped attribute-registration code is a precondition, not the first write of this ByteBuf.start mechanism.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent d06f16ea2ef9a10b894324a80ec686443708ed59 has no ByteBuf class or ByteBuf casts in the byte-array codec; it uses CipByteArray {uint16 length, byte* data} and memcpy(data, input, length).",
+    "squash_member_decomposition": "CONFIRMED: 90721b0 is a normal single-parent commit, not a merge or revert. The relevant first-write exists directly in its patch; the clone exposes only master/origin/master containing it, with no finer public member commit or tag to substitute.",
+    "affected_release_membership": "CONFIRMED: CVE.org state is PUBLISHED and identifies e8e9dba09bf56962807d3504b783ccdb6287f3e4 as affected. Git ancestry confirms 90721b0 is its ancestor. CIPster uses rolling releases and this clone has zero tags, so affected tag membership is explicitly not applicable.",
+    "fixed_release_membership": "CONFIRMED: CVE.org names 3a0159ed43125dcd024a1965f0289cb186bae9ff as the patch, and e8e9dba is its ancestor. The patch is also an ancestor of current master HEAD 95ed84002077a7ecb3a80afe30dc87f20c0bbed7. There is no fixed release tag to test because the repository has zero tags and the advisory states that version details are not provided for its rolling release model.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct fix 3a0159ed43125dcd024a1965f0289cb186bae9ff adds typed AttributeInsert<Type> APIs, makes deprecated generic overloads reject byte-array types, and adds a central incompatible-overlapping-storage guard. Its immediate parent e745d9d4a8ca3a13689066983a1269fe1e567674 still has the unrestricted generic registration path and lacks those guards.",
+    "bic_only_ai_attribution": "CONFIRMED: BIC commit object 90721b0 is authored and committed by Dick Hollenbeck on 2018-07-24; its message and trailers contain no AI marker. The Claude Opus 4.8 Co-Authored-By trailer belongs only to the 2026 fix 3a0159e and cannot attribute the BIC."
+  },
+  "findings": [],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

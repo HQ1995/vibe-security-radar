@@ -1,0 +1,49 @@
+{
+  "worker": "w308",
+  "review_agent_id": "r389_w308",
+  "class_id": "alias-210d3ac30996ad1cd0bb5d8a",
+  "case_id": "GHSA-6m8g-7xrr-8q5f",
+  "repo": "webmin/webmin",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "Before the fix, mailboxes/detachall.cgi decodes an attacker-controlled MIME attachment filename into $fn and passes >$temp/$fn to open_tempfile(..., 0, 1). The notemp branch directly opens the translated absolute path and rejects only CR, LF, and NUL, so ../ escapes the attachment temp directory. CVE-2026-49103 is PUBLISHED, identifies CWE-24 and mailboxes/detachall.cgi, and marks Webmin 0 through versions below 2.640 affected; Webmin's security page independently describes the same pre-2.640 attachment overwrite flaw."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Commit f6788682b34ba6adf61fd0d749935afb58c15451 adds mailboxes/detachall.cgi as a new 64-line file and first writes both decode_mimewords($a->{'filename'}) and open_tempfile(FILE, >$temp/$fn, 0, 1). File history and blame attribute the vulnerable assignment and sink to this commit; the only later pre-fix edits change ZIP reading, not filename construction or the write."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single, available parent e0e31e4b1946e09cc7a220306c68e68567a9fca8. That parent tree has mailboxes/detach.cgi but no mailboxes/detachall.cgi, and targeted searches find no detachall, attachments.zip, or matching >$temp/$fn write path, establishing absence of this vulnerable feature immediately before the BIC."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "f6788682 is a single-parent public commit whose patch creates the vulnerable file from /dev/null. No earlier path, rename/copy source, merge parent, or separately reconstructable public member contains the feature, so the new-file first-write is the smallest surviving public object and there is no squash member to substitute."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Git ancestry independently confirms f6788682 is an ancestor of tags 2.630 and 2.640; fix cf432879a14568c4bb44cd2f9e5a9bd0e168edc1 is not an ancestor of 2.630 and is an ancestor of 2.640. The 2.630 file retains the unsafe write, the 2.640 file contains basename sanitization, and the 2.640 changelog records the mailbox attachment handling fix."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Commit cf432879a14568c4bb44cd2f9e5a9bd0e168edc1 directly inserts CR/LF/NUL removal, backslash normalization, basename extraction, dot-only rejection, and a fallback filename immediately before the unchanged open_tempfile sink. It is the only mailboxes/detachall.cgi change between tags 2.630 and 2.640."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The judgment uses only f6788682: author and committer are Jamie Cameron <jcameron@webmin.com>, both timestamps are 2008-10-01T19:20:43+00:00, the commit is not a bot, and its complete message has no Co-Authored-By, Generated-with, Signed-off-by, or other AI marker. Fix authorship is excluded from the attribution."
+    },
+    "advisory_disposition": {
+      "status": "PASS",
+      "evidence": "The authoritative CVE record is PUBLISHED rather than rejected, the bundled GHSA has withdrawn_at=null, and Webmin's vendor security page confirms the issue. FALSE_POSITIVE therefore does not apply."
+    }
+  },
+  "findings": [
+    "The independently replayed source-to-sink, parent-tree, file-history, direct-fix, and tag-membership evidence supports the primary causal chain without correction.",
+    "The BIC is the 2008 new-file first-write f6788682b34ba6adf61fd0d749935afb58c15451, and BIC-only metadata supports human authorship; NOT_AI is confirmed."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

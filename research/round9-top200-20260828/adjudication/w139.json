@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-4d5d629fd1f6164ea9a4eb44",
+  "case_id": "alias-4d5d629fd1f6164ea9a4eb44",
+  "repo": "rucio/rucio",
+  "advisory_ids": [
+    "CVE-2026-25734",
+    "GHSA-h9fp-p2p9-873q"
+  ],
+  "bug_semantics": "Stored XSS in the authenticated WebUI RSE-management flow. A privileged attacker can persist attacker-controlled markup in city, country_name, or ISP through the RSE creation path. The RSE list passes those stored values to DataTables as renderable data, while the RSE detail page concatenates them into HTML passed to jQuery.append. Viewing either page therefore parses the stored value as markup and can execute script in the victim's WebUI origin.",
+  "flaw_origin": "Direct single-parent feature commit 8f1a24a568331b10f9d8fb099ef233af340b7735 added the RSE create, list, and detail WebUI as new files. It introduced the raw input path in add_rse.js, the DataTables listing sink in rses.js, and the string-concatenation detail sink in rse.js together. This is the original vulnerable implementation, not a merge, move, import, revert, or aggregate carrier.",
+  "introducer_sha": "8f1a24a568331b10f9d8fb099ef233af340b7735",
+  "introducer_parent": "c77904c15e1958ad9f32e862b9e9714e48076434",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent on the BIC commit object. `git cat-file commit 8f1a24a568331b10f9d8fb099ef233af340b7735` shows one parent, human author and committer Hannes Hansen <hannes.jakob.hansen@cern.ch>, and only the message `WebUI: added support for getting informations, creation and deletion of RSEs and attributes Fix #80`; it contains no AI-tool, bot, Generated-with, or Co-Authored-By signal.",
+  "verdict": "NOT_AI",
+  "fix_sha": "b96c1feee372b285c1db881db5bc297a40645b25",
+  "direct_fix_sha": "b96c1feee372b285c1db881db5bc297a40645b25",
+  "evidence": "The assigned first-party advisory identifies city/country_name/ISP stored XSS on both the RSE list and detail pages and gives patched boundaries 35.8.3, 38.5.4, and 39.3.1. `git diff-tree --name-status -r 8f1a24a...` marks add_rse.js, rse.js, and rses.js as added, and the immediate BIC versions show raw form values, `data: data` with the vulnerable metadata columns, and `data[sorted_keys[i]]` concatenated into a `<td>`. `git ls-tree -r --name-only c77904c...` for all three paths is empty, proving direct-parent absence. `git log --all -S'data: data' -- rses.js` identifies 8f1a24a... as the addition and the 2026 fixes as removals. The fix_sha disagreement was primary a3618f46cde422d762e0bca8ffa219cfe7703003 versus reviewer b96c1feee372b285c1db881db5bc297a40645b25. `git show` proves both apply the same rses.js patch, encoding every metadata value through jQuery `.text()` before DataTables, but `git branch -a --contains` places b96c1fee... on master/origin/master and release-40 while a3618f46... exists only on release-35-LTS. Their raw commit objects have the same author timestamp and message, while b96c1fee... has the earlier committer timestamp; a3618f46... is the later backport. On master, `git log --ancestry-path fce81437...^..b96c1fee...` orders detail repair fce81437e2e647a0da6e348167ea1df26db87c0c, then jQuery.html repair 75a9c1349bdb45b02527108d5fafcecedc9dcafe, then the closing listing repair b96c1fee.... `git tag --contains b96c1fee...` begins at 40.0.0rc1. Release closing equivalents are a3618f46... in 35.8.3, abf5e978ee3910590a23c6705e6a0105c0b847c7 in 38.5.4, and 80b91dd0c6737b2ab9aed039470e8e81028def41 in 39.3.1; tag containment begins at those exact versions, and diffs 35.8.2..35.8.3, 38.5.3..38.5.4, and 39.3.0..39.3.1 each change both rse.js and rses.js.",
+  "reasoning": "Both audits correctly identify the smallest BIC, its parent, parent absence, the two vulnerable sinks, and absent BIC-object AI evidence. The reviewer wins the fix_sha disagreement: b96c1feee372b285c1db881db5bc297a40645b25 is the original direct closing fix on the repository's default master lineage, after the detail sink was repaired, whereas the primary's a3618f46cde422d762e0bca8ffa219cfe7703003 is a real but later release-35-LTS backport of the identical listing correction. The advisory's three maintained vulnerable release lines are independently closed by equivalent branch commits at their first patched tags, so choosing the canonical master commit does not erase the verified version boundaries. Because the verified BIC commit object has no AI signal, the gate-complete verdict is NOT_AI.",
+  "remaining_gap": null
+}

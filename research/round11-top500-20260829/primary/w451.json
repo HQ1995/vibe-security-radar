@@ -1,0 +1,37 @@
+{
+  "class_id": "alias-a106b4c6af8b3fafb3e3f5e9",
+  "case_id": "GHSA-vw5p-8cq8-m7mv",
+  "repo": "sveltejs/devalue",
+  "advisory_ids": [
+    "CVE-2026-22774",
+    "GHSA-vw5p-8cq8-m7mv"
+  ],
+  "bug_semantics": "In devalue.parse/unflatten, typed-array records recursively hydrated the attacker-selected value[1] and passed the result directly to a typed-array constructor without verifying that it was an ArrayBuffer. An attacker could instead reference a hydrated array-like object whose controlled length made the constructor allocate disproportionate memory, or form recursive references that consumed CPU/stack, causing denial of service when untrusted serialized input was parsed.",
+  "flaw_origin": "PR #105 changed typed-array serialization to reference a separately hydrated backing buffer. Its first member commit 24f4466144ce36c1c833f28c08321eb8ae0dbb44 replaced decode64(value[1]) with new TypedArrayConstructor(hydrate(value[1])) but did not enforce that the hydrated value was an ArrayBuffer. GitHub squash commit e46f4c8f4724e673344100790312740a65491d66 carried that member change to main; the member, rather than the squash aggregate, is the atomic introducer.",
+  "introducer_sha": "24f4466144ce36c1c833f28c08321eb8ae0dbb44",
+  "introducer_parent": "e28031b6e214892620a4e5cb3de8e01ed151126f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "24f4466144ce36c1c833f28c08321eb8ae0dbb44",
+    "b7a764aeb8ac872255918e4a000525964667f0c2",
+    "b037491efc100c1d2d10b72e30846a9991e9605a"
+  ],
+  "ai_marker": "absent: the BIC commit object names author and committer Rich Harris <rich.harris@vercel.com>; its message is exactly 'handle repeated array buffers' and contains no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "e46afa64dd2b25aa35fb905ba5d20cea63aabbf7",
+  "direct_fix_sha": "e46afa64dd2b25aa35fb905ba5d20cea63aabbf7",
+  "evidence": [
+    "GitHub reviewed advisory https://api.github.com/advisories/GHSA-vw5p-8cq8-m7mv reports untrusted devalue.parse input can exhaust CPU or memory because typed-array hydration assumes an ArrayBuffer; affected versions are >=5.3.0 through 5.6.1 and the first patched version is 5.6.2.",
+    "The published CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-22774 is PUBLISHED, repeats the unchecked ArrayBuffer assumption and DoS mechanism, declares >=5.3.0,<5.6.2 affected, and identifies e46afa64dd2b25aa35fb905ba5d20cea63aabbf7 as a fix reference.",
+    "GitHub PR API https://api.github.com/repos/sveltejs/devalue/pulls/105/commits reconstructs squash e46f4c8f4724e673344100790312740a65491d66 as ordered members 24f4466144ce36c1c833f28c08321eb8ae0dbb44, b7a764aeb8ac872255918e4a000525964667f0c2, and b037491efc100c1d2d10b72e30846a9991e9605a.",
+    "The API patch for member 24f4466144ce36c1c833f28c08321eb8ae0dbb44 in src/parse.js first replaces base64 decode64(value[1]) with new TypedArrayConstructor(hydrate(value[1])); member parent is e28031b6e214892620a4e5cb3de8e01ed151126f.",
+    "Direct parent-tree verification with git show e28031b6e214892620a4e5cb3de8e01ed151126f:src/parse.js shows typed arrays decode value[1] as base64 into an ArrayBuffer before construction, so the vulnerable arbitrary hydration path is absent from the immediate parent.",
+    "The BIC member commit object at https://api.github.com/repos/sveltejs/devalue/commits/24f4466144ce36c1c833f28c08321eb8ae0dbb44 records Rich Harris <rich.harris@vercel.com> as both author and committer and message 'handle repeated array buffers', with no AI/co-author trailer.",
+    "git merge-base --is-ancestor e46f4c8f4724e673344100790312740a65491d66 v5.3.0 succeeds, proving the reconstructed squash containing the BIC is in the first affected release.",
+    "git show e46afa64dd2b25aa35fb905ba5d20cea63aabbf7 changes src/parse.js to hydrate value[1], require buffer instanceof ArrayBuffer, and only then invoke the typed-array constructor; its parent 5e07a67eda945b3ac2ebac26b18863beabee7357 still has the unchecked constructor call.",
+    "git merge-base --is-ancestor e46afa64dd2b25aa35fb905ba5d20cea63aabbf7 v5.6.1 fails while the same check against v5.6.2 succeeds; v5.6.2 package.json reports version 5.6.2."
+  ],
+  "reasoning": "The advisory and published CVE establish a real DoS: attacker-controlled parse data reaches typed-array hydration, where an arbitrary hydrated array-like object can control allocation because the code does not validate an ArrayBuffer before construction. History search for the exact unchecked expression leads to mainline squash e46f4c8f4724e673344100790312740a65491d66. Decomposing PR #105 identifies its first member 24f4466144ce36c1c833f28c08321eb8ae0dbb44 as the smallest commit that wrote the vulnerable hydrate-then-construct mechanism; later members only add subarray handling and a changeset. The immediate parent e28031b6e214892620a4e5cb3de8e01ed151126f instead decodes base64 into an ArrayBuffer, directly proving parent absence. The squash is ancestral to v5.3.0, matching the affected lower boundary. Direct fix e46afa64dd2b25aa35fb905ba5d20cea63aabbf7 validates the hydrated object before construction, is absent from v5.6.1, and is ancestral to patched v5.6.2; subsequent 11755849fa0634ae294a15ec0aef2f43efcad7c4 adds earlier malformed/cycle checks but does not displace the direct allocation fix. Finally, only the atomic BIC commit object controls AI attribution: it has a human author/committer and no AI marker, so this real vulnerability is NOT_AI despite any unrelated repository-level AI signal.",
+  "remaining_gap": null
+}

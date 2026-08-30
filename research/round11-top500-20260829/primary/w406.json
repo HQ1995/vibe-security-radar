@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-44470e3609dbc575f10925ae",
+  "case_id": "GHSA-qpv2-rwc8-c993",
+  "repo": "gravitl/netmaker",
+  "advisory_ids": [
+    "CVE-2026-38651",
+    "GHSA-qpv2-rwc8-c993"
+  ],
+  "bug_semantics": "VerifyHostToken passed an attacker-controlled host JWT to jwt.ParseWithClaims but treated any non-nil *jwt.Token as authenticated, ignoring both the returned error and token.Valid. golang-jwt returns a non-nil token with Valid=false for a structurally valid token whose signature is wrong or whose claims are expired, so a remote unauthenticated attacker could sign arbitrary host claims with an unrelated key, choose a victim host ID, pass Authorize's err == nil check, and reach host endpoints including GET /api/v1/host, which returns host, server, node, peer, and network configuration.",
+  "flaw_origin": "The repository root commit 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee first created functions/jwt.go and wrote the flawed ParseWithClaims followed by `if token != nil` acceptance in VerifyToken. Later commits renamed/moved that same function and evolved node claims into host claims; they did not originate the missing validity check. Because this is the root commit, it has no Git parent and the function is absent from the empty predecessor tree.",
+  "introducer_sha": "0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC commit object author and committer are afeiszli <alex.feiszli@gmail.com>, subject/body are exactly `first commit`, and there are no Co-Authored-By, Generated-with, bot, or other AI attribution trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "5309aa70d464ef565911369714d661a61481a79b",
+  "direct_fix_sha": "5309aa70d464ef565911369714d661a61481a79b",
+  "evidence": [
+    "Bundle SHA-256 is 4aab41cdd1b2eeba64b34549c8c11c8a83dc38aa34d53f16e04965415122f78a and its repo/advisory identity is gravitl/netmaker with CVE-2026-38651 and GHSA-qpv2-rwc8-c993.",
+    "`git cat-file -p 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee` shows tree dee77ce44e19fdc04745e29ed20e7a1d49cce6f4, no parent header, author/committer afeiszli <alex.feiszli@gmail.com>, and message `first commit`; the commit object has no AI/coauthor/generated trailer.",
+    "`git show 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee:functions/jwt.go` lines 63-80 shows the first-created VerifyToken calling jwt.ParseWithClaims at lines 73-75 and returning claims when only `token != nil` at lines 77-79; the root commit's empty predecessor contains no such file or lines.",
+    "`git log --follow -S'if token != nil {' -- functions/jwt.go` traces the vulnerable check to root commit 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee; 8f72ecbaa0d72e3417e96de65bc008c7bad542e1 is a 99%-similar rename from functions/jwt.go to logic/jwts.go and 2c80790bf91ce418483125b6367de079199b6eff is a 100%-similar directory move, so neither is the BIC.",
+    "Commit 63eac1e79c2f8124f9725b51f7e454e634e81c96 later renamed VerifyToken to VerifyHostToken and added GET /api/v1/host; at tag v1.4.0, controllers/node.go lines 179-188 accepts host authentication when VerifyHostToken returns err == nil, and controllers/hosts.go lines 48-54 routes four host endpoints through Authorize(hostAllowed=true).",
+    "At tag v1.4.0, controllers/hosts.go pull() lines 188-253 derives hostID from the authenticated header and returns a HostPull containing Host, Nodes, ServerConfig, Peers, PeerIDs, HostNetworkInfo, EgressRoutes, and firewall/gateway state, establishing the source-to-sink disclosure path.",
+    "`git show 5309aa70d464ef565911369714d661a61481a79b -- logic/jwts.go` changes `if token != nil` directly to `if token != nil && token.Valid`; the commit has parent 361d801cfa22c344fe6017f004603eef0c3adf23 and is the direct signature-validation fix. Follow-up c344f54ce169082c02e17a20ddb7b5be13318922 adds subject-prefix and nonempty-host-ID claim checks but is not the direct signature fix.",
+    "Tag/tree verification: BIC 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee is an ancestor of v1.4.0; v1.4.0 (48ba499f83d521c4b42b69ea79770650c4959659) and v1.5.0 (6b7d33fa7749c87e6b3c59b1a544d80c727c478b) both contain `if token != nil`, while v1.5.1 (f8a0cfd74435169909490cca97ed3698cdb68e84) contains `if token != nil && token.Valid`; fix 5309aa70d464ef565911369714d661a61481a79b is not an ancestor of v1.5.0 but is an ancestor of v1.5.1.",
+    "CVE.org API record https://cveawg.mitre.org/api/cve/CVE-2026-38651 is PUBLISHED and identifies the same forged-host-JWT mechanism and fix commit; GitHub's reviewed advisory https://github.com/advisories/GHSA-qpv2-rwc8-c993 has withdrawn_at=null. Both say versions before 1.5.0 are affected, but the authoritative public Git tag trees show v1.5.0 still vulnerable and the direct fix first present in v1.5.1.",
+    "Researcher advisory https://www.zyenra.com/advisories/netmaker-jwt-verification-bypass documents forged wrong-key and expired host JWTs reaching GET /api/v1/host and identifies 5309aa70d464ef565911369714d661a61481a79b as the token.Valid fix; its v1.5.0 release claim conflicts with the repository tag topology recorded above."
+  ],
+  "reasoning": "The vulnerability is real and publicly published: structurally parseable forged or expired JWTs produce a non-nil token plus an error/Valid=false, but the host verifier returned attacker-chosen claims with nil error, and Authorize therefore dispatched requests to sensitive host endpoints. History tracing across both file moves establishes that the flawed acceptance condition was not introduced by the 2021/2022 refactors, the 2023 host rename/endpoint addition, or a squash: it was written in the repository's atomic root commit 0bacbd9f6c0b7a4516443fe62b47ee5a71b6b7ee. The root commit has no parent, so null is the only truthful introducer_parent and absence is established against the empty predecessor. Commit 5309aa70d464ef565911369714d661a61481a79b directly closes the signature-bypass mechanism by requiring token.Valid; c344f54ce169082c02e17a20ddb7b5be13318922 is later defense-in-depth claim validation. Although advisory prose labels v1.5.0 patched, direct tag-tree and ancestry checks show v1.5.0 remains vulnerable and v1.5.1 contains the fix. Finally, BIC-only attribution finds a named human author/committer and no AI marker in the commit object, so this real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

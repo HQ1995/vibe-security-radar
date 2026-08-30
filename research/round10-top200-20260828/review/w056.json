@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-edfe14834c31810bb774cd7d",
+  "case_id": "GHSA-m7gw-rffq-rxjm",
+  "repo": "wintercms/winter",
+  "advisory_ids": [
+    "CVE-2026-22254",
+    "GHSA-m7gw-rffq-rxjm"
+  ],
+  "bug_semantics": "CMS Asset Manager (modules/cms/widgets/AssetList.php) allowed SVG uploads and wrote the file to theme assets with only extension/size/validity checks. There was no SVG sanitization on upload, so a backend user with cms.manage_assets could store an SVG containing scriptable markup. The file is then served/previewed as a theme asset (stored XSS / CWE-79). CSRF and a valid backend session are required.",
+  "flaw_origin": "Unsanitized SVG-allowed asset upload was first written when modules/cms/widgets/AssetList.php was added in 71a5dd67ab9e0d0da7caabd3fb5aaa3d86bb45e5 (2014-05-14, Sam Georges). That commit set allowedAssetTypes including svg and checkUploadPostback() moved the uploaded file with no Svg::extract/sanitize. Parent d412ea685560a3ce7028346d26fd9a6559eb0827 has no AssetList.php. Later c03fd66aeb8a6f10290381a76db0867fabe881e6 only renamed the postback uploader to onUpload(); that is a refactor, not the BIC.",
+  "introducer_sha": "71a5dd67ab9e0d0da7caabd3fb5aaa3d86bb45e5",
+  "introducer_parent": "d412ea685560a3ce7028346d26fd9a6559eb0827",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Sam Georges <sam@daftspunk.com>, committer Sam Georges <sam@daftspunk.com>; commit object has no Co-Authored-By, Generated-with, or bot author",
+  "verdict": "NOT_AI",
+  "fix_sha": "8a7f74b004fcd19721764fc63af0cdb339d9fb65",
+  "direct_fix_sha": "8a7f74b004fcd19721764fc63af0cdb339d9fb65",
+  "evidence": "CVE-2026-22254 is PUBLISHED on cve.org (state PUBLISHED, not withdrawn/rejected); GHSA-m7gw-rffq-rxjm withdrawn_at is null. git cat-file -p 71a5dd67ab9e0d0da7caabd3fb5aaa3d86bb45e5 shows a single parent d412ea685560a3ce7028346d26fd9a6559eb0827, author/committer Sam Georges <sam@daftspunk.com>, message 'Welcome to the world, October :-)' and no AI trailers. git cat-file -e PARENT:modules/cms/widgets/AssetList.php fails (path absent). git log -1 --format='%an %ae %cn %ce' on the BIC is Sam Georges sam@daftspunk.com Sam Georges sam@daftspunk.com. At that commit AssetList.php defines allowedAssetTypes including svg and checkUploadPostback() does Input::file('file_data') then $uploadedFile->move(...) after extension/size checks only. git log --diff-filter=A -- modules/cms/widgets/AssetList.php first-adds the file at 71a5dd67. Direct sink fix is 8a7f74b004fcd19721764fc63af0cdb339d9fb65 (Sanitize SVGs when uploaded to the theme assets; Luke Towers git@luketowers.ca / Luke Towers git@luketowers.ca), ancestor of v1.2.10; it calls Svg::extract() on svg uploads in onUpload() before move. git cat-file -e 8a7f74b^:modules/cms/widgets/AssetList.php succeeds. AssetList does not use UploadableWidget (which already had Svg::extract since fa50b4c7489b67ea80072f8ac9fe5294fce1df1c). Later 18c98abc85219fac5cdac80161b45160dbdd55d0 is post-v1.2.10 hardening (sanitize on rename), not the advisory sink fix.",
+  "reasoning": "The advisory is a real stored XSS: Asset Manager accepted svg and persisted the bytes without sanitization. That allowlist-plus-raw-move pattern is present in the 2014 October import that first added AssetList.php; the parent tree lacks the file, the commit is not a move/refactor/revert/backport/squash, and no finer public member exists. The 2020 onUpload rename and later FileDefinitions relocation carried the same unsanitized sink; they are not first-writes. AI is judged only on the BIC: human Sam Georges, 2014, no Co-Authored-By/Generated-with/bot author. Fix-side authorship (Luke Towers, 2026) does not re-attribute the BIC. Verdict NOT_AI.",
+  "remaining_gap": null
+}

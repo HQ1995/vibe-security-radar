@@ -1,0 +1,26 @@
+{
+  "worker": "w075",
+  "review_agent_id": "r389_w075",
+  "class_id": "alias-768b5fe8ae7440d752f7eb8d",
+  "case_id": "GHSA-58vh-2xxg-v7j2",
+  "repo": "sparklemotion/nokogiri",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CRuby commit 1e7d38affc10917f12372fab97a505e6dbb8368b introduced protected rb_xml_node_initialize_copy_with_args and casts caller-controlled rb_other with Noko_Node_Get_Struct, whose macro is a raw DATA_PTR cast, before noko_xml_document_pin_node reads node->doc. Nokogiri::XML::Namespace is independently defined under rb_cObject rather than Node, so send-calling the helper with a Namespace permits the documented xmlNs-as-xmlNode out-of-bounds read. The JRuby member instead routes other through asXmlNode.",
+    "atomic_bic": "CONFIRMED: git log -Sinitialize_copy_with_args across the CRuby, Ruby, and JRuby implementation paths first returns single-parent member 1e7d38affc10917f12372fab97a505e6dbb8368b. Its diff creates the protected helper and the unchecked Noko_Node_Get_Struct(rb_other, xmlNode, c_other) sink; the prior duplicate_node path unwraps self, not a caller-supplied source. This is the smallest public first-write, not the later PR merge aggregate.",
+    "immediate_parent_absence": "CORRECTION_REQUIRED: 1e7d38affc10917f12372fab97a505e6dbb8368b^ resolves to c4d5c78cc6a8d7a3247a9b9428b45fab3cd02c37, and parent-tree searches find neither initialize_copy_with_args nor Noko_Node_Get_Struct(rb_other, ...). Therefore the primary evidence is correct but introducer_parent_absent=false is not; it must be true.",
+    "squash_member_decomposition": "CONFIRMED: PR merge 94a90a07a9d88cd87dd5df5edde83537a9b50802 has two parents, and BIC 1e7d38affc10917f12372fab97a505e6dbb8368b is already reachable through its second parent 79553033d5e0314f5f877c6c18c771113f162044. The BIC is a reconstructable member rather than a squash/merge aggregate, so squash_decomposed=false and decomposed_shas=[] are correct.",
+    "affected_fixed_release_membership": "CONFIRMED: BIC 1e7d38affc10917f12372fab97a505e6dbb8368b is absent from v1.16.2 and present from v1.17.0 through v1.19.3. The v1.19.3 tree retains the unchecked unwrap; v1.19.4 contains the BIC and adds the rb_obj_is_kind_of guard. Thus Git establishes mechanism-affected releases v1.17.0-v1.19.3 and fixed v1.19.4, while the advisory's unqualified '<1.19.4' range is broader than the repository first-write boundary.",
+    "direct_fix_or_unpatched": "CONFIRMED: 873948ac21d1963d0be6fc39d3c89ccdd5f6f764 directly inserts rb_obj_is_kind_of(rb_other, cNokogiriXmlNode) before the unsafe unwrap and adds the rejection test; it is absent from v1.19.3 and an ancestor of v1.19.4 through merge ed85adcc19d6ba21e735b1ade19d24a9c53fcb87. Mainline twin 630f07344149e596de1d04c9d7a80533abc055f7 has the same stable patch-id but is not the release-branch object in v1.19.4.",
+    "bic_only_ai_attribution": "CONFIRMED: git show and git cat-file -p on BIC 1e7d38affc10917f12372fab97a505e6dbb8368b identify Mike Dalessio as both author and committer and show a signed, ordinary project commit with no Co-Authored-By, Generated-with, bot identity, or other AI marker. Attribution is based only on the BIC object, so NOT_AI is supported."
+  },
+  "findings": [
+    "The primary record's introducer_parent_absent=false contradicts both the parent tree and its own evidence; the vulnerable helper and caller-controlled unchecked unwrap are absent from the immediate parent.",
+    "The primary NOT_AI verdict, introducer SHA and parent SHA, non-squash member treatment, direct fix, and release landing are otherwise independently confirmed."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

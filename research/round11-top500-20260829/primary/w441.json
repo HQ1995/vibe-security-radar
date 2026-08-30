@@ -1,0 +1,45 @@
+{
+  "class_id": "alias-8390ae3f5e804bd13d8971db",
+  "case_id": "GHSA-rrjr-v56m-ww88",
+  "repo": "g-research/parquetsharp",
+  "advisory_ids": [
+    "CVE-2026-42241",
+    "GHSA-rrjr-v56m-ww88"
+  ],
+  "bug_semantics": "When ParquetSharp reads an untrusted Parquet fixed-length-byte-array decimal column, the file-controlled column type width flows through ColumnDescriptor.TypeLength into LogicalRead.ConvertDecimal and then ByteArray.Length. DecimalConverter.ReadDecimal used that length directly in stackalloc byte[byteArray.Length], so an unreasonable declared width (the regression uses 10,000,000 bytes) can exhaust the thread stack and terminate a network service, causing denial of service.",
+  "flaw_origin": "PR #482 added arbitrary-width decimal support. Its atomic member c4564c2eaf2a0622372ff3816a3a076cdf9507d8 created csharp/DecimalConverter.cs with the unbounded stack allocation and wired LogicalRead to pass columnDescriptor.TypeLength into it. The immediate parent 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1 has neither DecimalConverter.cs nor the new ReadDecimal path. GitHub later squash-landed the eight-member PR as tree-equivalent mainline commit 227d8387c267809d599cbc8e945e31a8a97c840b; that aggregate is the carrier, not the smallest BIC.",
+  "introducer_sha": "c4564c2eaf2a0622372ff3816a3a076cdf9507d8",
+  "introducer_parent": "4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "c4564c2eaf2a0622372ff3816a3a076cdf9507d8",
+    "09d9c67c19634d99fad579ca5b41152bb03bb72c",
+    "e4fc7db0d1e0486b7a43dbf5c31900ff108d06d2",
+    "9ffb0cfea466f6f785c9bb71848726484c0b530f",
+    "8d7aeb4b8439c2de8a178230ff49798bdd7be703",
+    "6dc2c938fba1c86b9c0b9d2858ecd44e0c195c74",
+    "93131b581c2e1ab8d48145dd6daa933c9cf1f841",
+    "dec1216487fc2f059d83dd73b303920543a374a1"
+  ],
+  "ai_marker": "absent: the raw commit object for atomic BIC c4564c2eaf2a0622372ff3816a3a076cdf9507d8 names human author Adam Reeve <adreeve@gmail.com> and human committer Adam Reeve <adam.reeve@gr-oss.io>; its message is 'Support arbitrary length byte arrays for decimal data' and contains no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "d87081931cdecfd2e4401909ecefd220b3ee2a91",
+  "direct_fix_sha": "6824d297f9c7a798222fa6cfc693f0f954a2b08f",
+  "evidence": [
+    "GitHub's reviewed advisory API at https://api.github.com/advisories/GHSA-rrjr-v56m-ww88 describes attacker-influenced DecimalConverter.ReadDecimal stackalloc width, affected NuGet range >=18.1.0,<23.0.0.1, first patched version 23.0.0.1, and withdrawn_at=null.",
+    "The CVE.org CNA record at https://cveawg.mitre.org/api/cve/CVE-2026-42241 is PUBLISHED and says an attacker-declared unreasonable decimal-column width can cause stack overflow and service denial of service; it confirms affected >=18.1.0,<23.0.0.1 and patched 23.0.0.1.",
+    "At tag 18.1.0, csharp/LogicalRead.cs:522 and :530 construct ByteArray values using the column descriptor typeLength and call DecimalConverter.ReadDecimal; csharp/DecimalConverter.cs:21 performs stackalloc byte[byteArray.Length] before copying and examining all bytes.",
+    "git log -S 'stackalloc byte[byteArray.Length]' over the full clone finds mainline carrier 227d8387c267809d599cbc8e945e31a8a97c840b; decomposing PR #482 from remote head dec1216487fc2f059d83dd73b303920543a374a1 finds atomic first-write member c4564c2eaf2a0622372ff3816a3a076cdf9507d8.",
+    "git show c4564c2eaf2a0622372ff3816a3a076cdf9507d8 creates csharp/DecimalConverter.cs and adds both the unbounded ReadDecimal stackalloc and the LogicalRead conversions that pass columnDescriptor.TypeLength; git log -S within the PR member range identifies no earlier member.",
+    "Direct parent-tree checks on 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1 show csharp/DecimalConverter.cs absent and git grep finds neither ReadDecimal nor stackalloc byte[byteArray.Length] under csharp, proving the flawed mechanism absent immediately before c4564c2eaf2a0622372ff3816a3a076cdf9507d8.",
+    "The eight PR #482 member commits form a linear chain from parent 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1 to dec1216487fc2f059d83dd73b303920543a374a1; that head and squash commit 227d8387c267809d599cbc8e945e31a8a97c840b both have tree 9fbc8a278a8a447247dc3453408f84544d5b7721.",
+    "Raw git cat-file output for BIC c4564c2eaf2a0622372ff3816a3a076cdf9507d8 shows Adam Reeve as both author and committer and a one-line message with no trailers; therefore BIC-only AI attribution is absent.",
+    "git merge-base --is-ancestor confirms mainline carrier 227d8387c267809d599cbc8e945e31a8a97c840b is contained in both tags 18.1.0 (f0ee0b90b4156f1b526e592d8fc1df641b663d81) and 23.0.0 (3bc2a6402e830bfc3f1bd3f8341cfdf51fba2d96), matching the advisory's vulnerable boundary.",
+    "PR #642 decomposition identifies 6824d297f9c7a798222fa6cfc693f0f954a2b08f as the first member adding MaxStackAllocSize; squash/release commit d87081931cdecfd2e4401909ecefd220b3ee2a91 has the same final tree as PR head ad8e53f30d1b7794c2b1d3c3e2ce9b5fccc413f3 and is tag 23.0.0.1.",
+    "The fix changes ReadDecimal to stack-allocate only at widths <=1024 and otherwise rent from ArrayPool<byte>, returning the buffer in finally; its TestVeryWideDecimal includes a 10,000,000-byte width specifically documented as causing stack overflow with stackalloc.",
+    "Tag ancestry checks show d87081931cdecfd2e4401909ecefd220b3ee2a91 is not in vulnerable tag 23.0.0 but is contained in patched tag 23.0.0.1, closing the fix/release boundary."
+  ],
+  "reasoning": "The advisory is live and CVE.org marks the CVE PUBLISHED, so this is a real vulnerability rather than a withdrawn or rejected report. Untrusted Parquet schema width reaches ReadDecimal as ByteArray.Length, and the vulnerable implementation allocates that complete width on the stack. The first mainline appearance is squash 227d8387c267809d599cbc8e945e31a8a97c840b, but its recoverable PR history proves that atomic member c4564c2eaf2a0622372ff3816a3a076cdf9507d8 first created the vulnerable function and call path; the direct parent lacks both. The squash tree matches the PR head and is ancestral to the first affected 18.1.0 tag. Atomic fix member 6824d297f9c7a798222fa6cfc693f0f954a2b08f bounds stack allocation and uses pooled heap storage for large widths; the tree-equivalent squash d87081931cdecfd2e4401909ecefd220b3ee2a91 is absent from 23.0.0 and is the 23.0.0.1 release commit. Finally, the raw BIC commit object has only human Adam Reeve identities and no AI marker or trailer. Because AI is judged on that atomic BIC alone, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

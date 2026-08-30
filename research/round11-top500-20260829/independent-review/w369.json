@@ -1,0 +1,25 @@
+{
+  "worker": "w369",
+  "review_agent_id": "r389_w369",
+  "class_id": "alias-194345c4236b2c394f23d97b",
+  "case_id": "GHSA-34rh-wp3j-6cxc",
+  "repo": "pion/stun",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: a trailing zero-length XOR-MAPPED-ADDRESS decodes to a present empty value; GetFromAs reads value[0:2] before its late length check and panics, enabling remote denial of service.",
+    "atomic_bic": "PASS: 2d0e6be7ebff885c354ee08b968f7cbcd72cf9b6 is the smallest single-parent commit that changed lookup semantics from empty-means-not-found to presence-only, first allowing the empty decoded value to reach the pre-existing family read.",
+    "immediate_parent_absence": "PASS: parent 4ef2b466cf57f308a07d017bfb1eca3eb687e8e3 is present and still rejects len(v)==0 with ErrAttributeNotFound, so the zero-length trigger is absent there.",
+    "squash_member_decomposition": "PASS: the BIC has one parent and is not a squash or merge; later refactors fba9f6b02da38b64c47b5a9fd60d77c5ac44527b and 0c49de1e6f2efd9b1cee594c251c2506a51c9b32 only preserve or move the vulnerable flow, while merge 779613246e6143d325ebac08b2bd38d32a6d651b imports already-vulnerable history and is not the BIC.",
+    "affected_fixed_release_membership": "PASS: the BIC is absent from v0.2.2 and present from v0.3.0 through the vulnerable v1.23.1, v2.0.0, and v3.1.2 tags; fa9f074a33a8059c76c960b1fbee39f308002423 is absent from v3.1.2 and is the peeled v3.1.3 tag target, with v3.1.4 and v3.1.5 also containing it. This matches CVE.org's fixed-in-3.1.3 record and confirms the primary record's identification of the GHSA 3.1.5 range error.",
+    "direct_fix_or_verified_unpatched_state": "PASS: merged PR 278 directly produced fa9f074a33a8059c76c960b1fbee39f308002423 over parent 01aa5b8eefd0c0934c6aebd2bd6b6fa7d3c7d715, moving the len(value)<=4 check before bin.Uint16(value[0:2]) and adding the exact zero-length regression test; that test passes in the clone.",
+    "bic_only_ai_attribution": "PASS: raw BIC metadata names Aleksandr Razumov as author and committer and contains only the subject 'attributes, stun: refactor', with no AI or bot marker. Claude co-authorship appears only on the 2026 fix and is excluded from BIC attribution."
+  },
+  "findings": [
+    "CVE-2026-54909 is PUBLISHED, describes the same pre-3.1.3 remote panic, and is not rejected; the GitHub advisory has withdrawn_at=null.",
+    "The first family-read commit bf2972d5019e2cb37713b244e5666a768bfb07dc is not the BIC because its empty-value guard prevents this trigger; 2d0e6be7ebff885c354ee08b968f7cbcd72cf9b6 removes that protection through the lookup-semantics change.",
+    "The primary record correctly distinguishes AI participation in the direct fix from authorship of the 2017 BIC."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

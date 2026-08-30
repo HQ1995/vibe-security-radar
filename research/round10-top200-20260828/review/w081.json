@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-26a1c524547a0de4144d510f",
+ "case_id": "GHSA-r8rp-5f55-5j9x",
+ "repo": "krayin/laravel-crm",
+ "advisory_ids": [
+  "CVE-2026-38529",
+  "GHSA-r8rp-5f55-5j9x"
+ ],
+ "bug_semantics": "PUT /admin/settings/users/edit/{id} (UserController::update, historically AdminController::update) takes the target user id from the URL and writes a bcrypt password (and status/activated) from the request body. Authorization is only the route-level settings.user.users.edit ACL. There is no object-level check that the caller owns {id} or is an administrator before password/status mutation, so any authenticated user with users.edit can reset another non-admin account's password or deactivate it (BOLA/IDOR, CWE-269/CWE-639).",
+ "flaw_origin": "The smallest surviving public first-write is root commit ca3e1b35292849fc311d28e63fa5b8a63ab5a70f ('first commit'). packages/Webkul/Admin/src/Http/Controllers/User/AdminController.php::update(AdminForm $request, $id) already did $data=$request->all(); bcrypt optional password; $adminRepository->update($data,$id) with no caller-vs-target ownership test. AdminForm::authorize() returns true. Later aa35c242 renamed AdminController to Setting/UserController (move), 0d05af1 renamed Setting to Settings (move), and JSON-era updates through v2.2.0/v2.2.5 and researcher-tested ba25b7e7 keep the same password write without an object check. The advisory's canEditAuthFields gate is a simplified model; that identifier never exists in the tree. 97953fd3200b9c67e779b87c61f1846e0e430d4b (2026-08-05, issue #2616) briefly aborted non-admin updates of other ids, then af5deb595d81eb5cd94e1b1e372c61438e79f284 replaced that with preventManagingHigherPrivilegedUser, which still allows a non-admin with users.edit to change another non-admin's password. No tagged release contains a closing object-level owner-or-admin check. GHSA first_patched_version is null; NVD lists 2.2.0 as affected (Analyzed, not rejected/withdrawn).",
+ "introducer_sha": "ca3e1b35292849fc311d28e63fa5b8a63ab5a70f",
+ "introducer_parent": null,
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent: BIC author and committer are jitendra <jitendra@webkul.com>; git cat-file -p shows message 'first commit' with no Co-Authored-By, Generated-by/Generated-with, Copilot, Cursor, Claude, OpenAI, or other AI commit-object markers.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "GHSA-r8rp-5f55-5j9x / CVE-2026-38529 (NVD vulnStatus=Analyzed, CWE-269/CWE-639): BOLA in Settings/UserController.php; GHSA package krayin/laravel-crm <=2.2.0, first_patched_version null. TREXNEGRO advisory: PUT /admin/settings/users/edit/{id} resets password of any non-admin; tested on ba25b7e7f8e108ef006b1314df5e6103f25ae94d. At ba25b7e7 and v2.2.0/v2.2.5, update() validates then bcrypts request password and userRepository->update($data,$id); the only id-related branch is `if ($authUser->id == $id) { $data['status']=true; }` which does not block other ids. git log --follow UserController.php -> Setting/UserController.php -> User/AdminController.php. Root ca3e1b35292849fc311d28e63fa5b8a63ab5a70f is max-parents=0; git rev-parse ca3e1b^ fails (introducer_parent_absent). That commit adds AdminController.php:117-137 update() writing password without ownership, and AdminForm.php authorize() return true. 632c246 only restyles the already-vulnerable update; parent e5dedb83 already has the password write. ACL packages/Webkul/Admin/src/Config/acl.php settings.user.users.edit maps to admin.settings.users.update. 97953fd added non-admin self-only abort; not in any tag (describe HEAD v2.2.5-87-g59eef056). HEAD still whitelists password for ($isAdministrator || !$isSelf). CHANGELOG 2.2.6 has other security items, not this BOLA.",
+ "reasoning": "Vulnerability-first: the mechanism is missing object-level authorization on user password/status update keyed by URL id. The first public write of that update() body is the repository root. Moves/refactors (aa35c242, 0d05af1, later JSON conversion) are not BICs. No finer public member exists; parent-tree verification is the absent-parent root case. Version membership: BIC precedes affected v2.2.0 and researcher commit ba25b7e7. AI judged only from the BIC object: human jitendra, empty trailers. Unpatched: GHSA patched versions none; tagged 2.2.x still lack owner-or-admin enforcement; later #2616 work does not land a complete tagged fix and HEAD still permits horizontal password reset among non-admins with users.edit. Verdict NOT_AI, unpatched.",
+ "remaining_gap": "Unpatched on tagged releases through v2.2.5 and on HEAD: no owner-or-admin object check on password/status. 97953fd3200b9c67e779b87c61f1846e0e430d4b would have blocked non-admin horizontal password reset but is untagged and was replaced by preventManagingHigherPrivilegedUser (af5deb595d81eb5cd94e1b1e372c61438e79f284), which still allows non-admin users.edit holders to set another non-admin's password. Potential fix: require caller_id==target_id or administrator before writing password/status; keep current-password verification for self-edits.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched on tagged releases through v2.2.5 and on HEAD: no owner-or-admin object check on password/status. 97953fd3200b9c67e779b87c61f1846e0e430d4b would have blocked non-admin horizontal password reset but is untagged and was replaced by preventManagingHigherPrivilegedUser (af5deb595d81eb5cd94e1b1e372c61438e79f284), which still allows non-admin users.edit holders to set another non-admin's password. Potential fix: require caller_id==target_id or administrator before writing password/status; keep current-password verification for self-edits.",
+  "potential_fix": {
+   "approach": "require caller_id==target_id or administrator before writing password/status; keep current-password verification for self-edits",
+   "rationale": "Applying this change at the sink described in bug_semantics removes the attacker-controlled input from reaching the vulnerable path, closing the flaw for the currently unpatched code; the record's remaining_gap verifies no such fix exists upstream as of the audited HEAD, so this documents the potential remediation without asserting a fix SHA.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

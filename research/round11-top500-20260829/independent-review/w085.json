@@ -1,0 +1,52 @@
+{
+  "worker": "w085",
+  "review_agent_id": "r389_w085",
+  "class_id": "alias-8758abd6d0e114d0ae71a70f",
+  "case_id": "GHSA-5gfg-jpw3-fppq",
+  "repo": "renovatebot/renovate",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "At the BIC, kustomize helmCharts[].name reaches dependency.depName, is interpolated unquoted into a helm pull command, and is passed to exec with shell=true; the vendor advisory documents the same crafted-name command-injection path."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "bce4f50dbb6b54cf4fce5d8463bd8268c4589bf5 is the smallest reconstructed member that adds artifacts.ts and writes the vulnerable unquoted dependency.depName at the helm pull sink."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS_WITH_CORRECTION",
+      "detail": "The BIC commit object names parent c0761652c042e31124a2f4abbfe6870241a8cdfe, and git cat-file -e on that parent-tree artifacts.ts path fails. The primary evidence and reasoning say this, but introducer_parent_absent is incorrectly false and must be true."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "bce4f50dbb6b54cf4fce5d8463bd8268c4589bf5 is an ancestor of member 3f057936e99a43b1dc51f071dc6dc226903e1a40, whose parent already contains the unquoted depName sink. Member 3f057936 only extracts helmRepositoryArgs. PR head a84212a0dc13da75d8b662bb44e345d5cc173e64 and squash cc08c6e98f19e6258c5d3180c70c98e1be0b0d37 have equal trees, so cc08c6e is the landing aggregate rather than the atomic first writer."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "detail": "Landing squash cc08c6e98f19e6258c5d3180c70c98e1be0b0d37 is not an ancestor of 39.217.0 and is an ancestor of 39.218.0. Fix 59de985bb27ce6ae9e316f4b0552f746e725bc0d is not an ancestor of 40.32.7 and is an ancestor of 40.33.0; tag contents independently show unquoted then quoted depName."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "detail": "59de985bb27ce6ae9e316f4b0552f746e725bc0d directly changes helmRepositoryArgs from ${depName} to ${quote(depName)} in lib/modules/manager/kustomize/artifacts.ts."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "The BIC commit object has human author and committer Micke Lisinge, a one-line feature message, a PGP signature, and no AI, bot, Generated-with, or Co-Authored-By trailer. Later squash metadata is not used for attribution, supporting NOT_AI."
+    },
+    "advisory_disposition": {
+      "status": "PASS",
+      "detail": "CVE-2026-76229 is PUBLISHED with affected >=39.218.0 and <40.33.0; vendor GHSA-xv56-3wq5-9997 is not withdrawn and gives the same mechanism and range. The case is a real vulnerability, not FALSE_POSITIVE."
+    }
+  },
+  "findings": [
+    "Primary verdict NOT_AI is causally supported by the independently replayed clone and advisory evidence.",
+    "Primary field introducer_parent_absent=false contradicts both the verified parent-tree result and the primary's own evidence/reasoning; it must be true.",
+    "The CVE reference labels cc08c6e98f19e6258c5d3180c70c98e1be0b0d37 as a patch, but local history and the vendor advisory show it is the vulnerable feature landing; the actual direct fix is 59de985bb27ce6ae9e316f4b0552f746e725bc0d."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

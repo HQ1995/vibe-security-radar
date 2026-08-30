@@ -1,0 +1,25 @@
+{
+  "worker": "w218",
+  "review_agent_id": "r389_w218",
+  "class_id": "alias-8999c2992850bc3e70d9def0",
+  "case_id": "GHSA-q7jj-qhhg-6m9g",
+  "repo": "frrouting/frr",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: bgp_flowspec_op_decode() writes decoded operators through mval++ into BGP_PBR_MATCH_VAL_MAX=5 arrays. The pre-fix guard uses loop > 5, so loop==5 writes the sixth element at mval[5], an out-of-bounds write reachable from a crafted chained FlowSpec component; CVE.org is PUBLISHED and Red Hat identifies CWE-787 and vendor fixes.",
+    "atomic_bic": "PASS: 47555ee921fadc4910eebce156ea773da8d46324 is the smallest public first-write found. Its diff introduces the flawed loop bound, the CONVERT_TO_NON_OPAQUE mval writes/increment, and the callers passing five-element arrays; file-scoped pickaxe for both the flawed comparison and mval++ resolves to this commit, while blame at the fix parent attributes the bound and sink to it.",
+    "immediate_parent_absence": "PASS: direct parent b46b6f1a550cda8d3d4231017fe0c87f31e0acdc was inspected and has only TODO stubs for CONVERT_TO_NON_OPAQUE, with no BGP_PBR_MATCH_VAL_MAX guard and no mval++ write sink.",
+    "squash_member_decomposition": "PASS: 47555ee921fadc4910eebce156ea773da8d46324 has exactly one parent, is not a merge/revert/rollup, and the vulnerable bound and sink are introduced together in its own tree diff; there is no finer public member to substitute, so decomposition is not applicable.",
+    "affected_fixed_release_membership": "PASS: ancestry checks place the BIC in frr-6.0, frr-10.0, frr-10.0.1, frr-10.4.0, frr-10.6.0, and frr-10.7.0. The mainline fix is absent from the earlier listed tags and present in frr-10.7.0. On stable/10.0, frr-10.0.4 contains the BIC but not the backport, while frr-10.0.5 contains patch-equivalent backport 70dbd170fbc37570197102274614c9a4a2a9056a.",
+    "direct_fix_or_unpatched_state": "PASS: advisory-linked 0e6882bc72c0278988a47b2f0f73b7a91099a25c directly changes both decoder guards from > to >= and returns before a sixth write; stable/10.0 backport 70dbd170fbc37570197102274614c9a4a2a9056a has the identical stable patch-id f4ee4551ec6ef6ddd315fef4094e4f4607c39b31.",
+    "bic_only_ai_attribution": "PASS: the BIC object identifies Philippe Guibert <philippe.guibert@6wind.com> as both author and committer and its message contains only a matching Signed-off-by trailer; no Co-Authored-By, Generated-with, Generated-by, bot identity, or other AI marker appears on the BIC. Fix/backport metadata was not used to attribute the introducer."
+  },
+  "findings": [
+    "The primary record correctly identifies a real off-by-one out-of-bounds write and the atomic first-writing commit.",
+    "The immediate-parent, history, release, direct-fix, vendor-disposition, and BIC-only authorship claims all reproduce from the advisory sources and clone.",
+    "NOT_AI is supported because the vulnerability is real and the BIC has human authorship with no AI marker."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

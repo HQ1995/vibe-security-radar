@@ -1,0 +1,48 @@
+{
+  "worker": "w122",
+  "review_agent_id": "r389_w122",
+  "class_id": "alias-49cb8bc669519766e2354303",
+  "case_id": "GHSA-85jx-x9r4-45m2",
+  "repo": "magento/magento2",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "EVIDENCE_GAP",
+      "detail": "The local 2.4.8 code and unauthenticated GraphQL test confirm that allCustomerGroups returns GroupRepositoryInterface::getList() results behind only a default-true configuration flag, while REST protects the same repository operation with Magento_Customer::group. However, the supplied CVE-2025-49549 advisory describes a high-privileged PR:H issue, and neither it nor the credited reporter's allCustomerGroups write-up explicitly maps this code path to CVE-2025-49549."
+    },
+    "atomic_bic": {
+      "status": "PASS_FOR_LOCAL_MECHANISM",
+      "detail": "git log --all --reverse --diff-filter=A identifies 1b8236afe67fa961d4517e326ca278cb3daf406c as the first public addition of AllCustomerGroups.php, the schema field, and the default-true configuration. It is the smallest surviving public first-write for this local mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "Immediate parent f112c7a7bba2808d4046f22eacc76791634623db has no AllCustomerGroups.php and no allCustomerGroups or graphql_share_all_customer_groups occurrence. The primary field introducer_parent_absent=false contradicts this evidence."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The BIC is a single-parent public commit whose GitHub commit object exposes only parent f112c7a7bba2808d4046f22eacc76791634623db and no member or pull-request reference; no finer public member is reconstructable from the clone history."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "EVIDENCE_GAP",
+      "detail": "The BIC is contained in tag 2.4.8, whose tree has AllCustomerGroups.php; it is absent from 2.4.8-beta1, 2.4.8-beta2, and 2.4.7-p5. Tag 2.4.8-p1 peels to 10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6 and deletes the file. The supplied advisory also claims older affected release lines, but those checked public tags do not contain this BIC or file, reinforcing that the exact advisory-to-mechanism mapping is unresolved."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS_FOR_LOCAL_MECHANISM",
+      "detail": "8c99a5941650ddd90912dd0c451f9c32f956bff9 (LYNX-838) directly deletes the customer-group GraphQL schema, resolver, and default flags; its parent still contains them. The 2.4.8-p1 release commit independently carries the same deletion relative to its parent."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS_FOR_LOCAL_MECHANISM",
+      "detail": "BIC 1b8236afe67fa961d4517e326ca278cb3daf406c is authored by Deepak Soni and committed by GitHub web-flow; its subject and body contain no Co-Authored-By, Generated-with, Copilot, Cursor, or other AI marker. This supports NOT_AI only if the unresolved advisory binding is established."
+    }
+  },
+  "findings": [
+    "The primary record proves a coherent local allCustomerGroups exposure lifecycle, but it does not prove that this mechanism is CVE-2025-49549: the authoritative CVE says high privileges are required while the reviewed path and PoC require no authentication.",
+    "introducer_parent_absent is recorded as false even though both the parent-tree lookup and parent grep prove absence.",
+    "Because vulnerability identity must be closed before AI attribution, the primary NOT_AI verdict cannot be confirmed for this advisory despite the absence of AI markers on the proposed local BIC."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": "Provide authoritative evidence that uniquely maps CVE-2025-49549 / GHSA-85jx-x9r4-45m2 to the unauthenticated LYNX-732 allCustomerGroups exposure (rather than another APSB25-50 issue), reconciling the advisory's PR:H description and older affected-version claims with the public 2.4.8-only code history."
+}

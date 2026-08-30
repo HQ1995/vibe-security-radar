@@ -1,0 +1,26 @@
+{
+  "worker": "w249",
+  "review_agent_id": "r389_w249",
+  "class_id": "alias-4013ee81709d84438bd0b642",
+  "case_id": "GHSA-vxf7-qj7q-83fh",
+  "repo": "spring-projects/spring-security",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In 7.0.4, authenticate() runs DefaultPreAuthenticationChecks before additionalAuthenticationChecks; locked, disabled, or account-expired users throw before the real PasswordEncoder.matches call, while an unknown username executes DaoAuthenticationProvider.mitigateAgainstTimingAttack and pays for a dummy match. The resulting timing difference exposes those user attributes/account existence.",
+    "atomic_bic": "Confirmed as c076f0f2e190c73a17379d05935c2c81657adee9. A path-limited reverse -S search identifies this as the first commit adding USER_NOT_FOUND_PASSWORD and password validation in the UsernameNotFoundException path. The earlier pre-check ordering alone did not distinguish unknown users from status-rejected users because both skipped password work.",
+    "immediate_parent_absence": "Confirmed at f3b143f677b80cddbdaac58c56a90d7bb1e4ac22. Its DaoAuthenticationProvider catch block immediately rethrows UsernameNotFoundException and contains no dummy password validation, while its AbstractUserDetailsAuthenticationProvider already has preAuthenticationChecks before additionalAuthenticationChecks; the complete timing oracle is therefore absent.",
+    "squash_member_decomposition": "Not applicable after verification. The BIC commit object has exactly one parent, its focused source diff directly adds the missing dummy-password path plus tests, and it is the first matching public-history object rather than a merge, move, revert, refactor, or squash aggregate.",
+    "affected_release_membership": "Confirmed. The BIC is an ancestor of local public tags 5.7.0, 5.8.0, 6.3.0, 6.4.0, 6.5.0, 6.5.9, 7.0.0, and 7.0.4. The vendor advisory identifies affected endpoints 5.7.22, 5.8.24, 6.3.15, 6.4.15, 6.5.9, and 7.0.4; the older enterprise-only endpoint tags are not published by the public Git remote.",
+    "fixed_release_membership": "Confirmed. Direct fix a317a3d8663995daa2bc91593bb88ae2da21ea52 is an ancestor of public tags 6.5.10 and 7.0.5 and is not an ancestor of 6.5.9 or 7.0.4. The vendor advisory names enterprise-only fixes 5.7.23, 5.8.25, 6.3.16, and 6.4.16, whose tags are not exposed by the public remote.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed direct fix a317a3d8663995daa2bc91593bb88ae2da21ea52. It introduces performPreCheck(), which by default still invokes additionalAuthenticationChecks after a pre-check exception and then preserves the original exception; its timing test compares enabled and disabled authentication paths. The setter allows opting out, matching the vendor mitigation notice.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC alone. The 2012 commit object names Rob Winch as both author and committer, has one human parent, and contains no AI/bot identity, Co-Authored-By, Generated-with, or model/tool trailer. Later refactors and the 2026 fix were not used for AI attribution."
+  },
+  "findings": [
+    "CVE.org currently records CVE-2026-22746 as PUBLISHED, and the live Spring advisory describes the same DaoAuthenticationProvider timing bypass; this is a real CWE-208 issue, not a withdrawn or rejected advisory.",
+    "The primary record correctly selects the smallest public BIC, its immediate parent, the direct fix, affected/fixed OSS tag boundary, and BIC-only human attribution.",
+    "The frozen bundle SHA-256 matches manifest value 10158dbd990911a884ee2bad825041d5e90cea5a648ae4a1512639ec325291af."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

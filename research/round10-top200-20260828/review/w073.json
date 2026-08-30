@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-ee44e166d0e55b67583e9485",
+  "case_id": "GHSA-gxpm-5jq2-3f26",
+  "repo": "hashview/hashview",
+  "advisory_ids": [
+    "CVE-2025-43930",
+    "GHSA-gxpm-5jq2-3f26"
+  ],
+  "bug_semantics": "Unauthenticated password-reset poisoning / account takeover (CWE-472). reset_request() in hashview/users/routes.py emails Flask url_for('users.reset_token', ..., _external=True). At v0.8.1 (579a082176) Flask Config has no SERVER_NAME, so _external=True builds the absolute URL from the attacker-controlled Host header. A crafted Host on POST /reset_password puts the reset token on an attacker domain. GHSA-gxpm-5jq2-3f26 / CVE-2025-43930; CVE.org state PUBLISHED, not rejected. GHSA withdrawn_at null. Issue #145 describes that public reset; the same _external=True pattern also exists on admin_reset() (login_required admin).",
+  "flaw_origin": "First write of url_for(..., _external=True) in the password-reset email is fb34913357030c170c6e7d6ab64989c6c684fa5d (i128, 2020-12-06, 'restructuring'). That commit replaced the reset_request stub (send_reset_email was pass) with an email body containing url_for('users.reset_token', token=token, _external=True). Parent a64d8ea9dd6363ff4dc4303024b3b93a0a9b9c5c still has hashview/users/routes.py but has no _external=True anywhere in *.py. Later 1055c687/15ebbbb2 keep _external=True (token/user_id/formatting). a15ec655 copies the same pattern into admin_reset. Direct closure of the public sink is 168d8e3f4f686161d61f9fa15f677c23f5ce55e3 (2025-11-10): reset_request _external=True -> False and first SERVER_NAME assignment in hashview/config.py. Parent 8bc8db1cac still has reset_request _external=True and no SERVER_NAME in config.py.",
+  "introducer_sha": "fb34913357030c170c6e7d6ab64989c6c684fa5d",
+  "introducer_parent": "a64d8ea9dd6363ff4dc4303024b3b93a0a9b9c5c",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none; BIC author/committer i128 <jarsnah12@gmail.com> 2020-12-06; commit message has no Co-Authored-By/Generated-with/Assisted-by/bot author.",
+  "verdict": "NOT_AI",
+  "fix_sha": "168d8e3f4f686161d61f9fa15f677c23f5ce55e3",
+  "direct_fix_sha": "168d8e3f4f686161d61f9fa15f677c23f5ce55e3",
+  "evidence": "Issue #145: attacker POSTs /reset_password with a crafted Host; Flask url_for(_external=True) without SERVER_NAME poisons the emailed reset URL. git show 579a082:hashview/users/routes.py reset_request L189 and admin_reset L212 both use _external=True; git show 579a082:hashview/config.py has no SERVER_NAME. git log -S '_external=True' -- hashview/users/routes.py first hit is fb34913. git cat-file -p fb34913: author/committer i128, parent a64d8ea9. git cat-file -e a64d8ea9:hashview/users/routes.py succeeds; git grep _external=True fb34913^ -- '*.py' is empty. git blame -L 182,196 579a082 -- hashview/users/routes.py attributes the reset_request _external=True line family to fb34913 (later 15ebbbb2 only reindents). git show 168d8e3 -- hashview/users/routes.py flips reset_request to _external=False; git show 168d8e3 -- hashview/config.py adds SERVER_NAME = file_config['SERVER']['SERVER_NAME']. git show 8bc8db1:hashview/users/routes.py still has reset_request _external=True; git grep SERVER_NAME 8bc8db1 -- hashview/config.py is empty. Issue closed 2026-06-01 ('Should be fixed now in latest release'). CVE.org CVE-2025-43930 state PUBLISHED, dateRejected none. HEAD still has admin_reset _external=True; that path is login_required admin and is outside the unauthenticated CVE sink.",
+  "reasoning": "Vulnerability-first: the CVE is a real Host-header reset-poisoning bug on the public reset_request email at 0.8.1, not a withdrawn/rejected advisory. The smallest commit that first wrote the vulnerable _external=True reset URL is fb34913 (2020); the parent tree still has routes.py but lacks those lines (introducer_parent_absent=true). Later formatting/authlib/admin_reset copies are not the first write. 168d8e3 is the first commit that both stops building an absolute Host-derived URL on the public sink and introduces Flask SERVER_NAME. AI-second: BIC commit object is human i128 2020 with no AI trailer or bot author. Verdict NOT_AI.",
+  "remaining_gap": null
+}

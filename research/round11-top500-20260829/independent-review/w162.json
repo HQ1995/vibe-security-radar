@@ -1,0 +1,25 @@
+{
+  "worker": "w162",
+  "review_agent_id": "r389_w162",
+  "class_id": "alias-a39f0d5caa473fc8512962e4",
+  "case_id": "GHSA-8879-fh4f-q3qm",
+  "repo": "krayin/laravel-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. LeadDataGrid::prepareQueryBuilder() takes authenticated-request input rotten_lead.in and concatenates it into Laravel havingRaw() after defining the rotten_lead computed alias, so attacker-controlled text becomes SQL in a HAVING clause. The current CVE.org record is PUBLISHED and identifies CWE-89; GHSA-8879-fh4f-q3qm has withdrawn_at=null.",
+    "atomic_bic": "Confirmed f344238f734bcba261a885870ba9d205fb8aeccf. Its patch first adds both the computed rotten_lead alias and the vulnerable havingRaw('rotten_lead = ' . request()->input('rotten_lead.in')) sink. Path-restricted reverse -S searches for havingRaw and rotten_lead.in both begin at this commit.",
+    "immediate_parent_absence": "Confirmed. The BIC has exactly one parent, e985cb089b2ccf6a8a36611c4d22a19e23e564cf. Exact git grep checks of the parent version of LeadDataGrid.php find no havingRaw, rotten_lead.in, or rotten_lead, while the file itself exists there.",
+    "squash_member_decomposition": "Confirmed. f344238f734bcba261a885870ba9d205fb8aeccf is a single-parent feature commit, not a merge or release aggregate. The later PR #1068 integration commit e6178a943b0d6c6d1e801041d1169d0e66999eec is a two-parent merge whose second parent contains f344238f; path-limited member history preserves f344238f as the first sink-writing member, so there is no squash aggregate to substitute for the BIC.",
+    "affected_fixed_release_membership": "Confirmed from local tag ancestry and tag trees. f344238f is absent from v1.2.3 and present from v1.2.4; v2.2.3 still contains the concatenated havingRaw sink. Fix 2a3724cb7e9e65ab98f2b42c8ca2c98dede48f62 is absent from v2.2.3 and is an ancestor of v2.2.4 and v2.2.5, whose LeadDataGrid uses the bound placeholder form. This supports the fixed-at-2.2.4 boundary, while repository history more precisely shows that releases before v1.2.4 predate the flaw despite the CNA's broad lessThan 2.2.4 range.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 2a3724cb7e9e65ab98f2b42c8ca2c98dede48f62. Its one-file hunk changes raw concatenation to havingRaw(... = ?, [(int) request()->input(...)]) and the immediate parent still has the vulnerable concatenation.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only. f344238f records author and committer prabhat gautam <prabhatkumar.oc082@webkul.in>, has the message 'added rotten lead filter', one parent, and no trailers or AI/bot markers. Later merge, fix, advisory, and repository-level AI signals were not used to attribute the BIC."
+  },
+  "findings": [
+    "The independently replayed source-to-sink mechanism, first-write history, parent state, preserved PR member history, tag membership, and direct patch all match the primary record.",
+    "The CNA's affected range is broader than the reconstructable repository history: v1.2.3 lacks the BIC and v1.2.4 is the first checked containing release. The primary already records that release boundary, so no primary-field correction is required.",
+    "No BIC-local AI provenance signal was found; the real vulnerability is therefore correctly classified NOT_AI rather than FALSE_POSITIVE."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

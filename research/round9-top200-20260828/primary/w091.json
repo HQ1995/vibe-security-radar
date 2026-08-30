@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-7ff1f2a496ed865fccef2da6",
+  "case_id": "GHSA-x8p2-g6vv-f5mr",
+  "repo": "datocms/plugins",
+  "advisory_ids": [
+    "CVE-2026-3327",
+    "GHSA-x8p2-g6vv-f5mr"
+  ],
+  "bug_semantics": "An authenticated DatoCMS user could supply an absolute or protocol-relative external URL in the visual inspector's path query parameter. ContentLinkContext copied that value unchanged into iframeState.path, and UI then placed it unchanged in the redirect parameter of the configured enableDraftModeUrl. When the draft-mode endpoint followed redirect, the inspector iframe could be navigated to an attacker-chosen origin, bypassing the configured frontend-origin restriction.",
+  "flaw_origin": "The Visual Editing feature was introduced with both ends of the unsafe data flow in one commit: web-previews/src/entrypoints/Inspector/ContentLinkContext/index.tsx accepted ctx.location.search path without origin validation, while web-previews/src/entrypoints/Inspector/UI/index.tsx forwarded iframeState.path to the draft-mode redirect parameter without validating it at the iframe sink.",
+  "introducer_sha": "0fdfe73f8552e3fd5dcbc126ad9602346e3a1672",
+  "introducer_parent": "d42b0fc4e54d2e9731030812d2b98098cc6d1a95",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file -p 0fdfe73f8552e3fd5dcbc126ad9602346e3a1672 shows human author and committer Stefano Verna <s.verna@datocms.com>, subject/body only 'Visual Editing', and no Co-Authored-By, Generated-with, bot, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7965eebf0973cc5ebb18bc5ff9ce7ff19e89bb2e",
+  "direct_fix_sha": "7965eebf0973cc5ebb18bc5ff9ce7ff19e89bb2e",
+  "evidence": "The first-party advisory https://github.com/advisories/GHSA-x8p2-g6vv-f5mr identifies authenticated iframe injection, Web Previews <1.0.31, and commit 7965eebf0973cc5ebb18bc5ff9ce7ff19e89bb2e. At the BIC, ContentLinkContext/index.tsx:79-85 initialized iframeState.path from new URLSearchParams(ctx.location.search).get('path') with no validation, and UI/index.tsx:35-39 set that value as url.searchParams.redirect before passing the resulting URL to IframeContainer. git log -L on both ranges and git log --all -S for the exact source and sink expressions identify 0fdfe73f8552e3fd5dcbc126ad9602346e3a1672 as their first appearance; the only later -S removal of the sink is the advisory fix. Direct parent-tree verification with git ls-tree -r d42b0fc4e54d2e9731030812d2b98098cc6d1a95 -- web-previews/src/entrypoints/Inspector/UI/index.tsx returned no entry, because the vulnerable Inspector UI did not exist in the parent. The BIC tree's package.json declared 1.0.27; descendant a933ee45d41b02d0d6643d8ebc1aa60f6929a993 bumped 1.0.27 to 1.0.29, and 3d697a3b3ebd280f36ae2a411199d2d715ca8b31 bumped it to the last vulnerable release 1.0.30. The fix's immediate parent a20d935b50daa9bdde4c88776ace6de5cb65a05d still declared 1.0.30. Fix 7965eebf0973cc5ebb18bc5ff9ce7ff19e89bb2e added normalizePathForVisualEditing, rejects parsed origins unequal to the configured draft-mode origin, emits only pathname/search/hash, and applies this at sources and again at the redirect sink. Its immediate child a40b1e48bea2c352bb5c4838dbd536ee3c0457f0 bumped 1.0.30 to patched 1.0.31, proving the fix/version boundary. The BIC is an ordinary one-parent commit with no squash/member identifiers, and all-ref -S history exposes no smaller predecessor to decompose.",
+  "reasoning": "The vulnerability is the complete unvalidated path-to-redirect flow, not a later refactor: an authenticated user-controlled inspector path reached the draft-mode redirect and therefore the iframe destination without a same-origin check. Commit 0fdfe73f8552e3fd5dcbc126ad9602346e3a1672 is the smallest history object that first wrote both causally necessary lines; later 04aa5d9ad0506751b305cf86d18a8ca07358a906 only changed visualEditing naming around them. The immediate parent lacks the Inspector UI path entirely, directly establishing parent absence. The vulnerable feature precedes the 1.0.29 and 1.0.30 release bumps, while the sanitizer lands on top of 1.0.30 and immediately precedes the 1.0.31 bump, matching the advisory's <1.0.31 boundary. The direct fix validates all path entry points and revalidates the iframe redirect sink against the configured origin. Because attribution is restricted to the BIC commit object and that object has only a human author/committer with no AI marker or trailer, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

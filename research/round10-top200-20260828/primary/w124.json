@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-317a9b681be9ea0c40260bfd",
+  "case_id": "GHSA-4675-36f9-wf6r",
+  "repo": "mmaitre314/picklescan",
+  "advisory_ids": [
+    "CVE-2025-71323",
+    "GHSA-4675-36f9-wf6r"
+  ],
+  "bug_semantics": "Picklescan parsed attacker-controlled pickle GLOBAL/STACK_GLOBAL references but treated only modules explicitly present in its denylist as findings. Because `ctypes` was absent, a pickle referencing `ctypes.CDLL` or `ctypes.WinDLL` produced no dangerous finding; a consumer that subsequently unpickled the file could load native libraries, invoke C functions or direct syscalls, and access raw process memory, enabling RCE and sandbox escape.",
+  "flaw_origin": "The initial scanner implementation introduced a default-allow, incomplete module denylist: `_suspicious_globals` omitted `ctypes`, and `scan_pickle_bytes` incremented `issues_count` only when the imported module/name matched that list. Thus an extracted `ctypes` global fell through with zero issues from the first released implementation.",
+  "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+  "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the exact BIC commit object has author and committer `Matthieu Maitre <mmaitre314@users.noreply.github.com>`, message `Implement Pickle scanner`, and no trailers (no Co-Authored-By, Generated-with, bot identity, or other AI marker).",
+  "verdict": "NOT_AI",
+  "fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "direct_fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "evidence": [
+    "First-party advisory https://github.com/mmaitre314/picklescan/security/advisories/GHSA-4675-36f9-wf6r describes the undetected ctypes pickle path and declares affected versions `< 0.0.33` and patched version `0.0.33`; its PoC uses `ctypes.WinDLL` to load kernel32 and reach `WinExec`.",
+    "First-party fix PR https://github.com/mmaitre314/picklescan/pull/53 and direct fix https://github.com/mmaitre314/picklescan/commit/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab identify GHSA-4675-36f9-wf6r among the vulnerabilities fixed.",
+    "`git log -S _suspicious_globals`, `git log -S 'def scan_pickle_bytes'`, and `git log -L 14,24:src/picklescan/scanner.py c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e` converge on the smallest BIC, c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e (`Implement Pickle scanner`): https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e.",
+    "At the BIC, `src/picklescan/scanner.py` lines 14-23 create the incomplete denylist without `ctypes`: https://github.com/mmaitre314/picklescan/blob/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e/src/picklescan/scanner.py#L14-L23. Lines 77-90 extract globals and count an issue only on a denylist match, so `ctypes` falls through: https://github.com/mmaitre314/picklescan/blob/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e/src/picklescan/scanner.py#L77-L90.",
+    "Direct-parent tree verification: `git cat-file -e 6a76b8c3ac67dc04181e600614ecf2a423cca326:src/picklescan/scanner.py` failed, `git ls-tree -r --name-only 6a76b8c3ac67dc04181e600614ecf2a423cca326 -- src` was empty, and parent-wide grep found neither `_suspicious_globals` nor `scan_pickle_bytes` nor `ctypes`. The BIC tree newly contains `src/picklescan/scanner.py`; compare: https://github.com/mmaitre314/picklescan/compare/6a76b8c3ac67dc04181e600614ecf2a423cca326...c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e.",
+    "Version membership: the BIC's `setup.cfg` is version 0.0.1; `git merge-base --is-ancestor` proves it is contained in tagged v0.0.2 and v0.0.32. Pre-fix tag v0.0.32 resolves to d3273f4225da08c0998177a5ac0588724fa4bba0 and still has no `ctypes` unsafe entry. This matches the advisory's `< 0.0.33` affected boundary.",
+    "The direct fix changes `setup.cfg` from 0.0.32 to 0.0.33 and adds `\"ctypes\": \"*\"` at `src/picklescan/scanner.py` line 123: https://github.com/mmaitre314/picklescan/blob/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab/src/picklescan/scanner.py#L119-L125. Its direct parent lacks that entry.",
+    "The fix adds a concrete `ctypes.CDLL` reducer at `tests/init_data_files.py` lines 321-325 (https://github.com/mmaitre314/picklescan/blob/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab/tests/init_data_files.py#L321-L325), a corresponding pickle fixture, and an assertion that it is Dangerous at `tests/test_scanner.py` line 375 (https://github.com/mmaitre314/picklescan/blob/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab/tests/test_scanner.py#L374-L376).",
+    "Tag v0.0.33 resolves directly to fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab, and ancestry checks confirm the fix is in the patched tag. The first-party release explicitly lists `Fix ctypes not being blocked`: https://github.com/mmaitre314/picklescan/releases/tag/v0.0.33.",
+    "BIC-only attribution check: `git cat-file -p c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e` shows tree 70dc2180adaf740c99fead9d28b3c7f9c55a2243, single parent 6a76b8c3ac67dc04181e600614ecf2a423cca326, human author/committer Matthieu Maitre, and message `Implement Pickle scanner`; parsed trailers are empty."
+  ],
+  "reasoning": "The advisory's vulnerable behavior is not a later regression: it follows directly from the scanner's original default-allow blocklist design. Commit c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e is smaller and earlier than later renames/refactors because it first creates both the incomplete list and the match-only reporting path. Its immediate parent has no scanner source or equivalent mechanism, proving direct-parent absence. The BIC ships as version 0.0.1 and is ancestral to vulnerable releases through v0.0.32. Fix 70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab directly adds a wildcard ctypes denial plus a `ctypes.CDLL` regression fixture/assertion, bumps the package to 0.0.33, and is exactly the v0.0.33 tag, satisfying the patched boundary. Inspection of only the BIC commit object found a human author/committer and no AI marker, so the causal result is NOT_AI.",
+  "remaining_gap": null
+}

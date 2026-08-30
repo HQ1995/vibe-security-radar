@@ -1,0 +1,24 @@
+{
+  "worker": "w186",
+  "review_agent_id": "r389_w186",
+  "class_id": "alias-b013e77a664e33890f7c75b9",
+  "case_id": "GHSA-mqhg-v22x-pqj8",
+  "repo": "bagisto/bagisto",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE-2026-21449 remains PUBLISHED and GHSA-mqhg-v22x-pqj8 is not withdrawn. In v2.3.9, customer-controlled first_name and last_name are Blade-rendered as mustache text inside the shop-wide Vue #app mount, so an input such as {{7*7}} is subsequently compiled by Vue and displayed as 49.",
+    "atomic_bic": "CONFIRMED: 15043a249ba9d37a9ab4a023ae940ee077c3dd7f is the smallest public first-write commit. Its diff replaces hardcoded Prashant/Singh cells with $customer['first_name'] and $customer['last_name'] in the Vue-mounted profile/dashboard view; later commits only move, restyle, temporarily remove, or restore that sink.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 587aaf3961504e85c01ce536355a37692fb092ee is present and has hardcoded Prashant/Singh in the corresponding view. Its Blade first_name/last_name occurrences are only signup input names, not stored customer-name output, while the parent already mounts Vue on #app.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent ordinary commit with verifiable parent and diff, not a squash aggregate, so no member decomposition is required. Rename commits 6910ca47f5bd4ec7d981c9de8a7a1f26ab6ecd2c and 86b7971b6107060daa394dbd254d83a30b08f0d7 preserve the sink and are not BICs; da88aab91f2604f9fffa49ec38c647f19a6c8f2f restores it after a temporary dummy-data rewrite and is likewise not the first write.",
+    "affected_release_membership": "CONFIRMED: 15043a249ba9d37a9ab4a023ae940ee077c3dd7f is an ancestor of v2.3.9, while 4144931da0014c696f9126132ce44d7cfbdb2761, 2cfca100f91410c1b049dc74b13dfc82c1cb4b97, and b879f8930940cbb91a9d7d18843beb1eef8ebff1 are not. The v2.3.9 profile view contains the unprotected first_name/last_name sink, matching the affected range < 2.3.10.",
+    "fixed_release_membership": "CONFIRMED: the BIC, advisory merge 4144931da0014c696f9126132ce44d7cfbdb2761, direct security commit 2cfca100f91410c1b049dc74b13dfc82c1cb4b97, and v-pre follow-up b879f8930940cbb91a9d7d18843beb1eef8ebff1 are all ancestors of v2.3.10. The tagged profile view marks both name nodes v-pre, matching the advisory's first patched version 2.3.10.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: advisory ref 4144931da0014c696f9126132ce44d7cfbdb2761 is a two-parent merge whose security hunk originates in 2cfca100f91410c1b049dc74b13dfc82c1cb4b97, changing both name nodes from Vue-compilable text to v-text. Commit 11378c6014bdc9f32c19bfa0cd5838a7c7191148 only reformats that hunk, and b879f8930940cbb91a9d7d18843beb1eef8ebff1 replaces it with v-pre in v2.3.10.",
+    "bic_only_ai_attribution": "CONFIRMED: AI attribution was evaluated only on BIC 15043a249ba9d37a9ab4a023ae940ee077c3dd7f. Its 2018 commit object names prashant-webkul as author and committer and contains only the message 'Edit form, logout route for customer', with no AI/bot identity, Co-Authored-By, Generated-with, Cursor, or Copilot marker; NOT_AI is supported."
+  },
+  "findings": [
+    "The primary record's vulnerability lifecycle, BIC and parent, non-BIC move/restore history, release gates, direct-fix chain, and BIC-only NOT_AI judgment independently reproduce without a material discrepancy."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

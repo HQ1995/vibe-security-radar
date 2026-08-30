@@ -1,0 +1,26 @@
+{
+  "worker": "w400",
+  "review_agent_id": "r389_w400",
+  "class_id": "alias-37396502750453cfc6b53ee7",
+  "case_id": "GHSA-6g43-577r-wf4x",
+  "repo": "free5gc/chf",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: RechargePut split the path parameter on '_' and unconditionally accessed element 1; an underscore-free path parameter yields a one-element slice and a remotely triggerable panic.",
+    "atomic_bic": "CONFIRMED: 50083ee6a9fb802b4585bf551dc3f04960d5a852 is the earliest exact pickaxe hit for ueIdRatingGroup[1] and first writes the vulnerable parse in public history.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 16ceffae95196ab47c627ddc18420734acf5a3c5 uses c.Param(\"UeId\") and contains neither the split nor the out-of-range access.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a one-parent ordinary commit, not a merge or squash aggregate; later c963dcaced1f81d55e7802729f51298ec4693945 copies the already-vulnerable handler and is not the introducer.",
+    "affected_release_membership": "CONFIRMED: the BIC is an ancestor of v1.0.0 and v1.2.1; v1.2.1 still contains the unchecked split/index sequence.",
+    "fixed_release_membership": "CONFIRMED: merge 55af766f321a00afa978e806548c96f8a7d2433e is not an ancestor of v1.2.1 but is an ancestor of v1.2.2; v1.2.2 uses ueId plus a validated ratingGroup query parameter, matching the advisory's < 1.2.2 range.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct member 2c0938ecf19a3678ebb595f7fa4aefe0512dcad2 adds a length guard before index 1; child 4eeff921bde59e4d9d842b8d32b2563698f743c9 removes the split through the query-parameter refactor, and merge 55af766f321a00afa978e806548c96f8a7d2433e lands both.",
+    "bic_only_ai_attribution": "CONFIRMED: the raw BIC object names Roy-Hu as author and committer, has signature status N, and its message contains no AI, bot, generated-with, co-author, or similar marker; attribution is based only on the BIC."
+  },
+  "findings": [
+    "CVE-2026-32937 is currently PUBLISHED and GHSA-6g43-577r-wf4x is reviewed and not withdrawn, so the advisory is not a withdrawn or rejected false positive.",
+    "Independent code-history replay confirms the vulnerability lifecycle, first-write BIC, parent absence, copy-versus-origin distinction, direct fix, merge, and affected/fixed tag boundary stated by the primary record.",
+    "No correction to the primary NOT_AI verdict or its causal fields is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

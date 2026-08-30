@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-9facb10815652e7cc3caa664",
+  "case_id": "GHSA-g36m-9g3m-2vmp",
+  "repo": "apache/ws-neethi",
+  "advisory_ids": [
+    "CVE-2026-42402",
+    "GHSA-g36m-9g3m-2vmp"
+  ],
+  "bug_semantics": "Apache Neethi policy normalization converts nested All/ExactlyOne (historically And/Xor) operators into DNF by taking an unbounded Cartesian cross-product of child alternatives. A crafted WS-Policy with N ExactlyOne children of two branches each produces 2^N All alternatives, allocating unbounded objects until the JVM heap is exhausted (CWE-400). The 3.2.2 patch adds MAX_ALTERNATIVES=10000 inside AbstractPolicyOperator.getCrossProduct and throws RuntimeException once the product exceeds that cap.",
+  "flaw_origin": "The unbounded nested-loop Cartesian expansion was first written in the repository root commit that imported Policy.normalize from the pre-ASF scratch area. That method already combined every pair of child XorCompositeAssertion alternatives into new AndCompositeAssertion terms with no size bound. Later Neethi 2 work (AbstractPolicyOperator.crossProduct / getCrossProduct) is a rename/port of the same algorithm, not a new first-write.",
+  "introducer_sha": "ae621abb456e212f7e4038c0ccae1bd5542c5805",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Sanjiva Weerawarana <sanjiva@apache.org>, committer Sanjiva Weerawarana <sanjiva@apache.org>; git cat-file -p shows no Co-Authored-By, Generated-with, Signed-off-by, or bot trailers on ae621abb456e212f7e4038c0ccae1bd5542c5805",
+  "verdict": "NOT_AI",
+  "fix_sha": "9069bcf9d401fbcfff834f26248845f8d51da4b5",
+  "direct_fix_sha": "9069bcf9d401fbcfff834f26248845f8d51da4b5",
+  "evidence": [
+    "CVE.org record CVE-2026-42402 state=PUBLISHED (CNA apache, datePublished 2026-05-01); GHSA-g36m-9g3m-2vmp withdrawn_at=null; Apache/oss-security advisory: affected from 0 before 3.2.2, patched in 3.2.2 by capping normalized policy alternatives.",
+    "git rev-list --max-parents=0 --all = ae621abb456e212f7e4038c0ccae1bd5542c5805 (2005-11-07 Sanjiva Weerawarana <sanjiva@apache.org> 'importing policy model code from scratch area'). git cat-file -p shows no parent line; git rev-parse ae621abb^ fails. introducer_parent_absent after direct parent-tree verification.",
+    "ae621abb:src/org/apache/policy/model/Policy.java Policy.normalize(PolicyRegistry) lines 141-173: if childXorTermList.size()>1, nested i/j loops plus iterA/iterB loops allocate AndCompositeAssertion terms via resultantXorTerm.addTerm with no alternative cap. Same Cartesian product is the CVE mechanism.",
+    "git log -S crossProduct --all: first helper extract is 05ce870322fb9c50d7cdf1c65e403a08379572b3 (WSCOMMONS-19), which replaced the inline Policy/AndCompositeAssertion nested loops with Policy.crossProduct; that is a refactor, not a BIC.",
+    "64241dd3841a8fc137f48f1a1ef62fab7eaceef5 (2006-07-08) added src/org/apache/neethi/AbstractPolicyOperator.java with recursive crossProduct; parent 979026ccb6ebfb7344fa1ed7b95396d4aac14089 has no AbstractPolicyOperator. Function body is a near-verbatim port of Policy.crossProduct (XorCompositeAssertion->ExactlyOne, AndCompositeAssertion->All).",
+    "24c60d6c359ca1b9dd7e1b830ab4f114683a3331 (message: 'Refactored the existing codebase') rewrote crossProduct into getCrossProduct nested loops; 1a8ffd6d39234d3e9615de52f818a78d113e8029 only moved that method inside the file. Blame at 9069bcf^:src/main/java/org/apache/neethi/AbstractPolicyOperator.java:220-239 still attributes getCrossProduct to that refactor lineage.",
+    "Direct fix 9069bcf9d401fbcfff834f26248845f8d51da4b5 (2026-04-21 Colm O hEigeartaigh) adds MAX_ALTERNATIVES=10000 and throws once crossProduct.getPolicyComponents().size() exceeds it in getCrossProduct. Follow-up test 3099a3f37885fc6fa5c69a7d41a097b78b6beb73 PolicyNormalizationDoSTest builds 75 binary ExactlyOne children (2^75 alternatives) and expects RuntimeException.",
+    "git merge-base --is-ancestor ae621abb456e212f7e4038c0ccae1bd5542c5805 neethi-3.2.1 (9daf936fd3e3369307e773a6a8e492a3b64bfb22) true; git grep MAX_ALTERNATIVES neethi-3.2.1 -- '*.java' empty. git merge-base --is-ancestor 9069bcf9d401fbcfff834f26248845f8d51da4b5 neethi-3.2.2 (2351df23093e1bd4b2d2c8f9630e95e929a5de4e) true; git merge-base --is-ancestor 9069bcf9d401fbcfff834f26248845f8d51da4b5 neethi-3.2.1 false. Matches affected < 3.2.2 / first_patched 3.2.2."
+  ],
+  "reasoning": "CVE-2026-42402 is a real, published Apache CNA record (not withdrawn/rejected): policy.normalize performs DNF conversion by Cartesian-expanding ExactlyOne alternatives with no resource bound, so a network-supplied WS-Policy can exhaust heap. The 3.2.2 landing commit 9069bcf9d401fbcfff834f26248845f8d51da4b5 is the advertised fix (MAX_ALTERNATIVES in getCrossProduct); the test added immediately after reconstructs the exponential All/ExactlyOne tree. Walking git log -S/blame from that patched method does not stop at getCrossProduct (24c60d6c) or Neethi 2 AbstractPolicyOperator.crossProduct (64241dd3): both are refactors/ports of Policy.normalize's unbounded XOR×XOR product, which already exists in the git-root import ae621abb456e212f7e4038c0ccae1bd5542c5805. That root has no parent, so it is the smallest surviving public first-write; no finer pre-ASF member is reconstructable. Tag membership matches the advisory: the BIC is an ancestor of 3.2.1 (still uncapped) and the fix is an ancestor of 3.2.2 but not 3.2.1. AI is judged only on the BIC object: 2005 Apache author/committer Sanjiva Weerawarana, empty trailers, no bot identity. Therefore NOT_AI.",
+  "remaining_gap": null
+}

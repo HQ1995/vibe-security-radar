@@ -1,0 +1,35 @@
+{
+  "worker": "w187",
+  "review_agent_id": "r389_w187",
+  "class_id": "alias-b1699731c6e6c6f4b795128d",
+  "case_id": "GHSA-2mwc-h2mg-v6p8",
+  "repo": "bagisto/bagisto",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: In affected releases, authenticated admin CMS create/update accepts raw html_content, PageRepository only rewrites '=&gt;' to '=>', and the storefront emits the stored value with Blade raw output {!! $page->html_content !!}. An intercepted request therefore bypasses TinyMCE and persists script-capable HTML that executes when rendered. GitHub's reviewed advisory and the PUBLISHED CVE record identify this stored-XSS mechanism and versions < 2.3.10.",
+    "atomic_bic": "CORRECTION_REQUIRED: b1285fa2433f58f7ea6d3eeee363876b8d471fe2 introduced unsanitized CMS persistence, but its storefront one-column template used escaped Blade output {{ $data['content'] }} and did not yet contain the vulnerable raw-output sink. Its direct child 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd retained the unsanitized persistence and first added packages/Webkul/Shop/src/Resources/views/cms/page.blade.php with {!! DbView::make($page)->field('html_content')->render() !!}; this is the smallest public commit that first completes the exploitable source-to-store-to-sink lifecycle.",
+    "immediate_parent_absence": "CONFIRMED for corrected BIC: 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd has the single, available parent b1285fa2433f58f7ea6d3eeee363876b8d471fe2. That parent lacks packages/Webkul/Shop/src/Resources/views/cms/page.blade.php, and its existing CMS storefront output is Blade-escaped, so the raw rendering sink and complete stored-XSS lifecycle are absent immediately before the corrected BIC.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: corrected BIC 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd is an ordinary single-parent commit, not a merge or squash aggregate; its diff itself adds the raw-output sink, so no finer public member decomposition is required.",
+    "affected_fixed_release_membership": "CONFIRMED: corrected BIC 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd is an ancestor of v2.3.8, v2.3.9, and v2.3.10. Direct fix 0a9059d5a7dc0def3f4cd1d2beaf48efc0d719b8 is not an ancestor of v2.3.8 or v2.3.9, is an ancestor of v2.3.10, and tags containing it begin at v2.3.10. The v2.3.10 changelog explicitly records CMS html_content sanitization.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED DIRECT FIX: 0a9059d5a7dc0def3f4cd1d2beaf48efc0d719b8 changes only the CMS PageController for this mechanism, applying clean_content() before both create and update persistence; clean_content() invokes Purify::clean and strips template/PHP constructs. Its immediate parent persists both paths unsanitized. Advisory-linked f533b1cd9c80896792da60976179c95573d78b79 instead changes ProductReviewAttachmentRepository and is unrelated to CMS html_content.",
+    "bic_only_ai_attribution": "CONFIRMED NOT_AI after BIC correction: the corrected BIC commit object names Prashant Singh <prashant.singh852@webkul.com> as author and committer on 2019-08-02, has one parent, and contains only subject 'CMS implemented' with no Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, or other AI marker. The AI judgment remains based only on this corrected BIC."
+  },
+  "findings": [
+    "The primary record selects b1285fa2433f58f7ea6d3eeee363876b8d471fe2 as BIC because it first persisted CMS content without server-side sanitization, but that commit's storefront rendering remained escaped and therefore had not yet completed the stored-XSS execution path.",
+    "Corrected BIC 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd is the immediate child of the primary BIC and first adds the raw storefront rendering sink while preserving unsanitized persistence.",
+    "The BIC correction does not change the causal verdict: both the corrected commit object and its authorship metadata support NOT_AI with no AI marker.",
+    "The primary record correctly identifies direct fix 0a9059d5a7dc0def3f4cd1d2beaf48efc0d719b8 and the v2.3.10 fixed-release boundary; the GHSA's linked f533b1cd9c80896792da60976179c95573d78b79 addresses a separate product-review attachment XSS."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "Unsanitized CMS persistence first appeared in b1285fa2433f58f7ea6d3eeee363876b8d471fe2, but that parent's storefront template escaped the content. Commit 9ca97aa594f44b0ee1e39fd2ed78c804d78013fd immediately followed it, retained raw request persistence, renamed the field to html_content, and first added a Blade raw-output storefront sink. It is therefore the smallest public commit that first made the complete stored-XSS lifecycle exploitable.",
+    "introducer_sha": "9ca97aa594f44b0ee1e39fd2ed78c804d78013fd",
+    "introducer_parent": "b1285fa2433f58f7ea6d3eeee363876b8d471fe2",
+    "introducer_parent_absent": false,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "ai_marker": "absent; corrected BIC author/committer Prashant Singh <prashant.singh852@webkul.com> (2019-08-02); single parent and subject 'CMS implemented', with no AI authorship trailer or marker",
+    "verdict": "NOT_AI"
+  },
+  "remaining_gap": null
+}

@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-459d78152d335aa5bfd49d70",
+  "case_id": "GHSA-p35r-jg68-wccx",
+  "repo": "chatgptnextweb/nextchat",
+  "advisory_ids": [
+    "CVE-2026-7178",
+    "GHSA-p35r-jg68-wccx"
+  ],
+  "bug_semantics": "The remotely reachable GET /api/artifacts endpoint reads the attacker-controlled id query parameter and interpolates it into the path of a Cloudflare KV API URL. URL normalization resolves ../ segments before fetch sends the request, so seven traversal segments can escape /accounts/{account}/storage/kv/namespaces/{namespace}/values and select another Cloudflare API path under /client/v4. The same fetch attaches the server's CLOUDFLARE_KV_API_KEY Bearer token and streams the upstream response back to the requester, producing authenticated SSRF and possible Cloudflare data or infrastructure exposure.",
+  "flaw_origin": "Commit 421bf33c0e033ae5ab51f08902d9aa420f5b3f65 created app/api/artifact/route.ts and, in the initial implementation, combined all causal elements: unsanitized id input at line 34, direct URL-path interpolation through storeUrl(id) at lines 7-8 and 35, privileged Authorization at lines 9-10 and 36, and passthrough of the Cloudflare response at lines 39-43. Later commit d8afd1af88038d859b322fd55773c31d2cb6c4db only refactored the same vulnerable URL construction to `${storeUrl()}/values/${id}`; rename commit 6737f016f5c3d4ddc01a7b29ebb3b5df17138b96 only moved artifact to artifacts.",
+  "introducer_sha": "421bf33c0e033ae5ab51f08902d9aa420f5b3f65",
+  "introducer_parent": "1ecefd88f741a22e83029a33d42232b69e27dddd",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw BIC commit object names author and committer lloydzhou <lloydzhou@qq.com> and its message is only `save artifact content to cloudflare workers kv`; it has no Co-Authored-By, Generated-with, AI-assistant, or bot marker/trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "First-party disclosure https://github.com/ChatGPTNextWeb/NextChat/issues/6741 (source gist https://gist.github.com/YLChen-007/43252d45d75e8bdd2d45136fd6ffe8a5) identifies app/api/artifacts/route.ts, the ../../../../../../../user/tokens/verify traversal payload, automatic CLOUDFLARE_KV_API_KEY forwarding, affected versions through v2.16.1, and no patched version.",
+    "`git log --all --follow -- app/api/artifacts/route.ts` traces the file through the 100% rename at 6737f016f5c3d4ddc01a7b29ebb3b5df17138b96 to its creation in 421bf33c0e033ae5ab51f08902d9aa420f5b3f65; `git log --all --follow -p -G 'searchParams.*get(\"id\")|storeUrl.*values'` shows 421bf33c0e033ae5ab51f08902d9aa420f5b3f65 first writing the vulnerable GET path and d8afd1af88038d859b322fd55773c31d2cb6c4db merely preserving it in refactored syntax.",
+    "`git cat-file -e 1ecefd88f741a22e83029a33d42232b69e27dddd:app/api/artifact/route.ts` and the corresponding artifacts path both fail because neither route exists in the immediate parent tree; the BIC diff creates app/api/artifact/route.ts from /dev/null.",
+    "Version ancestry establishes the boundary: BIC 421bf33c0e033ae5ab51f08902d9aa420f5b3f65 is not an ancestor of v2.13.1 (e079f1b31ab8cfb262a37e7ddf8ab0bf03a35464), is an ancestor of v2.14.0 (8b513537b7e9755ec3ede1de30a791fd579ecedc), and `git tag --contains` lists v2.14.0 through v2.16.1. Both v2.14.0 and v2.16.1 contain the unsanitized id-to-fetch path.",
+    "The validated origin/main tip defdcdb55d850cd12c4c657eb83729fd66e215c0 dated 2026-08-11 still has app/api/artifacts/route.ts blob 4707e795f0acef275a352d5c941e3e123591bb57 with `fetch(`${storeUrl()}/values/${id}`, { headers: storeHeaders() })`; all inspected origin refs carrying the endpoint use that same vulnerable blob, so no public fix commit exists in the supplied full-history clone.",
+    "`git cat-file -p 421bf33c0e033ae5ab51f08902d9aa420f5b3f65` provides the BIC-only attribution evidence: human author/committer lloydzhou <lloydzhou@qq.com>, one parent 1ecefd88f741a22e83029a33d42232b69e27dddd, and no AI-related commit-object trailer or marker."
+  ],
+  "reasoning": "The vulnerability begins with the endpoint itself, not with the next-day TTL refactor or the later singular-to-plural rename. The initial route commit accepts id from the query string, places it in a privileged Cloudflare API URL without validation or encoding, sends the deployment's Bearer token, and returns the selected upstream response; therefore it is the smallest real BIC. Its immediate parent lacks both possible route paths, proving parent absence. Release ancestry places the first vulnerable release at v2.14.0, after v2.13.1, and the same mechanism remains in the advisory's terminal affected tag v2.16.1 and in the validated 2026-08-11 main tip. There is no squash or member history to decompose. Because only the BIC commit object controls AI attribution and that object has a human author/committer with no AI marker or trailer, the causal verdict is NOT_AI. The issue, advisory, full ref history, and current main all indicate that the vulnerability remains unpatched, so fix_sha and direct_fix_sha are necessarily null rather than unknown.",
+  "remaining_gap": "Upstream remains unpatched: the disclosure names no patched version and the validated public-history main tip still contains the vulnerable endpoint, so there is no fix or direct-fix commit SHA to record."
+}

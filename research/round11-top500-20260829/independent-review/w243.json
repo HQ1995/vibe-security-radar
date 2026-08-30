@@ -1,0 +1,25 @@
+{
+  "worker": "w243",
+  "review_agent_id": "r389_w243",
+  "class_id": "alias-207901cf15a22c66d8513fab",
+  "case_id": "GHSA-2hfh-9h53-qc24",
+  "repo": "apache/ws-neethi",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. Before 3.2.2, AbstractPolicyOperator.normalizeOperator resolves each TYPE_POLICY_REF through PolicyRegistry, copies the resolved Policy's components into All, and recursively normalizes them without tracking active references. Registry policies A -> B and B -> A therefore recurse until StackOverflowError or hang. CVE.org currently records CVE-2026-42403 as PUBLISHED and affected < 3.2.2; Apache's security page recommends 3.2.2 or later.",
+    "atomic_bic": "Confirmed as 8baf24289b8a2976f7df94adac1d1470ec80be13. The earlier 1a8ffd6d39234d3e9615de52f818a78d113e8029 branch only looked up a PolicyReference and rejected an unresolved URI. Commit 8baf242 is the focused first write that adds All, copies the resolved policy components, and recursively calls normalizeOperator, creating the cycle-capable mechanism.",
+    "immediate_parent_absence": "Confirmed. Immediate parent 1dc43243631039e9f67f89ae0500178dd44e6fd1 is present and its TYPE_POLICY_REF branch ends after lookup/null rejection; it contains no recursive expansion of the referenced Policy. The parent-to-BIC diff adds exactly the three operative expansion/recursion lines plus whitespace.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC has exactly one parent, changes only AbstractPolicyOperator.java, and is a four-added-line focused patch rather than a merge or aggregate squash; no finer public member commit is exposed. The later e174c261067c19e0fc8d26190da978d190214ed3 preserves the same recursion while changing its signature and adding #id lookup, so it is not the first-write BIC.",
+    "affected_fixed_release_membership": "Confirmed. The BIC is an ancestor of affected tag neethi-3.2.1. Direct fix 7a38f2be139d70fbf879fbb54eebe1fde633cc32 is not an ancestor of neethi-3.2.1 and is an ancestor of neethi-3.2.2; tag containment begins at neethi-3.2.2 (also neethi-3.2.3), matching the authoritative < 3.2.2 boundary.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 7a38f2be139d70fbf879fbb54eebe1fde633cc32. It passes a Set<String> through recursive normalization, rejects a repeated resolved policy id with 'Circular PolicyReference detected', removes ids after unwinding, and adds an A <-> B PolicyReference regression test. This directly blocks the advisory's id-bearing circular-reference mechanism.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC alone. The 2007 commit object names human Apache author and committer Hettige Don Ignatious Nywan Sanka Samaranayake <sanka@apache.org>; its short message has no Co-Authored-By, Generated-with, bot identity, or other AI marker. Fix authorship and unrelated repository AI-marked commits were not used for attribution."
+  },
+  "findings": [
+    "Independent clone replay confirms the primary's mechanism, atomic introducer, parent state, release boundary, direct fix, and BIC-only authorship judgment.",
+    "The 2011 e174c261 change is a refactor/lookup extension of the already-vulnerable recursive call, not a replacement introducer.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

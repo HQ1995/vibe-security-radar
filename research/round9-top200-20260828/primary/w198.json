@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-9e7908f98131a2caf6e60992",
+  "case_id": "GHSA-gfvq-wmqw-q9j2",
+  "repo": "classroomio/classroomio",
+  "advisory_ids": [
+    "CVE-2025-65675",
+    "GHSA-gfvq-wmqw-q9j2"
+  ],
+  "bug_semantics": "An authenticated user could bypass the profile image input's client-side accept hint and submit an SVG File. The profile flow uploaded the supplied bytes unchanged to the public Supabase avatars bucket, merely naming the object with a .webp suffix, then persisted its public URL. Directly viewing that stored object from the trusted storage origin caused JavaScript embedded in the SVG to execute, yielding stored XSS.",
+  "flaw_origin": "Commit 05ed2b74ee25aaeddefc62121202ee97ed8637f0 introduced the profile-avatar upload end to end: a new UploadImage component accepted a File without validating its MIME type, extension, or contents, and src/routes/profile/[id].svelte uploaded that untrusted File directly to the public avatars bucket and stored its URL. The accept=\".jpg, .jpeg, .png\" attribute was only a browser file-picker hint, while forcing a .webp object name did not decode or transcode the uploaded bytes.",
+  "introducer_sha": "05ed2b74ee25aaeddefc62121202ee97ed8637f0",
+  "introducer_parent": "26798f1e93d437f0a2661333450c7b669e365de1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names human author and committer rotimi-best <best@classroomio.com>, has the subject \"Upload avatar\", and contains no Co-Authored-By, Generated-with, bot identity, trailer, or other AI marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "900f5ec12979f512ae8f333312aee78973a054f5",
+  "direct_fix_sha": "900f5ec12979f512ae8f333312aee78973a054f5",
+  "evidence": [
+    "The reporter disclosure at https://github.com/Rivek619/CVE-2025-65675 identifies ClassroomIO 0.1.13 and reproduces the issue by logging in, uploading a crafted SVG as the profile picture, saving it, and opening the stored image in a new tab; the embedded script then executes.",
+    "At tag v0.1.13 (peeled commit 876a785b3c467b809804f56e0981bff448fcfdb5), apps/dashboard/src/lib/components/UploadImage/index.svelte:20-37 takes e.target.files[0], checks only size, reads it, and assigns the File to avatar; apps/dashboard/src/routes/profile/[id]/+page.svelte:51-63 uploads avatar unchanged to supabase.storage.from('avatars') under a filename ending in .webp and persists response.publicUrl.",
+    "git log -L 51,65:apps/dashboard/src/routes/profile/[id]/+page.svelte v0.1.13 followed the upload block backward through non-causal API/refactor edits 32d0198d3da4ef52b303369846420844ddad5b1c, d542a4f7e3f1b71c4e43304f0d2c89bd5618e917, and 4a7843b0b40707f94828c9dce18f54d8eb821ae2 to its zero-line addition in 05ed2b74ee25aaeddefc62121202ee97ed8637f0. v0.1.13 blame likewise assigns the original File acceptance, FileReader flow, avatar assignment, if (avatar), forced .webp filename, and upload/public-URL structure to 05ed2b74ee25aaeddefc62121202ee97ed8637f0; later commits only moved, typed, or adapted that mechanism.",
+    "Direct diff 26798f1e93d437f0a2661333450c7b669e365de1..05ed2b74ee25aaeddefc62121202ee97ed8637f0 shows src/components/UploadImage/index.svelte created from /dev/null and the complete unvalidated storage upload added to src/routes/profile/[id].svelte. Direct parent-tree checks found no src/components/UploadImage/index.svelte at all (git cat-file -e exited 128), and the parent's profile page had no File selection, avatars-bucket upload, generated public URL, or attacker-controlled profile-picture persistence path.",
+    "05ed2b74ee25aaeddefc62121202ee97ed8637f0 is a single-parent commit, not a merge or release aggregate, and is an ancestor of v0.1.13 and every listed v0.1.x tag. Same-message commits on unrelated histories were not ancestors of v0.1.13 and therefore are not the BIC for this release lineage.",
+    "The direct fix commit 900f5ec12979f512ae8f333312aee78973a054f5 adds validateImageUpload calls before UploadImage and UploadWidget accept a file, central JPEG/PNG/GIF/WebP MIME and extension allowlists, explicit SVG rejection, and SVG/data-URL sanitization. Its message expressly says it fixes stored XSS through malicious SVG profile uploads.",
+    "The version boundary is direct: v0.2.4 peels to 4ac242d918988855db54aff3578aa73a6d408d2e, does not contain 900f5ec12979f512ae8f333312aee78973a054f5, and has no validateImageUpload reference in the profile UploadImage component. Annotated security tag v0.2.5 peels directly to 900f5ec12979f512ae8f333312aee78973a054f5 and contains those checks. Thus the advisory-named v0.1.13 is demonstrably vulnerable and the repository's first tagged patched boundary is v0.2.5.",
+    "git cat-file commit 05ed2b74ee25aaeddefc62121202ee97ed8637f0 is the sole AI-attribution source inspected for the BIC: author and committer are both rotimi-best <best@classroomio.com>, the message is only \"Upload avatar\", and there are no trailers or AI/bot markers."
+  ],
+  "reasoning": "The lifecycle begins in 05ed2b74ee25aaeddefc62121202ee97ed8637f0, which first made arbitrary local File bytes flow from the profile UI into a public avatars object and then into the stored profile URL without trustworthy type or content validation. Its immediate parent lacks both the upload component and this storage path, so parent absence is directly established. History tracing shows later commits reformatted, moved, and adapted Supabase response handling but retained the same causal flow; they are not introducers. The advisory's v0.1.13 tag contains the BIC and the vulnerable code. Commit 900f5ec12979f512ae8f333312aee78973a054f5 directly closes the path with image-type/extension allowlisting and SVG defenses and is itself the v0.2.5 tagged security release, while v0.2.4 still lacks it. Because the smallest causal BIC has a human author/committer and no commit-object AI marker, the protocol requires NOT_AI regardless of any later history or the fix's provenance.",
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-6f6de0e3762ceaadffd3b8a8",
+  "case_id": "GHSA-9gvj-pp9x-gcfr",
+  "repo": "mmaitre314/picklescan",
+  "advisory_ids": [
+    "CVE-2025-71325",
+    "GHSA-9gvj-pp9x-gcfr"
+  ],
+  "bug_semantics": "In `_list_globals`, the `STACK_GLOBAL` backward operand scan used `for offset in range(1, n)`. Because Python excludes the range endpoint, `n - offset` visits opcode indexes `n-1` through `1` but never index `0`. For the advisory payload (`STRING 'os'` at index 0, `STRING 'system'` at index 1, and `STACK_GLOBAL` at index 2), the scanner collects only `system`, raises the unexpected `ValueError` for finding one rather than two operands, and aborts/bypasses malicious-global detection even though unpickling invokes `os.system('ls')`.",
+  "flaw_origin": "Commit 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8 introduced the off-by-one while refactoring `_list_globals` for multiple pickles per file: it replaced the parent's fixed `ops[n-2]`/`ops[n-1]` STACK_GLOBAL extraction with a backward search whose `range(1, n)` omitted opcode index 0. Later memo/opcode-support commits retained that range; they did not originate it.",
+  "introducer_sha": "18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8",
+  "introducer_parent": "9c31e17959dab1893874235ade2a140d5553c8ef",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the exact BIC commit object has author `Matthieu Maitre <mmaitre314@users.noreply.github.com>` and committer `Matthieu Maitre <mmaitre314@users.noreply.github.com>`; its complete message is `Add support for multiple pickles per file (older PyTorch format)` and has no `Co-Authored-By`, `Generated-with`, bot identity, or other AI-assistance trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "58983e1c20973ac42f2df7ff15d7c8cd32f9b688",
+  "direct_fix_sha": "58983e1c20973ac42f2df7ff15d7c8cd32f9b688",
+  "evidence": [
+    "First-party advisory: https://github.com/mmaitre314/picklescan/security/advisories/GHSA-9gvj-pp9x-gcfr identifies `_list_globals`, the excluded index 0, the `os`/`system`/`STACK_GLOBAL` PoC, affected `< 0.0.27`, and patched `0.0.27`; vulnerable v0.0.26 source is https://github.com/mmaitre314/picklescan/blob/2a8383cfeb4158567f9770d86597300c9e508d0f/src/picklescan/scanner.py#L253-L283.",
+    "BIC: https://github.com/mmaitre314/picklescan/commit/18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8. `git grep -n -F 'for offset in range(1, n):' 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8 -- src/picklescan/scanner.py` found the vulnerable line at line 75; source permalink: https://github.com/mmaitre314/picklescan/blob/18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8/src/picklescan/scanner.py#L72-L87.",
+    "Direct-parent proof: exact BIC object names parent 9c31e17959dab1893874235ade2a140d5553c8ef. Exact-string `git grep` on that parent returned no match, and `git diff 9c31e17959dab1893874235ade2a140d5553c8ef 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8 -- src/picklescan/scanner.py` shows the parent instead required adjacent `SHORT_BINUNICODE` operands at `ops[n-2]` and `ops[n-1]`, which includes index 0 when `STACK_GLOBAL` is at index 2: https://github.com/mmaitre314/picklescan/blob/9c31e17959dab1893874235ade2a140d5553c8ef/src/picklescan/scanner.py#L60-L78.",
+    "History proof: `git log --all --reverse -S 'for offset in range(1, n):' -- src/picklescan/scanner.py` returned exactly introduction 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8 and removal/fix 58983e1c20973ac42f2df7ff15d7c8cd32f9b688. `git log 2974a252df7649ca910c4d6c79afa1029ee99423 -L 252,270:src/picklescan/scanner.py` traced the same flawed loop back through formatting, opcode, and memo-support changes to 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8; the earlier initial scanner used fixed indexes rather than this mechanism.",
+    "Version boundary: `git tag --contains 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8` begins at v0.0.2 and includes v0.0.26; tag v0.0.2 targets 1c86244db5b6dee7a63fabeda03ef2ef7fe6a899 and v0.0.26 targets vulnerable 2a8383cfeb4158567f9770d86597300c9e508d0f. Thus repository history narrows this exact mechanism to shipped versions v0.0.2 through v0.0.26, while the GHSA's declared range is more broadly `< 0.0.27`.",
+    "Direct fix: https://github.com/mmaitre314/picklescan/commit/58983e1c20973ac42f2df7ff15d7c8cd32f9b688 (parent 2974a252df7649ca910c4d6c79afa1029ee99423) changes `range(1, n)` to `range(1, n + 1)`, adds STRING/BINSTRING/SHORT_BINSTRING operand support, adds the advisory `malicious23.pkl` regression expectation for dangerous `os.system`, and bumps setup.cfg from 0.0.26 to 0.0.27. PR: https://github.com/mmaitre314/picklescan/pull/46.",
+    "Patched boundary: tag v0.0.27 points directly to 58983e1c20973ac42f2df7ff15d7c8cd32f9b688; `git tag --contains` shows that fix first in v0.0.27 and all later tags. The first-party release explicitly lists the bypass fix and GHSA: https://github.com/mmaitre314/picklescan/releases/tag/v0.0.27.",
+    "BIC-only attribution proof: `git cat-file -p 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8` yielded tree c04f204511398740e4ba5a47b58c360679494432, sole parent 9c31e17959dab1893874235ade2a140d5553c8ef, identical human author/committer identities, and only the one-line non-AI message quoted in `ai_marker`; no trailers are present."
+  ],
+  "reasoning": "The vulnerability-first trace starts from the repository advisory's concrete STACK_GLOBAL PoC. At n=2, the flawed endpoint guarantees that index 0 is invisible, so only one of the two callable-name operands is recovered and the unexpected exception defeats scanning. Line history identifies 18c978e9a298a2e08a040dc2ed9ee6413bc7c6c8 as the smallest change that first wrote that endpoint: its immediate parent has no backward loop and correctly indexes positions 0 and 1 for this shape. Subsequent commits only extended the retained loop. The BIC shipped by v0.0.2 and remained in v0.0.26; although the advisory declares all versions below 0.0.27 affected, the exact audited off-by-one mechanism begins at v0.0.2. Commit 58983e1c20973ac42f2df7ff15d7c8cd32f9b688 is both the direct code fix and v0.0.27 tag target, restoring index-0 coverage and adding the PoC regression. Finally, attribution is restricted to the exact BIC commit object: it contains only a human author/committer and no AI marker or trailer, so the protocol requires NOT_AI.",
+  "remaining_gap": null
+}

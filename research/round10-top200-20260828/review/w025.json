@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-a6041aa9482ca522697bd2a5",
+  "case_id": "GHSA-6x93-4cv7-m749",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-72837",
+    "GHSA-6x93-4cv7-m749"
+  ],
+  "bug_semantics": "Proxy and hook auto-provisioning apply the CLI default scope '.' and pass it to MakeUserDir without clearing it when createUserDir is enabled. MakeUserDir only derives /users/<username> for an empty scope, so '.' normalizes to '/', every provisioned non-admin user is saved with the server-root scope, and one valid upstream identity can read, modify, delete, and share other users' files.",
+  "flaw_origin": "dda9a389f387e94643a9a2ae56027260b210152a first added auth/hook.go SaveUser, which copies Settings.Defaults.Scope (CLI default '.') onto new users and calls MakeUserDir without the empty-scope CreateUserDir branch. That is the first write of the advisory's auto-provision root-scope path; the later proxy auto-create in 209acf24/PR #3569 repeats the same call pattern.",
+  "introducer_sha": "dda9a389f387e94643a9a2ae56027260b210152a",
+  "introducer_parent": "f80b016ef0e169f578bd23dd7916cf80c6b7a31d",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: raw commit object for dda9a389f387e94643a9a2ae56027260b210152a has author 'Ramires Viana <59319979+ramiresviana@users.noreply.github.com>', committer 'Oleg Lobanov <oleg@lobanov.me>', and message 'feat: hook authentication method'; no Co-Authored-By, Generated-with, bot identity, or other trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "8ddd3d1db9b9f5727d0bf96ea0e7d9a25a8692b4",
+  "direct_fix_sha": "8ddd3d1db9b9f5727d0bf96ea0e7d9a25a8692b4",
+  "evidence": [
+    "CVE.org CVE-2026-72837 is state PUBLISHED (datePublished 2026-08-14, dateUpdated 2026-08-14). Bundle GHSA-6x93-4cv7-m749 has withdrawn_at null. First-party advisory https://github.com/filebrowser/filebrowser/security/advisories/GHSA-j7jh-37pf-mf8h names auth/proxy.go and auth/hook.go auto-provisioning, MakeUserDir empty-scope contract in settings/dir.go, signup contrast in http/auth.go, affected <=2.63.19 / patched 2.63.20, and the default-scope '.' configuration.",
+    "numactl --cpunodebind=1 --membind=1 git log --all --reverse -S'MakeUserDir' --format='%H %P %s' -- auth/hook.go starts at dda9a389f387e94643a9a2ae56027260b210152a parent f80b016ef0e169f578bd23dd7916cf80c6b7a31d. git diff-tree -r -M -C --name-status reports A auth/hook.go among 12 files, one parent (not a merge). git cat-file -e f80b016ef0e169f578bd23dd7916cf80c6b7a31d:auth/hook.go fails (exit 128). GitHub PR #1554 is a single-commit merge whose head SHA is this same object, so it is not a squash aggregate.",
+    "GIT_NO_LAZY_FETCH=0 git grep -n -A40 -F 'func (a *HookAuth) SaveUser' dda9a389 -- auth/hook.go shows new users built with Scope: a.Settings.Defaults.Scope then userHome, err := a.Settings.MakeUserDir(u.Username, u.Scope, a.Server.Root) with no CreateUserDir clear. git grep at the same commit of MakeUserDir in settings/dir.go still derives a username home only when userScope == \"\" && s.CreateUserDir, then path.Join(\"/\", userScope). cmd/users.go at that commit already defaulted flags.String(\"scope\", \".\", ...). That combination stores Scope=\"/\".",
+    "Proxy auto-provision is a later copy, not first-write: parent 25372edb5c0e616e82b76b5f523633af57d347e0:auth/proxy.go returns os.ErrPermission on missing users and has no MakeUserDir. Squash landing 209acf2429b06e2e8d78218937c59fd7e7edd1be (PR #3569, git describe v2.32.0~11) adds setting.Defaults.Apply(user) then MakeUserDir without clearing. GitHub PR commits reconstruct member b2a1bc18809247b292286896a0a03e94c157e3a7 as the original proxy auto-create with the same sink; that member is not in the assigned clone. Both proxy objects post-date the hook BIC and are not used as introducer_sha.",
+    "Signup is the advisory's contrast path, not the BIC: 0ca8059d8dea4fe079146471ce4f24acc96021f2 (contained by v2.63.18) adds if CreateUserDir { user.Scope = \"\" } only in http/auth.go. git grep of v2.63.18 still shows proxy.go:54 and hook.go:160 calling MakeUserDir with the inherited default scope.",
+    "Direct fix: git cat-file -p 8ddd3d1db9b9f5727d0bf96ea0e7d9a25a8692b4 is ordinary one-parent commit 'fix(auth): isolate auto-provisioned proxy and hook users to their own home' over 9fffee387ff102728e47531ebc6cf5d1dd39bbf1. Path-limited diff-tree is M auth/hook.go auth/proxy.go http/auth.go settings/dir.go. git grep of CreateUserHome at 8ddd3d1d shows derived := s.CreateUserDir && !explicitScope; if derived { user.Scope = \"\" } before MakeUserDir, used from proxy (explicitScope false), hook (explicitScope from hook user.scope), and signup. git merge-base --is-ancestor 8ddd3d1d v2.63.18 fails and v2.63.19 succeeds. fb6aeba9eae7b8eb401e0db325973781e1ffd08b later makes the GetByScope check atomic with save and is first contained by v2.63.20; it is follow-up race hardening, not the first isolation close. CVE 'before 2.63.20' tracks that later tag; the named sink closes at 8ddd3d1d.",
+    "BIC-only AI: git cat-file -p dda9a389f387e94643a9a2ae56027260b210152a and git log -1 --format='%an %ae %cn %ce' show human author Ramires Viana and human committer Oleg Lobanov, one parent, and only that subject. No Co-Authored-By, Generated-with, bot, or other trailer. PR #1554 body, later proxy squash committer GitHub, and the human fix 8ddd3d1d are not used to attribute the BIC."
+  ],
+  "reasoning": "The advisory is a real CWE-284: auto-provisioned proxy/hook users inherit default scope '.' and MakeUserDir therefore stores '/', bypassing createUserDir isolation. Those lines were first written when auth/hook.go was added in dda9a389; the parent tree lacks the path, the commit is an ordinary 12-file first-write (PR #1554 is one member equal to the landing SHA), and it is inside the affected range through v2.63.18. The 2024 proxy auto-create repeats the same missed clear and is not a smaller first-write. 8ddd3d1d is the smallest commit that clears inherited scope via CreateUserHome on all three provisioners and is the first v2.63.19-contained sink close. The BIC object is human-authored with no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,24 @@
+{
+  "worker": "w349",
+  "review_agent_id": "r389_w349",
+  "class_id": "alias-077abd95bb91831299565a00",
+  "case_id": "GHSA-hf52-78x8-6w3w",
+  "repo": "apache/activemq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: with syncDurableSubs=true, processBrokerInfo accepted a network BrokerInfo and synchronously returned NetworkBridgeUtils.getBrokerSubscriptionInfo(), which exposes copied durable-subscription ConsumerInfo metadata, before ConnectionInfo passed broker.addConnection() and its authentication plugins.",
+    "atomic_bic": "CONFIRMED: 3953b9aaefaee914bdd0702f27aef47c021ceb27 first added BrokerSubscriptionInfo, syncDurableSubs, the metadata enumerator, and both unauthenticated dispatchSync call sites; reverse -S history on the sink string starts at this commit. d206621a73e4731b00eff49518ea93ba9a4ee3c0 only moved the enumerator to NetworkBridgeUtils and retained the sink.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is a65f5e7c2077e048a2664339f6425d73948d71ce; exact-parent grep has no BrokerSubscriptionInfo, getBrokerSubscriptionInfo, isSyncDurableSubs, or syncDurableSubs Java symbol, and its processBrokerInfo has no durable-subscription response path.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent AMQ-6373 feature commit, not a merge, move, refactor, revert, or later squash aggregate; its OpenWire v12 generated marshallers are companions to the same newly introduced public command, with no finer public member reconstructable from repository history.",
+    "affected_fixed_release_membership": "CONFIRMED: the BIC is absent from activemq-5.13.5 and is an ancestor of activemq-5.14.0, 5.19.6, 5.19.7, 6.0.0, 6.2.5, and 6.2.6. The equivalent fix 038cb1e688c5383e14b455f32448f80bdbd88777 is in 5.19.7 but not 5.19.6; 4115627f270c8f3f90859a09328529769113d48d is in 6.2.6 but not 6.2.5. This matches the PUBLISHED CVE record's affected ranges 5.14.0 to before 5.19.7 and 6.0.0 to before 6.2.6.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct mainline fix b6f9a14e1a6ad1b9a3f1c41eb5ea2db990eaba34 replaces immediate sends with registerDurableSync, whose CompletableFuture completes only after broker.addConnection() succeeds and skips on authentication failure; its auth-failure test requires no BrokerSubscriptionInfo. The mainline and both release backports have identical stable patch-id 33bd1261880c3a06fcaa3815e02c11a1e33bd7fd.",
+    "bic_only_ai_attribution": "CONFIRMED: judgment uses only BIC 3953b9aaefaee914bdd0702f27aef47c021ceb27. Its commit object names Christopher L. Shannon as author and committer, dated 2016, and contains only the AMQ-6373 feature message with no Co-Authored-By, Generated-with, bot identity, or other AI marker."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, atomic introducer, immediate parent, direct fix, release membership, and BIC-only NOT_AI attribution independently reproduce from the advisory and clone.",
+    "CVE-2026-49270 is PUBLISHED and not rejected; the CNA description and affected ranges match the repository evidence. GitHub advisory live API was rate-limited, but the frozen bundle records withdrawn_at as null and the authoritative CVE state closes the advisory-status gate."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

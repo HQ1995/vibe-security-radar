@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-63236b267cec168a5abdb183",
+ "case_id": "GHSA-j2j2-c4gj-7cmc",
+ "repo": "jahlives/openssl_encrypt",
+ "advisory_ids": [
+  "CVE-2026-74880",
+  "GHSA-j2j2-c4gj-7cmc"
+ ],
+ "bug_semantics": "CWE-598: /refresh on keyserver and telemetry FastAPI routes took refresh_token via Query(...), putting the secret in URLs (access logs, proxies, Referer, browser history). CVE.org CVE-2026-74880 is PUBLISHED (same issue as GHSA-4rh7-jwg9-m28m).",
+ "flaw_origin": "cdc9c7d814915a9a2c568987b7bcc14f3b7cf533 (feat: Reduce JWT expiry and implement refresh tokens) first added /refresh with refresh_token: str = Query(...) in openssl_encrypt_server/modules/{keyserver,telemetry}/routes.py. Parent e5961e7a72b3e37bad6012ff2c06aeacefb85aca had neither refresh handler.",
+ "introducer_sha": "cdc9c7d814915a9a2c568987b7bcc14f3b7cf533",
+ "introducer_parent": "e5961e7a72b3e37bad6012ff2c06aeacefb85aca",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "Generated with Claude Code; Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+ "verdict": "AI_ROOT_CAUSE",
+ "fix_sha": "4b2adb05cde8a7ee03cdd271755da3b377c68011",
+ "direct_fix_sha": "4b2adb05cde8a7ee03cdd271755da3b377c68011",
+ "evidence": "git cat-file -e e5961e7a72b3e37bad6012ff2c06aeacefb85aca:openssl_encrypt_server/modules/telemetry/routes.py and .../keyserver/routes.py succeed. Parent trees have no def refresh_token / Query Refresh token. BIC first writes both /refresh handlers with Query(..., description=\"Refresh token\"). git log -1 --format='%an %ae %cn %ce' cdc9c7d8 => Tobi jahlives@gmx.ch Tobi jahlives@gmx.ch; cat-file trailers include Generated with Claude Code and Co-Authored-By: Claude Sonnet 4.5. Fix 4b2adb05 converts telemetry /refresh to Body(RefreshRequest); git show v1.4.0:openssl_encrypt_server/modules/telemetry/routes.py has RefreshRequest/Body. Later bf5e4d81/d994a7bf/4986a1b1 remove openssl_encrypt_server from this repo.",
+ "reasoning": "The vuln is accepting refresh tokens as GET/query strings on /refresh, not JWT itself. BIC is the first public commit that wrote those Query sinks; Claude co-authored that object, so AI authored the first-write. Advisory is published, not withdrawn. Direct fix SHA is the telemetry POST-body commit cited by GHSA-4rh7.",
+ "remaining_gap": "4b2adb05 patched telemetry only. v1.4.0 keyserver/routes.py still has refresh_token: str = Query(...). No later in-repo RefreshRequest commit on the keyserver path before openssl_encrypt_server was removed."
+}

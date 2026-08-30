@@ -1,0 +1,36 @@
+{
+  "class_id": "alias-906b1ddfad74662995a82a58",
+  "case_id": "GHSA-vcrf-j523-4mrf",
+  "repo": "aws/aws-cdk",
+  "advisory_ids": [
+    "CVE-2026-13760",
+    "GHSA-vcrf-j523-4mrf"
+  ],
+  "bug_semantics": "When NodejsFunction bundling handled nodeModules, dependency version strings read from package.json were JSON-serialized and interpolated inside a single-quoted echo command. A version containing a single quote could terminate that shell argument and inject metacharacters into the bash -c command executed during bundling; in the Docker path the container had read/write bind mounts to host files and ran with the invoking user's privileges.",
+  "flaw_origin": "PR #9632 member commit 1a25fc6d99713313a21b65633f191b2307fa1d32 replaced the parent tree's safe fs.writeFileSync of the generated dependency package.json with `echo '${JSON.stringify({ dependencies: options.dependencies })}' > ...` inside a command later executed by bash -c. The PR was squash-merged as 276c322780a9a8c9c6e569509a90ba0a7bec0879; later file moves and OsCommand refactors preserved, but did not originate, the unescaped data-to-shell flow.",
+  "introducer_sha": "1a25fc6d99713313a21b65633f191b2307fa1d32",
+  "introducer_parent": "0b60c499c54ca35dd18e59b47f6a1fb63870cbe9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "1a25fc6d99713313a21b65633f191b2307fa1d32"
+  ],
+  "ai_marker": "absent: the BIC commit object names Jonathan Goldwasser <jonathan@goldwasserexchange.be> as both author and committer, its complete message is `deps and tests`, and it has no Co-Authored-By, Generated-with, bot-author, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "baa9e1dff469306cc23b8f4bd232d703f98bf68a",
+  "direct_fix_sha": "baa9e1dff469306cc23b8f4bd232d703f98bf68a",
+  "evidence": [
+    "The assigned GitHub advisory bundle identifies GHSA-vcrf-j523-4mrf / CVE-2026-13760 as OS command injection in aws-cdk-lib NodejsFunction Docker bundling, affecting versions before 2.260.0 and fixed by PR #38133 / commit baa9e1dff469306cc23b8f4bd232d703f98bf68a: https://github.com/aws/aws-cdk/security/advisories/GHSA-vcrf-j523-4mrf",
+    "The CVE.org CNA record is PUBLISHED, identifies AWS CDK as affected from version 0 to less than 2.260.0 with defaultStatus unaffected, and links the AWS vendor bulletin: https://www.cve.org/CVERecord?id=CVE-2026-13760 and https://aws.amazon.com/security/security-bulletins/2026-050-aws/",
+    "GitHub's PR #9632 API reports 276c322780a9a8c9c6e569509a90ba0a7bec0879 as the squash merge and lists 1a25fc6d99713313a21b65633f191b2307fa1d32 (`deps and tests`) among its 19 member commits: https://github.com/aws/aws-cdk/pull/9632",
+    "`git show 1a25fc6d99713313a21b65633f191b2307fa1d32 -- packages/@aws-cdk/aws-lambda-nodejs/lib/bundling.ts` shows the first unsafe replacement: it removes fs.writeFileSync(JSON.stringify(...)) and adds `echo '${JSON.stringify({ dependencies: options.dependencies })}' > ...` to the bash command pipeline.",
+    "Direct parent-tree verification at 0b60c499c54ca35dd18e59b47f6a1fb63870cbe9 shows dependency JSON written with fs.writeFileSync to a temporary .package.json and only the fixed filename moved by the shell; the data-bearing echo interpolation is absent.",
+    "`git grep` at squash commit 276c322780a9a8c9c6e569509a90ba0a7bec0879 finds the same vulnerable echo interpolation in packages/@aws-cdk/aws-lambda-nodejs/lib/bundlers.ts:147, connecting the atomic PR member to the public mainline squash; that aggregate is contained in tag v1.60.0 and later releases.",
+    "Subsequent history preserves the same mechanism across refactors: 39e22bd1749e3d9239bebe600b0ba6180abb18d8 moved it to lib/esbuild-bundler.ts, b2f4d86793abfd74033596bad2fc33ddc22d2ed8 moved it back to lib/bundling.ts, and 7a82850d8bec45f18791e269e988c5261d5238d4 is the later PR #11289 squash containing the vulnerable OsCommand flow.",
+    "`git cat-file commit 1a25fc6d99713313a21b65633f191b2307fa1d32` gives parent 0b60c499c54ca35dd18e59b47f6a1fb63870cbe9, human author and committer Jonathan Goldwasser <jonathan@goldwasserexchange.be>, message `deps and tests`, and no trailers or AI marker.",
+    "Direct fix baa9e1dff469306cc23b8f4bd232d703f98bf68a changes OsCommand.write from `echo '${data}'` to `echo ${posixShellEscape(data)}` and also shell-escapes file-operation paths; its regression test uses a dependency version containing a single quote and shell metacharacters: https://github.com/aws/aws-cdk/commit/baa9e1dff469306cc23b8f4bd232d703f98bf68a",
+    "Tag topology confirms the boundary: baa9e1dff469306cc23b8f4bd232d703f98bf68a is not an ancestor of v2.259.0 but is an ancestor of v2.260.0, while vulnerable squash history 276c322780a9a8c9c6e569509a90ba0a7bec0879 is an ancestor of v2.259.0; https://github.com/aws/aws-cdk/releases/tag/v2.260.0"
+  ],
+  "reasoning": "The vulnerability is real and matches the advisory lifecycle: attacker-controlled dependency version text reaches a shell command used by Docker bundling, and the 2.260.0 patch applies POSIX argument escaping at the shared OsCommand file-operation sink. Mainline commits that merely moved or refactored this code are not the BIC. Decomposing PR #9632 identifies member 1a25fc6d99713313a21b65633f191b2307fa1d32 as the atomic first write that changed a safe filesystem write into unsafe shell interpolation; its immediate parent directly lacks that flawed data-to-shell mechanism, and squash 276c322780a9a8c9c6e569509a90ba0a7bec0879 carries it into released history. The BIC commit object is wholly human-authored/committed and contains no AI marker, so the closed causal verdict is NOT_AI. Fix and release ancestry agree with the advisory's less-than-2.260.0 affected range and 2.260.0 patched boundary.",
+  "remaining_gap": null
+}

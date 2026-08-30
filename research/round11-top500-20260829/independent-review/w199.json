@@ -1,0 +1,25 @@
+{
+  "worker": "w199",
+  "review_agent_id": "r389_w199",
+  "class_id": "alias-5d31c88f3f7542cff392ace5",
+  "case_id": "GHSA-47p7-hmcr-q3rr",
+  "repo": "killergerbah/asbplayer",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org currently describes XSS from a crafted .srt in the active streaming origin, and the researcher PoC plus maintainer PR #905 reproduce live subtitle markup when render-HTML is enabled. The parent strips SRT/VTT markup before the pre-existing overlay innerHTML sink and escapes subtitle-list text; the BIC permits markup to survive and adds dangerouslySetInnerHTML.",
+    "atomic_bic": "PASS: 209fe85c993ed525a41dedce57cf146999350d71 is the smallest public commit that first makes the advisory's .srt path exploitable by adding SubtitleHtml.render, changing SRT/VTT parsing from forced stripping to the setting-controlled filter, and changing the subtitle list to dangerouslySetInnerHTML.",
+    "immediate_parent_absence": "PASS: introducer_parent_absent=false. Immediate parent 8a759859620a184bd4f6bd8fadef475ec28f4d30 exists locally and was inspected; it has no SubtitleHtml setting, calls _filterText(..., true) for SRT/VTT, and renders subtitle.text as an escaped React child.",
+    "squash_member_decomposition": "PASS: the BIC has exactly one parent, a direct descriptive subject with no PR/squash marker, and the clone's full author history exposes no finer public commit by the BIC author; no public constituent member was reconstructable, so the surviving atomic object is used rather than a merge, move, refactor, revert, or known squash aggregate.",
+    "release_membership": "PASS: the BIC is absent from v1.9.1 and is an ancestor of v1.10.0, v1.13.0, v1.14.0, and v1.14.0-firefox. Fix 65f0cdce0579dbcb1a25f24f8743fabac45606c6 is absent from both v1.14.0 tags and is an ancestor of v1.15.0; DOMPurify is absent at v1.14.0 and present at v1.15.0.",
+    "direct_fix_or_unpatched_state": "PASS: merged PR #905 lands as direct fix 65f0cdce0579dbcb1a25f24f8743fabac45606c6 and inserts DOMPurify.sanitize at the common _filterText entry before optional HTML preservation, matching the reproduced SRT plus render-HTML exploit path.",
+    "bic_only_ai_attribution": "PASS: AI attribution was evaluated only on BIC 209fe85c993ed525a41dedce57cf146999350d71. Its commit object names human GitHub user kowasaur as author and maintainer Raphael-Joel Lim as committer, and its message has no AI, bot, generated-with, or co-author marker. AI status of the later fix was not used."
+  },
+  "findings": [
+    "The advisory is not a false positive: CVE-2025-69771 remains PUBLISHED and its current CVE.org description identifies crafted-SRT cross-site scripting; GitHub's advisory page remains Published even though its older title and CWE-434 wording misclassify the mechanism.",
+    "Independent parent/BIC diff replay confirms the source-to-sink transition claimed by the primary record: SRT markup is stripped and list text escaped before 209fe85c, then can survive the render setting into both the pre-existing overlay innerHTML interpolation and the newly added dangerouslySetInnerHTML list sink.",
+    "The primary introducer, parent, direct fix, release boundary, and NOT_AI judgment are supported without correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

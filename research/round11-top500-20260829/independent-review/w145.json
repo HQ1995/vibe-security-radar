@@ -1,0 +1,26 @@
+{
+  "worker": "w145",
+  "review_agent_id": "r389_w145",
+  "class_id": "alias-53b9263e067e802a17583be7",
+  "case_id": "GHSA-r3c6-fj5w-6f75",
+  "repo": "gitlab.torproject.org/tpo/core/tor",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: conflux_send_switch_command() ignored both relay_send_command_from_edge() return values. That callee returns -1 after circuit_package_relay_cell() failure and marks the circuit for close; conflux_circuit_has_closed() reaches cfx_del_leg(), which removes and frees the selected leg and NULLs cfx->curr_leg. The caller then continued to write cfx->curr_leg->last_seq_sent. CVE-2026-77641 is PUBLISHED and describes this exact CWE-252 / TROVE-2026-017 mechanism.",
+    "atomic_bic": "CONFIRMED: 8b185b2ac3d8240fe5f8cda41699ab10d1167844 first adds src/core/or/conflux_cell.c from /dev/null and introduces both unchecked CONFLUX_SWITCH sends. git log -L shows later edits retained the unchecked calls until the direct fix. The later caller and close-path commits complete exploitability but did not write the defective calls.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is 45432175fe6b0929274d6db94aa50aab9a39b452; its tree has no src/core/or/conflux_cell.c and git grep finds neither conflux_send_switch_command nor RELAY_COMMAND_CONFLUX_SWITCH.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a one-parent, non-merge first-write commit, not a move, revert, merge, or squash aggregate requiring member decomposition. Its two-file change adds the Conflux cell implementation and header as the smallest surviving public object containing the defective calls.",
+    "affected_release_membership": "CONFIRMED: the BIC is an ancestor of tor-0.4.8.1-alpha and is not an ancestor of tor-0.4.8.0-alpha-dev, matching the CVE range starting at 0.4.8.1-alpha.",
+    "fixed_release_membership": "CONFIRMED: direct fix 60369467550fccdeff563f3582c372a5ed6ce10b is an ancestor of tor-0.4.9.9 and not tor-0.4.9.8 or tor-0.4.8.25. The tor-0.4.9.9 ChangeLog names TROVE-2026-017 and bug 41263.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 60369467550fccdeff563f3582c372a5ed6ce10b directly wraps both relay_send_command_from_edge() calls in < 0 checks and sets ret=false; its immediate parent still contains both unchecked calls. The existing caller-side error handling then aborts before the unsafe current-leg write.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC object names human author David Goulet and human committer Mike Perry and contains only David Goulet's Signed-off-by trailer; no AI, bot, Generated-with, or Co-Authored-By marker appears. Claude Sonnet 4.6 is co-author only on the 2026 fix and is correctly excluded from BIC attribution."
+  },
+  "findings": [
+    "Independent clone replay confirms the primary's source-to-sink lifecycle and identifies no factual or protocol error.",
+    "Commit topology confirms 8b185b2ac3d8240fe5f8cda41699ab10d1167844 is an ancestor of both the later caller commit e0881a669a84d016ea108a5604f25bbcb45a7705 and close-path commit 336a24754d117b46793ce6824e35ff6b7962bf9d.",
+    "The published CVE record and vendor tag evidence agree on affected Tor versions 0.4.8.1-alpha through versions before 0.4.9.9."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

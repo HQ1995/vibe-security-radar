@@ -1,0 +1,45 @@
+{
+  "class_id": "alias-31916f3402c3846231816b53",
+  "case_id": "GHSA-VGPJ-V99M-7H5J",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79667",
+    "GHSA-vgpj-v99m-7h5j"
+  ],
+  "bug_semantics": "Scoped access tokens are JWTs for an admin user and are supposed to enforce least privilege, but authorization was split between authentication, opt-in route scope middleware, and service-level IsAdmin checks. A deliberately narrow admin token such as echo:read therefore authenticated to privileged routes that omitted RequireScopes, including /api/inbox and /api/panel/comments. The public /api/backup/export route was worse: its handler accepted a query JWT, parsed it, and rebuilt a viewer with only claims.Userid, discarding typ, scope, audience, and JTI, after which the backup service saw an admin identity and returned a full database/log ZIP.",
+  "flaw_origin": "The scoped-token capability first became real in decomposed PR #195 member bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7: it added Scopes/Audience to the token-creation DTO, validated and persisted them, and minted JWTs with those claims, while the contemporaneous authentication middleware still reduced every parsed JWT to viewer.NewUserViewer(mc.Userid) and existing privileged routes had no scope guard. A later member, 1b280c252d1ef2ee69bf09f890d2da673b4b0a68, preserved token metadata in the viewer, and b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 added RequireScopes only to echo/file/setting/user routes, leaving the advisory's privileged surfaces unguarded. Main-history commit 3f8fb150158723aca31df2ae937a1aa7b31ac254 is the squash aggregate of the reconstructable member sequence, not the smallest BIC.",
+  "introducer_sha": "bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7",
+  "introducer_parent": "387667192911c86db1e1bcb3f544ce12d340ffdb",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "387667192911c86db1e1bcb3f544ce12d340ffdb",
+    "bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7",
+    "1b280c252d1ef2ee69bf09f890d2da673b4b0a68",
+    "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939",
+    "1bc64ada5c7bacbd72d5c8de427ac2b8e260e9e9",
+    "bd497e57303453ffafcd15b61e72c38356344379",
+    "97d7f6cd15822dce93df6a71c89a46fbb05b7f19",
+    "ce6dcad85a2b3312a250fe9eef90b7c7156f27a8",
+    "be5041a7b82d8f2be3da7ee0a707a44923a600ad",
+    "a6694c05376391d46d98bd1057b498cfb245ce07",
+    "462f551df4603dca8490d878f497661cb1c17bdc"
+  ],
+  "ai_marker": "BIC commit object bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7 has author and committer L1nSn0w <l1nsn0w@qq.com> and ends with the exact trailer-like line `Made-with: Cursor`; no Co-Authored-By or bot identity is present.",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "6df5673010720847e35d8bb8f60403e2cc4ab313",
+  "direct_fix_sha": "6df5673010720847e35d8bb8f60403e2cc4ab313",
+  "evidence": [
+    "First-party advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-4h9q-p5j4-xvvh documents the low-scope admin-token attack against /api/inbox and /api/backup/export, the omitted RequireScopes model, the backup handler's metadata-stripping viewer reconstruction, affected metadata <=4.3.4, and patched version 4.4.3.",
+    "Reproduce squash decomposition with `gh api --paginate repos/lin-snow/Ech0/pulls/195/commits`; it returns the source chain. `git show -s --format='%H %P %T' 3f8fb150158723aca31df2ae937a1aa7b31ac254` gives parent 45693330c7733364027e0aa07c102c4f01aab88a and tree e9484ebf85c66a09c425d8407ebfa79f57da39fa; `gh api repos/lin-snow/Ech0/git/commits/462f551df4603dca8490d878f497661cb1c17bdc` gives the identical tree, proving the aggregate corresponds to the listed 387667... through 462f551... members.",
+    "Reproduce the smallest BIC with `gh api repos/lin-snow/Ech0/commits/bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7`: its diff adds Scopes and Audience to AccessTokenSettingDto and changes CreateAccessToken to normalize requested scopes and call CreateAccessClaimsWithExpiry(..., scopes, audience, jti). At that commit, raw internal/middleware/auth.go ends by attaching viewer.NewUserViewer(mc.Userid), raw internal/router/inbox.go registers all inbox handlers without RequireScopes, and raw internal/router/common.go exposes /backup/export on PublicRouterGroup.",
+    "Direct-parent absence is reproducible from raw commit 387667192911c86db1e1bcb3f544ce12d340ffdb: internal/service/setting/access_token_service.go accepts only Name/Expiry and calls CreateClaimsWithExpiry(user, expiry), while its AccessTokenSettingDto has no Scopes/Audience. Thus the parent has access JWTs but cannot mint the deliberately restricted scoped token whose restriction is bypassed; the BIC diff directly adds that capability.",
+    "Cross-check merged history with `git log -S 'CreateAccessClaimsWithExpiry' -- internal/service/setting/access_token_service.go internal/util/jwt/jwt.go` and `git log -S 'ScopeEchoRead' -- internal/model/auth/scope.go`: both first identify main aggregate 3f8fb150158723aca31df2ae937a1aa7b31ac254. `git log -L 57,133:internal/service/setting/access_token_service.go 3f8fb150158723aca31df2ae937a1aa7b31ac254` likewise attributes scoped minting to that aggregate; the PR-member diff narrows it to bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7.",
+    "The later partial-enforcement member is independently checkable with `gh api repos/lin-snow/Ech0/commits/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939`: its changed routers are only echo.go, file.go, setting.go, and user.go (plus middleware/tests), confirming inbox/comment/connect/migration/dashboard/common were omitted.",
+    "Direct fix `git show 6df5673010720847e35d8bb8f60403e2cc4ab313` adds RequireScopes to comment, connect, dashboard, inbox, and migration routes; moves /backup/export from PublicRouterGroup to AuthRouterGroup with ScopeAdminSettings; and replaces reparsing/background-context viewer reconstruction with ctx.Request.Context(). Its immediate parent af835afe05c75bd16c7220425782ee2cd1423892 still contains the vulnerable code in the removal side of that diff. Commit 057e8b0b713d105eca7040ade810a057397613fa later removes inbox entirely but is not required to close the already guarded route.",
+    "Tag boundary is reproducible with dereferenced tags: v4.2.0=7f236aed761da27f971ad289c4a26af0d9eb3e92 has AccessTokenSettingDto{Name,Expiry}; v4.2.1=77f371df9cca25ac856ad42afc43ea035dc4bf1d contains aggregate 3f8fb150158723aca31df2ae937a1aa7b31ac254. v4.4.2=7b7890cbe294659df39c36feb51fcfbe9ec9bdb2 still exposes backup/export publicly; v4.4.3=b934467d26b91c96dc7c937b6a4e47d8d01484eb contains direct fix 6df5673010720847e35d8bb8f60403e2cc4ab313. Therefore source tags show first affected v4.2.1 and fixed v4.4.3; notably, the vulnerable source persists through v4.4.2 even though advisory affected-version metadata says <=4.3.4.",
+    "BIC-only AI check: `gh api repos/lin-snow/Ech0/git/commits/bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7` returns sole parent 387667192911c86db1e1bcb3f544ce12d340ffdb, human author/committer L1nSn0w <l1nsn0w@qq.com>, and exact final message line `Made-with: Cursor`. No later commit or PR-body disclosure is used for the verdict."
+  ],
+  "reasoning": "Before bf994ebfd5fe2e16b85ff64ad25147abd9ba99d7 there was no user-selectable scoped-token promise to violate. That atomic member introduced narrowly scoped JWT minting while immediately discarding scope at authentication and leaving pre-existing admin-only routes to authorize solely by user identity, so it is the smallest causal BIC. Subsequent metadata propagation and incomplete opt-in route guards narrowed but did not create the flaw. The BIC commit object itself explicitly attributes the work to Cursor, making AI causally responsible for the root-cause change. Commit 6df5673010720847e35d8bb8f60403e2cc4ab313 closes the full advisory mechanism, and v4.4.3 is the first release tag containing it.",
+  "remaining_gap": null
+}

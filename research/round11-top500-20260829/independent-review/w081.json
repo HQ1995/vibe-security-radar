@@ -1,0 +1,28 @@
+{
+  "worker": "w081",
+  "review_agent_id": "r389_w081",
+  "class_id": "alias-7ed098aa8faaeea434093792",
+  "case_id": "GHSA-5jhf-fpp7-v2pv",
+  "repo": "sparklemotion/nokogiri",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: the v1.19.2 generated tokenizer has variable-length \\[0-9A-Fa-f]{1,6} escapes inside repeated STRING and IDENT/FUNCTION expressions, and STRING also lets the negated class consume backslash. Node-1 Ruby replays rejected the adversarial inputs while showing old-versus-atomic timings of 0.036826s versus 0.000003s for 20 overlap units, 0.287620s versus 0.000003s for 8 STRING hex escapes, and 0.276810s versus 0.000010s for 8 FUNCTION hex escapes.",
+    "atomic_bic": "CONFIRMED: 9246422c850b9e580eead224fd17ed5ff5564878 is the first path-history object for lib/nokogiri/css/tokenizer.rex and directly adds unicode, escape, nmchar/nmstart, repeated string bodies, and the {ident}\\( rule. It first writes the hex-length STRING and FUNCTION mechanisms. The later single-parent c06a48ae7d4e01f51e1a7a8924b93f55e3fa253b directly removes backslash from the STRING negated-class exclusion and thereby introduces the separate cross-branch-overlap vector; the primary record explicitly decomposes this later component.",
+    "immediate_parent_absence": "CONFIRMED: 9246422c850b9e580eead224fd17ed5ff5564878 has the single parent 09f133def133eb8c80dd003bf1c70205836f7237; that parent has no lib/nokogiri/css tokenizer/parser tree and no vulnerable macros. Thus introducer_parent_absent=false correctly means the parent object exists, while the vulnerable implementation is absent from its tree.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a non-merge, single-parent public commit that adds tokenizer.rex directly; path history has no earlier public tokenizer.rex object to decompose. It is not a squash/merge aggregate. The later c06a48ae component is separately identified rather than folded into the BIC.",
+    "affected_release_membership": "CONFIRMED: v1.19.2 resolves to 6f5d025af4d2721248095258d98a481839ec79de and contains both 9246422c850b9e580eead224fd17ed5ff5564878 and c06a48ae7d4e01f51e1a7a8924b93f55e3fa253b, but contains neither direct fix commit nor the backport merge. Its tokenizer.rex retains all three ambiguous constructions.",
+    "fixed_release_membership": "CONFIRMED: v1.19.3 resolves to c139a3da0fe0cae7499a0bafa20f2875877c585b and contains 00926231e28d5a20e5b4873efba36099aea0d5c6, b984b7e47f622d1aa97d54c16d5cd596c3eb9538, and merge 7501a63b9f4246d12516e35b91fed8be34f854c0. Its tokenizer.rex has atomic nmchar/nmstart groups, an atomic STRING body, and backslash exclusion; CHANGELOG.md identifies the GHSA fix in v1.19.3.",
+    "direct_fix": "CONFIRMED WITH DECOMPOSITION: 00926231e28d5a20e5b4873efba36099aea0d5c6 fixes both STRING vectors and b984b7e47f622d1aa97d54c16d5cd596c3eb9538 fixes the IDENT/FUNCTION vector. Their stable patch IDs match mainline 807f6ee32e67832f9d130c7f3806f2451be8cd00 and 9bada21a709f6761cc90a31354f9b18cbdbcc8d7 respectively. Backport merge 7501a63b9f4246d12516e35b91fed8be34f854c0 contains the complete two-commit repair, so the primary's fix chain is substantively correct despite direct_fix_sha naming the first content commit only.",
+    "bic_only_ai_attribution": "CONFIRMED: git cat-file shows 9246422c850b9e580eead224fd17ed5ff5564878 was authored and committed by Aaron Patterson in 2008, has only the subject 'adding tokenizer and parser', and has no Co-Authored-By, Generated-by/with, model, or other AI marker. The separately identified c06a48ae component has the same human author and no AI marker. Fix-side 2026 metadata was not used to attribute the BIC.",
+    "advisory_disposition": "CONFIRMED: the official vendor GHSA is not withdrawn, describes the same three vectors and public sinks, and gives affected <1.19.3 / patched 1.19.3. The CVE.org API record for CVE-2026-79770 is PUBLISHED and gives the same version boundary. The primary evidence misdates the vendor GHSA publication."
+  },
+  "findings": [
+    "The causal chain, release boundary, complete two-commit fix, and NOT_AI verdict are independently confirmed.",
+    "Primary evidence[0] says the vendor GHSA was published 2026-04-27. The official GitHub Advisory API reports published_at=2026-05-06T18:24:18Z; 2026-04-27 is the v1.19.3 release and fix date, not the advisory publication date."
+  ],
+  "corrected_fields": {
+    "evidence[0]": "First-party GHSA-c4rq-3m3g-8wgx was published 2026-05-06 (not withdrawn): three ReDoS vectors in the CSS tokenizer; affected nokogiri < 1.19.3; patched 1.19.3; public sinks Nokogiri::CSS.xpath_for, Node#css, Node#at_css, Searchable#search, and CSS::Parser#parse. Nokogiri v1.19.3 and the fix commits date to 2026-04-27."
+  },
+  "remaining_gap": null
+}

@@ -1,0 +1,26 @@
+{
+  "worker": "w226",
+  "review_agent_id": "r389_w226_retry",
+  "class_id": "alias-0bab0183add216a12024228f",
+  "case_id": "GHSA-qvp4-q2p5-22gg",
+  "repo": "mmaitre314/picklescan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: The vendor advisory and PUBLISHED CVE-2025-71348 describe a nested-pickle RCE bypass: a REDUCE to torch.utils._config_module.ConfigModule.load_config carries attacker-controlled pickle bytes, while picklescan <=0.0.27 classifies an unlisted GLOBAL only as Suspicious, leaves issues_count at zero, and the CLI exits zero.",
+    "atomic_bic": "PASS: c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e is the earliest repository commit found by reverse -S history for both _suspicious_globals and the issues_count increment. It first adds scanner.py and the finite-denylist policy that lets every unlisted callable pass without an issue; later 72aa7c432bc59819d07393bf91623fa963896ebe and f98f9bd89b16ab1b1b1b6366acddd1b2a4d36fe9 refactor or rename that policy rather than introduce it.",
+    "immediate_parent_absence": "PASS: The BIC has the single immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326, and that parent has no src/picklescan/scanner.py object. The vulnerable denylist-and-zero-issue mechanism appears in the BIC's new file.",
+    "squash_member_decomposition": "PASS: The BIC is a one-parent initial implementation commit with no GitHub-associated pull request, so there is no public squash member to substitute for it. The later fix is GitHub's squash commit for PR #47, but that does not alter BIC selection.",
+    "affected_release_membership": "PASS: c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e is an ancestor of every extant affected v0.0.x tag from v0.0.2 through v0.0.27; the fix is an ancestor of none of those tags. At v0.0.27, torch.serialization.load is listed but torch.utils._config_module / ConfigModule.load_config is absent, and unlisted globals remain Suspicious without incrementing issues_count.",
+    "fixed_release_membership": "PASS: v0.0.28 resolves directly to 7f994d62084fe43f1cffdef2f9bae6923344ef53, matching both the vendor advisory's patched version and the CVE record's first unaffected version. The release notes explicitly include GHSA-vv6j-3g6g-2pvj.",
+    "direct_fix_or_verified_unpatched_state": "PASS: 7f994d62084fe43f1cffdef2f9bae6923344ef53 directly adds torch.utils._config_module: ConfigModule.load_config to _unsafe_globals and adds a GHSA-specific regression pickle/test; it is therefore the direct fix and not merely release metadata.",
+    "bic_only_ai_attribution": "PASS: AI attribution was checked only on c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e. Its commit object names Matthieu Maitre as both author and committer, has the message 'Implement Pickle scanner', and contains no Co-Authored-By, bot, generator, Copilot, Cursor, Claude, ChatGPT, OpenAI, Anthropic, GPT, Gemini, Aider, Windsurf, Tabnine, or Cody marker. Later commits and the fix were not used to attribute the BIC."
+  },
+  "findings": [
+    "The advisory is a real, non-withdrawn CWE-502 vulnerability: CVE-2025-71348 is PUBLISHED, GitHub's records have withdrawn_at=null, and the vendor advisory identifies picklescan <=0.0.27 as affected and 0.0.28 as patched.",
+    "The primary record's mechanism, BIC c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e, parent 6a76b8c3ac67dc04181e600614ecf2a423cca326, direct fix 7f994d62084fe43f1cffdef2f9bae6923344ef53, release boundary, and NOT_AI verdict are independently supported.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

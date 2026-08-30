@@ -1,0 +1,46 @@
+{
+  "worker": "w176",
+  "review_agent_id": "r389_w176",
+  "class_id": "alias-268012bccddeda1aaf365bfe",
+  "case_id": "GHSA-w567-gjr2-hm5j",
+  "repo": "messagepack-csharp/messagepack-csharp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The pre-fix Unity UnsafeBlitFormatterBase<T>.Deserialize reads attacker-controlled byteLength from the extension body and allocates new T[byteLength / elementSize] before proving that byteLength fits the bounded extension body. Commit 0555f07cbf217773070a150c97cbbd2b3a37ac8d adds a regression payload whose six-byte extension body declares eight data bytes, confirming the allocation-before-bound-check mechanism. CVE-2026-48514 is currently PUBLISHED and GHSA-w567-gjr2-hm5j is not withdrawn."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Reverse -S history for the vulnerable allocation and path history identify d8a42395ae66122772057a4125155b02670bf7a3 as the first public commit that adds UnsafeBlitFormatterBase<T>.Deserialize. Its newly added Vector3ArrayFormatter.cs reads byteLength and performs new T[byteLength / StructLength] without comparing the value to the extension length; later 74e4a4feb185d4b7bd5b2184fc96119e28f1f9c5 expands and renames the already-vulnerable implementation, and 91efb454b1b5b36cd84d5ac9444617492803a7be ports it to MessagePackReader without removing the allocation flaw."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has immediate parent 5bb2909d9e0e59cb129d2ee2d8d256af5d2f8c88. That tree contains only MessagePack.UnityShims.csproj and Shims.cs under MessagePack.UnityShims, lacks Vector3ArrayFormatter.cs, and a parent-tree search finds no UnsafeBlitFormatterBase, byteLength / StructLength, or new T[byteLength pattern in C# sources."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "d8a42395ae66122772057a4125155b02670bf7a3 is a single-parent ordinary commit, not a merge or revert, and directly creates the vulnerable source file against a verifiable parent. No finer public member is needed or exposed by the commit topology; the later rename/expansion and reader refactor were separately inspected and excluded as introducers."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Git ancestry places the BIC in affected tags v2.5.205 and v3.1.6 as well as their patched successors. The 2.x fix e01f07cfb2343425cfa1045f044d0831b26f60dd is absent from v2.5.205 and present in v2.5.301; the 3.x fix 0555f07cbf217773070a150c97cbbd2b3a37ac8d is absent from v3.1.6 and present in v3.1.7. These boundaries match the current CVE and GHSA affected ranges."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The direct 3.x fix 0555f07cbf217773070a150c97cbbd2b3a37ac8d switches to a reader bounded to extension.Data and rejects negative, unaligned, or remaining-length-mismatched byteLength before allocation; e01f07cfb2343425cfa1045f044d0831b26f60dd applies the same validation on 2.x. Their immediate parents retain ReadInt32/ReadBoolean followed directly by allocation and ReadRaw."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was evaluated only on BIC d8a42395ae66122772057a4125155b02670bf7a3. Its commit object records human author and committer neuecc <ils@neue.cc>, one parent, a 2017 timestamp, and no Co-Authored-By, generated-with, bot identity, or other AI marker. The correct causal verdict is NOT_AI."
+    }
+  },
+  "findings": [
+    "The primary record identifies the correct vulnerability mechanism and smallest public BIC.",
+    "The parent-absence, history, direct-fix, release-membership, advisory-state, and BIC-only attribution claims were independently reproduced from the assigned clone and advisory records.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

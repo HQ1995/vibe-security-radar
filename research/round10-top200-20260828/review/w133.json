@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-93549feadd3cb60156538539",
+  "case_id": "GHSA-8qc7-cf52-c959",
+  "repo": "gnuboard/gnuboard5",
+  "advisory_ids": [
+    "CVE-2024-37657",
+    "GHSA-8qc7-cf52-c959"
+  ],
+  "bug_semantics": "CWE-601 open redirect in bbs/login.php: a user-controlled url query such as \\google.com passes check_url_host because parse_url runs after backslashes are stripped (or never sees a host), then goto_url emits Location with the original backslash URL, which browsers treat as an off-site redirect.",
+  "flaw_origin": "original",
+  "introducer_sha": "41d21074b5fcf579633c255f3b499434b2d4d46b",
+  "introducer_parent": "04c3efa279d60f646bf3b430750ab5a98fcc6eef",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none",
+  "verdict": "NOT_AI",
+  "fix_sha": "e03e01d41098f6a42788e53cb8bd5894ce47cd15",
+  "direct_fix_sha": "e03e01d41098f6a42788e53cb8bd5894ce47cd15",
+  "evidence": "CVE-2024-37657 is PUBLISHED on cveawg.mitre.org (not rejected); GHSA-8qc7-cf52-c959 withdrawn_at is null. Issue #320 (2024-05-31) PoC is bbs/login.php?url=\\google.com against 5.5.16. At v5.5.16, bbs/login.php sets $url from $_GET['url'] (strip_tags), calls check_url_host($url), then goto_url($url) when already logged in. v5.5.16 check_url_host rejects \\0 and ^/+\\ but not a leading backslash without a slash, and parse_url(str_replace('\\\\','',$url)) so \\google.com becomes google.com with no host; goto_url still sends the original URL. First-parent history of bbs/login.php on v5.5.16 bottoms at 41d21074b5fcf579633c255f3b499434b2d4d46b (2013-09-13, subject 그누보드5), which first added $url=$_GET['url'] and goto_url($url) after a parse_url host check that skips host-less values (same miss as \\google.com). git cat-file -p 41d21074b5: author/committer gnuboard <kagla@naver.com>, single parent 04c3efa279d60f646bf3b430750ab5a98fcc6eef. git cat-file -e 04c3efa:bbs/login.php fails; parent tree is only README.md. git log -1 --format='%an %ae %cn %ce' 41d21074b5 => gnuboard kagla@naver.com gnuboard kagla@naver.com. No Co-Authored-By/Generated-with/bot on that object. Later defenses (083575 check_url_host, 38e732 \\0, 15f203 strip-backslash-for-parse, 8d912e ^/+\\) are incomplete remediations, not first-write. Direct closure for 5.5.16 is e03e01d41098f6a42788e53cb8bd5894ce47cd15 (2024-06-05, Open Redirect 취약점 수정 #318), ancestor of v5.5.17, adding safe_filter_url_host (strips backslash) in goto_url/alert/confirm. Author thisgun thisgun@naver.com; not in v5.5.16. c6b58bb16 (2024-07-03) is a later master follow-up, not the 5.5.17 fix.",
+  "reasoning": "The advisory is a real CWE-601, not withdrawn. The 5.5.16 login redirect sink and host-check miss for leading-backslash URLs first appear as source in 41d21074b5, the smallest surviving first-write of bbs/login.php on the v5.5.16 first-parent lineage; the parent tree lacks that path so introducer_parent_absent is true. Parallel g4 login.php history exists in the repo but is not an ancestor of 41d210, so it cannot be reconstructed as a finer public member of this lineage. The BIC commit object is a 2013 human vendor import (gnuboard/kagla@naver.com) with no AI markers, so the verdict is NOT_AI. AI on later docs/PRs is irrelevant. Fix is e03e01 in 5.5.17.",
+  "remaining_gap": ""
+}

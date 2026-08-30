@@ -1,0 +1,27 @@
+{
+  "worker": "w204",
+  "review_agent_id": "r389_w204",
+  "class_id": "alias-810b8e6e8a7b57af6c81b51b",
+  "case_id": "GHSA-r3r8-w3g2-hq7h",
+  "repo": "rnpgp/rnp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org is PUBLISHED and Ribose identifies RNP 0.18.0 public-key encryption as affected. At 020c61c4814d29d723b62ee4a2d2719a6b397acf, init_encrypted_dst() creates a zero-filled CEK and encrypted_build_skesk() returns immediately when passwords are empty, so PKESK-only encryption never randomizes that CEK.",
+    "atomic_bic": "PASS: git log -L and blame on the v0.18.0 ancestry identify 020c61c4814d29d723b62ee4a2d2719a6b397acf as the first commit writing the empty-password early return and rerouting CEK generation through it. It is the smallest public commit object introducing the vulnerable behavior on the affected release line.",
+    "immediate_parent_absence": "PASS: immediate parent 3574439cd2196da6397a4c9e1a7ed09390735034 has no encrypted_build_skesk(); init_encrypted_dst() calls ctx.sec_ctx.rng.get(enckey.data(), keylen) for every non-singlepass path, including any path with public-key recipients.",
+    "squash_member_decomposition": "PASS: 020c61c4814d29d723b62ee4a2d2719a6b397acf has exactly one parent and is not a merge or squash aggregate. CNA SHA 7bd9a8dc356aae756b40755be76d36205b6b161a and PR #2309 member c77547b621474605550b5d1e1056ac4474253d5e have the same tree, parent tree, and stable patch-id fcaf7ef633abc13dc9b7c498dd0aea0819ce72f8; they are equivalent rebased objects, but neither is an ancestor of v0.18.0.",
+    "affected_release_membership": "PASS: 020c61c4814d29d723b62ee4a2d2719a6b397acf is an ancestor of annotated tag v0.18.0 and not v0.17.1; tags containing it are v0.18.0 and v0.18.1. This matches the CVE.org and Ribose affected-version statement of 0.18.0 only.",
+    "fixed_release_membership": "PASS: direct fix 1a2359d623e4eac8e81e4c24195fb39898f37b40 is an ancestor of annotated tag v0.18.1 and not v0.18.0; tag --contains returns v0.18.1. Ribose directs affected users to v0.18.1.",
+    "direct_fix_or_verified_unpatched_state": "PASS: 1a2359d623e4eac8e81e4c24195fb39898f37b40 directly adds ctx.sec_ctx.rng.get(key.data(), keylen) before the empty-password return (and renames the helper), restoring PKESK CEK generation. Its stable patch-id matches main-line equivalent d2544163c62139bc52f20daf19cd0a73e16db6db.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object names Nickolay Olshevsky <o.nickolay@gmail.com> as both author and committer and contains only the ordinary subject, with no Co-Authored-By, Generated-with, Generated-by, bot, or other AI marker. GitHub resolves both roles to user ni4 of type User. No non-BIC signal was used for attribution."
+  },
+  "findings": [
+    "The advisory mechanism is reproduced directly from the affected-release code: the PKESK-only path passes a zero-initialized CEK through encrypted_build_skesk() without RNG generation.",
+    "The CNA-cited 7bd9a8dc356aae756b40755be76d36205b6b161a is an equivalent rewritten-history object, not the BIC in the v0.18.0 ancestry; 020c61c4814d29d723b62ee4a2d2719a6b397acf is the correct release-line BIC.",
+    "The parent-state, release-membership, direct-fix, and BIC-only attribution claims in the primary record all independently reproduce.",
+    "NOT_AI is supported because the real vulnerability's atomic BIC is a human-authored and human-committed object with no AI marker; the CVE is PUBLISHED and the GHSA is not withdrawn, so FALSE_POSITIVE does not apply."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,45 @@
+{
+  "worker": "w069",
+  "review_agent_id": "r389_w069",
+  "class_id": "alias-62720f66229a6e06862f123e",
+  "case_id": "GHSA-9qx4-4584-p9h2",
+  "repo": "cachethq/cachet",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "In cachethq/core, CreateIncident::handle() accepts an incident-template slug, parseTemplate() passes stored template content to IncidentTemplate::render(), BladeRenderer calls Blade::render() on that content, and TwigRenderer creates and renders it in a bare Twig Environment. The public cachethq/cachet issue #4621 gives working Blade @php and Twig callable-filter/source payloads. This is authenticated stored SSTI leading to PHP execution or file disclosure/RCE."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "PR #36 member f94b6e75e36d13d1e22c932e367514d935a9d8c4 is the smallest public first-write: its patch adds src/Renderers/BladeRenderer.php with Blade::render(), src/Renderers/TwigRenderer.php with an unsandboxed Environment/createTemplate(), wires IncidentTemplate to both renderers, and adds the CreateIncident template trigger."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single immediate parent a411c9a355250e321b503aaeb8a641eff47e61cb. At that tree both renderer paths return HTTP 404; IncidentTemplate has only empty renderWithBlade/renderWithTwig stubs, and CreateIncident has neither template lookup nor parseTemplate."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "GitHub PR #36 exposes three reconstructable members in order: f94b6e75e36d13d1e22c932e367514d935a9d8c4, 10a65cca8ff8bf862e2dcf2b42fad1c956edd865, and merge member 68e12e3fe9f0c1da12012eb863c92268b8451808. The mainline squash e98851b3becddaafef26178ae5f5e25ad02ca6d0 has parent 117f921b03fca3c76e10a2d572d81cbb04a698cc and aggregates the feature, so it is not substituted for the earlier atomic BIC."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The vulnerable mechanism belongs to Cachet 3.x through its dev-main dependency on cachethq/core; core publishes no tags and cachethq/cachet has no 3.x release tag, so there is no affected or fixed 3.x tag to claim. The current cachethq/cachet 3.x composer.lock pins core 462102e5a8eb52ddc0c9f6f9121012fc0ca24213, which GitHub compare proves is 32 commits ahead of the fix with merge base beea6f1d4afa4406fbee1ec06e8436d47d111099. Cachet v2.4.1 instead already constructs Twig SecurityPolicy and SandboxExtension before rendering, contradicting the CNA's <=2.4.1 range for this 3.x/core mechanism."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix beea6f1d4afa4406fbee1ec06e8436d47d111099 adds a Twig SandboxExtension with an allowlist excluding callable filters and makes Blade rendering disabled unless explicitly configured. Its immediate parent a615653b15ff9bc04bad052c87ffa297c7fa5ffa still calls Blade::render() unconditionally and renders Twig in a bare Environment, proving the fix directly closes both sinks."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Attribution is confined to BIC f94b6e75e36d13d1e22c932e367514d935a9d8c4: author and committer are James Brooks <james@alt-three.com>, its complete message is 'Incident Updates' with no AI/co-author/generated trailer, and PR #36's human-authored description explicitly says Twig/Blade rendering was being introduced while Twig sandboxing remained to be addressed. Later GitHub squash metadata and the 2026 fix are not used to attribute the BIC."
+    }
+  },
+  "findings": [
+    "The primary NOT_AI verdict is supported by independently replayed mechanism, atomic BIC, parent, squash-member, direct-fix, ancestry, and BIC-only authorship evidence.",
+    "CVE-2026-69118 is PUBLISHED, but its CNA affected range through 2.4.1 is inconsistent with the repository: v2.4.1 already sandboxes Twig, while the reviewed vulnerable implementation is the untagged 3.x cachethq/core dependency. The primary record already identifies this metadata mismatch and does not use it as BIC evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,26 @@
+{
+  "worker": "w332",
+  "review_agent_id": "r389_w332",
+  "class_id": "alias-fc85fd946d751ae78b2030ff",
+  "case_id": "GHSA-rqfr-jhc5-r4q9",
+  "repo": "akaunting/akaunting",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE.org is PUBLISHED and identifies Akaunting 3.1.21 as affected. At tag 3.1.21, Item name validation is only required|string; DeleteLink::getMessage() applies addslashes and quote replacement but leaves HTML syntax intact, delete-link.blade.php emits the message through {!! $message !!}, global.js reads data-message, and AkauntingModal.vue renders message with v-html. The first-party Fluid Attacks advisory describes the same authenticated stored-XSS chain and payload class.",
+    "atomic_bic": "CONFIRMED: 515bdaf5cd435a4bad54802dc0c814462586275e is the first surviving public commit that writes both the unescaped model name inside <strong> in delete_button.blade.php and confirmDelete's insertion of message into HTML followed by $('body').append(html). It is the repository root object, so no smaller earlier public commit can be reconstructed.",
+    "immediate_parent_absence": "CONFIRMED: git rev-list --parents -n 1 prints only 515bdaf5cd435a4bad54802dc0c814462586275e, and the raw commit object has no parent line. introducer_parent=null and introducer_parent_absent=true are correct.",
+    "squash_member_decomposition": "CONFIRMED: later bulk/import commits are carriers, not the BIC. e2744b46d2fa5ec6d35b5c7963ab8de101e03004 copies the existing unescaped delete flow; 6d50fa844252a4d2325d7ad0362db5389fefc52b moves the already-vulnerable flow to Vue v-html while its parent has the addslashes/<strong>/confirmDelete path; d9c076457215c089cd221dbd4c822ce6a3bd021b introduces DeleteLink.php in a 3.0 bulk commit while parent cead09f6d4fc9a1f589da7cdbff57f269a46ba00 already has addslashes plus the unescaped <strong> name in delete_link.blade.php. The root BIC has no public parent or decomposable public member.",
+    "affected_release_membership": "CONFIRMED: tag 3.1.21 resolves to 6c67e99a1b92a20e32ee0fa01c62bea2a4abe64c, and git merge-base --is-ancestor confirms 515bdaf5cd435a4bad54802dc0c814462586275e is its ancestor. The vulnerable DeleteLink/data-message/v-html code is present at that tag.",
+    "fixed_release_membership": "CONFIRMED: direct fix 80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db is not an ancestor of 3.1.21 but is an ancestor of tags 3.2.0, 3.2.1, and 3.2.2; 3.2.0 resolves to 8a46cecae40ca1b5b7745b612de3e44fdee0bde2.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db directly changes DeleteLink.php and DeleteButton.php from addslashes(raw name) to e(raw name) followed by addslashes, encoding HTML metacharacters before the message reaches v-html. The same commit adds CVE-2026-11942-labeled strip_tags defense-in-depth to Item create/update jobs. Its immediate parent still has only addslashes plus quote replacement.",
+    "bic_only_ai_attribution": "CONFIRMED: the raw BIC commit object is authored and committed by denisdulici <denisdulici@gmail.com> on 2017-09-14 with subject 'first commit' and no Co-Authored-By, Generated-by, Generated-with, Cursor, Copilot, ChatGPT, bot identity, or other AI marker. Later fix/advisory AI references do not affect BIC attribution. NOT_AI is therefore supported."
+  },
+  "findings": [
+    "The primary record correctly identifies the vulnerability lifecycle from the root first-write through later carrier and incomplete-hardening commits to the direct encoding fix.",
+    "The initial-import BIC is large but protocol-valid because it is the smallest surviving public object and its lack of a parent is directly verifiable.",
+    "The first-party advisory said no patch was available at disclosure; repository history independently shows the direct fix landed on 2026-07-12 and entered 3.2.0 and later checked tags."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

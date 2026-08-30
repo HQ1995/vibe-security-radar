@@ -1,0 +1,25 @@
+{
+  "worker": "w051",
+  "review_agent_id": "r389_w051",
+  "class_id": "alias-e205f1df5be469a1a7976bc1",
+  "case_id": "GHSA-mvf2-f6gm-w987",
+  "repo": "nearform/fast-jwt",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed independently. In performDetectPublicKeyAlgorithms(), a leading-whitespace RSA PEM fails the ^-anchored publicKeyPemMatcher; absent an X.509 header, the key falls through to hsAlgorithms, allowing an HS256 token HMAC-signed with the public-key string to pass algorithm autodetection. A direct Node assertion reproduced parent includes() tolerance, BIC/later-regex failure with leading whitespace, and recovery after trim().",
+    "atomic_bic": "Confirmed 15a6e92c9adb39acde41a9b11cec0cbde8ad763b. Its src/crypto.js diff is the first-write change from the parent string matcher plus includes() to /^-----BEGIN( RSA)? PUBLIC KEY-----/ plus match() without normalization. 89efaab231da3b734c5513b404d61e3a3105edc1 later refines capture handling but retains the already-vulnerable untrimmed ^ match, so it is not the BIC.",
+    "immediate_parent_absence": "Confirmed against sole parent a5ef39b79c0942a3c778c80a592a1ad2acc4089b. The parent uses publicKeyPemMatcher = '-----BEGIN PUBLIC KEY-----' and key.includes(publicKeyPemMatcher), so leading whitespace before an SPKI header does not create this bypass; the anchored regex and public-key match() path are absent.",
+    "squash_member_decomposition": "15a6e92c9adb39acde41a9b11cec0cbde8ad763b is a one-parent GitHub security-PR squash whose message lists two member subjects. Current public remote refs, all local refs, and all loaded commit objects expose no finer nstolpe/member commit matching either subject; the private GHSA members are not reconstructable. The squash is therefore the smallest surviving public first-write object; squash_decomposed=false and decomposed_shas=[] are correct.",
+    "affected_fixed_releases": "Confirmed. The BIC is absent from v3.3.1 and ancestor of v3.3.2 and v6.1.0; the exact whitespace/^ mechanism begins in v3.3.2, while earlier releases remain covered by the advisory's <=6.1.0 range through the distinct original CVE-2023-48223 bug. Direct fix 597c4b6e6af3bd823f624debdaa7f57fa92b1e2d is not in v6.1.0 and is in v6.2.0. Live GitHub advisory data reports <=6.1.0 and first patched 6.2.0; CVE.org state is PUBLISHED.",
+    "direct_fix_or_unpatched": "Confirmed direct fix 597c4b6e6af3bd823f624debdaa7f57fa92b1e2d. Relative to parent 0ff14a687b9af786bd3ffa870d6febe6e1f13aaa it introduces trimmedKey = key.trim(), uses trimmedKey for public/private matcher and decoder paths, and adds leading-whitespace regression tests. v6.1.0 uses key.match directly; v6.2.0 uses trimmedKey.match.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only. The BIC author is nils stolpe <nstolpe@users.noreply.github.com>, committer is GitHub's squash service, and the raw commit has no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, bot-author, or other AI marker. Later commits and the remediation were not used for AI attribution."
+  },
+  "findings": [
+    "The primary record correctly identifies an incomplete human-authored fix: the 2023 security squash simultaneously introduced the anchored matcher and removed leading blank lines from affected test fixtures.",
+    "The advisory is live and non-withdrawn: GitHub reports withdrawn_at=null, and CVE-2026-34950 is PUBLISHED.",
+    "No field correction is required; the primary record explicitly preserves the release-range nuance that the exact whitespace mechanism starts at v3.3.2 even though the advisory covers all versions through v6.1.0."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

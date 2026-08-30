@@ -1,0 +1,26 @@
+{
+  "worker": "w324",
+  "review_agent_id": "r389_w324",
+  "class_id": "alias-d9cde0ce3770f581346632b0",
+  "case_id": "GHSA-9x3x-hjpw-2q3f",
+  "repo": "ericlbuehler/mistral.rs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. Untrusted GGUF eos_token_id and optional bos_token_id/unknown_token_id values reach Rust Vec indexing of props.tokens without a tokens.len() bound in the fix parent and affected tags; a one-token vocabulary with eos_token_id=u32::MAX deterministically panics during tokenizer conversion. CVE-2026-75090 is PUBLISHED and identifies this mechanism and cd5297e2ea5cb27c790bdcf2f3c2f1064a81d55e as the patch.",
+    "atomic_bic": "Confirmed as ec4ccb9ac31e8240e301aaf0321566b80555425f. It is the smallest surviving public commit that reintroduced direct tokens[bos/eos/unk as usize] indexing after b276c160189f8e900efd7213acb031b3061f82de had removed the earlier 1c2f5d7a1e67d0f5e1f0287bedadb8b2dbc175b7 and be2fca1be34856c0e64bbb1a5f16922707d206a2 forms.",
+    "immediate_parent_absence": "Confirmed. The sole parent bf308d476e13e3ca5f80e9dcf0af38f7c0cca905 contains no tokens[ indexing in mistralrs-core/src/pipeline/gguf_tokenizer.rs; ec4ccb9 adds the three unbounded special-token lookups at lines 94-96.",
+    "squash_member_decomposition": "Not applicable to the BIC: ec4ccb9 has exactly one parent and is an ordinary public commit, so there is no squash aggregate to decompose. Later ddba24b2813cb2614f9f40adacd59e96caabf917, 8b2d0927c1ca131c3e419c2f15bacb258f150b4c, and 15b7228cd41c60ca5cf397c0f2b1cdd4e92aacc5 only carry or rewrite the already-vulnerable indexing.",
+    "affected_release_membership": "Confirmed. ec4ccb9 is not an ancestor of v0.1.10 but is an ancestor of v0.1.11, v0.8.0, and v0.8.22. Direct vulnerable props.tokens indexing is present in both v0.8.0 and v0.8.22, matching the advisory's affected 0.8.0-0.8.22 range while showing the mechanism predates that listed range.",
+    "fixed_release_membership": "Confirmed. cd5297e2ea5cb27c790bdcf2f3c2f1064a81d55e is not an ancestor of v0.8.22 and is an ancestor of v0.8.23; v0.8.23 contains the pre-index vocab-size validation.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. cd5297e adds one validation point in PropsGGUF::try_from for eos, bos, and unk before every downstream index. PR #2282 head 9505e7a3bd77b80869aadc6eb27c2017ea80483d and the squash merge cd5297e have identical stable patch-id 84284b8e75ce14281d572673e3670a6699a29dbd.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC alone. ec4ccb9's commit object names EricLBuehler <ericlbuehler@gmail.com> as author and committer and contains only the message 'Add some tests', with no Co-Authored-By, Generated-with, bot identity, or other AI marker. No fix, carrier, or advisory authorship was used for this attribution."
+  },
+  "findings": [
+    "The primary record's mechanism, BIC, parent, fix, direct PR-head fix, release gates, and BIC-only authorship attribution all reproduce from the scoped advisory and clone.",
+    "The advisory's current CVE record is PUBLISHED, not rejected or withdrawn; FALSE_POSITIVE does not apply.",
+    "No corrected primary field is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

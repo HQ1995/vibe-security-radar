@@ -1,0 +1,46 @@
+{
+  "class_id": "alias-df6deb3c385573a2438386f1",
+  "case_id": "GHSA-8qr5-q795-mv79",
+  "repo": "code100x/cms",
+  "advisory_ids": ["CVE-2026-52021", "GHSA-8qr5-q795-mv79"],
+  "bug_semantics": "withMobileAuth in src/middleware.ts (matcher /api/mobile/:path*) treats mere presence of an Auth-Key request header as authorization and returns NextResponse.next() without comparing the value to any server-side secret and without overwriting request headers. JWT verification is skipped. Downstream handlers, including src/app/api/mobile/search/route.ts, then JSON.parse a client-supplied g header as the authenticated user and query purchased course/video titles and IDs. An unauthenticated caller can send Auth-Key: anything plus a forged g JSON body and receive HTTP 200 search results (CWE-306/CWE-200). CVE.org CVE-2026-52021 is PUBLISHED (MITRE CNA; GHSA withdrawn_at null).",
+  "flaw_origin": "PR #1303 member a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9 (rishavvajpayee, 2024-09-25, 'feat: added middleware for mobile routes') first wrote if (req.headers.get('Auth-Key')) { return NextResponse.next(); } while moving withMobileAuth from src/withMobileAuth.ts into src/middleware.ts and wiring matcher /api/mobile/:path*. The immediate parent cd900552043f414334dc9a03e14b40add8c84cd4 still required a JWT (Authorization Bearer + validateJWT) and had no Auth-Key presence bypass. Same-PR signin already compared Auth-Key to EXTERNAL_LOGIN_AUTH_SECRET; the middleware omitted that check. Later member 4bac11aaf449d16f1bebed3bf735f56be94a2bcd first made search parse request.headers.get('g'). GitHub squash 90dad10f255751fc47b67a57759b88cf003ac87e landed the mechanism on main.",
+  "introducer_sha": "a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9",
+  "introducer_parent": "cd900552043f414334dc9a03e14b40add8c84cd4",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9",
+    "88c4d5f2b4b58c078957bfb79180dd49d75112d7",
+    "4bac11aaf449d16f1bebed3bf735f56be94a2bcd",
+    "90dad10f255751fc47b67a57759b88cf003ac87e"
+  ],
+  "ai_marker": "absent; BIC author/committer rishavvajpayee <reshavvajpayee@gmail.com>; git cat-file -p and %(trailers) show no Co-Authored-By, Generated-with, Cursor, Copilot, or other AI commit-object marker",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-52021 state=PUBLISHED (assigner mitre, datePublished 2026-08-20); GHSA-8qr5-q795-mv79 withdrawn_at=null; not rejected/withdrawn.",
+    "Reporter gist https://gist.github.com/itsmohitnarayan/e456399f083130962bab6c710f208437: withMobileAuth grants access if Auth-Key is present; search trusts client g; PoC curl -H 'Auth-Key: anything' -H 'g: {\"id\":\"forged-user\",...}' /api/mobile/search?q=test; unpatched vs main 9f3c8f4 as of 2026-08-07.",
+    "HEAD 9f3c8f426cdaf22948f9f8e16e32f24fb7c9d059 src/middleware.ts:31-34 still has if (req.headers.get('Auth-Key')) { return NextResponse.next(); }; src/app/api/mobile/search/route.ts:28 still has const user = JSON.parse(request.headers.get('g') || '').",
+    "git log -S \"if (req.headers.get('Auth-Key'))\" --all: first write a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9, then squash landing 90dad10f255751fc47b67a57759b88cf003ac87e (PR #1303). git log -L :withMobileAuth:src/middleware.ts on main starts at the squash.",
+    "PR #1303 (https://github.com/code100x/cms/pull/1303) squash-merged as 90dad10; reconstructable members via refs/pull/1303/head. 2a04127e181a127009cde111dc8afde1dd8ca043 added src/withMobileAuth.ts requiring JWT only (no Auth-Key bypass, and the helper was not Next middleware). a60ba45 moved the function into src/middleware.ts, added matcher /api/mobile/:path*, and first wrote the presence-only Auth-Key short-circuit at src/middleware.ts:28-30.",
+    "Parent-tree verification: git rev-parse a60ba45^ = cd900552043f414334dc9a03e14b40add8c84cd4; parent withMobileAuth.ts still does const token = req.headers.get('Authorization')?.split(' ')[1] then 403 if missing/invalid; git grep of if (req.headers.get('Auth-Key')) on that parent is empty. 88c4d5f only tightened RequestWithUser types; 4bac11a kept the Auth-Key check and switched search from a hardcoded user to JSON.parse(g).",
+    "Same-repo contrast: src/app/api/mobile/signin/route.ts compares Auth-Key to process.env.EXTERNAL_LOGIN_AUTH_SECRET; src/app/api/admin/services/externalLogin/route.ts compares to JOB_BOARD_AUTH_SECRET. The middleware never adopted that equality check.",
+    "No git tags. Affected 'v.1.0 (2026-04-30)' is the live/source snapshot in the advisory, not a repo tag. 90dad10 is an ancestor of HEAD; a60ba45 is a PR-branch first-write (not on main ancestry because of the squash).",
+    "Unpatched: GitHub main/prod/production last touch of src/middleware.ts is ff3bda392836abbb92023c9edf7fc767f6109c95 (matcher only). Issue https://github.com/code100x/cms/issues/1924 still open. PR https://github.com/code100x/cms/pull/1927 (head 88c6c5e94e23da101235c4c7e9c7591ac1016549) would compare Auth-Key to APPX_AUTH_KEY and delete client g, but is open/unmerged against 9f3c8f4.",
+    "BIC-only AI: git cat-file -p a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9 is author/committer rishavvajpayee <reshavvajpayee@gmail.com> 1727210092 +0530, message 'feat: added middleware for mobile routes', empty body, no trailers. PR-body and squash Co-authored-by: rishavvajpayee on 90dad10 are not BIC-object AI markers."
+  ],
+  "reasoning": "CVE-2026-52021 is a real unauthenticated information disclosure: mobile API middleware authorizes any request that merely includes an Auth-Key header, then search (and other /api/mobile handlers) accept a client g header as user identity. CVE.org is PUBLISHED; this is not a withdrawn/rejected advisory. The smallest first-write of that presence-only short-circuit is PR #1303 member a60ba45, reconstructed from the GitHub squash 90dad10 (feat: Added cms-mobile routes). A move of withMobileAuth.ts into middleware.ts is not itself the BIC; the new Auth-Key bypass lines are, and they are absent at parent cd90055, which still required JWT. Later PR members did not invent that check (88c4d5f is types; 4bac11a is the g parse that completes the disclosed search PoC). AI is judged only from the BIC commit object: human author/committer rishavvajpayee, no AI trailers, so NOT_AI. No merged fix exists at HEAD 9f3c8f4; unpatched.confirmed records that fact and the concrete secret-compare + strip-g remediation (open PR #1927 is a candidate, not a landed fix_sha).",
+  "remaining_gap": "Unpatched: no merged fix SHA on main/prod/production as of HEAD 9f3c8f426cdaf22948f9f8e16e32f24fb7c9d059; open PR #1927 is unmerged.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "The Auth-Key presence bypass and client-g identity parse remain in src/middleware.ts and src/app/api/mobile/search/route.ts at audited HEAD 9f3c8f426cdaf22948f9f8e16e32f24fb7c9d059 (2026-01-07). No later commit on main, prod, or production changes the check. Reporter re-verified unpatched on 2026-08-07. GitHub issue #1924 and PR #1927 are still open; #1927 has not merged.",
+    "potential_fix": {
+      "approach": "In withMobileAuth, reject the Auth-Key path unless the header equals a non-empty server-side secret (the same equality pattern /api/mobile/signin already uses against EXTERNAL_LOGIN_AUTH_SECRET; do not treat header presence as auth). On that path, copy headers and delete('g') before NextResponse.next(). On the JWT path, keep overwriting g from the verified payload only. In search/courses handlers, do not JSON.parse a client g value as identity unless middleware set it after successful auth.",
+      "rationale": "The disclosure sink is NextResponse.next() on any Auth-Key, which skips JWT and forwards attacker headers so search JSON.parse(g) as the user. Requiring a secret match closes the unauthenticated gate; stripping or overwriting g closes identity forgery even when a legitimate service key is presented.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/code100x/cms/pull/1927"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-f47bd2b9d061222a7d643472",
+  "case_id": "GHSA-4ph9-3c4q-r2hh",
+  "repo": "frrouting/frr",
+  "advisory_ids": ["CVE-2026-37460", "GHSA-4ph9-3c4q-r2hh"],
+  "bug_semantics": "rfapiRibBi2Ri() in bgpd/rfapi/rfapi_rib.c copies a BGP path's VNC sub-TLVs into struct rfapi_info. For BGP_VNC_SUBTLV_TYPE_RFPOPTION it treats pEncap->value[0]/value[1] as an inner type/length and XCALLOC/memcpy's pEncap->length-2 bytes with no check that the sub-TLV is long enough. bgp_attr_encap() will store a VNC sub-TLV of any sublength (including 0/1/2) from a BGP UPDATE; ENABLE_BGP_VNC is on unless --disable-bgp-vnc. A short RFPOPTION then OOBs on value[] (flexible array sized to sublength) and computes length-2 as a negative int (uint16_t promotes) that XCALLOC takes as a huge size_t, or XCALLOC(0) when length==2. Callers rfapiRibPreloadBi/rfapiRibUpdatePendingNode run this on imported VPN/VNC routes, crashing or exhausting bgpd (DoS).",
+  "flaw_origin": "The unvalidated RFPOPTION copy was first written when the whole rfapi VNC feature landed in 65efcfce427e2abb548874ebb1a11a3b2ee7bc17 (2016-05-07 author Lou Berger, committed 2016-10-03 by Donald Sharp). Parent 520d2512db8496f9b79b917cb84e36b83465f884 has no bgpd/rfapi/ and no RFPOPTION. Later touches only reindent, bgp_info→bgp_path_info rename, and bgp_attr_get_vnc_subtlvs(); they do not rewrite the missing-length logic. The 2026 fix only adds drop-on length<3 and value[1]==0.",
+  "introducer_sha": "65efcfce427e2abb548874ebb1a11a3b2ee7bc17",
+  "introducer_parent": "520d2512db8496f9b79b917cb84e36b83465f884",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Lou Berger <lberger@labn.net>, committer Donald Sharp <sharpd@cumulusnetworks.com>; commit body credits G. Paul Ziemba <paulz@labn.net>; no Co-Authored-By, Generated-with, or bot author/committer on the BIC object",
+  "verdict": "NOT_AI",
+  "fix_sha": "7676cad65114aa23adde583d91d9d29e2debd045",
+  "direct_fix_sha": "7676cad65114aa23adde583d91d9d29e2debd045",
+  "evidence": [
+    "CVE.org CVE-2026-37460 state=PUBLISHED (CNA MITRE, not rejected/withdrawn); description: missing input validation in rfapiRibBi2Ri() (rfapi_rib.c), FRR stable/10.0–stable/10.6, DoS via crafted BGP UPDATE. GHSA-4ph9-3c4q-r2hh withdrawn_at=null.",
+    "CVE/GHSA references: https://github.com/FRRouting/frr/pull/21098 and https://github.com/FRRouting/frr/commit/7676cad65114aa23adde583d91d9d29e2debd045. Debian tracker treats it as real (fixed 10.6.1-1) citing cherry-pick 36f4098738627d724a72d37ef660a5d8eb1e8020.",
+    "PR #21098 (mjstapp, merged 2026-03-18 as 4825b5ba563368c9a8b8884080203d6ed2b8d9f3): single commit 7676cad65114aa23adde583d91d9d29e2debd045 by Mark Stapp <mjs@cisco.com>. rfapi_rib.c hunk adds `if (pEncap->length < 3) break;` and `if (pEncap->value[1] == 0) break;` immediately before the RFPOPTION XCALLOC of hop/value.",
+    "Pre-fix (7676cad^ = 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170) bgpd/rfapi/rfapi_rib.c:670-677: case BGP_VNC_SUBTLV_TYPE_RFPOPTION: hop=XCALLOC(...); hop->type=pEncap->value[0]; hop->length=pEncap->value[1]; hop->value=XCALLOC(..., pEncap->length-2); no min-length check. struct bgp_attr_encap_subtlv.length is uint16_t (bgpd/bgp_attr.h:75-81).",
+    "Parser path: bgp_attr_encap() at 5c4ca889 bgpd/bgp_attr.c ~3156-3227 copies attacker-controlled sublength into tlv->length/value and chains VNC sub-TLVs; only rejects sublength > remaining attr/stream. configure.ac enables ENABLE_BGP_VNC unless enable_bgp_vnc=no.",
+    "BIC search: git log -S 'hop->type = pEncap->value[0]' and -S 'pEncap->length - 2' on bgpd/rfapi/rfapi_rib.c, plus git log -S 'BGP_VNC_SUBTLV_TYPE_RFPOPTION' on that file, all first hit 65efcfce427e2abb548874ebb1a11a3b2ee7bc17. git blame -w -L 670,680 on the fix parent attributes the RFPOPTION alloc/value[] uses to that SHA (raw blame points at reindent d62a17aedeb0eebdba98238874bb13d62c48dbf9, not a mechanism write).",
+    "Parent verification: git rev-parse 65efcfc^ = 520d2512db8496f9b79b917cb84e36b83465f884 (single parent). git ls-tree parent -- bgpd/rfapi is empty; git grep rfapiRibBi2Ri and BGP_VNC_SUBTLV_TYPE_RFPOPTION on the parent are empty. Original function at 65efcfc:bgpd/rfapi/rfapi_rib.c:635-672 already has the unvalidated RFPOPTION XCALLOC/value[] copy.",
+    "65efcfc is a 106-file / ~44k-line VNC feature add, not a merge. No reconstructable public member commits (no GitHub PR; Quagga-era landing). Smallest surviving first-write in this clone.",
+    "Tag membership: BIC is ancestor of frr-2.0-rc1 and of frr-10.0…frr-10.6.x (precedes affected 10.0–10.6). direct fix 7676cad is ancestor of frr-10.7.0, not of frr-10.6.2. Cherry-pick 36f4098 (stable/10.6, Mergify, 'cherry picked from 7676cad') is ancestor of frr-10.6.0/10.6.1/10.6.2 (10.6.0 tagged 2026-03-26 after the 2026-03-18 backport). Ubuntu also shipped the same validation onto 7.2/8.1/8.4, consistent with a 2016 origin.",
+    "AI on BIC only: git cat-file -p 65efcfce427e2abb548874ebb1a11a3b2ee7bc17 has author Lou Berger / committer Donald Sharp, human labn/cumulus identities, no Co-Authored-By/Generated-with/bot trailer. 2016 commit; PR-body/fix AI would not attribute this BIC."
+  ],
+  "reasoning": "CVE-2026-37460/GHSA-4ph9-3c4q-r2hh is a published MITRE record (not withdrawn/rejected) for missing validation in rfapiRibBi2Ri()'s BGP_VNC_SUBTLV_TYPE_RFPOPTION arm. A crafted BGP UPDATE can install a short VNC RFPOPTION sub-TLV; later NVE RIB conversion reads value[0]/value[1] and XCALLOCs pEncap->length-2 without a floor, causing OOB read and/or a wrapping/zero allocation that DoSes bgpd. The smallest commit that first wrote those lines is 65efcfce427e2abb548874ebb1a11a3b2ee7bc17 (rfapi VNC feature). Its parent tree lacks the file and the symbols; later history only reformats or renames around the same unvalidated copy until 7676cad65114aa23adde583d91d9d29e2debd045 (PR #21098) adds the length<3 and inner-length!=0 guards. That patch is the advisory/direct fix (merged to master as 4825b5ba563368c9a8b8884080203d6ed2b8d9f3; backported as 36f4098 on stable/10.6). BIC-only authorship is human (Lou Berger / Donald Sharp, no commit-object AI markers), so the verdict is NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,27 @@
+{
+  "worker": "w320",
+  "review_agent_id": "r389_w320",
+  "class_id": "alias-9c73f039e2cef1de1621ca70",
+  "case_id": "GHSA-wvf4-v63v-mwm5",
+  "repo": "vladimir-tokarev-cyera/llama-cpp-security-patches",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CVE.org is PUBLISHED and identifies attacker-controlled HTTP dry_allowed_length=INT32_MIN. In b3978 and b9058 the server accepts that value without a lower bound, llama_sampler_dry_apply compares it against nonnegative repeat lengths, and repeat_len - dry_allowed_length exceeds INT_MAX, invoking signed-overflow undefined behavior associated by the advisory with a heap buffer underflow/OOB read and denial of service or corrupted logits.",
+    "atomic_bic": "9697338d2d4865a3b6fc4fdee9418b0083306d7c is the first PR #9702 member and simultaneously adds the raw CLI assignment, raw server JSON assignment, unclamped sampler storage, comparisons, and dangerous subtraction; it is the smallest public first-write object, not the landing squash.",
+    "immediate_parent_absence": "The BIC parent is 0a1c750c80147687df267114c81956757cc14382. Exact parent-tree reads of src/llama-sampling.cpp, examples/server/server.cpp, and common/arg.cpp contain none of dry_allowed_length, llama_sampler_dry_apply, or --dry-allowed-length.",
+    "squash_member_decomposition": "GitHub PR #9702 exposes the ordered members 9697338d2d4865a3b6fc4fdee9418b0083306d7c, 0ec847315b185f87c8301c8901b2dacb16c76d11, 13038930afa62529b02a21c7729bf71c763e1b57, and dc408bba7d578dbbf4e28484486c60fc52acf12c. The last three only remove an unrelated blank line/redundant variable or adjust disabled-DRY initialization; ff252ea48e90e6552010fd74584334fb41bdd387 is the b3978 landing squash and is not the BIC.",
+    "affected_release_membership": "Tag b3978 resolves to ff252ea48e90e6552010fd74584334fb41bdd387 and contains the raw request assignment plus all vulnerable sampler operations. Tag b9058 resolves to 803627f121dca7d4ec5166178d89398f20d288c0 and retains the same raw server-task assignment and sampler operations. This independently confirms the CNA build range endpoints.",
+    "fixed_release_membership": "Tag b9707 resolves exactly to e1efd0991d852b02dce3533ec8fac8bf850e1431. The fix is 649 commits ahead of b9058, while b9445 resolves to af6528e6df5d798f7f1363ec1141699be0f638e2 and predates the fix.",
+    "direct_fix_or_unpatched_state": "The direct HTTP fix e1efd0991d852b02dce3533ec8fac8bf850e1431 replaces raw completion parsing with server_schema::eval_llama_cmpl_schema and defines dry_allowed_length with hard limits [0, INT32_MAX]. Its parent 08023072ef63e7da749870b771db156f36d5c935 still uses json_value without that lower-bound check. Both OpenAI completions and chat-completions handlers route through handle_completions_impl and the schema evaluator. The clone's separate defense-in-depth patch for CLI/init surfaces does not change this direct HTTP-fix identity.",
+    "bic_only_ai_attribution": "The BIC object names human author/committer wwoodsTM <rcyfwill@gmail.com> and only human Co-authored-by trailers for l3utterfly and pi6am; its message documents an iterative Koboldcpp port and contains no agent/bot/generated marker. Fix-side Cursor or AI-disclosure evidence is excluded. The primary NOT_AI attribution is therefore confirmed from the BIC alone."
+  },
+  "findings": [
+    "The primary identifies the correct atomic BIC, parent, decomposed PR members, affected build endpoints, direct HTTP fix, fixed build tag, and BIC-only NOT_AI attribution.",
+    "The primary bug_semantics misnames repeat_len - INT32_MIN as signed integer underflow. Because repeat_len is nonnegative, the mathematical result is greater than INT_MAX: the C++ operation is signed overflow/undefined behavior; buffer underflow is the reported downstream memory symptom."
+  ],
+  "corrected_fields": {
+    "bug_semantics": "llama.cpp's DRY sampler accepts caller-supplied dry_allowed_length as signed int32 without a lower bound. HTTP /v1/completions or /v1/chat/completions can supply INT32_MIN; json_value and llama_sampler_init_dry preserve it, the early-return and repeat eligibility comparisons become ineffective, and repeat_len - dry_allowed_length produces a mathematical value above INT_MAX, causing signed integer overflow and undefined behavior. The advisory reports the resulting heap buffer underflow/OOB read as SIGSEGV denial of service or corrupted sampling probabilities. The same unbounded integer is also accepted by --dry-allowed-length."
+  },
+  "remaining_gap": null
+}

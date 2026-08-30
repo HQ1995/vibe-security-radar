@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-eab70b7354857bbf2500c76b",
+ "case_id": "GHSA-8fjq-3x3v-5fgg",
+ "repo": "dundee/gdu",
+ "advisory_ids": [
+  "CVE-2026-73480",
+  "GHSA-8fjq-3x3v-5fgg"
+ ],
+ "bug_semantics": "After the interactive TUI stops, gdu writes filesystem paths to the real terminal with fmt.Fprintf and no control-character stripping. Pressing Q prints ui.currentDirPath; quitting after marking items prints each marked path. tview already sanitizes on-screen rendering, but these post-Stop() writes go to os.Stdout, so a crafted directory or file name containing OSC/CSI escape sequences is interpreted by the victim terminal (title spoofing, clipboard manipulation, or other terminal-dependent effects).",
+ "flaw_origin": "30356670ad7f9b4154f78bcb97c2e97de34aeb4e first added the Q-key handler that stops the TUI then fmt.Fprintf(ui.output, \"%s\\n\", ui.currentDirPath) with no sanitization, plus the io.Writer output field. Parent 064c8eeda80afa04aa955fdace1f037f5e2f27d4 only stopped the app on 'q' and never printed a path. Later c6207db5e4611efe7c2ace35869992a80693a75a added a second unsanitized sink (printMarkedPaths). ee9e4e27e55a9acf34ee04f350a024be9face3de only extracted the existing print into doQuit. 5d76fab735f190fd645896de90ac9982b6382aeb (PR #616) added sanitizePathForDisplay at both sinks.",
+ "introducer_sha": "30356670ad7f9b4154f78bcb97c2e97de34aeb4e",
+ "introducer_parent": "064c8eeda80afa04aa955fdace1f037f5e2f27d4",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; BIC author/committer Daniel Milde <daniel@milde.cz>; body 'closes #85'; no Co-Authored-By, Generated-with, or bot trailers on the commit object",
+ "verdict": "NOT_AI",
+ "fix_sha": "5d76fab735f190fd645896de90ac9982b6382aeb",
+ "direct_fix_sha": "5d76fab735f190fd645896de90ac9982b6382aeb",
+ "evidence": "Advisory GHSA-8fjq-3x3v-5fgg / CVE-2026-73480 (not withdrawn): fail to strip terminal escape sequences from directory/file names when printing paths after TUI exit. First-party issue dundee/gdu#615 (carfeii, 2026-08-11) cites tui/keys.go doQuit printing ui.currentDirPath and tui/tui.go printMarkedPaths after ui.app.Stop(). Advisory reference fe605ecd9ad0e0f1c7ba84131ddfa1c83c52406f is the pre-fix master tip ('feat: honor block size environment (#604)'), not the sanitizer. Real fix: PR #616 merged as 5d76fab735f190fd645896de90ac9982b6382aeb; member commit f1d803d815181a0779e0a4bd14bce60783b46203. git show 30356670 -- tui/keys.go: first write of case 'Q': ui.app.Stop(); fmt.Fprintf(ui.output, \"%s\\n\", ui.currentDirPath). git cat-file -p 30356670: single parent 064c8eeda80afa04aa955fdace1f037f5e2f27d4; author/committer Daniel Milde <daniel@milde.cz>; no AI trailers. Parent keys.go has only case 'q': ui.app.Stop() and no output writer. git log -S 'printMarkedPaths' -- tui: second sink added c6207db5e4611efe7c2ace35869992a80693a75a (Daniel Milde, #528). git log -L :doQuit:tui/keys.go: ee9e4e27 extracted the existing unsanitized print (Claude-coauthored refactor, not first-write). git merge-base --is-ancestor 30356670 5d76fab: yes. Fix first contained in v5.37.0. BIC contained from v5.6.0 onward. ppa re-checked line-level 2026-08-29: git show 064c8eed:tui/keys.go has no case 'Q' and no fmt.Fprintf(ui.output, ...) on currentDirPath (grep found only ui.app.Stop() at line 33); the BIC diff 30356670 adds the case 'Q' hunk that prints ui.currentDirPath to the terminal after ui.app.Stop(). -> introducer_parent_absent=true. Field reconciliation 2026-08-29: direct_fix_sha updated to the landed fix 5d76fab735f190fd645896de90ac9982b6382aeb; original independent value f1d803d815181a0779e0a4bd14bce60783b46203 retained here in evidence.",
+ "reasoning": "The vulnerability is CWE-116: unsanitized filesystem paths written to the terminal after tview has released the screen. The smallest first-write of that mechanism is 30356670, which introduced the documented Q-to-print-current-dir feature and the stdout sink. The parent lacks both the print and the output field. Later marked-path printing (c6207db5) is a second instance of the same missing sanitization, not the original introduction. ee9e4e27 is a move of the existing Fprintf into doQuit, so it is not a BIC despite Claude trailers. AI is judged only from 30356670: human author/committer Daniel Milde, no AI/bot markers, therefore NOT_AI. The sanitizer lands in 5d76fab / f1d803d.",
+ "remaining_gap": null
+}

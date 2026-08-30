@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-fedf2b2cf7166a2236456079",
+ "case_id": "GHSA-jxpf-xq2m-q525",
+ "repo": "openmcdf/openmcdf",
+ "advisory_ids": [
+  "CVE-2026-41511",
+  "GHSA-jxpf-xq2m-q525"
+ ],
+ "bug_semantics": "CWE-835 infinite loop: a crafted CFB file with a LeftSiblingID/RightSiblingID cycle makes Storage.EnumerateEntries() and Storage.OpenStream() hang with no exception.",
+ "flaw_origin": "OpenMcdf3 first replaced linear FAT directory-sector enumeration with an unguarded Left/Right sibling-tree walk in DirectoryTreeEnumerator (MoveNext/PushLeft). Parent Storage walked directory sectors and would terminate; the new stack walk never tracks visited IDs. DirectoryTree.TryGetDirectoryEntry (92cc9d74b7c4a63cf78625fbeaa5fa9207a01344) later added a second unguarded BST sibling walk used by OpenStream; that is a follow-on rewrite of the same missing cycle check, not the first write.",
+ "introducer_sha": "b2fc989e4c3e6b682c8416bf5aa72b3fe37ae9e3",
+ "introducer_parent": "7821a5d148cb523d1f3c347680c5eeccc25de3e3",
+ "introducer_parent_absent": false,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent — no AI marker in the BIC commit object (author/committer human; no AI trailers), verified via cat-file during case analysis",
+ "verdict": "NOT_AI",
+ "fix_sha": "24f445a557fc4f46461cf6d02d296cce16c293a0",
+ "direct_fix_sha": "24f445a557fc4f46461cf6d02d296cce16c293a0",
+ "evidence": "GHSA-jxpf-xq2m-q525 / CVE-2026-41511 (bundle withdrawn_at null; first patched 3.1.3) cites 24f445a557fc4f46461cf6d02d296cce16c293a0, which adds Brent cycle detection to OpenMcdf/DirectoryTreeEnumerator.cs (throw FileFormatException on loop). That SHA is an ancestor of tag v3.1.3. BIC b2fc989e4c3e6b682c8416bf5aa72b3fe37ae9e3 (single parent 7821a5d148cb523d1f3c347680c5eeccc25de3e3) adds OpenMcdf3/DirectoryTreeEnumerator.cs whose PushLeft follows LeftSiblingID and MoveNext follows RightSiblingID with no visited set; Storage.EnumerateDirectoryEntries and OpenStream both used that enumerator. git cat-file -e 7821a5d148cb523d1f3c347680c5eeccc25de3e3:OpenMcdf3/DirectoryTreeEnumerator.cs fails; parent Storage.cs enumerates FAT directory sectors linearly. git cat-file -p on the BIC shows author/committer Jeremy Powell <jeremy@visionaid.com> with subject Allow storage directory entry enumeration and no Co-Authored-By / Generated-with / bot author. Later 92cc9d74b7c4a63cf78625fbeaa5fa9207a01344 first adds DirectoryTree.TryGetDirectoryEntry (unguarded sibling walk) but rewrites rather than first-introduces the cycle-vulnerable traversal.",
+ "reasoning": "Real CWE-835 DoS: untrusted CFB sibling cycles hang enumeration and name lookup. Smallest first-write of the unguarded sibling-tree walk is b2fc989e4c3e6b682c8416bf5aa72b3fe37ae9e3 (not a move/refactor/squash; parent tree lacks the enumerator). AI judged only from that commit object: human author/committer, empty markers. Fix 24f445a557fc4f46461cf6d02d296cce16c293a0 is the direct enumerator cycle check shipped in v3.1.3; later BST validators are after the patched release and are not the cited fix.",
+ "remaining_gap": ""
+}

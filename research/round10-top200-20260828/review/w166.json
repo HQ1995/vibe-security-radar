@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-07d16d48d88cdbb57eb72ea8",
+  "case_id": "GHSA-9m4v-54qq-67fw",
+  "repo": "infiniflow/ragflow",
+  "advisory_ids": [
+    "CVE-2026-75898",
+    "GHSA-9m4v-54qq-67fw"
+  ],
+  "bug_semantics": "CWE-918 SSRF in agent/component/invoke.py: Invoke builds an outbound URL from canvas configuration (later also runtime template variables) and issues requests.get/post/put without assert_url_is_safe or DNS pinning; the response body is returned as component output, so a user who can create or trigger an agent can reach loopback, link-local, RFC1918, and cloud-metadata destinations.",
+  "flaw_origin": "adb0a93d955ca5d6117c871a77d0c3eadb02fa6b (add component invoke #2967, 2024-10-22) first added agent/component/invoke.py. It stripped self._param.url, prefixed http:// when the scheme was missing, and called requests.get/put with that URL and no SSRF validator. Parent 226bdd6e99397931f58e7baf230954c71a27aaa5 has no invoke.py and no equivalent unguarded Invoke fetch. Later 66d0d44a0004bbbc9b57426acd0520205b0bf7ee interpolated {variables} into the URL and d053317c4d85657d2bc6dd37e5a08371afb4be6d extracted _build_url/_send_request; both reused the same unguarded sink. fb95136f391fac8fa4288d4f687e473675c3cdb2 (crawler SSRF fix) only restyled invoke.py and did not add a guard.",
+  "introducer_sha": "adb0a93d955ca5d6117c871a77d0c3eadb02fa6b",
+  "introducer_parent": "226bdd6e99397931f58e7baf230954c71a27aaa5",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "faef22c18a74b94ff1a2f55ca24404f0b1807cc5",
+  "direct_fix_sha": "c4fe68eaa0bf1d6442d2cd6ac2e35bc9ccbed34f",
+  "evidence": "CVE.org CVE-2026-75898 state=PUBLISHED (VulnCheck CNA, not rejected/withdrawn); GHSA-9m4v-54qq-67fw withdrawn_at=null. Clone infiniflow/ragflow. git log --follow -- agent/component/invoke.py: file added adb0a93d955ca5d6117c871a77d0c3eadb02fa6b. git cat-file -p adb0a93: author Kevin Hu <kevinhu.sh@gmail.com>, committer GitHub <noreply@github.com>, subject add component invoke (#2967), single parent 226bdd6e99397931f58e7baf230954c71a27aaa5, no Co-Authored-By/Generated-with/bot author. git log -1 --format='%an %ae %cn %ce' adb0a93: Kevin Hu kevinhu.sh@gmail.com GitHub noreply@github.com. git cat-file -e 226bdd6e:agent/component/invoke.py fails (path absent). Origin blob: url=self._param.url.strip(); if not http prefix then 'http://'+url; requests.get/put(url=url,...) returning response.text. v0.26.2 invoke.py still has unguarded _build_url/_send_request (0 assert_url_is_safe hits). Advisory named patches: c4fe68eaa0bf1d6442d2cd6ac2e35bc9ccbed34f Harden closed-advisory fixes (#16409) first adds assert_url_is_safe/pin_dns/allow_redirects=False (parent f90be41eab4ccb9ad2c52031e6c5d3d89d998909 path exists, grep assert_url_is_safe empty); e16d1a0150e1ca069beb538ae3dcd03f59edc5fa fix(agent): add SSRF guard to Invoke HTTP component (#15426) adds proxy-URL guard on a parent that already had c4fe. Those SHAs are not ancestors of v0.26.3/HEAD; first-parent equivalents faef22c18a74b94ff1a2f55ca24404f0b1807cc5 (same patch-id as c4fe) and 660970b253a9b7f5e2692e1271d9489a8f075bab (same patch-id as e16d) are ancestors of v0.26.3, which has 3 assert_url_is_safe hits. 66d0d44a parent already issued requests.* on _param.url.",
+  "reasoning": "The advisory mechanism is an unguarded server-side HTTP fetch in Invoke, present from the file's first write. That BIC is a GitHub merge of a human-authored feature by Kevin Hu with no AI trailers or bot author on the commit object; later AI-marked fix commits and URL-interpolation features do not attribute the introducer. The CVE is published, not withdrawn, so this is a real vulnerability with human authorship: NOT_AI.",
+  "remaining_gap": ""
+}

@@ -1,0 +1,25 @@
+{
+  "worker": "w037",
+  "review_agent_id": "r389_w037",
+  "class_id": "alias-8cbdbac2766da9ea59ee2d3f",
+  "case_id": "GHSA-xpxj-f2fm-rqch",
+  "repo": "olivetin/olivetin",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org and GHSA describe unauthenticated memory exhaustion because each /oauth/login request inserts a fresh registeredStates entry without expiry, deletion, or a bound. The clone shows that exact insertion in affected tags; the mutex for the distinct concurrent-map crash does not limit growth.",
+    "atomic_bic": "PASS: git log --all --reverse -SregisteredStates and git log -L both terminate at 6a7187fb5b6a7fa900d7df0f0da8fdb3ebf02734. That single-parent commit creates internal/httpservers/oauth2.go with the map and unbounded login insertion and wires the public /oauth/login route; later commits preserve or relocate the mechanism.",
+    "immediate_parent_absence": "PASS: immediate parent b31cdf15a20c29f6301f02a3ba4ef97b9d99e48c has no internal/httpservers/oauth2.go and git grep finds none of registeredStates, handleOAuthLogin, or oauth2State.",
+    "squash_member_decomposition": "PASS: the BIC is a non-merge, single-parent public commit, so no squash/merge member decomposition is required. For the fix, advisory-cited merge ec114e95d297b806c3ca0c37bc139b3c9c517b3f contains member 422044317ccd530d1f392039fe432c5512a1603e; that member changes only the OAuth2 implementation and its test, and its patch-id matches main-based equivalent 160cc5d70b26cdcce1d5d75e6f3eba5addb4953a.",
+    "affected_fixed_release_membership": "PASS: BIC 6a7187fb is an ancestor of tags 3000.0.0, 3000.16.2, and 3000.17.0. Tag 3000.16.2 retains the unbounded insertion and lacks oauthStateMax/sweepExpired; advisory-cited fix merge ec114e95 is not its ancestor. Tag 3000.17.0 contains ec114e95 and the TTL, 10000-entry cap, and sweep. This matches CVE.org affected >=3000.0.0,<3000.17.0 and fixed 3000.17.0.",
+    "direct_fix_or_unpatched": "PASS: 422044317ccd530d1f392039fe432c5512a1603e is a direct fix member of ec114e95. Its two-file patch adds createdAt, 900-second expiry sweeping, a 10000-entry ceiling returning HTTP 503, failed-callback deletion, and focused tests; the merge first-parent diff is the same 32 implementation plus 66 test lines.",
+    "bic_only_ai_attribution": "PASS: BIC commit object 6a7187fb is authored by jamesread and committed by James Read, its message is only 'feature: OAuth2! :-D', and git interpret-trailers yields no AI/bot/co-author trailer. Cursor appears only as a co-author trailer on the later fix member and is excluded from BIC attribution. NOT_AI is therefore supported by the BIC-only evidence."
+  },
+  "findings": [
+    "No correction is required: mechanism, atomic introducer, parent absence, release boundary, direct fix, and BIC-only AI judgment all independently reproduce from the assigned clone and authoritative CVE/GHSA records.",
+    "The advisory's merge fix and its direct member are correctly distinguished: ec114e95 is the tagged landing merge, while 42204431 is its minimal two-file security-fix member; the equivalent main-based commit 160cc5d7 has the same stable patch-id and the same tree as the merge result.",
+    "The BIC predates the CNA's 3000.x affected range and is already present in tag 3000.0.0; this is consistent with, rather than contrary to, the recorded affected-release membership."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

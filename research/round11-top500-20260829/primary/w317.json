@@ -1,0 +1,61 @@
+{
+  "class_id": "alias-8b2c1d0e732a44cd0613d5ff",
+  "case_id": "GHSA-3f2h-96vw-c84x",
+  "repo": "vladimir-tokarev-cyera/llama-cpp-security-patches",
+  "advisory_ids": [
+    "CVE-2026-43632",
+    "GHSA-3f2h-96vw-c84x"
+  ],
+  "bug_semantics": "llama-server use-after-free of ctx_server.vocab on six HTTP tokenization-family endpoints (/tokenize, /detokenize, /infill, /apply-template, /rerank, /anthropic/count_tokens) when --sleep-idle-seconds is enabled. Those handlers construct server_res_generator, which calls wait_until_no_sleep() and then drops mutex_tasks; they then tokenize or otherwise dereference ctx_server.vocab on the HTTP worker thread, bypassing the completion task queue. Concurrently the main loop can observe an empty queue, enter sleep, and run destroy() -> llama_init.reset(), which frees llama_model (and the embedded llama_vocab) without nulling the cached vocab pointer. The TOCTOU window after the awake check lets a worker finish using a dangling vocab pointer, causing crash or potential code execution via heap reclaim.",
+  "flaw_origin": "Sleep-idle was added in squash-merged PR ggml-org/llama.cpp#18228 (tag b7492). Queue-level wait_until_no_sleep and a destroy() that did not free the model landed first; the UAF becomes real in member e6ab62c4a1af57fcba5c982ced53c2522b9517d1 ('make sure to free llama_init'), which first wrote llama_init.reset()/ctx=nullptr/model=nullptr in destroy() while leaving vocab live. Parent 44a5a26c32ec7d41706680a4d2ca1f268c9166a2 still only freed mtmd/slots/batch. Tokenize-family handlers already used ctx_server.vocab after wait_until_no_sleep at that parent. A later same-PR 'fix use-after-free' (105e2f3) only preserved metrics across resume and did not close this race.",
+  "introducer_sha": "e6ab62c4a1af57fcba5c982ced53c2522b9517d1",
+  "introducer_parent": "44a5a26c32ec7d41706680a4d2ca1f268c9166a2",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "e1d7b43409436682a8adf77ff2b95ad7a7bcc9df",
+    "197e5785ccdcf6d2089000fc69077e16a1236965",
+    "db3b78d21b125f7d7c1ce5a542cb243295d77f9c",
+    "aea8f8c113279a3f7da3e1fa8f1ee566281c6bf0",
+    "44a5a26c32ec7d41706680a4d2ca1f268c9166a2",
+    "e6ab62c4a1af57fcba5c982ced53c2522b9517d1",
+    "937b06415d0d0f46a171b67f018f1b15267ac8d5",
+    "105e2f3cf67cf726e9ea9761faf4c1bdd824370d",
+    "fd09f8800439b3397ba035c9db7cbb1e57293bc3",
+    "0bb9bc486a929d55db7c5dd0ecd787707c067d3f",
+    "d8500827783c7125d627dd296f531281fca8cfec",
+    "1663d2f8f7676fa7688fe32a6333d547de278d17",
+    "b51da9a18fb837fb39f085742cc721851ca6c6ea",
+    "06a5ebe187caa458ea8f1d865e744e8b31f58ef4"
+  ],
+  "ai_marker": "absent. BIC author and committer are Xuan Son Nguyen <son@huggingface.co>; git cat-file -p e6ab62c4a1af57fcba5c982ced53c2522b9517d1 has subject 'make sure to free llama_init' and no Co-Authored-By, Generated-with, Made-with, or Signed-off-by trailers; author is not a bot.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-43632 is PUBLISHED (not rejected/withdrawn); CNA VulnCheck; datePublished 2026-08-06; affected ggml-org/llama.cpp b7492..b9060; CWE-416 and CWE-367. GHSA-3f2h-96vw-c84x withdrawn_at is null. Description matches tokenize-endpoint UAF, not unbounded task creation.",
+    "Cyera write-up names the same six endpoints, the wait_until_no_sleep TOCTOU, destroy() leaving vocab dangling, and states GHSA-wwh3-vwx5-j8m7 plus the tokenize-endpoint report share one fix. Timeline credits sleep-idle introducer ddcb75dd8 / b7492 (PR #18228).",
+    "git log -1 --format=fuller ddcb75dd8ac42dc23eb84f13bb17670fe9f2d49b is the squash merge of PR #18228 by Xuan-Son Nguyen, tagged b7492 (git rev-parse b7492 == ddcb75dd8ac42dc23eb84f13bb17670fe9f2d49b). Parent 52ab19df633f3de5d4db171a16f2d9edd2342fec has no destroy(), llama_init.reset, or wait_until_no_sleep.",
+    "PR #18228 members are reconstructable. git show 197e5785ccdcf6d2089000fc69077e16a1236965:tools/server/server-context.cpp destroy() only mtmd_free/slots/llama_batch_free. git show 44a5a26c32ec7d41706680a4d2ca1f268c9166a2:tools/server/server-context.cpp has the same destroy() and no llama_init.reset (parent-absent check: vulnerable free missing).",
+    "git show e6ab62c4a1af57fcba5c982ced53c2522b9517d1 -- tools/server/server-context.cpp first inserts llama_init.reset(); ctx = nullptr; model = nullptr; in destroy() and does not assign vocab = nullptr. load_model still sets vocab = llama_model_get_vocab(model).",
+    "At BIC, post_tokenize/post_detokenize/post_infill/post_apply_template/post_rerank/post_anthropic_count_tokens each std::make_unique<server_res_generator>(ctx_server) then call tokenize_mixed/tokens_to_str/llama_vocab_fim_*/format_prompt_rerank on ctx_server.vocab. server_res_generator ctor calls wait_until_no_sleep() then returns with no active-request hold.",
+    "git show e6ab62c4a1af57fcba5c982ced53c2522b9517d1:tools/server/server-queue.cpp wait_until_no_sleep returns immediately if !sleeping; start_loop should_sleep() then callback_sleeping_state(true) with no n_active_requests. That is the race Cyera described.",
+    "git show 105e2f3cf67cf726e9ea9761faf4c1bdd824370d is a 9-line metrics-on-resume change titled 'fix use-after-free'; it does not null vocab or pin handlers across destroy(). ngxson noted a chat-template UAF in the PR, distinct from these tokenize sinks.",
+    "Tag membership: squash ddcb75dd is ancestor of refs/tags/b9060 (ad092246587b16299291056a78bf6f73f636f114) and refs/tags/b9445 (af6528e6df5d798f7f1363ec1141699be0f638e2). Both tags still destroy() with llama_init.reset() and no vocab null; b9060 wait_until_no_sleep still has the !sleeping fast return.",
+    "git log -S n_active_requests -- tools/server and git log -S release_active_request -- tools/server are empty on ggml-org/llama.cpp. HEAD c841aeeb8bb2fe417038dadfa9b007cf1a9ef950 destroy() (tools/server/server-context.cpp:938-952) still resets llama_init and nulls ctx_tgt/model_tgt/mctx but not vocab; post_tokenize still tokenize_mixed(ctx_server.vocab, ...) after create_response()/wait_until_no_sleep.",
+    "Closed patch PR ggml-org/llama.cpp#24063 commit 7fb1044b81dafe3cd4f177ca3976b66cf1fbff73 exists but git merge-base --is-ancestor against HEAD is false (ngxson closed as spam). Cyera's tokenize-UAF fix is patches/CVE-2026-43631-server-sleep-uaf.patch (vocab=nullptr plus n_active_requests); the assigned repo's CVE-2026-43632-server-task-overflow.patch is a mislabeled n_cmpl/queue cap and is not this advisory's sink.",
+    "unpatched: no upstream llama.cpp commit closes this UAF. Third-party patch lives in vladimir-tokarev-cyera/llama-cpp-security-patches (7c8f244a7d94f7c323ba277fcb24ff051339acd2 and later hunk repairs); that repo is a mitigation catalog, not the BIC history."
+  ],
+  "reasoning": "CVE-2026-43632/GHSA-3f2h-96vw-c84x is a real published use-after-free: sleep teardown frees the model while tokenize-family HTTP handlers keep using ctx_server.vocab after an unlocked wait_until_no_sleep check. The assigned GitHub repo only hosts Cyera patches; the vulnerable lines live in ggml-org/llama.cpp. Advisory floor b7492 is squash ddcb75dd8ac42dc23eb84f13bb17670fe9f2d49b of PR #18228. That squash is an aggregate, so it is not the BIC. Reconstructable members show destroy() without model free until e6ab62c4a1af57fcba5c982ced53c2522b9517d1, whose parent 44a5a26c32ec7d41706680a4d2ca1f268c9166a2 still lacks llama_init.reset while already exposing post_tokenize and the other listed handlers on ctx_server.vocab after wait_until_no_sleep. Direct parent-tree read confirms the free is absent before e6ab62c, so that commit is the smallest first-write of the flawed mechanism. AI is judged only on that BIC object: human author/committer Xuan Son Nguyen, no AI trailers, not a bot, hence NOT_AI. Cursor co-authorship on the later Cyera patch repo does not attribute the llama.cpp BIC. No merged upstream fix exists through HEAD c841aeeb; Cyera PR #24063 was closed unmerged, so the case is unpatched with a concrete potential fix (null vocab on destroy and hold an active-request refcount so sleep cannot race tokenize handlers).",
+  "remaining_gap": "Upstream ggml-org/llama.cpp remains unpatched: HEAD still frees llama_init in destroy() without nulling vocab and without n_active_requests around tokenize-family handlers. No merged fix_sha; only the closed PR #24063 / Cyera patch catalog.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "Vendor closed the GHSA and public patch PR ggml-org/llama.cpp#24063 without merging. llama.cpp HEAD c841aeeb8bb2fe417038dadfa9b007cf1a9ef950 still has destroy() llama_init.reset() without vocab = nullptr and wait_until_no_sleep without an active-request refcount, so the tokenize-endpoint UAF remains reachable when --sleep-idle-seconds is set.",
+    "potential_fix": {
+      "approach": "In server_context_impl::destroy(), set vocab = nullptr after llama_init.reset(). Increment an atomic n_active_requests in wait_until_no_sleep() and decrement it from server_res_generator's destructor; refuse should_sleep() while n_active_requests != 0. On tokenize-family handlers, fail closed if ctx_server.vocab is null after wake.",
+      "rationale": "That removes the dangling vocab pointer and closes the TOCTOU window so the main thread cannot free llama_model/vocab while HTTP workers still run /tokenize, /detokenize, /infill, /apply-template, /rerank, or /anthropic/count_tokens.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/ggml-org/llama.cpp/pull/24063"
+    }
+  }
+}

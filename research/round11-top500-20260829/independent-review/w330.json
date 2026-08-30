@@ -1,0 +1,26 @@
+{
+  "worker": "w330",
+  "review_agent_id": "r389_w330",
+  "class_id": "alias-f86acb29ba3858a142e7a0e4",
+  "case_id": "GHSA-5qq7-x27p-hfq4",
+  "repo": "hashcat/hashcat",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: through v7.1.2, --restore reads argc/argv from the restore file, resets user options, and passes the stored argv to user_options_getopt without an allowlist. The root implementation likewise replaces myargc/myargv with rd->argc/rd->argv and performs a second getopt_long pass that accepts --outfile and --outfile-format, enabling crafted restore data to redirect attacker-controlled cracked output to a writable path.",
+    "atomic_bic": "CONFIRMED: 5065474b4e5ed59add2d5af6e2e9cf3857969fe3 is the first surviving public commit and already contains read_restore(), the restore-file argv replacement, and the unrestricted second parse. Later extraction, rename, and option-parser refactors preserve rather than introduce the mechanism.",
+    "immediate_parent_absence": "CONFIRMED: git cat-file and git show report no parent for 5065474b4e5ed59add2d5af6e2e9cf3857969fe3; the non-shallow clone has exactly this one root commit.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: the 953-file initial import is the smallest surviving object in the full public history. It is tagged v2.00, later project/file renames remain in the same history, and no earlier public member is reconstructable, so the root is a valid atomic BIC under the protocol.",
+    "affected_release_membership": "CONFIRMED: 5065474b4e5ed59add2d5af6e2e9cf3857969fe3 is exactly tag v2.00 and is an ancestor of v7.1.2 (c75f446c44cd3f0742035a1394416c39bee5ea8f). The CVE.org record is PUBLISHED and declares versions 0 through 7.1.2 inclusive affected.",
+    "fixed_release_membership": "CONFIRMED: fcae69f2438ff8eae0dc8e206b78067a1e465ed4 is not an ancestor of v7.1.2, is described as v7.1.2-474-gfcae69f24, and no local tag contains it; therefore no fixed tagged release is established by this snapshot.",
+    "direct_fix_or_unpatched_state": "CONFIRMED DIRECT FIX: non-merge commit fcae69f2438ff8eae0dc8e206b78067a1e465ed4, parent 991d61ced61f0f67efd8d580ccfaa8f7ce12c8fb, removes restore-file argv parsing from default --restore, makes it print-only, and makes --restore-position consume only saved position state. Its parent still unconditionally calls user_options_getopt on rd->argv; legacy behavior remains only behind explicit --restore-auto.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Jens Steube as author and committer and contains only the message 'Initial commit', with no Co-Authored-By, Generated-with, bot, or named AI-tool marker. The NOT_AI judgment is based only on this BIC, not on the 2026 fix or any AI-marked lead."
+  },
+  "findings": [
+    "CVE-2026-68766 is a real published CWE-88 vulnerability, not a withdrawn or rejected advisory; CVE.org identifies the upstream issue, v7.1.2 vulnerable source, and fcae69f2438ff8eae0dc8e206b78067a1e465ed4 as the patch.",
+    "The vulnerable data flow is present verbatim in the root commit and survives to v7.1.2 through moves and parser refactors.",
+    "The primary NOT_AI verdict and all commit-role fields are supported by independent clone and advisory checks."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

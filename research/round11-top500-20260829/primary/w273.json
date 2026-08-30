@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-256b1c88d6c106fa37af1c5e",
+  "case_id": "GHSA-rpc6-j92g-4x56",
+  "repo": "indilib/indi",
+  "advisory_ids": [
+    "CVE-2026-71979",
+    "GHSA-rpc6-j92g-4x56"
+  ],
+  "bug_semantics": "indiserver accepts unauthenticated TCP on port 7624 and feeds every received byte into lilxml. In oneXMLchar() INCLOSETAG, mismatched closing-tag names that growString() accumulated without a cap are interpolated with unbounded sprintf() into the caller's fixed 1024-byte stack errmsg/ynot buffer (char err[1024] at MsgQueue::readFromFd / historically indiserver readFromClient). A single malformed packet such as <AAA...600>x</BBB...600> writes past the 1024-byte slot and terminates the daemon (CWE-121, availability-only as disclosed).",
+  "flaw_origin": "The overflow write is the 2008 first import of liblilxml: indi/libs/lilxml.c oneXMLchar() already did sprintf(errmsg, \"Line %d: closing tag %s does not match %s\", ln, endtag.s, tag.s) over unbounded growString() tokens, and lilxml.h already showed callers allocating char errmsg[1024]. Later commits only renamed errmsg->ynot, moved/reindented the file, and split the 1024-byte TCP caller into MsgQueue.cpp; they did not first write the mechanism.",
+  "introducer_sha": "4d63b7497c1748e19be6fda6b262802fd7f0b043",
+  "introducer_parent": "140c0cc69e67e92cab06b058c372c3cd9f1c375d",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Jasem Mutlaq <mutlaqja@ikarustech.com>, committer Jasem Mutlaq <mutlaqja@ikarustech.com>, 2008-10-03; cat-file shows no Co-Authored-By, Generated-with, or bot trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "96bbd7f564bbb128a129019e44eadd40dd49cff9",
+  "direct_fix_sha": "96bbd7f564bbb128a129019e44eadd40dd49cff9",
+  "evidence": [
+    "CVE.org/MITRE CVE-2026-71979 state=PUBLISHED (assigner VulnCheck, datePublished 2026-08-17); GHSA-rpc6-j92g-4x56 withdrawn_at=null; not rejected. Affected: indi <= 2.2.4.2; unaffected git 96bbd7f564bbb128a129019e44eadd40dd49cff9.",
+    "Vendor-accepted mechanism: indilib/indi#2472 (Fatullayev Asadbek) plus merged #2473. Root cause cited as libs/indicore/lilxml.cpp oneXMLchar INCLOSETAG sprintf(ynot, \"Line %d: closing tag %s does not match %s\", ...) with unbounded growString, destination char err[1024] in indiserver/MsgQueue.cpp parseXMLChunk path. ASAN repro at 3371faeb against v2.2.4.",
+    "Fix 96bbd7f564bbb128a129019e44eadd40dd49cff9 (Jasem Mutlaq, 2026-08-14, GitHub squash of #2473, parent 3220880734c86daa9f626fea011c231850f5d1f6): every sprintf(ynot, ...) in lilxml.cpp becomes snprintf(ynot, XML_ERROR_SIZE, ...); XML_ERROR_SIZE=1024 added in lilxml.h. MsgQueue.cpp only renames err[1024] to err[XML_ERROR_SIZE].",
+    "git log -S 'closing tag %s does not match' --reverse first hit 4d63b7497c1748e19be6fda6b262802fd7f0b043 (2008-10-03 Importing trunk INDI). At that commit indi/libs/lilxml.c:864-865 sprintf(errmsg,\"Line %d: closing tag %s does not match %s\", ln, endtag.s, tag.s); growString at :982-994 doubles with no cap; header examples use char errmsg[1024].",
+    "Parent 140c0cc69e67e92cab06b058c372c3cd9f1c375d (Creating trunk) tree is only .gitattributes; git grep of the format string at the parent exits 1. No finer public member of this import exists in the clone (no git-svn ids, no reconstructable pre-import commits).",
+    "Same-day follow-on 290e14216103d2e6bee1594be08d9eb9f37fe68c (parent 4d63b749) first wired the parser to TCP: indi/indiserver.c:715-716 char err[1024]; readXMLEle(cp->lp, buf[i], err) in readFromClient. That is the first network caller, not a first-write of the sprintf.",
+    "Non-BIC later carriers: 0e68e316d0254456b953ec2eb58c84ee0c1c21ba (2011 Elwood refresh) only renamed errmsg->ynot while keeping the same unbounded sprintf; 0669d1ac/5bf42850 reindents; eb7da5e66a14298771d11a36c1df37e098965c5f moved lilxml into libs/indicore/; ed931cd5c390c3b13946f57155df7f8556ff7df7 (#2176, 2025) split indiserver.cpp so the 1024-byte buffer now lives in MsgQueue.cpp.",
+    "Tag check: v2.2.4.2=3371faeb07f8fa24bae3edfb44a181853a8e9ce7 (2026-08-05) contains sprintf at libs/indicore/lilxml.cpp:1281 and char err[1024] at indiserver/MsgQueue.cpp:525-526; merge-base --is-ancestor of the fix into v2.2.4.2 is false. BIC 4d63b749 is an ancestor of v2.2.4.2, of the fix, and of HEAD. No v2.2.5 tag yet; fix is on HEAD.",
+    "BIC commit-object AI check: git cat-file -p 4d63b749 shows author/committer Jasem Mutlaq <mutlaqja@ikarustech.com> 1223026401 +0000, message 'Importing trunk INDI', no Co-Authored-By/Generated-with/bot trailers. 2008 human import; AI judgment is from this object only."
+  ],
+  "reasoning": "CVE-2026-71979 is a real, published stack-buffer overflow, not a withdrawn advisory. The overflowing write is oneXMLchar()'s unbounded sprintf of attacker-sized XML tag names into a caller 1024-byte stack slot; growString() has no tag-length cap, and indiserver's unauthenticated TCP read path supplies that slot. git log -S / parent-tree checks place the first public write of that sprintf at 4d63b749 (2008 trunk import of indi/libs/lilxml.c). The parent 140c0cc6 has no source files, so the lines are absent immediately before the BIC, and this clone has no finer member to decompose. 290e1421 only adds the TCP 1024-byte caller; 0e68e316/reindents/path moves/#2176 are refactors/carriers, not first-writes. The 2026 #2473 squash 96bbd7f is the direct fix (sprintf->snprintf) and lands after the 2.2.4.2 affected boundary. AI authorship is judged only on 4d63b749: human Jasem Mutlaq, 2008, no commit-object AI marker, therefore NOT_AI.",
+  "remaining_gap": null
+}

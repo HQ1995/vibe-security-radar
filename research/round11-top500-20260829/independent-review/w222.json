@@ -1,0 +1,25 @@
+{
+  "worker": "w222",
+  "review_agent_id": "r389_w222",
+  "class_id": "alias-e1b1b425e92b3410110944fc",
+  "case_id": "GHSA-hmpg-chwg-jvg8",
+  "repo": "frrouting/frr",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In bgp_attr_nhc(), uint16_t remaining length still includes the 4-byte TLV header after reading it; guarding only length < tlv_length and then subtracting tlv_length + BGP_NHC_TLV_MIN_LEN permits unsigned wrap and continued parsing of later BGP UPDATE bytes. CVE-2026-37459 is PUBLISHED and the vendor disposition confirms a network DoS.",
+    "atomic_bic": "PASS: Pre-fix blame assigns both the defective guard and the later subtraction to d311a698deb84cf249fc1f258ce639d48565b110; that single-parent commit introduces bgp_attr_nhc() and the complete NHC parser.",
+    "immediate_parent_absence": "PASS: Immediate parent c374945661530f9092a37450e4360c3f7b3890d0 is locally resolvable and has neither bgp_attr_nhc/BGP_ATTR_NHC nor bgpd/bgp_nhc.c or bgpd/bgp_nhc.h; its similarly named length checks are unrelated parsers.",
+    "squash_member_decomposition": "PASS: GitHub merge 1fc82959608d23798261e0a0550d0f682633fad2 has two parents, with d311a698deb84cf249fc1f258ce639d48565b110 as the reconstructable PR member that wrote the vulnerable lines; no squash aggregate is used as the BIC.",
+    "affected_release_membership": "PASS: The BIC is absent from frr-10.0 and frr-10.3 but is an ancestor of frr-10.4.0, frr-10.4.3, frr-10.5.0, and frr-10.5.2. The primary correctly records that the CNA range 10.0-10.6 is over-broad and that the vulnerable NHC parser begins in 10.4.",
+    "fixed_release_membership": "PASS: Patch-equivalent cherry-picks ec285878bc703fbe8807db9481e48626c851b13e, eb02dc7a070db2d5da4f564fd8c725bbce5c3e14, and 854c4c579cbf3d799730bf7d4a584186954ce1da first appear in frr-10.4.4, frr-10.5.3, and frr-10.6.0 respectively; original fix 693a2e02687cdc9d16501275e05136edea9650d9 is in frr-10.7.0.",
+    "direct_fix_or_verified_unpatched_state": "PASS: 693a2e02687cdc9d16501275e05136edea9650d9 is the one-line direct fix, changing the guard to length < tlv_length + BGP_NHC_TLV_MIN_LEN; all three stable cherry-picks have the same stable patch-id 79124401b2943eac490cb56cd15a3c08664279e3.",
+    "bic_only_ai_attribution": "PASS: The exact BIC commit object names Donatas Abraitis as both author and committer, carries only a matching Signed-off-by trailer, and contains no AI, bot, Generated-with, or Co-Authored-By marker; fix authorship was not transferred to the BIC judgment."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic introducer d311a698deb84cf249fc1f258ce639d48565b110, immediate parent c374945661530f9092a37450e4360c3f7b3890d0, direct fix 693a2e02687cdc9d16501275e05136edea9650d9, release topology, and BIC-only NOT_AI attribution independently reproduce from the advisory and non-shallow local clone.",
+    "The CNA's stated stable/10.0-to-stable/10.6 range is broader than repository history: the NHC parser first appears in 10.4. The primary already discloses this discrepancy, so it does not require correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

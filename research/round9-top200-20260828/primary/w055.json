@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-6036d11465f9e870763fd0b3",
+  "case_id": "GHSA-vrrh-vgmq-m54x",
+  "repo": "misp/cti-transmute",
+  "advisory_ids": [
+    "CVE-2026-73140",
+    "GHSA-vrrh-vgmq-m54x"
+  ],
+  "bug_semantics": "The Markdown and PDF evaluation-export endpoints enforced only conversion-level visibility, then build_evaluation_report() queried every non-deleted evaluation Comment for that conversion without applying the existing per-comment privacy rule. The report serialized both c.content and the author's first name, so a viewer allowed to see the conversion could export private evaluation comments that were reserved for the conversion owner, comment author, or an administrator.",
+  "flaw_origin": "Commit c5d258d59530292bb17ab602d3b799373540596f introduced the report-export routes and report builder together. Its routes called build_evaluation_report(convert_id) after _can_view_convert(), but the new builder directly iterated the unfiltered evaluation-comment query instead of reusing the already-existing website/web/convert/convert_core.py::_can_see_comment rule used by ordinary comment retrieval.",
+  "introducer_sha": "c5d258d59530292bb17ab602d3b799373540596f",
+  "introducer_parent": "6cd6133775a573dd93409af9b120cbb12b647988",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names ecrou-exact <geffetheo@gmail.com> as both author and committer and its complete message is only 'add: [MarkDown/PDF] new way to see the evaluation of a convert'; it has no Co-Authored-By, Generated-with, bot identity, or other AI-attribution marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "5dbd19b39a61eab793586731f1a80d8c38907c42",
+  "direct_fix_sha": "5dbd19b39a61eab793586731f1a80d8c38907c42",
+  "evidence": [
+    "The first-party GitHub advisory https://github.com/advisories/GHSA-vrrh-vgmq-m54x identifies CWE-862, the conversion-visible/private-comment export attack, and direct fix 5dbd19b39a61eab793586731f1a80d8c38907c42; it lists package affected and patched versions as Unknown.",
+    "git log -L ':build_evaluation_report:website/web/evaluate/evaluate_core.py' traces the entire function to c5d258d59530292bb17ab602d3b799373540596f and shows later commits only renaming/refactoring it before the fix. Independent git log -S searches for the unfiltered evaluation query and the author serialization also identify c5d258d59530292bb17ab602d3b799373540596f as their origin.",
+    "At the BIC, website/web/evaluate/evaluate.py:259 and :281 added the Markdown/PDF endpoints; lines 264/286 checked only _can_view_convert(), and lines 267/289 called build_evaluation_report(convert_id) without an actor. website/web/evaluate/evaluate_core.py:514-526 queried all non-deleted evaluation comments and serialized u.first_name plus c.content with no per-comment authorization check.",
+    "The BIC tree already contained the intended comment ACL in website/web/convert/convert_core.py:675-688: private comments on public conversions were limited to the conversion owner or comment author (or administrator), and get_comments() applied that helper at lines 731 and 744. The export builder bypassed this established rule.",
+    "Direct parent verification: git diff 6cd6133775a573dd93409af9b120cbb12b647988..c5d258d59530292bb17ab602d3b799373540596f shows build_evaluation_report(), both export routes, the all-comments query, and author/content serialization as additions. The parent version of website/web/evaluate/evaluate_core.py ends before this newly added report block, so the vulnerable export mechanism is absent from the immediate parent tree.",
+    "The candidate is a normal one-parent commit directly following 6cd6133775a573dd93409af9b120cbb12b647988 in the repository graph; author and committer are the same non-bot identity, there is no merge parent or squash/PR trailer, and no smaller member commit exists in the validated full-history clone. Therefore squash decomposition is not applicable.",
+    "The direct fix diff at 5dbd19b39a61eab793586731f1a80d8c38907c42 passes the requesting actor from both export endpoints, moves the established visibility rule to website/lib/access.py::can_see_comment(), and adds access.can_see_comment(actor, c, conversion) before serialization at website/web/evaluate/evaluate_core.py:516. The commit has one parent, 06d408e3496fdfc31da22d7b2b427434c67eae94, and directly removes the disclosure mechanism.",
+    "Version boundary: git tag --contains reports c5d258d59530292bb17ab602d3b799373540596f in v1.4 and v1.5, but the fix only in v1.5. v1.3 contains no build_evaluation_report symbol; v1.4 has the vulnerable builder at line 459 and no access.can_see_comment(actor, ...) check; v1.5 has the actor-aware builder at line 453 and ACL check at line 516. The source-tag boundary is therefore v1.4 vulnerable and v1.5 fixed, notwithstanding the advisory's Unknown package-version fields.",
+    "git cat-file -p c5d258d59530292bb17ab602d3b799373540596f is the BIC-only AI evidence: author ecrou-exact <geffetheo@gmail.com>, committer ecrou-exact <geffetheo@gmail.com>, one parent, and no trailers or AI marker in the commit message. No later commit or fix attribution was used for the verdict."
+  ],
+  "reasoning": "The vulnerability lifecycle starts in c5d258d59530292bb17ab602d3b799373540596f, which created a second comment-reading path specifically for report export. Conversion-level authorization allowed the caller to reach the exporter, but the builder selected all evaluation comments and rendered their private content and author name, while ordinary comment retrieval already enforced a finer-grained privacy policy. The immediate parent lacks the report/export path entirely, and -L/-S history confirms that subsequent rename and refactor commits preserved rather than originated the flaw. The direct fix 5dbd19b39a61eab793586731f1a80d8c38907c42 closes the exact gap by carrying the actor into the builder and applying the shared per-comment ACL before serialization. Tag inspection places the vulnerable code in v1.4 and the fixed code in v1.5. Finally, only the BIC commit object was considered for AI attribution; it contains a human author/committer identity and no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

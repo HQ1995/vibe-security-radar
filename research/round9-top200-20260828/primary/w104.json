@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-1ef605231bfe1383948df5db",
+  "case_id": "GHSA-9r5m-9576-7f6x",
+  "repo": "harttle/liquidjs",
+  "advisory_ids": [
+    "CVE-2026-33285",
+    "GHSA-9r5m-9576-7f6x"
+  ],
+  "bug_semantics": "A template-controlled reverse range such as (100000000..1) makes evalRangeToken charge high - low + 1, a large negative count. Limiter.use accepted that negative count and added it to its cumulative base, creating artificial budget credit. Later append/replace operations could therefore exceed the configured memoryLimit; flattening the resulting large V8 cons-string could terminate the Node.js process, producing denial of service.",
+  "flaw_origin": "Commit 2af297f81ac465feb3277ba7b92f7236409370b0 added ctx.memoryLimit.use(high - low + 1) to src/render/expression.ts without constraining the charge to a non-negative range size. The pre-existing Limiter.use implementation accepted and accumulated signed counts, so this new attacker-controlled negative callsite completed the underflow/budget-bypass mechanism. Reverse ranges themselves return an empty array because range(start, stop) loops only while start < stop, making the negative charge pure budget credit rather than a matching allocation.",
+  "introducer_sha": "2af297f81ac465feb3277ba7b92f7236409370b0",
+  "introducer_parent": "d61855bf725a6deba203201357f7455f6f9b4a32",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names human author and committer Harttle <yangjvn@126.com> and its message is only 'fix: memoryLimit doesn't work in for tag, #776'; it has no Co-Authored-By, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "95ddefc056a11a44d9e753fd47a39db2c241e578",
+  "direct_fix_sha": "95ddefc056a11a44d9e753fd47a39db2c241e578",
+  "evidence": "The bundled first-party GHSA identifies src/render/expression.ts:70 and src/util/limiter.ts:11-14 and links direct fix 95ddefc056a11a44d9e753fd47a39db2c241e578. git log --all -S'ctx.memoryLimit.use(high - low + 1)' and git log -L 67,71:src/render/expression.ts at the candidate trace the vulnerable accounting line directly to 2af297f81ac465feb3277ba7b92f7236409370b0. git show --format=raw for that one-parent commit records parent d61855bf725a6deba203201357f7455f6f9b4a32 and the one-line source addition; git show d61855bf725a6deba203201357f7455f6f9b4a32:src/render/expression.ts shows evalRangeToken returning range(+low, +high + 1) with no memoryLimit.use call, directly proving immediate-parent absence. git log -S'export class Limiter' shows signed Limiter.use originated earlier in e443068cb9281883ff0fe9f755a15f52ada4e7e2, but the advisory's attacker-controlled negative range charge did not exist until 2af297f81ac465feb3277ba7b92f7236409370b0. git diff v10.19.0 v10.19.1 shows exactly that line appearing, and git tag --contains identifies v10.19.1 as the first release tag containing the BIC. The referenced fix changes Limiter.use/check to act only when +count > 0; git tag --contains places it first in v10.25.1. Direct source checks show v10.25.0 still has both the negative range charge and unconditional this.base += count, while v10.25.1 has the positive-count guards. Thus repository history indicates the exact mechanism spans v10.19.1 through v10.25.0, although the bundled advisory currently states <=10.24.0 and leaves first_patched_version null. The BIC's raw commit object contains only human author/committer identities and no AI marker.",
+  "reasoning": "The Limiter class's acceptance of signed counts was a latent prerequisite, but all of its relevant pre-BIC callers charged non-negative sizes. The smallest commit completing this vulnerability is therefore 2af297f81ac465feb3277ba7b92f7236409370b0: it newly derives a limiter charge from attacker-controlled range endpoints, and low > high makes that charge negative while the range allocates nothing. Its direct parent lacks the charge, so the precise negative-accounting mechanism is absent there. This is a direct one-parent commit rather than a merge, move, refactor, revert, backport, release commit, or reconstructable squash; no decomposition is needed. Release-tree comparison brackets introduction between v10.19.0 and v10.19.1, and the direct fix is present from v10.25.1. Because only the BIC commit object governs attribution and that object has human identities with no AI marker, the closed verdict is NOT_AI. The advisory's exclusion of still-vulnerable v10.25.0 is a version-range metadata discrepancy, not uncertainty about the BIC, fix, or AI attribution.",
+  "remaining_gap": null
+}

@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-34709288e949e49d4b83921d",
+  "case_id": "GHSA-j9cw-hwqf-85w7",
+  "repo": "fluent/fluentd",
+  "advisory_ids": [
+    "CVE-2026-44160",
+    "GHSA-j9cw-hwqf-85w7"
+  ],
+  "bug_semantics": "Fluentd's in_http and in_forward inputs accepted attacker-controlled compressed payloads while enforcing limits only on the compressed bytes. Gzip, deflate, or zstd expansion was accumulated in memory without an uncompressed-size bound, so a small decompression bomb could exhaust process memory and deny service.",
+  "flaw_origin": "The earliest atomic first-write of the vulnerable mechanism is 44186736165368c9839fb7958335bbf66ab2a6eb, which added in_http Content-Encoding handling and unbounded whole-buffer Zlib::GzipReader#read and Zlib::Inflate.inflate calls. Its immediate parent 815e513bb9942f8846353700987249ea94c2b2f6 has no Content-Encoding decompression path. Commit 30c3ce00ff165b1b5d9f53fc0a027074bbcab0da later exposed the same unbounded decompression mechanism through in_forward; it is a secondary surface expansion, not the earliest BIC.",
+  "introducer_sha": "44186736165368c9839fb7958335bbf66ab2a6eb",
+  "introducer_parent": "815e513bb9942f8846353700987249ea94c2b2f6",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker on the BIC object: the 2018 commit names Fujimoto Seiji as both author and committer and contains only a matching Signed-off-by trailer; it has no AI, bot, generated-by, assisted-by, or Co-authored-by signal.",
+  "verdict": "NOT_AI",
+  "fix_sha": "f5f2b7cddf8aab3932e6dec9fa367a5f3eb27e10",
+  "direct_fix_sha": "f5f2b7cddf8aab3932e6dec9fa367a5f3eb27e10",
+  "evidence": [
+    "CVE-2026-44160 is PUBLISHED and describes unbounded decompression in in_http and in_forward, affected versions below 1.19.3, and the fix in 1.19.3; its CNA references name f5f2b7cddf8aab3932e6dec9fa367a5f3eb27e10.",
+    "git blame at the pre-fix mainline parent 6964416c7acf27c7c7ff091280d1494a71c782bc attributes in_http's unbounded gzip and deflate lines to 44186736165368c9839fb7958335bbf66ab2a6eb; the commit diff introduces those calls and its parent lacks them.",
+    "44186736165368c9839fb7958335bbf66ab2a6eb is a one-parent public commit, not a squash aggregate; v1.2.2 does not contain it and v1.2.3 does, establishing the first released vulnerable in_http boundary.",
+    "git blame attributes in_forward's unbounded CompressedMessagePackEventStream construction to 30c3ce00ff165b1b5d9f53fc0a027074bbcab0da, whose parent is 29189a1c42a917ab672fb4561a2f51a3cdf74590.",
+    "f5f2b7cddf8aab3932e6dec9fa367a5f3eb27e10 adds a 256 MiB decompression_size_limit and bounded chunked extractors for in_http and in_forward. It is absent from v1.19.2 and contained in v1.19.3. Mainline commit 6c88e14e120316b9e83e29bc6d716b4313425004 has the identical stable patch-id 4ae9f51710aafcd547c8f16781d784798295157d."
+  ],
+  "reasoning": "The vulnerability is real and patched, so FALSE_POSITIVE does not apply. The atomic earliest surviving public BIC is the 2018 in_http feature commit, with an immediate parent proving the decompression path was absent. Its metadata and message contain no AI-origin signal, and only the BIC may determine AI attribution. The later in_forward expansion does not replace that earliest BIC. The advisory-referenced v1.19 backport directly applies the size-bound fix and is present in the stated fixed release. Therefore the causal authorship verdict is NOT_AI.",
+  "remaining_gap": ""
+}

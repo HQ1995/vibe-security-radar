@@ -1,0 +1,25 @@
+{
+  "worker": "w182",
+  "review_agent_id": "r389_w182",
+  "class_id": "alias-86108b6dcf06c918d8dace0a",
+  "case_id": "GHSA-x3f9-vcp2-hgcw",
+  "repo": "bagisto/bagisto",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-6744 is PUBLISHED and identifies CWE-918 in the Downloadable Link Handler through 2.3.15. An administrator can store a downloadable_links.*.url with only required-if validation; an authenticated purchaser's download route reaches PHP copy($downloadableLinkPurchased->url, $tempImage), causing the server to fetch the supplied URL without scheme, host, or resolved-IP checks.",
+    "atomic_bic": "PASS: bounded all-ref -S history and add-history identify 55b71e1e663c09dd5411ead3664031a2060637d8 as the first surviving commit that creates DownloadableProductController.php and writes the purchased-link URL copy sink. Later controller path moves are not treated as introducers.",
+    "immediate_parent_absence": "PASS: the BIC has sole parent 1700bf1aa231cf37bce3526628e5c38238881c31; that parent has no DownloadableProductController.php, and its ProductController has only a local Storage::download path, not the vulnerable URL-copy mechanism.",
+    "squash_member_decomposition": "PASS: GitHub associates the BIC with PR #1560. PR merge 7ba12596db6b04c3511c9c3ad035eea0f7957745 has head 5e754cbdfe36bff4aa9e38c5795fd16855e6ac71, and the BIC is an ancestor/member of both. The BIC itself is a single-parent repository commit, not the PR merge or a squash aggregate, and is the smallest surviving first-writer object.",
+    "affected_and_fixed_release_membership": "PASS: the BIC is an ancestor of v2.3.0 and v2.3.15. The purchased-link controller in v2.3.15 and v2.3.17 still calls copy() without validateExternalUrl. Fix 90a962fe20441bb0e0f9c9989de5f600f82a640e is absent from v2.3.15/v2.3.17 and present in v2.3.18/v2.4.3; those fixed tags contain the guard before copy().",
+    "direct_fix_or_verified_unpatched_state": "PASS: 90a962fe20441bb0e0f9c9989de5f600f82a640e directly imports/uses ValidatesExternalUrl and aborts when validation fails immediately before the same purchased-link copy() sink. The added validator restricts schemes to HTTP(S) and rejects private, reserved, and loopback DNS results.",
+    "bic_only_ai_attribution": "PASS: attribution is based only on BIC 55b71e1e663c09dd5411ead3664031a2060637d8. Its author and committer are jitendra <jitendra@webkul.com>, GitHub maps both to jitendra-webkul type User, the 2019 commit message/object has no Co-Authored-By, generated-with, bot, or other AI marker. The 2026 fix author is not used for origin attribution."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic introducer, immediate parent, direct fix, release topology, and NOT_AI conclusion independently reproduce from the advisory and clone.",
+    "The BIC is broad (154 files) but is a real member commit of PR #1560; the PR merge is not substituted for it, and no smaller surviving commit first writes the vulnerable sink.",
+    "Current CVE.org state is PUBLISHED; GitHub Advisory withdrawn_at is null and still reports <=2.3.15 with no first_patched_version, while repository history independently shows the direct guard first shipped in v2.3.18 and v2.4.3."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

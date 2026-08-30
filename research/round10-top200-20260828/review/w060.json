@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-718e4c52b9de68aa8469b1c8",
+ "case_id": "GHSA-45m3-398w-m2m9",
+ "repo": "olivetin/olivetin",
+ "advisory_ids": [
+  "CVE-2026-28789",
+  "GHSA-45m3-398w-m2m9"
+ ],
+ "bug_semantics": "OliveTin OAuth2 login stores per-login state in a shared registeredStates map with no lock. Concurrent unauthenticated GET /oauth/login (and later callback/session reads/writes of the same map) race in Go HTTP handlers, causing a fatal concurrent map write panic and process crash when OAuth2 is enabled.",
+ "flaw_origin": "The first OAuth2 implementation added a package-level registeredStates map and wrote it from handleOAuthLogin without a mutex. Later moves into OAuth2Handler and the 3k auth rebuild kept the unsynchronized map; the race existed from that first write until the mutex fix.",
+ "introducer_sha": "6a7187fb5b6a7fa900d7df0f0da8fdb3ebf02734",
+ "introducer_parent": "b31cdf15a20c29f6301f02a3ba4ef97b9d99e48c",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author jamesread <contact@jread.com>, committer James Read <contact@jread.com>; cat-file shows no Co-Authored-By, Generated-with, Copilot, Cursor, ChatGPT, or other AI trailers",
+ "verdict": "NOT_AI",
+ "fix_sha": "f044d90d5525c4c8e3f421b32ed7eff771c22d36",
+ "direct_fix_sha": "f044d90d5525c4c8e3f421b32ed7eff771c22d36",
+ "evidence": "Advisory GHSA-45m3-398w-m2m9 / CVE-2026-28789 (not withdrawn; GHSA published 2026-03-02, NVD 2026-03-05) documents unauthenticated DoS via concurrent map writes on registeredStates in service/internal/auth/otoauth2/restapi_auth_oauth2.go, reachable at /oauth/login and /oauth/callback; tested on 3000.10.0 / 3000.10.1. Direct fix is f044d90d5525c4c8e3f421b32ed7eff771c22d36 (jamesread, 2026-03-01, 'security: Remote crash in OAuth2 GHSA-45m3-398w-m2m9'), which adds OAuth2Handler.mu sync.RWMutex and locks map writes in HandleOAuthLogin / HandleOAuthCallback and reads in checkOAuthCallbackCookie / lookupOAuth2UserByState. git log -S registeredStates --all -- '*.go' first hit is 6a7187fb5b6a7fa900d7df0f0da8fdb3ebf02734 (jamesread, 2024-10-14, 'feature: OAuth2! :-D'), which created internal/httpservers/oauth2.go with registeredStates = make(map[string]*oauth2State) and unlocked write at handleOAuthLogin (line 117) plus unlocked reads in checkOAuthCallbackCookie (151) and parseOAuth2Cookie (241). Immediate parent b31cdf15a20c29f6301f02a3ba4ef97b9d99e48c has no oauth2.go and git grep registeredStates returns empty; cat-file -e parent:internal/httpservers/oauth2.go fails. Single parent, not a merge/squash. Later 80e5b5b0 / be7c7540 moved the map onto OAuth2Handler without adding a lock; first mutex is the GHSA fix. BIC is ancestor of the fix; BIC is in tag 3000.10.0 (advisory-tested), fix is not; fix is in 3000.11.0. git cat-file -p on BIC: author jamesread <contact@jread.com> 1728868691 +0100, committer James Read <contact@jread.com> 1728894321 +0100, message 'feature: OAuth2! :-D' with no AI trailers. https://github.com/OliveTin/OliveTin/commit/f044d90d5525c4c8e3f421b32ed7eff771c22d36 https://github.com/OliveTin/OliveTin/security/advisories/GHSA-45m3-398w-m2m9 ppa re-checked line-level 2026-08-29: numactl git ls-tree 6a7187f^ -r --name-only | grep -c 'oauth2.go' = 0 while BIC 6a7187f adds internal/httpservers/oauth2.go (249 lines) with unlocked 'registeredStates = make(map[string]*oauth2State)' at line 18 and unsynchronized map writes at 117/151 — vulnerable lines new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "Vulnerability is a real CWE-362 Go concurrent map panic on the OAuth2 state store, not a withdrawn advisory. The smallest first-write of the unsynchronized registeredStates map and its unlocked login-handler write is 6a7187fb, verified absent at parent b31cdf15. Subsequent refactors and the 3k auth rebuild are carriers, not BICs. AI judgment is BIC-only: human jamesread/James Read identities and no commit-object AI marker, so NOT_AI. Direct fix f044d90 lands the RWMutex and is the GHSA-cited patch.",
+ "remaining_gap": null
+}

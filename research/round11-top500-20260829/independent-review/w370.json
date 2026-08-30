@@ -1,0 +1,24 @@
+{
+  "worker": "w370",
+  "review_agent_id": "r389_w370",
+  "class_id": "alias-196edd21eec6097f3320d4ff",
+  "case_id": "GHSA-hg6c-8mvr-jqc9",
+  "repo": "apache/activemq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org is PUBLISHED and the Apache advisory confirms authenticated Jolokia exec of addNetworkConnector with a crafted masterslave URI reaches VM brokerConfig and Spring XML loading. At activemq-5.19.6/6.2.5, BrokerView validates only the outer masterslave scheme because URISupport.isCompositeURI requires an initial parenthesis, while MasterSlaveDiscoveryAgentFactory unconditionally parseComposite()s the scheme-specific part and the agent rewrites its components as failover:(...).",
+    "atomic_bic": "PASS: 9ba8d2681f0c241a36163a3a14e6cc839e53aba2 is a single-parent AMQ-3564 git-svn commit that adds the masterslave agent, factory, SPI registration, and focused test as five new files. The added agent is the first implementation that converts attacker-controlled inner component URIs to failover:(...), while unvalidated BrokerView.addNetworkConnector and VM brokerConfig handling already exist at this commit.",
+    "immediate_parent_absence": "PASS: parent f4df288872bc5e140301b7c764faa53037f73dff resolves, and all three mechanism-defining paths (agent, factory, and masterslave SPI) are absent from its tree. Thus introducer_parent_absent=false is correct: the parent object is present and directly verifies absence of the introduced mechanism.",
+    "squash_member_decomposition": "PASS: the BIC has exactly one parent, its diff adds the coherent AMQ-3564 implementation and test, and its raw commit identifies one SVN revision. Exact-file --follow history reaches this addition directly; the later 9a8f6e415db43a4e43ad42a87b3617b3641aa07d change is an R100 module relocation. No squash aggregate, backport, revert, or finer public member requires decomposition, so squash_decomposed=false is supported.",
+    "affected_fixed_release_membership": "PASS: the BIC is an ancestor of affected tags activemq-5.19.0, activemq-5.19.6, activemq-6.0.0, and activemq-6.2.5. The affected boundary tags 5.19.6 and 6.2.5 omit masterslave from DENIED_TRANSPORT_SCHEMES. Cherry-picks 2c69e46dc41db3d69072ae7415526154dc697763 and 3a2397d4b25e8d3f759772b9d3932a7cb226d10a are ancestors of fixed tags activemq-5.19.7 and activemq-6.2.6 respectively, but not of the corresponding affected boundary tags; both fixed tag sources include masterslave.",
+    "direct_fix_or_verified_unpatched_state": "PASS: direct fix 1f2a2571524c56b3b103a9d3a625ceda3430f6e9 changes only BrokerView's denylist for this mechanism by adding masterslave. Its two branch cherry-picks contain the same one-line semantic fix at the advisory's patched release boundaries.",
+    "bic_only_ai_attribution": "PASS: raw BIC commit metadata names Gary Tully <gtully@apache.org> as both author and committer. Its body contains the AMQ-3564 description and git-svn-id only, with no AI-generation marker, bot identity, or co-author trailer. The NOT_AI judgment is based only on this BIC, not on the 2026 fix or later history."
+  },
+  "findings": [
+    "The primary vulnerability mechanism, BIC, parent, direct fix, release boundaries, and NOT_AI attribution independently reproduce from the advisory and clone.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

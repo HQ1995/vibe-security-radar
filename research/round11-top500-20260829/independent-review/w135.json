@@ -1,0 +1,26 @@
+{
+  "worker": "w135",
+  "review_agent_id": "r389_w135",
+  "class_id": "alias-9cfb31e894bfee65d0797496",
+  "case_id": "GHSA-jgj7-c8vj-w563",
+  "repo": "ulisesbocchio/jasypt-spring-boot",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: the default GCM password path leaves gcm-secret-key-salt null; SimpleGCMConfig.getSecretKeySaltGenerator() then returns ZeroSaltGenerator, and SimpleGCMByteEncryptor passes its 16-byte output into PBEKeySpec/PBKDF2WithHmacSHA256. Identical passwords therefore derive identical AES keys across deployments. CVE-2026-9370 remains PUBLISHED and GHSA-jgj7-c8vj-w563 is not withdrawn.",
+    "atomic_bic": "PASS: 0376d901df2b53572657f051e2092adb34afc423 is the smallest public first-write of both SimpleGCMConfig and the null-default wiring in StringEncryptorBuilder; -S ZeroSaltGenerator on the sink path returns only this first-write. The later 5fb6ba410fdab11668ae9880df012aec44d992e5 retains the fallback while refactoring it and lowering iterations, so it is not the BIC.",
+    "immediate_parent_absence": "PASS: 0376d901df2b53572657f051e2092adb34afc423 has the single immediate parent 52165f1948206f4cd03f44853fb7e753849c7fb1. That parent has no SimpleGCMConfig.java and no SimpleGCM, PBKDF2WithHmacSHA256, ZeroSaltGenerator, or gcm-secret-key-salt match in the relevant source/config trees.",
+    "squash_member_decomposition": "PASS: the BIC is an ordinary single-parent commit and the first commit after 52165f1948206f4cd03f44853fb7e753849c7fb1 on the public feature/spring_254 chain. PR #286 was later merged by two-parent merge 75dad8da4dd3fd904e7f245f9ac7b584eda9f436; the public member history already exposes the atomic first-write, so no squash decomposition is required.",
+    "affected_release_membership": "PASS: tag jasypt-spring-boot-parent-3.0.3 lacks the sink, while 3.0.4, 3.0.5, and every checked 4.0.0 through 4.0.4 tag contain the ZeroSaltGenerator fallback. The primary correctly records that the advisory's >=3.0.0 lower bound is over-broad for this mechanism and that the affected surface begins at 3.0.4.",
+    "fixed_release_membership": "PASS: GitHub's latest release is jasypt-spring-boot-parent-4.0.4 and its sink still contains the fallback; GHSA first_patched_version is null. There is no later release whose membership could establish a fix.",
+    "direct_fix_or_unpatched": "PASS: verified unpatched independently. Local HEAD and current upstream master are both 2243cb8070943f480a278e216239f79ad957c98c and still contain new ZeroSaltGenerator(); the sink path has no commit after the 4.0.4 tag. Issue #431 is open as of 2026-08-29, has no close event or linked fix in its timeline, and contains only the maintainer's investigation acknowledgement plus follow-ups. No direct fix SHA exists.",
+    "bic_only_ai_attribution": "PASS: the BIC object and GitHub commit record map both author and committer to Ulises Bocchio's user identity, with the same timestamp and a plain one-line message. The object has no trailers, git note, co-author, Generated-with, Copilot, or other AI marker. Later Copilot-labelled repository activity is post-BIC and is excluded from attribution. The BIC-only verdict is NOT_AI."
+  },
+  "findings": [
+    "The primary reconstruction is internally consistent with the clone and current advisory/vendor state: 0376d901df2b53572657f051e2092adb34afc423 is the atomic BIC, its parent lacks the mechanism, and affected releases begin at 3.0.4 rather than the advisory's stated 3.0.0.",
+    "The vulnerability is still unpatched at upstream master 2243cb8070943f480a278e216239f79ad957c98c and latest release 4.0.4; null fix_sha and direct_fix_sha are therefore correct, not missing research.",
+    "The human-authored BIC has no AI marker; later Copilot commits do not reattribute the 2021 first-write."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "No evidence gap affecting the NOT_AI verdict. Operational gap only: upstream remains vulnerable through master 2243cb8070943f480a278e216239f79ad957c98c and release 4.0.4, with issue #431 still open and no fix commit or patched release."
+}

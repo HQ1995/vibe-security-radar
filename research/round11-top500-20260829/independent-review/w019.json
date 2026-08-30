@@ -1,0 +1,32 @@
+{
+  "worker": "w019",
+  "review_agent_id": "r389_w019",
+  "class_id": "alias-db82daf2886088440e14b14f",
+  "case_id": "GHSA-q8hh-m6v5-4f3x",
+  "repo": "lin-snow/ech0",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: normal login JWTs have typ=session; RequireScopes immediately calls ctx.Next() for that type. The affected HTTP dashboard routes rely on RequireScopes without an IsAdmin check, while /ws/system/logs has no route middleware and its handler only parses the token.",
+    "atomic_bic": "PASS_WITH_SCOPE_CORRECTION: b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 is the smallest reconstructable first-write of the session-token early return and its GetAllUsers scope guard, but it is not an atomic BIC for the whole multi-sink advisory. The log/WS sinks predate it in fcbe5084a4f095760ac691039ef1999ce50db333; visitor stats and check-update were added later by d929f27399a2198bb95e4841e18596314e3a8413 and 512749e3d26997eebc7e7ee897bc35a4974a14e1.",
+    "immediate_parent_absence": "PASS: b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 has immediate parent 1b280c252d1ef2ee69bf09f890d2da673b4b0a68, and that parent has no internal/middleware/scope.go or RequireScopes implementation.",
+    "squash_member_decomposition": "PASS: main-line carrier 3f8fb150158723aca31df2ae937a1aa7b31ac254 is a one-parent GitHub squash whose parent 45693330c7733364027e0aa07c102c4f01aab88a lacks scope.go; the public PR #195 chain reconstructs member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 with parent 1b280c252d1ef2ee69bf09f890d2da673b4b0a68.",
+    "affected_fixed_release_membership": "FAIL_PRIMARY: carrier 3f8fb150158723aca31df2ae937a1aa7b31ac254 is absent from v4.2.0 and present from v4.2.1; partial user-list fix 1b8c64d0da2f3df167502af72e95417a1c4578db is absent from v4.5.0 and present in v4.5.1. However v4.5.1 has byte-identical dashboard routing/handlers/scope middleware to v4.5.0 for the remaining named sinks, and v5.7.0 still has the session early return and unguarded WS route, so 4.5.1 is not a verified fixed release for the complete advisory.",
+    "direct_fix_or_unpatched": "FAIL_PRIMARY: 1b8c64d0da2f3df167502af72e95417a1c4578db directly adds an IsAdmin check only to GetAllUsers. It does not fix system logs, SSE, visitor stats, check-update, or /ws/system/logs. Those paths remain unpatched in v4.5.1, v5.7.0, and origin/main aa0fae7980a58bec93557827c4929d3b197724dd.",
+    "bic_only_ai_attribution": "PASS_WITH_SCOPE_CORRECTION: b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 has human author/committer L1nSn0w and a Made-with: Cursor trailer, supporting AI_ROOT_CAUSE for the session-bypass constituent only. No AI conclusion is transferred from that BIC to the independent sink-introducing commits or to the aggregate advisory."
+  },
+  "findings": [
+    "The primary record internally acknowledges that dashboard and WebSocket sinks remain reachable at HEAD while nevertheless assigning fix_sha/direct_fix_sha=1b8c64d0da2f3df167502af72e95417a1c4578db and remaining_gap=null; those fields overstate a one-sink patch as the advisory's complete direct fix.",
+    "The vendor advisory explicitly describes three independent gaps and names logs, visitor stats, update info, user emails, SSE, and WebSocket impact. b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 first-writes only the session-bypass constituent and cannot be used as the single atomic BIC for every named sink.",
+    "The public release claim is contradicted by repository state: v4.5.1 fixes GetAllUsers authorization but leaves the other advisory paths unchanged; the same incomplete state persists through v5.7.0 and current origin/main.",
+    "The authoritative CVE record is PUBLISHED and the vendor advisory is not withdrawn, so this is not FALSE_POSITIVE; the required correction concerns attribution scope and incomplete remediation, not advisory validity."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 is the atomic BIC only for the RequireScopes session-token early-return constituent. The aggregate advisory also contains independently introduced missing-handler and middleware-free sink defects and therefore has no single demonstrated atomic BIC.",
+    "scope_statement": "AI_ROOT_CAUSE attribution is limited to the session-token early return first written by b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 and carried to main by squash 3f8fb150158723aca31df2ae937a1aa7b31ac254; it does not attribute the pre-existing or later sink introductions to AI.",
+    "fix_sha": null,
+    "direct_fix_sha": null,
+    "remaining_gap": "No complete direct-fix commit or fixed release was verified for all advisory-named sinks. 1b8c64d0da2f3df167502af72e95417a1c4578db is only a partial GetAllUsers fix; v4.5.1, v5.7.0, and origin/main aa0fae7980a58bec93557827c4929d3b197724dd retain the remaining bypasses."
+  },
+  "remaining_gap": "A complete remediation SHA and first fully fixed release do not exist in the examined public refs; the record must remain explicitly unpatched for the non-GetAllUsers sinks."
+}

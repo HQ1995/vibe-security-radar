@@ -1,0 +1,37 @@
+{
+  "class_id": "alias-513a3da60029e6d95558077a",
+  "case_id": "GHSA-5x2r-hc65-25f9",
+  "repo": "c2sp/wycheproof",
+  "advisory_ids": [
+    "CVE-2026-24850",
+    "GHSA-5x2r-hc65-25f9"
+  ],
+  "bug_semantics": "RustCrypto ml-dsa signature decoding used one monotonic() predicate for two different encodings. Hint cut offsets may repeat because an ML-DSA polynomial may contain no hints, but hint indices within each polynomial must be strictly increasing. Changing the shared predicate from < to <= made cuts valid but also accepted equal adjacent indices. A verifier therefore decoded a non-canonical signature containing a repeated hint index and could accept a byte-distinct malleation of a valid signature.",
+  "flaw_origin": "The bundle's c2sp/wycheproof repository is the detecting test-vector source, not the vulnerable implementation. The flawed code originated in RustCrypto/signatures PR #895. Its first member commit 92d2a8211581610191ee489372231aa644760c1a changed ml-dsa/src/hint.rs::monotonic from strict < to non-strict <=; the five-member PR was then squash-merged to mainline as b01c3b73dd08d0094e089aa234f78b6089ec1f38. Wycheproof later supplied invalid repeated-hint vectors that exposed the regression.",
+  "introducer_sha": "92d2a8211581610191ee489372231aa644760c1a",
+  "introducer_parent": "e7c698a094c2cca3e28bda0fab4684f21fc5363a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "92d2a8211581610191ee489372231aa644760c1a",
+    "c75ac84fcb39920e8c7cf8c7a25c025461ab3bb4",
+    "f1e4e305680c7bc0c22ee7f663d2ac3285325794",
+    "1b794e1b900bfb9e7793d9eab219ddbfda09e642",
+    "17e9cab3531e4ea795ff160c6b25895388ff3004"
+  ],
+  "ai_marker": "absent: the raw BIC commit object for 92d2a8211581610191ee489372231aa644760c1a names human author and committer Richard Barnes <rlb@ipv.sx>; its complete message is exactly \"Make ML-DSA signature decoding follow the spec\" and contains no Co-Authored-By, Generated-with, AI-assistance, or bot marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "400961412be2e2ab787942cf30e0a9b66b37a54a",
+  "direct_fix_sha": "c951f3785b76549f47a8a4a864ad245a271a65f7",
+  "evidence": [
+    "Advisory GHSA-5x2r-hc65-25f9/CVE-2026-24850 identifies affected crate ml-dsa, affected range >=0.0.4,<0.1.0-rc.4, and ml-dsa/src/hint.rs. The reported vulnerable expression uses a[i - 1] <= *x and accepts duplicate hint indices; all ML-DSA-44/65/87 parameter sets pass through this decoder.",
+    "In the validated read-only c2sp/wycheproof clone, `git log --all -S'signature with a repeated hint' -- testvectors_v1/mldsa_*_verify_test.json` found only 4109e5ed72e2a49ad39186fc75284261dd4ca5cd (2025-07-11, Add ML-DSA test vectors). The three current vector files label repeated-hint cases invalid (ML-DSA-44 tcId 18, ML-DSA-65 tcId 19, ML-DSA-87 tcId 21). Thus this repository detects the defect and does not contain its verifier implementation.",
+    "GitHub's first-party PR #895 commits endpoint reconstructs five member commits: 92d2a8211581610191ee489372231aa644760c1a, c75ac84fcb39920e8c7cf8c7a25c025461ab3bb4, f1e4e305680c7bc0c22ee7f663d2ac3285325794, 1b794e1b900bfb9e7793d9eab219ddbfda09e642, and 17e9cab3531e4ea795ff160c6b25895388ff3004. The final member and squash b01c3b73dd08d0094e089aa234f78b6089ec1f38 have identical tree 5e7382a487849c7ba8920eae949595fc9d5a75da, proving the squash mapping.",
+    "The 92d2a8211581610191ee489372231aa644760c1a commit diff is the smallest causal change: in ml-dsa/src/hint.rs it replaces `a[i - 1] < *x` with `a[i - 1] <= *x`. Its immediate parent is e7c698a094c2cca3e28bda0fab4684f21fc5363a. Direct retrieval of that parent's ml-dsa/src/hint.rs shows the strict `<` expression, so the vulnerable `<=` line is absent from the immediate parent tree.",
+    "Version ancestry is closed through the mainline squash equivalent: GitHub compare b01c3b73dd08d0094e089aa234f78b6089ec1f38...ea7a000fa4ddac2ddc3eedca2666ac1959736712 reports `ahead` with the BIC squash as merge base, placing the defect in tag ml-dsa/v0.0.4; the analogous compare to 14d4704cff2399ace40e1c80f50e4aba95e73f89 places it in v0.1.0-rc.2. Tag v0.1.0-rc.3 at 4f0ee3c0c3826e11321506aa5263fc7bcb765e25 is an ancestor of the fix.",
+    "Direct fix member c951f3785b76549f47a8a4a864ad245a271a65f7 removes the shared monotonic helper and checks cuts with `<=` but per-polynomial indices with `<`; it also removes the Wycheproof repeated-hint skip. PR #1187's final member tree equals squash fix 400961412be2e2ab787942cf30e0a9b66b37a54a tree 52bc3d72e8ed1621b8d80cc53b60aa98b89bbba8. Compare 400961412be2e2ab787942cf30e0a9b66b37a54a...f5901031ac84167a28c8d5c47773e13298b417b9 reports the release commit as one commit ahead and its message cuts ml-dsa v0.1.0-rc.4, confirming the patched boundary.",
+    "The only commit object used for AI attribution is the decomposed BIC 92d2a8211581610191ee489372231aa644760c1a. GitHub's raw git-commit endpoint gives author=committer Richard Barnes <rlb@ipv.sx> and the one-line message `Make ML-DSA signature decoding follow the spec`, with no trailers or AI/bot identity."
+  ],
+  "reasoning": "The attack reaches ML-DSA verification through signature decoding: bit_unpack splits encoded hints into cut offsets and index slices, then the same monotonic helper validates both. Empty polynomials require equal adjacent cuts, motivating PR #895's non-strict comparison, but equal adjacent indices are forbidden canonical encodings. The resulting decoder accepts repeated indices and collapses them into the same boolean hint set, enabling signature malleability. The advisory's cited b01c3b73dd08d0094e089aa234f78b6089ec1f38 is a squash aggregate, so it is not the smallest BIC. PR history is publicly reconstructable: first member 92d2a8211581610191ee489372231aa644760c1a alone writes the flawed operator, its parent e7c698a094c2cca3e28bda0fab4684f21fc5363a still has strict `<`, and later PR members do not originate that line. The squash's identical final tree and ancestry into vulnerable release tags connect the branch BIC to shipped versions. The direct fix separates the two ordering invariants, its squash lands immediately before v0.1.0-rc.4, and Wycheproof's invalid vectors then run without a skip. Because the BIC commit object is entirely attributed to a human author/committer and contains no AI marker, the protocol requires NOT_AI. The c2sp/wycheproof alias remains in the required repo field, but its role is evidence generation rather than flaw origin.",
+  "remaining_gap": null
+}

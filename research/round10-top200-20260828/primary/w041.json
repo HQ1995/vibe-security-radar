@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-64bdaacd95a7eac731941c69",
+  "case_id": "GHSA-cw49-mhmj-m3xc",
+  "repo": "roskus/prospero-flow-crm",
+  "advisory_ids": [
+    "CVE-2026-77759",
+    "GHSA-cw49-mhmj-m3xc"
+  ],
+  "bug_semantics": "GET /api/transaction/{id} accepted an authenticated user's route-controlled, auto-incrementing transaction ID and resolved it with Transaction::find($id). Because TransactionReadController::read() neither constrained the query to Auth::user()->company_id nor invoked a read-accounting authorization request, a tenant user could enumerate IDs and receive other companies' transaction records, including financial fields.",
+  "flaw_origin": "Commit e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 created TransactionReadController and its GET /transaction/{id} route in one change. The new controller used the globally keyed Transaction::find($id), while the route had only auth:api middleware. In the same commit, TransactionListController correctly filtered by company_id and the create/update/delete endpoints used permission-bearing FormRequest classes, so the tenant scope and permission omissions were specific causal defects in the newly added read endpoint rather than inherited framework behavior.",
+  "introducer_sha": "e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2",
+  "introducer_parent": "f4e43554d6ab6ea35521ea4a2682be4426f6ec89",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "The exact BIC commit object names author and committer Gustavo Novaro <gnovaro@gmail.com> and contains the exact trailer: \"Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\".",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "980c35ac00e419591a8adc2d1dbcc120ea62e273",
+  "direct_fix_sha": "980c35ac00e419591a8adc2d1dbcc120ea62e273",
+  "evidence": [
+    "The CNA advisory https://secur0.com/en/cna/cve-list/cve-2026-77759-idor-missing-authz-prospero-transaction-api identifies TransactionReadController::read(), routes/api.php, GET /api/transaction/{id}, the unscoped Transaction::find($id), missing read permission, affected versions 5.0.0 through 5.3.5, BIC e3c6897d, and patch 980c35ac; the case's GitHub advisory source is https://api.github.com/advisories/GHSA-CW49-MHMJ-M3XC.",
+    "First-party BIC page https://github.com/Roskus/prospero-flow-crm/commit/e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 and local git show establish that e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 added app/Http/Controllers/Api/Transaction/TransactionReadController.php with public function read(int $id) and $transaction = Transaction::find($id), and added Route::get('/transaction/{id}', ...)->middleware(['auth:api']) in routes/api.php.",
+    "git log -L over app/Http/Controllers/Api/Transaction/TransactionReadController.php traces the vulnerable method directly from its creation in e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 to its correction in 980c35ac00e419591a8adc2d1dbcc120ea62e273. git log --all --full-history --diff-filter=A reports e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 as the sole addition of that path, and git log --all -S for Route::get('/transaction/{id}' likewise reports that commit. It is an ordinary one-parent feature commit, not a move, revert, backport, or observable squash requiring decomposition.",
+    "Direct-parent tree verification: git ls-tree -r --name-only f4e43554d6ab6ea35521ea4a2682be4426f6ec89 -- app/Http/Controllers/Api/Transaction/TransactionReadController.php returned no path. The BIC diff is /dev/null to that new controller and separately adds the transaction/{id} route, proving the vulnerable endpoint and lines are absent from the immediate parent.",
+    "Version boundary verification: e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2 changes version.php from 4.23.0 to 5.0.0; fix parent 1e708b403b4db6a7d45024a7bfa7053e6f99e716 has APP_VERSION 5.3.5; and fix 980c35ac00e419591a8adc2d1dbcc120ea62e273 changes it to 5.3.6. Tag v4.6.0 resolves to 4c15d20a57c4225bb3853bad2c5b01b3da11121f and is an ancestor of the BIC but does not contain it. Both git tag --contains checks list v5.5.3 and v5.14.0 for the BIC and fix, so no tagged release contains the vulnerable interval; v5.5.3 resolves to 584f315878b8366244c95fe3cb016b3a63f05db8 and contains the fix. First fixed tag: https://github.com/Roskus/prospero-flow-crm/releases/tag/v5.5.3.",
+    "Patch https://github.com/Roskus/prospero-flow-crm/commit/980c35ac00e419591a8adc2d1dbcc120ea62e273 is the direct functional fix: it replaces Transaction::find($id) with Transaction::where('company_id', Auth::user()->company_id)->find($id), changes read() to require a new app/Http/Requests/TransactionReadRequest.php, and that request authorizes only users who can('read accounting').",
+    "BIC-only AI attribution used git cat-file -p e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2. The commit object has author and committer Gustavo Novaro <gnovaro@gmail.com> and the exact Co-Authored-By trailer for Claude Haiku 4.5; no later commit, patch authorship, PR text, or branch metadata was used to attribute introduction."
+  ],
+  "reasoning": "The vulnerability lifecycle is closed. The transaction read API did not exist in the direct parent. The smallest source-history event that created both the reachable authenticated route and the flawed unscoped lookup was e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2, which declared application version 5.0.0. Line history and all-history path/string searches converge on that single commit, so there is no earlier vulnerable line to attribute and no squash member to reconstruct. The defect remained through APP_VERSION 5.3.5. Commit 980c35ac00e419591a8adc2d1dbcc120ea62e273 directly closed both authorization gaps by company-scoping the lookup and adding read-accounting authorization, while bumping to 5.3.6; ancestry confirms the next tag v5.5.3 contains that fix. Finally, the BIC commit object itself explicitly co-authors Claude Haiku 4.5. Because that AI-marked BIC first wrote the flawed mechanism and the parent lacked it, AI_ROOT_CAUSE is supported under the BIC-only attribution rule.",
+  "remaining_gap": null
+}

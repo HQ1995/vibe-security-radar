@@ -1,0 +1,27 @@
+{
+  "class_id": "alias-34fbdb847d02acf7e1b08144",
+  "case_id": "GHSA-g8mq-qr24-3qv3",
+  "repo": "openpanel-dev/openpanel",
+  "advisory_ids": [
+    "CVE-2026-77768",
+    "GHSA-g8mq-qr24-3qv3"
+  ],
+  "bug_semantics": "The tRPC report.get procedure in packages/trpc/src/routers/report.ts accepted only reportId and returned getReportById(reportId) with no project membership check. enforceAccess in packages/trpc/src/trpc.ts consults membership only when the raw input contains projectId or organizationId, so a reportId-only payload bypassed that middleware. getReportById in packages/db/src/services/reports.service.ts does an unscoped Prisma findUnique on the report id. Any authenticated user could therefore read another tenant's full saved-report configuration (projectId, series, filters, breakdowns, formulas). Adjacent update/delete/duplicate procedures already resolved the report and called getProjectAccess on its projectId; the omission was specific to get.",
+  "flaw_origin": "PR #211 squash 81a7e5d62ec29ad3bf971610d5243a11a62a603d first landed report.get on main, but that squash is not the BIC. Reconstructing the 44 public member commits of Openpanel-dev/openpanel#211, git log -S 'return getReportById(reportId)' on packages/trpc/src/routers/report.ts between base 436e81ecc9159fd3f2849d538f2122d92342e042 and PR head 330321405d2ba207cb1672d1d38a4f0cdac85ad8 identifies 3540c8b83a57ca2f926725158defce34bf304fec (subject wip) as the smallest commit that first wrote get: protectedProcedure with input {reportId} and return getReportById(reportId). Its parent 68d194e8c6a1dd52913fb5fed4c01aa2fc27d823 already had report.ts with access-checked update/delete and the unscoped getReportById helper, but no get procedure. Later member 6b2efdd19bb044be0c7d0bdde9db0a599cbe2466 only appended updateLayout after the already-vulnerable get. The helper's lack of project scoping is pre-existing; the new IDOR surface is the unchecked report.get endpoint.",
+  "introducer_sha": "3540c8b83a57ca2f926725158defce34bf304fec",
+  "introducer_parent": "68d194e8c6a1dd52913fb5fed4c01aa2fc27d823",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "3540c8b83a57ca2f926725158defce34bf304fec",
+    "6b2efdd19bb044be0c7d0bdde9db0a599cbe2466",
+    "81a7e5d62ec29ad3bf971610d5243a11a62a603d"
+  ],
+  "ai_marker": "absent. git cat-file -p 3540c8b83a57ca2f926725158defce34bf304fec shows author and committer Carl-Gerhard Lindesvard <lindesvard@gmail.com>, one parent 68d194e8c6a1dd52913fb5fed4c01aa2fc27d823, subject wip, and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "0a51b6805eed0b3da8376175acd5fa3d26819cb6",
+  "direct_fix_sha": "0a51b6805eed0b3da8376175acd5fa3d26819cb6",
+  "evidence": "CVE-2026-77768 CVE.org record state=PUBLISHED (VulnCheck CNA; not rejected/withdrawn). GHSA-g8mq-qr24-3qv3 type=unreviewed, withdrawn_at null. Vendor GHSA-9x7c-f87x-2243 describes the same report.get IDOR and cites pre-fix blob e8a0602cda5a4d4b463f11d298a1b078c446bf33. Fix 0a51b6805eed0b3da8376175acd5fa3d26819cb6 (parent a45bdb0f9372d8d4ef61f313b41142b63a2140e2, subject 'fix: improve access rights') changes report.get from return getReportById(reportId) to fetch-then-getProjectAccess(report.projectId) and throw TRPCForbiddenError. Pre-fix report.ts:184-192 is get: protectedProcedure input {reportId} query return getReportById(reportId). Pre-fix trpc.ts enforceAccess only keys on projectId/organizationId. git log -S 'return getReportById(reportId)' -- packages/trpc/src/routers/report.ts on main is 81a7e5d62ec29ad3bf971610d5243a11a62a603d then 0a51b6805eed0b3da8376175acd5fa3d26819cb6. 81a7e5d is GitHub squash of #211 (committer GitHub <noreply@github.com>, 44 members). Member-range log on report.ts: 3540c8b83a57ca2f926725158defce34bf304fec then 6b2efdd19bb044be0c7d0bdde9db0a599cbe2466. git cat-file -e 68d194e8c6a1dd52913fb5fed4c01aa2fc27d823:packages/trpc/src/routers/report.ts succeeds; that parent has update/delete with getProjectAccess and no get procedure / no getReportById call. BIC 3540c8b adds get at report.ts:138-146 returning getReportById(reportId). git log -1 --format='%an %ae %cn %ce' 3540c8b83a57ca2f926725158defce34bf304fec = Carl-Gerhard Lindesvard lindesvard@gmail.com (author and committer). git merge-base --is-ancestor 3540c8b 330321405d2ba207cb1672d1d38a4f0cdac85ad8 succeeds; squash 81a7e5d is ancestor of fix 0a51b68.",
+  "reasoning": "The advisory mechanism is real: authenticated report.get with only reportId skipped enforceAccess and returned an unscoped report row. CVE-2026-77768 is published, so this is not FALSE_POSITIVE. The mainline first appearance is squash #211, which is not a BIC. Public PR members reconstruct a finer first-write: 3540c8b83a57ca2f926725158defce34bf304fec, whose immediate parent tree contains report.ts but not the vulnerable get lines. Authorship is judged only on that BIC commit object: human author/committer, no AI trailers. Later AI, PR body, or the access-rights fix cannot attribute the BIC. Therefore NOT_AI.",
+  "remaining_gap": null
+}

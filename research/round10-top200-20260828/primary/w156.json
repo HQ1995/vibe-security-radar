@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-0033b48d3997a8ad3ad5dc78",
+  "case_id": "GHSA-f4j9-rgf4-2rmj",
+  "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+  "advisory_ids": [
+    "CVE-2026-74637",
+    "GHSA-f4j9-rgf4-2rmj"
+  ],
+  "bug_semantics": "In kernel/events/core.c, perf_group_detach() treats leader and sibling detach asymmetrically: when a sibling is detached (e.g., CPU hot-unplug with DETACH_GROUP), it is removed from the leader's sibling_list but its ->group_leader pointer is left pointing at the old leader. If the sibling is kept alive only by its open file descriptor (detach without close), and the old leader is subsequently closed and freed, a later PERF_IOC_FLAG_GROUP ioctl on the sibling walks sibling->group_leader and dereferences freed memory — use-after-free in perf_ioctl (CWE-416).",
+  "flaw_origin": "Commit 8a49542c0554af7d0073aac0ee73ee65b807ef34 (\"perf_events: Fix races in group composition\", 2010-05-27, author Peter Zijlstra <a.p.zijlstra@chello.nl>, committer Ingo Molnar) introduced perf_group_detach() with exactly this asymmetric handling: the sibling branch `if (event->group_leader != event) { list_del_init(&event->group_entry); event->group_leader->nr_siblings--; return; }` removes the sibling from the leader's list while deliberately leaving the sibling's ->group_leader pointing at the leader (the assumption being the sibling is being destroyed). The fix commit's own Fixes: tag cites 8a49542c0554, confirming it as the BIC. Parent tree ac9721f3 already has kernel/perf_event.c with a different, context-entangled detach (group handling woven into list_del_event), so the advisory-named asymmetric sibling-detach path begins here.",
+  "introducer_sha": "8a49542c0554af7d0073aac0ee73ee65b807ef34",
+  "introducer_parent": "ac9721f3f54b27a16c7e1afb2481e7ee95a70318",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names author Peter Zijlstra <a.p.zijlstra@chello.nl> and committer Ingo Molnar (2010-05-27), message and LKML reference entirely human; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "42c5ca1f0a288a52878bd72a5595b08261057438",
+  "direct_fix_sha": "42c5ca1f0a288a52878bd72a5595b08261057438",
+  "evidence": [
+    "Advisory (CVE-2026-74637 / GHSA-f4j9-rgf4-2rmj): 'perf/core: Fix group leader use-after-free after sibling detach'; reproduced by perf event fuzzer + CPU hotplug + stress on 6.18.7, crash in perf_ioctl+0x34c via __arm64_sys_ioctl; stable backports at git.kernel.org/stable/c/1e7abfeb..., 42c5ca1f..., a979a642..., b42948f9..., 80c6054a..., 8e92e039..., 8f867c0e..., f8a07021....",
+    "Fix commit 42c5ca1f0a288a52878bd72a5595b08261057438 (2026-08-07, Aditya Chillara <aditya.chillara@oss.qualcomm.com>, committer Peter Zijlstra): its message is verbatim the advisory text and it carries `Fixes: 8a49542c0554 (\\\"perf_events: Fix races in group composition\\\")`. The diff restructures perf_group_detach() so every detached sibling is promoted to a singleton immediately: `sibling->group_leader = sibling;` is now applied unconditionally in the new sibling-promotion block (plus __event_disable(..., PERF_EVENT_STATE_ERROR) for CAP_SIBLING events), instead of only in the leader-detach loop.",
+    "BIC creation check: `git show 8a49542c0554:kernel/perf_event.c` at the sibling branch reads `if (event->group_leader != event) { list_del_init(&event->group_entry); event->group_leader->nr_siblings--; return; }` — the stale group_leader retention named by the advisory, with `sibling->group_leader = sibling` promotion only inside the leader-detach loop; parent ac9721f3 has kernel/perf_event.c but no perf_group_detach() split (group composition was handled inline in list_del_event), so the advisory-named detach path originates at 8a49542c (introducer_parent_absent=true for the named function).",
+    "Version boundary: BIC first ships in tag v2.6.35-rc2 / v2.6.35 (2010); the flaw persists through 6.18.7 per the advisory's reproduction; the mainline fix 42c5ca1f is upstream (committer Peter Zijlstra) and 1e7abfeb is its stable backport on other branches (commit message: 'commit 42c5ca1f0a288... upstream').",
+    "A companion hunk in the same fix extracts __event_disable() from __perf_remove_from_context() with `perf_event_set_state(event, min(event->state, state))` — the state-machinery refactor enabling the promotion path; both hunks serve the same UAF fix.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1 8a49542c` shows only Peter Zijlstra / Ingo Molnar (2010, pre-AI-assistant era); the 2026 fix 42c5ca1f likewise carries only Aditya Chillara / Peter Zijlstra; no claude/copilot/anthropic/openai/generated/co-authored identity on the BIC object."
+  ],
+  "reasoning": "Vulnerability first: a detached-but-alive sibling retains ->group_leader pointing at a leader that can be freed; PERF_IOC_FLAG_GROUP on the sibling then UAFs. The fix proves the mechanism: it makes sibling promotion (group_leader reset to self) unconditional at detach time. BIC choice: the fix's Fixes: tag and the code both point at 8a49542c0554 (2010), which authored the asymmetric sibling branch retaining the stale pointer; the parent tree had no such detach split, making the BIC the origin of the advisory-named path. Squash check: the BIC is a single-purpose race-fix commit (separate context vs group attachment), not a decomposed squash; squash_decomposed=false. AI decision: BIC-only attribution — the 2010 commit object carries only human identities with no AI marker, so NOT_AI.",
+  "remaining_gap": null
+}

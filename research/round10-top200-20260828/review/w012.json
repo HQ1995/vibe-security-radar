@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-78592514ed588d718e981120",
+  "case_id": "GHSA-wv46-xpj8-pw53",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "CVE-2026-76220",
+    "GHSA-wv46-xpj8-pw53"
+  ],
+  "bug_semantics": "check_unsafe_options is fed reconstructed candidates from Git._option_candidates rather than the argv transform_kwarg actually emits. For a one-character kwarg with split_single_char_options=False, candidates contain only '-n' while transform_kwarg emits the joined token '-nVALUE'. Git then clusters that token (e.g. -n + -u<cmd>) into --upload-pack, so clone_from/fetch/pull/push/ls_remote/archive/blame/iter_commits execute an attacker command at default allow_unsafe_options=False.",
+  "flaw_origin": "701ce32fe5ba8cb622c0e0342a376a6beb47d738 first added Git._option_candidates as the shared pre-transform candidate list for check_unsafe_options. That first write appends only '-{key}' / '--{dashify(key)}' and never the joined '-{key}{value}' form that transform_kwarg already produced when split_single_char_options=False. Parent 65a72839c92768754bd51a37381235842a5ae0d8 has no _option_candidates. e8d0fbf774d1f6baa3b481adfe48bd262e43b453 later added value-token candidates only under split_single_char_options=True (incomplete sibling fix GHSA-r9mr-m37c-5fr3) and did not introduce the joined-token omission.",
+  "introducer_sha": "701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+  "introducer_parent": "65a72839c92768754bd51a37381235842a5ae0d8",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "author GPT 5.6 <codex@openai.com>; committer Sebastian Thiel <sebastian.thiel@icloud.com>; body includes 'Reviewed-by: Sebastian Thiel <sebastian.thiel@icloud.com>'; no Co-Authored-By trailer",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "96a888f4d782cb2f80452148e48e60ce4af6d541",
+  "direct_fix_sha": "96a888f4d782cb2f80452148e48e60ce4af6d541",
+  "evidence": "First-party GHSA-wvpp-8hx9-p66j (https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-wvpp-8hx9-p66j) and GHSA-wv46-xpj8-pw53/CVE-2026-76220: split_single_char_options=False + single-char kwarg bypasses check_unsafe_options. NVD vulnStatus=Received; GHSA withdrawn_at=null. At tag 3.1.57 git/cmd.py _option_candidates (around 1036-1054) appends '-{key}' then extends dash-prefixed values only if len(key)==1 and split_single_char_options; transform_kwarg (around 1623-1631) emits '-{name}{value}' when split is False. git show 701ce32fe5ba8cb622c0e0342a376a6beb47d738 introduces _option_candidates with only the name-token append; git grep _option_candidates 65a72839c92768754bd51a37381235842a5ae0d8 -- git/cmd.py is empty. Same commit already has clustered-short parsing in check_unsafe_options, so a joined candidate would have been blocked if emitted. git show e8d0fbf774d1f6baa3b481adfe48bd262e43b453 adds the split=True value-extend only. git log -S '_option_candidates' -- git/cmd.py first hits 701ce32f. git merge-base --is-ancestor 701ce32f 3.1.51 succeeds and fails for 3.1.50. Fix 96a888f4d782cb2f80452148e48e60ce4af6d541 emits the exact joined token for unsplit one-character kwargs; parent a495ccd3b547ccd60b2187215823b72a9c0188bf still omits it; ancestor of 3.1.58 not of 3.1.57. 701ce32f is single-parent (no ^2).",
+  "reasoning": "The advisory is a real incomplete-guard RCE, not withdrawn. The smallest commit that first wrote the candidate/guard mismatch is 701ce32f: it introduced _option_candidates as the only input to check_unsafe_options for kwargs and never reconstructed the joined short-option token that transform_kwarg already emitted. e8d0fbf7 is a later incomplete sibling fix (value tokens when split=True) and is not the first write of this hole. AI is judged only on 701ce32f: author is GPT 5.6 <codex@openai.com> on the commit object, so the BIC is AI-authored. Therefore AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

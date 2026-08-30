@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-832bcad68a60bbefd3b93422",
+  "case_id": "GHSA-9hgc-g3w5-67cm",
+  "repo": "ibm/mcp-context-forge",
+  "advisory_ids": [
+    "CVE-2026-53708",
+    "GHSA-9hgc-g3w5-67cm"
+  ],
+  "bug_semantics": "With the admin API enabled, a database-backed principal holding gateways.read can submit an attacker-controlled hostname to POST /admin/gateways/test. Validation resolves that hostname and rejects private, loopback, link-local, reserved, and metadata addresses, but the accepted URL retains the hostname. ResilientHttpClient/httpx then resolves the hostname again when connecting. An attacker-controlled DNS server can therefore return a public address for the validation lookup and a private or metadata address for the connection lookup, bypassing the SSRF checks and returning internal response content.",
+  "flaw_origin": "The exact check/use race first appears in PR #3115 member d34f611030166bbdd4ea2d93d909098c9dc8d934: it inserted SecurityValidator.validate_url() before the existing gateway-test request, while leaving the outbound request addressed by the validated hostname rather than the checked IP. PR #3115 was squash-landed on the release line as d549137791f10c59c00ec3e89cb55cd560a8248f. Later hardening 2b5b9e9a145304c466966c560e82d4682849b13a added an allowlist and an explicit ICACF-15 rebinding TODO, and fb4d9a2616f22dcc64239b250b1c6389b638de4f consolidated validation into validate_gateway_test_url(), but both retained independent connection-time DNS resolution. The race was closed by fba11a99babd80779fa05510b35fb6a153bbacaf, which captures a safe resolved IP, rewrites the dial target to that IP, preserves the original Host authority and TLS SNI, and was released in v1.0.3.",
+  "introducer_sha": "d34f611030166bbdd4ea2d93d909098c9dc8d934",
+  "introducer_parent": "f1c78d290e2901b4c58ee64e575e049b0f8b2bb3",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b73f98a438c0459c644967e3c5d65dfe3c611351",
+    "f1c78d290e2901b4c58ee64e575e049b0f8b2bb3",
+    "d34f611030166bbdd4ea2d93d909098c9dc8d934",
+    "6f8bfd49f8571a93e13de951d6a43b5df8fe852b",
+    "1a84e514f9f36e498aa41feb146d0ccd96454fd6",
+    "65fb876725cb6c3e0bc7e22bf98e6195466852bc",
+    "486ea1b3a75d97d70c9736de8dc3b93250c0823a"
+  ],
+  "ai_marker": "absent: `git cat-file commit d34f611030166bbdd4ea2d93d909098c9dc8d934` identifies human author and committer Mihai Criveti <crivetimihai@gmail.com>; its only trailer is `Signed-off-by: Mihai Criveti <crivetimihai@gmail.com>`. The BIC commit object has no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "65dcfe2e4b85b0b0e2bd38f19f2bf593c9dd4c79",
+  "direct_fix_sha": "fba11a99babd80779fa05510b35fb6a153bbacaf",
+  "evidence": [
+    "The first-party advisory https://github.com/IBM/mcp-context-forge/security/advisories/GHSA-9hgc-g3w5-67cm specifies mcp-contextforge-gateway < 1.0.3 as affected and 1.0.3 as first patched, and describes the validation-time socket.getaddrinfo result being discarded before httpx re-resolves the original hostname.",
+    "The public PR commit list at https://github.com/IBM/mcp-context-forge/pull/3115/commits enumerates seven member commits and identifies d34f611030166bbdd4ea2d93d909098c9dc8d934 as `fix: outbound url validation hardening and behavior consistency`, with body text `validate admin gateway test base URL before outbound requests`; the squash commit d549137791f10c59c00ec3e89cb55cd560a8248f includes that member subject and content.",
+    "Run `git diff f1c78d290e2901b4c58ee64e575e049b0f8b2bb3 d34f611030166bbdd4ea2d93d909098c9dc8d934 -- mcpgateway/admin.py mcpgateway/common/validators.py`: d34f611 adds `validated_base_url = SecurityValidator.validate_url(str(request.base_url), ...)` in admin_test_gateway but leaves the existing ResilientHttpClient request path hostname-based.",
+    "Run `git grep -n 'socket.getaddrinfo\\|SecurityValidator.validate_url(str(request.base_url)\\|request_kwargs = {\"method\"' d34f611030166bbdd4ea2d93d909098c9dc8d934 -- mcpgateway/admin.py mcpgateway/common/validators.py`: the check resolves DNS at validators.py:1213, admin.py:12516 invokes it, and admin.py:12579 sends the resulting hostname URL to the client. Those are separate resolution phases.",
+    "Direct parent verification: `git grep -n 'SecurityValidator.validate_url(str(request.base_url)' f1c78d290e2901b4c58ee64e575e049b0f8b2bb3 -- mcpgateway/admin.py` has no match, while `git grep -n 'full_url = str(request.base_url)\\|request_kwargs = {\"method\"' f1c78d290e2901b4c58ee64e575e049b0f8b2bb3 -- mcpgateway/admin.py` shows the pre-existing unvalidated request at lines 12514 and 12573. Thus the parent has direct outbound SSRF behavior but not this advisory's DNS validation TOCTOU mechanism; d34f611 is the smallest member that creates the check/use race.",
+    "Lifecycle preservation is visible with `git show 2b5b9e9a145304c466966c560e82d4682849b13a -- mcpgateway/admin.py mcpgateway/common/validators.py` and `git show fb4d9a2616f22dcc64239b250b1c6389b638de4f -- mcpgateway/admin.py mcpgateway/common/validators.py`: the former adds host allowlisting plus `TODO(ICACF-15)` saying the client re-resolves DNS, and the latter adds validate_gateway_test_url() whose docstring explicitly calls pinning the required future mitigation while returning the hostname URL.",
+    "Run `git diff ce31d2a84e2c1d0eda5c6c4696e21086bec71fdb fba11a99babd80779fa05510b35fb6a153bbacaf -- mcpgateway/admin.py mcpgateway/common/validators.py`: the fix changes validation to return hostname/resolved_ip metadata, builds pinned_base_url from the safe resolved IP, sets Host to the original authority, supplies `extensions: {sni_hostname: validated_hostname}`, and removes the ICACF-15 TODO. `git grep -n 'TODO(ICACF-15)\\|pinned_base_url\\|sni_hostname'` shows the TODO in the parent and pinning/SNI at admin.py:14113-14196 in the fix.",
+    "Release boundary: `git show-ref -d --tags v1.0.2 v1.0.3` peels v1.0.2 to e0967e65cd381374682751da630e2cc2fb3a9c34 and v1.0.3 to release commit 65dcfe2e4b85b0b0e2bd38f19f2bf593c9dd4c79. `git tag --contains d549137791f10c59c00ec3e89cb55cd560a8248f --sort=version:refname` includes RC2/RC3 and v1.0.0 through v1.0.2, while `git tag --contains fba11a99babd80779fa05510b35fb6a153bbacaf --sort=version:refname` starts at v1.0.3, matching the advisory's <1.0.3/fixed-1.0.3 boundary.",
+    "BIC-only AI check: `git cat-file commit d34f611030166bbdd4ea2d93d909098c9dc8d934` prints parent f1c78d290e2901b4c58ee64e575e049b0f8b2bb3, human author/committer Mihai Criveti, the S-02/S-03 description, and only a Signed-off-by trailer; no commit-object AI attribution is present. Later commits and the fix were not used for AI attribution."
+  ],
+  "reasoning": "The endpoint itself predates the CVE mechanism and initially performed an unrestricted hostname request. The relevant BIC is therefore not that feature commit but the first commit that introduced a security-sensitive DNS check followed by reuse of the hostname: decomposed PR member d34f611030166bbdd4ea2d93d909098c9dc8d934. Its immediate parent directly lacks the gateway-test validate_url call, while the BIC resolves in SecurityValidator and then passes a hostname URL to ResilientHttpClient, making a DNS answer change between check and connect security-relevant. The release-line squash d549137791f10c59c00ec3e89cb55cd560a8248f and subsequent allowlist/specialized-validator hardenings preserved that gap and even documented it. Direct fix fba11a99babd80779fa05510b35fb6a153bbacaf binds the outbound connection to the checked IP while retaining Host/SNI semantics; release commit 65dcfe2e4b85b0b0e2bd38f19f2bf593c9dd4c79 publishes it as v1.0.3. Because the decomposed BIC commit object is human-authored/committed and contains no AI marker, the required BIC-only verdict is NOT_AI.",
+  "remaining_gap": null
+}

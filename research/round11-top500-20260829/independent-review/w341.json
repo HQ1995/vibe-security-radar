@@ -1,0 +1,26 @@
+{
+  "worker": "w341",
+  "review_agent_id": "r389_w341",
+  "class_id": "alias-046ee9496f25dedf22036f47",
+  "case_id": "GHSA-6c37-7w4p-jg9v",
+  "repo": "nationalsecurityagency/emissary",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: PLACE_NAME is configuration-derived and only space-normalized, then becomes the TempFileNames directory prefix and is concatenated unquoted into /bin/sh -c; shell metacharacters therefore survive into command execution.",
+    "atomic_bic": "CONFIRMED: bounded pickaxe, blame, and line-history checks independently identify c702bb7d697567b5d3a0710b225ee15a695e5534 as the first surviving public object containing the weak sanitizer, mkTempFile(placeName) propagation, and shell sink.",
+    "immediate_parent_absence": "CONFIRMED: rev-list --parents returns only c702bb7d697567b5d3a0710b225ee15a695e5534; its commit object has no parent. The other repository root, 51eaffae09174bd70305c8de98f1912bf3b3caa7, is unrelated gh-pages content and has no Executrix.java.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a parentless root, not a squash, and no finer member object exists in the local public history. The later fix squash 5b909b5b8ae9da88ccf2a9a10fc2251607ab7ea6 was separately decomposed into 2606aee64cc6c7066c2f84550c1f1f61ee551b52 (allowlist) and 76c4aaf234fe92809c90c0e6406236e4b9da6d82 (helper/tests); neither changes BIC identity.",
+    "affected_release_membership": "CONFIRMED: c702bb7d697567b5d3a0710b225ee15a695e5534 is an ancestor of tag 8.38.0, whose Executrix.java retains placeName.replace(' ', '_') and both /bin/sh -c directory concatenation sinks.",
+    "fixed_release_membership": "CONFIRMED: 5b909b5b8ae9da88ccf2a9a10fc2251607ab7ea6 is absent from 8.38.0 and is an ancestor of 8.39.0; 8.39.0 uses the [^a-zA-Z0-9_-] allowlist. CVE-2026-35581 is currently PUBLISHED and identifies < 8.39.0 as affected.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: direct fix 5b909b5b8ae9da88ccf2a9a10fc2251607ab7ea6 replaces the space-only normalization with cleanPlaceName using INVALID_PLACE_NAME_CHARS and adds metacharacter sanitization tests.",
+    "bic_only_ai_attribution": "CONFIRMED: the exact BIC commit object is authored and committed by Michael Wall on 2018-06-01, has subject 'Initial commit', and has no trailers or AI marker. Fix/PR authorship was not transferred to the BIC."
+  },
+  "findings": [
+    "The advisory mechanism is reproduced directly from the pre-fix source-to-sink path.",
+    "The atomic BIC, parent absence, release topology, and direct fix independently match the primary record.",
+    "The BIC-only provenance evidence supports NOT_AI; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

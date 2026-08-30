@@ -1,0 +1,36 @@
+{
+  "class_id": "alias-0d52629e388fec1055cdcaca",
+  "case_id": "GHSA-xhjw-95fp-8vgq",
+  "repo": "traefik/traefik",
+  "advisory_ids": [
+    "CVE-2026-41174",
+    "GHSA-xhjw-95fp-8vgq"
+  ],
+  "bug_semantics": "When providers.kubernetesCRD.allowCrossNamespace=false, Traefik rejects direct IngressRoute middleware refs that name another namespace, but createChainMiddleware still honors MiddlewareRef.namespace on spec.chain.middlewares[] and emits makeID(foreignNS, name) with no isNamespaceAllowed check. A principal who can write a local Chain CRD can therefore bind and apply another namespace's middleware (stripPrefix, headers, forwardAuth, etc.) onto routes in their own namespace, bypassing the documented CRD isolation boundary.",
+  "flaw_origin": "The unrestricted nested-chain resolver was first written in PR #5290 member 75e0baf2 (2019-09-03): Chain was switched from dynamic []string names to MiddlewareRef and createChainMiddleware copied IngressRoute-style ns:=mi.Namespace; makeID(ns, name) with no isolation gate. Parent 261e7c17 still assigned &middleware.Spec wholesale and had no createChainMiddleware. Later 7ba907f (2020-12-10) added AllowCrossNamespace and makeMiddlewareKeys for IngressRoute refs but left the 2019 chain helper untouched; that leftover path is the CVE-2026-41174 bypass.",
+  "introducer_sha": "75e0baf2f4a7ceaa24f25bc67011c47d80741391",
+  "introducer_parent": "261e7c174494b3327780361c2cae2cf46ee437f9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "75e0baf2f4a7ceaa24f25bc67011c47d80741391",
+    "422d2cf34d5177b77ef9530c385ba93ad52efe75"
+  ],
+  "ai_marker": "absent on BIC 75e0baf2f4a7ceaa24f25bc67011c47d80741391: author Julien Salleyron <julien.salleyron@gmail.com> (human maintainer @juliens); committer traefiker <30906710+traefiker@users.noreply.github.com> (Traefik merge bot, not an AI coding agent); commit message is only 'The chain middleware in k8s use middlewareRef' with no Co-Authored-By, Generated-with, Cursor, Copilot, or Claude trailers. Follow-up member 422d2cf3 ('Fix review.') and on-history squash 770b3739e05d46a4d8442577267ef571d70a0452 (author Julien Salleyron <julien@containo.us>, committer Traefiker Bot) likewise have no AI markers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "df00d82fc7f12e07199551832b54de6d0e55414d",
+  "direct_fix_sha": "df00d82fc7f12e07199551832b54de6d0e55414d",
+  "evidence": [
+    "CVE.org CVE-2026-41174 cveMetadata.state=PUBLISHED (datePublished 2026-04-30, not rejected/withdrawn). GHSA-xhjw-95fp-8vgq withdrawn_at=null; GitHub Advisory Database reviewed 2026-04-24.",
+    "Mechanism: pkg/provider/kubernetes/crd/kubernetes.go createChainMiddleware, pre-fix at df00d82^ lines 857-879: for each chain.Middlewares, ns := mi.Namespace (fallback parent namespace) then mds=append(makeID(ns, mi.Name)) with no AllowCrossNamespace / isNamespaceAllowed. Direct IngressRoute refs are instead gated in makeMiddlewareKeys (pkg/provider/kubernetes/crd/kubernetes_http.go).",
+    "git blame -L 857,880 df00d82^ -- pkg/provider/kubernetes/crd/kubernetes.go attributes ns:=mi.Namespace / makeID(ns, mi.Name) to 770b3739e05 (Julien Salleyron 2019-09-03); only the function signature line was later retouched by a 2023 linter rename.",
+    "git log -S 'func createChainMiddleware' -- pkg/provider/kubernetes/crd/kubernetes.go first hit is 770b3739e05d46a4d8442577267ef571d70a0452 'The chain middleware in k8s use middlewareRef' (Traefiker Bot squash of https://github.com/traefik/traefik/pull/5290 onto v2.0).",
+    "PR #5290 decomposes into public members 75e0baf2f4a7ceaa24f25bc67011c47d80741391 (parent 261e7c174494b3327780361c2cae2cf46ee437f9; adds createChainMiddleware and Chain []MiddlewareRef) then 422d2cf34d5177b77ef9530c385ba93ad52efe75 ('Fix review.'; call-site id reuse only, resolver unchanged). Squash 770b3739^{tree} == 422d2cf3^{tree} == 9bd56846459530348d1777ea1a9db3d6fc76f8b9.",
+    "Parent-tree verification at 261e7c174494b3327780361c2cae2cf46ee437f9: git grep createChainMiddleware returns absent; Middleware.Spec is dynamic.Middleware (Chain.Middlewares []string); loadConfigurationFromCRD assigns conf.HTTP.Middlewares[makeID(ns,name)] = &middleware.Spec with no nested-namespace rewrite.",
+    "Incomplete later hardening (not BIC; parent already had the chain resolver): 7ba907f261b4cedfc82d06c4a3a5a37ce819e889 (2020-12-10) introduced AllowCrossNamespace, isNamespaceAllowed, and makeMiddlewareKeys for IngressRoute.routes[].middlewares[] but did not pass the flag into createChainMiddleware. 32d88a977d3e8e28935a5cd96aebe0fdeb47c26e (2021-08-05) only tightened the @kubernetescrd suffix path in makeMiddlewareKeys. 3072354ca5d61e85d946f0e3839e9d09c5ee24cb defaulted AllowCrossNamespace to false.",
+    "Tag membership: carrier 770b3739 is ancestor of v2.0.0-rc2 (not v2.0.0-rc1), v2.11.42, v3.0.0-beta1, and v3.6.13, matching GHSA ranges <2.11.43, >=3.0.0-beta1 <3.6.14, and >=3.7.0-ea.1 <3.7.0-rc.2. Fix df00d82 is NOT an ancestor of v2.11.42 / v3.6.13 / v3.7.0-rc.1 and IS an ancestor of v2.11.43, v3.6.14, and v3.7.0-rc.2. No other 'Honor allowCrossNamespace with chain' commit exists; one SHA merged forward.",
+    "Fix: df00d82fc7f12e07199551832b54de6d0e55414d (PR https://github.com/traefik/traefik/pull/12976) threads allowCrossNamespace into createChainMiddleware, rejects cross-namespace mi.Namespace via isNamespaceAllowed, and rejects @kubernetescrd suffix refs when the flag is false. Advisory reference: https://github.com/traefik/traefik/commit/df00d82fc7f12e07199551832b54de6d0e55414d."
+  ],
+  "reasoning": "CVE-2026-41174 / GHSA-xhjw-95fp-8vgq is a real, published isolation-bypass in the Kubernetes CRD provider: nested Chain middleware refs were never covered by allowCrossNamespace. The patched lines are the createChainMiddleware resolver that turns spec.chain.middlewares[].namespace into a foreign makeID. Those lines were first written in reconstructable PR #5290 member 75e0baf2 (parent 261e7c17, where createChainMiddleware and MiddlewareRef-based Chain are absent); the Traefiker Bot squash 770b3739 is only the on-history carrier (same tree as PR head 422d2cf3) and is not the BIC. 7ba907f later added the isolation control for IngressRoute makeMiddlewareKeys without updating the 2019 helper, which is incomplete remediation of a pre-existing path, not a first-write of the vulnerable lines (the chain resolver is already present in 7ba907f's parent). AI is judged only on the BIC commit object: human author Julien Salleyron, Traefik merge-bot committer, no AI trailers on 75e0baf2, 422d2cf3, or 770b3739. Therefore NOT_AI. The closing fix is df00d82, which lands at the GHSA patched tags and is the sole direct patch of the chain path.",
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-51615747534e79a30d553407",
+  "case_id": "alias-51615747534e79a30d553407",
+  "repo": "nesquena/hermes-webui",
+  "advisory_ids": [
+    "CVE-2026-49973",
+    "GHSA-p52p-4vmg-4vq3"
+  ],
+  "bug_semantics": "When no password was configured, check_auth deliberately authorized every request, including POST /api/settings. The settings writer nevertheless accepted the private _set_password field, hashed it into persistent password_hash, and thereby enabled authentication with an attacker-chosen password. A remote unauthenticated client reaching the WebUI during first run could therefore claim ownership, then authenticate with that password; from 8b857d9efc121586f2ef79ca4b8f92d8ad373b5b onward the same bootstrap response also created and returned a valid session cookie immediately.",
+  "flaw_origin": "b8b62722ec2f6b3cd394737ab409c35650f29ca6 introduced the complete unsafe bootstrap primitive in one ordinary commit: api/auth.py made all routes pass while auth was disabled and exposed public password login, server.py applied that middleware, and api/config.py made save_settings consume _set_password and persist password_hash without a local-origin gate. The pre-existing generic POST /api/settings route supplied the remotely reachable sink.",
+  "introducer_sha": "b8b62722ec2f6b3cd394737ab409c35650f29ca6",
+  "introducer_parent": "1c6db07c2bef8d53656032a2c39a2385a176c959",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "1126e541325d401538f6a272a9c024c37d47ae08",
+  "direct_fix_sha": "f2ef2851d389cf7a41308dcf0180d7cfbe446379",
+  "evidence": [
+    "The assigned GitHub advisory snapshot identifies CVE-2026-49973 / GHSA-p52p-4vmg-4vq3, describes unauthenticated POST /api/settings with _set_password as the first-run ownership takeover, states versions before 0.51.358 are affected, and references commit 1126e541325d401538f6a272a9c024c37d47ae08 and release v0.51.358.",
+    "In the validated clone, `git log --reverse --format='%H %P %s' -S'_set_password' -- api/config.py` returns b8b62722ec2f6b3cd394737ab409c35650f29ca6 first, with sole parent 1c6db07c2bef8d53656032a2c39a2385a176c959. `git log -L 617,625:api/config.py b8b62722ec2f6b3cd394737ab409c35650f29ca6` attributes the first raw_pw = settings.pop('_set_password', None), hash, and persistent password_hash assignment to that commit; the earlier -L history only shows the generic save_settings function.",
+    "`git show b8b62722ec2f6b3cd394737ab409c35650f29ca6 -- api/config.py api/auth.py api/routes.py server.py` shows the causal chain: save_settings accepts _set_password and stores its hash; new check_auth returns True whenever is_auth_enabled() is false; server.py invokes check_auth before POST dispatch; and /api/auth/login verifies the chosen password and calls create_session. Thus the initial BIC already permits takeover followed by login, even though the convenience of issuing the cookie directly from the settings response was added later by 8b857d9efc121586f2ef79ca4b8f92d8ad373b5b.",
+    "Direct parent verification: `git show 1c6db07c2bef8d53656032a2c39a2385a176c959:api/config.py` shows save_settings only copying allowed ordinary settings and no password_hash default or _set_password handling; `git cat-file -e 1c6db07c2bef8d53656032a2c39a2385a176c959:api/auth.py` fails because api/auth.py does not exist. The parent therefore cannot persist an attacker-selected authentication password, while the BIC can.",
+    "b8b62722ec2f6b3cd394737ab409c35650f29ca6 is an ordinary one-parent feature commit, not a merge, move, revert, release commit, or squash aggregate. `git tag --contains b8b62722ec2f6b3cd394737ab409c35650f29ca6 --sort=creatordate` begins with v0.21; annotated tag v0.21 resolves to 51bcf8fead50e120fb26d9f7ecf591e6482baf15 and describes Sprint 19 password auth, establishing the vulnerable feature's first release boundary.",
+    "`git diff 5dceb2993cc0a6bc42697a30d370425db482609a f2ef2851d389cf7a41308dcf0180d7cfbe446379 -- api/routes.py` shows the direct fix gating requested_password while auth_enabled_before is false through _onboarding_gate_allows(handler, auth_enabled_before), returning 403 for non-local/non-private clients unless HERMES_WEBUI_ONBOARDING_OPEN is explicitly set. f2ef2851d389cf7a41308dcf0180d7cfbe446379 has sole parent 5dceb2993cc0a6bc42697a30d370425db482609a, which is tag v0.51.357.",
+    "`git show -s --format='%H %D %s' v0.51.358` resolves v0.51.358 to merge 1126e541325d401538f6a272a9c024c37d47ae08, whose parents are vulnerable v0.51.357 commit 5dceb2993cc0a6bc42697a30d370425db482609a and direct-fix commit f2ef2851d389cf7a41308dcf0180d7cfbe446379. This establishes v0.51.357 as vulnerable and v0.51.358 as the closing release.",
+    "BIC-only AI check: `git cat-file -p b8b62722ec2f6b3cd394737ab409c35650f29ca6` shows human author and committer Nathan Esquenazi and the exact commit-message trailer `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`. No PR text, later commit, branch name, or fix-side marker is used for the AI judgment."
+  ],
+  "reasoning": "The security invariant is that establishing the first password, which changes a passwordless service into an owned authenticated service, must not be available to arbitrary network clients. The earliest commit that violates that invariant is b8b62722ec2f6b3cd394737ab409c35650f29ca6: it both creates the auth-disabled allow-all state and makes the unauthenticated settings sink interpret _set_password as persistent ownership state. Its immediate parent has neither password authentication nor that settings command, so absence is directly proven. The later 8b857d9efc121586f2ef79ca4b8f92d8ad373b5b cookie-on-bootstrap change improves the attack ergonomics but is not the root BIC because the attacker could already log in with the password chosen through the BIC. The direct patch f2ef2851d389cf7a41308dcf0180d7cfbe446379 enforces the missing origin gate and lands in the advisory's v0.51.358 merge. Because the smallest true BIC itself contains an explicit Claude co-author trailer, the causal AI verdict is AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

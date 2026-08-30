@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-a469382c47590c70cd7abf44",
+  "case_id": "GHSA-f7h5-c625-3795",
+  "repo": "eclipse-ee4j/glassfish",
+  "advisory_ids": [
+    "CVE-2024-9408",
+    "GHSA-f7h5-c625-3795"
+  ],
+  "bug_semantics": "SSRF: Admin GUI DownloadServlet ContentSources (LogViewer /download/log, LogFiles, ClientStubs, LBConfig) take attacker-controlled restUrl query parameters and pass them to RestUtil/Jersey as the request target, so the server fetches an arbitrary URL (with admin REST credentials).",
+  "flaw_origin": "First appearance of request.getParameter(\"restUrl\") concatenated into a Jersey endpoint in appserver/admingui/common/.../LogViewerContentSource.java (and sibling ContentSources) is eclipse-ee4j root commit 571714739b23e16c4c90d5229b806433920b3bcb (Initial Contribution). No parent exists in this public history; no finer member can be reconstructed here. 6.2.5 still has the sink. baa1bb56b137773a6ca921a35c60d32414a68f2f replaces restUrl with session REST_URL.",
+  "introducer_sha": "571714739b23e16c4c90d5229b806433920b3bcb",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "baa1bb56b137773a6ca921a35c60d32414a68f2f",
+  "direct_fix_sha": "baa1bb56b137773a6ca921a35c60d32414a68f2f",
+  "evidence": "GHSA-f7h5-c625-3795 / CVE-2024-9408 (published; GHSA withdrawn_at null; CWE-918) describe SSRF via specific GlassFish admin endpoints in 6.2.5. At tag 6.2.5, LogViewerContentSource.getInputStream does String restUrl = request.getParameter(\"restUrl\"); String endpoint = restUrl + \"/view-log/\"; RestUtil.getRequestFromServlet(...). Same restUrl pattern in LogFilesContentSource, ClientStubsContentSource, LBConfigContentSource. logViewerRaw.jsf wires /download/log/?contentSourceId=LogViewer&...&restUrl=. git log -S getParameter(\"restUrl\") -- LogViewerContentSource.java is only 571714739b23e16c4c90d5229b806433920b3bcb then baa1bb56b137773a6ca921a35c60d32414a68f2f. git cat-file -p 57171473: root commit, author/committer Vinay Vishal <vinay.vishal@oracle.com>, subject Initial Contribution, Signed-off-by same; no Co-Authored-By/Generated-with/bot. git rev-parse 57171473^ fails (no parent); git cat-file -e PARENT:path fails. git log -1 --format authors: Vinay Vishal vinay.vishal@oracle.com (both). baa1bb56 (2026-06-12, Patrik Dudits, payara.fish) removes restUrl and uses session REST_URL; ancestor of HEAD and tags 8.0.4 / 9.0.0-M3; not an ancestor of 6.2.5. GHSA lists first_patched_version null for console-common <=6.2.5; the code-level closure of this sink is still baa1bb56.",
+  "reasoning": "Real SSRF: unvalidated restUrl becomes a server-side Jersey target on /download/log and sibling download ContentSources. Advisory is not withdrawn. In eclipse-ee4j/glassfish public history the vulnerable lines first appear in the 2018 Oracle Initial Contribution root commit; that object has no parent and no AI markers, so authorship is human. Later baa1bb56 is a fix (session REST_URL), not the introducer.",
+  "remaining_gap": ""
+}

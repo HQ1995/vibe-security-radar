@@ -1,0 +1,28 @@
+{
+  "worker": "w191",
+  "review_agent_id": "r389_w191",
+  "class_id": "alias-ccf93a7cec91c86aaa4d56ef",
+  "case_id": "GHSA-4c44-r8rm-3p39",
+  "repo": "novosga/novosga",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. The admin appearance form accepts logoNavbar/logoLogin through Symfony Image() with image/*, the uploader preserves the guessed SVG extension under public/uploads, and the published PoC names the resulting /uploads/logo-navbar.svg and /uploads/logo-login.svg trigger documents. The later MIME allowlist directly closes this stored SVG-XSS path.",
+    "atomic_bic": "Confirmed for the landed history. b55a045d1f92eb8f891737936f30370dbbd67102 is a one-parent commit that first adds the form fields, unconstrained Image() validation, public uploader, and controller calls together; -S searches for logoNavbar and FileUploaderService both start there. It is the smallest landed commit containing the complete mechanism.",
+    "immediate_parent_absence": "Confirmed. Immediate parent e683e6badaa8bfe012986ee6699ededd76201518 lacks AppearanceSettingsFormType.php and FileUploaderService.php, and a scoped parent-tree grep finds none of logoNavbar, logoLogin, FileUploader, logo-navbar, or logo-login in the relevant source/template paths.",
+    "squash_member_decomposition": "Primary evidence is inaccurate but the stored boolean remains correct. GitHub associates landed BIC b55a045d1f92eb8f891737936f30370dbbd67102 with PR #409. That PR exposes original member 60418a227e7f3a72a5fb640c08b8574e5b6c4384 with the same parent, subject, total diff size, and identical relevant file blob IDs/patches; b55a045 is the rewritten landed equivalent, not a squash aggregate with a finer vulnerable member. Thus squash_decomposed=false and decomposed_shas=[] remain appropriate, but the claim that no GitHub PR exists is false.",
+    "affected_fixed_release_membership": "Confirmed. The BIC is absent from v2.1.9 and is an ancestor of v2.2.0 through v2.2.13; v2.2.9 and v2.2.12 retain unconstrained Image() and extension-preserving public upload. Fix 424957aeeaa3b24880d081ff699f5d677c57e235 is absent from v2.2.12 and present in v2.2.13, whose changelog names the upload-type restriction. Equivalent patch content reaches the v2.3 tags through fd6bbdf766d8ab4fe19a32eae10d22c06c4a9898.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. 424957aeeaa3b24880d081ff699f5d677c57e235 changes both logo fields from unrestricted Image() to a JPEG/PNG/GIF MIME allowlist; PR #482 contains one original commit and links the same HackMD report. Patch-id comparison confirms the corresponding v2.3 change is content-equivalent.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI. The landed BIC commit object has human maintainer author/committer identities, the subject 'feat: Application settings', an empty body, and no AI/bot attribution trailer. The reconstructable pre-rewrite PR member has the same human identity and message. No fix-commit or unrelated-repository signal was used to attribute the BIC."
+  },
+  "findings": [
+    "The vulnerability is real and CVE-2025-10909 remains PUBLISHED; the live GHSA has withdrawn_at=null.",
+    "The primary's statement that no GitHub PR reconstructs the BIC is contradicted by GitHub's exact commit-to-PR association and PR #409 commit list.",
+    "PR #409 does not change the substantive BIC or NOT_AI result: its original 60418a227e7f3a72a5fb640c08b8574e5b6c4384 and landed b55a045d1f92eb8f891737936f30370dbbd67102 are equivalent one-parent versions of the same atomic change, both based on e683e6badaa8bfe012986ee6699ededd76201518."
+  ],
+  "corrected_fields": {
+    "evidence": "Replace the claim 'No GitHub PR reconstructs finer members' with: GitHub associates b55a045d1f92eb8f891737936f30370dbbd67102 with PR #409; the PR lists pre-rewrite commit 60418a227e7f3a72a5fb640c08b8574e5b6c4384, which has the same parent, subject, complete diff size, and relevant file blobs/patches as the landed BIC. This is a rewrite-equivalent atomic commit, not a finer member of a squash aggregate.",
+    "reasoning": "Replace 'single-parent first-write with no reconstructable public members' with: single-parent first-write whose pre-rewrite PR #409 object is publicly reconstructable and patch-equivalent; the landed b55a045 object remains the release-ancestry BIC, while squash_decomposed=false and decomposed_shas=[] remain unchanged."
+  },
+  "remaining_gap": null
+}

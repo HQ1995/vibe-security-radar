@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-042088f710720706a5b5d996",
+  "case_id": "GHSA-xqqh-3w52-q8p7",
+  "repo": "sparklemotion/nokogiri",
+  "advisory_ids": [
+    "CVE-2026-79772",
+    "GHSA-xqqh-3w52-q8p7"
+  ],
+  "bug_semantics": "Nokogiri's canonicalize (Document#canonicalize / NodeSet#canonicalize, implemented in ext/nokogiri/xml_document.c) invokes libxml2's xmlC14NExecute() without checking its return value. When canonicalization fails (e.g., a relative namespace URI like xmlns:a=\"1\" triggers libxml2's C14N error path), xmlC14NExecute returns a negative code, but the wrapper silently returns the (empty) output buffer content as a Ruby string. Downstream XML signature / SAML validation libraries treat the empty canonicalized string as valid canonical output, so an attacker can feed signature-verification code invalid XML whose canonicalization fails and have it accepted — signature validation bypass (CWE-252 Unchecked Return Value).",
+  "flaw_origin": "Commit 5f0b432a1a9b766eee45d3080384192ea4e84253 (\"canonicalize takes a block\", 2010-06-14, author Aaron Patterson <aaron.patterson@gmail.com>) introduced Nokogiri's C14N wrapper in ext/nokogiri/xml_document.c with the call `xmlC14NExecute(doc, cb, ctx, XML_C14N_1_0, NULL, 0, buf);` immediately followed by `xmlOutputBufferClose(buf); return rb_funcall(io, \"string\", 0);` — no check of the return value, the exact unchecked-return pattern the advisory names. The parent tree (c0cac010c847724a395d285817a7a33813d54cef) has no xmlC14NExecute call (the function's 55 added lines in xml_document.c are the canonicalize implementation). The fix commit's message states 'The return value of xmlC14NExecute was not being checked', and no earlier commit touching this call site altered the unchecked pattern (subsequent 2022 santuario-c14n work touched JRuby paths, not this C call).",
+  "introducer_sha": "5f0b432a1a9b766eee45d3080384192ea4e84253",
+  "introducer_parent": "c0cac010c847724a395d285817a7a33813d54cef",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names author and committer Aaron Patterson <aaron.patterson@gmail.com> (2010-06-14), message \"canonicalize takes a block\" with no trailer of any kind; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "8e668095c6147def4a3ec044df5f2a478c8161c3",
+  "direct_fix_sha": "5b77f3d1c48cc09c92d10046c448a0866380eb4a",
+  "evidence": [
+    "Advisory (CVE-2026-79772 / GHSA-xqqh-3w52-q8p7, VulnCheck advisory, nokogiri security advisory GHSA-wx95-c6cv-8532): Nokogiri before 1.19.1 fails to check the return value from xmlC14NExecute in the canonicalize method, returning an empty string on failure instead of raising; attackers can bypass signature validation in downstream SAML libraries; CWE-252.",
+    "Fix commit 8e668095c6147def4a3ec044df5f2a478c8161c3 (\"C14n raise on failure (#3600)\", 2026-02-16, Mike Dalessio, merge of 5b77f3d1c48c \"Raise RuntimeError when canonicalization fails\", same author/date): diff in ext/nokogiri/xml_document.c captures the return (`int ret = xmlC14NExecute(...)`) and raises `rb_raise(rb_eRuntimeError, \"canonicalization failed\")` when `ret < 0`, 'matching JRuby's existing behavior'; test_c14n.rb adds test_raise_on_canonicalization_failure. First ships in tag v1.19.1 (merge-base --is-ancestor 8e668095 v1.19.1 verified true; the main-branch twin ab686fa4 via PR #3601 is NOT in v1.19.1, so 8e668095/5b77f3d1 are the release fix shas).",
+    "BIC creation check: `git show 5f0b432a:ext/nokogiri/xml_document.c` line 471 shows `xmlC14NExecute(doc, cb, ctx, XML_C14N_1_0, NULL, 0, buf);` with no return-value capture, followed by unconditionally returning the buffer string; the commit adds 55 lines to xml_document.c (canonicalize implementation) that did not exist in parent c0cac010 (introducer_parent_absent=true for the call site).",
+    "Version boundary: BIC first ships in tag v1.5.1 (tag --contains head; 1.7.0.1-linux-binary1 also), meaning the unchecked call shipped from 2010 through all 1.18.x releases; fix first ships in v1.19.1 (2026-02-16), matching the advisory's 'before 1.19.1' boundary.",
+    "The fix message notes 'This behavior was named as a contributing cause to GHSA-x4h9-gwv3-r4m4' — an earlier SAML-related advisory — corroborating the downstream signature-bypass impact chain described in CVE-2026-79772.",
+    "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1 5f0b432a` shows only Aaron Patterson with no trailers at all (no claude/copilot/anthropic/openai/generated/co-authored); the fix commits 8e668095/5b77f3d1/ab686fa4 likewise carry only Mike Dalessio."
+  ],
+  "reasoning": "Vulnerability first: the advisory names the exact unchecked call — xmlC14NExecute's return value ignored in canonicalize — producing an empty-string success signal on failure, exploitable for SAML signature bypass; the fix's added `if (ret < 0) rb_raise(...)` proves the missing check is the defect. BIC choice: the call site was introduced by 5f0b432a1a9b (2010) together with the whole canonicalize wrapper; the parent tree lacks the call, making the BIC the unique introducer; the unchecked pattern survived every subsequent refactor of the function until 2026. Squash check: the BIC is a small single-purpose feature commit ('canonicalize takes a block', 111 added lines); nothing suggests a decomposed squash; squash_decomposed=false. AI decision: BIC-only attribution — the 2010 commit object carries only the human identity Aaron Patterson with zero trailers, so NOT_AI.",
+  "remaining_gap": null
+}

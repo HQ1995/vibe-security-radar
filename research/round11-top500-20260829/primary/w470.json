@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-c7fc1af06fb91d8488eb1750",
+  "case_id": "GHSA-hxf2-gm22-7vcm",
+  "repo": "nationalsecurityagency/emissary",
+  "advisory_ids": [
+    "CVE-2026-35583",
+    "GHSA-hxf2-gm22-7vcm"
+  ],
+  "bug_semantics": "The unauthenticated JAX-RS configuration endpoints passed the path parameter into Configs.validate(), whose blacklist rejected literal slash, backslash, '..', blank input, and a trailing dot but allowed percent signs and other non-allowlisted characters. The validated name was then appended with '.cfg' and passed to ConfigUtil.getConfigStream(), which constructs and opens a filesystem path under the configured directory. GHSA-hxf2-gm22-7vcm and published CVE-2026-35583 classify this as CWE-22 because encoded, double-encoded, or normalization variants could bypass the blacklist and disclose configuration data outside the intended directory.",
+  "flaw_origin": "PR #352 introduced the configuration API and the vulnerable blacklist in squash commit 99ef64d4860d9a113c4c6482ef8e575330123f83. GitHub's surviving PR-member history decomposes that squash into 91a632b5fc860028b962d14ec163a387a45d2541, 70cdc725f0bf90e81871bd92a9864c95775b78ed, and c6f68a96ead85c57bfee5873a77ac72616708091. The first member, 91a632b5fc860028b962d14ec163a387a45d2541, adds Configs.java with the vulnerable validate() method; its parent 6443531b40f3a2c5096bf8a0f0419324a1385f84 lacks that file. The later members preserve validate(), so 91a632b5fc860028b962d14ec163a387a45d2541 is the atomic BIC.",
+  "introducer_sha": "91a632b5fc860028b962d14ec163a387a45d2541",
+  "introducer_parent": "6443531b40f3a2c5096bf8a0f0419324a1385f84",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "91a632b5fc860028b962d14ec163a387a45d2541",
+    "70cdc725f0bf90e81871bd92a9864c95775b78ed",
+    "c6f68a96ead85c57bfee5873a77ac72616708091"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "33d260d2cfbccc626c7b4c945496dd3832135736",
+  "direct_fix_sha": "33d260d2cfbccc626c7b4c945496dd3832135736",
+  "evidence": [
+    "GitHub advisory API https://api.github.com/advisories/GHSA-HXF2-GM22-7VCM identifies CVE-2026-35583, CWE-22, affected versions < 8.39.0, first patched version 8.39.0, and PR #1292 as remediation; withdrawn_at is null.",
+    "CVE.org API https://cveawg.mitre.org/api/cve/CVE-2026-35583 reports state PUBLISHED, affected version < 8.39.0, and the same configuration-API blacklist-bypass semantics.",
+    "GitHub PR API https://api.github.com/repos/NationalSecurityAgency/emissary/pulls/352 reports merge_commit_sha 99ef64d4860d9a113c4c6482ef8e575330123f83 and member SHAs 91a632b5fc860028b962d14ec163a387a45d2541, 70cdc725f0bf90e81871bd92a9864c95775b78ed, and c6f68a96ead85c57bfee5873a77ac72616708091.",
+    "GitHub commit API for 91a632b5fc860028b962d14ec163a387a45d2541 shows parent 6443531b40f3a2c5096bf8a0f0419324a1385f84 and adds the entire Configs.java, including the vulnerable blacklist and its flow into ConfigUtil.getConfigInfo()/getConfigStream(); patches for the two later PR members do not change validate().",
+    "BIC 91a632b5fc860028b962d14ec163a387a45d2541 is authored and committed by GitHub user dev-mlb with message 'added a new command for viewing configs'; its commit message, authorship, and trailers contain no AI assistant, bot, generated-by, or AI co-author marker.",
+    "Local clone diff for 33d260d2cfbccc626c7b4c945496dd3832135736 replaces the blacklist with ^[a-zA-Z0-9._-]+$ and adds encoded, double-encoded, and traversal regression tests. Its parent 5b909b5b8ae9da88ccf2a9a10fc2251607ab7ea6 still has the vulnerable condition.",
+    "Local tag ancestry shows 7.12.0 is the first release tag containing squash 99ef64d4860d9a113c4c6482ef8e575330123f83. Tag 8.39.0 contains direct fix 33d260d2cfbccc626c7b4c945496dd3832135736, while 8.38.0 does not."
+  ],
+  "reasoning": "The atomic first-write is the surviving PR member 91a632b5fc860028b962d14ec163a387a45d2541, not the later mainline squash aggregate. Its parent is verifiable and did not contain Configs.java; later PR members did not introduce the vulnerable validation. The BIC has no AI provenance marker and is attributed to a human GitHub account, so the real, published vulnerability is NOT_AI. The unrelated repository-level ai-commit signal cannot establish AI causation because the protocol restricts AI judgment to the BIC. The direct allowlist change closes the vulnerable source-to-filesystem-sink path and is present starting in 8.39.0.",
+  "remaining_gap": null
+}

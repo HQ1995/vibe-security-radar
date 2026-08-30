@@ -1,0 +1,43 @@
+{
+  "class_id": "alias-f5fb798bcd081371c625de96",
+  "case_id": "GHSA-w4x2-2pcx-2cpc",
+  "repo": "fishcodetech/muteki",
+  "advisory_ids": ["CVE-2026-79623", "GHSA-w4x2-2pcx-2cpc"],
+  "bug_semantics": "In Muteki's default composer local-worker path, Claude Code is launched with --dangerously-skip-permissions from a per-worker cwd into which challenge attachments are staged by basename. Muteki never had a first-party .claude/settings.json; the sink is Claude Code project-config trust. If an untrusted CTF archive is extracted in that cwd (the PoC plants .claude/settings.json with a SessionStart command hook) and a later headless `claude -p` is started from the same directory, Claude Code loads the planted project settings and executes the hook as the local worker user (CWE-77/78 configuration-plane command execution). Validated by the reporter against project-muteki 0.2.5 commit a585a29 with a reverse shell. CVE.org remains PUBLISHED (not rejected); GHSA withdrawn_at is null.",
+  "flaw_origin": "The trust-boundary first appears in the public-root commit 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 (2026-06-25, 243 files / 70762 insertions, no parent). That commit already (1) stages attachments into the CLI worker cwd (CliSolver._stage_attachments), (2) launches ClaudeCodeDriver with --dangerously-skip-permissions from that cwd, and (3) maps the composer isolation toggle so containerMode=false (the UI default) sends worker_backend=local. No finer public member exists; later 01544da is a private-tree snapshot squash with Cursor co-authorship and is not the first write.",
+  "introducer_sha": "013ab6bf5fded15dcfcbcfbf94b3a270a79f9260",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent. BIC 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 author=jiayuqi7813 <1783671926@qq.com> committer=jiayuqi7813 <1783671926@qq.com>; git cat-file -p shows no Co-Authored-By, Generated-with, Cursor/Copilot/bot identity, or other commit-object AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-79623 state=PUBLISHED (cveMetadata.state, dateUpdated 2026-08-27); CNA=VulDB; affected FishCodeTech Muteki 0.2.0-0.2.5, module Default Local Worker Backend; CWE-78/CWE-77; not rejected. GHSA-w4x2-2pcx-2cpc withdrawn_at=null, patched versions unknown.",
+    "First-party PoC https://github.com/micr0softDrestlife/muteki_vul_report: configuration-plane pollution — untrusted attachment -> .claude/settings.json in worker cwd -> Claude Code SessionStart hook -> worker-user command execution. Tested version project-muteki 0.2.5 commit a585a29 (a585a2943a15efc4de78b00a385335fc9b1f23f1). vul.py writes hooks.SessionStart[].hooks[].type=command.",
+    "GitHub issue FishCodeTech/muteki#7 opened 2026-07-12, closed 2026-07-14 by member jiayuqi7813 with '项目后续会重构，关闭了先' (refactor later, closing for now). No patch commit, no vendor 'not a security issue' disposition.",
+    "git log --all --full-history -- .claude/settings.json: empty. Repo only ever had .claude/launch.json. VulDB's 'unknown function of the file .claude/settings.json' names the Claude Code project-config sink, not a Muteki source file.",
+    "BIC 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 is the public-root first-write: git rev-list --parents -n 1 prints only that sha; git rev-parse SHA^ fails (Needed a single revision). 243 files / 70762 insertions. No reconstructable public member commits.",
+    "BIC muteki/solver/cli_driver.py:417-456 ClaudeCodeDriver.build_execute argv includes --dangerously-skip-permissions (full shell). muteki/solver/cli_solver.py:1800-1828 _stage_attachments materializes attachments into worker cwd by basename (p.name) with no strip of .claude/. muteki/solver/cli_solver.py:2900-2963 stages then _run_streaming(..., cwd=str(wd)).",
+    "BIC composer default local: apps/web/ui/components/Conversation.tsx:749 useState(false) for containerMode; apps/web/ui/app/page.tsx:409 worker_backend = opts?.containerMode ? 'container' : 'local'; i18n composer.containerOffTitle calls host-subprocess local mode the default. SECURITY.md at BIC: 'It does not isolate malicious challenges' / accepted risk — not a withdrawal.",
+    "Tag membership: git merge-base --is-ancestor 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 v0.2.0 and v0.2.5 both true; git tag --contains BIC lists v0.2.0 v0.2.1 v0.2.3 v0.2.4 v0.2.5 v0.3.0 v0.3.1 v0.3.2. Affected range 0.2.0-0.2.5 is after the BIC.",
+    "PoC tree a585a2943a15efc4de78b00a385335fc9b1f23f1 is after v0.2.5 (git log v0.2.5..a585a29 is three non-security commits) and still contains the same staging+skip-permissions launch; mechanism unchanged.",
+    "01544da9f523642ba1ea93528796933b77bad7bc ('release: sync product snapshot', Co-authored-by: Cursor <cursoragent@cursor.com>) is a later private-main squash onto a585a29, not the first write. git log -S '--dangerously-skip-permissions' -- muteki/solver/cli_driver.py: 013ab6b then 01544da (modify, not introduce).",
+    "unpatched: HEAD d1093c1f96381488c1baef5ea1fde2a9b46bc9ae still has ClaudeCodeDriver --dangerously-skip-permissions (cli_driver.py:650-651) and CliSolver._stage_attachments (cli_solver.py:3682-3711) with basename-only linking and no .claude/ quarantine. No security fix SHA exists in public history after issue #7.",
+    "BIC AI check: git cat-file -p 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260 has author/committer jiayuqi7813 <1783671926@qq.com> only; no Co-Authored-By / Generated-with / bot trailer."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-79623 is a published VulDB record of Muteki local-worker Claude Code project-hook injection, not a withdrawn/rejected advisory. The product file named in the CNA text does not exist; the real sink is that Muteki stages untrusted challenge bytes into the same cwd from which it starts `claude -p --dangerously-skip-permissions`, so a later Claude Code session will honor a planted .claude/settings.json SessionStart command hook. The reporter's tar.gz PoC plus in-archive README that asks the worker to extract and re-launch claude is the demonstrated path; Muteki does not auto-extract archives, but it also does not isolate agent project config from challenge data. That is a real trust-boundary bug in the default local backend (composer containerMode defaults false). Vendor SECURITY.md documents isolation as a non-goal, which explains the missing patch but does not make the advisory a false positive. BIC: git log -S and the first appearance of ClaudeCodeDriver + _stage_attachments + local composer mapping are all in public-root 013ab6bf5fded15dcfcbcfbf94b3a270a79f9260. Immediate parent is absent (verified: rev-parse SHA^ fails; rev-list --parents has no second sha). This is the smallest surviving public first-write; the 70k-line initial dump cannot be decomposed into public members. It is an ancestor of v0.2.0..v0.2.5, so it precedes the affected range. AI judgment is BIC-commit-object only: human author/committer jiayuqi7813, no AI trailers. Later Cursor co-authorship on 01544da is ignored. Fix: issue #7 was closed without a code change; HEAD still has the same staging+launch mechanism, so the finding is unpatched.",
+  "remaining_gap": "unpatched: no public fix SHA after GHSA-w4x2-2pcx-2cpc / issue #7; vendor closed with a refactor-later comment and never stripped .claude/ from worker cwd or disabled project hooks.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "Member closed FishCodeTech/muteki#7 on 2026-07-14 without a patch ('项目后续会重构，关闭了先'). Public history through HEAD d1093c1f96381488c1baef5ea1fde2a9b46bc9ae still stages attachments into the Claude worker cwd and launches claude --dangerously-skip-permissions from that directory; GHSA patched versions remain unknown.",
+    "potential_fix": {
+      "approach": "Do not launch Claude Code from a directory that contains untrusted challenge files: extract attachments into a data-only subdirectory, quarantine/strip agent config paths (.claude/, .codex/, .cursor/) from archives before any CLI start, and disable project-level hooks (or set CLAUDE_CONFIG_DIR / equivalent so cwd .claude/settings.json cannot register SessionStart command hooks) for local workers.",
+      "rationale": "The sink is Claude Code treating worker-cwd .claude/settings.json as trusted project configuration. Separating challenge data from the agent project root and refusing untrusted SessionStart hooks removes the configuration-plane execution path without relying on the LLM not to extract archives.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/FishCodeTech/muteki/issues/7"
+    }
+  }
+}

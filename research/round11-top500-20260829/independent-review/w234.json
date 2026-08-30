@@ -1,0 +1,26 @@
+{
+  "worker": "w234",
+  "review_agent_id": "r389_w234",
+  "class_id": "alias-9f9c2209e45ba0a5d8439785",
+  "case_id": "GHSA-j7c4-3mfp-j7v9",
+  "repo": "libcsp/libcsp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: csp_usart_open() allocates a zeroed usart_context_t whose name field is CSP_IFLIST_NAME_MAX + 1 bytes (11 bytes), then used strcpy(ctx->name, conf->device) on an unbounded caller-supplied C string. An input of 11 or more characters therefore writes the terminating NUL beyond name and can overwrite following heap-object fields.",
+    "atomic_bic": "CONFIRMED: e143ee74d3269b2469ed389c0b475dbc836e3610 is the smallest surviving public-history commit that adds src/drivers/usart/usart_zephyr.c with both the 11-byte name field and vulnerable strcpy. Exact -S history and fix-parent blame identify only this addition and the later direct fix.",
+    "immediate_parent_absence": "CONFIRMED: e143ee74d3269b2469ed389c0b475dbc836e3610 has the single immediate parent a835937fe054f192f92edc91e8ede6c0bbd3d930; that parent object is present and src/drivers/usart/usart_zephyr.c is absent from its tree.",
+    "squash_member_decomposition": "CONFIRMED: GitHub PR #599 reports four commits and merge_commit_sha e143ee74d3269b2469ed389c0b475dbc836e3610. Its final pre-rebase member 94a3b9cbfe559c6471986bfb5f7df029c9ff8f0e has the same complete tree and identical usart_zephyr.c blob as e143ee74, while its parent 52eae8375b45df7921e3f7088f8fd5bb2b7cb06e lacks the file. The surviving BIC is a rebased atomic member, not a squash aggregate.",
+    "affected_release_membership": "CONFIRMED WITH ADVISORY VERSION MISMATCH: e143ee74 is not an ancestor of v2.0 (a29d7cf5570f6da638d012c78676d51df97792c4), and v2.0 has no usart_zephyr.c. Thus the NVD CPE and advisory wording naming libcsp 2.0 are inaccurate; the real vulnerable interval is the develop history from e143ee74 until the fix.",
+    "fixed_release_membership": "CONFIRMED: both e143ee74 and a8649782b05f67701c736dba0c51289dfa33eb7e are ancestors of v2.1 (48f7fb0b57f610bf65bab1aa2d1357c3b9722782), whose usart_zephyr.c contains the bounded strncpy call. The only tag containing either commit is v2.1.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED DIRECT FIX: a8649782b05f67701c736dba0c51289dfa33eb7e changes only strcpy(ctx->name, conf->device) to strncpy(ctx->name, conf->device, sizeof(ctx->name) - 1). Because ctx is allocated with k_calloc, the final byte remains NUL. GitHub PR #853 is a one-commit PR merged to develop with this SHA.",
+    "bic_only_ai_attribution": "CONFIRMED: the raw e143ee74 commit object names human author KantaTamura and human committer Yasushi SHOJI and contains only a Signed-off-by trailer. It has no Co-Authored-By, Generated-with, Copilot, Cursor, ChatGPT, or bot marker. The equivalent pre-rebase member 94a3b9cb is likewise human-authored and contains no AI marker; fix authorship is not used for attribution."
+  },
+  "findings": [
+    "CVE-2025-51824 remains PUBLISHED in CVE.org, GHSA-j7c4-3mfp-j7v9 has withdrawn_at=null, and NVD currently marks it Analyzed with CWE-120; the linked issue and direct patch corroborate a real overflow despite the erroneous v2.0 version label.",
+    "The primary record correctly identifies the atomic BIC, its verifiable parent, the rebased PR member, the direct fix, and the absence of BIC-local AI evidence.",
+    "The primary record already discloses the affected-release mismatch: v2.0 predates the vulnerable file, while v2.1 contains both introduction and repair."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-0818185f8f22e9a62c6f26d4",
+  "case_id": "GHSA-m69x-pw9p-7j3q",
+  "repo": "spring-projects/spring-security",
+  "advisory_ids": ["CVE-2026-40988", "GHSA-m69x-pw9p-7j3q"],
+  "bug_semantics": "SAML 2.0 HTTP-Redirect binding payloads (login SAMLResponse or logout SAMLRequest) are Base64-decoded then inflated through java.util.zip.InflaterOutputStream into an unbounded ByteArrayOutputStream. An unauthenticated attacker can send a small DEFLATE bomb on a GET to the ACS or SLO endpoint; the inflater writes without a size cap and can exhaust heap (CWE-400 DoS). POST binding skips inflate and is not this bug. The 2026 fix wraps the writer in CappedOutputStream (1 MiB) and, for login, also recommends OpenSaml5AuthenticationTokenConverter#setShouldConvertGetRequests(false).",
+  "flaw_origin": "The unbounded inflater was first written as Saml2Utils.inflate() in the 2019 SAML2 SP MVP and was immediately wired to GET SAMLResponse handling in Saml2WebSsoAuthenticationFilter.inflateIfRequired. Later copies/renames (samlInflate, per-package Saml2Utils, OpenSAML 4/5 converters, logout GET inflate) preserved the same InflaterOutputStream(ByteArrayOutputStream) mechanism; they did not introduce a new writer. No size bound existed until 9d4d9065b48508c9e115f2f894632120787fd1df.",
+  "introducer_sha": "e9a44bc0ce98db5a758c373f87dd2346d0c2aff5",
+  "introducer_parent": "b5cbab01df5c2e29641b8068f456da91864d7600",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author Filip Hanik <fhanik@pivotal.io>, committer Filip Hanik <fhanik@pivotal.io>; commit message/trailers have no Co-Authored-By, Generated-with, or bot identity (unsigned, 2019-08-13 / committed 2019-09-05).",
+  "verdict": "NOT_AI",
+  "fix_sha": "9d4d9065b48508c9e115f2f894632120787fd1df",
+  "direct_fix_sha": "9d4d9065b48508c9e115f2f894632120787fd1df",
+  "evidence": [
+    "CVE.org CVE-2026-40988 state=PUBLISHED (CNA vmware, datePublished 2026-06-09); GHSA-m69x-pw9p-7j3q withdrawn_at=null; first-party https://spring.io/security/cve-2026-40988 describes unbounded DEFLATE inflation on REDIRECT binding login/logout.",
+    "Fix commit 9d4d9065b48508c9e115f2f894632120787fd1df ('Cap Deflate Size', Josh Cummings, Signed-off-by only) wraps InflaterOutputStream with CappedOutputStream MAX_SIZE=1024*1024 in saml2/.../internal/Saml2Utils.java samlInflate and the duplicated per-package Saml2Utils copies; parent of that commit still uses InflaterOutputStream(out, new Inflater(true)).",
+    "Tag membership of the fix: ancestor of 6.5.11 (73b077790fcb04ac3712033d3e939daf42264545) and 7.0.6 (acd131c3d1902c6422ae27fcd319d76fe7cafd3c); not ancestor of 6.5.10 or 7.0.5. 7.0.5 internal Saml2Utils.samlInflate lines 64-75 still unbounded; 7.0.6 line 68 uses new CappedOutputStream(out).",
+    "Attack path at 7.0.5: BaseOpenSamlAuthenticationTokenConverter.decode (lines 181-189) and Saml2AuthenticationTokenConverter.decode (lines 100-111) do Saml2Utils.withEncoded(SAML_RESPONSE).inflate(isGet) on GET; logout GET inflates in BaseOpenSamlLogoutRequestValidatorParametersResolver.logoutRequestByEntityId line 160. DecodingConfigurer.decode then calls samlInflate.",
+    "BIC e9a44bc0ce98db5a758c373f87dd2346d0c2aff5 added saml2/.../servlet/filter/Saml2Utils.java inflate() at lines 71-82 (ByteArrayOutputStream + InflaterOutputStream(out, new Inflater(true))) and Saml2WebSsoAuthenticationFilter.inflateIfRequired lines 80-84 which inflates GET SAMLResponse. Single parent b5cbab01df5c2e29641b8068f456da91864d7600: cat-file -e parent:saml2 fails (no saml2 tree); parent path Saml2Utils.java does not exist.",
+    "git log -S InflaterOutputStream -- saml2/.../servlet/filter/Saml2Utils.java first hits e9a44bc0 (later 31bae546e2fe937fec780d6d4393723a24bbb96f only deletes the unused file). 5061ae9e7900b590a568a377fd58b9663323f3d6 and 94431d16502669b25b63aab0df30f9938417373d copy/move the same unbounded inflater; they are not first-writes.",
+    "Landed via merge 08d50868c9ed9ff98d0745b82bfb94e38de662f0 (Merge pull request #7260 from fhanik/feature/saml2-sp-mvp); unique second-parent commit vs first parent is only e9a44bc0. GitHub PR #7260 commits API returns that single SHA. Pre-merge force-pushed member 5ce7c97bde0f50aac13523334d296818ffa4b34c is not retrievable. Parent of e9a44bc0 is verifiable; no finer public first-write of inflate() can be reconstructed.",
+    "BIC precedes affected/patched range: ancestor of 5.2.0.RC1 (ecf00625ffe7ca703711a8e8143435e33ec1ccac), 5.2.0.RELEASE, 5.7.0, and later affected tags; not in 5.2.0.M4. Advisory OSS patches 6.5.11/7.0.6 sit at/after the cap commit.",
+    "BIC commit-object AI check: author/committer Filip Hanik <fhanik@pivotal.io> (GitHub user fhanik, human Spring committer); no Co-Authored-By/Generated-with/bot trailers; unsigned. PR-body/branch names not used for attribution."
+  ],
+  "reasoning": "CVE-2026-40988 is a published CWE-400: Redirect-binding SAML payloads are inflated into an uncapped in-memory writer. The vulnerable mechanism is InflaterOutputStream writing into ByteArrayOutputStream inside Saml2Utils.inflate / samlInflate, invoked on GET SAMLResponse (login) and GET SAMLRequest (logout). That writer first appears in e9a44bc0ce98db5a758c373f87dd2346d0c2aff5 (HttpSecurity.saml2login() MVP, Filip Hanik, Fixes gh-6019), which also added inflateIfRequired for GET. Immediate parent b5cbab01df5c2e29641b8068f456da91864d7600 has no saml2 directory, so the lines are absent there. PR #7260 was force-pushed to this single commit then merge-committed; GitHub lists only e9a44bc0 and the earlier force-pushed SHA is gone, so e9a44bc0 is the smallest surviving public first-write (not a later copy at 5061ae9e/94431d16). The cap fix 9d4d9065b48508c9e115f2f894632120787fd1df is in OSS 6.5.11 and 7.0.6 and not in 6.5.10/7.0.5, matching the advisory. AI is judged only on the BIC commit object: human author and committer, no AI trailers, 2019. Therefore NOT_AI.",
+  "remaining_gap": null
+}

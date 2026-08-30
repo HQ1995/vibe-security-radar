@@ -1,0 +1,26 @@
+{
+  "worker": "w247",
+  "review_agent_id": "r389_w247",
+  "class_id": "alias-2da295bf3990fb8cdd4ee43c",
+  "case_id": "GHSA-qhp6-635j-x7r2",
+  "repo": "static-web-server/static-web-server",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. Basic Authentication compared the supplied username first and returned UNAUTHORIZED on mismatch; only a matching username reached bcrypt_verify, so the two username classes followed observably different work paths and enabled username enumeration.",
+    "atomic_bic": "Confirmed abc76a8c1f19e7efe2172f8808c171cb9d2e69ad. It added src/basic_auth.rs and bcrypt, with bcrypt_verify nested under the username-equality branch. The later e9d33ca38d1e1f04858bdafe9ba0ac2d2fe2f69e only rewrote the same mechanism as an early return.",
+    "immediate_parent_absence": "Confirmed. abc76a8c1f19e7efe2172f8808c171cb9d2e69ad has the single parent 5528bcb9ad2d611e8517b85762722880a90ad613, where src/basic_auth.rs does not exist and the Basic Authentication mechanism is absent.",
+    "squash_member_decomposition": "Confirmed for BIC selection. Public PR #55 is represented by feature commit abc76a8c1f19e7efe2172f8808c171cb9d2e69ad followed by docs-only f89c5c9158dad55d5a0507f17d5ada548865f36c, then merge a3f4258e9a8b0a2b19bbf50786aab29ae9813c7b; the merge and docs commit are not introducers. The direct fix 7bf0fd425eb10dac9bf9ef5febce12c4dd039ce1 is a single-parent squash-style security landing, but the exact corrective diff is present in that surviving object and does not affect BIC identity.",
+    "release_membership": "Confirmed. The BIC is not an ancestor of v2.0.3 and is an ancestor of v2.1.0, whose src/basic_auth.rs contains the username-gated bcrypt call. Fix 7bf0fd425eb10dac9bf9ef5febce12c4dd039ce1 is not an ancestor of v2.40.1 and is an ancestor of v2.41.0; the v2.41.0 changelog names the timing-based username-enumeration fix. This matches the published CVE range >=2.1.0,<2.41.0.",
+    "direct_fix": "Confirmed 7bf0fd425eb10dac9bf9ef5febce12c4dd039ce1. Its parent 08900b36648123eac19fb3203331d8903cd41174 still returns before bcrypt on username mismatch; the fix computes user_match, always performs bcrypt_verify, and combines both results before returning.",
+    "advisory_disposition": "Confirmed real and published, not a withdrawn or rejected advisory. CVE.org reports CVE-2026-27480 state=PUBLISHED and cites GHSA-qhp6-635j-x7r2 plus fix 7bf0fd425eb10dac9bf9ef5febce12c4dd039ce1; the frozen GHSA record has withdrawn_at=null.",
+    "bic_only_ai_attribution": "Confirmed absent on the BIC only. Commit abc76a8c1f19e7efe2172f8808c171cb9d2e69ad names Jose Quintana as author and committer, has message 'feat: basic http authentication support' / 'resolves #53', and has no trailers or AI/bot-generation marker. Fix-commit authorship and wording were not used for attribution."
+  },
+  "findings": [
+    "The primary record identifies the correct vulnerability mechanism, atomic introducer, immediate parent, affected range, direct fix, and fixed release.",
+    "Independent local Git replay confirms abc76a8c1f19e7efe2172f8808c171cb9d2e69ad is the first public write of the vulnerable username-gated bcrypt path; e9d33ca38d1e1f04858bdafe9ba0ac2d2fe2f69e preserves rather than introduces it.",
+    "The evidence supports NOT_AI because attribution is restricted to the BIC and that object contains no AI marker."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,43 @@
+{
+  "class_id": "alias-6d9b7e7f3b75552edf8715ff",
+  "case_id": "GHSA-25qx-69jj-jfcj",
+  "repo": "alseambusher/crontab-ui",
+  "advisory_ids": [
+    "CVE-2026-72590",
+    "GHSA-25qx-69jj-jfcj"
+  ],
+  "bug_semantics": "Unauthenticated CRLF injection into the system crontab via GET /crontab. Express decodes URL-encoded %0a/%0d in req.query.env_vars; app.js passes that string unsanitized to crontab.set_crontab, which prefixes the generated crontab file with `${envVars}\\n` (originally `env_vars + \"\\n\"`) and then execs `crontab <file>`. Lines after the injected newline are treated as extra cron records, so a caller can install arbitrary scheduled commands through a field intended only for crontab environment assignments (PATH, MAILTO, HOME). Basic auth is optional (BASIC_AUTH_USER/PWD); Docker images bind HOST=0.0.0.0:8000.",
+  "flaw_origin": "The env_vars sink was first written on 2016-02-14 in 0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43 (GitHub PR #4, single commit by Fantoccini). The immediate parent called set_crontab() with no arguments and had no env_vars identifier anywhere in the tree. That commit added crontab.set_crontab(req.query.env_vars) in app.js and `if (env_vars) { crontab_string = env_vars + \"\\n\"; }` in crontab.js with no KEY=value parsing or newline neutralization. Follow-up 5f52cbcf44bf1515d70ad54233e73c3ddc1fc40b only persisted env.db; the 2026 'Major revamp' ecfe9faa586674dccfa20aab3d95f7e7ab5a48a2 rewrote the same concatenation as `${envVars}\\n` and is a refactor, not the BIC.",
+  "introducer_sha": "0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43",
+  "introducer_parent": "ed99f4b5418144d6bf31a6b9373aad5c5f0d1689",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author/committer Fantoccini <paladinroar@gmail.com> (GitHub user Fantoccini); commit message 'Add textarea for environment variables'; no Co-Authored-By, Generated-with, Cursor, Copilot, Claude, ChatGPT, or bot trailers on the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org record CVE-2026-72590 is PUBLISHED (TuranSec CNA, datePublished 2026-08-10T10:41:45Z, dateUpdated 2026-08-10T13:23:34Z, not rejected). Title: Unauthenticated RCE via Newline Injection in env_vars Parameter. CWE-93. Affected alseambusher/crontab-ui 0 <= 0.4.2 semver; no patched version. GHSA-25qx-69jj-jfcj withdrawn_at=null, github_reviewed_at=null, patched versions unknown. https://cveawg.mitre.org/api/cve/CVE-2026-72590 https://github.com/advisories/GHSA-25qx-69jj-jfcj",
+    "Attack path at HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b and tag v0.4.2 e1ae9d00231d78b2755dcf0182b7f7062726e8b7: app.js GET routes.crontab (routes.js crontab:'/crontab') calls crontab.set_crontab(req.query.env_vars); crontab.js set_crontab does crontabString += `${envVars}\\n` then fs.writeFile of that string and exec(`crontab ${path.join(cronPath, fileName)}`). addEnvVars() collapses newlines only on the runjob path, not on crontab install.",
+    "BIC 0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43 (2016-02-14, PR https://github.com/alseambusher/crontab-ui/pull/4, merged 2016-02-14T16:28:44Z, exactly 1 commit, not a squash). Diff: app.js `crontab.set_crontab();` -> `crontab.set_crontab(req.query.env_vars);`; crontab.js `exports.set_crontab = function()` -> `function(env_vars)` plus `if (env_vars) { crontab_string = env_vars + \"\\n\"; }`. Also wired public/js/script.js $.get(routes.crontab, {env_vars: $('#env_vars').val()}).",
+    "Parent verification: git rev-parse 0c6cc55^ = ed99f4b5418144d6bf31a6b9373aad5c5f0d1689. git grep env_vars on that tree over crontab.js/app.js/public/js/script.js/views/index.ejs returned no matches. Parent set_crontab took no args and wrote only tab.schedule+command lines to /tmp/crontab.",
+    "git log -L 122,123:app.js first introduction of req.query.env_vars is 0c6cc55; 40c7008 (error-handling callback), 65acd94 (autosave comment), and ecfe9fa (Major revamp rewrite) are later carriers, not first-writes. git log -S env_vars -- app.js agrees.",
+    "Tag membership: 0c6cc55 is an ancestor of every published tag from v0.1.8 through v0.4.2 (git merge-base --is-ancestor). package.json at the BIC still said 0.1.5; maintainer 5f52cbc bumped 0.1.6 the same day. CVE 'through 0.4.2' matches the last tagged release, which still contains the sink.",
+    "Unpatched: git log --all --since=2026-08-01 is empty. HEAD 870d958 (2026-04-23, Makefile only) and v0.4.2 still contain set_crontab(req.query.env_vars) and crontabString += `${envVars}\\n`. No security commit, patched GHSA range, or issue/PR for CVE-2026-72590 in the clone or GitHub search.",
+    "BIC commit object (git cat-file -p 0c6cc55): author Fantoccini <paladinroar@gmail.com> 1455421587 +1100; committer same; body is only 'Add textarea for environment variables' with no AI/co-author/bot trailers. GitHub commit search maps the SHA to human user Fantoccini (id 1171893).",
+    "Default exposure: middleware/auth.js applies express-basic-auth only when BASIC_AUTH_USER and BASIC_AUTH_PWD are both set. Dockerfile ENV HOST=0.0.0.0 PORT=8000, matching the advisory's unauthenticated remote GET."
+  ],
+  "reasoning": "CVE-2026-72590 / GHSA-25qx-69jj-jfcj is a published (not withdrawn) CWE-93: GET /crontab copies the env_vars query parameter, including decoded newlines, into the crontab file that is loaded with crontab(1), injecting extra job lines. The smallest first-write of that mechanism is 0c6cc5512adf5d252b0cd9aa0b7c4c4131661c43 from PR #4 (one ordinary commit, parent ed99f4b5418144d6bf31a6b9373aad5c5f0d1689). Direct parent-tree grep shows env_vars and the env-prefix concatenation did not exist before that commit; set_crontab previously took no user string. Later 2026 revamp ecfe9fa only restyled the same sink and is therefore not the BIC. Authorship is judged only from that BIC object: human Fantoccini author and committer, 2016-02-14, no Co-Authored-By/Generated-with/bot markers, so the verdict is NOT_AI. No vendor fix SHA exists: the sink remains at v0.4.2 and HEAD, GHSA/CVE list no patched versions, and there are no post-disclosure commits; fix_sha/direct_fix_sha stay null with an explicit unpatched record.",
+  "remaining_gap": "unpatched: no upstream fix commit through HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b; CVE-2026-72590 and GHSA-25qx-69jj-jfcj name no patched release, and the env_vars newline concatenation is still present at v0.4.2 and main.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "CVE-2026-72590 / GHSA-25qx-69jj-jfcj list affected versions through 0.4.2 with no patched event. The sink (GET /crontab -> set_crontab(req.query.env_vars) -> crontabString += `${envVars}\\n` -> exec crontab) is present at tag v0.4.2 (e1ae9d00231d78b2755dcf0182b7f7062726e8b7) and HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b. git log --all --since=2026-08-01 is empty; GitHub has no fix PR or security advisory patch for this CVE.",
+    "potential_fix": {
+      "approach": "Reject env_vars content that is not a crontab environment assignment: split on newlines, keep only optional comments and NAME=value lines, drop any line matching a cron schedule (five fields or @reboot/@daily/etc. plus a command). Do not write raw req.query.env_vars into the crontab file. Change GET /crontab to POST so query-string CRLF and CSRF-via-GET cannot install jobs. Keep auth optional only behind an explicit bind/auth warning; default Docker should not expose an unauthenticated crontab writer on 0.0.0.0.",
+      "rationale": "The injectable primitive is extra crontab records created from decoded newlines in a parameter meant for env assignments. Accepting only KEY=value/comment lines closes the CWE-93 breakout; moving the install endpoint off GET removes the unauthenticated one-request install path described in the advisory.",
+      "reference_commit": null,
+      "reference_url": null
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "worker": "w178",
+  "review_agent_id": "r389_w178",
+  "class_id": "alias-41c66fdf3bfbc6dd2b335ecb",
+  "case_id": "GHSA-v75r-vx73-82pj",
+  "repo": "cyclonedx/cyclonedx-node-npm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: 7da79c148dae1f6105e1a65048989626377019cf added the free-form CLI --workspace source and copied each value into npm ls argv as `--workspace=${workspace}`. When npm_execpath is empty, the pre-existing makeNpmRunner fallback joins argv into `execSync('npm ' + args.join(' '), options)`, so shell metacharacters reach a subshell; the npm_execpath-present execFileSync path is outside this mechanism.",
+    "atomic_bic": "CONFIRMED: bounded -S history for both the workspace argv interpolation and CLI option starts at single-parent commit 7da79c148dae1f6105e1a65048989626377019cf. The older 719b99a0fd542d1d54f1b07609874ee864f2b605 wrote the generic fallback sink but did not expose this advisory's attacker-controlled workspace source; d6da4cee8d86bf4f6c5688e5f1677ae2597cfe20 retained the already-present interpolation and is not the BIC.",
+    "immediate_parent_absence": "CONFIRMED: parent 15da89b3f1c6646fd3a7e4877fdbb9546a69fe14 is locally resolvable and contains the execSync fallback, but `git grep workspace <parent> -- src` has no match; the --workspace CLI source and argv interpolation are absent. `introducer_parent_absent` correctly remains false because the parent object itself is present.",
+    "squash_member_decomposition": "CONFIRMED: public-history BIC 7da79c148dae1f6105e1a65048989626377019cf and PR-head object df3cdf0154ace2dea0b7bb03cb4cb71dffdce7fe have the same sole parent 15da89b3f1c6646fd3a7e4877fdbb9546a69fe14 and identical tree bdf38a236839db9e6f389bddd3c855fb4acb41a8. The PR head is not an ancestor of HEAD, and there is no finer distinct member content to substitute for the BIC.",
+    "affected_fixed_release_membership": "CONFIRMED: BIC 7da79c148dae1f6105e1a65048989626377019cf is not an ancestor of v2.0.0 and is an ancestor of v2.1.0. Fix 9f646253f4263d8644dadb86e5597fad996f688f is not an ancestor of v4.2.1 and is an ancestor of v5.0.0, matching the authoritative CVE range >=2.1.0,<5.0.0 and fixed version 5.0.0.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: direct fix 9f646253f4263d8644dadb86e5597fad996f688f descends from the BIC and removes the string-joining execSync fallback. It resolves a system npm executable and invokes npm via argv-preserving execFileSync (with a Windows cmd.exe handling branch); parent 79704d50e4e05df0a9138f69148bb32fccb51583 still contains the vulnerable fallback.",
+    "bic_only_ai_attribution": "CONFIRMED: the exact BIC object is authored by Malick Burger and committed by GitHub, with only a Signed-off-by trailer and no AI/bot/generated/co-author marker. The identical-tree PR head is likewise human-authored with only Signed-off-by. The fix commit's separate fortress co-author is fix-side evidence and was not used to attribute the BIC."
+  },
+  "findings": [
+    "Independent source-to-sink and history replay confirms 7da79c148dae1f6105e1a65048989626377019cf as the smallest public-history writer that completes this advisory's workspace injection path.",
+    "CVE.org currently reports CVE-2026-55849 as PUBLISHED under GitHub_M and describes the same npm_execpath-empty workspace injection mechanism and >=2.1.0,<5.0.0 affected range.",
+    "All release, direct-fix, parent, decomposition, and BIC-only authorship gates close consistently with the primary NOT_AI verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-16b0b8ed4fb637e6bd6548ff",
+  "case_id": "GHSA-h2qv-fj59-j46j",
+  "repo": "netty/netty",
+  "advisory_ids": ["CVE-2026-48059", "GHSA-h2qv-fj59-j46j"],
+  "bug_semantics": "Netty's HAProxy PROXY protocol v2 decoder recursively parses nested PP2_TYPE_SSL TLVs, each as a retainedSlice of the channel cumulation buffer. readTlvs() flattens only the immediate children of top-level SSL TLVs into HAProxyMessage.tlvs(); depth-2+ encapsulated TLVs stay solely on HAProxySSLTLV.encapsulatedTLVs(). HAProxySSLTLV does not override deallocate, and HAProxyMessage.deallocate() only walks the flattened list, so a syntactically valid nested-SSL header parses, fires downstream, and is released by the application while the depth-2+ slices permanently pin the pooled ByteBuf (CWE-401).",
+  "flaw_origin": "The incomplete ownership model was first written in 1f0d47dee797df8d437b4151aaa39fcfae73b513 (2016-09-28 author date; landed 2017-06-07): HAProxyMessage.readNextTLV() retained nested SSL/leaf TLV slices and readTlvs() addAll'd only one encapsulation level. Parent b03b0f22d1e54733c2d39c7f913f971dab14ebfa has HAProxyMessage but no TLV types, no readNextTLV/readTlvs, and no retainedSlice in codec-haproxy. Later 712077cdef050bc9aa211d301a1bdc3e763b6097 (#9250) added deallocate() over that same flattened list (incomplete general leak fix); cd91cf3c99123bd1e53fd6a1de0e3d1922f05bb2 (CVE-2022-41881) only capped recursion. Neither rewrote the flatten/retain mechanism.",
+  "introducer_sha": "1f0d47dee797df8d437b4151aaa39fcfae73b513",
+  "introducer_parent": "b03b0f22d1e54733c2d39c7f913f971dab14ebfa",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Georg Held <georg.held@dc-square.de>, committer Scott Mitchell <scott_mitchell@apple.com>; commit body/trailers have no Co-Authored-By, Generated-with, Copilot, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "bd6214fe1c3bae1d42aad6e372657b5b2c1f5105",
+  "direct_fix_sha": "270800e5d336913606493a562c8200ecf321a0c1",
+  "evidence": [
+    "CVE.org CVE-2026-48059 (CNA GitHub, updated 2026-06-12) describes nested PP2_TYPE_SSL TLV memory leak prior to 4.1.135.Final and 4.2.15.Final; GHSA-h2qv-fj59-j46j withdrawn_at=null, github_reviewed, CVSS 7.5 AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H. Not withdrawn/rejected.",
+    "GHSA impact: leak is on the successful parse path; application releases HAProxyMessage normally; cumulation ByteBuf remains pinned. Distinct from GHSA-cc37-9q2j-3hfv/CVE-2026-44893 (invalid TLV length IOOBE leak, #16866) and GHSA-fx2c-96vj-985v/CVE-2022-41881 (nested SSL stack overflow).",
+    "4.1.135.Final release cites CVE-2026-48059 and PR #16881 'HAProxy: Fix ByteBuf leak when parsing nested SSL TLVs'. PR body: depth-2+ TLVs are not flattened into tlvs() and are missed by the standard release process.",
+    "Vulnerable 4.1.134.Final / 4.2.14.Final HAProxyMessage.readTlvs() (lines 246-261) addAll only encapsulatedTLVs() of each top-level SSL TLV; readNextTLV PP2_TYPE_SSL (lines 278-297) does header.retainedSlice(...) then recursive readNextTLV(byteBuf, nestingLevel+1); deallocate() (lines 600-604) only tlv.release() on the flattened list. HAProxySSLTLV has no deallocate() override (git grep deallocate at 4.1.134 only hits HAProxyMessage).",
+    "git log -L 254,258:...HAProxyMessage.java netty-4.1.134.Final: one-level flatten first appears in 1f0d47dee797df8d437b4151aaa39fcfae73b513. git log -L 278,297: retainedSlice+recursive nested SSL first written there; cd91cf3c99123bd1e53fd6a1de0e3d1922f05bb2 only adds nestingLevel. git log -S 'haProxyTLVs.addAll' and -S 'readNextTLV(byteBuf' on 4.1.134 both return only 1f0d47dee7.",
+    "git cat-file -p 1f0d47dee797df8d437b4151aaa39fcfae73b513: single parent b03b0f22d1e54733c2d39c7f913f971dab14ebfa. Parent tree has codec-haproxy HAProxyMessage.java but git grep readNextTLV|PP2_TYPE_SSL|encapsulatedTLVs|readTlvs|retainedSlice on parent codec-haproxy is empty; no HAProxyTLV.java/HAProxySSLTLV.java. introducer_parent_absent after direct parent-tree check.",
+    "PR #6245 (sauroter/Georg Held) is a single commit 9e577948 continuing closed #5872; landed as 1f0d47dee7 (not a GitHub merge, not a multi-member squash). squash_decomposed=false.",
+    "Tag membership: BIC not in netty-4.1.11.Final, is in netty-4.1.12.Final and every later 4.1/4.2 tag checked including 4.1.134.Final and 4.2.0.Final/4.2.14.Final. Matches GHSA ranges <=4.1.134.Final and >=4.2.0.Final,<=4.2.14.Final.",
+    "4.1 fix bd6214fe1c3bae1d42aad6e372657b5b2c1f5105 (Norman Maurer squash-merge of #16881, Co-authored-by Violeta Georgieva) is ancestor of netty-4.1.135.Final and not of netty-4.1.134.Final. Adds releaseTlvs/releaseDeep. git grep releaseTlvs absent on 4.1.134, present on 4.1.135.",
+    "4.2 equivalent 270800e5d336913606493a562c8200ecf321a0c1 (Violeta Georgieva / GitHub 'Merge commit from fork', same patch message) is ancestor of netty-4.2.15.Final and not of netty-4.2.14.Final. git grep releaseTlvs absent on 4.2.14, present on 4.2.15 (releaseTlvs at line 277, deallocate calls it at 651).",
+    "BIC commit-object AI check: author Georg Held <georg.held@dc-square.de>, committer Scott Mitchell <scott_mitchell@apple.com>, no Co-Authored-By/Generated-with/bot trailers. PR-body/fix-side AI (Violeta on #16881) is not BIC attribution."
+  ],
+  "reasoning": "CVE-2026-48059 is a real, unwithdrawn HAProxy v2 nested-SSL TLV refcount leak. Decode of a valid nested PP2_TYPE_SSL header retains a slice per TLV; only depth-0 SSL plus its depth-1 children are placed in HAProxyMessage.tlvs(), so deallocate/release of the message never drops depth-2+ retains and the pooled cumulation stays pinned. The smallest public first-write of that retain-plus-one-level-flatten is 1f0d47dee797df8d437b4151aaa39fcfae73b513 (Added PROXY Protocol TLV support). Its parent lacks those lines/files. #9250's deallocate is a later incomplete remediation that walks the already-incomplete flatten list; the 2022 nesting-limit advisory only stopped stack overflow. BIC precedes 4.1.12+ and 4.2.0+ affected tags; the recursive-release fix lands at #16881 on 4.1 (bd6214fe, 4.1.135.Final) and the fork merge on 4.2 (270800e5, 4.2.15.Final). AI is judged only on the BIC object: human author/committer, no commit-object AI marker, so NOT_AI.",
+  "remaining_gap": null
+}

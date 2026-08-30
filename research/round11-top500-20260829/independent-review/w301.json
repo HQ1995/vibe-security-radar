@@ -1,0 +1,26 @@
+{
+  "worker": "w301",
+  "review_agent_id": "r389_w301",
+  "class_id": "alias-e93298eb5474e1b245b669bc",
+  "case_id": "GHSA-6rq7-m52p-8pqg",
+  "repo": "xuxueli/xxl-job",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In tag 3.1.1, authenticated non-admin users reach POST /joblog/getJobsByGroup because PermissionInterceptor defaults to needLogin=true and needAdminuser=false. The handler passes the attacker-selected jobGroup to getJobsByGroup without validJobGroupPermission, unlike pageList and the filtered group UI, exposing XxlJobInfo from unauthorized executor groups. CVE-2025-9263 is currently PUBLISHED and the repository issue documents this same IDOR/resource-key bypass.",
+    "atomic_bic": "Confirmed as 8a8d7a5caf0a65a384b296aaeda2d12d039d731d. git log -L on the 3.1.1 handler traces through later type, rename, and annotation-only edits to this 2016 commit, which first adds both the unguarded mapping and its client POST. Those later edits do not first write the vulnerable lookup.",
+    "immediate_parent_absence": "Confirmed. BIC 8a8d7a5caf0a65a384b296aaeda2d12d039d731d has the single immediate parent 20ab6b146092b98ffbea531525fde21a4f70a357; exact parent-tree grep finds neither getJobsByGroup nor listJobByGroup.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC is a normal single-parent public commit, not a merge; its patch directly introduces the controller and JavaScript call, and line history exposes no finer public member to reconstruct. Therefore squash_decomposed=false is supported.",
+    "affected_release_membership": "Confirmed. merge-base --is-ancestor shows the BIC is in tags 3.1.1 and 3.2.0, while direct fix d71e69a69c5a2bec62ab252c87e751a7b612974a is not in 3.1.1. The live unguarded handler is present in the 3.1.1 tree, matching the CVE.org affected listing for 3.1.1.",
+    "fixed_release_membership": "Confirmed. d71e69a69c5a2bec62ab252c87e751a7b612974a is an ancestor of tag 3.2.0 (name-rev tags/3.2.0~8) and not an ancestor of tag 3.1.1, matching GHSA first_patched_version 3.2.0.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix. Parent 542945589a108215828ae157da56734585e6ed94 still serves the unguarded getJobsByGroup endpoint and JavaScript AJAX call. d71e69a69c5a2bec62ab252c87e751a7b612974a removes the live AJAX route, loads jobs only after validJobGroupPermission in index(), and is the repository change acknowledged by the owner for the next release.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. The BIC commit object is authored and committed by xueli.xue <xueli.xue@dianping.com> on 2016-07-18, has message 'coding snapshot', one parent, empty parsed trailers, and no Co-Authored-By, Generated-with, bot identity, Copilot, Cursor, or other AI marker. Fix-message style was not used for attribution."
+  },
+  "findings": [
+    "Independent replay confirms the vulnerability mechanism, atomic BIC, parent absence, release gates, direct fix, and BIC-only human attribution recorded by the primary review.",
+    "CVE.org currently reports CVE-2025-9263 as PUBLISHED; the vendor owner closed issue #3772 after stating that optimized code had been pushed to master for the next release.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

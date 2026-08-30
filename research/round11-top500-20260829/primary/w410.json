@@ -1,0 +1,37 @@
+{
+  "class_id": "alias-49eec800e0cf6a69422f404d",
+  "case_id": "GHSA-gg9x-qcx2-xmrh",
+  "repo": "authlib/joserfc",
+  "advisory_ids": [
+    "CVE-2026-49852",
+    "GHSA-gg9x-qcx2-xmrh"
+  ],
+  "bug_semantics": "joserfc accepted zero-length symmetric key material and passed it to Python's HMAC implementation for HS256, HS384, and HS512 verification. Because an empty HMAC key is public and deterministic, an unauthenticated attacker can compute a matching signature and have jwt.decode accept forged claims whenever application configuration or key lookup supplies an empty secret.",
+  "flaw_origin": "Commit 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 first added HMACAlgorithm.sign and HMACAlgorithm.verify, which passed OctKey.get_op_key output directly to hmac.new without rejecting an empty byte string. OctKey already accepted and returned empty raw material in the immediate parent, but the vulnerable HMAC consumer did not exist there; adding that consumer completed the forgeable verification mechanism.",
+  "introducer_sha": "29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1",
+  "introducer_parent": "e5add1dcbd06d3513853beba7ae99fb79c2907ee",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: commit 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 has author and committer Hsiaoming Yang <me@lepture.com>, subject 'feat(jws): rfc7518 algorithms for jws', no trailers, and no Co-Authored-By, Generated-with/by, AI-assisted, ChatGPT, OpenAI, Anthropic, Claude, or Copilot marker in the commit message",
+  "verdict": "NOT_AI",
+  "fix_sha": "86d00910b2b2d2d07503fee9b572906daefab7f1",
+  "direct_fix_sha": "86d00910b2b2d2d07503fee9b572906daefab7f1",
+  "evidence": [
+    "Official GitHub advisory API for GHSA-gg9x-qcx2-xmrh reports withdrawn_at=null, vulnerable range <=1.6.7, first patched version 1.6.8, and references commit 86d00910b2b2d2d07503fee9b572906daefab7f1: https://github.com/authlib/joserfc/security/advisories/GHSA-gg9x-qcx2-xmrh",
+    "Official CVE.org record CVE-2026-49852 is PUBLISHED and states that versions before 1.6.8 accept attacker-forged HMAC JWTs when the supplied key is empty; its references name the vendor advisory, fix commit, and 1.6.8 release: https://cveawg.mitre.org/api/cve/CVE-2026-49852",
+    "git log -L 48,70:src/joserfc/rfc7518/jws_algs.py at 056b2aa4327613b7c0bc7ed82b885e4a4339fec6 traces the unguarded HMAC sign/verify implementation to 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1; later commits in that line history only rename, format, or type the surviving mechanism.",
+    "git show 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 creates src/joserfc/rfc7518/jws_algs.py and adds sign returning hmac.new(op_key, msg, hash).digest plus verify recomputing that digest and compare_digest, with no empty-key rejection.",
+    "git ls-tree -r e5add1dcbd06d3513853beba7ae99fb79c2907ee -- src/joserfc/rfc7518/jws_algs.py returns no entry, while git ls-tree -r 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 shows blob 16bd791cd3d965dfa8347fae9abdc292b3ae764c at that path, directly proving parent absence.",
+    "The BIC parent tree's src/joserfc/rfc7518/oct_key.py import_key converts strings to bytes and returns OctKey without a length rejection, and get_op_key returns raw_key; thus the BIC's new HMAC consumer receives b'' unchanged.",
+    "Copy-aware git blame -C -C -C at tag 1.6.7 attributes the surviving hmac.new digest and compare_digest lines to 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 despite later moves and formatting changes.",
+    "The BIC is a single-parent feature commit, not a merge or indicated squash; its exact vulnerable file is absent from its immediate parent, so there is no finer public member history to decompose.",
+    "git cat-file commit 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 shows author=committer Hsiaoming Yang <me@lepture.com>, one parent, a GPG signature, the subject 'feat(jws): rfc7518 algorithms for jws', and no trailers or commit-object AI marker.",
+    "Tag containment places the BIC in the project's first available release tag 0.2.0 and in 1.6.7. git merge-base --is-ancestor confirms 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 is an ancestor of 1.6.7.",
+    "At tag 1.6.7, src/joserfc/_rfc7518/oct_key.py:53-64 only warns for raw_value shorter than 14 bytes and returns the key, while jws_algs.py:62-70 passes get_op_key directly into hmac.new; jwt.py:88-112 routes public jwt.decode through _decode_jws and compact verification dispatches to alg.verify.",
+    "git show 86d00910b2b2d2d07503fee9b572906daefab7f1 adds hard empty-material rejection in OctKey.import_key and defence-in-depth empty-key checks in HMACAlgorithm.sign and verify; its immediate parent is tag 1.6.7 commit 1e5b94da589c695f54abd9f1a0ad822dcffe0305.",
+    "git show 1.6.8 identifies release commit ea1d9e301cc3f6d20d141058e4a0c4befc599b62 with sole parent 86d00910b2b2d2d07503fee9b572906daefab7f1; ancestry checks confirm the fix is in 1.6.8 and not in 1.6.7."
+  ],
+  "reasoning": "The vulnerability is real and publicly confirmed: an application-provided empty octet key reaches HMAC verification, letting an attacker reproduce the digest and forge JWT claims. The atomic BIC is 29c5a59f4a1bc57b9019e50de56f4b5d5b8280d1 because it first creates the HMAC implementation and writes both unguarded hmac.new calls; although its parent already permits empty OctKey material, that parent lacks the HMAC consumer entirely. git log -L and copy-aware blame follow the same vulnerable lines through later formatting, typing, and path-renaming commits, none of which first created the flaw. The BIC has one parent and no evidence of a squash or finer reconstructable member history, and direct tree comparison proves the vulnerable file absent at the parent. Release topology is coherent: the BIC predates affected tag 1.6.7, fix 86d00910b2b2d2d07503fee9b572906daefab7f1 is absent from 1.6.7 and is the parent of patched tag 1.6.8. The fix directly rejects empty key material at import and at HMAC sign/verify entry. Finally, AI attribution is judged only on the BIC commit object: its human author/committer identity, empty trailer set, and message contain no AI marker. Therefore this is a genuine human-authored vulnerability and the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

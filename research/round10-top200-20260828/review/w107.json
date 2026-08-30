@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-9ecc413d95402c0ddb204335",
+  "case_id": "GHSA-qm9p-f9j5-w83w",
+  "repo": "parcel-bundler/parcel",
+  "advisory_ids": [
+    "CVE-2025-56648",
+    "GHSA-qm9p-f9j5-w83w"
+  ],
+  "bug_semantics": "Parcel's development HTTP server set Access-Control-Allow-Origin: * with no Host or Origin allowlist. A malicious page a developer visited could XMLHttpRequest the local dev server and read bundled source (CWE-346). Release 2.16.4 adds --no-cors to omit those headers; the default remains wildcard CORS. A later Host/Origin validator exists only on unmerged remotes/origin/fix-security.",
+  "flaw_origin": "Original CORS feature, not a later regression. ca84e156273eaa88e910e874ed639f9cd8bebcd0 (PR #713, 2018-02-14) first added enableCors() on packages/core/parcel-bundler/src/Server.js setting Access-Control-Allow-Origin to '*'. 81117b45fd5e1f017a4be528a3652bdd089b7c15 copied that helper into packages/reporters/dev-server/src/Server.js when the v2 server was extracted (move, not first-write). A pre-monorepo twin 1c761fd5683d9bf195ee5eb6fd04bd494ecb6162 applied the same PR #713 patch on src/Server.js and is the v1.6.1 carrier, but it is not an ancestor of the @parcel/reporter-dev-server lineage.",
+  "introducer_sha": "ca84e156273eaa88e910e874ed639f9cd8bebcd0",
+  "introducer_parent": "275d878c040cb81c48fd701ba08822cb202a8268",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "9e2f6f1377123cff3b82f6dde4e20336efc846a1",
+  "direct_fix_sha": "9e2f6f1377123cff3b82f6dde4e20336efc846a1",
+  "evidence": [
+    "First-party GHSA-qm9p-f9j5-w83w / CVE-2025-56648 (CVE.org cveMetadata.state PUBLISHED, GHSA withdrawn_at null) describe an Origin Validation Error: malicious sites can XHR the Parcel dev server and read source. GHSA package is @parcel/reporter-dev-server >= 1.6.1, <= 2.16.3, first patched 2.16.4 via --no-cors. CVE.org is not rejected or withdrawn.",
+    "git show ca84e156273eaa88e910e874ed639f9cd8bebcd0 -- packages/core/parcel-bundler/src/Server.js adds enableCors() with res.setHeader('Access-Control-Allow-Origin', '*') plus Allow-Methods/Allow-Headers, wired through serveStatic setHeaders. git diff --name-status 275d878c040cb81c48fd701ba08822cb202a8268 ca84e156273eaa88e910e874ed639f9cd8bebcd0 -- packages/core/parcel-bundler/src/Server.js is M on that single file.",
+    "Parent-tree check: git cat-file -e 275d878c040cb81c48fd701ba08822cb202a8268:packages/core/parcel-bundler/src/Server.js succeeds; git grep Access-Control-Allow-Origin on that parent path exits 1. git cat-file -p ca84e156273eaa88e910e874ed639f9cd8bebcd0 is a single-parent commit (parent 275d878c040cb81c48fd701ba08822cb202a8268), author Nicolai Sueper <nicolaisueper@users.noreply.github.com>, committer Devon Govett <devongovett@gmail.com>, message Add Access-Control header for CORS (#713), no Co-Authored-By/Generated-with/bot identity. git log -1 --format=%an %ae %cn %ce matches those humans.",
+    "git log -S Access-Control-Allow-Origin on packages/core/parcel-bundler/src/Server.js reports ca84e156273eaa88e910e874ed639f9cd8bebcd0 as the addition and 504756e39 as a later v1 removal. The same string first appears on packages/reporters/dev-server/src/Server.js in 81117b45fd5e1f017a4be528a3652bdd089b7c15 (Parcel 2: V2 Server #2817); git cat-file -e b463de11414250a8417072dfa0f555b5f09095ee:packages/reporters/dev-server/src/Server.js fails, but that parent already has Access-Control-Allow-Origin: * on packages/core/parcel-bundler/src/Server.js, so 81117 is a copy/move of existing CORS, not a first-write.",
+    "Parallel PR #713 landing 1c761fd5683d9bf195ee5eb6fd04bd494ecb6162 writes the same enableCors helper onto src/Server.js (parent 96162771397909367479e0af49c52eb228704a5c lacks the header; v1.6.1 contains it). merge-base --is-ancestor 1c761fd5683d9bf195ee5eb6fd04bd494ecb6162 v2.16.4 is false; ca84e156273eaa88e910e874ed639f9cd8bebcd0 is an ancestor of 81117 and of v2.16.4. The @parcel/reporter-dev-server lineage therefore traces to ca84, not 1c761. Neither commit is a parent of the other.",
+    "Shipped 2.16.4 remediation is 9e2f6f1377123cff3b82f6dde4e20336efc846a1 (Add --no-cors option #10268), ancestor of tag v2.16.4 (59484858a1a0bcbb71f74088956bb437a2db6505). It gates the same wildcard headers behind cors defaulting true. Advisory-named 4bc56e3242a85491c7edf589966e9b44c6330c49 (Verify Host and Origin headers in dev server) replaces * with origin after verifyOrigin/verifyHost but is not an ancestor of HEAD or v2.16.4; branch --contains shows only remotes/origin/fix-security."
+  ],
+  "reasoning": "The vulnerability is real and still matches the published CVE/GHSA: wildcard CORS on the dev server lets a visited malicious origin read source. The smallest first-write on the reporter-dev-server ancestral path is ca84e156273eaa88e910e874ed639f9cd8bebcd0; its parent tree has Server.js without Access-Control-Allow-Origin. Later v2 extraction reused those lines and is not the BIC. The v1.6.1 twin landing is a parallel PR #713 apply, not a finer public parent of ca84. The 2.16.4 patch that the advisory cites is 9e2f6f1377123cff3b82f6dde4e20336efc846a1. The BIC commit object is human-authored and human-committed in 2018 with no AI marker, so the BIC-only judgment is NOT_AI.",
+  "remaining_gap": null
+}

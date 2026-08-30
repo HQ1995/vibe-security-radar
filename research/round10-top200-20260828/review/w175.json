@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-12d29bba3c056745a0d4bf97",
+  "case_id": "GHSA-xmpw-q5r4-p783",
+  "repo": "renovatebot/renovate",
+  "advisory_ids": [
+    "CVE-2026-76233",
+    "GHSA-xmpw-q5r4-p783"
+  ],
+  "bug_semantics": "The gleam manager builds a shell string 'gleam deps update ' plus each updated dep.depName and passes it to exec without quoting. A repository writer can put shell metacharacters in a gleam.toml dependency name so Renovate runs arbitrary commands on the host when it refreshes manifest.toml.",
+  "flaw_origin": "Original lockfile-update implementation. Commit d29698e0131231652970f02765312769975e4d38 ('feat(manager/gleam): enable update-lockfile (#31002)') replaced the constant exec('gleam deps download') with ['gleam deps update', ...packagesToUpdate].join(' ') where packagesToUpdate is updatedDeps.map(dep => dep.depName). Parent 9c999fb13e8746830a0c163bad9c244b0b926c6a still ran a fixed gleam deps download with no depName interpolation. 5421c729b91bb760604d7f2c3319d603e45a795e only changed .filter(Boolean) to .filter(is.string). 59de985bb27ce6ae9e316f4b0552f746e725bc0d later mapped packagesToUpdate through shlex.quote.",
+  "introducer_sha": "d29698e0131231652970f02765312769975e4d38",
+  "introducer_parent": "9c999fb13e8746830a0c163bad9c244b0b926c6a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "59de985bb27ce6ae9e316f4b0552f746e725bc0d",
+  "direct_fix_sha": "59de985bb27ce6ae9e316f4b0552f746e725bc0d",
+  "evidence": [
+    "First-party GHSA-xmpw-q5r4-p783 / CVE-2026-76233 (CVE.org state PUBLISHED, dateRejected null, GHSA withdrawn_at null) describe CWE-77 command injection in the gleam manager for Renovate 39.53.0 before 40.33.0: depName is appended to gleam deps update without sanitization. The GHSA references introducer d29698e0131231652970f02765312769975e4d38.",
+    "git log -S 'gleam deps update' -- lib/modules/manager/gleam/artifacts.ts reports first addition at d29698e0131231652970f02765312769975e4d38. The earlier gleam manager 283cda0f29d16715d3c4cc8129cdb3d67c89595d only exec'd the constant 'gleam deps download'.",
+    "git show --stat d29698e0131231652970f02765312769975e4d38 -- lib/modules/manager/gleam/artifacts.ts is 7 insertions / 1 deletion. The new sink is packagesToUpdate = updatedDeps.map((dep) => dep.depName).filter(Boolean) then updateCommand = ['gleam deps update', ...packagesToUpdate].join(' '); await exec(updateCommand, execOptions). No shlex.quote is present.",
+    "Parent-tree check: git cat-file -e 9c999fb13e8746830a0c163bad9c244b0b926c6a:lib/modules/manager/gleam/artifacts.ts succeeds. git grep packagesToUpdate and gleam deps update on that parent path is empty; the parent file still contains await exec('gleam deps download', execOptions). git rev-list --parents -n 1 shows a single parent. No finer public #31002 member is reconstructable (only this squash-merge object and later 5421c729b91bb760604d7f2c3319d603e45a795e, which does not add the join).",
+    "BIC-only AI check: git cat-file -p d29698e0131231652970f02765312769975e4d38 shows author Jason Sipula <SnakeDoc@users.noreply.github.com>, committer GitHub <noreply@github.com> (web merge), subject 'feat(manager/gleam): enable update-lockfile (#31002)', empty body, and no Co-Authored-By, Generated-with, Cursor/Claude/Copilot trailer, or bot author. git log -1 --format='%an %ae %cn %ce' matches that human author / GitHub committer pair.",
+    "Direct fix: git show 59de985bb27ce6ae9e316f4b0552f746e725bc0d -- lib/modules/manager/gleam/artifacts.ts imports quote from shlex and changes the join to ['gleam deps update', ...packagesToUpdate.map(quote)].join(' '). git merge-base --is-ancestor confirms that SHA is in tag 40.33.0 and not in 40.32.1, matching the advisory range. HEAD still uses packagesToUpdate.map(quote)."
+  ],
+  "reasoning": "The injectable command exists as soon as lockfile updates started interpolating gleam.toml depName into a shell string. The original gleam manager only ran a constant gleam deps download, so 283cda0f is not the BIC. d29698e0131231652970f02765312769975e4d38 is the smallest surviving first-write: its parent tree lacks gleam deps update and depName joining, it has a single verifiable parent, and later 5421c729b only tightens the filter. 59de985bb27ce6ae9e316f4b0552f746e725bc0d is the advisory-aligned closure in 40.33.0 via shlex.quote. The BIC commit object is human-authored with a GitHub merge committer and no AI attribution, so the required BIC-only judgment is NOT_AI. CVE.org has not rejected the record.",
+  "remaining_gap": null
+}

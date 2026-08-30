@@ -1,0 +1,52 @@
+{
+  "worker": "w307",
+  "review_agent_id": "r389_w307",
+  "class_id": "alias-1560a140e8811bf17daaa441",
+  "case_id": "GHSA-3777-v3gr-3jr3",
+  "repo": "akaunting/akaunting",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-11994 is currently PUBLISHED and identifies authenticated stored XSS in Akaunting 3.1.21 report descriptions. The 3.1.21 tree accepts description as required|string, mass-assigns it through CreateReport/UpdateReport, and emits the stored value raw both inside the shared textarea and on the reports index."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Full-history -S and blame independently identify d9c076457215c089cd221dbd4c822ce6a3bd021b as the first writer of the raw textarea value and 6ebc1334334facdb033dc8d7c7602cc777231c0d as the later first writer of the raw index description. The earlier textarea path already makes d9c076457215c089cd221dbd4c822ce6a3bd021b the vulnerability BIC."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single immediate parent cead09f6d4fc9a1f589da7cdbff57f269a46ba00. That tree lacks resources/views/components/form/input/textarea.blade.php and the raw {!! $value !!} Blade sink; its report form uses the older Collective Form::textareaGroup path. The index-sink parent ebf6112a0873adf1841dc7fc915a358ddfd3b791 uses encoded {{ $report->description }}."
+    },
+    "squash_member_decomposition": {
+      "status": "CORRECTION_REQUIRED",
+      "evidence": "Contrary to the primary claim that no PR exists, public refs/pull/2401/head equals d9c076457215c089cd221dbd4c822ce6a3bd021b. GitHub's PR 2401 commit view exposes six member commits ending in d9c076457215c089cd221dbd4c822ce6a3bd021b; the five earlier members a5eda2e16bf6ca39b25ce5247eaec8ba22644a87, 48677d524548a8a6fb1da2b952ba1ff6cc529b6f, 5c79ae1c6ea6f0b3209abefcb84a3dd457e654f3, 91bc935e024bef649366575ca091f6b8c10a6aff, and cead09f6d4fc9a1f589da7cdbff57f269a46ba00 lack the textarea component. The causal member remains the non-merge commit d9c076457215c089cd221dbd4c822ce6a3bd021b, with no finer public commit object."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "d9c076457215c089cd221dbd4c822ce6a3bd021b is an ancestor of tags 3.0.0 and 3.1.21, and 6ebc1334334facdb033dc8d7c7602cc777231c0d is also an ancestor of 3.1.21. The 3.1.21 tree contains both raw sinks."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db is not an ancestor of 3.1.21, is an ancestor of 3.2.0, and the first containing version tag is 3.2.0. The 3.2.0 tree has encoded textarea and index output."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The single-parent direct fix 80ef6d3b154aa711f52f4d0f0ac3d2e3b41d89db changes both raw Blade outputs to encoded output and adds strip_tags handling in CreateReport and UpdateReport. Exact -S histories pair the two vulnerable sink writes with this removal."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC object d9c076457215c089cd221dbd4c822ce6a3bd021b is authored and committed by Burak Civan, has subject 'akaunting 3.0 (the last dance)', an empty body, no co-author/generated/tool trailer, and no bot identity. The later index writer 6ebc1334334facdb033dc8d7c7602cc777231c0d has the same human author/committer and no AI marker. Fix authorship was not used to infer BIC authorship."
+    }
+  },
+  "findings": [
+    "The primary NOT_AI verdict, BIC, immediate parent, second-sink origin, direct fix, and release topology are independently supported.",
+    "The primary's statement that no public PR/member history exists is false: PR 2401 exists and points to the BIC. Its exposed member chain does not change the BIC because every earlier member lacks the vulnerable textarea component."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The raw report-description textarea sink first appears in d9c076457215c089cd221dbd4c822ce6a3bd021b, whose immediate parent cead09f6d4fc9a1f589da7cdbff57f269a46ba00 lacks the component and sink. Public PR 2401 does exist and its head is d9c076457215c089cd221dbd4c822ce6a3bd021b; all five earlier commits exposed in that PR lack the textarea component, so d9c076457215c089cd221dbd4c822ce6a3bd021b remains the smallest public causal commit. The later index sink first appears in 6ebc1334334facdb033dc8d7c7602cc777231c0d.",
+    "evidence": "Replace the primary evidence claim 'GitHub commit has no PR' / '0 issues/PRs' with the verified PR 2401 member decomposition recorded in protocol_checks.squash_member_decomposition."
+  },
+  "remaining_gap": null
+}

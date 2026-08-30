@@ -1,0 +1,47 @@
+{
+  "worker": "w266",
+  "review_agent_id": "r389_w266",
+  "class_id": "alias-dcd30bce1e5bb1dbce0594f7",
+  "case_id": "GHSA-w5hq-g745-h8pq",
+  "repo": "uuidjs/uuid",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "In the affected trees, v35 (v3/v5) and v6 copy 16 bytes into a caller-provided Uint8Array without checking offset < 0 or offset + 16 > buf.length; typed-array out-of-range assignments are ignored, so the returned buffer can contain a silent partial UUID. The fixed trees add the RangeError guard to both paths. CVE-2026-41907 is currently PUBLISHED and describes this same mechanism."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "detail": "For the surviving v5/v35 lineage, public PR member 37a5efa8b8a7050911a89f8ae1d02be5a7ee2fc0 is the smallest first-write of the unguarded caller-buffer loop. The earlier 1d56dc9e80774f651602c53899a5f63cc304ed0f accepted buf/offset but did not write into buf. v6 has an independent later first-write in c4ed13e7159d87c9e42a349bdd9dc955f1af46b6, which the primary record explicitly identifies; this does not displace the earlier canonical introducer."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "detail": "37a5efa's immediate parent is c50ac88f098ecfbff9a940816c8e6825ffd7e05a; its v5.js returns buf or a string and contains no buf[off+idx] write. c4ed13e's parent is 8c3ed07ca8dfd8a8364f766753665d4f913d0842 and has no src/v6.js. Therefore introducer_parent_absent=false is correct for the selected BIC because its parent commit is present and directly verifiable."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The mainline PR #201 landing 8e2398111bc2e55c242502b95ac3bfd9fd4685f2 is a squash aggregate. Its tree 630a33c19e609514f6739067589b5f5d7eecbcfa equals final member 8bd29f6ccb1ee6bfb5b2b0893210cfd1bc1560f2; 37a5efa changes v5.js, while 77d906a403ba9067cd146aed7612431a18ad8c85 and 8bd29f6 are follow-up test compatibility members. Selecting 37a5efa rather than the squash is protocol-compliant."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "detail": "The content-equivalent landing 8e23981 is absent from v3.1.0 and ancestral to v3.2.0 and later affected lines; c4ed13e is ancestral to v11.0.0 and v11.1.0. Vulnerable tags v11.1.0, v12.0.0, and v13.0.0 contain both unchecked loops. Backports 32389c8, 3d61d6a, and 9d27ddf are ancestors only of v11.1.1, v12.0.1, and v13.0.1 respectively, and those fixed tags contain both guards. Main fix 3d2c5b0 is ancestral to v14.0.0."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "detail": "Direct fix 3d2c5b0342f0fcb52a5ac681c3d47c13e7444b34 has the single parent f2c235f93059325fa43e1106e624b5291bb523c4. That parent contains both unchecked writes; the fix inserts the same explicit bounds guard into src/v35.ts and src/v6.ts. The three maintenance-line backports make the corresponding same-path change."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "Commit object 37a5efa is authored by Thanh-Phuong <python0429@gmail.com>, committed by GitHub <noreply@github.com>, dated 2017-06-21, and has only the subject 'Fix buffer not being modified' with no AI trailer or bot marker. The independent v6 first-write c4ed13e is authored by Robert Kieffer, signed/committed by GitHub, and likewise has no AI marker or co-author trailer. No later fix, refactor, or AI-era commit is used to attribute the BIC."
+    }
+  },
+  "findings": [
+    "The primary record reconstructs the vulnerability lifecycle rather than selecting an AI-marked commit first.",
+    "The selected v5/v35 BIC, its present immediate parent, and the PR #201 member-to-squash relationship are independently reproducible from local commit objects.",
+    "The primary also preserves the distinct v6 origin and the direct two-path fix, so the single introducer field does not hide a contradictory origin.",
+    "Release ancestry and source contents agree with the advisory's affected and patched version boundaries."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

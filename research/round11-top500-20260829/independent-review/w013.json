@@ -1,0 +1,24 @@
+{
+  "worker": "w013",
+  "review_agent_id": "r389_w013",
+  "class_id": "alias-afab3229357f1f461e4dc206",
+  "case_id": "GHSA-mhfq-f35q-x62m",
+  "repo": "gitpython-developers/gitpython",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: At the vulnerable revision, IndexFile.checkout forwards kwargs to git checkout-index, where prefix becomes --prefix=<path>, and TagReference.create forwards kwargs to git tag, where F/file becomes -F/--file; the authoritative vendor advisory and CVE describe the resulting arbitrary overwrite and in-band file read.",
+    "atomic_bic": "PASS: 1047b41e2e925617474e2e7c9927314f71ce7365 is the earliest public first-write of an executable named sink, replacing TagReference.create's stub with repo.git.tag(*args, **kwargs); git log -S reaches this commit before later move-only hits. The independent checkout sink first appears in 0ef1f89abe5b2334705ee8f1a6da231b0b6c9a50, three days later, and has the same human author.",
+    "immediate_parent_absence": "PASS: 1047b41e2e925617474e2e7c9927314f71ce7365 has the single parent ddc5496506f0484e4f1331261aa8782c7e606bf2; that parent contains only raise NotImplementedError(\"todo\") and no repo.git.tag(*args, **kwargs). The parent of 0ef1f89a likewise has no checkout_index call.",
+    "squash_member_decomposition": "PASS: The BIC is a one-parent 2009 commit whose own diff first implements the executable tag sink; it is not a merge or move, and no finer public member is present to decompose. Later package moves are separate commits and are not BICs.",
+    "affected_fixed_release_membership": "PASS: Git ancestry shows both 1047b41e and 0ef1f89a are ancestors of 3.1.56, while 3af0c251 is not; 3af0c251 is an ancestor of 3.1.57. The 3.1.57 changelog names vendor advisory GHSA-3f7w-8rr8-f37f, and CVE-2026-73620 marks versions before 3.1.57 affected and 3.1.57 unaffected.",
+    "direct_fix_or_unpatched": "PASS: The single parent 07e8055585491aa3d0b42f79c5bc2bdd027fa6c0 of 3af0c2516c5e18c829da30338614688f6b69b49c still forwards kwargs at both sinks without allow_unsafe_options/check_unsafe_options. The fix directly adds the --prefix and -F/--file guards plus regression tests at those two public APIs.",
+    "bic_only_ai_attribution": "PASS: BIC 1047b41e is authored and committed by Sebastian Thiel <byronimo@gmail.com> and has no trailers or bot/generated marker. The GPT 5.6 authorship and Co-authored-by trailer belong only to the 2026 fix and are excluded from BIC attribution."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, earliest atomic BIC, immediate parent, second sink origin, direct fix, release reachability, and NOT_AI attribution independently reproduce from the assigned clone and authoritative advisory records.",
+    "CVE-2026-73620 is PUBLISHED, and both the GitHub global advisory and vendor advisory have withdrawn_at=null; this is a real vulnerability rather than a withdrawn or rejected advisory."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

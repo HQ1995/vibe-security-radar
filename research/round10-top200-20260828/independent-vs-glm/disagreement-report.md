@@ -1,0 +1,149 @@
+# Round 10 independent Grok vs glm-5.3-flash (partial, 137/200)
+
+- Compared: **137** independent reviews in `review/`
+- Full core agreement: **0/137**
+- Verdict match: **120/137**
+- Verdict flips: **17**
+- Field-level disagreements: **137**
+
+## Verdict flips
+- `w004` `n8n-io/n8n`: glm **NOT_AI** → Grok **AI_ROOT_CAUSE**
+  - `verdict`: glm `NOT_AI` / grok `AI_ROOT_CAUSE`
+  - `introducer_sha`: glm `8a83f6a9c5dd3b64b0ec940a8206d812ffe32c21` / grok `bd3aafce75ddb2e6f8fc196aea5fd76a0d774363`
+  - `ai_marker`: glm `absent — the exact BIC commit-object payload for 8a83f6a9c5dd3b64b0ec940a8206d812ffe32c21 names author Roman Davydchuk <roman.davydchuk@n8n.io> and committer Roman Davydchuk <roman.davydchuk@n8n.io>; neither identity is a bot. Its complete message is `fix: Throw an error if the repository path is blocked in Git node` and contains no Co-Authored-By, Generated-with, or other AI trailer/marker.` / grok `Co-authored-by: Cursor <cursoragent@cursor.com>`
+  - `introducer_parent`: glm `9f06e7cd13bfc0ee4dcc85c8891d20c111d0d89d` / grok `374e7ed0b28b4d32432a704ba7cedddcf7cd0093`
+- `w007` `jahlives/openssl_encrypt`: glm **AI_ROOT_CAUSE** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `AI_ROOT_CAUSE` / grok `FALSE_POSITIVE`
+  - `ai_marker`: glm `BIC commit object author and committer are Tobi <tobster@brain-force.ch>. Its exact AI markers are "🤖 Generated with [Claude Code](https://claude.com/claude-code)" and "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>".` / grok `Generated with [Claude Code](https://claude.com/claude-code); Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`
+- `w008` `n8n-io/n8n`: glm **EVIDENCE_GAP** → Grok **NOT_AI**
+  - `verdict`: glm `EVIDENCE_GAP` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `c7b5720e6637a6476475a363fc3590b7992a799b`
+  - `ai_marker`: glm `unverifiable: the exact BIC commit object for private n8n-io/n8n-private PR #208 is inaccessible, so its author, committer, and trailers cannot be inspected. The public aggregate c7b5720e6637a6476475a363fc3590b7992a799b contains mixed `Co-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` trailers covering many unrelated member changes; those aggregate markers are not attributable to the GraphQL member and were not used to judge the BIC.` / grok `author Matsu <matias.huhta@n8n.io>; committer github-actions[bot]; GraphQL bullet feat: GraphQL fix (#208) has no Co-Authored-By; squash lists Co-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com> on unrelated members (#199/#224/#228/#234)`
+  - `introducer_parent`: glm `None` / grok `5c204364eb84331c09ff4fe3ed5a0928c7b1fc62`
+- `w023` `scriban/scriban`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `e0f646d899e60c8b88f01ebae6f998fc49116e09`
+  - `ai_marker`: glm `unreachable for the true BIC: the only public landing object, a6fe6074199e5c04f4d29dc8d8e652b24d33e3e4, is a one-parent squash aggregate ('Merge commit from fork'); the underlying 'set default value to ExpressionDepthLimit' member commit object is absent, so its author, committer, Co-Authored-By/Generated-with trailers, and bot identity cannot be checked without improperly attributing from the aggregate or from later commits` / grok `None`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `5f039d2d2bb86e680a8c06d7cc739f26d7324705`
+- `w026` `filebrowser/filebrowser`: glm **EVIDENCE_GAP** → Grok **NOT_AI**
+  - `verdict`: glm `EVIDENCE_GAP` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `12b2c215221696de58431093e01eeff7a5414471`
+  - `ai_marker`: glm `unresolved for the exact BIC: the atomic commit object named by the surviving squashed subject "feat: add signup api" is no longer reachable. The earliest reachable aggregate candidate 34e79e14fa307ff9e645fcf4c2b8fa70a1715ea0 has author and committer Henrique Dias <hacdias@gmail.com> and a message with Signed-off-by trailers but no Co-Authored-By, Generated-with, bot identity, or other AI marker; protocol forbids transferring that aggregate-object result to the unavailable atomic BIC.` / grok `Absent on BIC 12b2c215221696de58431093e01eeff7a5414471. git cat-file -p shows author Henrique Dias <hacdias@gmail.com>, committer GitHub <noreply@github.com>, subject feat: v2 (#599), and no Co-Authored-By, Generated-with, Made-with, or bot-author marker.`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `53a46013618c434fa530a4755831adcce15ea438`
+- `w048` `gitlab.freedesktop.org/xorg/xserver`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `ded6147bfb5d75ff1e67c858040a628b61bc17d1`
+  - `ai_marker`: glm `unavailable: the smallest non-aggregate BIC commit object predates the assigned Git history, so its author, committer, bot identity, Co-Authored-By trailers, Generated-with trailers, and other commit-object AI markers cannot be inspected. The visible 2003 R6.6 aggregate import is not treated as the BIC and is not used for AI attribution.` / grok `absent; author Kaleb Keithley <kaleb@freedesktop.org>, committer Kaleb Keithley <kaleb@freedesktop.org>; cat-file -p shows only subject "R6.6 is the Xorg base-line" with no Co-Authored-By, Generated-with, Assisted-by, or bot identity`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941`
+- `w049` `gitlab.freedesktop.org/xorg/xserver`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `ded6147bfb5d75ff1e67c858040a628b61bc17d1`
+  - `ai_marker`: glm `unavailable: the smallest BIC commit object is outside the reachable Git history, so its author, committer, and trailers cannot be inspected. The later 609-file baseline import ded6147bfb5d75ff1e67c858040a628b61bc17d1 was excluded rather than used as a proxy BIC. The Assisted-by marker on the 2026 fix is fix-only evidence and is not attributed to the unknown BIC.` / grok `absent; author Kaleb Keithley <kaleb@freedesktop.org>, committer Kaleb Keithley <kaleb@freedesktop.org>; cat-file -p shows only subject "R6.6 is the Xorg base-line" with no Co-Authored-By, Generated-with, Assisted-by, or bot identity`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941`
+- `w066` `rapid7/metasploit-framework`: glm **BLOCKED** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `BLOCKED` / grok `FALSE_POSITIVE`
+  - `ai_marker`: glm `not assessable: the true SugarCRM BIC commit object is unavailable, so no BIC author, committer, bot identity, Co-Authored-By trailer, or Generated-with trailer can be inspected; no non-BIC commit object was used to infer AI attribution` / grok `None`
+- `w067` `classroomio/classroomio`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `804e5cdeb980f83e37d5d688a00d4a6b61e690a1`
+  - `ai_marker`: glm `True-BIC commit object unavailable. The closest preserved squash aggregate object 103a2eda7b039f6ee1fb9ea524c41b0a85fe158e has author 'emmanuel <ifeanyi@digdippa.com>', committer 'Space Cloud <noreply@jetbrains.space>', human trailers 'Co-authored-by: Ifeanyi Nwosu <ifeanyi@digdippa.com>' and 'Co-authored-by: Rotimi Best <rotimiibitoyeemma@gmail.com>', and no Generated-with trailer, AI co-author, or AI bot author. Those aggregate-object findings cannot be attributed to the unknown member BIC.` / grok `absent on BIC 804e5cdeb: author tunny17 <tunji@digdippa.com>, committer Space Cloud <noreply@jetbrains.space>; Co-authored-by Rotimi Best and Tunji Adeyemi only; no Generated-with/Cursor/Claude/Copilot trailers.`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `589a61fe44727b616af192c4bb4a4014ae20e521`
+- `w068` `gnuboard/gnuboard5`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `1a60978568013aace090af413512eba936303eb9`
+  - `ai_marker`: glm `not assessable: no proven BIC commit object is reachable before the 2013 whole-source import boundary, so BIC-only AI attribution cannot be performed` / grok `Absent. git cat-file -p 1a60978568013aace090af413512eba936303eb9 shows author and committer chicpro <chicpro@gmail.com>, one parent 8ba59fe9b0958f3789026ceb3b8128fb2aca85a9, subject '경로 수정 작업 중', and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `8ba59fe9b0958f3789026ceb3b8128fb2aca85a9`
+- `w078` `openmcdf/openmcdf`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `b2fc989e4c3e6b682c8416bf5aa72b3fe37ae9e3`
+  - `fix_sha`: glm `c6f82db722bd85db7b0caed3ca1aa374f1e07bc7` / grok `24f445a557fc4f46461cf6d02d296cce16c293a0`
+  - `ai_marker`: glm `absent on the actual BIC record: first-party SourceForge SVN r4 identifies author ironfede and date 2010-09-27, has no log-message text or trailers, no separate committer field, and no bot/generated/co-author marker. A Git commit-object marker check cannot be supplied because SVN r4 has no corresponding 40-hex object in the assigned clone; AI attribution was not inferred from the later Git migration snapshot, rewrite, or fixes.` / grok ``
+  - `introducer_parent_absent`: glm `True` / grok `False`
+  - `introducer_parent`: glm `None` / grok `7821a5d148cb523d1f3c347680c5eeccc25de3e3`
+- `w113` `iatsiuk/pptr-mcp`: glm **AI_ROOT_CAUSE** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `AI_ROOT_CAUSE` / grok `FALSE_POSITIVE`
+  - `ai_marker`: glm `BIC commit-object inspection (`git cat-file -p 3d3f3366a37da47631b722b742cecd2796fe75fd`) shows author and committer `Aleksei Iatsiuk <a.v.iatsiuk@gmail.com>` and the exact message markers `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`.` / grok `BIC object 3d3f3366a37da47631b722b742cecd2796fe75fd: author/committer Aleksei Iatsiuk <a.v.iatsiuk@gmail.com>; body 'Generated with [Claude Code]' and 'Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>'. AI trailers are on the first-write commit of the claimed lines but do not create a vulnerability because the advisory is a false positive.`
+- `w119` `wintercms/winter`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `fb88e6fabde3b3278ce1844e581c87dcf7daee22`
+  - `ai_marker`: glm `unresolved because the protocol-defined BIC commit object is unavailable. The only public landing object, single-parent aggregate fb88e6fabde3b3278ce1844e581c87dcf7daee22, is authored/committed by human maintainer Ben Thomson (bennothommo; patch identity Ben Thomson <git@alfreido.com>) and its exact message contains no Co-Authored-By, Generated-with, AI, bot, or AI noreply marker. That aggregate-object absence cannot be transferred to an unrecovered member BIC.` / grok `absent; author Ben Thomson <git@alfreido.com>, committer GitHub <noreply@github.com>; cat-file -p of fb88e6fabde3b3278ce1844e581c87dcf7daee22 shows subject 'Merge commit from fork' and human fork-message bullets with no Co-Authored-By, Generated-with, Claude/Cursor/Copilot/OpenAI trailer, or bot author`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `5f53526035ee07317100ced658c469ed3656a0b2`
+- `w121` `ray-project/ray`: glm **NOT_AI** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `NOT_AI` / grok `FALSE_POSITIVE`
+  - `introducer_sha`: glm `ce73705ee7043afe6cbafaf67ec20b961f002689` / grok `b197fa84a6088e9bdd4e3f829097eef44ed4ed21`
+  - `ai_marker`: glm `absent — the exact BIC commit object names human author and committer "sampan <sampan@anyscale.com>" and contains only "Signed-off-by: sampan <sampan@anyscale.com>"; it has no Co-Authored-By, Generated-with, bot author, or other AI marker.` / grok `absent; claimed first-write author Sampan S Nayak <sampansnayak2@gmail.com>, committer GitHub <noreply@github.com>; trailers are Signed-off-by: sampan <sampan@anyscale.com> and Co-authored-by: sampan <sampan@anyscale.com> (same human), no Generated-with/Copilot/ChatGPT/Claude/Cursor/bot-author markers.`
+  - `introducer_parent`: glm `4130e4dc601504d0cd1c2428a84bb268b6110265` / grok `77a96d9df09fe4a0731c04448b79b36c129840d3`
+- `w122` `gnuboard/gnuboard5`: glm **BLOCKED** → Grok **NOT_AI**
+  - `verdict`: glm `BLOCKED` / grok `NOT_AI`
+  - `introducer_sha`: glm `None` / grok `41d21074b5fcf579633c255f3b499434b2d4d46b`
+  - `ai_marker`: glm `not assessable: no qualifying BIC commit object is reachable; under the BIC-only attribution rule, no AI attribution was inferred from the bulk-import, port, attempted-fix, or final-fix commit objects` / grok `absent; BIC author/committer gnuboard <kagla@naver.com> 2013-09-13; cat-file -p shows subject "그누보드5" with no Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, Gemini, Aider, or bot-author trailers.`
+  - `introducer_parent_absent`: glm `False` / grok `True`
+  - `introducer_parent`: glm `None` / grok `04c3efa279d60f646bf3b430750ab5a98fcc6eef`
+- `w129` `rapid7/metasploit-framework`: glm **BLOCKED** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `BLOCKED` / grok `FALSE_POSITIVE`
+  - `ai_marker`: glm `BIC commit object unavailable and therefore not inspected: the public record provides no source-control commit for AIT Themes' vulnerable admin/upload-handler.php, so its author, committer, bot identity, Co-Authored-By trailers, and Generated-with trailers cannot be checked. The Metasploit exploit addition d8c55501a52ece2e7360032c7422f95e2e595135 is not the BIC and was not used for AI attribution.` / grok `absent; no BIC in rapid7/metasploit-framework because the advisory does not describe a vulnerability in this repository`
+- `w194` `torvalds/linux`: glm **NOT_AI** → Grok **FALSE_POSITIVE**
+  - `verdict`: glm `NOT_AI` / grok `FALSE_POSITIVE`
+  - `introducer_sha`: glm `e2f34481b24db2fd634b5edb0a5bd0e4d38cc6e9` / grok `None`
+  - `fix_sha`: glm `996454bc0da84d5a1dedb1a7861823087e01a7ae` / grok `None`
+  - `ai_marker`: glm `absent — BIC author Namjae Jeon <namjae.jeon@samsung.com> (Samsung, cifsd project lead), committer Steve French <stfrench@microsoft.com>, no Co-Authored-By/Generated-with/Assisted-by trailers; marker grep (claude/copilot/anthropic/openai/generated/co-authored/cursor/junie/manus/assisted) on e2f34481b24d full commit object returns no hits (NONE-E2F3 sentinel).` / grok `absent; not judged — assigned CVE-2026-8449 is rejected, so BIC AI attribution is out of scope for this advisory`
+  - `introducer_parent`: glm `0626e6641f6b467447c81dd7678a69c66f7746cf` / grok `None`
+
+## Disagreement field counts
+- `ai_marker`: 137
+- `introducer_parent_absent`: 66
+- `introducer_sha`: 40
+- `introducer_parent`: 39
+- `fix_sha`: 20
+- `verdict`: 17
+
+## Same-verdict disagreements (first 40)
+- `w000` `jahlives/openssl_encrypt` `AI_ROOT_CAUSE`: ai_marker, introducer_parent_absent
+- `w001` `jahlives/openssl_encrypt` `NOT_AI`: fix_sha, ai_marker, introducer_parent_absent
+- `w002` `gitpython-developers/gitpython` `NOT_AI`: introducer_sha, ai_marker, introducer_parent_absent, introducer_parent
+- `w003` `n8n-io/n8n` `NOT_AI`: fix_sha, ai_marker, introducer_parent_absent
+- `w005` `gitpython-developers/gitpython` `NOT_AI`: ai_marker
+- `w006` `jahlives/openssl_encrypt` `AI_ROOT_CAUSE`: ai_marker
+- `w009` `n8n-io/n8n` `NOT_AI`: ai_marker
+- `w010` `n8n-io/n8n` `NOT_AI`: introducer_sha, fix_sha, ai_marker, introducer_parent_absent, introducer_parent
+- `w011` `gitpython-developers/gitpython` `NOT_AI`: introducer_sha, ai_marker, introducer_parent
+- `w012` `gitpython-developers/gitpython` `AI_ROOT_CAUSE`: introducer_sha, ai_marker, introducer_parent_absent, introducer_parent
+- `w013` `jahlives/openssl_encrypt` `AI_ROOT_CAUSE`: ai_marker, introducer_parent_absent
+- `w014` `gitpython-developers/gitpython` `NOT_AI`: ai_marker, introducer_parent_absent
+- `w015` `lin-snow/ech0` `NOT_AI`: ai_marker
+- `w016` `lin-snow/ech0` `NOT_AI`: ai_marker
+- `w017` `lin-snow/ech0` `NOT_AI`: introducer_sha, ai_marker, introducer_parent
+- `w018` `lin-snow/ech0` `NOT_AI`: fix_sha, ai_marker
+- `w019` `scriban/scriban` `NOT_AI`: ai_marker
+- `w020` `scriban/scriban` `NOT_AI`: ai_marker
+- `w021` `lin-snow/ech0` `NOT_AI`: ai_marker, introducer_parent_absent
+- `w022` `scriban/scriban` `NOT_AI`: fix_sha, ai_marker
+- `w024` `scriban/scriban` `NOT_AI`: ai_marker
+- `w025` `filebrowser/filebrowser` `NOT_AI`: fix_sha, ai_marker
+- `w027` `filebrowser/filebrowser` `NOT_AI`: introducer_sha, ai_marker, introducer_parent
+- `w028` `filebrowser/filebrowser` `NOT_AI`: ai_marker
+- `w030` `budibase/budibase` `NOT_AI`: introducer_sha, fix_sha, ai_marker, introducer_parent
+- `w031` `budibase/budibase` `NOT_AI`: fix_sha, ai_marker
+- `w032` `budibase/budibase` `NOT_AI`: introducer_sha, fix_sha, ai_marker, introducer_parent
+- `w034` `budibase/budibase` `NOT_AI`: ai_marker
+- `w035` `misp/cti-transmute` `AI_ROOT_CAUSE`: ai_marker
+- `w036` `misp/cti-transmute` `AI_ROOT_CAUSE`: ai_marker, introducer_parent_absent
+- `w037` `misp/cti-transmute` `AI_ROOT_CAUSE`: ai_marker, introducer_parent_absent
+- `w038` `misp/cti-transmute` `NOT_AI`: ai_marker, introducer_parent_absent
+- `w039` `misp/cti-transmute` `NOT_AI`: ai_marker
+- `w040` `roskus/prospero-flow-crm` `AI_ROOT_CAUSE`: ai_marker
+- `w041` `roskus/prospero-flow-crm` `AI_ROOT_CAUSE`: ai_marker
+- `w042` `roskus/prospero-flow-crm` `NOT_AI`: ai_marker, introducer_parent_absent
+- `w043` `roskus/prospero-flow-crm` `NOT_AI`: ai_marker
+- `w044` `roskus/prospero-flow-crm` `NOT_AI`: ai_marker
+- `w045` `gitlab.freedesktop.org/xorg/xserver` `NOT_AI`: ai_marker
+- `w046` `gitlab.freedesktop.org/xorg/xserver` `NOT_AI`: ai_marker, introducer_parent_absent
+
+Total same-verdict field disagreements: 120

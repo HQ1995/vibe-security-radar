@@ -1,0 +1,25 @@
+{
+  "worker": "w058",
+  "review_agent_id": "r389_w058",
+  "class_id": "alias-128099ff89397869f907e82b",
+  "case_id": "GHSA-v3h3-59vx-wx73",
+  "repo": "siyuan-note/siyuan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: the vendor advisory identifies six attribute-view metadata interpolations whose output is assigned through innerHTML. The view.desc and colData.desc textarea bodies are raw despite escapeAttr on the adjacent data-value attribute, so </textarea> closes the element and attacker markup is parsed. The clone also confirms unvalidated description setters and Electron nodeIntegration:true/contextIsolation:false, making renderer script execution reach Node built-ins.",
+    "atomic_bic": "CONFIRMED: git log -S and the e9c8cd0e0d3bd0ff72ddb4c416c811d1949b8a19 diff show that this commit first writes the advisory-distinctive raw view.desc textarea body, plus the equivalent oldDesc body, while retaining escapeAttr only for data-value. Later cce77eb712796f4deec631b62553f43aba1ac238 copies the same defect into getEditHTML and later commits add the group-name sinks; they are expansions, not an earlier BIC.",
+    "immediate_parent_absence": "CONFIRMED: e9c8cd0e0d3bd0ff72ddb4c416c811d1949b8a19 has the single immediate parent 81ef5d0244d272bca2bfe77f4eea10e7c7b01f72. Exact tree grep finds neither ${view.desc}</textarea> nor ${oldDesc}</textarea> in that parent; its view description is still interpolated into an input value/data-value context rather than the advisory's textarea-body sink.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a one-parent ordinary public feature commit with a coherent direct diff and no public member commits or merge parents to decompose. The first vulnerable lines are introduced directly in its tree, so e9c8cd0e0d3bd0ff72ddb4c416c811d1949b8a19 is the smallest reconstructible public object.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is not an ancestor of v3.1.11 and is an ancestor of v3.1.12. The direct fix is not in v3.7.3 or v3.7.4-alpha.5, is in v3.7.4-alpha.6, and is in v3.8.0. The vendor/CVE metadata says patched v3.7.4, but the clone has no final v3.7.4 tag; the first public stable tag containing the fix is v3.8.0, exactly as the primary records.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: f16b159ea49a3f581613996dfbe46949ce360842 directly applies escapeHtml to all six advisory-listed client interpolations in view.ts, col.ts, and groups.ts (and also group title renderers). The raw sink needles are absent from the fix tree, and the commit subject links the vendor advisory.",
+    "bic_only_ai_attribution": "CONFIRMED: AI attribution was evaluated only on the BIC commit object. Its author and committer are Vanessa <lly219@gmail.com>; its message is only ':art: https://github.com/siyuan-note/siyuan/issues/11053' and contains no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, or other AI marker. The later security fix was not used to classify authorship."
+  },
+  "findings": [
+    "The official GHSA-gcm3-qcq3-72rv mechanism and the local source-to-sink paths independently match the primary's stored-XSS-to-desktop-RCE account.",
+    "The exact first-write, immediate parent, later same-mechanism copies, release ancestry, and direct-fix diff independently reproduce the primary's causal chain.",
+    "The upstream patched-version label v3.7.4 has no matching final public tag, but this is already disclosed in the primary and does not alter the NOT_AI judgment."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

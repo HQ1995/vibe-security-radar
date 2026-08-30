@@ -1,0 +1,26 @@
+{
+  "worker": "w139",
+  "review_agent_id": "r389_w139",
+  "class_id": "alias-ffbea6af31e554be88138163",
+  "case_id": "GHSA-g9w4-m5fx-x3wv",
+  "repo": "yoast-dist/duplicate-post",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: tag 4.5 accepts attacker-selected post IDs in clone_bulk_action_handler and reaches duplicate_post_create_duplicate without an edit_post capability check; republish_request resolves the original and reaches republish/wp_update_post without checking edit_post on that original.",
+    "atomic_bic": "GAP: the assigned dist clone begins at root 0589a437e23e91189a49e3b641157809eb7e3c7a, a 7,910-line, 50-file release dump. The primary's clone-path BIC 8011c3bac314ce951abb9de13024626da1ae052b and republish-path writer cdf7678453a21548fda36a6b7105b1b475e2c145 are not objects in this clone, so neither atomic first writer is independently verified.",
+    "immediate_parent_absence": "GAP: claimed BIC parent ced4ec4977c4bbb7c84c9b3f01671e107fe40a8b is not an object in the assigned clone. The dist root has no parent, but it is an aggregate and cannot substitute for the claimed atomic BIC parent check.",
+    "squash_member_decomposition": "GAP: dist root 0589a437e23e91189a49e3b641157809eb7e3c7a is a release aggregate and contains no reconstructable member history for either vulnerable path; the source commits cited by the primary are unavailable in the assigned clone.",
+    "affected_fixed_release_membership": "PASS: peeled dist tag 4.5 is 179f307e70c4df8e040c5e481dd395e6cad12ca5 and lacks edit_post guards in both named paths; peeled dist tag 4.6 is db85005366144846cac3b07632488a6da92876f5 and contains edit_post guards in bulk-handler.php at both bulk paths and post-republisher.php for the original post.",
+    "direct_fix_or_unpatched_state": "PARTIAL: dist commit db0817e7deaa9ee4767111491fe85209f1e4c18b is the first local -S match adding the guards and its parent diff directly patches all named paths, but the primary's source direct fix 343f002ca8b5a8f3455dbc379d2b2ad1e6d53117 and merge 34df3b057ef427111ae402267988f36ca111d48e are not objects in the assigned clone.",
+    "bic_only_ai_attribution": "GAP: neither claimed source-path atomic writer is locally inspectable, so author, committer, trailers, bot identity, and any squash-member AI markers cannot be independently checked. The Travis identity on the dist root and GitHub Action identity on the fix synchronization are not BIC evidence."
+  },
+  "findings": [
+    "The vulnerable source-to-sink behavior and its removal are independently visible in the assigned dist clone: 4.5 lacks per-target edit_post checks and 4.6 adds them for clone, bulk rewrite, and republish-over-original paths.",
+    "The local history establishes a direct dist fix synchronization at db0817e7deaa9ee4767111491fe85209f1e4c18b, whose message points to source merge 34df3b057ef427111ae402267988f36ca111d48e; that message is identity evidence, not a locally inspectable source commit.",
+    "The assigned clone cannot independently reproduce the primary's atomic BIC, immediate-parent absence, source direct fix, or BIC-only AI-marker checks because all cited source objects are absent and the clone's initial vulnerable snapshot is a broad release aggregate.",
+    "This advisory has two independently introduced vulnerable paths. A confirmed NOT_AI review requires atomic-writer and BIC-only AI checks for both the 2016 clone path and the 2020 republish path; the assigned evidence closes neither attribution gate."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "Provide locally inspectable Yoast/duplicate-post source history containing 8011c3bac314ce951abb9de13024626da1ae052b with parent ced4ec4977c4bbb7c84c9b3f01671e107fe40a8b, cdf7678453a21548fda36a6b7105b1b475e2c145 with its immediate parent, and fix commits 343f002ca8b5a8f3455dbc379d2b2ad1e6d53117 and 34df3b057ef427111ae402267988f36ca111d48e; then independently verify parent absence, member decomposition, and BIC-only AI markers for both vulnerable paths."
+}

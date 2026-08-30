@@ -1,0 +1,47 @@
+{
+  "worker": "w303",
+  "review_agent_id": "r389_w303",
+  "class_id": "alias-00c08a4d36548a08c12cdee7",
+  "case_id": "GHSA-7p8h-8h8j-472c",
+  "repo": "vladimir-tokarev-cyera/llama-cpp-security-patches",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-43629 is PUBLISHED and describes attacker-controlled cell_count driving unchecked KV-cache restore writes. Tag b9058 and upstream HEAD c589f0ed10c643678c4707dd160c21ac7633ebc0 still use sinfo.head() * row_size and cell_count * row_size in io.read_tensor without a tensor-nbytes bound; the assigned carrier's patch adds exactly the missing overflow and bounds checks."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "PR #6341 member 662aaea8c9c624f9a6622229e0ed01b7d37248d1 first adds llama_set_seq_data, reads cell_count from the state blob, and writes cell_count * k_size_row and cell_count * v_size_el into KV tensors."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent is e82f9e2b833d88cd2b30123ef57346c2cb8abd99. Its llama.cpp has no llama_set_seq_data or cell_count * k_size_row sequence-restore write; its existing offset-zero full-session tensor restore is a different path."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "GitHub's PR #6341 API exposes 34 ordered members beginning with 662aaea8c9c624f9a6622229e0ed01b7d37248d1; default-branch commit beea6e1b16e783a0886e78dec01002a8c00db24d is the later one-parent squash aggregate and is not used as the BIC."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "CVE.org records b4882 through b9058 and 0.16.1 through 0.17.1 as affected. Tags b4882=be7c3034108473beda214fd1d7c98fd6a7a3bdf5 and b9058=803627f121dca7d4ec5166178d89398f20d288c0 both contain the vulnerable restore write; no fixed release is identified because upstream HEAD remains vulnerable."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Upstream PR #24063 is closed and unmerged. Upstream HEAD c589f0ed10c643678c4707dd160c21ac7633ebc0 still has the unchecked contiguous and scatter writes, while carrier commit 7c8f244a7d94f7c323ba277fcb24ff051339acd2 supplies only an out-of-tree mitigation. Null fix_sha and direct_fix_sha are therefore correct."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The exact BIC is authored and committed by Jan Boon, is PGP-verified, and its commit message has no AI marker or co-author trailer. Cursor appears only on the 2026 out-of-tree mitigation commit and cannot establish AI authorship of the 2024 BIC."
+    }
+  },
+  "findings": [
+    "The substantive NOT_AI verdict is supported by the independently replayed causal chain.",
+    "Primary field introducer_parent_absent is false even though the vulnerable sequence-restore write is absent from the verified immediate parent; this structured field must be true."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

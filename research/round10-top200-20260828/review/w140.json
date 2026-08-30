@@ -1,0 +1,25 @@
+{
+ "class_id": "alias-e8d22e09ec02742f9653cd3e",
+ "case_id": "GHSA-qvfj-hqjq-cmgm",
+ "repo": "aeon-toolkit/aeon",
+ "advisory_ids": [
+  "CVE-2026-18287",
+  "GHSA-qvfj-hqjq-cmgm"
+ ],
+ "bug_semantics": "load_time_series_segmentation_benchmark parses TSSB CSV columns change_points and time_series with pandas converters that call Python eval() on each cell, then wrap the result in np.array. A user-supplied or attacker-hosted CSV/zip (local extract_path or the downloaded tssb.csv) can therefore inject and execute arbitrary Python in the loader process (CWE-94). The same eval converter pattern existed in load_human_activity_segmentation_datasets in the same file. The security fix replaced eval with ast.literal_eval inside _parse_np_array.",
+ "flaw_origin": "The eval() CSV converters were first written when the TSSB/HAS data loaders were added in PR #1755. The reconstructable first-write member 849946a6862cf8392c1464eb9b8eb63c9007934f created aeon/datasets/_tss_data_loaders.py with converters = {col: lambda val: np.array(eval(val)) for col in np_cols} in load_time_series_segmentation_benchmark (and a sibling eval converter in load_human_activity_segmentation_datasets). The file and eval sink are absent from that commit parent 800c3b5388219850c853d14201a9e841187851f6. GitHub squash-merged the PR as 8f81a7324a4f116dd862feda68788b03ff9dc39b onto main; later typing/typo commits did not change the eval mechanism.",
+ "introducer_sha": "849946a6862cf8392c1464eb9b8eb63c9007934f",
+ "introducer_parent": "800c3b5388219850c853d14201a9e841187851f6",
+ "introducer_parent_absent": true,
+ "squash_decomposed": true,
+ "decomposed_shas": [
+  "849946a6862cf8392c1464eb9b8eb63c9007934f"
+ ],
+ "ai_marker": "absent; author Arik Ermshaus <ermshaua@informatik.hu-berlin.de>, committer Arik Ermshaus <ermshaua@informatik.hu-berlin.de>; commit message has no Co-Authored-By, Generated-with, Cursor, Copilot, ChatGPT, Claude, or bot trailer. Squash-merge 8f81a73 is authored by Arik Ermshaus <arikermshaus@gmail.com> committed by GitHub with only Co-authored-by: Patrick Schaefer <patrick.schaefer@hu-berlin.de>.",
+ "verdict": "NOT_AI",
+ "fix_sha": "751918052c0cce266b4f7cd4b084408526efc015",
+ "direct_fix_sha": "751918052c0cce266b4f7cd4b084408526efc015",
+ "evidence": "CVE-2026-18287 / GHSA-qvfj-hqjq-cmgm / ZDI-26-470: eval of user-supplied strings in load_time_series_segmentation_benchmark; CVE.org state PUBLISHED, not rejected; affected aeon 1.3.0. Advisory fix https://github.com/aeon-toolkit/aeon/commit/751918052c0cce266b4f7cd4b084408526efc015 (loading issues #3333) replaces eval converters with _parse_np_array using ast.literal_eval. git log -L / git log -S np.array(eval(val)) on aeon/datasets/_tss_data_loaders.py: first public main write is squash 8f81a7324a4f116dd862feda68788b03ff9dc39b (#1755); parent c2ec5b3673ec51647d60a9264461aa3de8329f0f has no file and no eval in aeon/datasets. PR #1755 member 849946a6862cf8392c1464eb9b8eb63c9007934f first added the file with eval at lines 97 and 213; parent 800c3b5388219850c853d14201a9e841187851f6 has neither the file nor eval. Member 152917bf6c8c3c719e5e01f59ae7c1bc2c625e3f did not change eval. 8f81a73 is contained in v0.10.0..v1.3.0; v1.3.0 still has eval; 75191805 is first in v1.5.0 and v1.5.0 uses literal_eval. BIC not an AI-marked commit object. ppa re-checked line-level 2026-08-29: git show 800c3b53:aeon/datasets/_tss_data_loaders.py exists but contains no 'eval(' and no converters; 'converters = {col: lambda val: np.array(eval(val)) for col in np_cols}' is added by BIC 849946a6 -> introducer_parent_absent=true.",
+ "reasoning": "The advisory describes a real CWE-94 code-injection sink: pandas CSV converters calling eval() on TSSB cells inside load_time_series_segmentation_benchmark. That sink is present from the first addition of the loader through v1.3.0 and is removed by 75191805, which is the cited vendor/ZDI fix. The smallest first-write is the reconstructable PR member 849946a, not the later squash onto main. Authorship on that member (and on the squash) is human Arik Ermshaus with a human co-author on the squash only; no commit-object AI marker. Therefore NOT_AI.",
+ "remaining_gap": null
+}

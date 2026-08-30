@@ -1,0 +1,26 @@
+{
+  "worker": "w004",
+  "review_agent_id": "r389_w004",
+  "class_id": "alias-83777bf84c8decf57a1040f6",
+  "case_id": "GHSA-m6wx-qjxf-vr9v",
+  "repo": "n8n-io/n8n",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: The vendor advisory and CVE-2026-72775 describe authenticated SQL injection through user-controlled PostgresTrigger channel, function, and trigger identifiers. In affected tags n8n@1.123.66, n8n@2.31.4, and n8n@2.32.0, those values reach pg-promise $N:raw SQL templates and an interpolated LISTEN statement.",
+    "atomic_bic": "PASS: PR #5495 member 4b06a2c6f9e77415868bfc66068c804c1d0e9be2 is the smallest public commit that replaces hardcoded public.test()/new_testevent SQL with additionalFields.functionName, triggerName, and channelName passed to $N:raw templates. The later member 413f942b66de0a73bfad80cf25aefc8d1229be7c adds the separate interpolated LISTEN path and is not the first vulnerable writer.",
+    "immediate_parent_absence": "PASS: GitHub commit metadata and the local object identify da5551fe4a9217750de41b7b80727db31ae73483 as the sole immediate parent of 4b06a2c6f9e77415868bfc66068c804c1d0e9be2; the reviewed patch shows that parent used hardcoded function and notification names, so the user-identifier SQL-injection mechanism was absent.",
+    "squash_member_decomposition": "PASS: GitHub reports PR #5495 as 40 commits with squash merge 4488f93c39b0ec0b4a0eff98391b46db6a2eed78. The public member chain contains da5551fe4a9217750de41b7b80727db31ae73483 -> 4b06a2c6f9e77415868bfc66068c804c1d0e9be2 -> 413f942b66de0a73bfad80cf25aefc8d1229be7c. Local history confirms the squash is the first landed $N:raw writer and its parent 8c562a51cc7a82c17c1f1302ea78b5b5edd2bc52 has no PostgresTrigger files.",
+    "affected_and_fixed_release_membership": "PASS: The introducer squash is absent from n8n@0.231.0 and present from n8n@0.232.0 onward. Affected tags n8n@1.123.66, n8n@2.31.4, and n8n@2.32.0 retain $N:raw and interpolated LISTEN; fixed tags n8n@1.123.67, n8n@2.31.5, and n8n@2.32.1 contain their branch fix commits 1cd2c5fb22a906058cc083c3af2d561ce7f4332d, f6cb6cf3ab177c3740a5ef624b89bae5165405a1, and f69dfc6dd2178a14ea1624d2e1d403c2e755042f respectively. These boundaries match the vendor advisory and published CVE record.",
+    "direct_fix_or_unpatched_state": "PASS: Master fix 2222fe3a6c886a9059f28e1b6d4bdb10ee420624 and the three release-branch fixes validate identifiers, replace :raw with :name, bind the pg_notify channel as a value, and parameterize LISTEN. Each inspected fix parent still contains the vulnerable :raw templates and interpolated LISTEN, establishing a direct fix rather than a release-only association.",
+    "bic_only_ai_attribution": "PASS: The BIC commit object is authored and committed by agobrech <ael.gobrecht@gmail.com> on 2023-02-16, is unsigned, and has the single-line message 'Add additional fields to customize trigger query' with no AI/tool trailer. The squash has only a human Marcus co-author trailer. Cursor/Claude markers occur on 2026 fix-side work and are excluded from BIC attribution; NOT_AI is therefore supported by the causal commit only."
+  },
+  "findings": [
+    "The advisory is live: CVE-2026-72775 is PUBLISHED, GitHub aggregate GHSA-m6wx-qjxf-vr9v has withdrawn_at=null, and the first-party GHSA-jqwr-vx3p-r266 identifies the same PostgresTrigger SQL injection and patched versions.",
+    "The primary record correctly distinguishes the reconstructable atomic PR member from the squash object that landed it on the main history.",
+    "The primary record's introducer, parent, fix, release boundaries, and NOT_AI conclusion all survived independent replay.",
+    "Fix-side AI markers do not alter the BIC-only authorship judgment."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

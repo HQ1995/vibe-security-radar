@@ -1,0 +1,27 @@
+{
+ "class_id": "alias-563e8c6dd92633fd945a7839",
+ "case_id": "GHSA-88rp-m596-52gg",
+ "repo": "aeon-toolkit/aeon",
+ "advisory_ids": [
+  "CVE-2026-18285",
+  "GHSA-88rp-m596-52gg"
+ ],
+ "bug_semantics": "CWE-502 pickle RCE in the RehabPile dataset loader: load_rehab_pile_dataset (originally load_rehabpile) calls numpy.load on downloaded/local .npy files with allow_pickle=True, so a crafted npy/pickle is executed in-process. User interaction is required (open a malicious file or visit a page that triggers the load). GHSA-88rp-m596-52gg / CVE-2026-18285 / ZDI-26-468 (ZDI-CAN-28749) remain published (not withdrawn/rejected).",
+ "flaw_origin": "PR #2993 first wrote the pickle load in a9af1651c748e00dc735894a8b2d04b75429a498 (FEAT: Add RehabPile dataset collection and loader): aeon/datasets/rehabpile_loader.py np.load(..., allow_pickle=True) for X and y. Parent 96aff5a386d6719ef83dfc8aeb1fc1932cf8e539 has no rehabpile_loader.py. 0808bb1f585fbc31627fcc04254b78990d566a20 is the GitHub squash of #2993 onto main, not the first-write. 86126a73 is pre-commit formatting only; c85b9031 is a main merge. Advisory-cited 751918052c0cce266b4f7cd4b084408526efc015 (#3333) removed allow_pickle; a86b826aa7911266bb0e8f1dcd1befac6ea7b5bf (#3521) re-added it.",
+ "introducer_sha": "a9af1651c748e00dc735894a8b2d04b75429a498",
+ "introducer_parent": "96aff5a386d6719ef83dfc8aeb1fc1932cf8e539",
+ "introducer_parent_absent": true,
+ "squash_decomposed": true,
+ "decomposed_shas": [
+  "a9af1651c748e00dc735894a8b2d04b75429a498",
+  "86126a73bc3eeb2f4a642a2d6d0e3ca24922df0e",
+  "c85b9031742bd93a211774af77befda326167457"
+ ],
+ "ai_marker": "absent on BIC a9af1651: author/committer sarthakkuwar <kuwarsarthak711@gmail.com>; subject 'FEAT: Add RehabPile dataset collection and loader'; no Co-Authored-By/Generated-with/bot trailers. PR-body/later AI not used. Formatting commit 86126a73 is aeon-actions-bot[bot] committer and is not the first-write.",
+ "verdict": "NOT_AI",
+ "fix_sha": "751918052c0cce266b4f7cd4b084408526efc015",
+ "direct_fix_sha": "751918052c0cce266b4f7cd4b084408526efc015",
+ "evidence": "git cat-file -p a9af1651: author/committer sarthakkuwar, parent 96aff5a. git cat-file -e 96aff5a:aeon/datasets/rehabpile_loader.py fails; a9af1651 adds the file with np.load(..., allow_pickle=True) in load_rehabpile. Squash 0808bb1f (parent b3f7f1d, GitHub committer) is #2993 on main; PR commits a9af1651/86126a73/c85b9031 exist in the clone. 75191805 (#3333, Matthew Middlehurst / GitHub) drops allow_pickle on np.load. a86b826 (#3521, Tony Bagnall; Co-authored-by Ali El Hadi ISMAIL FAWAZ) restores allow_pickle=True. HEAD 13f10b2a still has allow_pickle=True. GHSA withdrawn_at null; ZDI-26-468 published. ppa re-checked line-level 2026-08-29: git show 96aff5a3:aeon/datasets/rehabpile_loader.py is fatal (does not exist); rehabpile_loader.py with np.load(..., allow_pickle=True) is created new by BIC a9af1651 -> introducer_parent_absent=true.",
+ "reasoning": "The advisory sink is untrusted numpy pickle deserialization in the RehabPile loader, not the unrelated eval->literal_eval change in _tss_data_loaders.py. First write of those lines is a9af1651, verified against parent tree; the mainline squash 0808bb1f is not the BIC. That BIC commit object has human author/committer and no AI markers, so authorship is NOT_AI. 75191805 is the advisory-referenced fix that removed allow_pickle. a86b826 is a later human regression, not the introducer, and does not change BIC authorship.",
+ "remaining_gap": "Advisory fix 75191805 is on origin/HEAD, but a86b826aa7911266bb0e8f1dcd1befac6ea7b5bf ([BUG] Fix rehab loader #3521, 2026-06-21) reintroduced allow_pickle=True; HEAD 13f10b2a still loads RehabPile npy with pickle. Residual path is open after the cited fix."
+}

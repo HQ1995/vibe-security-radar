@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-47829e151365641452b475a8",
+ "case_id": "GHSA-h4w6-wx8r-p68v",
+ "repo": "ruby/webrick",
+ "advisory_ids": [
+  "CVE-2026-38969",
+  "GHSA-h4w6-wx8r-p68v"
+ ],
+ "bug_semantics": "WEBrick chunked-body parsing calls read_header after the terminating chunk, appending HTTP trailers onto @raw_header and re-parsing the combined bytes into @header. A trailer Content-Length therefore overwrites canonical request metadata, so req[\"content-length\"] and meta_vars[\"CONTENT_LENGTH\"] can disagree with the actual chunked body size and enable request smuggling / metadata confusion.",
+ "flaw_origin": "The 2003 webrick import first wrote read_chunked calling read_header (commented trailer + CRLF) which always did @header = HTTPUtils::parse_header(@raw_header). That merge of trailer lines into the same header map is the SSTI-equivalent first write of this sink. Later smuggling patches (reject dual CL+TE, CRLF checks) left trailer CL promotion intact until 25b0e92 blocked content-length among DISALLOWED_TRAILERS.",
+ "introducer_sha": "037e8523a55f2c986b21106ef105517179bf3574",
+ "introducer_parent": "392296c12de9d7f9be03a8205250ba0844cb9d38",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author gotoyuzo <gotoyuzo@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>, committer gotoyuzo <gotoyuzo@b2dd03c8-39d4-4d8f-98ff-823fe69b080e>; cat-file -p shows only svn import subject \"* lib/webrick: imported.\" with git-svn-id and no Co-Authored-By, Generated-with, or bot identity",
+ "verdict": "FALSE_POSITIVE",
+ "fix_sha": "25b0e9206bf5991c6274893d53c428d23b3f2292",
+ "direct_fix_sha": "25b0e9206bf5991c6274893d53c428d23b3f2292",
+ "evidence": "Advisory GHSA-h4w6-wx8r-p68v / CVE-2026-38969 (withdrawn_at null): webrick through v1.9.2 reparses trailer Content-Length into canonical request state (CWE-444). First-party https://github.com/ruby/webrick/issues/198 and merged PR https://github.com/ruby/webrick/pull/199 (Fixes #198). Clone ruby_webrick. Vulnerable path in lib/webrick/httprequest.rb: read_chunked -> read_header; pre-fix read_header always @header = HTTPUtils::parse_header(@raw_header.join) after appending trailer lines. git log -S \"trailer + CRLF\" and origin file at 037e8523a55f2c986b21106ef105517179bf3574 already contain read_header(socket) # trailer + CRLF plus parse_header of @raw_header. Parent 392296c12de9d7f9be03a8205250ba0844cb9d38 (cvs2svn empty repo) has no lib/webrick/httprequest.rb. 2b38d5614e876d313fe981e87c4e35b91556d226 only added EOF handling / comment \"support chunked trailers\"; f5faca9222541591e1a7c3c97552ebb0c92733c7 rejects dual header CL+TE, not trailer CL. Direct fix 25b0e9206bf5991c6274893d53c428d23b3f2292 (Jeremy Evans / committer GitHub, parent 7e98418c47a6942cd9d44a6c9757eafb02a4c634) introduces DISALLOWED_TRAILERS including content-length and copies only allowed Trailer-listed names. merge-base --is-ancestor BIC v1.9.2 yes; fix is not ancestor of v1.9.2; fix is ancestor of HEAD. No later webrick version tag yet contains the fix. No finer public member of the 2003 import is reconstructable in this clone. Verdict reconciliation 2026-08-29: CVE.org disposition for this advisory is REJECTED (authoritative cveawg.mitre.org API), so FALSE_POSITIVE applies per the FP gate; this review record updated to match the adjudicated primary.",
+ "reasoning": "Verdict reconciliation 2026-08-29: FALSE_POSITIVE per CVE.org REJECTED disposition (see evidence tail). Issue 198 shows a 1-byte chunked body with trailer Content-Length: 5 reaching the app as content-length 5 because trailers are reparsed into @header. That call graph exists at the 2003 import 037e852, the first surviving write of httprequest.rb; the parent tree lacks the file. Later parser-hardening commits did not introduce trailer-to-header merge. Fix 25b0e92 is the first content change that stops promoting trailer content-length. BIC author/committer is gotoyuzo via Subversion import with no AI trailers or bot identity, so NOT_AI. The IPR CVS ident in the imported file is not reconstructable as a finer public git member.",
+ "remaining_gap": null
+}

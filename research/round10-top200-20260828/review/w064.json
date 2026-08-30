@@ -1,0 +1,33 @@
+{
+ "class_id": "alias-e9d2a63025e6f21dd728a939",
+ "case_id": "GHSA-hp97-5x6g-q538",
+ "repo": "eclipse-ee4j/glassfish",
+ "advisory_ids": [
+  "CVE-2024-10031",
+  "GHSA-hp97-5x6g-q538"
+ ],
+ "bug_semantics": "Stored CWE-79 in the Admin REST HTML renderer: list-file-users (REST path list-users) copies admin-keyfile usernames and groups into ActionReport extraProperties and child messages; ActionReportResultHtmlProvider then concatenates those strings into HTML via getHtml/getHtmlRepresentation and processChildren (part.getMessage()) without ResourceUtil.encodeString. A local privileged editor of domains/.../config/admin-keyfile can persist a groups payload such as asadmin<img src=x onerror=...> that executes when an admin GETs /management/domain/configs/config/server-config/security-service/auth-realm/admin-realm/list-users as text/html. Combined-message encoding exists but does not cover extraProperties or child parts. CVE.org state is PUBLISHED (not rejected/withdrawn).",
+ "flaw_origin": "Public eclipse-ee4j/glassfish first-write is root commit 571714739b23e16c4c90d5229b806433920b3bcb (Vinay Vishal, 2018-09-18, 'Initial Contribution'). That commit added both ListFileUser extraProperties users[].groups and ActionReportResultHtmlProvider unencoded extraProperties/child rendering. No parent object exists, so no finer public member can be reconstructed in this clone. Later rest-provider cleanup (fe29620cfb) only reformatted the same unencoded concatenations; 7.0.14, 7.0.15, 7.0.25, 7.0.26, and HEAD still omit encodeString on those sinks.",
+ "introducer_sha": "571714739b23e16c4c90d5229b806433920b3bcb",
+ "introducer_parent": null,
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "none on BIC 571714739b23e16c4c90d5229b806433920b3bcb: author and committer Vinay Vishal <vinay.vishal@oracle.com>; subject Initial Contribution with Signed-off-by only; no Co-Authored-By, Generated-with, Cursor/Copilot/ChatGPT trailer, or bot identity.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "GHSA-hp97-5x6g-q538 / CVE-2024-10031 (CVE.org PUBLISHED, withdrawn_at null) describe stored XSS via OS modification of GlassFish config, package console-common <=7.0.25, first_patched_version null. Sink matching the list-users HTML PoC: nucleus/admin/rest/rest-service/.../ActionReportResultHtmlProvider.java processChildren appends part.getMessage() and getHtml(extraProperties) without encodeString; getHtmlRepresentation falls through to object.toString(). Source: nucleus/security/core/.../ListFileUser.java puts name/groups into extraProperties.users. git log -S extraProperties/groups on ListFileUser and -S part.getMessage()/getExtraProperties on the HTML provider both stop at 571714739b23e16c4c90d5229b806433920b3bcb. git cat-file -p that SHA; git rev-parse SHA^ fails (root); git cat-file -e PARENT:path invalid object. git log -1 --format='%an %ae %cn %ce' => Vinay Vishal vinay.vishal@oracle.com. No scoped commit on those paths through 7.0.26 or HEAD encodes extraProperties/groups. GHSA patched versions: None.",
+ "reasoning": "Vulnerability-first: this is a real stored XSS of keyfile-derived fields in REST HTML, not a withdrawn advisory. BIC is the smallest surviving public first-write of the unencoded HTML extraProperties/child-message path plus the list-users groups payload; it is an import root, not a later AI commit. AI role is judged only from that commit object, which is a 2018 human Oracle engineer with no AI trailer. Therefore NOT_AI and unpatched.",
+ "remaining_gap": "Unpatched in eclipse-ee4j/glassfish: GHSA first_patched_version is null and no commit through 7.0.26/HEAD wraps extraProperties/child messages/object.toString in ResourceUtil.encodeString (or equivalent HTML encoding) in ActionReportResultHtmlProvider. Potential fix: HTML-encode every config-derived string inserted into the REST HTML provider (processChildren messages, getHtml map/list values, errorMessage, leaf input values) and reject or encode HTML metacharacters in FileRealm groups/usernames on write; do not treat combined-message-only encodeString as sufficient.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "Unpatched in eclipse-ee4j/glassfish: GHSA first_patched_version is null and no commit through 7.0.26/HEAD wraps extraProperties/child messages/object.toString in ResourceUtil.encodeString (or equivalent HTML encoding) in ActionReportResultHtmlProvider. Potential fix: HTML-encode every config-derived string inserted into the REST HTML provider (processChildren messages, getHtml map/list values, errorMessage, leaf input values) and reject or encode HTML metacharacters in FileRealm groups/usernames on write; do not treat combined-message-only encodeString as sufficient.",
+  "potential_fix": {
+   "approach": "HTML-encode every config-derived string inserted into the REST HTML provider (processChildren messages, getHtml map/list values, errorMessage, leaf input values) and reject or encode HTML metacharacters in FileRealm groups/usernames on write; do not treat combined-message-only encodeString as sufficient",
+   "rationale": "Applying this change at the sink described in bug_semantics removes the attacker-controlled input from reaching the vulnerable path, closing the flaw for the currently unpatched code; the record's remaining_gap verifies no such fix exists upstream as of the audited HEAD, so this documents the potential remediation without asserting a fix SHA.",
+   "reference_commit": null,
+   "reference_url": null
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-f3e12c76b5adc30e16d2715b",
+  "case_id": "GHSA-gqgw-jghv-mxwx",
+  "repo": "jazzband/tablib",
+  "advisory_ids": [
+    "CVE-2026-9318",
+    "GHSA-gqgw-jghv-mxwx"
+  ],
+  "bug_semantics": "HTMLFormat.export_book serialized each Dataset.title directly between <h3> tags without HTML escaping. A title controlled through an imported workbook sheet name or assigned through the API could therefore place executable markup into the generated HTML; execution occurs when a user renders that export in a browser.",
+  "flaw_origin": "Commit 22c4d185e122da6ea1c71d17af009a6c55217c39 first added HTML Databook export and the vulnerable sink: it reads dset.title and writes it directly with stream.write('<%s>%s</%s>\\n' % (BOOK_ENDINGS, title, BOOK_ENDINGS)). Its immediate parent e3b3659ea40151eb849e3f53555900b7ba2c7d43 has HTML Dataset export but no export_book function or Databook-title serialization. Later commit f3ef2e94b40478521b646b58a25dd1b3c5b300f1 preserved the same flaw while replacing MarkupPy with ElementTree, so it is not the introducer.",
+  "introducer_sha": "22c4d185e122da6ea1c71d17af009a6c55217c39",
+  "introducer_parent": "e3b3659ea40151eb849e3f53555900b7ba2c7d43",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "b0ff39fb9b2f457e5332249b4cc2ec11eabf46ee",
+  "direct_fix_sha": "b0ff39fb9b2f457e5332249b4cc2ec11eabf46ee",
+  "evidence": [
+    "The frozen bundle hash matches its manifest: de7c406aa80b6aeef026e2a028ab9eeea6b8bc7c377c11ad58c977e4f8a899aa. Its GitHub advisory identifies CVE-2026-9318 / GHSA-gqgw-jghv-mxwx, affected versions < 3.10.0, and first patched version 3.10.0.",
+    "CVE.org API record CVE-2026-9318 is PUBLISHED and describes unescaped Dataset titles interpolated by export_book into an HTML h3 element; it identifies versions below 3.10.0 as affected and links pull request #668 and v3.10.0 as the patch.",
+    "git show of 22c4d185e122da6ea1c71d17af009a6c55217c39 shows a one-parent commit by Kenneth Reitz dated 2010-11-21 that adds export_book, selects dset.title, and writes it unescaped into the h3 template. git show of parent e3b3659ea40151eb849e3f53555900b7ba2c7d43 confirms that export_book and this sink are absent.",
+    "git log -S'dset.title' --reverse finds 22c4d185e122da6ea1c71d17af009a6c55217c39 as the first addition of this title sink. git blame at the fix parent attributes the later equivalent f-string sink to f3ef2e94b40478521b646b58a25dd1b3c5b300f1, whose patch is a serialization refactor that preserves the already-existing unescaped title behavior.",
+    "The introducer has exactly one parent, no constituent commits to decompose, and no Co-Authored-By, generated-by, Copilot, ChatGPT, Claude, OpenAI, Anthropic, or AI-assisted marker in its commit metadata or patch. Its 2010 author and committer are Kenneth Reitz; the repository-level ai_commits signal is not evidence on this BIC.",
+    "Direct fix b0ff39fb9b2f457e5332249b4cc2ec11eabf46ee replaces raw title interpolation with an ElementTree h3 element and ET.tostring(..., method='html'), which escapes the title. The same commit adds test_html_databook_export_escaped with a <script> title and expects &lt;script&gt; output.",
+    "Git topology confirms the introducer is contained in release v0.9.3. The fix is not an ancestor of v3.9.0, is an ancestor of v3.10.0, and the v3.10.0 tag points directly to b0ff39fb9b2f457e5332249b4cc2ec11eabf46ee."
+  ],
+  "reasoning": "The vulnerability is real and the source-to-sink lifecycle is closed: attacker-controlled Dataset.title reaches HTML Databook serialization without escaping; the atomic first public write is 22c4d185e122da6ea1c71d17af009a6c55217c39; its verified parent lacks the sink; later refactoring only carries it forward; and b0ff39fb9b2f457e5332249b4cc2ec11eabf46ee directly escapes the title and supplies a regression test in the first fixed release. AI attribution must be judged only on the BIC. That 2010 human-authored commit contains no AI marker, so the correct verdict is NOT_AI, regardless of an unrelated repository-level AI-commit scan signal.",
+  "remaining_gap": ""
+}

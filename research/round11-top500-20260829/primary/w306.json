@@ -1,0 +1,39 @@
+{
+  "class_id": "alias-1538e5138ecc7af29635c310",
+  "case_id": "GHSA-r4j6-x8h7-4f8w",
+  "repo": "alseambusher/crontab-ui",
+  "advisory_ids": ["CVE-2026-72589", "GHSA-r4j6-x8h7-4f8w"],
+  "bug_semantics": "Unauthenticated CWE-78: POST /import overwrites crontab.db with an arbitrary NeDB file, so an attacker can plant a job document whose hook field is later concatenated unsanitized into a shell command. crontab.js makeCommand (HEAD crontab.js:67-68) appends `; if test -f ${stdout}; then ${tab.hook} < ${stdout}; fi` with no quoting. The UI save path (buildCrontab) never sets hook, so the field is reachable only via raw DB import. After import, GET /crontab (set_crontab → exec crontab), POST /runjob, or --autosave/ENABLE_AUTOSAVE fs.watchFile applies the crontab and executes the hook. Default auth is off (BASIC_AUTH_USER/PWD optional). CVE.org/GHSA: published, not withdrawn; affected 0 through 0.4.2.",
+  "flaw_origin": "The hook sink was first written in b207df5332b9c6a017d6d12a6ca5b405d128b2c0 (2016-12-12, package 0.2.2) as a beta feature inside set_crontab: when logging was true and tab.hook was set, the crontab line included `then \" + tab.hook + \" < \" + tmp_hook`. Parent 4226311766b59d2c51b22238e4369b5d5a8e18b7 has no tab.hook. POST /import already existed from 00746b436708fccbb6dcde5a06d55d3c414daeb7 (2015-06-15) and still blindly write-streams the upload onto crontab.db. ecfe9faa586674dccfa20aab3d95f7e7ab5a48a2 (2026-04-19 Major revamp) extracted makeCommand and kept the same interpolation (now regardless of logging); that is a refactor, not a first-write BIC.",
+  "introducer_sha": "b207df5332b9c6a017d6d12a6ca5b405d128b2c0",
+  "introducer_parent": "4226311766b59d2c51b22238e4369b5d5a8e18b7",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author alseambusher <alseambusher@gmail.com>, committer alseambusher <alseambusher@gmail.com>, message \"adding a check to jobs before importing from file\" with no Co-Authored-By, Generated-with, Made-with, Signed-off-by, Cursor, Copilot, or ChatGPT trailers (2016-12-12 +0530)",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE-2026-72589 state=PUBLISHED (https://cveawg.mitre.org/api/cve/CVE-2026-72589); CNA title \"Unauthenticated RCE via Shell Injection in Imported Database hook Field\"; affected alseambusher crontab-ui 0 .. <=0.4.2; CWE-78; withdrawn_at null on GHSA-r4j6-x8h7-4f8w.",
+    "Sink at HEAD crontab.js:67-68 makeCommand: if (tab.hook) { result += `; if test -f ${stdout}; then ${tab.hook} < ${stdout}; fi`; } used by set_crontab and runjob. Delivery: app.js:166-178 POST /import write-streams the upload to crontab.crontab_db_file then reload_db(); middleware/auth.js applies basic auth only when BASIC_AUTH_USER and BASIC_AUTH_PWD are both set.",
+    "BIC first-write: git log -S 'tab.hook' -- crontab.js yields only b207df5332b9c6a017d6d12a6ca5b405d128b2c0 (origin/v0.2.2) \"adding a check to jobs before importing from file\". New lines crontab.js:72-75: // hook is in beta; if (tab.hook){ ... then \" + tab.hook + \" < \" + tmp_hook ... } gated on logging==true.",
+    "Parent verification: git rev-parse b207df53^ = 4226311766b59d2c51b22238e4369b5d5a8e18b7 (commit object present). git grep tab.hook on that parent tree / crontab.js is empty; parent set_crontab only interpolates tab.command / tab.schedule.",
+    "Import pre-existed the sink: 00746b436708fccbb6dcde5a06d55d3c414daeb7 (2015-06-15) added app.post(routes.import) piping busboy onto crontabs/crontab.db. UI save/buildCrontab never writes hook, so import is the remote plant path.",
+    "Tag membership: v0.2.1 (65acd94271bd9683c95bdde260de434d3ef8b0a2, 2016-12-03) has no tab.hook. BIC is ancestor of v0.3.5 and v0.4.2 (e1ae9d00231d78b2755dcf0182b7f7062726e8b7). git merge-base --is-ancestor BIC v0.4.2 succeeds. CNA range through 0.4.2 matches surviving tags that contain the sink.",
+    "Later rewrite is not BIC: ecfe9faa586674dccfa20aab3d95f7e7ab5a48a2 Major revamp (2026-04-19) moved the same tab.hook concatenation into makeCommand (occurrence count of tab.hook unchanged). Not a squash of the 2016 write.",
+    "Unpatched: no commit after the 2026-08-10 disclosure removes or sanitizes tab.hook or validates import. HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b (package.json still 0.4.2) only Makefile/docs after v0.4.2; git diff v0.4.2 HEAD -- crontab.js app.js is empty. No CVE/hook-security commits, no SECURITY.md, GitHub issues after disclosure do not patch this sink. origin/v1.0.0 still contains tab.hook and is not an ancestor of main."
+  ],
+  "reasoning": "Vulnerability first: CVE-2026-72589 / GHSA-r4j6-x8h7-4f8w is a real published CWE-78, not withdrawn/rejected. The attack is unauthenticated POST /import of a crafted crontab.db planting a NeDB document with hook (and logging true on the original path), then applying crontab via GET /crontab, runjob, or autosave so makeCommand interpolates hook into a shell string executed by cron. The smallest first-write of those vulnerable lines is b207df5332b9c6a017d6d12a6ca5b405d128b2c0, which introduced `if (tab.hook)` concatenation in set_crontab. Immediate parent 4226311766b59d2c51b22238e4369b5d5a8e18b7 was checked directly and has no tab.hook; the commit is a single-parent non-merge (not a squash/move/revert). POST /import (00746b43, 2015) is the delivery that already existed; the CWE-78 mechanism begins when hook is treated as a shell command. BIC precedes first tagged affected release v0.3.5 and v0.4.2; no patched tag exists. AI judgment is BIC-only: 2016 author/committer alseambusher@gmail.com, empty trailers, no bot author. The 2026 Major revamp is ignored for attribution. Closed NOT_AI with unpatched.confirmed because HEAD 870d958 / v0.4.2 still contain the sink and unvalidated import.",
+  "remaining_gap": "unpatched: no upstream fix SHA in alseambusher/crontab-ui through HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b (v0.4.2); hook interpolation and unvalidated POST /import remain.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "No upstream commit after CVE-2026-72589 (2026-08-10) sanitizes tab.hook or schema-validates POST /import. Latest tag v0.4.2 and HEAD 870d958669d64dca1d27ff7bf5d616d17ee7553b (package 0.4.2) still concatenate tab.hook into the crontab shell string and overwrite crontab.db from an uploaded file.",
+    "potential_fix": {
+      "approach": "Stop interpolating tab.hook into the crontab/shell string in makeCommand; on POST /import, parse the upload as NeDB job records and accept only known fields (name, command, schedule, logging, mailing, stopped, _id), dropping hook and other extras, instead of blindly overwriting crontab.db.",
+      "rationale": "The CWE-78 sink is unsanitized concatenation of attacker-planted tab.hook into a command executed by cron. Removing that interpolation closes execution even if a hook field is already on disk; schema-validating import removes the unauthenticated plant path the advisory describes.",
+      "reference_commit": null,
+      "reference_url": null
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "worker": "w165",
+  "review_agent_id": "r389_w165",
+  "class_id": "alias-d05c668b4ff23b0fff488539",
+  "case_id": "GHSA-cqgm-j57m-cj34",
+  "repo": "tainacan/tainacan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: REST_Items_Controller copies request['geoquery'] into WP_Query args, and GeoCoordinate_Helper::posts_where interpolates point, distance, key, and polygon values into spatial SQL. CVE-2026-6230 is PUBLISHED and identifies unauthenticated time-based blind SQL injection through geoquery through version 1.0.3.",
+    "atomic_bic": "CONFIRMED: 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823 is the only -S first-write for both ST_Distance_Sphere in the helper and request['geoquery'] in the REST controller; it adds the helper from /dev/null and wires the request in the same single-parent commit.",
+    "immediate_parent_absence": "CONFIRMED: parent 1ab2f8972aa2b002dc97fcee25c0551065cf2069 has no helper file and git grep finds no geoquery, ST_Distance_Sphere, or ST_GEOMFROMTEXT under src.",
+    "squash_member_decomposition": "CONFIRMED_NOT_APPLICABLE: the BIC is a non-merge commit with one parent, introduces the vulnerable files directly, and exposes no finer public member object requiring decomposition.",
+    "affected_release_membership": "CONFIRMED: the BIC is not an ancestor of tag 0.19.3, is an ancestor of 0.20.0 and 1.0.3, and the 1.0.3 helper still contains raw interpolation while the REST controller still accepts geoquery.",
+    "fixed_release_membership": "CONFIRMED: fix 579d28d7752b27ed3407f5197abb6349b3efc3c9 is not an ancestor of 1.0.3 and is an ancestor of 1.1.0 and 1.2.0; the 1.1.0 helper contains numeric validation and $wpdb->prepare.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 579d28d7752b27ed3407f5197abb6349b3efc3c9 directly replaces every vulnerable DISTANCE/CONTAINS interpolation in the helper. The helper is byte-identical between the BIC and fix parent 4ca7f1bd185df20268b37718b6195ee120c3f6c1.",
+    "bic_only_ai_attribution": "EVIDENCE_GAP: the BIC object names vnmedeiros as author and committer and contains no AI/co-author/generated trailer, but a human-looking identity plus absence of an AI marker does not independently prove human authorship. The allowed bundle, advisory, and clone contain no affirmative BIC-local human-provenance evidence."
+  },
+  "findings": [
+    "The vulnerability mechanism, atomic first writer, immediate-parent absence, direct fix, and affected/fixed release topology independently reproduce the primary record.",
+    "The helper history contains only the BIC and direct fix, and its content is unchanged from the BIC through the fix parent, excluding an intervening vulnerable-line writer.",
+    "The primary NOT_AI conclusion overstates the available BIC-only evidence: empty trailers and a human-looking Git identity establish no detected AI marker, not affirmative human authorship."
+  ],
+  "corrected_fields": {
+    "verdict": "EVIDENCE_GAP",
+    "ai_marker": "No BIC-local AI marker was found, but the available evidence does not independently establish human authorship."
+  },
+  "remaining_gap": "Obtain affirmative provenance for the exact vulnerable-line writer 2dc5cf5c6f6eef3e24fcc07853d5e092766b6823, such as admissible contemporaneous author/PR evidence that establishes human authorship; otherwise retain EVIDENCE_GAP."
+}

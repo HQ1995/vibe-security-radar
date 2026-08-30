@@ -1,0 +1,37 @@
+{
+  "class_id": "alias-e9e3ecdc5ad46f7d8978fd44",
+  "case_id": "GHSA-p28v-f755-9qrg",
+  "repo": "triggerdotdev/trigger.dev",
+  "advisory_ids": [
+    "CVE-2026-73654",
+    "GHSA-p28v-f755-9qrg"
+  ],
+  "bug_semantics": "An authenticated environment-key holder can supply a run-metadata operation whose unconstrained key is a JSONHero path such as $.__proto__.polluted. applyMetadataOperations passes that key to JSONHeroPath.set on a normal cloned object without rejecting __proto__, constructor, or prototype segments, so the write reaches Object.prototype in the shared webapp process; inherited attacker properties then corrupt unrelated Prisma and metrics objects across tenants and can crash the process.",
+  "flaw_origin": "PR #1563 added the metadata-operations API and, in its member commit cf80a02d23d99b0f4eebe4ac5eb42059f34b2b3d, created packages/core/src/v3/runMetadata/operations.ts with JSONHeroPath(operation.key).set(...) while simultaneously defining every keyed operation schema with key: z.string(). The endpoint's API-key-authenticated request body was therefore connected directly to a prototype-walking setter with no dangerous-segment validation from the feature's first implementation.",
+  "introducer_sha": "cf80a02d23d99b0f4eebe4ac5eb42059f34b2b3d",
+  "introducer_parent": "229707951c66c6796a2ed6ca75872545df9a60c4",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "eeff4058dc37bd758e155defdef59069d960099e",
+    "4f641532f280e14e4cf5dd9796a4536fc517f660",
+    "229707951c66c6796a2ed6ca75872545df9a60c4",
+    "cf80a02d23d99b0f4eebe4ac5eb42059f34b2b3d",
+    "819344ff58fa8bec15acb38e150507517b996601",
+    "bc9c9a761615b6a7e6e099502bee904d0b9f761f",
+    "30a2dfbe9deeca1660dedf60c67a33ddfa2f6ec9",
+    "1131f19745cfdfb2b3897cd8df4daf1b4bd74517",
+    "ad30183aab5b60021cf4530f1c92922d6cd5f7f4",
+    "82ceebc4c34382104f37f1b5c92d582e31ffa9b9",
+    "1e5fd31e20bf62a0155c1b4f0e48587366dcfffa",
+    "f1b75ec4a9d30a4226838a2bfbede18462fcbcc5",
+    "ad5a3db013086ecb401b36695219d8bd7a835c1e"
+  ],
+  "ai_marker": "absent: the raw BIC commit object names human author and committer Eric Allam <eallam@icloud.com>, contains only GitButler metadata headers and the subject 'Implement run metadata updates from ancestor tasks', and has no Co-Authored-By, Generated-with, bot identity, or other AI-attribution trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "6997aeb05e27d2db47f9eda01fdc8a17c81a1ae0",
+  "direct_fix_sha": "0c2d9ce22a1af5e2ae8d1809cba38051b4acfb1a",
+  "evidence": "First-party advisory GHSA-p28v-f755-9qrg / CVE-2026-73654 identifies PUT /api/v1/runs/:runId/metadata, packages/core/src/v3/runMetadata/operations.ts, affected <=4.5.5, patched 4.5.6, PR #4316, and landing fix 6997aeb05e27d2db47f9eda01fdc8a17c81a1ae0 (https://github.com/triggerdotdev/trigger.dev/security/advisories/GHSA-p28v-f755-9qrg). At cf80a02d23d99b0f4eebe4ac5eb42059f34b2b3d, apps/webapp/app/routes/api.v1.runs.$runId.metadata.ts:11-19 parses UpdateMetadataRequestBody and passes it with the authenticated environment to updateMetadataService; apiBuilder.server.ts:472-489 authenticates an API key. The same BIC adds schemas/common.ts:11-56 with key: z.string() for set/delete/append/remove/increment and creates operations.ts:20-26 with new JSONHeroPath(operation.key).set(newMetadata, operation.value); its service applies those operations to request-selected run metadata. git blame -L 20,26 cf80a02d... attributes every vulnerable line to cf80a02d..., and git log cf80a02d... -S'new JSONHeroPath(operation.key)' selects that commit. PR #1563's public commits API exposes all 13 member objects listed in decomposed_shas; the mainline squash 34f8bd588e6f1a3edcf3aac3c773d3a0e35af4bf is therefore an aggregate, while member cf80a02d... is the smallest first-writer. Direct parent verification: git rev-parse cf80a02d...^ returns 229707951c66c6796a2ed6ca75872545df9a60c4, and git cat-file -e cf80a02d...^:packages/core/src/v3/runMetadata/operations.ts fails because the file is absent. Version cross-check found a lower-bound nuance: the advisory reports >=3.3.8, and packages/core/package.json still says 3.3.8 at mainline landing 34f8bd5..., but both the @trigger.dev/core@3.3.8 tree and the published core-3.3.8.tgz lack operations.js; @trigger.dev/core@3.3.9 (efd61f1374c44eb94b2776dbaaceb2346db9b22c) and published core-3.3.9.tgz contain the vulnerable setter, so 3.3.9 is the first demonstrably affected published package. v4.5.5 (1cbe25bd1d426c8974e4d26ff6c0f0a9e99c7868) and core-4.5.5.tgz contain the unguarded setter; v4.5.6 (325b906319be1cb14b3ba8eb1ca7ac1ef1a30f01) and core-4.5.6.tgz contain isSafeMetadataKey and reject unsafe operations. PR #4316's commits API identifies direct security member 0c2d9ce22a1af5e2ae8d1809cba38051b4acfb1a, whose diff adds the guard and schema refinement; squash 6997aeb0... lands it on main, and git tag --contains 6997aeb0... begins at v4.5.6, not v4.5.5. Finally, git cat-file commit cf80a02d... shows Eric Allam as author/committer and no AI trailer.",
+  "reasoning": "The vulnerable lifecycle begins in the implementation member of PR #1563, not in its squash landing. Decomposing the 13-member branch shows that earlier members culminate at parent 229707951c66c6796a2ed6ca75872545df9a60c4 without operations.ts; cf80a02d23d99b0f4eebe4ac5eb42059f34b2b3d then creates the file, the permissive operation-key schemas, and the service path that consumes them. That direct parent-tree absence, plus blame and -S history, makes cf80a02d... the smallest real BIC; 34f8bd5... merely squashes the completed PR onto main. An authenticated client can choose operation.key, the request schema accepts any string, and JSONHeroPath follows dangerous prototype segments before writing, explaining the process-wide cross-tenant effect rather than merely a malformed metadata record. The flaw persists in the demonstrably affected published releases through 4.5.5. Direct fix member 0c2d9ce... adds both input refinement and a defense at applyMetadataOperations; 6997aeb0... lands that member and v4.5.6 ships it. For attribution, only the raw cf80a02d... commit object controls: its author/committer are the human Eric Allam and it has no explicit AI marker. CodeRabbit appears only in the PR body/later member naming and is excluded by the BIC-only rule. The resulting closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

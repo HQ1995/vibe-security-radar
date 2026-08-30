@@ -1,0 +1,32 @@
+{
+  "worker": "w368",
+  "review_agent_id": "r389_w368",
+  "class_id": "alias-181b2142fff0d629f339182d",
+  "case_id": "GHSA-99qx-5qqr-4j95",
+  "repo": "apache/activemq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "VERIFIED: the default Jetty web-console constraints let the low-privilege user/users role reach Jolokia, while jolokia-access.xml permits org.apache.activemq:* operations including addQueue and removeQueue; the published CVE record describes this same authenticated low-privilege management path.",
+    "atomic_bic": "CORRECTION_REQUIRED: the first causal commit is 6167c49fc116958c123bcdd0100bca50ffed8181 (AMQ-4567), not e366917efc28a4da29e8b4220220c1005972ed87. Commit 6167c49f creates the low-privilege user role and default user account, changes the former admin-only /* mapping to the user,admin constraint, and limits the new admin-only mapping to *.action while Jolokia already exists at /api/jolokia/*. Commit e366917e later password-protects the already exposed API with that same low-privilege constraint and therefore is a mitigation that remains insufficient, not the introducer.",
+    "immediate_parent_absence": "VERIFIED for corrected BIC: parent b98067732b1feff34c5abf5b40fb8a1207396ea6 contains the Jolokia /api context but maps /* only to role admin and ships only the admin account; it lacks the user role/account and split constraint that enable non-admin access.",
+    "squash_member_decomposition": "VERIFIED: 6167c49f is a one-parent git-svn commit for the single AMQ-4567 read-only-console change. Its own diff is the public atomic authoring unit; it is not a merge, revert, move, or squash aggregate requiring member substitution.",
+    "affected_release_membership": "VERIFIED with correction: 6167c49f is absent from activemq-5.8.0, whose /api remains under admin-only /*, and present in activemq-5.9.0, which has the low-privilege role and non-admin-protected /api. It is also an ancestor of vulnerable activemq-5.19.6 and activemq-6.2.5. Thus the CVE's machine-readable 5.x range starting at version 0 is broader than the repository mechanism; the demonstrated 5.x introduction is 5.9.0.",
+    "fixed_release_membership": "VERIFIED: 5.x backport 66efdf121466324f037e1f91330866d51d28fd74 is in activemq-5.19.7 and absent from activemq-5.19.6; 6.x backport be8415f248d311188a37d5e51b508acc80a0fb2d is in activemq-6.2.6 and absent from activemq-6.2.5.",
+    "direct_fix_or_unpatched_state": "VERIFIED: original fix 052369f00a43757e3694abbbe6d0c1a8e72fa4d5 and both release backports add an admins-only /api/jolokia/* constraint and deny privileged broker operations. Vulnerable 5.19.6 and 6.2.5 lack that mapping/deny; fixed 5.19.7 and 6.2.6 contain both.",
+    "bic_only_ai_attribution": "VERIFIED on corrected BIC only: commit 6167c49f was authored and committed by Bosanac Dejan in 2013 and its commit object contains only the AMQ-4567 message plus git-svn-id, with no AI, bot, Generated-with, Copilot, or Co-Authored-By marker. The corrected verdict remains NOT_AI."
+  },
+  "findings": [
+    "The advisory is real and PUBLISHED, not withdrawn or rejected; its mechanism and fixed versions are corroborated by the CVE record and release trees.",
+    "The primary selected e366917e because it explicitly adds /api/* to the low-privilege constraint, but the immediate earlier lifecycle proves that low-privilege Jolokia access already existed after 6167c49f; adding authentication did not introduce the privilege failure.",
+    "The corrected BIC's parent is a clean negative control: Jolokia exists, but the only web role/account is admin and the constraint covers /*. The corrected child introduces both the non-admin account/role and the split that fails to reserve Jolokia for admins.",
+    "The repository tags also expose an advisory-range precision issue: activemq-5.8.0 is admin-only, whereas activemq-5.9.0 contains the corrected BIC and vulnerable split."
+  ],
+  "corrected_fields": {
+    "introducer_sha": "6167c49fc116958c123bcdd0100bca50ffed8181",
+    "introducer_parent": "b98067732b1feff34c5abf5b40fb8a1207396ea6",
+    "flaw_origin": "AMQ-4567 introduced the default low-privilege user account and split the prior admin-only /* web constraint into a user,admin constraint plus an admin-only *.action constraint while the Jolokia /api context already existed. That is the first commit where a non-admin default web user can reach broker-management Jolokia operations. AMQ-4979 e366917e later adds /api/* to the same user,admin constraint, restricting anonymous access but preserving the privilege error.",
+    "affected_5x_lower_bound": "activemq-5.9.0 is the first demonstrated vulnerable release; activemq-5.8.0 is admin-only despite the CVE record's version-0 lower bound"
+  },
+  "remaining_gap": null
+}

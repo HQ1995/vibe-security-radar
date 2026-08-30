@@ -1,0 +1,26 @@
+{
+  "worker": "w389",
+  "review_agent_id": "r389_w389",
+  "class_id": "alias-2f0f2aa54871ecdd82bccae5",
+  "case_id": "GHSA-wg36-wvj6-r67p",
+  "repo": "composer/composer",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org records CVE-2026-40176 as PUBLISHED and the live GHSA is not withdrawn. At 2.9.5, root repository config supplies Perforce port/url and p4user while depot contributes to the generated client name; generateP4Command concatenates all three unescaped into one shell command passed to ProcessExecutor::execute. PerforceDriver::initialize invokes p4Login/checkStream/connectClient, so a malicious root composer.json can reach execution even when p4 itself is absent.",
+    "atomic_bic": "PASS: all-ref reverse -S history and the exact patch identify 36dd7dfea5b7c42adab172aa9985c0cd479aab42 as the first public commit adding generateP4Command and its raw -u/-c/-p concatenation. Later 64bda65e116d19cd97e8ddf2449d14b01ed727b8 only modifies the already-vulnerable helper.",
+    "immediate_parent_absence": "PASS: the BIC has exactly one parent, 0d061f25300062067488b64c35ff28d3cc0bedf8. That parent has no generateP4Command and no -u/-c/-p interpolation of getUser/getClient/getPort; its separate raw client-spec/sync strings are not this advisory's connection-parameter mechanism.",
+    "squash_member_decomposition": "PASS: 36dd7dfea5b7c42adab172aa9985c0cd479aab42 is a single-parent, non-merge public commit, and the all-ref history exposes no earlier public member that wrote the vulnerable helper lines. There is therefore no squash/member aggregate to replace it with.",
+    "affected_release_membership": "PASS: the BIC is an ancestor of boundary affected tags 1.0.0 (32df3aa8), 2.2.26 (c6ad1d79), 2.3.0 (934ee6ee), and 2.9.5 (72a8f8e6); each inspected tag retains the unescaped command construction, matching the CVE/GHSA ranges.",
+    "fixed_release_membership": "PASS: mainline fix 4f02616e6fba3b1baf8d45725f847841b44fc15c is an ancestor of 2.9.6 (9afc32c0), and LTS equivalent d9ffd9c9dcd8ccce7d0299a1c81cbbfb3a837be8 is an ancestor of 2.2.27 (c800ff7c). Neither fix is in the corresponding last-vulnerable tag, and both fixed changelogs name this GHSA/CVE.",
+    "direct_fix_or_verified_unpatched_state": "PASS: diffing each fix against its immediate parent shows the direct remediation: ProcessExecutor::escape is added around user, client, and port, with injection regression tests. The mainline fix parent is still vulnerable; later 4fcc13d428f28479b01f757341aadd625412b454 converts commands to argv arrays but is not the first direct fix.",
+    "bic_only_ai_attribution": "PASS: AI attribution was evaluated only on 36dd7dfea5b7c42adab172aa9985c0cd479aab42. Its raw commit object names human author matt-whittom and committer mwhittom in 2013 and contains no AI/bot identity or AI-generation/co-author trailer. Fix-side and unrelated 2026 markers were excluded, supporting NOT_AI."
+  },
+  "findings": [
+    "The advisory describes a real, non-withdrawn command-injection vulnerability, not a rejected or withdrawn advisory.",
+    "The primary record's mechanism, atomic BIC, parent, release boundaries, direct mainline/LTS fixes, and BIC-only attribution independently reproduce from the advisory and clone.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

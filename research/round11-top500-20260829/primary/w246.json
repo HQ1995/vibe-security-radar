@@ -1,0 +1,36 @@
+{
+  "class_id": "alias-28ede3a298a2c59fb29633cd",
+  "case_id": "GHSA-6cmp-qv2f-x97x",
+  "repo": "velocidex/velociraptor",
+  "advisory_ids": ["CVE-2026-7572", "GHSA-6cmp-qv2f-x97x"],
+  "bug_semantics": "Velociraptor parse_evtx feeds crafted Windows EVTX BinXML into www.velocidex.com/golang/evtx. ConsumeUnit16Array and ConsumeUnit64Array (typo names, types 0x86/0x8a) take an attacker-controlled byte length, slice that many bytes, then walk with `for index < len(buffer)` calling encoding/binary LittleEndian.Uint16/Uint64 on a suffix that may have fewer than 2/8 bytes. Go panics on b[1]/b[7], crashing the client/server (CWE-193). A later clamp `if offset+size >= len { size = len-offset-1 }` forces a leftover odd byte even for in-range even lengths at EOF.",
+  "flaw_origin": "The array consumers were first written on 2021-11-04 in gaddiab/evtx f20ab033e4a12bd28a64562a685fde4a97c0f077 (PR Velocidex/evtx#21 member 'Adding 5 more ValueTypes' by Gad Diab), then squash-landed on Velocidex/evtx as e6e1b58a24f996238b00eb5b473933c55489d4c1. Parent b476f139 has no ConsumeUnit16Array/ConsumeUnit64Array. Mike Cohen later added the `>=`/`-1` clamp in 4b81630e (#23, 2022-04-04). The 2026 rewrite 4b5870ad (#37) dropped the clamp and loops only while index+2/index+8 is inside the buffer.",
+  "introducer_sha": "f20ab033e4a12bd28a64562a685fde4a97c0f077",
+  "introducer_parent": "b476f1394a9706d9eb175a0e43d6856b3a038cc2",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b476f1394a9706d9eb175a0e43d6856b3a038cc2",
+    "620dd78bae99474b621871b0caf8ee634a7c59ff",
+    "f20ab033e4a12bd28a64562a685fde4a97c0f077",
+    "50b785fe821cecba2840f831f42657dda70dcc8b",
+    "e6e1b58a24f996238b00eb5b473933c55489d4c1"
+  ],
+  "ai_marker": "absent; BIC f20ab033 author Gad Diab <gaddiab@hotmail.com>, committer Gad Diab <gaddiab@hotmail.com>; message is only 'Adding 5 more ValueTypes' with no Co-Authored-By, Generated-with, or bot trailers (PR #21 squash e6e1b58a later added Co-authored-by: Willi Ballenthin from a different member).",
+  "verdict": "NOT_AI",
+  "fix_sha": "7165598319110900ba077fecae2ff3391725be6b",
+  "direct_fix_sha": "4b5870ad3048a0ece93dbe13b97d0bc5edf3724b",
+  "evidence": [
+    "CVE.org CVE-2026-7572 state=PUBLISHED (Rapid7 CNA, datePublished=2026-05-06T02:38:59.573Z); GHSA-6cmp-qv2f-x97x withdrawn_at=null; vendor advisory https://docs.velociraptor.app/announcements/advisories/cve-2026-7572/ names ConsumeUnit16Array/ConsumeUnit64Array, parse_evtx, affected before 0.76.5, credit Javier Perez.",
+    "Vulnerable functions live in dependency github.com/Velocidex/evtx (module www.velocidex.com/golang/evtx), not in-tree velociraptor; vql/parsers/event_logs/evtx.go only imports the module. HEAD pin v0.2.1-0.20260612024815-7947209eb310.",
+    "BIC first-write: gaddiab/evtx f20ab033e4a12bd28a64562a685fde4a97c0f077 (2021-11-04, Gad Diab) added ConsumeUnit16Array/ConsumeUnit64Array with `buffer := self.buff[offset:offset+size]` and `for index < len(buffer) { binary.LittleEndian.Uint16(buffer[index:]); index += 2 }` plus 0x86/0x8a cases. Parent b476f1394a9706d9eb175a0e43d6856b3a038cc2 evtx.go has neither function (verified via GitHub file at that SHA and the additive patch).",
+    "Velocidex/evtx#21 is a 4-commit squash onto master as e6e1b58a24f996238b00eb5b473933c55489d4c1 (2021-11-05, 'Adding Int32 and Real64 ValueTypes parsing (#21)'); members b476f139, 620dd78b (debug-only), f20ab033 (array parsers), 50b785fe (merge).",
+    "Aggravation (not BIC): Velocidex/evtx#23 4b81630e3e06fb2d3c66b1fb9333d9eef0c1ecc6 (Mike Cohen, 2022-04-04) inserted `if self.offset+size >= len(self.buff) { size = len(self.buff) - self.offset - 1 }` into both array helpers; #24 b70d5b10 only added a nil return when offset > len.",
+    "Library fix: Velocidex/evtx#37 4b5870ad3048a0ece93dbe13b97d0bc5edf3724b (Mike Cohen, 2026-04-27, 'Bugfix: Bounds checks in parser') rewrote ConsumeUnit16Array/ConsumeUnit64Array to `for index+2 < len(self.buff)` / `index+8` with explicit `buff[index:index+N]` slices and removed the -1 clamp. PR member d4ba4c0544233ff7571244edc39d6f8f3c5d1d15; next pin 06ab70045154 is API-only (#38).",
+    "Product pin on v0.76-release: 7165598319110900ba077fecae2ff3391725be6b parent ac207866f57c1e014820b63b7463d9cb199caf93 changed go.mod evtx from v0.2.1-0.20251107004037-f9f4e4ed0236 (vulnerable) to v0.2.1-0.20260427154223-06ab70045154 (includes 4b5870ad). Master twin 4bfbb894acee06f425f19918642167774ccb53ab (#4806).",
+    "Tag membership: v0.76.2 still pins f9f4e4ed0236 (vulnerable). 71655983 is ancestor of v0.76.4 (4794a664, VERSION=0.76.4) and v0.76.6. a58cde83085f87be8abc7497190f8cf6a62f7bf6 only bumps VERSION 0.76.4→0.76.5 (no evtx change). No git tag v0.76.5; vendor ships 0.76.5 binaries under the v0.76 GitHub release. Vendor range '< 0.76.5' is conservative versus 0.76.4 source already carrying the patched pin.",
+    "BIC AI check on f20ab033 commit object only: human author/committer Gad Diab; no Co-Authored-By/Generated-with/bot. Pre-ChatGPT (2021-11-04). Later evtx 7947209e (2026-06-12) discloses Claude assistance on an unrelated MUI-language change; not the BIC."
+  ],
+  "reasoning": "CVE-2026-7572 is a real published Rapid7 advisory (not withdrawn/rejected): crafted EVTX parsed by parse_evtx panics in ConsumeUnit16Array/ConsumeUnit64Array. Those functions are in Velocidex/evtx, consumed by velociraptor. First write of the crashy loop is reconstructable PR #21 member f20ab033; the master squash e6e1b58a is not the BIC. Parent b476f139 lacks the functions. The 2022 -1 clamp (4b81630e) is a later CWE-193 mutation of the same helpers, not the first write. Mechanism fix is evtx 4b5870ad (#37); velociraptor 0.76-release 71655983 is the first product pin of that parser and is in v0.76.4, with 0.76.5 the vendor-named patched release (version-string commit a58cde83). AI judged only on f20ab033: human Gad Diab, no commit-object AI marker, therefore NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,26 @@
+{
+  "worker": "w063",
+  "review_agent_id": "r389_w063",
+  "class_id": "alias-53c0052826738b27609fafe4",
+  "case_id": "GHSA-6hj8-q7v2-996c",
+  "repo": "apache/airflow",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: In multi-team mode, a team-scoped Connection or Variable lookup first probes the caller's namespace, then falls through on a miss to the team-agnostic name built from the caller-controlled id. An id that names another team namespace is therefore returned because the pre-fix guard requires team_name to be None and cannot run for the vulnerable team-scoped call.",
+    "atomic_bic": "PASS: 933d5676f96dba4d202c1e5938ca42f564fe01f1 is the smallest reconstructable first-write: its key_vault.py diff adds the team probe, unconditional global fall-through, and ineffective team_name-is-None guard. Later PR members 05224351045404d6ecc9f6ca70c03fed40450f28 and b51ab75b00cead94087e4a8972cbbc8ee6f17ee0 only change separator construction and guard matching while preserving that mechanism.",
+    "immediate_parent_absence": "PASS: 933d5676f96dba4d202c1e5938ca42f564fe01f1^ resolves to b90710803a45d015a221b6045295d0dc9ddb964f. Its key_vault.py blob 613dc3310159d396d135aef03320c6026197420e has only the unscoped single get_secret path and lacks team probing, TEAM_SEP, the namespace guard, and the miss-to-global branch.",
+    "squash_member_decomposition": "PASS: The public member chain is 933d5676f96dba4d202c1e5938ca42f564fe01f1 -> 05224351045404d6ecc9f6ca70c03fed40450f28 -> b51ab75b00cead94087e4a8972cbbc8ee6f17ee0. The first member's parent file blob equals squash 462b8e159614e3eba71febfc2a70fcbf665cbb47's parent blob (613dc3310159d396d135aef03320c6026197420e), and the last member's file blob equals the squash result blob (d47384df130c287df783ad997fed14a89f75cf20), so the squash is decomposed rather than treated as the BIC.",
+    "affected_release_membership": "PASS: 462b8e159614e3eba71febfc2a70fcbf665cbb47 is absent from providers-microsoft-azure/13.1.2, present in providers-microsoft-azure/13.2.0, and the 13.2.0 changelog names #65692. This establishes 13.2.0 as the first checked affected release; the Apache CNA record independently marks versions below 14.1.0 affected.",
+    "fixed_release_membership": "PASS: 41a3be7076ef43f199c9a60fa35c3567f41b5648 is absent from providers-microsoft-azure/14.0.0 and present in providers-microsoft-azure/14.1.0rc1 and providers-microsoft-azure/14.1.0. The 14.1.0 changelog lists both #70876 and follow-up #70899, matching the Apache CNA fixed boundary of 14.1.0.",
+    "direct_fix_or_verified_unpatched_state": "PASS: The immediate parent 251a9281006bbb5a55dfc46abd4506af6fcc08b3 still contains the vulnerable team-first/global-fallback path. Direct fix 41a3be7076ef43f199c9a60fa35c3567f41b5648 changes get_conn_value and get_variable to reject every id whose normalized name contains TEAM_SEP before any lookup, closing the cross-team read. Follow-up cfe3f0bbd707af63f9ca64c563a1a695a974d3f8 applies the same consistency check to get_config, whose API has no team_name and was not the cross-team read.",
+    "bic_only_ai_attribution": "PASS: The raw 933d5676f96dba4d202c1e5938ca42f564fe01f1 commit object has human author and committer Prithvi Badiga and only the subject 'Add multi-team lookup to Azure Key Vault backend'; it has no AI-generation, co-author, or bot marker. The Generated-by trailer on fix 41a3be7076ef43f199c9a60fa35c3567f41b5648 is fix-side evidence and is excluded from BIC attribution."
+  },
+  "findings": [
+    "CVE-2026-68870 is a real, published Apache CNA advisory and GHSA-6hj8-q7v2-996c has withdrawn_at=null; this is not a withdrawn or rejected advisory.",
+    "Clone-level parent, member-chain, blob, tag-reachability, changelog, direct-fix, and BIC commit-object checks independently reproduce the primary record.",
+    "The primary NOT_AI verdict is supported because attribution is restricted to the atomic BIC and that object contains no AI marker."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

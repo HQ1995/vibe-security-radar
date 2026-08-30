@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-268012bccddeda1aaf365bfe",
+  "case_id": "GHSA-w567-gjr2-hm5j",
+  "repo": "messagepack-csharp/messagepack-csharp",
+  "advisory_ids": [
+    "CVE-2026-48514",
+    "GHSA-w567-gjr2-hm5j"
+  ],
+  "bug_semantics": "UnsafeBlitFormatterBase.Deserialize (Unity blit resolvers) reads an attacker-controlled inner byteLength from a MessagePack extension body and allocates new T[byteLength / elementSize] before checking that value against the already-bounded extension header length or remaining payload bytes. A tiny ext payload can declare an enormous byteLength, forcing a huge T[] allocation (CWE-770) on UnityBlitResolver / UnityBlitWithPrimitiveArrayResolver paths used for vectors, matrices, and primitive arrays. CVE-2026-48514 / GHSA-w567-gjr2-hm5j is PUBLISHED (not withdrawn/rejected) and is fixed by rejecting negative, unaligned, or mismatched byteLength before allocation.",
+  "flaw_origin": "The unbounded blit allocation was first written on 2017-02-24 in d8a42395ae66122772057a4125155b02670bf7a3 (neuecc, 'testing extremly fast ext vector[] copy for Unity'), which added src/MessagePack.UnityShims/Extension/Vector3ArrayFormatter.cs with UnsafeBlitFormatterBase.Deserialize doing var byteLength = MessagePackBinary.ReadInt32(...) then var result = new T[byteLength / StructLength] with no remaining-length check. Immediate parent 5bb2909d9e0e59cb129d2ee2d8d256af5d2f8c88 has no blit formatter. Later commits only moved/renamed the file, ported the same Deserialize onto MessagePackReader, and expanded formatter subclasses; they did not first introduce the mechanism.",
+  "introducer_sha": "d8a42395ae66122772057a4125155b02670bf7a3",
+  "introducer_parent": "5bb2909d9e0e59cb129d2ee2d8d256af5d2f8c88",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author/committer neuecc <ils@neue.cc>; commit object has a single parent, subject 'testing extremly fast ext vector[] copy for Unity', and no Co-Authored-By, Generated-with, Signed-off-by, or bot identity trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": "0555f07cbf217773070a150c97cbbd2b3a37ac8d",
+  "direct_fix_sha": "0555f07cbf217773070a150c97cbbd2b3a37ac8d",
+  "evidence": [
+    "CVE.org record CVE-2026-48514 state=PUBLISHED (CNA GitHub_M, datePublished 2026-06-22); GHSA-w567-gjr2-hm5j withdrawn_at=null; affected < 2.5.301 and >= 3.0, < 3.1.7; patched 2.5.301 and 3.1.7.",
+    "Pre-fix 3.x Deserialize at 06ea24954efa0fe6f1cac5d87046f9b54dac2dcc:src/MessagePack.UnityClient/Assets/Scripts/MessagePack/Extension/UnsafeBlitFormatter.cs reads ExtensionHeader then var byteLength = reader.ReadInt32(); var result = new T[byteLength / sizeof(T)]; with no remaining-bytes check (allocation immediately after ReadBoolean).",
+    "git show 0555f07cbf217773070a150c97cbbd2b3a37ac8d -- UnsafeBlitFormatter.cs: switches to reader.ReadExtensionFormat(), clones a bounded extensionReader, then rejects byteLength < 0 || byteLength % sizeof(T) != 0 || byteLength != remainingBytes before new T[byteLength / sizeof(T)]. Same-message 2.x backport e01f07cfb2343425cfa1045f044d0831b26f60dd.",
+    "git log --follow / --diff-filter=A on blit sources: first add is d8a42395ae66122772057a4125155b02670bf7a3 adding src/MessagePack.UnityShims/Extension/Vector3ArrayFormatter.cs (139 lines). Deserialize lines 82-93: MessagePackBinary.ReadInt32 -> new T[byteLength / StructLength] with no bound against header.Length.",
+    "Parent-tree verification: git cat-file -e 5bb2909d9e0e59cb129d2ee2d8d256af5d2f8c88:src/MessagePack.UnityShims/Extension/Vector3ArrayFormatter.cs fails (path absent); git grep -i 'UnsafeBlitFormatterBase|byteLength / StructLength|new T\\[byteLength' on that parent over *.cs returns no matches. UnityShims on parent only has MessagePack.UnityShims.csproj and Shims.cs.",
+    "74e4a4feb185d4b7bd5b2184fc96119e28f1f9c5 ('work more more') deletes Vector3ArrayFormatter.cs and adds UnsafeBlitFormatter.cs with the same Deserialize allocation; that is a rename/expansion, not the first write. 91efb454b1b5b36cd84d5ac9444617492803a7be rewrites the method onto MessagePackReader but keeps reader.ReadInt32() then new T[byteLength / Marshal.SizeOf<T>()]; aaf99a7e9807d24a9513a7c916fbf1ce8ed8971d only changes endian handling.",
+    "Tag membership: d8a42395ae66122772057a4125155b02670bf7a3 is an ancestor of v2.5.205 and v3.1.6 (last unpatched 2.5/3.1 tags) and of patched v2.5.301 / v3.1.7. e01f07cf is in v2.5.301 and not in v2.5.205. 0555f07c is in v3.1.7 and not in v3.1.6. First tags containing the BIC include 0.1.0-beta.",
+    "BIC commit object: tree 92124b87cf7ac5844d42761787500026bb99d129, parent 5bb2909d9e0e59cb129d2ee2d8d256af5d2f8c88, author/committer neuecc <ils@neue.cc> 1487899756 +0900, no AI/bot trailers."
+  ],
+  "reasoning": "Vulnerability-first: GHSA-w567-gjr2-hm5j / CVE-2026-48514 describe a real CWE-770 in Unity blit deserialization. The live pre-fix code matches: inner byteLength is wire-controlled and used as the T[] length before any comparison to the outer extension bound. CVE.org is PUBLISHED, so this is not FALSE_POSITIVE. BIC search started from the blit sources and Deserialize, not from AI-marked commits. git log --follow --diff-filter=A and parent-tree grep show the flawed mechanism first appears in d8a42395ae66122772057a4125155b02670bf7a3 as a new file; the immediate parent lacks UnsafeBlitFormatterBase and the allocation. 74e4a4fe is a move/expansion of that already-vulnerable class; 91efb454 is an API refactor that preserves ReadInt32-then-allocate. Those are not BICs. Cross-check: the 2017 introducer precedes both affected ranges; 0555f07c (3.x) and e01f07cf (2.x) land on the patched tags and not on the last unpatched tags. AI is judged only from the BIC commit object: human author/committer neuecc <ils@neue.cc>, single parent, no Co-Authored-By/Generated-with/bot markers. Therefore NOT_AI.",
+  "remaining_gap": null
+}

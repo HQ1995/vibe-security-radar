@@ -1,0 +1,26 @@
+{
+  "worker": "w111",
+  "review_agent_id": "r389_w111",
+  "class_id": "alias-0412a4a35285dd21de0f0227",
+  "case_id": "GHSA-chfm-cm6h-q5x7",
+  "repo": "concretecms/concretecms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed from the 9.5.0 tree and current GHSA/CVE/vendor records: action_view_express_entity accepts attacker-controlled exEntryID, resolves it with Doctrine find(Entry::class, $exEntryID), and renders the entry after only a same-entity comparison. The list emits sequential Entry::getId() values. There is no per-entry view authorization, enabling enumeration and disclosure of Express submissions.",
+    "atomic_bic": "Confirmed e6a4e05418afa0be7206790a9d38e820202eb1b3 as the smallest public-history first write of action_view_express_entity and its vulnerable primary-key lookup. git log -L at that commit shows the function introduced there; the preceding file history contains unrelated document-library code, not an earlier equivalent action.",
+    "immediate_parent_absence": "Confirmed immediate parent 2148c9289c2791875be55669315f94b10dc33378 exists and is exactly e6a4e054^; targeted grep of the parent controller finds no action_view_express_entity, exEntryID, or Express Entry lookup.",
+    "squash_member_decomposition": "Confirmed the BIC is not a squash aggregate requiring member decomposition. Former-commit-id 07533168da7a5d214bdea6f371aa7954aa53b3fd is an unreachable rewritten twin with the same commit tree and parent tree, author, timestamp, and subject; c54c7c388e68168dad5bea694431a01667cb0b30 is absent. For the fix lifecycle, direct PR member 766c732c56180d9a1890733c0d97c39fc5d32b7f is not an ancestor of 9.5.1, while squash landing f22b9dff59454391a50a255a39995bf635deea9e is; their patches on the Express detail/list paths are byte-identical.",
+    "affected_release_membership": "Confirmed e6a4e054 is an ancestor of tags 8.0, 8.5.0, 9.0.0, and 9.5.0. Tag 9.5.0 resolves to c747e425266ac50c12b5f2f74fa895ecec5cd777 and still contains find(Entry::class, $exEntryID), sequential getId() links, and no canViewExpressEntries check. This also resolves the CNA affected-range metadata inconsistency in favor of the CNA title/description, GHSA <9.5.1 range, vendor notes, and repository tree evidence that 9.5.0 is affected.",
+    "fixed_release_membership": "Confirmed f22b9dff59454391a50a255a39995bf635deea9e is absent from 9.5.0 and present in tags 9.5.1 (92bae566b9ec573cfb3017fcbb6db454a6586997) and 9.5.2. The 9.5.1 tree uses getEntryByPublicIdentifier(), canViewExpressEntries(), and getPublicIdentifier().",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 766c732c56180d9a1890733c0d97c39fc5d32b7f changes the sequential lookup to public-identifier lookup, adds a Checker authorization gate, and changes generated links to public identifiers. Squash landing f22b9dff carries the identical two-path patch into 9.5.1.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI using only BIC commit-object signals: author and committer are Andrew Embler <andrew@concrete5.org>, subject is 'more work', trailers are only Former-commit-id values, and the complete commit object contains no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, or bot marker."
+  },
+  "findings": [
+    "CVE-2026-7881 is currently PUBLISHED; GHSA-chfm-cm6h-q5x7 has withdrawn_at=null and identifies <9.5.1 as vulnerable with 9.5.1 first patched. The vendor 9.5.1 release notes independently describe the exEntryID IDOR and the switch from sequential IDs to public identifiers.",
+    "The primary record's vulnerability, BIC, parent, fix, release-membership, and BIC-only authorship conclusions are independently reproduced from the assigned advisory and clone.",
+    "Primary verdict NOT_AI is confirmed; no corrected field or unresolved causal gate remains."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

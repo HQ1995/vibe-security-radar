@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-8f09257da64c8e8019cd6c7d",
+ "case_id": "GHSA-4q4m-8h83-fcmr",
+ "repo": "budibase/budibase",
+ "advisory_ids": [
+  "CVE-2026-72849",
+  "GHSA-4q4m-8h83-fcmr"
+ ],
+ "bug_semantics": "GET/POST /api/chat-links/:instance/:token/handoff sit on publicRoutes with no CSRF middleware. After login the GET renders a confirmation HTML form whose hidden confirmationToken is the only credential for the POST. confirmChatLinkSession then binds the currently authenticated Budibase globalUserId to the session's external chat identity. There is no stored requester identity at prepare time, so a same-tenant attacker who leaks the token can induce a logged-in victim to auto-submit the POST (top-level form CSRF under SameSite=Lax) and inherit the victim's agent permissions from Slack/Discord/Teams/Telegram.",
+ "flaw_origin": "02d32c2cc0fd19584c63e5f6f9030a82a7b18b7a (Require consent for chat identity links, Peter Clement, 2026-05-14) first wrote renderLinkConfirmationPage (hidden confirmationToken), publicRoutes.post(.../handoff, confirmChatLinkSession), and prepareChatIdentityLinkSessionConfirmation that stores only confirmationToken. Immediate parent bd3879b77340293a29e3391c4b8ae44e47b35316 has GET handoff from 6fdd3bb496d0b648f4969a8a5c505dee477a022f that auto-binds on GET and has no confirmationToken/confirmChatLinkSession/POST. Single-parent first-write of the CSRF confirmation sink, not a move or squash.",
+ "introducer_sha": "02d32c2cc0fd19584c63e5f6f9030a82a7b18b7a",
+ "introducer_parent": "bd3879b77340293a29e3391c4b8ae44e47b35316",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; author/committer Peter Clement <peterclmnt@gmail.com>; no Co-Authored-By/Generated-with trailers; commit object has no Claude/OpenAI/Copilot/Cursor/Codex/Anthropic marker",
+ "verdict": "NOT_AI",
+ "fix_sha": "e2aa86793bbf4771f38b89a70ebb0a72b81af83b",
+ "direct_fix_sha": "e2aa86793bbf4771f38b89a70ebb0a72b81af83b",
+ "evidence": "First-party GHSA-pvcr-8mvp-w8qr (referenced by GHSA-4q4m-8h83-fcmr / CVE-2026-72849) describes chat-link handoff CSRF/identity confusion; CVE.org CVE-2026-72849 state=PUBLISHED (not rejected); affected <3.40.0 patched 3.40.0. git log -S confirmChatLinkSession -- packages/server/src/api/controllers/ai/chatIdentityLinks.ts first-adds 02d32c2cc0fd19584c63e5f6f9030a82a7b18b7a (parent bd3879b77340293a29e3391c4b8ae44e47b35316). git grep confirmationToken/confirmChatLinkSession/renderLinkConfirmationPage on parent is empty (PARENT_NO_CONFIRM); BIC adds publicRoutes.post(\"/api/chat-links/:instance/:token/handoff\", ai.confirmChatLinkSession), renderLinkConfirmationPage hidden confirmationToken, and confirmChatLinkSession that only compares ctx.request.body.confirmationToken then upserts globalUserId=getCurrentGlobalUserId(ctx). 6fdd3bb496d0b648f4969a8a5c505dee477a022f is earlier GET auto-bind, not this POST/token CSRF. Fix e2aa86793bbf4771f38b89a70ebb0a72b81af83b (Restrict chat identity confirmations to the confirming user, Adrià Navarro Redó) stores confirmationGlobalUserId at prepareChatIdentityLinkSessionConfirmation and rejects POST unless session.confirmationGlobalUserId === currentGlobalUserId. Tag membership: 02d32c2 is ancestor of 3.39.14/3.39.29 (vulnerable: confirmation page, no confirmationGlobalUserId) and of 3.40.0; e2aa86793 is not an ancestor of 3.39.14/3.39.29, is an ancestor of 3.39.30 and 3.40.0 (confirmationGlobalUserId checks present). 3.40.0 still uses publicRoutes for POST but binds the confirming user. BIC commit-object: Peter Clement <peterclmnt@gmail.com>, empty trailers, no AI identity strings.",
+ "reasoning": "The advisory is a real published CWE-352: a leaked confirmationToken plus a public POST lets an attacker bind their chat identity to a victim who is induced to submit the form. The smallest public commit that first wrote that confirmation-token POST (token in HTML, no requester binding) is 02d32c2; the parent still auto-linked on GET without a confirmationToken/POST. 6fdd3bb is the earlier auto-bind GET and is not this CVE's BIC. Closing remediation is e2aa86793, which binds the confirmation session to the preparing user's globalUserId and is present from 3.39.30 through advertised 3.40.0. AI is judged only on BIC 02d32c2: human author/committer, no commit-object AI marker. The later human-authored fix does not attribute the BIC. Verdict NOT_AI.",
+ "remaining_gap": null
+}

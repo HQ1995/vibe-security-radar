@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-32e785e30659db177e40706e",
+  "case_id": "GHSA-3p28-73q7-45xp",
+  "repo": "free5gc/free5gc",
+  "advisory_ids": [
+    "CVE-2026-44326",
+    "GHSA-3p28-73q7-45xp"
+  ],
+  "bug_semantics": "NEF mounted the AF-facing /3gpp-traffic-influence/v1 CRUD routes without inbound bearer-token authentication or authorization. Requests with no Authorization header or a forged token reached handlers that create, read, patch, and delete traffic-influence subscriptions; the route group was mounted regardless of ServiceList, so disabling the service in configuration did not remove exposure.",
+  "flaw_origin": "Commit 3ae828b1315fde7e0d9da74ae25b23816aad4a08 first created internal/sbi/server.go and internal/sbi/api_ti_handler.go, mounted the traffic-influence route group, and applied its GET/POST/PUT/PATCH/DELETE endpoints with no authentication middleware. Its immediate parent 34108d41889eb7a77935ade031de433cc5dfc44d has no internal/sbi/server.go. Later commits filled out the initially stubbed handlers, but they inherited the unauthenticated route boundary rather than introducing that boundary.",
+  "introducer_sha": "3ae828b1315fde7e0d9da74ae25b23816aad4a08",
+  "introducer_parent": "34108d41889eb7a77935ade031de433cc5dfc44d",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI, bot, generated-by, or co-author marker is present on the BIC commit object. It is a single-parent 2020 commit authored by Tim Liu <timliu@nctu.edu.tw> with subject 'New and run SBI server'.",
+  "verdict": "NOT_AI",
+  "fix_sha": "c38a82fd01702b7297ab0b91d231d457edf53ff2",
+  "direct_fix_sha": "c38a82fd01702b7297ab0b91d231d457edf53ff2",
+  "evidence": [
+    "The BIC patch creates internal/sbi/server.go and mounts factory traffic-influence routes through applyEndpoints without an authorization check; it also creates the six CRUD route definitions. The parent returns HTTP 404 for internal/sbi/server.go, proving the route boundary was absent.",
+    "The vulnerable release snapshots v4.2.0 and v4.2.1 both point NFs/nef at 5ce35eab62b49b46c02be55d0c8ab23ce0300bee, whose server.go unconditionally mounts the traffic-influence group with no auth middleware. The advisory's runtime reproduction at that commit reached POST/GET/PATCH/DELETE business handlers without a valid bearer token.",
+    "Direct fix c38a82fd01702b7297ab0b91d231d457edf53ff2 replaces unconditional mounting with ServiceList-gated groups, installs RouterAuthorizationCheck for models.ServiceName_3GPP_TRAFFIC_INFLUENCE, and returns HTTP 401 when AuthorizationCheck rejects the token. PR free5gc/nef#23 was closed unmerged; c38a82f is the single-parent upstream-main fix object, so the PR head is not used as the fix SHA.",
+    "The umbrella v4.2.2 tag points NFs/nef at 2969433db45e813d65af3f43fe16e6bba750824a, whose server.go still unconditionally mounts the routes without authorization. The first inspected fixed umbrella release is v4.2.3, which points NFs/nef at 6e27bc78a4696835da6d99d065696690701ba995; blame and source there retain c38a82f's authorization middleware. This code evidence conflicts with current GHSA/CVE metadata claiming v4.2.2 is patched.",
+    "CVE-2026-44326 is PUBLISHED and the GitHub advisory is not withdrawn; both identify the same missing-authorization mechanism and upstream fix reference."
+  ],
+  "reasoning": "The causal defect is the unauthenticated route boundary, not the later handler implementation or the 2026 remediation. Commit 3ae828b is the atomic first write of that boundary, has a verified immediate parent where the server file is absent, and is neither a merge nor a decomposable squash. Only the BIC was used for AI attribution, and its 2020 commit object has no AI marker; therefore the real vulnerability is NOT_AI. The direct fix is c38a82f, while release-tree inspection shows v4.2.2 remains vulnerable and v4.2.3 contains the fix despite contradictory advisory version metadata.",
+  "remaining_gap": ""
+}

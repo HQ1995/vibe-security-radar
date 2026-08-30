@@ -1,0 +1,42 @@
+{
+  "class_id": "alias-071a34986d0d561df529c482",
+  "case_id": "GHSA-77m7-4hpw-56g7",
+  "repo": "tier4/nebula",
+  "advisory_ids": ["CVE-2026-74238", "GHSA-77m7-4hpw-56g7"],
+  "bug_semantics": "Vlp32Decoder::unpack() overlays a caller-supplied std::vector<uint8_t> onto a 1206-byte raw_packet_t and indexes packet[g_return_mode_index] (1204) with no length check. Live Velodyne UDP is accepted without .limit_to_sender(); UdpSocket resizes the receive vector to the datagram length and VelodyneRosWrapper::receive_cloud_packet_callback copies that exact-sized vector into NebulaPacket.data, so a short UDP datagram makes unpack (and check_and_handle_scan_complete at offsets 2 and 1102) read past the heap allocation and publish fabricated PointCloud2 points. Parent of the BIC still copied UDP into velodyne_msgs/VelodynePacket uint8[1206] via std::copy_n, which cannot heap-OOB on a short datagram.",
+  "flaw_origin": "PR #148 member a008a6f8470620c422b5d584371ed27d32bcbf88 (Max SCHMELLER) first changed Vlp32Decoder::unpack from velodyne_msgs::msg::VelodynePacket (fixed uint8[1206]) to const std::vector<uint8_t> & packet, wrote the unguarded raw_packet_t cast and packet[RETURN_MODE_INDEX] (1204), and swapped the datagram-sized UDP vector into NebulaPacket.data instead of padding into a 1206-byte array. That member is the smallest public first-write; GitHub squash-merged it as af427ef1c78772cd9c7e5c1df23940cd637c1177 onto develop/main. Follow-on member 3ff8a82ed2d915a8afdd2902987b39832a634162 inserted checkAndHandleScanComplete (further unguarded azimuth-word reads) but did not first write the cited sink. Later path moves/renames (g_return_mode_index, vendor-package split) are not BICs.",
+  "introducer_sha": "a008a6f8470620c422b5d584371ed27d32bcbf88",
+  "introducer_parent": "384d3c97e220e01f553bc43a90c4974b088eec56",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": ["a008a6f8470620c422b5d584371ed27d32bcbf88"],
+  "ai_marker": "absent; BIC author Max SCHMELLER <max.schmeller@tier4.jp>, committer Max SCHMELLER <max.schmeller@tier4.jp> (GitHub @mojomex, human TIER IV engineer); git cat-file/log on a008a6f8470620c422b5d584371ed27d32bcbf88 shows no Co-Authored-By, Generated-with, Made-with, Cursor, Copilot, Claude, or bot trailers",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-74238 state=PUBLISHED (assigner VulnCheck, datePublished 2026-08-17, not rejected/withdrawn); GHSA-77m7-4hpw-56g7 withdrawn_at=null; CWE-125; advisory cites Vlp32Decoder::unpack short-UDP heap OOB through 1.2.0",
+    "First-party disclosure https://github.com/tier4/nebula/issues/488 still state=open, comments=0, no linked fix PR (checked GitHub PR list updated through 2026-08-26). Suggested fix: reject packet.size()!=g_packet_size at unpack(); in-tree Hesai pattern at src/nebula_hesai/nebula_hesai_decoders/include/nebula_hesai_decoders/decoders/hesai_decoder.hpp:104-108 (packet.size() < sizeof(packet_t))",
+    "HEAD/v1.2.0 c9721ebfb1ec929057f4371b309fc9bc759be80a (2026-07-30) still has unguarded sink: src/nebula_velodyne/nebula_velodyne_decoders/src/decoders/vlp32_decoder.cpp:132-139 unpack(); :136 raw_packet_t* cast of packet.data(); :139 packet[g_return_mode_index]; :134 check_and_handle_scan_complete. No packet.size()/g_packet_size guard in that file. g_return_mode_index=1204, g_packet_size=1206 in velodyne_scan_decoder.hpp:51,116-138",
+    "Attack path at HEAD: velodyne_hw_interface.cpp:60-67 UdpSocket without .limit_to_sender() (unlike RoboSense/Continental/sample); udp.hpp:360-394 recvmsg then buffer.resize(valids) to datagram length; velodyne_ros_wrapper.cpp:249-264 msg_ptr->data = packet (exact-size copy) then decoder_wrapper process_cloud_packet -> VelodyneDriver unpack",
+    "git log -L on current unpack plus -S 'unpack(const std::vector<uint8_t>' pins the vector signature to PR #148. Original add (ac5cdc9c9c59e96fda5b82acc1831371c10e731b / a1f2f4bc0f4b822cd2fc72c12c2f142639019745, 2022-02-08) and parent unpack used velodyne_msgs::msg::VelodynePacket with uint8[1206] data",
+    "Parent 384d3c97e220e01f553bc43a90c4974b088eec56 (on main; also GitHub PR #148 base): nebula_decoders/.../vlp32_decoder.cpp:140-143 unpack(const velodyne_msgs::msg::VelodynePacket&); cast of velodyne_packet.data[0]; index velodyne_packet.data[RETURN_MODE_INDEX]. HW path still std::copy_n(..., buffer_size, velodyne_packet.data.begin()) into the 1206-byte message field — short UDP cannot heap-OOB",
+    "BIC a008a6f8470620c422b5d584371ed27d32bcbf88 parent-verified: vlp32_decoder.cpp:135-138 first writes unpack(const std::vector<uint8_t> & packet) with (const raw_packet_t *)packet.data() and packet[RETURN_MODE_INDEX]; RETURN_MODE_INDEX=1204 in velodyne_scan_decoder.hpp:40. Same commit nebula_ros/src/velodyne/velodyne_ros_wrapper.cpp:242-255 msg_ptr->data.swap(packet) and decoder_wrapper.cpp:171 ParseCloudPacket(packet_msg->data) without a size check. git rev-parse a008a6f^ == 384d3c97e220e01f553bc43a90c4974b088eec56",
+    "Squash decomposition: GitHub PR #148 (mojomex, 14 commits, merged 2024-05-24 as af427ef1c78772cd9c7e5c1df23940cd637c1177). Member objects exist locally. a008a6f is not an ancestor of origin/main; equivalent lines landed in squash af427ef (parent 855f36a61aa715fc61d0abd5926d035da36c701e still has VelodynePacket unpack). git merge-base --is-ancestor af427ef v1.0.0/v1.1.0/v1.1.1/v1.2.0 all true — BIC content precedes the advisory's <=1.2.0 range",
+    "transport_drivers UdpSocket::asyncReceiveHandler already did m_recv_buffer.resize(bytes_transferred) before the callback, so a008a6f's dropped 1206 pad made short datagrams reach unpack immediately; later nebula UdpSocket (dc69e52/7636aae/e261c5f) also resizes to datagram length",
+    "Unpatched: no commit on any local branch adds a Velodyne unpack length check; HEAD equals tag v1.2.0; issue #488 remains open",
+    "BIC-only AI: git log -1 --format='%an %ae / %cn %ce%n%B' a008a6f8470620c422b5d584371ed27d32bcbf88 -> Max SCHMELLER max.schmeller@tier4.jp both sides; body is only 'refactor(velodyne)!: unify wrapper nodes. Currently WIP but compiling'; no AI/bot trailers"
+  ],
+  "reasoning": "The published CVE/GHSA and still-open issue #488 describe a real CWE-125: Vlp32Decoder::unpack treats an untrusted UDP-sized vector as a 1206-byte VLP32 packet. That is not a false positive. Pre-PR #148 the decoder indexed a ROS VelodynePacket uint8[1206] after copy_n padding, so short datagrams could not read off the allocation. The smallest public commit that first wrote the exploitable lines is PR #148 member a008a6f (verified absent at parent 384d3c97): it changed unpack to std::vector<uint8_t>, left the raw_packet_t overlay and packet[1204] unguarded, and stopped padding. The GitHub squash af427ef is a carrier aggregate, not the BIC. Tags v1.0.0–v1.2.0 contain that squash, matching affected <=1.2.0. No later commit added a size check; HEAD/v1.2.0 is unpatched. AI is judged only on the BIC object: human TIER IV author/committer Max SCHMELLER with no co-author or generator trailers, so NOT_AI.",
+  "remaining_gap": "unpatched: no fix_sha; tier4/nebula#488 still open and HEAD c9721ebfb1ec929057f4371b309fc9bc759be80a (v1.2.0) still contains the unguarded Vlp32Decoder::unpack sink",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "CVE-2026-74238 remains PUBLISHED; GHSA-77m7-4hpw-56g7 is not withdrawn; GitHub issue tier4/nebula#488 is still open with no linked fix PR; clone HEAD equals tag v1.2.0 (c9721ebfb1ec929057f4371b309fc9bc759be80a, 2026-07-30) and still contains the unguarded vector unpack/cast/index.",
+    "potential_fix": {
+      "approach": "At the start of Vlp32Decoder::unpack (and before check_and_handle_scan_complete), reject packet.size() != g_packet_size (1206). Optionally clamp block.rotation to g_rotation_max_units-1 and add UdpSocket::Builder.limit_to_sender(sensor_ip, data_port) on the Velodyne socket.",
+      "rationale": "A length check matching the in-tree Hesai decoder (packet.size() < sizeof(packet_t) then memcpy) prevents the raw_packet_t overlay and packet[1204]/azimuth-word indexes from reading past the UDP-sized heap vector; sender pinning removes the unauthenticated remote path the other drivers already have.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/tier4/nebula/issues/488"
+    }
+  }
+}

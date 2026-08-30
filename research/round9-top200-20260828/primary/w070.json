@@ -1,0 +1,26 @@
+{
+  "class_id": "alias-1c1a302765a6aff16a32eb52",
+  "case_id": "GHSA-29wv-cv7p-xjc2",
+  "repo": "eclipse-ee4j/glassfish",
+  "advisory_ids": [
+    "CVE-2026-2587",
+    "GHSA-29wv-cv7p-xjc2"
+  ],
+  "bug_semantics": "The Admin Console gadget bootstrap accepts the request-controlled gadget parameter as a URL/path, parses the referenced XML into a GadgetModule, and emits the module text with escaping disabled inside JSFTemplating. That template path evaluates EL in the attacker-controlled XML/content (the source itself warns that JSFT content is evaluated twice), so expressions such as #{7*7} execute server-side and richer EL access to constructors, static methods/fields, getClass(), or class can reach arbitrary code execution.",
+  "flaw_origin": "The causal origin is the 2009 gadget endpoint commit ece6ab82e495d2cf87cbf4ec78170727adf2c7f1: it first added gadget.jsf and wired #{param.gadget} into gf.getGadgetModule while rendering pageSession.gadget.text through escape=false. The immediately preceding infrastructure commit 16e12748c3def5754a21f3019a1794b899862017 supplied the URL-capable XML loader, but had no request-reachable gadget.jsf endpoint; ece6ab82 is therefore the smallest commit that completed the vulnerable untrusted-input-to-EL-evaluation path.",
+  "introducer_sha": "ece6ab82e495d2cf87cbf4ec78170727adf2c7f1",
+  "introducer_parent": "5c957a61e840840475827b6954bcf05fb93d81e2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "16e12748c3def5754a21f3019a1794b899862017",
+    "ece6ab82e495d2cf87cbf4ec78170727adf2c7f1"
+  ],
+  "ai_marker": "absent — the BIC commit object/patch identifies human author Ken Paulsen <kenpaulsen@java.net>; GitHub history attributes the commit to Ken Paulsen, and the commit message contains only the substantive message plus svn path/revision and Former-commit-id metadata, with no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "90090d7234f6e1c4df3c92903d150371353efbc2",
+  "direct_fix_sha": "cafaeae1b29b0552ca283e62004c047ea7082b34",
+  "evidence": "First-party advisory: https://www.cve.org/CVERecord?id=CVE-2026-2587 states that attacker-supplied values in gadget-handler XML are evaluated as EL, confirms #{7*7} -> 49, and gives affected/fixed boundaries 7.0.0-7.0.25/7.0.26, 7.1.0/7.1.1, and 8.0.0-8.0.1/8.0.2 (5.1.0-6.2.5 unknown). BIC: https://github.com/javaee/glassfish/commit/ece6ab82e495d2cf87cbf4ec78170727adf2c7f1 adds v3/admingui/common/src/main/resources/gadgets/gadget.jsf from /dev/null; its lines pass #{param.gadget} to gf.getGadgetModule and render pageSession.gadget.text with escape=false, beside a warning that JSFT evaluation occurs twice. Its message explicitly says gadget.jsf bootstraps a gadget XML and gives gadget JavaScript the ability to invoke any server handler. Parent absence: fetching that exact path at parent 5c957a61e840840475827b6954bcf05fb93d81e2 returns HTTP 404; the parent changes only NCLIRemoteCommand.java. Decomposition: predecessor commit 16e12748c3def5754a21f3019a1794b899862017 first adds GadgetHandlers.getGadgetModule, accepting complete URLs and parsing them with ConfigParser, while ece6ab82 adds the request endpoint; the Eclipse repository's root import 571714739b23e16c4c90d5229b806433920b3bcb already contains the same vulnerable gadget.jsf flow, so that aggregate import is not treated as the BIC. Fix: upstream jsftemplating PR https://github.com/eclipse-ee4j/glassfish-jsftemplating/pull/105 adds a RestrictedELResolver (first patch c0eff55a82a96eeea9933104ae5003e9220dfb93) blocking static methods/fields, constructors, getClass(), and class. In this repository direct commit cafaeae1b29b0552ca283e62004c047ea7082b34 upgrades jsftemplating 4.1.0 -> 4.2.0; merge 90090d7234f6e1c4df3c92903d150371353efbc2 is contained in tag 8.0.2 and later, not 8.0.1. Backport commits adadb7517607913503a34e1cce234a6c7fa3d717 and d21eabe29696687ec4ee9af718eb6a549485e3f5 upgrade 4.0.4 -> 4.0.5 and are contained in 7.0.26 and 7.1.1 respectively. Tag 7.0.0 contains the gadget.jsf flow and vulnerable jsftemplating 4.0.0, establishing that the BIC predates the affected boundary and the fixes land at the patched boundaries.",
+  "reasoning": "The vulnerability is a trust-boundary failure, not merely the existence of EL: gadget.jsf turns a request parameter into an arbitrary gadget XML location, then places parsed gadget content into a JSFT/JSF rendering context where EL is evaluated and output escaping is disabled. Commit 16e12748 supplied loader primitives, but no external request path; ece6ab82 is the first minimal commit completing the exploit chain by adding gadget.jsf, so later copyright edits, workspace moves, the 2018 Eclipse initial import, and dependency upgrades are not introducers. Direct inspection of the immediate parent tree proves gadget.jsf absent. The historical endpoint survives the Eclipse import and is present at the 7.0.0 affected boundary. The 2026 remediation restricts dangerous EL resolution in jsftemplating and GlassFish consumes it at 7.0.26, 7.1.1, and 8.0.2. Only the ece6ab82 commit object was used for AI attribution; its human 2009 identity and trailer-free message provide no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

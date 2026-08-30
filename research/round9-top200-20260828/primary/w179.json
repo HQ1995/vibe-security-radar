@@ -1,0 +1,43 @@
+{
+  "class_id": "alias-36efc196d4ae8f8845dc2c2a",
+  "case_id": "GHSA-r9w2-wp2g-mfgm",
+  "repo": "gramsearch/telegram-search",
+  "advisory_ids": [
+    "CVE-2026-73031",
+    "GHSA-r9w2-wp2g-mfgm"
+  ],
+  "bug_semantics": "An attacker who can post to a Telegram group can store HTML in a message's content. The search/list UI passed that database-backed item.content to highlightKeyword(), which returned the text unchanged when no keyword was present and otherwise performed only a regex replacement that inserted a highlight span; neither branch escaped the message text. Vue then interpreted the returned string through v-html, so merely viewing/searching the shared messages rendered attacker markup and could execute an event-handler payload such as <img onerror=...> in another user's browser.",
+  "flaw_origin": "The smallest reconstructable BIC is PR #145 member 6454fcaf810d2cd92d9010dffc6b14b3acfa0ad7 (feat: global search). It created apps/frontend/src/components/GlobalSearch.vue with both the unescaped highlightKeyword implementation and the v-html sink over item.content. GitHub squash 4fec95f79a6215d61e92f572baefef9379632d55 later landed the PR on the main lineage; subsequent renames, copies, and consolidations preserved the mechanism until it reached apps/web/src/components/messages/MessageList.vue, so those later commits are not introducers.",
+  "introducer_sha": "6454fcaf810d2cd92d9010dffc6b14b3acfa0ad7",
+  "introducer_parent": "6ee99f31d41b7574fef773343477e7c640c2af2f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "02501c15f4d68c83dc6423adc7d8460814dbf6d8",
+    "6ee99f31d41b7574fef773343477e7c640c2af2f",
+    "6454fcaf810d2cd92d9010dffc6b14b3acfa0ad7",
+    "ad8a1c3a3ab147eed328f8d0a42aaab9cf07bf99",
+    "8d47e33210ab0eb67ac13a3633dc2ecc34f8389e",
+    "e862b203e325f7119edcf7360c2f8441bc45c29e",
+    "91c94bbee866257b68fd895e26e22a0154814101",
+    "a222a8fa953f991e36e4ebcf2497b583cafe9d6d",
+    "e710c48a23de208aee6f214879e7d345ec83f086"
+  ],
+  "ai_marker": "absent — the raw BIC commit object identifies both author and committer as hahaqwq <hahaqwq233@gmail.com>, has the sole message 'feat: global search', has no Co-Authored-By, Generated-with, AI, or bot trailer, and has no bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "54f6adced844ce9990228d75e31348bfed934e05",
+  "direct_fix_sha": "40155a70764e85ddf995ea3ce11a7671b9a6ef9b",
+  "evidence": [
+    "First-party advisory data for GHSA-r9w2-wp2g-mfgm/CVE-2026-73031 describes stored cross-user XSS through raw Telegram message content passed by MessageList.vue highlightKeyword() into v-html; the referenced VulnCheck advisory states telegram-search <= v1.2.8 is affected and identifies 54f6adced844ce9990228d75e31348bfed934e05 as the fix.",
+    "git log -L over highlightKeyword in apps/web/src/components/messages/MessageList.vue at the fix shows 54f6adced844ce9990228d75e31348bfed934e05 replacing return text/text.replace(...) with escaped safe content, and follows the current component back to f06dcba73f5b4cee3649806fa47484d4acf379a3. A second -L over the pre-refactor SearchDialog lineage reaches squash 4fec95f79a6215d61e92f572baefef9379632d55, which added the same unsafe function in the original GlobalSearch.vue lineage.",
+    "Repository-wide git log -S'highlightKeyword' found the main-line lifecycle 4fec95f79a6215d61e92f572baefef9379632d55 -> 1221e8cbb3337ffabe0712d9d4491ff6af3c2dbd -> 261f67025a373a65f2b97c9ba1c3558dc42f0597 -> f06dcba73f5b4cee3649806fa47484d4acf379a3 -> 546674c43bd97822c318d04b44726bbd62c1872c -> f550795c684660ef8f58ffe48e9d567ea12cac52. Inspection shows the intermediate commits rename, duplicate, centralize, or move the already-unsafe code; notably f550795c684660ef8f58ffe48e9d567ea12cac52 is a 100% rename from packages/stage-ui to apps/web.",
+    "PR #145 is publicly reconstructable: refs/pull/145/head resolves to e710c48a23de208aee6f214879e7d345ec83f086. git log from the integration base through that head yields the nine decomposed_shas. Within that member history, git log -S'highlightKeyword' isolates 6454fcaf810d2cd92d9010dffc6b14b3acfa0ad7; its diff creates apps/frontend/src/components/GlobalSearch.vue and writes highlightKeyword plus v-html=\"highlightKeyword(item.content, keyword)\" together. The later squash 4fec95f79a6215d61e92f572baefef9379632d55 carries those vulnerable lines onto main.",
+    "Direct parent-tree verification is conclusive: git ls-tree -r 6ee99f31d41b7574fef773343477e7c640c2af2f -- apps/frontend/src/components/GlobalSearch.vue returns no entry, and git grep for highlightKeyword or v-html under apps/frontend at that parent returns no matches. The BIC diff is therefore the first write of this reachable mechanism, not a move or refactor.",
+    "The BIC raw commit object has tree 966c1a7097e69f9f53547eb185da809e7d4b056b, parent 6ee99f31d41b7574fef773343477e7c640c2af2f, human author/committer hahaqwq <hahaqwq233@gmail.com>, and only the subject 'feat: global search'; it contains no AI/co-author/generated-with trailer or bot identity.",
+    "Version cross-check: remote tag v1.2.8 peels to 34a815af8486543d40fd05bd9bd29788c062b7e7 (release: v1.2.8, 2026-06-29). The squash landing 4fec95f79a6215d61e92f572baefef9379632d55 is its ancestor, while 54f6adced844ce9990228d75e31348bfed934e05 is not. git grep at v1.2.8 shows return text, text.replace(...), and the item.content v-html sink in apps/web/src/components/messages/MessageList.vue.",
+    "Patched-boundary cross-check: remote tag v1.3.1 peels to 6a2909429e180bd6d4f79c46a882585f5f89bbc1 (release: v1.3.1, 2026-08-18). Fix 54f6adced844ce9990228d75e31348bfed934e05 is its ancestor, and git grep at v1.3.1 shows escapeHtml(text), escaped keyword handling, and safe content supplied to the retained highlight markup sink.",
+    "PR #654 decomposes to original remediation 40155a70764e85ddf995ea3ce11a7671b9a6ef9b, a main-branch merge, and autofix head d97c140765afd57f56471fcc1e8f2e4c06f9ec39. Commit 40155a70764e85ddf995ea3ce11a7671b9a6ef9b first escapes message text and the keyword; squash landing 54f6adced844ce9990228d75e31348bfed934e05 has a tree-equivalent patch to the PR head and is the advisory-linked fix. Any Cursor/Bugbot disclosure appears on this later fix PR, not on the BIC commit object, and therefore does not attribute the introduction."
+  ],
+  "reasoning": "The vulnerable dataflow is attacker-controlled Telegram message content -> stored CoreMessage.content -> highlightKeyword without HTML neutralization -> Vue v-html -> browser execution in another group participant's search/list view. Although the advisory names MessageList.vue, history proves that component was a later consolidation: the unsafe function and sink originated in GlobalSearch.vue. The main-line squash 4fec95f79a6215d61e92f572baefef9379632d55 is an aggregate, so its publicly retained PR #145 head was decomposed. Member 6454fcaf810d2cd92d9010dffc6b14b3acfa0ad7 is the smallest commit that writes both causal halves, and its immediate parent lacks both the file and any frontend highlightKeyword/v-html mechanism. The squash landing precedes and is contained in vulnerable v1.2.8; the advisory fix is absent from that tag, then contained in the safe v1.3.1 tag. The direct remediation is 40155a70764e85ddf995ea3ce11a7671b9a6ef9b and the final landed fix is 54f6adced844ce9990228d75e31348bfed934e05. Because the only permissible attribution source—the raw BIC commit object—shows a human author/committer and no AI marker, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

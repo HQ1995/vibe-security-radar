@@ -1,0 +1,26 @@
+{
+  "worker": "w238",
+  "review_agent_id": "r389_w238",
+  "class_id": "alias-d9b463a522ac3009ac44e871",
+  "case_id": "GHSA-mmm3-jq63-7mw5",
+  "repo": "libcsp/libcsp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: csp_eth_init() allocates eth_context_t with an 11-byte name field (CSP_IFLIST_NAME_MAX + 1, where the constant is 10) and commit 307f4077288fe0da04843ef26b98ab0b5cf44596 copies caller-provided ifname into it with unbounded strcpy; issue #850 supplies an ASan heap-buffer-overflow reproduction.",
+    "atomic_bic": "PASS: 307f4077288fe0da04843ef26b98ab0b5cf44596 is the smallest first-write: a one-file, one-line replacement of bounded strncpy with vulnerable strcpy, and blame plus -S history attribute the vulnerable line to it.",
+    "immediate_parent_absence": "PASS: immediate parent be2fc46417fee1c5180b0c33345a86024692d966 contains strncpy(ctx->name, ifname, sizeof(ctx->name) - 1) and no vulnerable strcpy at the site.",
+    "squash_member_decomposition": "PASS: the BIC has one parent and its complete patch is the single vulnerable line replacement; it is neither a move nor a multi-change squash aggregate requiring member decomposition.",
+    "affected_release_membership": "PASS: 307f4077288fe0da04843ef26b98ab0b5cf44596 is not an ancestor of v2.0 or origin/libcsp-2-0, and v2.0 lacks src/drivers/eth/eth_linux.c. It existed on the develop line while meson.build still declared 2.0; no tagged release contains the BIC without the fix.",
+    "fixed_release_membership": "PASS: both BIC 307f4077288fe0da04843ef26b98ab0b5cf44596 and fix dd1ad4d2c5c5c1135af68ee846be82c2863f75e5 are ancestors of v2.1, origin/libcsp-2-1, and origin/develop; v2.1 therefore contains the corrected strncpy state.",
+    "direct_fix_or_unpatched_state": "PASS: direct fix dd1ad4d2c5c5c1135af68ee846be82c2863f75e5 changes the vulnerable strcpy in its immediate parent a8649782b05f67701c736dba0c51289dfa33eb7e back to bounded strncpy. Its patch-id matches PR #852 head 2c1be01f66c1b80bd55a60b072070acd155a3ff5.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object names Troels Jessen as both author and committer and contains no AI, bot, co-author, or generation trailer. The NOT_AI judgment is based only on this BIC object, not on the later report or fix."
+  },
+  "findings": [
+    "CVE.org currently records CVE-2025-51823 as PUBLISHED, GitHub records GHSA-mmm3-jq63-7mw5 as not withdrawn, and the vendor issue confirms the overflow mechanism and identifies the same introducer.",
+    "The advisory's 'libcsp 2.0' wording refers to the develop tree while its project version remained 2.0, not to the v2.0 Git tag; the primary record already states this release-membership distinction accurately.",
+    "The primary record's vulnerability mechanism, BIC, parent, direct fix, release reachability, and BIC-only NOT_AI attribution all reproduce from the scoped evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

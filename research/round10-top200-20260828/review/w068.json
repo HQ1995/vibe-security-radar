@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-c3f7e22f5d7447b0b1c15f63",
+  "case_id": "GHSA-q4rc-8r6m-mw3q",
+  "repo": "gnuboard/gnuboard5",
+  "advisory_ids": [
+    "CVE-2025-60859",
+    "GHSA-q4rc-8r6m-mw3q"
+  ],
+  "bug_semantics": "Reflected XSS of GET c_id on the board comment view. Comment skins interpolate $c_id into an HTML attribute (<input type=\"hidden\" name=\"comment_id\" value=\"...\" id=\"comment_id\">) with no attribute encoding. Before 2021, $c_id came from @extract($_GET) in common.php. From 27e9af5e, bbs/view_comment.php assigns clean_xss_tags($_GET[\"c_id\"], 1, 1), which still leaves quotes and on*/style attributes, so a crafted c_id breaks out of the attribute or injects event-handler/CSS payloads.",
+  "flaw_origin": "1a60978568013aace090af413512eba936303eb9 (2013-03-14) is the first public write of the HTML sink: it changed the comment-form hidden input from empty value='' to value=\"<?=$c_id?>\" while common.php already ran @extract($_GET). Parent 8ba59fe9b0958f3789026ceb3b8128fb2aca85a9 still has skin/board/basic/view_comment.skin.php but that blob does not echo $c_id. Parallel g5 dump 41d21074 (2013-09-13) re-adds the same sink on a README-only parent and is not the first write. 27e9af5e (2021-01-04) only adds the later, bypassable clean_xss_tags assignment in bbs/view_comment.php; the XSS dataflow already existed. Direct one-parent commit; parent tree lacks the echo-$c_id line; no finer public member reconstructs that first write.",
+  "introducer_sha": "1a60978568013aace090af413512eba936303eb9",
+  "introducer_parent": "8ba59fe9b0958f3789026ceb3b8128fb2aca85a9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent. git cat-file -p 1a60978568013aace090af413512eba936303eb9 shows author and committer chicpro <chicpro@gmail.com>, one parent 8ba59fe9b0958f3789026ceb3b8128fb2aca85a9, subject '경로 수정 작업 중', and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "002e43e5fb84b465357b445772c881e196e100d3",
+  "direct_fix_sha": "002e43e5fb84b465357b445772c881e196e100d3",
+  "evidence": "CVE-2025-60859/GHSA-q4rc-8r6m-mw3q: reflected XSS via crafted c_id in bbs/view_comment.php. cveawg.mitre.org state PUBLISHED 2025-10-23, not rejected/withdrawn. Fix 002e43e5 (author/committer thisgun <thisgun@naver.com>, parent 9510aa9c) changes bbs/view_comment.php from clean_xss_tags($_GET[\"c_id\"], 1, 1) to preg_replace that strips quotes, and adds on*/style stripping in lib/common.lib.php clean_xss_tags. Pre-fix blame of bbs/view_comment.php:10 at 9510aa9c is 27e9af5e (thisgun, 2021-01-04), which first added that assignment; parent 131b170b:bbs/view_comment.php exists (cat-file -e exit 0) but has no c_id assignment, relying on common.php @extract($_GET). git log -L and pickaxe of the echo-$c_id hidden input on skin/board/basic/view_comment.skin.php show the first HTML echo of $c_id at 1a609785 (chicpro, 2013-03-14, parent 8ba59fe9). Parent blob still has the skin file (cat-file -e exit 0) with empty comment_id value and no echo of $c_id. 1a609785 is an ancestor of the fix. Parallel 41d21074 (gnuboard <kagla@naver.com>, 2013-09-13) adds the php-echo form of the same sink; parent 04c3efa2 lacks the skin path (cat-file -e exit 128) and is a README-only Initial commit, a later dump not the first write. 2015 1a2f4251 sanitized QUERY_STRING in the same skin, not c_id. BIC commit object has no AI markers.",
+  "reasoning": "Real CWE-79 reflected XSS; advisory not withdrawn. Vulnerability-first BIC is the first write of the unsanitized HTML reflection of GET c_id, which is 1a609785, not the 2021 PHP8 sanitizer wrapper and not the 2013 g5 tree dump. That BIC is a 2013 human commit by chicpro with no AI authorship signals on the commit object, so NOT_AI. Later theme copies and the 2025 fix do not re-attribute the introducer.",
+  "remaining_gap": ""
+}

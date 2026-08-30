@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-6e57d2e25dc479260d4bbd85",
+  "case_id": "GHSA-2v35-w6hq-6mfw",
+  "repo": "xmldom/xmldom",
+  "advisory_ids": [
+    "CVE-2026-41673",
+    "GHSA-2v35-w6hq-6mfw"
+  ],
+  "bug_semantics": "xmldom's SAX parser can accept a deeply nested XML document, but seven subsequent DOM operations traversed that tree with unbounded JavaScript recursion. XML serialization exhausted the call stack at roughly 5,000 nested elements because serializeToString recursively visited children while copying namespace state; normalize, lookup visitors, deep clone/import, textContent, and isEqualNode likewise consumed one call frame per tree level. An attacker-controlled, valid, deeply nested document can therefore raise an uncaught RangeError and deny service.",
+  "flaw_origin": "The earliest public Git object that wrote the advisory's vulnerable mechanism is 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432: its dom.js rewrite added XMLSerializer/serializeToString and direct recursive calls for attributes, element children, and document children, and also added other recursive DOM traversal paths. Its immediate parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 has no serializeToString or XMLSerializer implementation. Later commits added further members of the advisory's aggregated seven-operation surface, including recursive normalize in d779f83facaefeb8f9f29a000323cb40a8bf7769 and recursive isEqualNode in b06012312560b7083dbe658c6c29953bab4f582b; those do not displace the earliest atomic introducer of the serialization flaw named by this GHSA.",
+  "introducer_sha": "5fb8fb92b2cb9d7c6b8b5477900e90619b14e432",
+  "introducer_parent": "5d770d4c04466fd4a99b0762d28b8d1d111ba0c7",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file -p 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 shows human author and committer jindw <jindw@xidea.org>, an empty commit message, no Co-Authored-By or Generated-with trailer, and no bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "4845ef109221df0890825de2822fbe77afba3afe",
+  "direct_fix_sha": "e6edcab6bef5bcdba0b220bb35442aa72f452b84",
+  "evidence": [
+    "CVE.org record API for CVE-2026-41673 reports state PUBLISHED, CWE-674, affected xmldom <=0.6.0 and @xmldom/xmldom <0.8.13 or >=0.9.0,<0.9.10, and patched @xmldom/xmldom 0.8.13 and 0.9.10; this confirms a real advisory rather than a withdrawn or rejected record.",
+    "The first-party GHSA-2v35-w6hq-6mfw states that valid deeply nested XML parses successfully but seven lib/dom.js recursive traversals can throw RangeError and crash the application; the reported serialization path recursively visits children and copies visibleNamespaces per frame.",
+    "git log --all --reverse -S'serializeToString(child' -- dom.js lib/dom.js identifies 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 as the first addition; git show of that tree shows dom.js:773 serializeToString and recursive child calls at dom.js:787 and dom.js:799.",
+    "Direct parent-tree verification: git show 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7:dom.js contains neither serializeToString nor XMLSerializer, while git diff 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7..5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 adds XMLSerializer, serializeToString, and its recursive element/document child calls.",
+    "git cat-file -p 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 verifies the single parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7, author/committer jindw <jindw@xidea.org>, and no message or trailers; the BIC object has no AI authorship marker.",
+    "On 0.9.x, 17678a2a73ecbd1a2da90f3d47dc23da9cef81aa migrated serialization to shared walkDOM but did not itself close the flaw because walkDOM was still recursive; e6edcab6bef5bcdba0b220bb35442aa72f452b84 directly replaced recursive walkDOM with an explicit frame stack, closing serialization and five shared traversal callers.",
+    "The 0.9.x lifecycle completed with 430357c7b6333108856e917bf2367afe5ceb6f8a making normalize iterative and 4845ef109221df0890825de2822fbe77afba3afe replacing recursive isEqualNode with an explicit node-pair stack; git merge-base --is-ancestor confirms e6edcab6bef5bcdba0b220bb35442aa72f452b84 and 4845ef109221df0890825de2822fbe77afba3afe are ancestors of tag 0.9.10, while tag 0.9.9 contains the BIC but neither fix.",
+    "For release-0.8.x, cbdb0d7db8ae70760bd4cc181cb8f30bb0cd9d88 made shared walkDOM iterative and 842fa38deedd2d9a9c90d0ad54aa1be75d2a41bc made normalize iterative; isEqualNode is absent on that branch. Both backports are ancestors of tag 0.8.13, while tag 0.8.12 contains the BIC but neither backport.",
+    "git merge-base --is-ancestor confirms 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 precedes both patched tags 0.8.13 and 0.9.10, matching the advisory's affected-before/patched-at release boundaries."
+  ],
+  "reasoning": "The vulnerability is real and lifecycle-complete: iterative XML parsing admits an attacker-controlled deep tree, then recursive DOM traversal consumes finite JavaScript call-stack frames. History search starts from the vulnerable serialization calls, not from the repository's later AI-marked commit signal. The earliest surviving atomic public object that first writes the named serialization flaw is 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432; its immediate parent was inspected directly and lacks the serializer, so parent absence is proven. This is not a squash or a later move/refactor. Subsequent commits broadened the same uncontrolled-recursion class to the full seven-operation advisory surface. The direct 0.9.x serialization/shared-walker fix is e6edcab6bef5bcdba0b220bb35442aa72f452b84, and the final 0.9.x advisory closure is 4845ef109221df0890825de2822fbe77afba3afe after the separate normalize and isEqualNode conversions; equivalent applicable backports close 0.8.x at 0.8.13. Finally, the BIC commit object itself has a human author/committer and no AI marker or trailer. Later AI-associated repository activity and AI involvement in fixes are irrelevant under the BIC-only rule, so the correct verdict is NOT_AI.",
+  "remaining_gap": null
+}

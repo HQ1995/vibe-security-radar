@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-4301a47370120369a51c19ee",
+  "case_id": "GHSA-j8jc-x8v7-x64g",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79658",
+    "GHSA-j8jc-x8v7-x64g"
+  ],
+  "bug_semantics": "Ech0 globally installed its i18n middleware and passed unauthenticated request-controlled locale values, including the raw Accept-Language header after only TrimSpace, to go-i18n and golang.org/x/text/language.ParseAcceptLanguage without a size or shape bound. The x/text CVE-2022-32149 mitigation counted '-' separators but the parser also aliases '_' to '-', so a near-1 MiB malformed underscore-separated value bypassed the guard and exercised quadratic parsing, allowing unauthenticated CPU denial of service on every route. X-Locale and the lang query parameter also reached the same unbounded parser through ResolveLocale.",
+  "flaw_origin": "Commit b55edabd228d3de41e781bd3100f2e1ee0835516 first created Ech0's complete remotely reachable vulnerable path: it added internal/i18n/i18n.go, forwarded unbounded locale values to ParseAcceptLanguage and goi18n.NewLocalizer, read Accept-Language from the request, and registered the middleware globally. The parser weakness pre-existed in x/text, but the immediate parent did not contain Ech0's i18n parser path or global exposure.",
+  "introducer_sha": "b55edabd228d3de41e781bd3100f2e1ee0835516",
+  "introducer_parent": "b00c0f7da80cdbf4f4bd84a0c557ae03c88775a6",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — BIC commit object has no AI author/co-author/Generated-with marker; see evidence",
+  "verdict": "NOT_AI",
+  "fix_sha": "a5e77c4af60ead1cad3b3e8e0a3ed6f30892ed09",
+  "direct_fix_sha": "a5e77c4af60ead1cad3b3e8e0a3ed6f30892ed09",
+  "evidence": [
+    "The assigned advisory describes Ech0 before 5.0.1 accepting an unbounded Accept-Language value in globally executed i18n middleware, the underscore alias bypass of x/text's separator guard, quadratic parsing, and unauthenticated CPU denial of service.",
+    "`git grep -n -E 'Accept-Language|NewLocalizer\\(bundle|i18nUtil.Middleware' b55edabd228d3de41e781bd3100f2e1ee0835516 -- internal/i18n/i18n.go internal/router/middleware.go` shows the unfiltered NewLocalizer sink at i18n.go:65, the request header read at i18n.go:116, the additional ResolveLocale path at i18n.go:130, and global middleware registration at middleware.go:16. Pickaxe history for each of the header read, NewLocalizer sink, and registration traces their first application-history addition to b55edabd228d3de41e781bd3100f2e1ee0835516; later dc03197eeb4b5f28ebe794f45732cd4d04d53b1c preserves or rearranges the path rather than originating it.",
+    "`git cat-file -p b55edabd228d3de41e781bd3100f2e1ee0835516` shows one parent, b00c0f7da80cdbf4f4bd84a0c557ae03c88775a6. The direct diff creates internal/i18n/i18n.go as a new file and adds the router registration; it is not a merge, move, import, revert, release aggregate, or decomposable squash, so the ordinary commit is the smallest public-history BIC.",
+    "`git ls-tree -r --name-only b00c0f7da80cdbf4f4bd84a0c557ae03c88775a6 -- internal/i18n/i18n.go internal/router/middleware.go go.mod` lists only the pre-existing router middleware and go.mod, not internal/i18n/i18n.go. `git show b00c0f7da80cdbf4f4bd84a0c557ae03c88775a6:internal/router/middleware.go` shows only Recovery, Cors, and WriteGuard registration. Thus the vulnerable parser path and its global exposure are absent from the direct parent.",
+    "The introduction boundary is repository-verifiable: v4.0.0 resolves to 93b935c5b64020c7475abb9df071fdf8663b9f84 and has no matching i18n mechanism, while v4.1.0 resolves to d1f0768e8d469179d5ee8634c2c3311ed31e1d26 and contains the unfiltered NewLocalizer call, raw Accept-Language reads, and global middleware registration.",
+    "`git show a5e77c4af60ead1cad3b3e8e0a3ed6f30892ed09 -- internal/i18n/i18n.go` adds sanitizeAcceptLanguage and applies it to each ResolveLocale part and immediately before NewLocalizer, directly bounding both parser sinks. v5.0.0 resolves to 4deb936608843fab40692788cf299700bb6637bf and still has the raw unfiltered path; the clone has no v5.0.1 tag; v5.0.2 resolves to f715214732db93067718150cb3b2bad8fe9be827, contains the sanitizer at both sinks, and is the first repository-verifiable fixed tag containing the fix commit.",
+    "Marker-state disagreement resolution: the primary stored a prose value meaning 'absent', while the reviewer stored null. Re-running `git cat-file -p b55edabd228d3de41e781bd3100f2e1ee0835516` shows human author and committer L1nSn0w <l1nsn0w@qq.com> and a message with no Co-Authored-By, Generated-with, AI-tool trailer, bot identity, or other explicit AI signal. Therefore the reviewer wins: the canonical marker state is null, and the primary's prose belongs in evidence rather than ai_marker. The later fix object's Claude co-author trailer is AI-only-on-fix and is excluded by the BIC-only rule."
+  ],
+  "reasoning": "The vulnerability begins when attacker-controlled locale input first becomes globally reachable and is passed without a bound to the quadratic parser, not when the dependency itself was created. Three independent pickaxes, the BIC tree, and the direct-parent tree converge on b55edabd228d3de41e781bd3100f2e1ee0835516 as the smallest real introducer; its one-parent object and new-file diff reject aggregate, merge, import, and move explanations. The parent lacks the path, v4.0.0 lacks it, and v4.1.0 contains it. The direct fix a5e77c4af60ead1cad3b3e8e0a3ed6f30892ed09 bounds both real parser sinks; v5.0.0 is vulnerable and v5.0.2 is fixed. On the sole assigned disagreement, marker_state, both auditors agreed substantively that the BIC has no AI evidence, but only the reviewer's null encodes absence canonically; the primary's descriptive 'absent' string is not a marker. BIC-only attribution therefore yields NOT_AI despite an AI trailer on the later fix. Contract normalization note: the canonical audit contract represents an inspected marker absence with the explicit ai_marker string above; the prior null representation was superseded and is not the accepted field value.",
+  "remaining_gap": null
+}

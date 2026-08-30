@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-08277d0aedc4ae2c09aa5de1",
+  "case_id": "GHSA-6h3p-88p7-m8gp",
+  "repo": "lin-snow/ech0",
+  "advisory_ids": [
+    "CVE-2026-79673",
+    "GHSA-6h3p-88p7-m8gp"
+  ],
+  "bug_semantics": "The scoped-token rollout guarded the mutating PUT /user route with the read-only profile:read capability. RequireScopes therefore admitted an access token carrying only profile:read, while UpdateUser trusted the token's associated admin identity and allowed its password to be replaced. The token holder could then log in with the replacement password and receive a session JWT; session JWTs deliberately bypass scope checks, turning a read-only token into unrestricted administrator access.",
+  "flaw_origin": "PR #195 member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 first added route-level scope guards and specifically wrote middleware.RequireScopes(authModel.ScopeProfileRead) on PUT /user. That authorization mapping confused profile visibility with authority to mutate credentials; the member's immediate parent still had the pre-guard one-line PUT route. GitHub later landed the PR as squash commit 3f8fb150158723aca31df2ae937a1aa7b31ac254, so the original member rather than the aggregate is the smallest BIC.",
+  "introducer_sha": "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939",
+  "introducer_parent": "1b280c252d1ef2ee69bf09f890d2da673b4b0a68",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939"
+  ],
+  "ai_marker": "Exact BIC commit-object marker: \"Made-with: Cursor\". The BIC object names L1nSn0w <l1nsn0w@qq.com> as both author and committer and has no Co-Authored-By or Generated-with trailer.",
+  "verdict": "AI_ROOT_CAUSE",
+  "fix_sha": "057e8b0b713d105eca7040ade810a057397613fa",
+  "direct_fix_sha": "057e8b0b713d105eca7040ade810a057397613fa",
+  "evidence": [
+    "First-party advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-hm2h-wwwh-g49x identifies internal/router/user.go's PUT /user RequireScopes(ScopeProfileRead), internal/service/user/user.go's password assignment, and the subsequent unrestricted session-token login as the escalation chain; it names 4.4.3 as patched.",
+    "GitHub's PR #195 commits API reconstructs the squash. Member b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 has parent 1b280c252d1ef2ee69bf09f890d2da673b4b0a68 and its commit patch adds RequireScopes plus the exact PUT /user -> ScopeProfileRead mapping in internal/router/user.go. The PR's final member 462f551df4603dca8490d878f497661cb1c17bdc has tree e9484ebf85c66a09c425d8407ebfa79f57da39fa, identical to landed squash 3f8fb150158723aca31df2ae937a1aa7b31ac254's tree, tying the member chain to the landed code.",
+    "Direct parent-tree verification at https://raw.githubusercontent.com/lin-snow/Ech0/1b280c252d1ef2ee69bf09f890d2da673b4b0a68/internal/router/user.go shows appRouterGroup.AuthRouterGroup.PUT(\"/user\", h.UserHandler.UpdateUser()) with no authModel import and no RequireScopes(ScopeProfileRead); the vulnerable authorization mapping is absent from the immediate parent.",
+    "git log --all -S'ScopeProfileRead' -- internal/router/user.go identifies landed squash 3f8fb150158723aca31df2ae937a1aa7b31ac254 as the mainline addition and 057e8b0b713d105eca7040ade810a057397613fa as the removal. git show of 057e8b0b713d105eca7040ade810a057397613fa shows it adds ScopeProfileWrite to internal/model/auth/scope.go and replaces ScopeProfileRead with ScopeProfileWrite on PUT /user and the other mutating profile routes.",
+    "Version boundary is source-verified: v4.2.1 resolves to 77f371df9cca25ac856ad42afc43ea035dc4bf1d and contains the flawed PUT /user -> ScopeProfileRead route; v4.4.2 resolves to 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2 and still contains it; v4.4.3 resolves to b934467d26b91c96dc7c937b6a4e47d8d01484eb and contains PUT /user -> ScopeProfileWrite. git tag --contains shows the landed introducer in v4.2.1 and the fix first in v4.4.3 (not v4.4.2), consistent with the patched boundary.",
+    "The BIC commit object at https://api.github.com/repos/lin-snow/Ech0/commits/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 contains the exact message trailer Made-with: Cursor and directly contains the flawed route mapping; no PR-body, branch-name, fix-only, or later-commit AI evidence is used for attribution."
+  ],
+  "reasoning": "The vulnerability is an authorization-category error, not a defect in RequireScopes itself: the middleware correctly checks the declared capability, but the PUT route declared a read capability for a credential-changing operation. The pre-existing UpdateUser password mutation becomes reachable to a restricted scoped token through that mapping, and login converts the changed credential into a session token that scopes intentionally do not constrain. Mainline history points to the large PR #195 squash, but the public PR member chain is reconstructable and isolates b47fa1c75d890cd080e3f6699bbfca8cd8d4b939 as the member that first wrote the flawed mapping. Its immediate parent tree lacks that mapping, while the final member tree equals the squash tree, so the aggregate is not treated as the BIC. The source remains flawed through v4.4.2 and direct fix 057e8b0b713d105eca7040ade810a057397613fa introduces and requires profile:write in v4.4.3. Because the smallest causal BIC itself carries the commit-object marker Made-with: Cursor, the appropriate closed verdict is AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

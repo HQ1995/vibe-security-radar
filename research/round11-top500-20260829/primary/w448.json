@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-99269a04002d2569a57a9292",
+  "case_id": "GHSA-jp3q-wwp3-pwv9",
+  "repo": "solspace/craft-freeform",
+  "advisory_ids": [
+    "CVE-2026-26188",
+    "GHSA-jp3q-wwp3-pwv9"
+  ],
+  "bug_semantics": "An authenticated Craft control-panel user who can edit Freeform forms can persist attacker-controlled HTML in a field label. The rules sidebar passed that saved label to React dangerouslySetInnerHTML without sanitization, so opening the affected builder view made the browser parse the payload as markup and could execute event-handler JavaScript in another control-panel user's session. The same fix campaign sanitized analogous raw-HTML sinks for integration SVG metadata and other builder views.",
+  "flaw_origin": "PR #1908 member 7dd80f030aa69a3f5a0f18082d69fec1e165b40d deliberately added rich-text label support by replacing React's escaped <Label>{field.properties.label || type?.name}</Label> rendering with a Label dangerouslySetInnerHTML sink using the saved label verbatim. Its immediate parent c85ea11c743b4114febc3bd7dc52fb6b502961a9 still used escaped JSX text, proving that this member first wrote the atomic field-label flaw; GitHub later squash-landed the two-member PR as e3c3bdca2bb02c0b8c5fefa2ca68299d601850c8.",
+  "introducer_sha": "7dd80f030aa69a3f5a0f18082d69fec1e165b40d",
+  "introducer_parent": "c85ea11c743b4114febc3bd7dc52fb6b502961a9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "7dd80f030aa69a3f5a0f18082d69fec1e165b40d",
+    "476b57dee55920401d2ffad757e0ac202a8b1b8e"
+  ],
+  "ai_marker": "absent: the BIC commit object names Gustavs Gūtmanis <gustavs@solspace.com> as both author and committer, and its message has no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "b9adad6cdf1eba5400aae8b1ae39bd7d4d33af5e",
+  "direct_fix_sha": "19f0ea0e7f7731ee93364b5dede6a1c93cb98bb5",
+  "evidence": [
+    "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-26188 is PUBLISHED and describes low-privilege stored XSS through unsanitized field labels and integration metadata; it records affected >=5.0.0,<5.14.7 and fixed 5.14.7.",
+    "Vendor repository advisory https://github.com/solspace/craft-freeform/security/advisories/GHSA-jp3q-wwp3-pwv9 is published, not withdrawn, gives the field-label and integration-icon attack paths, and names 5.14.7 as patched.",
+    "GitHub PR #1908 API identifies squash e3c3bdca2bb02c0b8c5fefa2ca68299d601850c8 and reconstructs members 7dd80f030aa69a3f5a0f18082d69fec1e165b40d and 476b57dee55920401d2ffad757e0ac202a8b1b8e; git show of 7dd80f030aa69a3f5a0f18082d69fec1e165b40d changes packages/client/src/app/pages/forms/edit/builder/tabs/rules/sidebar/field/field.tsx from escaped JSX text to dangerouslySetInnerHTML with field.properties.label.",
+    "git show c85ea11c743b4114febc3bd7dc52fb6b502961a9:packages/client/src/app/pages/forms/edit/builder/tabs/rules/sidebar/field/field.tsx shows <Label>{field.properties.label || type?.name}</Label> and no raw-label __html expression; the BIC tree contains that expression exactly once.",
+    "git cat-file commit 7dd80f030aa69a3f5a0f18082d69fec1e165b40d shows sole parent c85ea11c743b4114febc3bd7dc52fb6b502961a9, human author/committer Gustavs Gūtmanis <gustavs@solspace.com>, a signed commit, and message 'fix(SFT-1931): add support for html in several places to support rich text field labels' with no AI trailer.",
+    "Git tag topology shows squash e3c3bdca2bb02c0b8c5fefa2ca68299d601850c8 first in v5.10.5 and present in v5.14.6. This directly verified label sink therefore has a narrower first-release boundary than the advisory's conservative >=5.0.0 range; no earlier origin was inferred from the advisory range.",
+    "GitHub PR #2342 API reconstructs direct member 19f0ea0e7f7731ee93364b5dede6a1c93cb98bb5; its diff imports dompurify and changes the same field-label sink to sanitize(field.properties.label || type?.name). Squash b9adad6cdf1eba5400aae8b1ae39bd7d4d33af5e lands that fix on the v5 branch.",
+    "git merge-base/tag checks show b9adad6cdf1eba5400aae8b1ae39bd7d4d33af5e is absent from v5.14.6 and present in v5.14.7; v5.14.7 resolves to release commit c58375ae4c18dbc65d17f7d5af310c61863f5ea7."
+  ],
+  "reasoning": "The advisory is a real, published stored-XSS report rather than a withdrawn or rejected claim. Starting from its field-label PoC, history follows the exact raw-HTML expression rather than an AI-marked lead: PR #1908 member 7dd80f030aa69a3f5a0f18082d69fec1e165b40d is the smallest reconstructable commit that replaced safe escaped rendering with the vulnerable dangerouslySetInnerHTML operation, while its verified immediate parent lacks that operation. The PR squash and release topology explain how the member reached v5.10.5 and remained through v5.14.6. Direct PR #2342 member 19f0ea0e7f7731ee93364b5dede6a1c93cb98bb5 adds DOMPurify at the same sink, squash b9adad6cdf1eba5400aae8b1ae39bd7d4d33af5e lands the repair, and v5.14.7 is the first patched tag. Because the BIC commit object is human-authored and human-committed and contains no AI attribution marker, BIC-only attribution requires NOT_AI; the advisory's broader lower version bound does not justify assigning an earlier or AI-authored introducer.",
+  "remaining_gap": null
+}

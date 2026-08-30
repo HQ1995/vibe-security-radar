@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-d7d398aa233342f0464b2144",
+  "case_id": "GHSA-pr7j-96cj-549h",
+  "repo": "fluent/fluentd",
+  "advisory_ids": [
+    "CVE-2026-44025",
+    "GHSA-pr7j-96cj-549h"
+  ],
+  "bug_semantics": "The unauthenticated Monitor Agent HTTP API accepted attacker-controlled debug=1 or with_ivars query parameters and serialized loaded plugins' internal instance variables. A network client able to reach the default port 24220 could therefore retrieve secrets such as database passwords, API keys, or cloud credentials held by plugins.",
+  "flaw_origin": "Commit fe73c272eed3c512c9ac31c0408c7c5e4d280451 moved the debug-mode decision from trusted server configuration into each HTTP request's query string and propagated with_debug_info into plugin serialization. Its parent required an operator-set debug configuration, so fe73c272eed3c512c9ac31c0408c7c5e4d280451 is the smallest public commit that first granted an unauthenticated requester control over the sensitive instance-variable export.",
+  "introducer_sha": "fe73c272eed3c512c9ac31c0408c7c5e4d280451",
+  "introducer_parent": "d7b53295286ab8cd23056e02562ca312264521e6",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker on the BIC. The one-parent commit was authored and committed by FURUHASHI Sadayuki on 2013-03-25; its message and body contain no AI attribution, assistant trailer, bot identity, or generated-code marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "990921518971699b9a97441970674d1800e29177",
+  "direct_fix_sha": "990921518971699b9a97441970674d1800e29177",
+  "evidence": [
+    "The GitHub security advisory GHSA-pr7j-96cj-549h identifies CVE-2026-44025, affected fluentd versions <= 1.19.2, patched version 1.19.3, and unauthenticated disclosure of plugin instance variables through /api/plugins.json and related Monitor Agent endpoints.",
+    "git show fe73c272eed3c512c9ac31c0408c7c5e4d280451 shows the BIC deleting the configured debug_mode gate and adding query-string debug handling that sets opts[:with_debug_info] before plugin_info methods serialize instance variables.",
+    "git show of parent d7b53295286ab8cd23056e02562ca312264521e6 shows that instance-variable serialization existed only behind the agent's configured debug_mode; the request query did not control that gate.",
+    "git cat-file and rev-list show fe73c272eed3c512c9ac31c0408c7c5e4d280451 is a normal one-parent public commit, not a merge or squash aggregate; its sole parent is d7b53295286ab8cd23056e02562ca312264521e6.",
+    "Tag topology shows v0.10.32 does not contain the BIC while v0.10.34 does; v1.19.2 contains the vulnerable path. The advisory independently declares the supported affected boundary as <= 1.19.2.",
+    "Direct fix 990921518971699b9a97441970674d1800e29177 changes include_config and include_retry defaults to false, adds include_debug_info default false, ignores debug/with_ivars unless that server-side option is enabled, and adds regression tests for both disabled and explicitly enabled behavior.",
+    "GitHub PR #5392 records one source commit, 30fbbd74bccc5824b81a04fac197fb531512f106, merged as 990921518971699b9a97441970674d1800e29177 into v1.19; tag v1.19.2 excludes the merged fix and tag v1.19.3 contains it and lists #5392 in its release notes."
+  ],
+  "reasoning": "This is a real information-disclosure vulnerability, not a withdrawn or rejected advisory. The vulnerable capability is not merely the serializer introduced with the plugin: in the immediate parent, an operator had to enable debug mode in configuration. The BIC is fe73c272eed3c512c9ac31c0408c7c5e4d280451 because it first made the sensitive export remotely selectable through an unauthenticated query parameter while the service defaulted to 0.0.0.0. Later commits copied, refactored, or extended the same mechanism (including with_ivars) but did not first introduce it. The BIC is an atomic single-parent 2013 commit with only conventional human author/committer metadata and no AI marker, so AI causation is excluded and the verdict is NOT_AI. The v1.19 backport 990921518971699b9a97441970674d1800e29177 directly closes the path by restoring a server-side opt-in gate and ships in v1.19.3, matching the advisory's affected and patched boundaries.",
+  "remaining_gap": ""
+}

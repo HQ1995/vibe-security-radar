@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-b596669a1cb6876b187aa2d0",
+  "case_id": "GHSA-cgx8-mh65-hcp4",
+  "repo": "appneta/tcpreplay",
+  "advisory_ids": [
+    "CVE-2025-9649",
+    "GHSA-cgx8-mh65-hcp4"
+  ],
+  "bug_semantics": "In packet-rate mode, tcpreplay parses --pps as a double, rejects only an exactly zero double, then computes (COUNTER)(n * 60.0 * 60.0). A nonzero fractional rate whose magnitude is below 1/3600, including the published -0.000001, therefore passes the check but truncates to a zero packets-per-hour COUNTER. calc_sleep_time later uses that value as pph in integer division, raising SIGFPE and terminating a local replay.",
+  "flaw_origin": "Commit 175f7ed06c6ad6488020220f9917ca213c568251 changed --pps from AutoOpts integer input to an unrestricted string parsed with atof and introduced the float-to-COUNTER packets-per-hour conversion without validating the converted value. That is the smallest commit enabling the advisory's nonzero fractional-input-to-zero-divisor path; later commit ebed7dde22ef3b77ceb64eefa2c873b92b435dda rejected only n == 0 and left the truncation path intact.",
+  "introducer_sha": "175f7ed06c6ad6488020220f9917ca213c568251",
+  "introducer_parent": "d689d14dbcd768c028eab2fb378d849e543dcfe9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file commit 175f7ed06c6ad6488020220f9917ca213c568251 shows author Fred Klassen <fklassen@appneta.com>, committer GitHub <noreply@github.com>, subject '#270 allow fractions for --pps (#287)', and no Co-Authored-By, Generated-with, AI, or bot trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "Advisory references https://github.com/appneta/tcpreplay/issues/968 and https://nvd.nist.gov/vuln/detail/CVE-2025-9649 identify calc_sleep_time divide-by-zero in 4.5.1. The issue attachment's exact command is tcpreplay -p -0.000001 -i lo POC_tcpreplay_calc_sleep_time_pps_division_by_zero_1125, and its ASan trace reports FPE at src/send_packets.c:1125; maintainer fklassen states revision 6fcbf0324088561d95c356fe8337f4faac275f1a reproduces it.",
+    "git show 175f7ed06c6ad6488020220f9917ca213c568251 -- src/tcpreplay_api.c src/tcpreplay_opts.def shows the BIC changing --pps arg-type from number to string and replacing (float)OPT_VALUE_PPS with n = atof(OPT_ARG(PPS)); options->speed.speed = (COUNTER)(n * 60.0 * 60.0). For n=-0.000001 the nonzero parse result multiplied by 3600 is -0.0036 and truncates to COUNTER zero.",
+    "Direct parent-tree verification with git show d689d14dbcd768c028eab2fb378d849e543dcfe9:src/tcpreplay_opts.def and :src/tcpreplay_api.c shows arg-type=number and options->speed.speed=(float)OPT_VALUE_PPS, with neither fractional-string parsing nor the multiply-then-COUNTER conversion. Thus the advisory's nonzero fractional truncation mechanism is absent from the immediate parent.",
+    "git log -L 180,188:src/tcpreplay_api.c 6fcbf0324088561d95c356fe8337f4faac275f1a attributes the conversion to 175f7ed06c6ad6488020220f9917ca213c568251 and shows ebed7dde22ef3b77ceb64eefa2c873b92b435dda later adding only if (!n). git blame of the affected sink attributes the descendant integer / pph expressions to the established packet-rate timing path; neither check validates the converted COUNTER.",
+    "At v4.5.2 (commit 98169912173986cc48a4ad325997dcc20c38af28), git show v4.5.2:src/tcpreplay_api.c still has if (!n) followed by the truncating COUNTER conversion, while git show v4.5.2:src/send_packets.c has next_tx_ns = ... / pph in both branches. Therefore the source mechanism survives the vendor's claimed non-reproduction boundary.",
+    "Version ancestry is reproducible with git describe/tag queries: v4.1.2 resolves to 58e174ec6b3dc67db8c5f0b86c0fff48fa097744 before the BIC; the first semantic-version tag containing the BIC is v4.2.0 at 01dfc152aa5a728813db56c7b9750087c681f839; v4.5.1 resolves to 0ba7d17fcb9ddedf61168f99c249b30731310d4e and v4.5.2-beta2 to a1778a25a2f8dc4de879782567abab6b923e9694, both descendants. The repository has no v4.5.3-beta3 tag.",
+    "The vulnerability is unpatched in the validated history: HEAD c3f6049a1de91e7d3b81543d0ecb01e465b05214 still parses and converts --pps identically in src/tcpreplay_api.c, and src/send_packets.c still divides by pph in both __int128 and fallback packet-rate calculations. No commit closes the input-validation defect, so fix_sha and direct_fix_sha are null rather than assigning a release, refactor, or unrelated arithmetic-overflow fix.",
+    "BIC-only AI check: raw commit object 175f7ed06c6ad6488020220f9917ca213c568251 has one parent d689d14dbcd768c028eab2fb378d849e543dcfe9, human author Fred Klassen, GitHub committer identity, and no AI/co-author/generated trailer. It is an ordinary single-parent feature commit, not a merge, move, revert, backport, or squash aggregate."
+  ],
+  "reasoning": "The advisory crash is not caused by packet contents alone: attacker-controlled local --pps input must enter packet-rate mode, survive parsing, collapse to a zero integer divisor, and reach calc_sleep_time while replaying the supplied pcap. Commit 175f7ed06c6ad6488020220f9917ca213c568251 is the causal BIC because it first made fractional strings such as -0.000001 reachable and wrote the unchecked n*3600-to-COUNTER conversion; its direct parent lacks that exact mechanism. The 2021 exact-zero check is incomplete because it executes before conversion. The affected 4.5.1 revision and v4.5.2 retain the dataflow, the claimed v4.5.3-beta3 tag does not exist, and current HEAD still divides by the possibly zero pph, so this case is genuinely unpatched and has no defensible fix SHA. The BIC commit object contains no AI authorship signal, yielding NOT_AI independently of any later AI-assisted commits.",
+  "remaining_gap": "Unpatched: no public commit in the validated full-history clone validates the post-conversion packets-per-hour value or otherwise removes the zero-divisor path, so there is no real fix/version boundary to record; the advisory's claimed 4.5.3-beta3 boundary is not represented by a tag and later tagged/current source retains the flaw."
+}

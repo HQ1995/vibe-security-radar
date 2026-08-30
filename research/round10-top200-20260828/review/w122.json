@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-1c2ab093e620402e9249589f",
+ "case_id": "GHSA-hjfh-v9xj-7f93",
+ "repo": "gnuboard/gnuboard5",
+ "advisory_ids": [
+  "CVE-2024-37656",
+  "GHSA-hjfh-v9xj-7f93"
+ ],
+ "bug_semantics": "bbs/logout.php takes attacker-controlled GET parameter url and, after logout, passes it to goto_url() as the Location target. Host/scheme checks (parse_url plus later // and https?:// guards) do not treat a leading backslash as an external host, so a URL such as logout.php?url=\\\\google.com survives validation. Browsers then interpret the backslash redirect as off-site navigation (CWE-601). The incomplete Feb 2024 regex only blocked NUL-backslash and slash-then-backslash, not a single leading backslash.",
+ "flaw_origin": "The first public write of bbs/logout.php already assigned $link=$url after only parse_url scheme/host checks, then called goto_url($link). Immediate parent 04c3efa279d60f646bf3b430750ab5a98fcc6eef is README-only, so 41d21074b5fcf579633c255f3b499434b2d4d46b is the smallest surviving first-write. Later Open Redirect patches (8755c8ece, 5ab91fa0a, 15f203779, 8d912e351) tightened protocol-relative and parse_url cases but left the backslash host bypass. Direct fix e03e01d41098f6a42788e53cb8bd5894ce47cd15 (issue #318) adds safe_filter_url_host() stripping backslashes inside goto_url/alert/confirm, first released in v5.5.17. CVE-2024-37656 remains published, not rejected.",
+ "introducer_sha": "41d21074b5fcf579633c255f3b499434b2d4d46b",
+ "introducer_parent": "04c3efa279d60f646bf3b430750ab5a98fcc6eef",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; BIC author/committer gnuboard <kagla@naver.com> 2013-09-13; cat-file -p shows subject \"그누보드5\" with no Co-Authored-By, Generated-with, Copilot, ChatGPT, Claude, Cursor, Gemini, Aider, or bot-author trailers.",
+ "verdict": "NOT_AI",
+ "fix_sha": "e03e01d41098f6a42788e53cb8bd5894ce47cd15",
+ "direct_fix_sha": "e03e01d41098f6a42788e53cb8bd5894ce47cd15",
+ "evidence": "Advisory GHSA-hjfh-v9xj-7f93 / CVE-2024-37656: open redirect in bbs/logout.php via insufficient URL parameter verification; NVD/GHSA published, withdrawn_at null. PoC from gnuboard/gnuboard5#318 (2024-05-29): logout.php?url=\\\\google.com. First write 41d21074b5fcf579633c255f3b499434b2d4d46b (2013-09-13, 그누보드5) added bbs/logout.php with if ($url) { $p=parse_url($url); if ($p[\"scheme\"]||$p[\"host\"]) alert; $link=$url; } goto_url($link). Immediate parent 04c3efa279d60f646bf3b430750ab5a98fcc6eef is README-only (git cat-file -e parent:bbs/logout.php fails). BIC is ancestor of v5.5.16. Incomplete 8d912e3511e9031abd6b0f4f64e3d7dcc6fad8c8 (in v5.5.13+) added preg_match(\"#\\\\\\\\0#\") and /^\\/{1,}\\\\/ but not a lone leading backslash. Direct fix e03e01d41098f6a42788e53cb8bd5894ce47cd15 (Open Redirect 취약점 수정 #318, thisgun) adds safe_filter_url_host in lib/common.lib.php goto_url/alert/confirm; first contained in v5.5.17 (merge-base --is-ancestor e03e01d41 v5.5.16 fails; v5.5.17 succeeds). BIC commit object is human gnuboard <kagla@naver.com> with no AI trailers.",
+ "reasoning": "The vulnerability is CWE-601 open redirect from trusting logout.php url after incomplete host checks. The smallest first-write of that sink is the 2013 import of logout.php, not later incomplete remediations. Parent-tree verification shows the file absent immediately before 41d21074b. The #318 fix strips backslashes in the shared goto_url path and lands in v5.5.17. AI judgment is BIC-only: 2013 human import, no AI markers. Therefore NOT_AI. Not FALSE_POSITIVE: CVE-2024-37656 remains published and the PoC matches the code.",
+ "remaining_gap": null
+}

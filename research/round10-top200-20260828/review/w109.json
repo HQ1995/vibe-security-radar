@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-beae4fbbf0d11ea34cc2c6ea",
+ "case_id": "GHSA-rgh6-rfwx-v388",
+ "repo": "containerd/containerd",
+ "advisory_ids": [
+  "CVE-2026-53489",
+  "GHSA-rgh6-rfwx-v388"
+ ],
+ "bug_semantics": "CRI checkpoint restore unpacks attacker-controlled checkpoint archive/OCI content into the container state directory and copies container.log to the host log path with symlink-following os.Open/CopyFile, so a checkpoint whose container.log is a symlink can disclose arbitrary host files via kubectl logs (CWE-61).",
+ "flaw_origin": "First CRI/Kubernetes restore implementation copied unpacked container.log with c.os.CopyFile after archive.Apply/fs.CopyDir into the container root, without O_NOFOLLOW or rejecting non-regular tar/image entries.",
+ "introducer_sha": "9e6beafd53919eecd1fb650a76332002cf4c84dd",
+ "introducer_parent": "07dd4ccf3599d4c22ee679b36fda3a17f8801cc2",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "8196411f24065533093be4c7ad874c23b06178f3",
+ "direct_fix_sha": "8196411f24065533093be4c7ad874c23b06178f3",
+ "evidence": "CVE-2026-53489 is PUBLISHED on CVE.org (state PUBLISHED, dateRejected None). GHSA-rgh6-rfwx-v388 describes CRI restore of container.log without validating a symlinked path. Direct fix 8196411f24065533093be4c7ad874c23b06178f3 (author/committer Brian Goff) adds copyNoFollow (lstat + unix.O_NOFOLLOW), unpacks into <state>/ctrd-restore, and skips unexpected archive entry types; identical-message backports 09599078f66bb98f6e83087893e3f2349b019fe7, 357652293053d0cd3ed565f718b0050aa662ae1a, 570e69884650eb6b0bcee19edd812428adbac8c2 land on origin/release/2.3, 2.2, 2.1 matching first_patched 2.3.2/2.2.5/2.1.9. git log -S CopyFile(containerLog and -S Restore container log file on internal/cri/server first hit 9e6beafd53919eecd1fb650a76332002cf4c84dd. That commit adds containerLog := filepath.Join(containerRootDir, \"container.log\") then c.os.CopyFile(containerLog, meta.LogPath, 0600) after unpacking the checkpoint into containerRootDir. git cat-file -e 07dd4ccf3599d4c22ee679b36fda3a17f8801cc2:internal/cri/server/container_checkpoint_linux.go succeeds; parent tree has no CopyFile(containerLog) and no Restore container log file. pkg/os CopyFile at the BIC uses os.Open(src) (follows final-component symlink). git cat-file -p 9e6beafd53919eecd1fb650a76332002cf4c84dd is a single-parent commit (parent 07dd4ccf3599d4c22ee679b36fda3a17f8801cc2) by Adrian Reber <areber@redhat.com> with only Signed-off-by: Adrian Reber; no Co-Authored-By/Generated-with/bot author. Later 91be73ba6233ffcf6e652710bfec6b4127bdd5c2 removes restore from CreateContainer after the copyNoFollow fix and is not the introducer. ppa re-checked line-level 2026-08-29: git show 07dd4ccf:internal/cri/server/container_checkpoint_linux.go has no 'container.log', no CopyFile and no CRImportCheckpoint; the containerLog os.Stat + c.os.CopyFile(containerLog, meta.LogPath, 0600) restore lines are added by BIC 9e6beafd -> introducer_parent_absent=true.",
+ "reasoning": "The vulnerability is a real published symlink-follow on CRI restore of container.log. The smallest public first-write of those restore copy lines is 9e6beafd53919eecd1fb650a76332002cf4c84dd; the parent tree lacks them, so this is not a move/refactor/revert/backport. The BIC commit object is a human Red Hat author with no AI trailer, so the verdict is NOT_AI.",
+ "remaining_gap": ""
+}

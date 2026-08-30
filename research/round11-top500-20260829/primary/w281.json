@@ -1,0 +1,38 @@
+{
+  "class_id": "alias-8bb1b4e7ea326c70e2b1d859",
+  "case_id": "GHSA-rcpp-qhfh-r47v",
+  "repo": "quickjs-ng/quickjs",
+  "advisory_ids": ["CVE-2026-0821", "GHSA-rcpp-qhfh-r47v"],
+  "bug_semantics": "js_typed_array_constructor snapshots offset/len from an existing ArrayBuffer, then calls js_create_from_ctor, which does JS_GetProperty(new_target, prototype) and can run a getter. That getter can shrink a still-attached resizable ArrayBuffer via ArrayBuffer.prototype.resize (js_realloc to max(new_len,1)). typed_array_init then installs the view with the stale len and p->u.array.u.ptr = abuf->data + offset without re-checking detached/byte_length, so later element access (e.g. join/toString) heap-overflows the realloc'd buffer. Public PoC: Reflect.construct(Uint8Array, [new ArrayBuffer(10,{maxByteLength:10})], boundFnWhosePrototypeGetterCallsAb.resize()).",
+  "flaw_origin": "The heap-overflow mechanism was first written in PR #646 member 878647e21dec1a101a5d7ced6134e70a8e2ffca8 (Add resizable ArrayBuffers): that commit introduced ArrayBuffer.prototype.resize and wired track_rab into js_typed_array_constructor, then called typed_array_init with the pre-ctor snapshot. In the same commit DataView was revalidated after js_create_from_ctor with an explicit comment that a RAB could have been resized there; the TypedArray constructor omitted the analogous check. Parent e569f39bf18b4670dd526b11ea09cd00d7be3e91 has no track_rab/resize/max_byte_length. Pre-RAB, ArrayBuffer length was immutable except detach (NULL data), which is not this realloc heap overflow.",
+  "introducer_sha": "878647e21dec1a101a5d7ced6134e70a8e2ffca8",
+  "introducer_parent": "e569f39bf18b4670dd526b11ea09cd00d7be3e91",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "878647e21dec1a101a5d7ced6134e70a8e2ffca8",
+    "8d3babe2c3a51332df20aa6594e6955e6b44c34b",
+    "611b1abdfc2a076b3ae459d36cc4669e172800ff",
+    "ab40bdb0e9fe33e9f492b55010dc7a15e0112226",
+    "fda205a23d2d8d40e7f8ffa28b6d3308db09141b"
+  ],
+  "ai_marker": "absent; BIC 878647e21dec1a101a5d7ced6134e70a8e2ffca8 author/committer Ben Noordhuis <info@bnoordhuis.nl>; git log --format=%(trailers) empty (no Co-Authored-By, Generated-with, or bot trailers); squash carrier 37fe427d59043d70f92c70d315592232ad8cb358 author Ben Noordhuis <info@bnoordhuis.nl> committer GitHub <noreply@github.com> trailers only Fixes: https://github.com/quickjs-ng/quickjs/issues/477",
+  "verdict": "NOT_AI",
+  "fix_sha": "c5d80831e51e48a83eab16ea867be87f091783c5",
+  "direct_fix_sha": "c5d80831e51e48a83eab16ea867be87f091783c5",
+  "evidence": [
+    "CVE.org CVE-2026-0821 state=PUBLISHED (cveMetadata.state, datePublished 2026-01-10); NVD vulnStatus=Modified, not rejected. GHSA-rcpp-qhfh-r47v withdrawn_at=null. Real heap overflow, not FALSE_POSITIVE.",
+    "https://github.com/quickjs-ng/quickjs/issues/1296 (2026-01-05): js_typed_array_constructor -> js_create_from_ctor -> JS_GetProperty(prototype) can resize/detach the input ArrayBuffer; typed_array_init then gets OOB args. ASAN heap-buffer-overflow READ in js_get_fast_array_element after js_array_buffer_resize realloc; 1-byte region matches resize realloc of max(len,1).",
+    "Fix landing c5d80831e51e48a83eab16ea867be87f091783c5 (PR #1299, parent 210ecb2b27b2cea1f8adddafae5594008738d6d4, author Saúl Ibarra Corretgé <s@saghul.net>): after js_create_from_ctor, re-check detached, offset>byte_length, then either recompute len for track_rab or reject offset+(len<<size_log2)>byte_length before typed_array_init. Advisory names this SHA. tests/bug1296.js is the PoC.",
+    "git log -S maxByteLength / -S max_byte_length -- quickjs.c first hits mainline 37fe427d59043d70f92c70d315592232ad8cb358 Add resizable ArrayBuffers (#646). git log -S js_array_buffer_resize only that commit. git log -S track_rab: 37fe427 then later RAB follow-ups/fixes.",
+    "PR #646 members reconstructed from origin (not a default-branch squash-only history): 878647e21dec1a101a5d7ced6134e70a8e2ffca8 Add resizable ArrayBuffers parent e569f39bf18b4670dd526b11ea09cd00d7be3e91 (same parent as squash 37fe427); later 8d3babe/611b1ab/ab40bdb/fda205a are SAB ser(des)/init/review fixups and do not touch js_typed_array_constructor. git show 878647e:quickjs.c js_typed_array_constructor (53614-53685) already has track_rab=array_buffer_is_resizable, js_create_from_ctor at 53675, typed_array_init(..., track_rab) at 53680 with no revalidation.",
+    "Parent-tree absence: git grep track_rab|js_array_buffer_resize|max_byte_length|array_buffer_is_resizable e569f39bf18b4670dd526b11ea09cd00d7be3e91 -- quickjs.c empty. Parent constructor (53299-53364) still does js_create_from_ctor then typed_array_init(offset,len) without revalidation, but cannot shrink an attached buffer.",
+    "Same BIC contrast: 878647e js_dataview_constructor 53760 comment 'RAB could have been resized in js_create_from_ctor()' plus offset/len recompute; TypedArray path omitted that check. typed_array_init 53432-53460 sets ta->length=len<<size_log2, p->u.array.count=len, p->u.array.u.ptr=abuf->data+offset with no bounds/detach test. js_array_buffer_resize 51539 uses js_realloc(..., max_int(len,1)); resize runs before the new TA is on array_list, so the resize updater cannot fix the later stale init.",
+    "js_create_from_ctor 17448-17471: proto=JS_GetProperty(ctx, ctor, JS_ATOM_prototype) — the side-effect sink named in issue #1296.",
+    "git log -L 53612,53680:quickjs.c 37fe427 shows the squash introducing BOOL track_rab=FALSE and track_rab=array_buffer_is_resizable into js_typed_array_constructor. Constructor body at 878647e equals 37fe427 (git diff 878647e 37fe427 --stat is later-member noise in other quickjs.c sites, 46 lines).",
+    "Tag membership: 37fe427 (RAB mainline carrier of 878647e) not in v0.1.0..v0.6.1; first in v0.7.0 (2024-11-15). c5d8083 absent through v0.11.0 (2025-10-28); present from v0.12.0 (2026-02-10). Matches advisory 'up to 0.11.0' patched boundary. VulDB listing 0.1-0.6 is over-broad (no RAB yet) but does not withdraw the CVE.",
+    "BIC-only AI: git cat-file -p / git log --format trailers on 878647e show human author/committer Ben Noordhuis, empty trailers. No Copilot/Cursor/Generated-with/Co-Authored-By bot lines. PR #646 discussion is human review (bnoordhuis/saghul), which does not attribute the BIC."
+  ],
+  "reasoning": "CVE-2026-0821/GHSA-rcpp-qhfh-r47v is a published, unwithdrawn heap-buffer-overflow in js_typed_array_constructor, confirmed by issue #1296, ASAN, and merged PR #1299. The attack is a constructor TOCTOU: snapshot buffer geometry, run js_create_from_ctor (prototype getter), then typed_array_init with stale offset/len against a RAB that resize() has already realloc'd smaller. The smallest first-write of that exploitable mechanism is PR #646 member 878647e (parent e569f39, verified missing RAB symbols). Mainline squash 37fe427 is a GitHub squash aggregate of five public members; later members do not rewrite the TA constructor, so they are recorded in decomposed_shas but are not the BIC. The same commit correctly revalidated DataView after js_create_from_ctor and missed TypedArray, which is why this sink existed from RAB introduction until c5d8083. Pre-RAB detach/transfer can neuter data to NULL but cannot produce this realloc heap overflow. AI is judged only on 878647e: human Ben Noordhuis author/committer, no commit-object AI markers, therefore NOT_AI. Fix SHA is the advisory/mainline landing c5d8083, first tagged in v0.12.0.",
+  "remaining_gap": null
+}

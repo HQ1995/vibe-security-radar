@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-655bcbc8235a38e79d9d2d02",
+ "case_id": "GHSA-hh27-hf48-9f5q",
+ "repo": "harttle/liquidjs",
+ "advisory_ids": [
+  "CVE-2026-45357",
+  "GHSA-hh27-hf48-9f5q"
+ ],
+ "bug_semantics": "date filter strftime parses numeric width from the format string (rFormat capture (\\d+)?) and forwards it unchecked into padStart/pad, which concatenates without memoryLimit/renderLimit, so a format like %5000000d allocates unbounded output and bypasses documented DoS limits.",
+ "flaw_origin": "ba5ff3f41c61acc2c3668ae2bbcc48dd168b1759 (2019-12-14) added full strftime syntax including unbounded width: rFormat=/%([-_0^#:]+)?(\\d+)?([EO])?(.)/ and format() sets padWidth from the captured width then padStart(ret, padWidth). Parent c69ad538 parsed only /%./ with hardcoded pad widths (2/3/4). padStart's while-concat loop already existed; the first attacker-controlled width sink is this commit. Later e443068c charged date input sizes only, not pad expansion.",
+ "introducer_sha": "ba5ff3f41c61acc2c3668ae2bbcc48dd168b1759",
+ "introducer_parent": "c69ad538d48f3cd52c6147da653b9d3e47dfd043",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "none on introducer ba5ff3f41c61acc2c3668ae2bbcc48dd168b1759 (author/committer harttle <yangjvn@126.com>, 2019-12-14, no Co-Authored-By/Generated-with/bot). Co-authored-by: Cursor <cursoragent@cursor.com> appears only on fix 3129d46dc95efa357b00e5a57ee1af80a13d72ed and does not attribute the BIC.",
+ "verdict": "NOT_AI",
+ "fix_sha": "3129d46dc95efa357b00e5a57ee1af80a13d72ed",
+ "direct_fix_sha": "3129d46dc95efa357b00e5a57ee1af80a13d72ed",
+ "evidence": "CVE-2026-45357 cve.org state=PUBLISHED (not rejected); NVD vulnStatus=Deferred; GHSA withdrawn_at=null. git cat-file -p ba5ff3f41c61acc2c3668ae2bbcc48dd168b1759: author/committer harttle <yangjvn@126.com>, subject 'feat: full syntax for strftime, close #177'. git cat-file -e c69ad538d48f3cd52c6147da653b9d3e47dfd043:src/util/strftime.ts and :src/util/underscore.ts both exist. Parent strftime uses /%./ only (no width group); BIC adds rFormat width capture and padWidth forwarding. git log -1 --format='%an %ae %cn %ce' ba5ff3f41: harttle yangjvn@126.com harttle yangjvn@126.com. Fix 3129d46dc95efa357b00e5a57ee1af80a13d72ed (Yang Jun / GitHub, #895) charges padding via memoryLimit.use and replaces pad() concat loop with ch.repeat; ancestor of v10.26.0. ppa re-checked line-level 2026-08-29: numactl git show ba5ff3f^:src/util/strftime.ts | grep -c 'width' = 0 while BIC ba5ff3f adds width capture 'const [input, flagStr, width, modifier, conversion] = match' and unbounded 'padStart(..., padWidth)' at lines 156-163 — vulnerable attacker-controlled strftime width new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "Real CWE-400 DoS: attacker-controlled date format width bypasses memoryLimit/renderLimit. Smallest first-write of the vulnerable width path is human-authored 2019 commit ba5ff3f41; parent lacks the width parser. AI markers exist only on the 2026 fix, which cannot attribute the BIC. Therefore NOT_AI, not FALSE_POSITIVE.",
+ "remaining_gap": ""
+}

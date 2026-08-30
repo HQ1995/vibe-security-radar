@@ -1,0 +1,25 @@
+{
+  "worker": "w365",
+  "review_agent_id": "r389_w365",
+  "class_id": "alias-16b0b8ed4fb637e6bd6548ff",
+  "case_id": "GHSA-h2qv-fj59-j46j",
+  "repo": "netty/netty",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: recursive parsing retains a ByteBuf slice for every nested SSL or leaf TLV, but readTlvs() flattens only top-level SSL TLVs and their immediate children; HAProxyMessage.deallocate() in vulnerable releases releases only that flattened list, leaving depth-2+ TLVs retained and pinning the cumulation buffer.",
+    "atomic_bic": "CONFIRMED: both exact-string history traces for the one-level addAll and recursive readNextTLV mechanism resolve to 1f0d47dee797df8d437b4151aaa39fcfae73b513, which introduced HAProxy TLV support as one single-parent commit.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent b03b0f22d1e54733c2d39c7f913f971dab14ebfa contains HAProxyMessage.java but no HAProxyTLV.java or HAProxySSLTLV.java and no readNextTLV, readTlvs, PP2_TYPE_SSL, encapsulatedTLVs, or retainedSlice mechanism in codec-haproxy.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: the BIC has one parent and is not a merge or multi-member squash; PR #6245 exposes exactly one head commit, 9e577948a2441bb02e1bacf5ee5efa8c2a604a0b, with identical codec-haproxy content, so there is no finer member set to decompose.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is absent from netty-4.1.11.Final and present in netty-4.1.12.Final, netty-4.1.134.Final, netty-4.2.0.Final, and netty-4.2.14.Final. Fix bd6214fe1c3bae1d42aad6e372657b5b2c1f5105 is absent from 4.1.134 and present in 4.1.135; fix 270800e5d336913606493a562c8200ecf321a0c1 is absent from 4.2.14 and present in 4.2.15. This matches the PUBLISHED CVE and GHSA ranges.",
+    "direct_fix_or_unpatched_state": "CONFIRMED DIRECT FIX: bd6214fe1c3bae1d42aad6e372657b5b2c1f5105 adds recursive releaseTlvs/releaseDeep and a depth-2 reference-count regression test on 4.1; 270800e5d336913606493a562c8200ecf321a0c1 applies the corresponding direct fix on 4.2.",
+    "bic_only_ai_attribution": "CONFIRMED: BIC author Georg Held and committer Scott Mitchell are human identities, and the complete BIC message has no Co-Authored-By, Generated-with, Copilot, bot, or other AI marker. AI signals on later fix-side activity are irrelevant to BIC attribution."
+  },
+  "findings": [
+    "CVE-2026-48059 is PUBLISHED and GHSA-h2qv-fj59-j46j is not withdrawn; both describe the same successful-parse nested PP2_TYPE_SSL memory leak and patched versions 4.1.135.Final and 4.2.15.Final.",
+    "Later commit 712077cdef050bc9aa211d301a1bdc3e763b6097 added message deallocation over the already incomplete flattened list, while cd91cf3c99123bd1e53fd6a1de0e3d1922f05bb2 only bounded recursion; neither displaced the original first-write.",
+    "The primary NOT_AI judgment and all reviewed causal fields are supported by the advisory, CVE record, commit objects, parent tree, exact history traces, release ancestry, and direct fix diffs."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

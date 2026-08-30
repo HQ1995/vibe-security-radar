@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-4be95ffe74e14a44937fa395",
+  "case_id": "GHSA-2qv6-9wx5-cwv4",
+  "repo": "harttle/liquidjs",
+  "advisory_ids": [
+    "CVE-2026-44644",
+    "GHSA-2qv6-9wx5-cwv4"
+  ],
+  "bug_semantics": "LiquidJS strip_html treated its output as tag-stripped text, but the generic-tag alternative <.*?> used JavaScript dot without dotAll, so it could not consume CR or LF inside angle brackets. Browsers accept those line terminators as whitespace between a tag name and attributes; consequently an attacker-controlled value such as <img\\nsrc=x\\nonerror=alert(1)> survived strip_html and became executable HTML/XSS when rendered without a separate escaping step.",
+  "flaw_origin": "Commit 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887 replaced the older tag-name-only strip_html regex in filters.js with a Ruby-Liquid-style alternation whose new generic branch was <.*?>. That one-line change first wrote the exact vulnerable construct: JavaScript '.' stops at CR/LF while browsers continue parsing the tag. Later moves and refactors preserved it. Commit 42d25902e855d3c06d5ead071bf55604f495c205 made script, style, and comment alternatives multiline-safe with [\\s\\S] but retained <.*?>; it sharpened the inconsistency described by the advisory but is not the BIC because the flawed generic branch already existed in its parent.",
+  "introducer_sha": "8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887",
+  "introducer_parent": "f668a5cc4188c4b2ad82c0dbcdd31e6e5bb95aae",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: `git cat-file commit 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887` shows author Paul Robert Lloyd <me+git@paulrobertlloyd.com>, committer Jun Yang <harttle@harttle.com>, and the sole message `Ensure strip_html filter uses same regex as Ruby Liquid`; the BIC commit object has no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "26ea2856c7a90aec892b98d94a9b7a3e18539045",
+  "direct_fix_sha": "b976669ad3b21ad37c8aa2af3ef5709e2a58fe35",
+  "evidence": [
+    "The first-party GHSA bundle (https://github.com/harttle/liquidjs/security/advisories/GHSA-2qv6-9wx5-cwv4) identifies src/filters/html.ts, the failing <.*?> catch-all, a working CR/LF tag payload, affected liquidjs <=10.25.7, reference fix https://github.com/harttle/liquidjs/commit/26ea2856c7a90aec892b98d94a9b7a3e18539045, and release v10.26.0.",
+    "`git log -L '/^export function strip_html/,/^}/:src/filters/html.ts' 26ea2856c7a90aec892b98d94a9b7a3e18539045^` followed the unchanged vulnerable expression through e443068cb9281883ff0fe9f755a15f52ada4e7e2, 42d25902e855d3c06d5ead071bf55604f495c205, ff112a4750f91475e9eccdb301d7a468e895f6ca, 7dfb620d30f8818685e1cfb8e7492313a0d036ab, 479c63350ac2fca6ebd217472088216fcf277c6d, 5b6100d12bb768d53af6fd7b8fd71bf9fcd561f7, fc9ebdb90fc6565dc06a807f519b808cbf0573e7, and the TypeScript move 677e8511e60a7cc789dd33a4f295a46beeaf1137. Continuing `git log -L` on predecessor filters.js identifies 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887 as the first commit to add <.*?>.",
+    "Direct parent-tree verification with `git diff f668a5cc4188c4b2ad82c0dbcdd31e6e5bb95aae 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887 -- filters.js` shows the sole relevant replacement: parent /<\\/?\\s*\\w+\\s*\\/?>/ became /<script.*?<\\/script>|<!--.*?-->|<style.*?<\\/style>|<.*?>/. Thus the vulnerable <.*?> construct is absent from the immediate parent and first present in the BIC.",
+    "Release membership is exact at introduction: v3.1.2 peels to f668a5cc4188c4b2ad82c0dbcdd31e6e5bb95aae (the BIC parent), while `git tag --contains 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887 --sort=v:refname` begins at v3.1.3. This excludes the preceding release and shows the flaw persisted from v3.1.3 through the advisory's upper affected boundary.",
+    "The advisory fix 26ea2856c7a90aec892b98d94a9b7a3e18539045 changes <.*?> to <[\\s\\S]*?> and adds LF/CR/SVG regression cases. The retained PR member b976669ad3b21ad37c8aa2af3ef5709e2a58fe35 has the identical two-file fix patch and identical resulting contents for src/filters/html.ts and test/integration/filters/html.spec.ts, making it the direct fix. Its sibling d107c65261f0e936a2ee8960c7c3ede0113a5e21 is docs-only and unrelated to the fix.",
+    "`git tag --contains 26ea2856c7a90aec892b98d94a9b7a3e18539045 --sort=v:refname` begins at v10.26.0 and excludes v10.25.7, matching the advisory boundary. Before v10.26.0, 3616a744b9abeb425c217b340a2397d46176afb8 replaced the fixed regex with a linear scan that still consumes generic tags through '>' across CR/LF; the v10.25.7..v10.26.0 tree diff retains all newline regression cases and the repaired behavior.",
+    "BIC-only attribution evidence comes from the raw 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887 commit object: one parent f668a5cc4188c4b2ad82c0dbcdd31e6e5bb95aae, human author and committer identities, a one-line subject, and no trailers or AI/bot marker. No later commit, PR, or fix attribution was used to classify the BIC."
+  ],
+  "reasoning": "The vulnerable lifecycle begins with 8e9e10fdb4c7f00ffa3997d3e2c0a0bfa48ce887, not with later TypeScript moves, the 2023 partial multiline correction, or the 2026 fix. That commit first inserted the generic <.*?> branch; its immediate parent and v3.1.2 lack that construct, and v3.1.3 is the first containing tag. Subsequent moves preserved the same branch, while 42d25902e855d3c06d5ead071bf55604f495c205 corrected only the other alternatives. The bug therefore remained reachable through v10.25.7. The direct PR commit b976669ad3b21ad37c8aa2af3ef5709e2a58fe35 and advisory squash 26ea2856c7a90aec892b98d94a9b7a3e18539045 repaired the catch-all and added CR/LF regression coverage; the later linear-time rewrite 3616a744b9abeb425c217b340a2397d46176afb8 preserved the repair in the first containing release v10.26.0. The BIC is already the smallest causal one-line commit, so no squash decomposition is needed for introduction. Its raw commit object has no AI marker and names only human author/committer identities, which closes the case as NOT_AI under the BIC-only rule.",
+  "remaining_gap": null
+}

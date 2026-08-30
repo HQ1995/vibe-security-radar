@@ -1,0 +1,25 @@
+{
+  "class_id": "alias-398c97ff83ae3dbddcc2b574",
+  "case_id": "GHSA-3h2g-j4wp-7qqq",
+  "repo": "nltk/nltk",
+  "advisory_ids": [
+    "CVE-2026-79675",
+    "GHSA-3h2g-j4wp-7qqq"
+  ],
+  "bug_semantics": "CWE-88 JVM argument injection: nltk.internals.java() prepends a per-call options list to subprocess.Popen without calling _validate_java_options(), so Stanford wrappers can inject -agentpath/-javaagent/@argfile. Residual incomplete fix of CVE-2026-12841.",
+  "flaw_origin": "First write of keyword-only java(..., *, options=None) that copies caller options onto the JVM argv with no validation, plus Stanford wrappers rerouted from config_java() onto that path in the CVE-2026-12615 isolation change (PR #3683).",
+  "introducer_sha": "45fb731bd2a6bb16ff18643700d190a3858ba3f2",
+  "introducer_parent": "c31143fc0f68452b218f39a686a0b70a29ccb19a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "45fb731bd2a6bb16ff18643700d190a3858ba3f2"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "8fa9650b6009aacfdebbc33d2a08d32c0858ea6c",
+  "direct_fix_sha": "8fa9650b6009aacfdebbc33d2a08d32c0858ea6c",
+  "evidence": "CVE.org CVE-2026-79675 is PUBLISHED (not withdrawn/rejected). Vendor GHSA-m4rf-3fr8-xwx3: java() per-call options skip _validate_java_options(); Stanford parser/tagger/tokenizer/segmenter pass java_options through that path. Parent c31143fc0f68452b218f39a686a0b70a29ccb19a:nltk/internals.py exists in the assigned clone (git cat-file -e); java() is java(cmd,...,blocking=True) and builds cmd=[_java_bin]+_java_options+cmd with no per-call options. Public PR #3683 member 45fb731bd2a6bb16ff18643700d190a3858ba3f2 (git cat-file -p: author/committer haoami <1874166592@qq.com>, parent c31143fc, no Co-Authored-By/Generated-with/bot) first adds *, options=None and if options is None: java_options=_java_options else: split/list(options); cmd=[_java_bin]+java_options+cmd, still no _validate_java_options, and switches wrappers to java(..., options=self.java_options). Develop squash 5ac475d2ab95ea95d2890c745a05e5275137fb98 (#3683, author KKfine/haoami, committer GitHub, parent 986f26e71bf22ee392a5e87285ee8398284aef2b which already had _validate_java_options in config_java from 9e20c3eee79239e7c85a615d47b24123ef8e0151) is a squash carrier of the same unvalidated per-call lines, not the first write. Fix 8fa9650b6009aacfdebbc33d2a08d32c0858ea6c (alvations) calls _validate_java_options on the per-call list; ancestor of v3.10.3.",
+  "reasoning": "Real CWE-88: unvalidated per-call JVM flags on java() after 12841 only validated config_java(). BIC is the smallest public first-write of those lines (PR #3683 head 45fb731), not the later develop squash. Parent tree lacks the per-call options path. AI judged only from that commit object: human author/committer haoami, no AI trailers or bot identity. Later AI on the advisory/fix is irrelevant. Closed NOT_AI with BIC and fix SHA.",
+  "remaining_gap": ""
+}

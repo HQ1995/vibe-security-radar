@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-d31f146de1346c2cef8dfe17",
+  "case_id": "GHSA-9pp6-v7j8-j65j",
+  "repo": "lucasgelfond/zerobrew",
+  "advisory_ids": [
+    "CVE-2026-53970",
+    "GHSA-9pp6-v7j8-j65j"
+  ],
+  "bug_semantics": "ZeroBrew's Ruby formula compatibility shim downloaded secondary formula resources and URL-based patches with curl and then extracted or applied them during `zb install --build-from-source` without ever comparing the bytes to the sha256 values the formula DSL had already parsed. In zb_io/src/build/shim.rb, StagedResource.stage stored @sha256 but after Kernel.system(\"curl\", \"-sSL\", \"-o\", archive, @url) immediately called extract_resource; the URL-patch loop stored p[:sha256] but after curl wrote tmp.path immediately ran patch -i. A network attacker who can substitute those URLs (MITM or compromised host) can inject attacker-controlled archives or diffs that execute as build steps with no integrity warning. Primary formula tarballs in zb_io/src/build/source.rs already verified SHA-256; only the shim resource/patch paths omitted the check. CWE-494.",
+  "flaw_origin": "The download-without-verify mechanism was first written in 5e9da9406db4630bf1cf0dc62581b9fff15bc9b4 (feat(zb_io): expand ruby shim DSL coverage for production readiness), which replaced no-op Formula.resource/patch stubs with PatchDSL/ResourceDSL parsers that captured sha256 plus StagedResource curl+extract and a curl+patch URL loop that never read those checksums. Immediate parent 7fd73e98b7ce12a0e13140d8c802c32d3663f03b still had `def resource(_name, &block) = nil` / `def patch(opts = {}, &block) = nil` and no curl. Neighboring same-batch commit 71dfd5b already normalized checksums for the primary tarball fetch, so the omission is specific to this shim expansion, not a later regression.",
+  "introducer_sha": "5e9da9406db4630bf1cf0dc62581b9fff15bc9b4",
+  "introducer_parent": "7fd73e98b7ce12a0e13140d8c802c32d3663f03b",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: BIC author Akrm Al-Hakimi <alhakimiakrmj@gmail.com>, committer akrm <alhakimiakrmj@gmail.com>; git cat-file -p 5e9da9406db4630bf1cf0dc62581b9fff15bc9b4 has a single-line subject and no Co-Authored-By, Generated-with, Cursor, Copilot, or bot trailers; neither identity is a bot.",
+  "verdict": "NOT_AI",
+  "fix_sha": "89a60b73c7edd6b662e2a085be3d981b6ebeb1aa",
+  "direct_fix_sha": "6fe878a96510d7acfdccaf096e1c838e76a21793",
+  "evidence": [
+    "CVE-2026-53970 is PUBLISHED on cveawg.mitre.org (state=PUBLISHED, assigner=VulnCheck, datePublished=2026-08-14, not rejected/withdrawn); GHSA-9pp6-v7j8-j65j withdrawn_at is null (api.github.com/advisories/GHSA-9pp6-v7j8-j65j).",
+    "Advisory mechanism: missing integrity check on formula resource and URL-patch downloads in the Ruby shim during `zb install --build-from-source`; CWE-494; affected ZeroBrew <=0.3.1; patch reference https://github.com/lucasgelfond/zerobrew/commit/89a60b73c7edd6b662e2a085be3d981b6ebeb1aa.",
+    "git log -S 'Kernel.system(\"curl\"' -- zb_io/src/build/shim.rb and git log -L '/class StagedResource/,/^end$/:zb_io/src/build/shim.rb' both first-hit 5e9da9406db4630bf1cf0dc62581b9fff15bc9b4; blame of the pre-fix resource curl (shim.rb ~185) and URL-patch curl (shim.rb ~595) at 6fe878a^ is that same SHA.",
+    "Parent verification: git rev-parse 5e9da94^ = 7fd73e98b7ce12a0e13140d8c802c32d3663f03b; parent shim has only stub resource/patch methods and no StagedResource/curl (git grep on parent tree empty for both).",
+    "BIC file 5e9da94:zb_io/src/build/shim.rb stores checksums (ResourceDSL#sha256, PatchDSL#sha256, StagedResource#initialize @sha256, @_resources/:sha256, @_patches/:sha256) but contains no Digest/checksum comparison; stage() curls then extract_resource; URL-patch curls then `patch -i`.",
+    "5e9da94 is a single-parent non-merge commit (parent 7fd73e98), not a GitHub squash/merge/release commit. It landed as a reconstructable member of rebase-merged PR #212 (https://github.com/lucasgelfond/zerobrew/pull/212); no finer public first-write of these lines exists.",
+    "Tag membership: 5e9da94 is not in v0.1.1, is in v0.1.2..v0.3.1 (affected) and v0.3.2; 6fe878a and 89a60b73 are ancestors of v0.3.2 only. v0.3.1 = 66737ad (chore: prepare 0.3.1 release); v0.3.2 = 89a60b73.",
+    "Direct fix 6fe878a96510d7acfdccaf096e1c838e76a21793 (fix(zb_io): verify SHA-256 for resource and patch downloads in build shim) inserts ZeroBrewChecksum.verify_file! after both curl sites and names CVE-2026-53970; merge 89a60b73c7edd6b662e2a085be3d981b6ebeb1aa is PR #388 landing that patch plus the 0.3.2 changelog.",
+    "BIC commit-object AI check: author/committer are human Akrm Al-Hakimi / akrm <alhakimiakrmj@gmail.com>; no Co-Authored-By/Generated-with/bot trailers on 5e9da94."
+  ],
+  "reasoning": "Vulnerability-first: CVE-2026-53970/GHSA-9pp6-v7j8-j65j describe a real CWE-494 in the Ruby build shim, confirmed by reading the pre-fix download paths and the 6fe878a patch that adds SHA-256 verification before resource extraction and URL-patch application. CVE.org state is PUBLISHED and GHSA withdrawn_at is null, so this is not FALSE_POSITIVE. The attack is substitution of formula resource or patch URLs consumed by `zb install --build-from-source`; checksums were parsed but unused. BIC search started from those vulnerable curl sites, not from AI-marked commits: git log -S/-L and blame all first-write 5e9da9406db4630bf1cf0dc62581b9fff15bc9b4. Parent 7fd73e98 still had no-op resource/patch stubs and no curl, so the missing-check mechanism is absent before that commit. 5e9da94 is a focused single-parent feature commit (not a move/revert/release/squash aggregate); PR #212 rebase-merged a series of already-separate public commits, of which this is the smallest that wrote the flawed lines. It precedes affected tags through v0.3.1; the fix lands in v0.3.2 via 6fe878a then merge 89a60b73. AI judgment used only the BIC commit object: human author/committer, empty trailer set, no bot identity. PR-body AI checkboxes and later AI-only-on-fix were not used to attribute the BIC. Verdict is NOT_AI: a real vulnerability whose smallest introducer is human-authored.",
+  "remaining_gap": null
+}

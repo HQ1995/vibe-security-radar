@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-2b597281aa9ba1487032f722",
+  "case_id": "GHSA-499r-g7pc-vmp9",
+  "repo": "composer/composer",
+  "advisory_ids": [
+    "CVE-2026-59948",
+    "GHSA-499r-g7pc-vmp9"
+  ],
+  "bug_semantics": "Composer accepted package metadata from third-party Composer repositories through the non-validating ArrayLoader, then used the attacker-controlled package name as an installation path. A name containing traversal components could therefore make a normal install or update write attacker-controlled package files outside vendor/ and outside the project.",
+  "flaw_origin": "Commit e03983697a9e5ff674fc3819cef857e68df6f59f atomically introduced the affected path: ComposerRepository constructed packages directly from repository-supplied rev['name'], InstallCommand passed them to an installer, and GitDownloader used getName() as the git clone/archive output path under vendor without validating or confining it. Its parent has none of ComposerRepository, the installer, or downloader, so no smaller surviving public ancestor contains this vulnerability.",
+  "introducer_sha": "e03983697a9e5ff674fc3819cef857e68df6f59f",
+  "introducer_parent": "2475ce47e4c76bb8924d74f2d859ccd8a59e7b2b",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none",
+  "verdict": "NOT_AI",
+  "fix_sha": "502c6c4f699802d9cf464728b3e8a95674f919a0",
+  "direct_fix_sha": "502c6c4f699802d9cf464728b3e8a95674f919a0",
+  "evidence": [
+    "CVE.org record CVE-2026-59948 is PUBLISHED and states that an invalid package name from an untrusted repository can write outside vendor/project; affected ranges are >=1.0,<2.2.29 and >=2.3.0,<2.10.2.",
+    "GitHub reviewed advisory GHSA-499r-g7pc-vmp9 identifies fixed releases 2.2.29 and 2.10.2 and references branch fixes c50b1efd13ebd73f6dca19b31424c5a02bf93cc1 and 502c6c4f699802d9cf464728b3e8a95674f919a0.",
+    "git show e03983697a9e5ff674fc3819cef857e68df6f59f shows the first public end-to-end vulnerable implementation: repository-controlled rev['name'] becomes MemoryPackage name and GitDownloader uses getName() as the clone/archive destination.",
+    "git cat-file shows e03983697a9e5ff674fc3819cef857e68df6f59f is a one-parent commit with parent 2475ce47e4c76bb8924d74f2d859ccd8a59e7b2b; that parent lacks the newly added ComposerRepository, LibraryInstaller, GitDownloader, and InstallCommand paths.",
+    "The BIC metadata and message contain no AI attribution, assistant trailer, model marker, or Co-Authored-By trailer; it was authored and committed by Jordi Boggiano on 2011-04-18.",
+    "Fix 502c6c4f699802d9cf464728b3e8a95674f919a0 calls ValidatingArrayLoader::validatePackage for every solver result before lock/install and rejects invalid package names; its 2.2 branch counterpart is c50b1efd13ebd73f6dca19b31424c5a02bf93cc1.",
+    "A targeted all-ref history search for the exact package-validation subject and GHSA finds only the two branch-specific single-parent aggregate fixes, not a separately reachable squash member; the atomic BIC itself is an ordinary one-parent commit rather than a squash aggregate.",
+    "Local tag ancestry confirms 502c6c4f699802d9cf464728b3e8a95674f919a0 is contained by 2.10.2 and c50b1efd13ebd73f6dca19b31424c5a02bf93cc1 is contained by 2.2.29; the introducer is contained by the 1.0.0 release line."
+  ],
+  "reasoning": "The vulnerability is real and the public history supplies an atomic introducer with a verifiable non-vulnerable parent. Although the 2026 fixes are single-parent aggregate commits covering this advisory plus a separate bin-path advisory, the package-name fix hunk is directly identifiable and no hidden squash member is needed to identify the 2011 BIC. Only the BIC determines AI attribution: its human-authored 2011 metadata/message has no AI marker, so the case is NOT_AI.",
+  "remaining_gap": null
+}

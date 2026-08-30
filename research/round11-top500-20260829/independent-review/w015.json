@@ -1,0 +1,26 @@
+{
+  "worker": "w015",
+  "review_agent_id": "r389_w015",
+  "class_id": "alias-928d29923af79983ffdc29e2",
+  "case_id": "GHSA-7rwv-fqq2-88c4",
+  "repo": "lin-snow/ech0",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: an administrator-controlled active webhook URL is loaded by the event dispatcher and POSTed through a standard http.Client; hostname-form private targets pass the later net.ParseIP-only validation and resolve at connect time, enabling SSRF into internal or metadata services.",
+    "atomic_bic": "PASS: 3f7c5a6c885f01510762f695833ff7db8e67276f is the first public commit found by reverse pickaxe to add the webhook POST and client.Do path. Earlier 34dac4ac56f835c1a3b191774abab9947e7f7b2d only stubbed CRUD, and b91e941795e512e8060967b631536b41328c8f5b completed unrestricted admin URL persistence; the SSRF becomes executable only when 3f7c5a6c adds active-webhook enumeration and dispatch.",
+    "immediate_parent_absence": "PASS: the sole parent d980cfe1fa76c0724d3f72bd517b2ce79e4a7d1b has an empty WebhookDispatcher.Dispatch and no POST to wh.URL; its unrelated generic HTTP helpers do not consume webhook destinations.",
+    "squash_member_decomposition": "PASS: 3f7c5a6c has exactly one parent and the public object contains the first relevant executable hunk directly; it is not a merge or revert, and the clone exposes no finer public member to substitute for that first-write object.",
+    "affected_fixed_release_membership": "PASS: 3f7c5a6c is absent from v2.8.0 but is an ancestor of v2.8.1, v4.2.1, and v4.4.2. v4.2.1 and v4.4.2 retain the net.ParseIP-only validator. Fix 1b2adc9b5d2e0694c35c9f7a2f63c1df6c0c2796 is not in v4.4.2 and is in v4.4.3, matching the current CVE.org affected range >=0 and <4.4.3 and fixed version 4.4.3.",
+    "direct_fix_or_unpatched": "PASS: 1b2adc9b5d2e0694c35c9f7a2f63c1df6c0c2796 directly replaces both TestWebhook's default client and the dispatcher client with NewSafeHTTPClient, whose DialContext checks connected addresses and whose redirect hook revalidates targets; its parent fd4d49bf54a2561793e8c649c40e4bdfd19c4d48 still has both unsafe clients and the hostname bypass.",
+    "bic_only_ai_attribution": "PASS: attribution was evaluated only on 3f7c5a6c. Its commit object names L1nSn0w as both author and committer and contains no Co-Authored-By, Generated-with, bot, or other AI marker; GitHub maps both identities to the lin-snow User account and reports the commit unsigned. No later failed mitigation or fix metadata was used for the AI judgment."
+  },
+  "findings": [
+    "CVE-2026-79671 is PUBLISHED, and the vendor advisory GHSA-r2x7-427f-rq69 is published with withdrawn_at null; this is a real CWE-918 issue rather than a withdrawn or rejected advisory.",
+    "The advisory-highlighted df4b49437762826b9ba9c8c9bbd6f673dcffd03b validator is a failed mitigation plus a second unsafe TestWebhook sink, not the original BIC, because the unrestricted persistent dispatcher sink already existed from 3f7c5a6c.",
+    "The vendor advisory's <=4.2.1 range is narrower than the current CVE.org <4.4.3 range, but clone evidence independently shows v4.4.2 still contains the bypass and lacks the direct fix; the primary release conclusion is therefore correct.",
+    "The primary introducer, parent, direct fix, and NOT_AI verdict are supported by independent clone and authoritative-advisory replay."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

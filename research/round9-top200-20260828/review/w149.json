@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-e3676093ba64b0d91d41ba66",
+  "case_id": "alias-e3676093ba64b0d91d41ba66",
+  "repo": "mmaitre314/picklescan",
+  "advisory_ids": [
+    "CVE-2026-53873",
+    "GHSA-7wx9-6375-f5wh"
+  ],
+  "bug_semantics": "A malicious pickle can encode STACK_GLOBAL/GLOBAL (\"profile\", \"run\") followed by REDUCE with attacker-controlled Python source. Unpickling resolves the module-level profile.run(), which passes that source to Profile.run() and ultimately exec(). PickleScan's exact module/name lookup did not flag profile at all in early releases; by v1.0.3 it looked up name \"run\" against {\"Profile.run\", \"Profile.runctx\"}, so the exact comparison still missed the executable global and returned issues_count == 0.",
+  "flaw_origin": "Initial implementation. Commit c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e created the scanner, its exact finite global-name filter, and the zero-issue fallback while omitting the profile module. The later aecd11be98702caa9ba9b12189d91ad596a36114 hardening added class-qualified Profile.run/Profile.runctx strings but preserved the already-existing module-level profile.run bypass; it is therefore failed hardening, not the BIC.",
+  "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+  "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "Absent on the BIC commit object. `git cat-file -p c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e` shows author and committer Matthieu Maitre <mmaitre314@users.noreply.github.com> and the sole message `Implement Pickle scanner`; there is no Co-authored-by/Generated-with trailer, AI tool attribution, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "bf26452ae2e3204429762c2bb1aa9eacd40436bb",
+  "direct_fix_sha": "bf26452ae2e3204429762c2bb1aa9eacd40436bb",
+  "evidence": "First-party advisory https://github.com/mmaitre314/picklescan/security/advisories/GHSA-7wx9-6375-f5wh documents the (`profile`, `run`) attack, exact-name mismatch, exec path, affected range <1.0.4, and patched version 1.0.4. In the validated clone, `git log -L 82,95:src/picklescan/scanner.py c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e` shows c1d5abd as the new-file origin of the loop that initializes issues_count=0 and increments it only for entries present in `_suspicious_globals`; `git show c1d5abd -- src/picklescan/scanner.py` shows that new list has no profile entry. `git cat-file -p c1d5abd` gives its sole parent 6a76b8c3ac67dc04181e600614ecf2a423cca326, and `git show 6a76b8c3:src/picklescan/scanner.py` fails because the file does not exist in that parent, directly proving parent absence. Cross-check: `git log --all --reverse -S'\"profile\"' -- src/picklescan/scanner.py` first finds aecd11be98702caa9ba9b12189d91ad596a36114, whose diff adds `\"profile\": {\"Profile.run\", \"Profile.runctx\"}`; `git blame b9997634683a4f4bd0c7e3701e7ce7e90fe70e8c -L 199,199 -- src/picklescan/scanner.py` shows that same mismatched line in tag v1.0.3. `git show bf26452ae2e3204429762c2bb1aa9eacd40436bb` shows its direct parent b9997634683a4f4bd0c7e3701e7ce7e90fe70e8c, changes the profile filter to `\"profile\": \"*\"`, adds the GHSA-7wx9-6375-f5wh profile.run regression pickle/assertion, and bumps setup.cfg from 1.0.3 to 1.0.4; `git show-ref --tags -d` points v1.0.3 at b999763 and v1.0.4 at bf26452. `git tag --contains c1d5abd --sort=version:refname` includes the first available release tag v0.0.2 through v1.0.3, while `git tag --contains bf26452 --sort=version:refname` begins at v1.0.4. Finally, the raw BIC commit object command quoted in ai_marker verifies the human identity and marker absence.",
+  "reasoning": "The exploitable clean result predates the 2025 profile-specific blocklist mistake: the first functional scanner already treated only enumerated globals as issues and omitted profile, so c1d5abd is the smallest causal first-writer. Its parent has no scanner.py, making absence direct rather than inferred. aecd11be merely attempted incomplete hardening, and bf26452 is the direct closing fix and v1.0.4 release commit. Because the atomic one-parent BIC's own commit object contains only a human author/committer and no qualifying AI attribution, the protocol requires NOT_AI; possible AI use on later hardening or the fix is irrelevant.",
+  "remaining_gap": null
+}

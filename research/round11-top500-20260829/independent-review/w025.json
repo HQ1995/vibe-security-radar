@@ -1,0 +1,30 @@
+{
+  "worker": "w025",
+  "review_agent_id": "r389_w025",
+  "class_id": "alias-fb99494bb546805f329c2d76",
+  "case_id": "GHSA-wg7g-xr7v-hf69",
+  "repo": "budibase/budibase",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: at 3.38.1, QUERY WRITE parameters pass validateQueryInputs, which rejects Handlebars blocks but not JSON metacharacters; enrichContext then uses processStringSync with noEscaping:true before JSON.parse, and the resulting object reaches MongoDB find/deleteMany sinks. The vendor advisory documents the same quote-breakout mechanism.",
+    "atomic_bic": "CORRECTION_REQUIRED: f2a025013ea034a86c841e7151c5d38cfdb6acd4 is the atomic first-write on the surviving first-parent side selected by merge 3742c7dc91ee81cf4076fde77207c402f4bfd885, but it is not the unique first-write across public history. Sibling f946f2f68d54e370013e28efa4cb6517067e5b18 wrote the same noEscaping behavior earlier from common ancestor 86ffa65d938d80133038b85346f209d0e2fc5084.",
+    "immediate_parent_absence": "PASS: f2a0250's immediate parent a20249777b41a4ab5564334b0a52e5857b6470d8 still JSON.parse'd interpolated fields but had no noEscaping option and only converted whole-field Handlebars expressions to triple braces; f946f2f's parent 86ffa65d938d80133038b85346f209d0e2fc5084 has the same safe boundary.",
+    "squash_member_decomposition": "PASS WITH CORRECTION: f2a0250 and f946f2f are single-parent sibling commits, neither a squash merge nor ancestors of one another. Merge 3742c7d joins their branches; its query.js blob equals parent 1, the f2a0250 lineage. The primary must disclose this parallel member/replay instead of presenting f2a0250 as the unconditional first history-wide pick.",
+    "affected_release_membership": "PASS: official CVE/vendor data says versions below 3.40.0 are affected. Tag 3.38.1 contains f2a0250 and lacks both dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80 and landing merge 2d6c1d17cff8a653adbb2f9003eda9de38c7670f; its source contains the vulnerable interpolation-to-JSON.parse-to-MongoDB path.",
+    "fixed_release_membership": "PASS: official vendor advisory names 3.40.0 as patched, and tag 3.40.0 contains dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80 plus 2d6c1d17cff8a653adbb2f9003eda9de38c7670f and uses processJsonStringSync. Tag 3.39.9 also contains those commits, but that code-membership fact does not replace the advisory's declared 3.40.0 boundary.",
+    "direct_fix_or_unpatched": "PASS: dd8c0654b35cd89ce3645f2355f4bf2ff9a5dd80 is the direct code fix. It parses JSON templates before binding substitution and adds a regression test where an injected quoted value remains a string property rather than becoming JSON structure; 2d6c1d17 is its two-parent landing merge.",
+    "bic_only_ai_attribution": "PASS: cat-file for both surviving-line BIC f2a0250 and the earlier sibling f946f2f shows mike12345567 as author and committer with no Co-Authored-By, Generated-with, Claude, Copilot, or other AI marker. The lineage correction therefore does not change NOT_AI."
+  },
+  "findings": [
+    "The primary's claim that f2a0250 was the first noEscaping writer is too broad: --all history exposes earlier sibling f946f2f with the same author timestamp/message and vulnerable behavior.",
+    "The two commits diverge from 86ffa65d9 and join at 3742c7dc9; the join's relevant blobs equal its f2a0250-side first parent, so f2a0250 remains defensible only when qualified as the surviving-line BIC.",
+    "The correction is lineage-only. Mechanism, immediate-parent absence, direct fix, official 3.40.0 fixed membership, and BIC-only human attribution independently close."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "Qualify f2a025013ea034a86c841e7151c5d38cfdb6acd4 as the atomic BIC for the vulnerable lines that survive the 3742c7dc91ee81cf4076fde77207c402f4bfd885 merge via parent 1. Also record earlier sibling first-write f946f2f68d54e370013e28efa4cb6517067e5b18 from parent 86ffa65d938d80133038b85346f209d0e2fc5084; it is not an ancestor of f2a0250, and neither commit is a squash aggregate.",
+    "evidence": "Add the --all -S noEscaping history, the mutual non-ancestry/common-ancestor result for f946f2f and f2a0250, and the 3742c7d parent/blob comparison showing that the surviving query.js and string-template blobs come from the f2a0250 side.",
+    "reasoning": "Do not call f2a0250 the unique first public writer without a surviving-line qualifier. The parallel earlier writer does not alter NOT_AI because its commit object carries the same human author/committer and no AI marker."
+  },
+  "remaining_gap": null
+}

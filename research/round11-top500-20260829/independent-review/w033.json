@@ -1,0 +1,26 @@
+{
+  "worker": "w033",
+  "review_agent_id": "r389_w033",
+  "class_id": "alias-d6fb8815dd17e964c6646e7b",
+  "case_id": "GHSA-g357-x5c3-c72p",
+  "repo": "harttle/liquidjs",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In the affected implementation, pop clones the full input with [...toArray(v)] but, unlike shift/unshift and the other allocating array filters after memoryLimit was introduced, never calls this.context.memoryLimit.use(array.length). An attacker-sized array therefore allocates O(N) outside the configured render memory budget.",
+    "atomic_bic": "Confirmed as 258780e9a87ce87534a6bb4336725cb1d38a2998. git log -L traces the unchanged vulnerable pop body to this single-parent public commit, which first adds the function. The later e443068cb9281883ff0fe9f755a15f52ada4e7e2 creates the exploitable limiter asymmetry by adding memoryLimit accounting to sibling filters while leaving pop unchanged, but it does not first write the vulnerable pop lines and is not the protocol BIC.",
+    "immediate_parent_absence": "Confirmed. The sole parent is 18d55929e51749def0239a9163c7d3abc0d2cf40; its src tree contains neither a pop filter nor memoryLimit. The BIC diff adds the complete pop clone body.",
+    "squash_member_decomposition": "Confirmed. The BIC has one ordinary parent and is not a squash aggregate. The direct fix 8a0c74a7fcb1671aa1dcb71ec82ba0602dc90d04 is a squash of PR #907 members 8734b5fc6e4b20ade86518336a072468d0be8785 (pop fix) and a4f29d056b51b15e849701bed9dd0153acb777b4 (sample fix); the second member's tree equals the squash tree, and neither member is an ancestor of master.",
+    "affected_fixed_release_membership": "Confirmed with lifecycle precision. The BIC is absent from v10.10.2 and present from v10.11.0; memoryLimit and the omission-induced bypass first coexist in v10.15.0. v10.27.0 contains the BIC and e443068 but not the fix, while v10.27.1 contains 8a0c74a. The live GHSA reports <=10.27.0 affected and 10.27.1 first patched; the CVE record is PUBLISHED and reports <10.27.1 affected. Versions before v10.15.0 contain pop but cannot bypass a memoryLimit that did not yet exist.",
+    "direct_fix_or_unpatched": "Confirmed direct fix 8a0c74a7fcb1671aa1dcb71ec82ba0602dc90d04. It gives pop a FilterImpl receiver, materializes toArray(v), charges array.length before allocation, clones that charged array, and adds a regression test expecting memoryLimit rejection. The fix is present in v10.27.1 and absent from v10.27.0.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI under the protocol. The BIC object is authored and committed by Jun Yang, has no bot identity, AI trailer, co-author, or generation marker, and predates the fix by over two years. Cursor co-authorship exists only on the PR #907 fix members and squash commit, so it cannot be attributed backward to the BIC.",
+    "advisory_disposition": "Confirmed. CVE-2026-55575 is PUBLISHED in the CVE record, and the live GHSA has withdrawn_at=null; FALSE_POSITIVE is not indicated."
+  },
+  "findings": [
+    "The primary record's mechanism, BIC, parent, direct fix, release checks, and BIC-only NOT_AI conclusion independently reproduce from the assigned clone and authoritative advisory.",
+    "Release terminology needs the same distinction already implicit in the primary reasoning: v10.11.0 is the first release containing the eventual vulnerable lines, whereas the actual memoryLimit-bypass mechanism begins when memoryLimit lands in v10.15.0.",
+    "The fix is AI-marked, but fix-side Cursor co-authorship is irrelevant to the introducer verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

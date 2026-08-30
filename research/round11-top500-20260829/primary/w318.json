@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-905c97025d1e12c3e2cdb067",
+  "case_id": "GHSA-h3jq-rqqh-3gvh",
+  "repo": "civicrm/civicrm-core",
+  "advisory_ids": [
+    "CVE-2026-72558",
+    "GHSA-h3jq-rqqh-3gvh"
+  ],
+  "bug_semantics": "Authenticated staff using CiviCRM contact Search Builder (operator Regex) reach CRM_Contact_BAO_Query::buildClause with op=RLIKE. The RLIKE arm interpolates the user-supplied $value into CAST($field AS BINARY) RLIKE BINARY '$value' without CRM_Utils_Type::escape / CRM_Core_DAO::escapeString. A quote in the regex breaks the SQL string literal, so the attacker can append arbitrary SQL and read the full database (donor/member records, credentials). Other operators in the same function take the default branch, which does escape. The operator is user-selectable via CRM_Core_SelectValues::getSearchBuilderOperators() ('RLIKE' => Regex) and is exercised by tests/phpunit/CRM/Contact/SelectorTest.php::testWhereClauseByOperator.",
+  "flaw_origin": "The unsanitized RLIKE interpolation was first written in member commit a047568869892f9af65002c1709af1931f5f4b0d (PR #12364, 'dev/core#210: Regex filter broken in Search Builder', 2018-06-26) as `case 'RLIKE': return \" {$clause} BINARY '{$value}' \";`. Immediate parent 8b977676304e1d83f7f8608b87b2065c38de62d3 had no RLIKE special case: RLIKE fell through to default, which called CRM_Utils_Type::escape before quoting. The special case was added to preserve regex case (BINARY) and skipped that escape. Later 0800bc59a47fd6cfe2f4463207e9e47d7a0edfc4 (2021-01-17) only rewrote the same interpolation to CAST({$field} AS BINARY) RLIKE BINARY '{$value}' for MySQL 8; that is a refactor, not a first write.",
+  "introducer_sha": "a047568869892f9af65002c1709af1931f5f4b0d",
+  "introducer_parent": "8b977676304e1d83f7f8608b87b2065c38de62d3",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; git cat-file -p a047568869892f9af65002c1709af1931f5f4b0d: author/committer deb.monish <monish.deb@jmaconsulting.biz> (GitHub monishdeb); message is only 'dev/core#210: Regex filter broken in Search Builder'; no Co-Authored-By, Signed-off-by, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org/NVD CVE-2026-72558 state=PUBLISHED (not rejected/withdrawn); assigner TuranSec; GHSA-h3jq-rqqh-3gvh withdrawn_at=null; description: SQLi via contact search RLIKE clause through 6.18.alpha1, CWE-89, CVSS 8.8 PR:L; finder Bobur Abdugafforov; only reference https://github.com/civicrm/civicrm-core. civicrm.org/advisory latest listed CIVI-SA-2026-37 (2026-08-06) has no RLIKE/SQLi match.",
+    "HEAD 549bc564222f26ed894f34b4e0f2212334cad09a xml/version.xml=6.19.alpha1 still has CRM/Contact/BAO/Query.php:5626-5627 `case 'RLIKE': return \" CAST({$field} AS BINARY) RLIKE BINARY '{$value}' \";`. Default arm at 5654 still does CRM_Utils_Type::escape. Search Builder exposes RLIKE as Regex in CRM/Core/SelectValues.php:900. restWhere at Query.php:2365 passes unsanitized $op/$value into buildClause.",
+    "Parent tree verification: git show 8b977676304e1d83f7f8608b87b2065c38de62d3:CRM/Contact/BAO/Query.php buildClause (lines 5655-5718) has IS NULL/EMPTY then IN/NOT IN then default with `$value = CRM_Utils_Type::escape($value, $dataType)` and no case 'RLIKE'. git grep RLIKE on parent hits preferred_communication (Query.php:4022) and CustomQuery.php:366 setting op to RLIKE then calling buildClause (escaped path).",
+    "BIC member a047568869892f9af65002c1709af1931f5f4b0d (single commit on 8b977676..a047568; merged by c57fce721d8594eca18f5a12558b1ca4580a80bd as PR #12364) adds the RLIKE case interpolating unescaped $value. Merge c57fce7 is a two-parent GitHub merge, not the first write. https://github.com/civicrm/civicrm-core/commit/a047568869892f9af65002c1709af1931f5f4b0d",
+    "Refactor not BIC: 0800bc59a47fd6cfe2f4463207e9e47d7a0edfc4 / PR #19399 changes `return \" {$clause} BINARY '{$value}' \";` to `return \" CAST({$field} AS BINARY) RLIKE BINARY '{$value}' \";` (MySQL 8 charset); still unsanitized. Present at 6.18.alpha1 bump 9f362b6c6938533d1d565a9effecc49ef765bc7b (Query.php:5626-5627 same CAST line). git merge-base --is-ancestor a047568 9f362b6c and HEAD both 0. First containing tag describe: 5.5.0~60^2; tags --contains include 5.10.x through 6.9.x series.",
+    "Unpatched: git log --since=2026-08-01 -- CRM/Contact/BAO/Query.php empty; no post-CVE RLIKE/SQLi commit; HEAD after 6.18.beta1/6.19.alpha1 version bumps still interpolates $value. No patched version on CVE/GHSA.",
+    "unpatched object: {\"confirmed\": true, \"reason\": \"No upstream commit after CVE-2026-72558 (2026-08-11) changes the RLIKE arm; HEAD 549bc564222f26ed894f34b4e0f2212334cad09a (6.19.alpha1) still concatenates unsanitized $value. Vendor advisory index through CIVI-SA-2026-37 has no matching fix.\", \"potential_fix\": {\"approach\": \"Escape $value with CRM_Utils_Type::escape($value, $dataType) / CRM_Core_DAO::escapeString before interpolating in case 'RLIKE', or delete the special case so RLIKE uses the default escaped branch and apply CAST/BINARY only to the field.\", \"rationale\": \"A single quote in a Search Builder Regex value currently terminates the SQL literal; escaping is the neutralization the default operator path already uses and closes CWE-89 while keeping regex matching.\", \"reference_commit\": null, \"reference_url\": \"https://github.com/civicrm/civicrm-core/blob/549bc564222f26ed894f34b4e0f2212334cad09a/CRM/Contact/BAO/Query.php#L5626\"}}"
+  ],
+  "reasoning": "Vulnerability first: CVE-2026-72558/GHSA-h3jq-rqqh-3gvh is a published CWE-89 in CiviCRM contact search RLIKE, not withdrawn/rejected. The sink is CRM_Contact_BAO_Query::buildClause's RLIKE case, which concatenates staff-supplied Search Builder Regex values into SQL without the escape used by every other valued operator. Attack path is authenticated staff (PR:L) choosing Regex on a contact field and injecting a quote to read arbitrary tables. BIC: the smallest first write of that unsanitized interpolation is member a047568869892f9af65002c1709af1931f5f4b0d; parent 8b977676304e1d83f7f8608b87b2065c38de62d3 was checked in-tree and lacks case 'RLIKE', routing RLIKE through escaped default. The 2018 GitHub merge and the 2021 CAST rewrite are not BICs. BIC precedes 6.18.alpha1 and remains in 6.18.alpha1 and HEAD. AI second: commit-object author/committer is human deb.monish/monishdeb with no AI trailers or bot identity, so NOT_AI. Genuinely unpatched: fix_sha/direct_fix_sha null; confirmed unpatched object with potential_fix in evidence/remaining_gap.",
+  "remaining_gap": "unpatched; no upstream fix SHA in civicrm/civicrm-core through origin/master HEAD 549bc564222f26ed894f34b4e0f2212334cad09a (6.19.alpha1) as of 2026-08-29. Advisory through 6.18.alpha1 is a reporter snapshot, not a patched release.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "No upstream fix exists in civicrm/civicrm-core public history through HEAD 549bc564222f26ed894f34b4e0f2212334cad09a (6.19.alpha1, after the CVE-stated 6.18.alpha1 bound). The RLIKE arm still interpolates unsanitized $value; CVE/GHSA list no patched version; CiviCRM security advisories through CIVI-SA-2026-37 do not cover this issue.",
+    "potential_fix": {
+      "approach": "In CRM_Contact_BAO_Query::buildClause case 'RLIKE', run $value through CRM_Utils_Type::escape($value, $dataType) (String -> CRM_Core_DAO::escapeString) before wrapping it in the BINARY quotes, or remove the special case so RLIKE uses the existing default escaped path and keep CAST/BINARY only on the field expression.",
+      "rationale": "That restores quote neutralization already applied to '=', LIKE, and other valued operators, so a staff Regex payload cannot break out of the SQL string while regex semantics remain.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/civicrm/civicrm-core/blob/549bc564222f26ed894f34b4e0f2212334cad09a/CRM/Contact/BAO/Query.php#L5626"
+    }
+  }
+}

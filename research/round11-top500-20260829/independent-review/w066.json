@@ -1,0 +1,45 @@
+{
+  "worker": "w066",
+  "review_agent_id": "r389_w066",
+  "class_id": "alias-5af06070f7e1b333f88142d5",
+  "case_id": "GHSA-hqgf-f82p-fjh7",
+  "repo": "mmaitre314/picklescan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The scanner extracts pickle GLOBAL/STACK_GLOBAL pairs and only reports a Dangerous issue when the pair matches its denylist. Before 1.0.1, logging.FileHandler was absent, so a REDUCE payload using FileHandler(path) was not Dangerous; deserialization opens a missing path in append mode and creates a zero-byte file. The vendor advisory independently describes this exact primitive."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e is the first history entry that adds src/picklescan/scanner.py and writes both the denylist and denylist-only matching loop. Later denylist renames and expansions preserve that mechanism; git log -S FileHandler first finds only the fix."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC has the single parent 6a76b8c3ac67dc04181e600614ecf2a423cca326. That parent tree contains only .gitignore, LICENSE, README.md, conda.yaml, requirements.txt, and setup.cfg; src/picklescan/scanner.py does not exist."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a single-parent, non-merge public commit whose parent lacks the scanner, so no smaller public member is available or required. The fix PR head 53cc8e5dec26d9f5ed7ff33065b449e99abef8d4 is itself one commit over the same parent and has the same tree as the landed fix, so squash topology does not hide a finer causal fix member."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Local tag ancestry shows v0.0.2 (version 0.0.2) and v1.0.0 contain the BIC but not the fix; v1.0.1 resolves exactly to 4d9bc9cd34bca8672dad3481cd4556d5ba747156 and contains both. This matches the vendor advisory range <1.0.1 / patched 1.0.1 and the current official CVE record state PUBLISHED with affected >=0,<1.0.1 and unaffected 1.0.1."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "4d9bc9cd34bca8672dad3481cd4556d5ba747156 directly adds logging: {FileHandler} to _unsafe_globals, adds a regression assertion that logging.FileHandler is Dangerous, and bumps 1.0.0 to 1.0.1. Its parent has no FileHandler entry; history search finds no earlier FileHandler change."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The exact BIC commit object names Matthieu Maitre as author and committer, has subject Implement Pickle scanner, an empty body, and no Co-Authored-By, Generated-with, Copilot, Cursor, ChatGPT, Claude, or bot marker. Fix-side identity was not transferred to the BIC."
+    }
+  },
+  "findings": [
+    "The primary record correctly identifies the source-to-sink mechanism and the smallest surviving first writer.",
+    "The parent, release, direct-fix, squash-topology, and BIC-only AI gates independently reproduce the primary NOT_AI verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

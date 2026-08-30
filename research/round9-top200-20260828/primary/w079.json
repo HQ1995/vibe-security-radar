@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-2f7400378f2c46e1c8b20176",
+  "case_id": "GHSA-657c-wxg6-jmqv",
+  "repo": "ph7software/ph7-social-dating-cms",
+  "advisory_ids": [
+    "CVE-2025-63644",
+    "GHSA-657c-wxg6-jmqv"
+  ],
+  "bug_semantics": "A member-controlled profile Description is passed through the legacy ONLY_XSS_CLEAN filter, stored, and later rendered as HTML on the public profile page. The legacy unquoted-event-attribute logic can leave a final unquoted handler intact: for the first-party regression payload <svg onload=window.__xss=String.fromCharCode(80,87,78,69,68)>, its [^\\s]* capture consumes through the closing >, while the subsequent removal regex requires another separator after the captured attribute. Because svg is not rejected by the legacy naughty-element list, the surviving onload executes when another user views the profile.",
+  "flaw_origin": "Repository root commit 19cd665c32812f4d7d7ddef4b947d25344631897 introduced the complete flawed mechanism together: the CodeIgniter-derived Filter::xssClean implementation with the bypassable unquoted evil-attribute removal, Description ingestion using ONLY_XSS_CLEAN in both join/edit processing, persistence, and unescaped HTML rendering via nl2br into the profile template. Later file creations, moves, dynamic-field refactors, and formatting changes retained that mechanism and are not introducers.",
+  "introducer_sha": "19cd665c32812f4d7d7ddef4b947d25344631897",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object names Pierre-Henry Soria <hizup.com@hotmail.com> as both author and committer, has subject \"Initial commit\", and contains no Co-Authored-By, Generated-with, bot identity, or other trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7e6c61cbb9754fe35de219270b21caa1f11c6075",
+  "direct_fix_sha": "7e6c61cbb9754fe35de219270b21caa1f11c6075",
+  "evidence": [
+    "Advisory https://github.com/advisories/GHSA-657c-wxg6-jmqv / CVE-2025-63644 identifies stored XSS in the pH7 17.9.1 user-profile Description field; the bundle records affected range <= 17.9.1.",
+    "At tag v17.9.1, git grep locates Description ingestion at _protected/app/system/modules/user/forms/processing/EditFormProcess.php:106 and JoinFormProcess.php:133 using Http::ONLY_XSS_CLEAN, public-profile assignment at controllers/ProfileController.php:126 using nl2br($aData['description']), and raw template insertion at views/base/tpl/profile/index.tpl:317 as {description}.",
+    "At tag v17.9.1, _protected/framework/Mvc/Request/Http.class.php:398 routes ONLY_XSS_CLEAN to Filter::xssClean. Filter.class.php:619 collects an unquoted evil attribute with [^\\s]*, while the later replacement requires a following [\\s><]; this combination misses a final unquoted event handler whose capture includes the tag-closing >. The legacy naughty-element list does not include svg.",
+    "git log v17.9.1 -L 619,619:_protected/framework/Security/Validate/Filter.class.php and -L 634,634 on the same file trace both vulnerable regex statements through formatting-only commit c6a5b56a05f948ac2d6e2437ce302c10593747d7 to their first addition in 19cd665c32812f4d7d7ddef4b947d25344631897.",
+    "History decomposition excludes later apparent creations: the v17.9.1 EditFormProcess.php line traces through refactors 23beed42d83ae2a3af4c377fa9a9c558f3aad29f and c822a01ffad6bda7f30cfbaa9fd463f31392b68a to predecessor EditFormProcessing.php; tracing that predecessor reaches the same Description/ONLY_XSS_CLEAN behavior in 19cd665c32812f4d7d7ddef4b947d25344631897. Likewise, controller creation 815296e16e27cdb3e928a56b0c20cf1e38e99c98 is a refactor; its parent 958aa0e5d77fa17c868627240239c541688e7022 has the equivalent raw Description assignment, whose -L history reaches the root commit.",
+    "git grep at 19cd665c32812f4d7d7ddef4b947d25344631897 shows the initial edit handler storing post('description', HttpRequest::ONLY_XSS_CLEAN), the initial join handler doing the same, ProfileController.php assigning nl2br($sDescription), and profile/index.tpl inserting {description}; the same root tree also contains the bypassable Filter implementation.",
+    "Direct parent verification: git cat-file -p 19cd665c32812f4d7d7ddef4b947d25344631897 contains a tree, author, committer, blank line, and \"Initial commit\" only—there is no parent header. git log -L also marks it as /dev/null creation. Therefore no immediate-parent tree exists and the vulnerable lines are absent by construction.",
+    "The effective fix is 7e6c61cbb9754fe35de219270b21caa1f11c6075 (\"Use HTML Purifier to block filter bypasses\"), parent c7380964a833dbeea7a737203fc93ae766070506. It replaces the legacy Filter::xssClean body with maintained HTML Purifier, adds ezyang/htmlpurifier, and adds _tests/Unit/Framework/Security/Validate/PurifierTest.php::testReportedPayloadIsRemovedThroughLegacyFilterApi using the exact SVG/onload payload. Later 902031975e08914f4bf0f5d751a228dab1d36fd4 only routes Http directly to the already-effective Purifier and explicitly states that sanitization semantics do not change.",
+    "Version boundary: git tag --contains 19cd665c32812f4d7d7ddef4b947d25344631897 includes v17.9.1. git tag --contains 7e6c61cbb9754fe35de219270b21caa1f11c6075 starts at v18.5.0 (also v18.5.1 and later), excluding v17.9.1 and v18.4.1; thus the BIC predates the affected release and the effective fix first appears in tagged v18.5.0.",
+    "BIC-only AI check: numactl --cpunodebind=1 --membind=1 git cat-file -p 19cd665c32812f4d7d7ddef4b947d25344631897 shows human author/committer Pierre-Henry Soria <hizup.com@hotmail.com>, timestamp 1362183963 -0500, subject \"Initial commit\", no trailers, and no bot identity."
+  ],
+  "reasoning": "The attack path is member-supplied Description -> Http::ONLY_XSS_CLEAN -> legacy Filter::xssClean -> database -> ProfileController nl2br -> raw {description} HTML. The first-party fix and its named regression test establish the concrete SVG/onload bypass and replace the legacy deny-list/regex sanitizer with HTML Purifier. Line history initially lands on several apparent file creations, but those are refactors or renamed replacements; following their predecessor paths and the filter's vulnerable regex statements reaches repository root 19cd665c32812f4d7d7ddef4b947d25344631897, which already contains the complete exploitable path. That commit has no parent, so there is no earlier repository tree in which the mechanism could exist; direct inspection of the commit object verifies the parent boundary. The BIC is an ordinary 2013 human root commit with no commit-object AI marker. The later direct fix is 7e6c61cbb9754fe35de219270b21caa1f11c6075, first included in v18.5.0. Under BIC-only attribution, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

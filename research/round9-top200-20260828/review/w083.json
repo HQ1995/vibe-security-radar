@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-208b27826c8f6cfbc407dff4",
+  "case_id": "alias-208b27826c8f6cfbc407dff4",
+  "repo": "semaphoreui/semaphore",
+  "advisory_ids": [
+    "CVE-2026-73682",
+    "GHSA-93jq-5gw9-rx3q"
+  ],
+  "bug_semantics": "Authenticated Project Managers or Owners can store an attacker-controlled repository git_url beginning with a Git option such as --upload-pack=... . With the default cmd_git client, the server-side schedule commit-hash poller passes that value to git ls-remote before the repository operand and without --end-of-options. Git interprets it as an option and invokes the supplied upload-pack command through a shell, yielding command execution in the Semaphore server process. Repository validation checked only that GitURL was nonempty while branch validation did not delimit the URL argument.",
+  "flaw_origin": "The exploitable schedule-poller data flow was introduced by a30df1527e15c4c0060979bc2b7b120a8234111f (fix(be): bug with getting remote commit), which changed GetLastRemoteCommitHash from git ls-remote origin <branch> in a repository directory to git ls-remote <Repository.GetGitURL()> <branch> in the temporary directory. This was the first write that put attacker-controlled GitURL into the ls-remote option-parsing position; later file moves and client refactors only preserved it.",
+  "introducer_sha": "a30df1527e15c4c0060979bc2b7b120a8234111f",
+  "introducer_parent": "1993a14fb6b484d4ac323700ee19cc0aaf20086f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker. `git cat-file -p a30df1527e15c4c0060979bc2b7b120a8234111f` shows author and committer Denis Gukov <fiftin@outlook.com>, timestamp 1644145540 +0500, subject `fix(be): bug with getting remote commit`, and no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "5d87656a680600125fe78edec1f7a0d10484b52c",
+  "direct_fix_sha": "a7a7a33a64aea382a0726b3722856f298663eacf",
+  "evidence": [
+    "First-party advisory https://github.com/semaphoreui/semaphore/security/advisories/GHSA-xp7j-h7jc-4w8p describes the Manager/Owner repository and schedule API path, default cmd_git trigger, `git ls-remote` argv injection via `--upload-pack=`, affected releases 2.18.12/2.18.13/2.18.16, and patched release 2.18.20. The bundle's alias CVE-2026-73682 is rejected by NVD in favor of CVE-2026-73294, but its supplied description and first-party reference identify this same git_url mechanism.",
+    "At the BIC, `git diff 1993a14fb6b484d4ac323700ee19cc0aaf20086f a30df1527e15c4c0060979bc2b7b120a8234111f -- lib/GitRepository.go` shows the decisive replacement: `r.output(GitRepositoryRepoDir, \"ls-remote\", \"origin\", r.Repository.GitBranch)` became `r.output(GitRepositoryTmpDir, \"ls-remote\", r.Repository.GetGitURL(), r.Repository.GitBranch)`. `git show 1993a14...:lib/GitRepository.go` directly verifies that the immediate parent used literal `origin`, so the vulnerable git_url flow was absent.",
+    "`git log -L '/func (r GitRepository) GetLastRemoteCommitHash/,/^}/':lib/GitRepository.go a30df152...` identifies a30df152... as the write that substituted GetGitURL; it traces the function itself to 208e615a6e5718f98e9e33f4d0814ba87bde0eb8, where ls-remote still used literal `origin`. `git log --all --reverse -S'ls-remote'` and `-S'GetGitURL()'` corroborate the same history; df4932a5..., 58850e912..., and 40e018aaa... are refactor/move commits, not introducers.",
+    "At a30df152..., api/projects/repository.go AddRepository binds a request body and stores Repository.GitURL, db/Repository.go Validate rejects only empty name/url/branch, and services/schedules/pool.go loads schedule.RepositoryID then calls GetLastRemoteCommitHash. This reconstructs source, persistence, scheduled server-side trigger, and sink from the historical tree.",
+    "Release edge: `git tag --points-at 1993a14...` returns v2.8.46 and `git tag --points-at a30df152...` returns v2.8.47, establishing v2.8.47 as the first tagged vulnerable release. The first-party advisory scopes its enumerated supported affected releases to 2.18.12, 2.18.13, and 2.18.16 and declares 2.18.20 patched.",
+    "Immediately before the direct stable fix, `git grep -n 'ValidateGitURL\\|end-of-options' eb841c8d5891189b13fedbd269bbcf2d5e4e319d -- db db_lib` has no matches, while that tree's db_lib/CmdGitClient.go:170 passes GetGitURL(false) directly to ls-remote and db/Repository.go validates only URL non-emptiness plus the branch. `git show a7a7a33a64aea382a0726b3722856f298663eacf` adds ValidateGitURL and inserts `--end-of-options` before URLs in clone/ls-remote and before the branch where relevant, directly closing the mechanism.",
+    "The same direct patch exists on develop as 7e8a9434bd81b82cf42220151c74801ea97542d6. On the 2.18 stable line, `git tag --contains a7a7a33...` starts at v2.18.17; the advisory nevertheless designates v2.18.20 as the supported patched boundary. The bundle-referenced v2.18.20 tip 5d87656a680600125fe78edec1f7a0d10484b52c is a descendant release commit and is therefore retained as fix_sha, while a7a7a33... is the actual direct git_url fix.",
+    "`git cat-file -p a30df152...` proves a single parent, the human author/committer identity, and the complete marker-free commit message. The BIC changes one file by replacing the remote operand and adding error handling; it is neither a merge nor a squash aggregate, so no decomposition is needed."
+  ],
+  "reasoning": "The vulnerability is causally attributable to the small 2022 commit that first routed stored GitURL into schedule-driven `git ls-remote`, not to later moves/refactors and not to the 2026 fix. Direct parent comparison proves absence, line history and string searches converge on the BIC, and release ancestry establishes both the historical introduction and supported patch boundary. The BIC commit object contains only a conventional human identity/message and predates modern coding-agent markers; under the BIC-only evidence rule, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

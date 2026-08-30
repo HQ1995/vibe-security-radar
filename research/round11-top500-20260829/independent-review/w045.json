@@ -1,0 +1,25 @@
+{
+  "worker": "w045",
+  "review_agent_id": "r389_w045",
+  "class_id": "alias-a04219f826d600efc2db317b",
+  "case_id": "GHSA-9m2v-hc5g-5jpv",
+  "repo": "krayin/laravel-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: In v2.1.6 an authenticated note form POSTs the unsanitized comment to admin.activities.store; ActivityRepository persists request data, ActivityResource returns comment unchanged, and the Persons/Leads activity component renders activity.comment through v-safe-html, whose directive assigns DOMPurify.sanitize(binding.value) to innerHTML. Issue #2419 documents persistent cross-user unsafe HTML/CSS/JS rendering on v2.1.6, and the maintainer treated it as security and verified the later escaping fix. CVE-2026-5370 is PUBLISHED and GHSA-9m2v-hc5g-5jpv is not withdrawn, although their composeMail/73ed28d pointers are incorrect.",
+    "atomic_bic": "CONFIRMED: fabc2c41978bad04d16b0a9098dd6288e68e3a06 is the smallest 2.x first-write/reintroduction of the vulnerable HTML sink: its focused activities diff replaces escaped @{{ activity.comment }} with v-html=\"activity.comment\". The new 2.x component was created safely in c42bfa371d99cc9b0ec5011b9a28e49c4faaa167. The analogous v1 sink in 1a592e064e4e845793a2ff4ceb25f34ae4a0abbb was deleted by the 2.0 rewrite 3c3e9cbd3c3fcda3612231c974b73d049dc05966, so it is not the BIC for the advisory's 2.x range.",
+    "immediate_parent_absence": "CONFIRMED: fabc2c41978bad04d16b0a9098dd6288e68e3a06 has immediate parent 4cd67c9947c7a31e1b2b6ffe0318fbcec57a5c62; that parent renders @{{ activity.comment }} and has no v-html sink for activity.comment. introducer_parent_absent=false is correct.",
+    "squash_member_decomposition": "CONFIRMED: fabc2c41978bad04d16b0a9098dd6288e68e3a06 is a single-parent ordinary commit with a two-file 18-insertion/28-deletion diff; the vulnerable hunk is directly present and is not a merge, move, revert, or squash aggregate. No member decomposition is applicable, so squash_decomposed=false and decomposed_shas=[] are correct.",
+    "affected_fixed_release_membership": "CONFIRMED: fabc2c41978bad04d16b0a9098dd6288e68e3a06 is an ancestor of v2.0.0-BETA-1, v2.1.6, v2.2.0, and v2.2.3. v2.1.6/v2.2.0/v2.2.3 still render the comment with v-safe-html. Neither df1f2fad55690d0860b2e9f7dc730085f075cb3a nor merge f96e2f71e4444909063509f3451e197edeef78b0 is in v2.2.3; both first appear in v2.2.4, whose file uses escaped interpolation. The GHSA's <=2.2.0 metadata understates the verified affected tags, but the primary record already reports this accurately.",
+    "direct_fix_or_unpatched": "CONFIRMED: df1f2fad55690d0860b2e9f7dc730085f075cb3a directly changes v-safe-html back to escaped @{{ activity.comment }} and was merged by f96e2f71e4444909063509f3451e197edeef78b0 in PR #2542. The advisory-cited 73ed28d466bf14787fdb86a120c656a4af270153 only waits for a mail-test response; its parent 895310b398a73b044fecdd36ac9ab9e8ec9e9e3a contains an XSS edit, but PR #2466 remains open and unmerged, and neither commit belongs to a release tag.",
+    "bic_only_ai_attribution": "CONFIRMED: The fabc2c41978bad04d16b0a9098dd6288e68e3a06 commit object has matching human author/committer suraj kashyap <suraj.kashyap370@webkul.in>, a valid signature, a plain one-line message, and no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, or bot marker. GitHub maps both roles to user suraj-webkul with type User. Later remediation commits were not used for AI attribution; NOT_AI is supported from the BIC alone."
+  },
+  "findings": [
+    "Independent clone replay confirms the primary's vulnerability lifecycle and exact 40-hex BIC, parent, direct-fix, and merge SHAs.",
+    "The authoritative CVE/GHSA prose misidentifies composeMail and 73ed28d as the vulnerable function and patch, but vendor issue #2419, repository history, PR #2542, and release ancestry converge on the stored activity-comment sink and escaped-output fix.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

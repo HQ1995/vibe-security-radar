@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-a4adef64bffbfff031ff7150",
+  "case_id": "GHSA-3p24-9x7v-7789",
+  "repo": "nationalsecurityagency/emissary",
+  "advisory_ids": [
+    "CVE-2026-35582",
+    "GHSA-3p24-9x7v-7789"
+  ],
+  "bug_semantics": "Executrix accepted IN_FILE_ENDING and OUT_FILE_ENDING without validation, concatenated them into temporary input/output names and paths, substituted those strings verbatim into command templates, and executed the result through /bin/sh -c; a configuration author could therefore place shell metacharacters in either ending and execute commands when a payload was processed.",
+  "flaw_origin": "The public-history root commit c702bb7d697567b5d3a0710b225ee15a695e5534 introduced the complete vulnerable legacy path in Executrix.java: raw configuration and setter assignments, direct suffix concatenation into names/paths, unescaped placeholder substitution, and /bin/sh -c execution. Commit d88cb58c5acdb9bb38d632605d3655e1ac39816c later replicated that already-existing mechanism in the TempFileNames API rather than originating the vulnerability.",
+  "introducer_sha": "c702bb7d697567b5d3a0710b225ee15a695e5534",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: BIC commit object author and committer are Michael Wall <mjwall@gmail.com>; its complete message is 'Initial commit' and contains no Co-Authored-By, Generated-with, bot identity, or other AI marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "1faf33f2494c0128f250d7d2e8f2da99bbd32ae8",
+  "direct_fix_sha": "1faf33f2494c0128f250d7d2e8f2da99bbd32ae8",
+  "evidence": [
+    "CVE.org API record CVE-2026-35582 is PUBLISHED, describes unescaped IN_FILE_ENDING/OUT_FILE_ENDING flow into Executrix.getCommand() and /bin/sh -c, marks versions < 8.43.0 affected, and references GHSA-3p24-9x7v-7789 plus fix 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8.",
+    "GitHub advisory GHSA-3p24-9x7v-7789 identifies affected versions <= 8.42.0, patched version 8.43.0, and the same command-injection path and fix commit.",
+    "git show c702bb7d697567b5d3a0710b225ee15a695e5534:src/main/java/emissary/util/shell/Executrix.java shows raw IN_FILE_ENDING/OUT_FILE_ENDING reads at lines 106-107, concatenation into IN/OUT/INPATH/OUTPATH at lines 137-140, replaceAll substitutions at lines 849-852, /bin/sh -c execution at line 872, and raw setters at lines 901-920.",
+    "git log --all --reverse -S searches for IN_FILE_ENDING, this.inFileEnding = argInFileEnding, <INPUT_PATH> substitution, and /bin/sh all identify c702bb7d697567b5d3a0710b225ee15a695e5534 as the first surviving writer of the complete legacy vulnerable path.",
+    "git rev-list --parents -n 1 c702bb7d697567b5d3a0710b225ee15a695e5534 returns only that SHA, proving it is the public-history root and has no immediate parent tree; no finer member commit exists in the validated full-history, non-shallow clone.",
+    "git show d88cb58c5acdb9bb38d632605d3655e1ac39816c confirms the 2025 TempFileNames overload added a second unescaped path, while its parent ee88bcfd8708deece1ca27a4dca884e020c7207a has no TempFileNames.java; the legacy vulnerable Executrix path already existed from the root commit.",
+    "git show 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8 shows a one-parent direct fix over 082b263a19532454b24dfbed1605311854ea778f that adds INVALID_FILE_ENDING_CHARS/cleanFileEnding and applies it to both configuration reads and both setters.",
+    "git merge-base --is-ancestor confirms c702bb7d697567b5d3a0710b225ee15a695e5534 is in tag 8.42.0, fix 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8 is not in 8.42.0, and the fix is in 8.43.0; tag commits are 29b54cad43fa55ab42db2722bf3583b8e22d9f58 and dd0d619db42496604b56406d3d5e6fffc5a72c0b respectively.",
+    "git show -s --format=raw c702bb7d697567b5d3a0710b225ee15a695e5534 records human author/committer Michael Wall <mjwall@gmail.com> and message 'Initial commit' with no commit-object AI marker."
+  ],
+  "reasoning": "The advisory is a real, published vulnerability: attacker-controlled file-ending configuration reaches shell-interpreted command text without validation. The full-history search establishes that the root commit is the smallest surviving public object that already contains every link of the legacy source-to-sink chain; because it is a root, parent absence is proven by the lack of any parent object rather than by a parent-tree diff. The later TempFileNames commit duplicates the flaw into a new overload and does not supersede the earlier BIC. The referenced one-parent commit directly fixes the causal input boundary, and tag ancestry matches the affected and patched release boundary. AI attribution is decided only from the BIC commit object, whose author, committer, and message contain no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

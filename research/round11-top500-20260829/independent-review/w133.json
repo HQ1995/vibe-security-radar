@@ -1,0 +1,33 @@
+{
+  "worker": "w133",
+  "review_agent_id": "r389_w133",
+  "class_id": "alias-9c1dc487cc303e12be49dd74",
+  "case_id": "GHSA-8297-v2rf-2p32",
+  "repo": "apache/mina",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: IoBuffer.getObject() consumes serialized bytes through ObjectInputStream; the incomplete matcher implementation checks acceptMatchers only when ObjectStreamClass.forClass() is non-null, while the null branch reaches Class.forName(name, false, classLoader) without the allowlist.",
+    "atomic_bic": "FAIL: 691a9df5a0aff0dddeedc5181f6e5832ee90dcea first adds the incomplete allowlist pairing on 2.2.X, but it does not first write the unfiltered null-branch Class.forName line. That source-to-sink already exists in its parent and in tag 2.0.0, which the advisory explicitly includes in the affected range. The clone history further traces the unsafe deserialization implementation through moves/imports to pre-2024 history, but the smallest non-move original writer was not closed.",
+    "immediate_parent_absence": "FAIL: 23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25 has getObject(), ObjectInputStream.readObject(), and unfiltered Class.forName calls in readClassDescriptor()/resolveClass(). The primary itself records introducer_parent_absent=false, so the required absence gate is open.",
+    "squash_member_decomposition": "PASS FOR DECLARED COMMIT ONLY: 691a9df5a0aff0dddeedc5181f6e5832ee90dcea is a single-parent surviving public object, followed on 2.2.X by f9cc5ada6ebef4ee7cc51aac824e42e2e422310e, which preserves the same bypass. This does not repair the unresolved earlier atomic-writer gate.",
+    "affected_release_membership": "FAIL FOR DECLARED BIC: 691a9df5a0aff0dddeedc5181f6e5832ee90dcea is in 2.2.4 but not 2.2.3 and is not an ancestor of the advisory's affected 2.0.x/2.1.x releases. Parallel incomplete matcher commits are 834396355766e0c8f6bbf0493d4588b3fa9d347d in 2.0.27 and cdb59eb6131696a440870ab89ad0e20804eb5ca7 in 2.1.10, but releases before those commits remain advisory-affected through the older unrestricted sink.",
+    "fixed_release_membership": "PASS WITH ADVISORY DISCREPANCY: 8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9 is in 2.0.28 and absent from 2.0.27. ba8c355d82a010d677455df43b49725d21dbd07a is in 2.1.12, not 2.1.11; cca24d646c898adf7e01a765ebf6d677cc02b696 is in 2.2.7, not 2.2.6. Thus the local clone contradicts the bundled advisory's claimed 2.1.11/2.2.6 patched versions, as the primary notes.",
+    "direct_fix_or_unpatched_state": "PASS: each branch's direct patch moves the acceptMatchers test before desc.forClass()/Class.forName and the immediate fix parent retains the bypass: 8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9 (2.0.X), ba8c355d82a010d677455df43b49725d21dbd07a (2.1.X), and cca24d646c898adf7e01a765ebf6d677cc02b696 (2.2.X).",
+    "bic_only_ai_attribution": "FAIL: the declared 691a9df5a0aff0dddeedc5181f6e5832ee90dcea object has human author/committer metadata and no AI trailer, but it cannot supply claim-grade BIC-only attribution because the atomic BIC and parent-absence gates are unresolved. AI provenance must be checked on the eventual atomic writer, not transferred from the incomplete 2024 control commit."
+  },
+  "findings": [
+    "The primary correctly reconstructs the matcher bypass and the three branch-specific direct fixes, including the locally verified 2.1.12/2.2.7 landing mismatch.",
+    "The primary's causal choice is not protocol-closed: it calls the 2024 incomplete remediation the BIC while recording introducer_parent_absent=false and while the advisory covers releases that predate all three matcher commits.",
+    "Tag 2.0.0 already contains getObject() -> ObjectInputStream.readObject() plus unfiltered Class.forName in both class-descriptor resolution paths. Blame at that tag points through repository moves; bounded history reaches older imported/moved objects rather than a verified smallest original writer.",
+    "The bundled GHSA has withdrawn_at=null, but the independently allowed evidence does not include the authoritative CVE.org/vendor disposition artifact required by the protocol, so that gate also cannot be independently replayed."
+  ],
+  "corrected_fields": {
+    "introducer_sha": null,
+    "introducer_parent": null,
+    "introducer_parent_absent": null,
+    "ai_marker": null,
+    "verdict": "EVIDENCE_GAP"
+  },
+  "remaining_gap": "Identify the smallest non-move public commit that first introduced the advisory-wide unsafe getObject() deserialization source-to-sink, verify its immediate parent lacks that mechanism, then inspect that exact BIC for AI provenance. Independently recheck CVE.org/vendor disposition from an allowed authoritative advisory artifact."
+}

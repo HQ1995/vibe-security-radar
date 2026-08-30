@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-d16346240cf1626f6024645d",
+ "case_id": "GHSA-4cc6-crfh-q58w",
+ "repo": "appneta/tcpreplay",
+ "advisory_ids": [
+  "CVE-2025-8746",
+  "GHSA-4cc6-crfh-q58w"
+ ],
+ "bug_semantics": "Vendored libopts remove_settings() calls strstr() on text_mmap() without a MAP_FAILED/NUL-termination check; crafted or missing --load-opts/--save-opts files crash in glibc strstr (ASAN read at 0xffffffffffffffe0). Not a __strstr_sse2 libc bug.",
+ "flaw_origin": "First written in this repo by the 2022 Autogen/libopts 5.18.16 upgrade; parent save.c had no remove_settings/text_mmap/strstr(scan,zCfgProg). GNU tearoff import, not a later move/revert.",
+ "introducer_sha": "a3890282a571bf1754fa20dc325906f05ce70597",
+ "introducer_parent": "76644c24abde01dcf7f746bb3432b0dcf0b1838a",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "none",
+ "verdict": "NOT_AI",
+ "fix_sha": "b50828c575d0840e5c505f6ab6089d7ab500dea3",
+ "direct_fix_sha": "b50828c575d0840e5c505f6ab6089d7ab500dea3",
+ "evidence": "Issue 957 ASAN stack is remove_settings (libopts/save.c:499) -> strstr at 6fcbf032. At that commit scan=text_mmap(...) then strstr(scan,zCfgProg) with no MAP_FAILED guard. git log -S 'strstr(scan, zCfgProg)' -- libopts/save.c first hits a3890282 (Fred Klassen, Feature #759 Upgrade autogen/libopts to 5.18.16). cat-file -p a3890282: author/committer Fred Klassen <fred.klassen@broadcom.com>, no Co-Authored-By/Generated-with/bot. cat-file -e 76644c24:libopts/save.c succeeds; parent save.c lacks remove_settings and the mmap+strstr scan. CVE-2025-8746 remains PUBLISHED (not rejected); CNA text misnames __strstr_sse2/GNU libopts 27.6; maintainer closed 957 as external then later patched the same sink. b50828c5 (#931/#1046) copies txt_size into a NUL-terminated heap buffer and checks MAP_FAILED. Later abca92c5/065b7fa4 (GHSA-5cjx-62pj-pmgq) add the same MAP_FAILED guard; those commits are AI-coauthored fixes, not the BIC. ppa re-checked line-level 2026-08-29: numactl git show a389028^:libopts/save.c has open_sv_file only (no remove_settings: grep -c = 0) while BIC a389028's diff adds '+remove_settings(tOptions * opts, char const * fname)' with text_mmap rewrite path — vulnerable remove_settings() new at BIC. -> introducer_parent_absent=true.",
+ "reasoning": "Real local crash in this repo's vendored libopts, not a withdrawn advisory. BIC is the human 2022 libopts 5.18.16 import; AI markers appear only on 2026 fix commits and do not attribute introduction. Verdict NOT_AI.",
+ "remaining_gap": ""
+}

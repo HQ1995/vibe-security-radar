@@ -1,0 +1,28 @@
+{
+  "class_id": "alias-4816420a9e4d8b4ebaf04d82",
+  "case_id": "GHSA-mqp7-cg7m-4hhq",
+  "repo": "renovatebot/renovate",
+  "advisory_ids": [
+    "CVE-2026-76228",
+    "GHSA-mqp7-cg7m-4hhq"
+  ],
+  "bug_semantics": "When Renovate updates Gradle Wrapper artifacts it reads distributionUrl from gradle-wrapper.properties and concatenates it unquoted into a command string (./gradlew :wrapper --gradle-distribution-url <value>) that is executed through a shell. A malicious distributionUrl containing $(...) or other shell metacharacters is evaluated by /bin/sh before Gradle parses the URL, so an attacker who can land that file in a scanned repo gets arbitrary command execution in the Renovate runtime even with allowScripts off.",
+  "flaw_origin": "PR #6003 member 969f2c5f (2020-04-19, Rhys Arkins) first added getDistributionUrl() and cmd += ` --gradle-distribution-url ${distributionUrl}` in lib/manager/gradle-wrapper/artifacts.ts. Parent 5145c044 only interpolated config.toVersion as --gradle-version. That command already went through child_process.exec (always a shell); 32.124.0 (892595aea) later switched to spawn but forced shell:true, preserving the same evaluation. 42.68.5 f430552de stopped using shell by default, which is the advisory patch.",
+  "introducer_sha": "969f2c5f8fff57851e70d199d706b19ab426e785",
+  "introducer_parent": "5145c044ffcc89b88efe2eb57e8c1a823e9106f8",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "969f2c5f8fff57851e70d199d706b19ab426e785",
+    "aac1e79706cbe902295764e3c4078d36232a8a15",
+    "6a51622d0abe3d5904286435a105d3c28479a92d",
+    "46d392a4da5c05b50d24010ffab2f1d91660e66f"
+  ],
+  "ai_marker": "absent; author Rhys Arkins <rhys@arkins.net>, committer Rhys Arkins <rhys@arkins.net>; cat-file -p shows only subject \"fix(gradle-wrapper): use distribution url instead of version\" with no Co-Authored-By, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "f430552de4a07caadcdc6c413b2a506b539f10ee",
+  "direct_fix_sha": "f430552de4a07caadcdc6c413b2a506b539f10ee",
+  "evidence": "First-party GHSA-pfq2-hh62-7m96 / CVE-2026-76228 (bundle GHSA-mqp7-cg7m-4hhq, withdrawn_at null): renovate >=32.124.0 <42.68.5 (Mend CE/EE <13.3.0) Gradle Wrapper distributionUrl command injection; patched 42.68.5. Clone renovate. git log -S \"gradle-distribution-url ${distributionUrl}\" on artifacts.ts first hits squash 969d455a3c9b97fb874e4fd11ec30cbc2c354304 (fix(gradle-wrapper): use distribution url instead of version #6003). PR https://github.com/renovatebot/renovate/pull/6003 is a 4-commit squash; members exist in the clone. First member 969f2c5f8fff57851e70d199d706b19ab426e785 (parent 5145c044ffcc89b88efe2eb57e8c1a823e9106f8) adds getDistributionUrl and unquoted --gradle-distribution-url ${distributionUrl}; parent file has only wrapper --gradle-version ${config.toVersion} and no getDistributionUrl. Later members aac1e797 (utf8), 6a51622d (https\\: unescape), 46d392a4 (istanbul ignore) do not introduce the interpolation. At that era lib/util/exec/common.ts rawExec = promisify(child_process.exec) so the string is always shell-evaluated. 32.124.0 is 892595aea8022e03cf3c9492faba0806e1958351 (feat(util/exec): use spawn instead of exec #16414) which sets shell: true // force shell; merge-base --is-ancestor 892595aea 32.124.0 yes; not ancestor of 32.123.0. 42.68.4 still has unquoted interpolation and force shell. Direct fix f430552de4a07caadcdc6c413b2a506b539f10ee (Jamie Tanna; parent c5c98ead08d8dcd88fb6d89e4030021fef730de6) defaults shell to false and shlex-splits the command; ancestor of 42.68.5, not of 42.68.4. Later b3f7846c1609d9af420e5ef6647ce0d744947e0c quotes distributionUrl (2026-08, Claude trailer) and is not the advisory patch. Squash 969d455a is ancestor of 32.124.0; member BIC is not on master (expected for squash).",
+  "reasoning": "The CWE-78 sink is interpolating attacker-controlled distributionUrl into a shell-executed Gradle Wrapper command. That interpolation first appears in reconstructable PR #6003 member 969f2c5f, whose parent tree lacks it. The 2020 squash 969d455a is the landing aggregate, not the BIC. child_process.exec already provided a shell, so 32.124.0 only preserved exec-like shell evaluation under spawn; it did not first write the unquoted URL. Vendor affected range starts at 32.124.0, which is after the BIC and matches the spawn+force-shell release; the 42.68.5 exec change is the patch that stops $(...) evaluation. BIC author/committer is Rhys Arkins with no AI trailers or bot identity, so NOT_AI.",
+  "remaining_gap": null
+}

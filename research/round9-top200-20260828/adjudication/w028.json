@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-3e6b6b4fe75d477b98c50871",
+  "case_id": "GHSA-m7qq-f4rg-v5m5",
+  "repo": "go-gitea/gitea",
+  "advisory_ids": [
+    "CVE-2026-24059",
+    "GHSA-m7qq-f4rg-v5m5"
+  ],
+  "bug_semantics": "The runner registration-token API exposed token creation through GET routes. The token-scope middleware derives Read versus Write from the HTTP method and classifies GET as Read, but shared.GetRegistrationToken creates a runner token when no active token exists and returns it. A leaked read-scoped user, organization, repository, or admin token could therefore obtain a runner registration credential and register a malicious Actions runner able to receive workflow jobs with access to repository source and secrets.",
+  "flaw_origin": "PR #27144 was squash-landed as baf0d402d9cb47849394202fcfc7c2e23b0faac3, but that mainline aggregate is not the smallest BIC. The reconstructable PR member eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f first added the shared GET handler whose missing/inactive-token branch calls NewRunnerToken and added reachable organization and admin GET registration-token routes. Its immediate parent already classified GET as Read and contained neither the route nor the helper. The later member bba250f3e99bef12bbd9a1d9d790ab8155c999d5 extended the same mechanism to user and repository routes rather than originating it.",
+  "introducer_sha": "eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f",
+  "introducer_parent": "24a215e317103471aeb864f365089a36076efc1d",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f",
+    "bba250f3e99bef12bbd9a1d9d790ab8155c999d5"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "716a800f500348e10a663ad749398d230c5bb7ad",
+  "direct_fix_sha": "716a800f500348e10a663ad749398d230c5bb7ad",
+  "evidence": [
+    "The official GitHub advisory API for GHSA-M7QQ-F4RG-V5M5 returns GHSA-m7qq-f4rg-v5m5/CVE-2026-24059 and states that the GET registration-token endpoints create a token when none exists while method-based scope enforcement classifies GET as read-only; it identifies go-gitea/gitea#36801 among the references.",
+    "The GitHub commit API diff for decomposed member eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f shows routers/api/v1/shared/runners.go as an added file: GetRegistrationToken calls GetUnactivatedRunnerToken and then NewRunnerToken for a missing or inactive token, returning token.Token. The same diff adds organization and admin m.Get(\"/registration-token\") routes, so this source member is already vulnerable without relying on the later squash aggregate.",
+    "The exact eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f Git commit object names sole parent 24a215e317103471aeb864f365089a36076efc1d. A contents-API check of that parent's routers/api/v1/api.go returned false for both GetRegistrationToken and registration-token, and the parent-tree lookup for routers/api/v1/shared/runners.go returned HTTP 404. In the same parent api.go lines 257-260 initialize requiredScopeLevel to auth_model.Read and switch to Write only for POST, PUT, PATCH, or DELETE, proving direct-parent endpoint/helper absence and the pre-existing GET-as-Read condition.",
+    "Local git show -s of mainline commit baf0d402d9cb47849394202fcfc7c2e23b0faac3 identifies PR #27144 and its aggregate message/trailers. Because the vulnerable route-plus-create implementation already exists in the earlier reconstructable PR member, the squash, imports, later extensions, and moves are rejected as BIC candidates. Member bba250f3e99bef12bbd9a1d9d790ab8155c999d5 is retained only as the decomposed extension that added user/repository variants.",
+    "Version checks in the validated clone show no GetRegistrationToken or registration-token under routers/api/v1 at v1.21.11, while v1.22.0 contains three GET registration-token routes and shared.GetRegistrationToken; the v1.22.0 helper directly calls NewRunnerToken on missing/inactive state. git for-each-ref --contains=baf0d402d9cb47849394202fcfc7c2e23b0faac3 begins with the v1.22.0 family, establishing the first affected stable boundary.",
+    "Direct fix 716a800f500348e10a663ad749398d230c5bb7ad is titled 'Remove API registration-token (#36801)' and its stat removes the GET handlers/routes across admin, user, organization, repository, shared interface, Swagger, and updates the integration caller. v1.25.5 still contains three m.Get(\"/registration-token\") routes; git for-each-ref --contains=716a800f500348e10a663ad749398d230c5bb7ad begins with v1.26.0/v1.26.0-rc0, and v1.26.0 contains only POST registration-token routes. Thus v1.26.0 is the first fixed stable release despite the advisory's v1.25.5 reference.",
+    "The disputed marker_state was rechecked against the BIC commit object itself via GET /repos/go-gitea/gitea/git/commits/eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f. Its verified payload has human author and committer Lunny Xiao <xiaolunwen@gmail.com> and the complete one-line message 'Add get actions runner registration token for API routes, repo, org and global level'; there are no trailers, bot identities, Generated-with text, Copilot attribution, or other AI-authorship signals.",
+    "Primary and reviewer agree on the BIC-only facts but encode marker_state differently: primary stores a prose 'absent' explanation in ai_marker, whereas reviewer stores null. The direct commit-object check supports the reviewer's canonical null marker value; the primary's factual explanation is preserved here as evidence, not as a marker. The squash commit's later human Co-authored-by trailers and the fix object's metadata are aggregate/later evidence and are explicitly excluded from BIC AI attribution."
+  ],
+  "reasoning": "The causal defect is the combination of an existing method-derived scope rule that grants Read to GET and a newly added GET endpoint whose helper can persist and disclose a runner registration token. The first reconstructable PR member containing both sides is eec5ed07521ffc767c0dd1bdccdece8a7f54fe3f; its direct parent lacks the route and helper, while bba250f3e99bef12bbd9a1d9d790ab8155c999d5 only broadens the affected scopes and baf0d402d9cb47849394202fcfc7c2e23b0faac3 is the squash landing aggregate. The code is affected from stable v1.22.0 through v1.25.5 and the direct removal fix 716a800f500348e10a663ad749398d230c5bb7ad first appears in stable v1.26.0. On the sole disputed field, the reviewer wins the marker_state encoding: the BIC commit object has no AI marker, so ai_marker is null. The primary was factually right that the marker is absent but wrong to place explanatory prose in that field. With no BIC-object AI signal, the gate-complete verdict is NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,27 @@
+{
+  "worker": "w227",
+  "review_agent_id": "r389_w227",
+  "class_id": "alias-10f424b37aea92b018b86c24",
+  "case_id": "GHSA-7jm4-f7vj-6pcc",
+  "repo": "mmaitre314/picklescan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: the vendor PoC uses numpy.testing._private.utils.runstring as a pickle reduce callable; v0.0.24 leaves an unlisted GLOBAL merely Suspicious and infected_files remains zero, so the first-party safe-then-pickle.load flow executes the payload. CVE-2025-71355 is PUBLISHED, not rejected or withdrawn.",
+    "atomic_bic": "PASS: c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e first adds src/picklescan/scanner.py, including the incomplete _suspicious_globals map and denylist-only issue counter; -S history confirms this is the first write, while f98f9bd89b16ab1b1b1b6366acddd1b2a4d36fe9 is only a later rename/refactor.",
+    "immediate_parent_absence": "PASS: immediate parent 6a76b8c3ac67dc04181e600614ecf2a423cca326 exists and its complete tree has no scanner.py or pickle scanner implementation, so the vulnerable mechanism is absent there.",
+    "squash_member_decomposition": "PASS: the BIC is a one-parent non-merge commit with no associated GitHub PR and no finer public member to reconstruct; it is therefore the smallest surviving public object, not a move, revert, or squash aggregate. PR #40 was separately decomposed into head commits 118e80b0789d76fb5d0eeb6545840f4f3085edc7 and 307e4d0da3ca8730dd03cbbf3a735bcc3b43fb5d before squash 62e76cfdf9aaaa3d0a26b78f7a93710406482274.",
+    "affected_fixed_release_membership": "PASS: v0.0.24 resolves to 75e60f2c02f3f1a029362e6f334e1921392dcf60, contains the BIC, and excludes the fix; v0.0.25 resolves to and contains fix 62e76cfdf9aaaa3d0a26b78f7a93710406482274, matching the official affected range <0.0.25 and unaffected version 0.0.25.",
+    "direct_fix_or_unpatched_state": "PASS: parent-of-fix 75e60f2c02f3f1a029362e6f334e1921392dcf60 lacks numpy.testing._private.utils; PR member 118e80b0789d76fb5d0eeb6545840f4f3085edc7 and squash 62e76cfdf9aaaa3d0a26b78f7a93710406482274 directly add that module as unsafe with the runstring/exec rationale.",
+    "bic_only_ai_attribution": "FAIL: BIC c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e has a human-looking author/committer identity, empty body/trailers, and no visible bot or AI marker, but those negative commit-object signals do not affirmatively establish human-only authorship. Copilot/review or co-author evidence on the 2025 fix is correctly excluded, leaving the BIC attribution gate open."
+  },
+  "findings": [
+    "The primary record's mechanism, atomic introducer, parent boundary, release ancestry, and direct fix independently reproduce from the specified advisory and clone.",
+    "The primary correctly excludes fix-side AI signals, but visible human identity plus absent AI trailers is insufficient proof for NOT_AI; the BIC authorship gate remains unresolved."
+  ],
+  "corrected_fields": {
+    "verdict": "EVIDENCE_GAP",
+    "remaining_gap": "Need affirmative BIC-specific human-authorship evidence beyond the visible author/committer identity and absence of AI markers; fix-side Copilot or co-author evidence cannot resolve the introducer's authorship."
+  },
+  "remaining_gap": "BIC-specific human-versus-AI authorship is not closed by commit metadata alone."
+}

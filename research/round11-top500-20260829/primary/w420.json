@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-5ec06c86235aa6e00d461fb8",
+  "case_id": "GHSA-f7xc-5852-fj99",
+  "repo": "saloonphp/saloon",
+  "advisory_ids": [
+    "CVE-2026-33183",
+    "GHSA-f7xc-5852-fj99"
+  ],
+  "bug_semantics": "A caller-controlled fixture name was suffixed with .json and concatenated to the configured fixture directory without rejecting dot-dot path segments or proving containment. Mock fixture lookup passed that path to file_exists/file_get_contents, and recording later passed the same path to mkdir/file_put_contents, so a name such as ../target escaped the fixture directory and could disclose or overwrite process-accessible files.",
+  "flaw_origin": "Commit 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e first introduced the public string fixture-name flow, Fixture::getFixturePath returning the unvalidated name plus extension, Storage::buildPath performing lexical concatenation only, and the file read sink. Commit 53c7a87e0eb54e722b87b177cd76a0f02a84d137 later made the write sink functional while preserving that already-introduced unsafe path construction; it expanded impact but was not the first vulnerable BIC.",
+  "introducer_sha": "4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e",
+  "introducer_parent": "c9a0930e1705118b606126f6f84eb5d1ca6a527f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the exact BIC commit object names author and committer Sammyjo20 <29132017+Sammyjo20@users.noreply.github.com> and contains only the subject 'Revised mock recording', with no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "verdict": "NOT_AI",
+  "fix_sha": "d418356b6257a847f92a0bfa0c2d48bb379c731d",
+  "direct_fix_sha": "9c1a0700f607ed4bbd71e097b1ea2c9113d4312b",
+  "evidence": [
+    "CVE.org API record https://cveawg.mitre.org/api/cve/CVE-2026-33183 is PUBLISHED and states that versions < 4.0.0 are affected and that unvalidated fixture names can escape the base directory for reads or writes; GitHub's current GHSA API record for GHSA-f7xc-5852-fj99 agrees, names 4.0.0 as first patched, and has withdrawn_at=null.",
+    "The assigned clone reports rev-parse --is-shallow-repository=false. git show 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e shows new src/Http/Fixture.php lines 41-44 accepting and storing the string name, lines 53-62 routing its derived path to Storage::get, and lines 70-72 returning sprintf('%s.%s', name, extension); new src/Helpers/Storage.php lines 47-62 concatenate base plus path and call file_exists without validation, with get calling file_get_contents through the same construction.",
+    "Direct parent-tree checks `git cat-file -e c9a0930e1705118b606126f6f84eb5d1ca6a527f:src/Http/Fixture.php` and the equivalent src/Helpers/Storage.php both fail with status 128: neither vulnerable file exists in the immediate parent. The BIC is a normal one-parent commit, not a squash or move.",
+    "git show 53c7a87e0eb54e722b87b177cd76a0f02a84d137:src/Helpers/Storage.php lines 98-112 shows the later write activation: put builds the same uncontained path, creates parent directories, and calls file_put_contents. The read traversal was already executable at 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e, so 53c7a87e0eb54e722b87b177cd76a0f02a84d137 is not substituted for the first BIC.",
+    "`git cat-file commit 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e` gives parent c9a0930e1705118b606126f6f84eb5d1ca6a527f, author and committer Sammyjo20 <29132017+Sammyjo20@users.noreply.github.com>, and message 'Revised mock recording' only; the exact BIC object has no AI/co-author/generated trailer or bot identity.",
+    "GitHub's first-party PR API for saloonphp/saloon#539 identifies merged squash d418356b6257a847f92a0bfa0c2d48bb379c731d and enumerates its member commits. The first member, 9c1a0700f607ed4bbd71e097b1ea2c9113d4312b, directly adds Fixture name rejection, Storage base-containment checks on exists/get/put, and read/write traversal regression tests; its parent is 8039c76132ca52d08c887407773a770c15ab04a0. Later PR members harden that implementation, and the final landed squash preserves the guards.",
+    "Release topology is consistent: tag v1.5 peels to e3a4f1eb40b42e67cbcc41febdd251c484a0fbdb and contains BIC 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e; tag v3.15.0 peels to 8039c76132ca52d08c887407773a770c15ab04a0 and its Fixture::getFixturePath still returns the unchecked name; d418356b6257a847f92a0bfa0c2d48bb379c731d is an ancestor of v4.0.0 target 1307b1d72cacdd2c9c20978cdf7a0b720b4bf3bb, whose lines 176-179 reject traversal/invalid names and whose Storage methods enforce base containment."
+  ],
+  "reasoning": "The advisory describes a real path traversal, and local history reproduces its complete lifecycle. The earliest surviving atomic commit that creates an exploitable source-to-read-sink path is 4fbbd5f5f6ff20c57f8069614e7cd69bb7626b5e: a string fixture name becomes an unchecked relative path and reaches filesystem lookup/read; both implementation files are absent from its immediate parent. The later 53c7a87e0eb54e722b87b177cd76a0f02a84d137 write implementation reuses the same flawed origin and broadens the sinks rather than replacing the BIC. PR 539's reconstructable member 9c1a0700f607ed4bbd71e097b1ea2c9113d4312b is the direct security fix, while d418356b6257a847f92a0bfa0c2d48bb379c731d is the landed squash included by v4.0.0; pre-fix v3.15.0 lacks the guards. Because the exact BIC commit object has human author/committer identities and no commit-object AI marker, the real vulnerability is NOT_AI.",
+  "remaining_gap": null
+}

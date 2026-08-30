@@ -1,0 +1,27 @@
+{
+  "worker": "w223",
+  "review_agent_id": "r389_w223",
+  "class_id": "alias-f47bd2b9d061222a7d643472",
+  "case_id": "GHSA-4ph9-3c4q-r2hh",
+  "repo": "frrouting/frr",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: at the fix parent, bgp_attr_encap() accepts an attacker-controlled VNC sub-TLV length that fits the remaining UPDATE and stores exactly that many bytes; rfapiRibBi2Ri() later reads value[0] and value[1] and allocates/copies length-2 without first requiring length >= 3. Length 0 or 1 therefore causes out-of-bounds reads and a negative int converted to a huge allocation size, while length 2 with inner length zero is also invalid. The function is reached from the RFAPI RIB update/preload paths, and configure.ac enables BGP VNC unless explicitly disabled. CVE.org independently reports CVE-2026-37460 as PUBLISHED, and GHSA-4ph9-3c4q-r2hh has withdrawn_at=null.",
+    "atomic_bic": "CONFIRMED: independent git log -S searches for both `hop->type = pEncap->value[0]` and `pEncap->length - 2`, plus whitespace-insensitive blame on the fix parent, identify 65efcfce427e2abb548874ebb1a11a3b2ee7bc17 as the first writer of the vulnerable RFPOPTION logic. Later d62a17aede attribution is only reindent on memcpy, not mechanism origin.",
+    "immediate_parent_absence": "CONFIRMED: 65efcfce427e2abb548874ebb1a11a3b2ee7bc17 has the single parent 520d2512db8496f9b79b917cb84e36b83465f884; that parent has no bgpd/rfapi tree and neither rfapiRibBi2Ri nor BGP_VNC_SUBTLV_TYPE_RFPOPTION, while the child contains the complete unchecked copy.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent 106-file VNC feature landing, not a merge. GitHub reports no pull request associated with the BIC, and no finer public member object is reconstructable; under the protocol it is the smallest surviving first-write object rather than a later move, refactor, revert, or squash surrogate.",
+    "affected_release_membership": "CONFIRMED: git ancestry places the BIC in the checked frr-10.0 through frr-10.6 release lines, including frr-10.5.5 and frr-10.6.x. This matches CVE.org's affected stable/10.0 through stable/10.6 statement; the stable/10.6 branch was vulnerable before its backport.",
+    "fixed_release_membership": "CONFIRMED: direct fix 7676cad65114aa23adde583d91d9d29e2debd045 is an ancestor of frr-10.7.0 and not frr-10.6.2. Its byte-equivalent stable/10.6 cherry-pick 36f4098738627d724a72d37ef660a5d8eb1e8020 is an ancestor of frr-10.6.0, frr-10.6.1, and frr-10.6.2.",
+    "direct_fix_or_verified_unpatched": "CONFIRMED: PR 21098 contains the single commit 7676cad65114aa23adde583d91d9d29e2debd045 and merged it as 4825b5ba563368c9a8b8884080203d6ed2b8d9f3. Its rfapi_rib.c hunk directly inserts `pEncap->length < 3` and `pEncap->value[1] == 0` rejection immediately before the vulnerable reads and allocation; 36f4098738627d724a72d37ef660a5d8eb1e8020 applies the same hunk to stable/10.6.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Lou Berger as author and Donald Sharp as committer, credits G. Paul Ziemba in prose, dates to 2016, and has no Co-Authored-By, Generated-with, bot identity, or other AI marker. Signals on the 2026 remediation are irrelevant to BIC attribution."
+  },
+  "findings": [
+    "The primary record correctly identifies the remotely supplied short VNC RFPOPTION sub-TLV and rfapiRibBi2Ri()'s unchecked indexed reads and length subtraction as the DoS mechanism.",
+    "The primary record's BIC, immediate parent, direct fix, stable/10.6 backport, and release ancestry all reproduced from the assigned clone.",
+    "The authoritative CVE state and GitHub advisory disposition support a real published vulnerability rather than FALSE_POSITIVE.",
+    "The primary NOT_AI verdict follows from BIC-only attribution and requires no field correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

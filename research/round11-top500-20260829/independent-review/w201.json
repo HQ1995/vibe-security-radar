@@ -1,0 +1,24 @@
+{
+  "worker": "w201",
+  "review_agent_id": "r389_w201",
+  "class_id": "alias-73de0c8187b63c1e8039d6f2",
+  "case_id": "GHSA-3hm7-m5p9-2h77",
+  "repo": "wp-statistics/wp-statistics",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed end to end at v14.16.8: the public frontend tracker receives Helper::getHitsDefaultParams(), including the request signature; POST /wp-statistics/v2/hit accepts base64 page_uri; Helper::getRequestUri() and Hits::set_page_uri() decode it without sanitize_url(); sanitize_page_uri() retains the always-present search_query path and the allow-listed utm_campaign; visitor and referred-visitor tables place the stored campaign in .wps-tooltip title attributes; global Tooltipster contentAsHTML:true converts the browser-decoded title to executable HTML. The request patterns reject script tags and quoted event handlers but do not cover unquoted handlers.",
+    "atomic_bic": "Confirmed e83c5a764428a95c1e04fc9d67160c2bbde3e223 as the smallest first-write of the execution-enabling sink. git log -ScontentAsHTML on assets/dev/javascript/helper.js has this as the first change; its focused diff adds contentAsHTML:true to both shared .wps-tooltip initializers and the compiled bundle. It is a single-parent ordinary commit, not a move, merge, revert, or squash aggregate.",
+    "immediate_parent_absence": "Confirmed against immediate parent 17880ba9257556b1e6e1193755654acfa719eabb: the unsanitized page_uri decodes and utm_campaign visitor/referral tooltip labels already exist, but helper.js has no contentAsHTML option and Tooltipster defaults contentAsHTML:false. The parent compiled bundle has only the false default, while the BIC adds two true settings. Thus the parent stores and displays text but lacks this HTML execution sink.",
+    "squash_member_decomposition": "Confirmed the BIC itself needs no decomposition. For the fix boundary, direct development member 6ab74427778b89c9e88471e9dd7407d9055a9b34 adds sanitize_url() at both decode sites and sanitize_text_field() at campaign displays; follow-up 78c4fab492f905cc6a5d2fdcafb078627d638603 adds type guards. Neither member is an ancestor of v14.16.9, while release squash 4a912c6e9080a1f0148b1a4b7dc921557b464c8e contains those same hardenings and is an ancestor of v14.16.9.",
+    "affected_fixed_release_membership": "Confirmed by tag resolution and merge-base ancestry: the BIC is absent from v14.15.4, present in v14.16 and v14.16.8, and the release squash is absent from v14.16.8 but present in v14.16.9. v14.16.8 contains raw base64 decodes and unsanitized campaign extraction; v14.16.9 contains sanitize_url(), string guards, and sanitize_text_field(). CVE.org currently reports PUBLISHED and affected versions <=14.16.8; GHSA withdrawn_at is null.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed direct fix 6ab74427778b89c9e88471e9dd7407d9055a9b34 from the advisory reference: its relevant diff sanitizes both REST page_uri decode paths and every reviewed utm_campaign display. The v14.16.9 squash preserves those changes, while v14.16.8 is directly verified unpatched.",
+    "bic_only_ai_attribution": "Confirmed using only BIC e83c5a764428a95c1e04fc9d67160c2bbde3e223: its commit object names Nora <mwdrad@gmail.com> as both author and committer, has one parent, a normal project message, and no Co-Authored-By, Generated-with, bot identity, AI-tool marker, or other AI attribution trailer. Repository-level AI commits and fix-commit identities were not used to classify the BIC."
+  },
+  "findings": [
+    "The primary vulnerability lifecycle, BIC, parent counterfactual, release boundary, direct-fix/member relationship, and BIC-only NOT_AI attribution all reproduce from the advisory and clone.",
+    "No corrected primary field is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

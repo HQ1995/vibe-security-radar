@@ -1,0 +1,27 @@
+{
+  "worker": "w104",
+  "review_agent_id": "r389_w104",
+  "class_id": "alias-d7f3f7d73868c4a64f96e583",
+  "case_id": "GHSA-qcm7-3vpr-hj5h",
+  "repo": "adonisjs/bodyparser",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: attacker-controlled multipart field names reach lodash.get/set in FormFields.add(); Object.create(null) protects only the root, while nested normal segments allow lodash.set to materialize plain intermediate objects and reach __proto__ or constructor.prototype. The complete fixes reject any lodash.toPath segment equal to __proto__, prototype, or constructor.",
+    "atomic_bic": "PASS: 40e1c71f958cffb74f6b91bed6630dca979062ed is the earliest public 11.x commit that creates this advisory's incomplete-remediation state, changing #fields from {} to Object.create(null) while retaining unsanitized lodash.set and adding only direct-key tests. It has one parent and modifies only src/form_fields.ts and tests/form_fields.spec.ts.",
+    "immediate_parent_absence": "PASS: immediate parent 3017053886993908d181fd721ea1b7f66e91f470 has #fields = {}, retains lodash.set, and lacks the Object.create(null) incomplete-fix line and its direct-key regression tests.",
+    "squash_member_decomposition": "PASS: 40e1c71f958cffb74f6b91bed6630dca979062ed is a single-parent direct commit and GitHub reports no associated pull request. The two-minutes-later 10.x commit 2515698a53899b8c761d43ac342d6a6271c852ad is a parallel same-author reapplication; neither commit is an ancestor of the other, so it is not a hidden member or a finer decomposition of 40e1c71.",
+    "affected_release_membership": "PASS: 40e1c71 is an ancestor of v11.0.0-next.9 but not v11.0.0-next.8; 2515698 is an ancestor of v10.1.3 but not v10.1.2. v11.0.2 and v10.1.4 still contain Object.create(null) plus unsanitized lodash.set. This matches CVE.org ranges >=11.0.0-next.9 <11.0.3 and >=10.1.3 <10.1.5.",
+    "fixed_release_membership": "PASS: aa96908f7b3f64c19e15d2d2d916b69137bdf469 is an ancestor of v11.0.3 but not v11.0.2; 8a85eb0c2061b0caca10faedbfc2cf24b56cf9f6 is an ancestor of v10.1.5 but not v10.1.4.",
+    "direct_fix_or_unpatched_state": "PASS: aa96908 adds the path-segment rejection and nested __proto__/constructor.prototype tests directly on 11.x; 8a85eb0 applies the same closure on 10.x. The immediately preceding release tags v11.0.2 and v10.1.4 lack that guard and remain unpatched.",
+    "bic_only_ai_attribution": "PASS: git cat-file -p for 40e1c71 shows author and committer Romain Lanz <romain.lanz@pm.me>, a GPG signature, and only the subject 'fix: prevent prototype pollution via multipart field names'; there are no AI-generation, co-author, or bot trailers. GitHub maps both author and committer to RomainLanz. Attribution is based only on this BIC, not the later fixes or the 10.x reapplication."
+  },
+  "findings": [
+    "The live GHSA still has withdrawn_at=null, and the CVE.org record is PUBLISHED; this is a real incomplete-remediation vulnerability, not a withdrawn or rejected advisory.",
+    "The primary correctly distinguishes this advisory's incomplete-fix BIC from the older lodash.set sink covered by CVE-2026-25754 and correctly selects the first public 11.x incomplete-fix commit rather than searching backward from an AI marker.",
+    "GitHub's GHSA range ends at 11.0.1, but repository state and the CVE.org range show v11.0.2 is also unpatched; the primary already records the correct <11.0.3 lifecycle and therefore needs no field correction.",
+    "All 40-hex introducer, parent, and direct-fix identities and both release-line ancestry gates independently reproduce. The BIC-only authorship evidence supports NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

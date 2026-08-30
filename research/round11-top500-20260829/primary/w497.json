@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-3d4b43326a4da331198820e6",
+  "case_id": "GHSA-pwc8-43hr-jg4j",
+  "repo": "absmach/magistrala",
+  "advisory_ids": [
+    "CVE-2026-71276",
+    "GHSA-pwc8-43hr-jg4j"
+  ],
+  "bug_semantics": "The authenticated message-reader HTTP endpoint accepted the request-controlled format query parameter without validation and passed it as PageMetadata.Format. PostgreSQL and TimescaleDB readers then interpolated that value as an unquoted table identifier into SELECT and COUNT statements. An attacker able to read channel messages could therefore terminate or restructure the FROM clause, including with comments or UNION, and bypass authorization predicates placed later in the WHERE clause.",
+  "flaw_origin": "The vulnerable source-to-sink path was first written in PR #1295 member bb39e842de28ca529c2f63eb3a2da6b55ada1d60. That member added format to the HTTP query fields, defaulted it to messages, and inserted the resulting map value directly into PostgreSQL SQL with fmt.Sprintf. Its immediate parent 06e149e2e68d25886e7e24a2cafb47f6f20d8f5d used a fixed table name. GitHub later squash-merged the PR as e326494166dab3d6373c4cadb9df1bbedd25a25b; the still-reachable PR head permits decomposition to the atomic member. TimescaleDB independently copied the same vulnerable pattern later in 864ad144e620f8d760b89da1e69eab261b7fd252.",
+  "introducer_sha": "bb39e842de28ca529c2f63eb3a2da6b55ada1d60",
+  "introducer_parent": "06e149e2e68d25886e7e24a2cafb47f6f20d8f5d",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "bb39e842de28ca529c2f63eb3a2da6b55ada1d60"
+  ],
+  "ai_marker": "No AI marker appears on the atomic introducer. The November 2020 commit is authored and committed by Dušan Borovčanin, contains a human Signed-off-by trailer, and predates contemporary generative coding assistants; the later squash retains named human authorship and a human co-author trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "2726a29784926f3a097d4baa31959bcabe73447e",
+  "direct_fix_sha": "aac9461aa561c3de7aa9a0dc814ac84c602e0cf9",
+  "evidence": [
+    "CVE.org records CVE-2026-71276 as PUBLISHED, describes the same request-format-to-fmt.Sprintf SQL injection in both readers, and marks custom versions 0 through * affected; the case bundle records GHSA-pwc8-43hr-jg4j as published with withdrawn_at null.",
+    "In bb39e842de28ca529c2f63eb3a2da6b55ada1d60, readers/api/transport.go adds format to accepted query fields and readers/postgres/messages.go interpolates the corresponding value into SELECT * FROM %s. Parent 06e149e2e68d25886e7e24a2cafb47f6f20d8f5d has only the fixed SELECT * FROM senml form.",
+    "PR #1295 remains decomposable from public ref refs/pull/1295/head at ac754e5358fc8a433160e90e33452d42a68a83de. Its atomic first-writer bb39e842de28ca529c2f63eb3a2da6b55ada1d60 is represented on main by squash e326494166dab3d6373c4cadb9df1bbedd25a25b. Release 0.11.0 does not contain that squash, while 0.12.0 does.",
+    "TimescaleDB commit 864ad144e620f8d760b89da1e69eab261b7fd252 later introduced the same use of rpm.Format in unquoted SELECT and COUNT table positions, so it expands the sink set but is not the earliest repository BIC.",
+    "PR #3581 member aac9461aa561c3de7aa9a0dc814ac84c602e0cf9 directly fixes every identified table-name interpolation by validating format as a bare PostgreSQL identifier and applying pq.QuoteIdentifier in both backends. Main commit 2726a29784926f3a097d4baa31959bcabe73447e has the same tree as the PR head and contains that member's fix. The fix is on current HEAD but no repository tag contains it; v0.51.0 predates and does not contain it."
+  ],
+  "reasoning": "The advisory describes a real SQL injection and the local history independently reproduces the complete lifecycle. The atomic BIC and clean parent are recoverable from the PR member history, and the direct security-fix member is likewise recoverable from the later squash PR. AI attribution is judged only on the atomic BIC: its 2020 human author/committer metadata and Signed-off-by trailer provide affirmative human provenance and no AI marker exists. Therefore this is a real vulnerability with human authorship, so the verdict is NOT_AI.",
+  "remaining_gap": "No remaining causal, identity, fix, advisory-status, or release-boundary gap. No tagged fixed release exists in the inspected clone."
+}

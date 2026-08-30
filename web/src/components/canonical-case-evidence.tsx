@@ -55,15 +55,14 @@ function advisoryBlurb(item: ResearchCase): string | null {
   return blurb;
 }
 
-function findingHeadline(item: ResearchCase): string {
-  if (
-    item.contribution_class === "AI_INCOMPLETE_REMEDIATION" &&
-    item.ir_chain
-  ) {
-    return incompleteHeadline(item);
-  }
-  return contributionHeadline(item.contribution_class);
+function findingSummary(item: ResearchCase): string | null {
+  const summary = item.code_evidence?.summary;
+  if (summary && isPublicProse(summary)) return summary;
+  const blurb = advisoryBlurb(item);
+  if (blurb) return blurb;
+  return null;
 }
+
 
 function missingCheck(item: ResearchCase): string | null {
   return (
@@ -74,7 +73,9 @@ function missingCheck(item: ResearchCase): string | null {
 }
 
 function whatWentWrong(item: ResearchCase): string {
-  return findingHeadline(item);
+  return (
+    findingSummary(item) ?? contributionHeadline(item.contribution_class)
+  );
 }
 
 function whatClosedIt(item: ResearchCase): string | null {
@@ -465,10 +466,14 @@ function DiffHunk({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
+  // Long hunks start collapsed; short ones honor the caller's default. Once expanded the
+  // full diff is shown — no max-height clipping, no ellipsis.
+  const collapsible = lines.length > 24;
+  const openDefault = collapsible ? false : open;
 
   return (
     <details
-      open={open}
+      open={openDefault}
       className="group overflow-hidden border border-border bg-card"
     >
       <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
@@ -479,11 +484,10 @@ function DiffHunk({
           <span className="text-emerald-700">+{added}</span>
           <span className="text-red-700">−{removed}</span>
           <span className="font-semibold uppercase tracking-wider text-muted-foreground">
-            {label}
           </span>
         </span>
       </summary>
-      <pre className="max-h-[28rem] overflow-auto border-t border-border py-3 text-[12px] leading-6">
+      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-6">
         <code>
           {lines.map((line, index) => (
             <span
@@ -563,6 +567,7 @@ export function CanonicalCaseEvidence({
   const leftStep = steps.length >= 3 ? steps[1] : steps[0];
   const rightStep = steps.length >= 3 ? steps[2] : steps[1];
   const introStep = steps.length >= 3 ? steps[0] : null;
+  const summary = findingSummary(item);
   const blurb = advisoryBlurb(item);
 
   return (
@@ -575,9 +580,9 @@ export function CanonicalCaseEvidence({
           </span>
         </div>
         <h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
-          {findingHeadline(item)}
+          {summary ?? contributionHeadline(item.contribution_class)}
         </h2>
-        {blurb && blurb !== findingHeadline(item) ? (
+        {blurb && blurb !== summary ? (
           <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
             {blurb}
           </p>

@@ -1,0 +1,50 @@
+{
+  "worker": "w309",
+  "review_agent_id": "r389_w309",
+  "class_id": "alias-2826ec37bcd89c3d3b60ce5b",
+  "case_id": "GHSA-c2p7-hcxm-xqhj",
+  "repo": "vas3k/taxhacker",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The public BETTER_AUTH_SECRET fallback flows through config.auth.secret into betterAuth({ secret }) with JWT sessions. When the environment value is absent, or empty after 69fc82f7d0ef3b6816f8d3ebb97f3fa5b20be0d9 filters empty strings, the source-visible constant becomes the signing key. CVE-2026-78062 is still PUBLISHED and identifies versions 0.8.0, 0.8.1, and 0.8.2 as affected."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "git -S history and the commit diff identify d8711b714285b545b4010faa6e7878eb7d16ff8b as the smallest surviving public commit that first added both process.env.BETTER_AUTH_SECRET || \"please-set-secret\" in lib/config.ts and secret: config.auth.secret in lib/auth.ts. bd6cd2c25c0420cf9f9cd679a98563bef735f5c1 only refactored the already-present mechanism into a Zod default."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Direct reads of parent 144e67dfa509a488766a1db4a414080d6fd05e0f show no config.auth.secret, no BETTER_AUTH_SECRET fallback, and no betterAuth secret option."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "d8711b714285b545b4010faa6e7878eb7d16ff8b is a one-parent public commit whose source and sink additions are in the same diff; its commit object contains no member list or squash metadata from which a finer public introducer can be reconstructed, so decomposition is not applicable."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is an ancestor of v0.8.0, v0.8.1, and v0.8.2, and each tag's lib/config.ts contains .default(\"please-set-your-key-here\"). This matches the CVE.org affected-version records."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "No fixed release exists in the reviewed repository state. v0.8.5 also descends from the BIC and still contains the same default, while upstream refs/heads/main resolves to 6cb7254b854b1f69c9e13775481e6aac79972424 and retains it."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The clone HEAD and independently queried upstream main are the same commit, 6cb7254b854b1f69c9e13775481e6aac79972424. HEAD still passes config.auth.secret to betterAuth and still defaults BETTER_AUTH_SECRET to the public constant; the documented secret-file generation is not implemented, so fix_sha and direct_fix_sha correctly remain null."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC commit object names Vasily Zubarev <me@vas3k.ru> as both author and committer and has only the message 'fix: pre-production fixes, add docker-compose.production.yml'. It contains no Co-Authored-By, Generated-with, Made-with, bot identity, or other AI marker. Later commits and repository-level AI signals were excluded from attribution, supporting NOT_AI for this BIC."
+    }
+  },
+  "findings": [
+    "The primary record correctly identifies the vulnerability's source-to-sink mechanism and does not mistake the later Zod refactor for the introducer.",
+    "The introducer, immediate parent, affected tags, current upstream tip, and absence of a direct fix independently reproduce the primary causal chain.",
+    "No primary field requires correction; NOT_AI is supported by BIC-only commit metadata and message inspection."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "No causal or attribution evidence gap remains. The security issue itself remains unpatched: no reviewed release or upstream main commit removes the public BETTER_AUTH_SECRET fallback or implements the documented persisted-secret generator."
+}

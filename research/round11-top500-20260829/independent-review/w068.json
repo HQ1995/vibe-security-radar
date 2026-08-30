@@ -1,0 +1,27 @@
+{
+  "worker": "w068",
+  "review_agent_id": "r389_w068",
+  "class_id": "alias-5f8752a75c44a73eea66b378",
+  "case_id": "GHSA-64vj-7c55-24w2",
+  "repo": "jovancoding/network-ai",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: at v5.15.0 lib/claude-hooks.ts:161-169 truncates the command to 500 characters in extractTarget, handlePreToolUse passes that preview to matchesAny(this.denyPatterns, ...) at lines 264-267, and observe mode then allows the unchanged tool_input. The vendor advisory's 516-character PoC therefore hides the destructive suffix from the sole hard deny while Claude Code executes the full command.",
+    "atomic_bic": "PASS: git log --all --reverse -S'v.slice(0, 500)', git log -S'extractTarget', and git blame v5.15.0 lines 160-173 all identify ff375adc3d19353f546f6c26ea3572ceab2d868a as the first surviving writer. The single-parent commit adds lib/claude-hooks.ts as a new file and wires the truncated return value directly into the deny decision.",
+    "immediate_parent_absence": "CORRECTION_REQUIRED: ff375adc3d19353f546f6c26ea3572ceab2d868a^ resolves to 360e0371db8859029fee1c1dfb99a968e3c40c11; git cat-file confirms lib/claude-hooks.ts is absent there, and parent-tree grep finds none of ClaudeHookBridge, extractTarget, denyPatterns, or slice(0, 500). The primary evidence proves absence but its introducer_parent_absent field is false; it must be true.",
+    "squash_member_decomposition": "PASS: ff375adc3d19353f546f6c26ea3572ceab2d868a is a one-parent 44-file release commit and no finer public member is reconstructable. The clone has no pull refs, replace refs, or notes; GitHub's commit-to-pulls endpoint returns an empty list and repository PR search for ClaudeHookBridge/v5.14.0 returns zero. Under the smallest-surviving-public-object rule, the non-merge first-write is admissible with squash_decomposed=false and decomposed_shas=[].",
+    "affected_fixed_release_membership": "PASS: v5.13.0 resolves to eafdea78e2c04145c940d2ffa7775529c5afb0f0 and excludes the BIC; v5.14.0 resolves exactly to the BIC, and the BIC is an ancestor of v5.15.0 at 9ef8b7affc818419821d661a46b1f5b873d16dad. Fix f294d33642a9c5218f1a64d7b159ca70d06f63e4 is not an ancestor of v5.15.0 and resolves exactly as v5.15.1. CVE-2026-73614 is PUBLISHED and marks versions below 5.15.1 affected and 5.15.1 unaffected; the vendor advisory lists <=5.15.0 and patched 5.15.1.",
+    "direct_fix_or_unpatched": "PASS: f294d33642a9c5218f1a64d7b159ca70d06f63e4 replaces extractTarget with untruncated extractFullTarget, matches deny/allow patterns against fullTarget, confines truncation to display/audit text, and fail-closes targets above maxTargetLength. This directly reverses the validator/executor mismatch and adds a regression PoC with danger beyond byte 500.",
+    "bic_only_ai_attribution": "PASS: git cat-file -p and git show -s on ff375adc3d19353f546f6c26ea3572ceab2d868a show author=committer jovanSAPFIONEER <jovan@sapfioneer.example>; %(trailers) and git interpret-trailers --parse are empty, with no Co-Authored-By, Generated-with, bot identity, or other commit-object AI marker. Per the campaign's BIC-only rule, later AI-adjacent files or the fix cannot transfer attribution, so NOT_AI is supported."
+  },
+  "findings": [
+    "The primary NOT_AI verdict is causally supported: the real vulnerability, atomic first-write, release containment, direct fix, and absence of a BIC commit-object AI marker all independently replay.",
+    "The primary record is internally inconsistent on the parent gate: its evidence proves the vulnerable surface absent from 360e0371db8859029fee1c1dfb99a968e3c40c11, but introducer_parent_absent is false.",
+    "The actual first affected code-bearing tag is v5.14.0; the advisory's open-ended <=5.15.0 range includes older releases in which ClaudeHookBridge did not exist, but this does not alter the BIC, fix, or NOT_AI conclusion."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

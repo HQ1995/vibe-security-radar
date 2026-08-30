@@ -1,0 +1,27 @@
+{
+  "worker": "w149",
+  "review_agent_id": "r389_w149",
+  "class_id": "alias-90e8c355043e95342bd135f3",
+  "case_id": "GHSA-37c4-9pw5-3r33",
+  "repo": "phproxy/phproxy",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: unauthenticated _proxurl input is decoded into $_url, parsed into $_url_parts, checked only by preg_match of a literal-host regex, then passed by hostname to stream_socket_client. A nonmatching attacker-controlled hostname can therefore resolve to loopback or private space after the check; the advisory PoC documents this DNS-to-127.0.0.1 bypass.",
+    "atomic_bic": "PASS: 74393b7dd065a0960e7d35d1a39f9862fcc3cc93 is the earliest surviving public Git object containing both the $_hosts regex and its preg_match gate. Reverse pickaxe starts there; later 2018 hits are delete/restore churn, not first writes.",
+    "immediate_parent_absence": "PASS WITH PRIMARY FIELD CORRECTION: the sole parent is 0150ea6f802790d2b42ddb2e623ef4a4224aa0ca, whose recursive tree contains only .gitattributes and .gitignore, so index.php and the vulnerable mechanism are absent. primary.introducer_parent_absent must be true, not false.",
+    "squash_member_decomposition": "PASS: the BIC has one parent and is an imported SourceForge source tree, not a merge or later restore. ChangeLog.md records pre-Git 2004/2007 ancestry, but no finer public Git member is reconstructable; under the protocol the smallest surviving first-write object is admissible.",
+    "affected_and_fixed_release_membership": "PASS: the BIC is an ancestor of affected tag v1.1.1 (bef3eef620b2bbd3e899d1f2a17177595de14013). GHSA supplies no fixed package/version, and the clone's current tag v1.3.3 resolves to HEAD dab27bf465052fe5f6b3b9cd2ad8d3792a2763d0 with the same vulnerable gate, so no fixed release boundary is claimed.",
+    "direct_fix_or_unpatched_state": "PASS (UNPATCHED): HEAD/v1.3.3 still applies the hostname-string regex at index.php:716-719 and 1722-1731, then connects with stream_socket_client($_url_parts['host']) at line 2156. Resolver/range primitives occur only in separate tools, not between the browser-flow gate and sink; v1.1.1..HEAD pickaxe shows no removal of that preg_match occurrence. Later API guards bd7f6ddce75dda06deea2840c00852ee4cf0f768 and 036e825b19f0bc52b7c5fc23bcd5d4a0968024a3 repeat hostname regexes and are not a direct fix.",
+    "bic_only_ai_attribution": "PASS: BIC 74393b7dd065a0960e7d35d1a39f9862fcc3cc93 is authored and committed by Miglen on 2015-10-21, has an import message and no trailers or AI marker. The Claude Opus 4.7 trailer on the unrelated 2026 API commit bd7f6ddce75dda06deea2840c00852ee4cf0f768 is not attributable to the BIC."
+  },
+  "findings": [
+    "CVE-2025-52362 is currently PUBLISHED at CVE.org; GHSA-37c4-9pw5-3r33 has withdrawn_at=null. The advisory and referenced disclosure describe PHProxy <=1.1.1 and the _proxurl DNS-to-private-address SSRF bypass.",
+    "The mechanism, atomic BIC, parent boundary, affected-tag ancestry, unpatched HEAD, and BIC-only human attribution independently reproduce the primary NOT_AI judgment.",
+    "The primary record's introducer_parent_absent=false contradicts its own evidence and the verified parent tree; this structural field requires correction to true."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": "No remaining causal-attribution gap. The repository remains unpatched for the disclosed DNS-resolution bypass, so no direct fix SHA or fixed release can be recorded."
+}

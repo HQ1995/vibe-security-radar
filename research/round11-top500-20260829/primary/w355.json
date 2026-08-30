@@ -1,0 +1,49 @@
+{
+  "class_id": "alias-0da24584af05eef9b01b84db",
+  "case_id": "GHSA-2c5c-chwr-9hqw",
+  "repo": "netty/netty",
+  "advisory_ids": [
+    "CVE-2026-42582",
+    "GHSA-2c5c-chwr-9hqw"
+  ],
+  "bug_semantics": "HTTP/3 QPACK literal decoding trusts a prefix-integer string length from the compressed field section and, in the non-Huffman branch, allocates `new byte[length]` before confirming that many bytes are present. A few wire bytes can claim a ~1 GiB length, forcing a huge heap allocation and DoS (CWE-770/CWE-789) in `QpackDecoder.decodeHuffmanEncodedLiteral`.",
+  "flaw_origin": "The unbounded allocation was first written on 2020-11-28 in incubator PR #3 member `abe017c47b0e13994071fee2cc9576d7ea338ec3` as `QpackDecoder.decodeStringLiteral`: it read `length` via `decodePrefixedInteger` and executed `byte[] buf = new byte[length]; in.readBytes(buf);` with no `length <= in.readableBytes()` guard. GitHub squash `8110eccd9637f8c2836e7b1ab0d24d9a8bb15bbd` landed those lines; `0b99840af70cd79b7d0b57d07700589e7ba9ad7b` only renamed the helper to `decodeHuffmanEncodedLiteral` while keeping the same non-Huffman allocation.",
+  "introducer_sha": "abe017c47b0e13994071fee2cc9576d7ea338ec3",
+  "introducer_parent": "395caf29ef629d5ccafec3bf1eac5dcfc0060dc6",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "abe017c47b0e13994071fee2cc9576d7ea338ec3",
+    "7301693f58e053ec638835cd1a569496708c4cc2",
+    "8dd01e69e378a2e0ab4936f3333d68a9b3f449e1",
+    "0e406d87dfdf645f084b1c981ab9803d022516f8",
+    "15414af0353c20a43cab0762bfc01dd8981a3742",
+    "bf10c25b2989e79fd82a2f7ea4def810c9b8bd75",
+    "d1db35a487bc4f9aa87dbb9f880183fdbca076f0",
+    "ee1eeafff980123d9359c8d6bbc24dd322b03bd8",
+    "8c1afe86ff602942fd12c3d6c2d1fa26d9b6bcea",
+    "b749ccab370e6dd7b58a3796b0775e31d404d006",
+    "3872c0c4460106cfa7190b63d9ca4383c49acaa3",
+    "f62bb0157efa6ebabd8fdf9138e4bff5eb6fc590",
+    "ce4c4d869aff4793e992edaf55f921806f580d64",
+    "65623ce1ff8e03047cdd8800a4fe5965d878ccbe",
+    "7b0d4b374152691638a3846760d551bc5ee76a7c"
+  ],
+  "ai_marker": "absent: author Oleksii Kachaiev <kachayev@gmail.com>, committer Oleksii Kachaiev <kachayev@gmail.com>, message is the single line \"Basic implementation with only static table support\" with no Co-Authored-By, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "541ca7c645b8bd04901b54136b745622be289d19",
+  "direct_fix_sha": "541ca7c645b8bd04901b54136b745622be289d19",
+  "evidence": [
+    "CVE.org CVE-2026-42582 state=PUBLISHED (CNA GitHub_M); GHSA-2c5c-chwr-9hqw withdrawn_at=null. Description: non-Huffman branch of io.netty.handler.codec.http3.QpackDecoder#decodeHuffmanEncodedLiteral may execute new byte[length] before verifying length bytes are present. Fixed in 4.2.13.Final. https://www.cve.org/CVERecord?id=CVE-2026-42582",
+    "GHSA/Maven range io.netty:netty-codec-http3 >= 4.2.0.Final, <= 4.2.12.Final, patched 4.2.13.Final. CVE affected >= 4.2.0.Alpha1, < 4.2.13.Final. Ubuntu patch pointer 541ca7c645b8bd04901b54136b745622be289d19.",
+    "git log --follow --diff-filter=A -- '*QpackDecoder.java' first add is squash 8110eccd9637f8c2836e7b1ab0d24d9a8bb15bbd 'Static table only QPACK (#3)' (Oleksii Kachaiev / GitHub, 2020-11-30), landing netty-incubator-codec-http3 PR #3.",
+    "PR #3 members reconstructed from https://github.com/netty/netty-incubator-codec-http3/pull/3 (15 commits, head 7b0d4b374152691638a3846760d551bc5ee76a7c). First member abe017c47b0e13994071fee2cc9576d7ea338ec3 added QpackDecoder.java with decodeStringLiteral: if (!huffmanEncoded) { byte[] buf = new byte[length]; in.readBytes(buf); } and length from decodePrefixedInteger; no readableBytes check.",
+    "Parent of BIC 395caf29ef629d5ccafec3bf1eac5dcfc0060dc6 ('Reduce code duplication in Http3FrameEncoder', Norman Maurer, 2020-11-27) exists in the clone. git ls-tree -r 395caf29... has zero Qpack* files; src/main/java/io/netty/incubator/codec/http3/ has only HTTP/3 frame types. Vulnerable lines absent at immediate parent.",
+    "git log -S 'new byte[length]' -- '*QpackDecoder.java' hits 8110eccd only (string never removed). git log -S decodeHuffmanEncodedLiteral hits 0b99840af70cd79b7d0b57d07700589e7ba9ad7b 'Implement QPACK dynamic table (#131)' which renames decodeStringLiteral -> decodeHuffmanEncodedLiteral while keeping the same new byte[length] non-Huffman path, and later the fix. 0b99840 is a refactor, not BIC.",
+    "Monorepo tag membership: QpackDecoder.java first appears at netty-4.2.2.Final (660edeaefad4a4cedbd61584e8f668ad2d89f0b8); absent from netty-4.2.0.Final and netty-4.2.1.Final. 8110eccd is ancestor of 4.2.2.Final and 4.2.12.Final. netty-4.2.12.Final QpackDecoder.decodeHuffmanEncodedLiteral (lines 394-405) still does new byte[length] with no readableBytes check.",
+    "Fix 541ca7c645b8bd04901b54136b745622be289d19 'Merge commit from fork' (Norman Maurer / GitHub, 2026-05-04), single parent 943edb361423eee5574b636a8c2bf6baf5cb2464, inserts if (in.readableBytes() < length) throw INVALID_LENGTH_ENCODED_LITERAL before new byte[length] in QpackDecoder (and analogous checks in QpackEncoderHandler/QpackHuffmanDecoder). Not an ancestor of 4.2.12.Final; is an ancestor of netty-4.2.13.Final^{commit} = b3844c8108b42f68d56144b36d4d1ed96078a688. 4.2.13 QpackDecoder lines 405-407 contain the guard.",
+    "BIC commit-object AI check on abe017c: author and committer Oleksii Kachaiev <kachayev@gmail.com> 2020-11-28T17:11:32Z; GitHub API commit.message is only 'Basic implementation with only static table support'; no Co-Authored-By/Generated-with/bot. PR user kachayev. AI-on-fix (541ca7c) is irrelevant to BIC attribution."
+  ],
+  "reasoning": "CVE-2026-42582 / GHSA-2c5c-chwr-9hqw is a published, non-withdrawn advisory: QPACK header-block decoding allocated a byte[] from a wire-controlled literal length before checking that the ByteBuf contained that many bytes, so a tiny HTTP/3 HEADERS frame could force a ~1 GiB allocation. The surviving unfixed sink is the non-Huffman branch of QpackDecoder.decodeHuffmanEncodedLiteral (4.2.12.Final lines 394-405). Line-history and pickaxe show those allocation lines originated as decodeStringLiteral in the first QPACK implementation. That implementation landed on the incubator mainline as GitHub squash 8110eccd9637f8c2836e7b1ab0d24d9a8bb15bbd of netty-incubator-codec-http3 PR #3; a squash is not a BIC. The PR's 15 member commits are public and reconstructable. The first member, abe017c47b0e13994071fee2cc9576d7ea338ec3 ('Basic implementation with only static table support'), added QpackDecoder.java with the unbounded new byte[length] path. Its parent 395caf29ef629d5ccafec3bf1eac5dcfc0060dc6 is a verifiable commit object whose tree has no QPACK sources, so the vulnerable lines are absent at the immediate parent. Later 0b99840 only renamed the helper to decodeHuffmanEncodedLiteral; package/module moves into codec-http3 are also not BICs. HTTP/3 first appears in this monorepo at 4.2.2.Final (GHSA/CVE start at 4.2.0/Alpha1, but those tags lack the module); 4.2.12.Final still lacks the readableBytes guard; 541ca7c is the direct public fix and is contained in 4.2.13.Final. AI is judged only on the BIC commit object: human author/committer Oleksii Kachaiev, one-line message, no AI trailers or bot identity (Nov 2020). Therefore a real vulnerability with human authorship: NOT_AI.",
+  "remaining_gap": null
+}

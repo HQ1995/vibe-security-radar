@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-25ebef6e77ba9f2870eaf67f",
+  "case_id": "GHSA-hqwm-7x7x-8379",
+  "repo": "devspace-sh/devspace",
+  "advisory_ids": ["CVE-2026-42283", "GHSA-hqwm-7x7x-8379"],
+  "bug_semantics": "DevSpace's UI HTTP server (default port 8090) exposes gorilla/websocket endpoints that share a package-level Upgrader whose CheckOrigin always returns true. A victim running `devspace ui` who then visits a malicious site can have that site open a cross-origin WebSocket to ws://127.0.0.1:8090 and invoke /api/logs (pod log stream), /api/enter (interactive pod shell), and /api/command (pipeline command execution) with no origin or auth gate. gorilla/websocket's nil-CheckOrigin default is checkSameOrigin; the flaw is the explicit always-true override, not the library default.",
+  "flaw_origin": "On 2019-10-18, commit 764fefcd27f740c7ca931a4b8079325ab1b9de19 ('Add xterm') replaced `var upgrader = websocket.Upgrader{}` in pkg/devspace/server/logs.go with `CheckOrigin: func(r *http.Request) bool { return true }`. The immediate parent still used the empty Upgrader (nil CheckOrigin → checkSameOrigin). That first write of the always-true origin check is the CSWSH mechanism; later enter/command handlers only reused the same global upgrader.",
+  "introducer_sha": "764fefcd27f740c7ca931a4b8079325ab1b9de19",
+  "introducer_parent": "19978db79a119a0e41007f91203784f88e537363",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author/committer fabiankramm <kramm@covexo.com> 2019-10-18; commit message 'Add xterm'; no Co-Authored-By, Signed-off-by, Generated-by, Generated-with, Copilot, Cursor, ChatGPT, Claude, or other AI/bot trailers on the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "6b5073d5c38cb3a41b5cb35c5e979c2516cf688e",
+  "direct_fix_sha": "6b5073d5c38cb3a41b5cb35c5e979c2516cf688e",
+  "evidence": [
+    "CVE.org CVE-2026-42283 state=PUBLISHED (not rejected/withdrawn); CNA GitHub_M; datePublished=2026-05-14T15:44:22.499Z; affected versions < 6.3.21; description matches CSWSH to ws://127.0.0.1:8090; GHSA-hqwm-7x7x-8379 withdrawn_at=null; https://www.cve.org/CVERecord?id=CVE-2026-42283 and https://github.com/devspace-sh/devspace/security/advisories/GHSA-hqwm-7x7x-8379",
+    "Vulnerable sink at v6.3.20 pkg/devspace/server/logs.go:16-18: var upgrader = websocket.Upgrader{ CheckOrigin: func(r *http.Request) bool { return true } }; DefaultPort=8090 in pkg/devspace/server/server.go:34; routes /api/command, /api/enter, /api/logs in server.go; enter.go:69 and command.go:24 call the same upgrader.Upgrade",
+    "git log -S 'CheckOrigin: func(r *http.Request) bool { return true }' -- pkg/devspace/server/logs.go: added 764fefcd27f740c7ca931a4b8079325ab1b9de19 (Add xterm, fabiankramm 2019-10-18), removed 6b5073d5c38cb3a41b5cb35c5e979c2516cf688e (Adds check for websocket source)",
+    "git log -L '/var upgrader/,+3:pkg/devspace/server/logs.go' v6.3.20: parent 19978db79a119a0e41007f91203784f88e537363 wrote `var upgrader = websocket.Upgrader{}`; BIC 764fefcd first wrote the always-true CheckOrigin block; git blame -L 16,18 v6.3.20 -- pkg/devspace/server/logs.go still attributes those lines to 764fefcd",
+    "Parent-tree verification: 19978db79a119a0e41007f91203784f88e537363:pkg/devspace/server/logs.go:14 is `var upgrader = websocket.Upgrader{}` with no CheckOrigin; git grep CheckOrigin on parent pkg/devspace/server/ is empty; vendored gorilla/websocket server.go:127-129 uses checkSameOrigin when CheckOrigin is nil (deprecated package-level Upgrade at 266-269 is unused)",
+    "BIC commit object is a single-parent non-merge, non-squash first write (parent 19978db79a119a0e41007f91203784f88e537363); author=committer fabiankramm <kramm@covexo.com>; empty body; git log --format trailers empty; cat-file -p has no AI/bot markers",
+    "Tag membership: git merge-base --is-ancestor 764fefcd v6.3.20 YES; 6b5073d ancestor of v6.3.21 YES and of v6.3.20 NO; v6.3.20=a91772ba91f0b8c8cac08e83580a8202dfe00746 still has return-true CheckOrigin; v6.3.21=7f272dcf90653fa9b42bc4347f7f3f9a52b0e8b5 contains the localhost/127.0.0.1 CheckOrigin",
+    "Direct fix 6b5073d5c38cb3a41b5cb35c5e979c2516cf688e (Caleb Bron / Ryan Swanson, 2026-04-21) replaces always-true CheckOrigin with Origin empty-or-localhost/127.0.0.1 and adds pkg/devspace/server/logs_test.go; https://github.com/devspace-sh/devspace/commit/6b5073d5c38cb3a41b5cb35c5e979c2516cf688e ; GHSA patched versions 6.3.21+",
+    "Attack-surface reuse after BIC: 653b1cd67559ab562bb3312ff82fe0ba26ac59ec (WIP: enter) and ae91c9a0423395a60f53a01d143bb8b8aa42421e (Implement command execution backend) call upgrader.Upgrade but do not change CheckOrigin"
+  ],
+  "reasoning": "The advisory is a real CSWSH (CVE-2026-42283 PUBLISHED; GHSA not withdrawn). gorilla/websocket rejects cross-origin upgrades when CheckOrigin is nil; DevSpace overrode that to always allow. git log -S/-L and blame identify 764fefcd27f740c7ca931a4b8079325ab1b9de19 as the smallest first-write of `CheckOrigin: ... return true` in pkg/devspace/server/logs.go:15; the immediate parent 19978db still has the empty Upgrader. The commit is not a move, refactor, revert, backport, release, or squash. Shared upgrader reuse by /api/enter and /api/command expanded impact but did not introduce the origin bypass. The override is present at tagged v6.3.20 and replaced in 6b5073d, which is an ancestor of v6.3.21 and not of v6.3.20, matching the patched boundary (CVE: < 6.3.21; GHSA package range lists only 6.3.20 as the last affected release). AI judgment is from the BIC commit object only: human author/committer fabiankramm in 2019, no AI/co-author/generator trailers, so NOT_AI.",
+  "remaining_gap": null
+}

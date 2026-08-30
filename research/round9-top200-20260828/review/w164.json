@@ -1,0 +1,29 @@
+{
+  "class_id": "alias-513a3da60029e6d95558077a",
+  "case_id": "GHSA-5x2r-hc65-25f9",
+  "repo": "c2sp/wycheproof",
+  "advisory_ids": [
+    "CVE-2026-24850",
+    "GHSA-5x2r-hc65-25f9"
+  ],
+  "bug_semantics": "RustCrypto ml-dsa signature decoding used one non-strict monotonicity predicate for both hint cuts and per-polynomial hint indices. The cuts may repeat, but FIPS 204 HintBitUnpack requires the indices within each polynomial to be strictly increasing. Changing the index check from < to <= therefore lets an attacker duplicate a hint index in an otherwise valid signature and have the non-canonical byte string accepted, creating signature malleability across ML-DSA-44, ML-DSA-65, and ML-DSA-87. The assigned c2sp/wycheproof repository is reference/test-vector provenance, not the repository containing the vulnerable verifier: its repeated-hint cases are correctly marked invalid.",
+  "flaw_origin": "The canonical RustCrypto/signatures merge b01c3b73dd08d0094e089aa234f78b6089ec1f38 is a squash of PR #895. Fetching refs/pull/895/head decomposes it into five commits; the first member, 92d2a8211581610191ee489372231aa644760c1a, is the smallest real BIC because it alone changes ml-dsa/src/hint.rs monotonic from a[i - 1] < *x to a[i - 1] <= *x. Later members only remove temporary tests/debugging or adjust other logic. The assigned Wycheproof commit 4109e5ed72e2a49ad39186fc75284261dd4ca5cd later added the conformance vector that exposes the already-existing RustCrypto bug and did not introduce vulnerable code.",
+  "introducer_sha": "92d2a8211581610191ee489372231aa644760c1a",
+  "introducer_parent": "e7c698a094c2cca3e28bda0fab4684f21fc5363a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "92d2a8211581610191ee489372231aa644760c1a",
+    "c75ac84fcb39920e8c7cf8c7a25c025461ab3bb4",
+    "f1e4e305680c7bc0c22ee7f663d2ac3285325794",
+    "1b794e1b900bfb9e7793d9eab219ddbfda09e642",
+    "17e9cab3531e4ea795ff160c6b25895388ff3004"
+  ],
+  "ai_marker": "Absent on the decomposed BIC commit object 92d2a8211581610191ee489372231aa644760c1a. `git cat-file commit 92d2a8211581610191ee489372231aa644760c1a` shows author and committer Richard Barnes <rlb@ipv.sx> and the sole message `Make ML-DSA signature decoding follow the spec`; it has no Co-Authored-By, Generated-with, AI tool trailer, or bot identity. The squash commit's GitHub committer and PR prose are not used as BIC AI evidence.",
+  "verdict": "NOT_AI",
+  "fix_sha": "400961412be2e2ab787942cf30e0a9b66b37a54a",
+  "direct_fix_sha": "400961412be2e2ab787942cf30e0a9b66b37a54a",
+  "evidence": "First-party advisory https://github.com/RustCrypto/signatures/security/advisories/GHSA-5x2r-hc65-25f9 names the <= regression, canonical squash b01c3b73dd08d0094e089aa234f78b6089ec1f38, affected range >=0.0.4 and <0.1.0-rc.4, and the Wycheproof repeated-hint vectors. In a full RustCrypto/signatures clone, run `git fetch origin refs/pull/895/head:refs/remotes/origin/pr-895`; then `git log --all -S'a[i - 1] <= *x' -- ml-dsa/src/hint.rs` reports decomposed member 92d2a8211581610191ee489372231aa644760c1a, squash b01c3b73dd08d0094e089aa234f78b6089ec1f38, and removal by fix 400961412be2e2ab787942cf30e0a9b66b37a54a. `git log -L 118,120:ml-dsa/src/hint.rs 92d2a8211581610191ee489372231aa644760c1a` shows parent e7c698a094c2cca3e28bda0fab4684f21fc5363a has strict `<`, while 92d2 changes only that predicate to `<=`; it also traces the original correct `<` to 1d3a1d19451fd7aff4370cabdf0f9a6ec1d153c5. GitHub's PR commits endpoint https://api.github.com/repos/RustCrypto/signatures/pulls/895/commits lists the five decomposed SHAs in order, and the BIC endpoint https://api.github.com/repos/RustCrypto/signatures/commits/92d2a8211581610191ee489372231aa644760c1a supplies the exact patch and commit object identity. `git show 400961412be2e2ab787942cf30e0a9b66b37a54a -- ml-dsa/src/hint.rs` shows the closing fix: cuts use `<=` but each polynomial's indices use `<`; its parent b316da41521b1278e1431050fee4b8d9bf014c32 still has the shared vulnerable predicate. `git tag --contains b01c3b73dd08d0094e089aa234f78b6089ec1f38 --list 'ml-dsa/*'` contains ml-dsa/v0.0.4 through rc.3, while `git tag --contains 400961412be2e2ab787942cf30e0a9b66b37a54a --list 'ml-dsa/*'` starts at rc.4; tag f5901031ac84167a28c8d5c47773e13298b417b9 (ml-dsa/v0.1.0-rc.4) has the fix as its immediate parent and states that the release contains the #1176 fix. In the assigned c2sp/wycheproof clone, `git log -S'signature with a repeated hint' -- testvectors_v1/mldsa_44_verify_test.json testvectors_v1/mldsa_65_verify_test.json testvectors_v1/mldsa_87_verify_test.json` yields only 4109e5ed72e2a49ad39186fc75284261dd4ca5cd, whose JSON cases 18, 19, and 21 expect `invalid`; this proves the bundle repo is test evidence rather than the vulnerable implementation.",
+  "reasoning": "The vulnerable behavior is caused by one comparison written first in PR member 92d2, not by the earlier correct ML-DSA implementation, the later canonical squash carrier, the Wycheproof vectors, or the release commits. Direct inspection establishes that its parent rejects equal indices, and the direct fix restores strict ordering exactly where required while retaining non-strict cuts. The release ancestry closes the lifecycle at rc.4. Because the only admissible AI evidence is the BIC commit object and that object is a normal human-authored/human-committed commit with no AI attribution or bot identity, the causal verdict is NOT_AI despite the repository alias having been derived from a test-vector reference.",
+  "remaining_gap": null
+}

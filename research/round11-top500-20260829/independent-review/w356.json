@@ -1,0 +1,47 @@
+{
+  "worker": "w356",
+  "review_agent_id": "r389_w356",
+  "class_id": "alias-0db7126fc97d0f3ef9635812",
+  "case_id": "GHSA-xh5m-36r6-47m3",
+  "repo": "phpoffice/phpspreadsheet",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "In 85f2556b0bf5269061bf45932ecda8a128d81750^, OLERead::read() follows attacker-controlled SAT/SSAT next-sector values with while ($sbdBlock != -2) and appends sector data without cycle detection; getStream() and readData() contain the same unguarded pattern. XlsBase::canRead() calls OLERead::read(), so malformed XLS/OLE input can self-loop during format detection and exhaust memory. CVE.org independently reports CVE-2026-59933 as PUBLISHED and the GitHub advisory has withdrawn_at=null."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Path history and the root tree independently show 509f27e5c601c002090af18a5dd545b06b7183ca first contains the unbounded small-block-depot walk at Classes/PHPExcel/Shared/OLERead.php:146-156 and the reachable Excel5::canRead() call. Commit b98f27f4a7fb8f95546480c83779d72cf46837ea only changes chain storage from an array to a string; its parent d8debd09665f0fc7439945c029dd2727f2e26f38 already has the same unbounded walk, so b98f27f4 is not the BIC."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Commit 509f27e5c601c002090af18a5dd545b06b7183ca has an empty parent list, is returned by rev-list --max-parents=0, and 509f27e5^ cannot be resolved. Parent-tree absence is therefore directly verified rather than inferred."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is the clone's parentless git-svn migration snapshot of CodePlex trunk@59884, not a Git squash or merge with locally recoverable member commits. The full, non-shallow clone exposes no earlier parent/member object for this first-write, making the root object the smallest surviving public-history unit; later path moves and the 2012 storage refactor preserve the vulnerable walk."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is an ancestor of the checked vulnerable lower/upper tags 2.0.0, 2.1.17, 2.2.0, 2.4.6, 3.3.0, 3.10.6, 4.0.0, and 5.8.0. catchLoop is absent from 1.30.5, 2.1.17, 2.4.6, 3.10.6, and 5.8.0, but present in patched tags 1.30.6, 2.1.18, 2.4.7, 3.10.7, and 5.8.1."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct main-line fix 85f2556b0bf5269061bf45932ecda8a128d81750 adds a visited-sector list, catchLoop(), ReaderException on repeats, and regression coverage to all four sector-chain walks; it is in 5.8.1 and not 5.8.0. Equivalent backports 75bf2eb56cafa0688ca861d61989ba891012657a, 32fdf9e694f76efcce32a83e6bce2dab8628f917, 8e94f0ddecc7abd010a491cf86d095b9ee80f2f3, and 53e854607ffd81887d949b4acc8b251e68c31524 are respectively in 1.30.6, 2.1.18, 2.4.7, and 3.10.7 and absent from each preceding vulnerable tag."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was evaluated only on BIC 509f27e5c601c002090af18a5dd545b06b7183ca. Its 2010-08-26 commit object records Maarten Balliauw as author and committer, with message 'Migration from off-site Subversion repository (part 1)' and only a git-svn-id trailer; it contains no AI, generated-with, co-author, or bot marker. This independently supports NOT_AI."
+    }
+  },
+  "findings": [
+    "The primary correctly identifies a real, reachable OLE sector-chain cycle leading to memory exhaustion.",
+    "The primary correctly selects parentless root object 509f27e5c601c002090af18a5dd545b06b7183ca as the smallest surviving first-write and rejects the later b98f27f4 storage refactor as the BIC.",
+    "The direct fix and all four maintenance-line backports match the advisory's affected and patched release boundaries.",
+    "The BIC-only metadata check supports the primary NOT_AI verdict; no correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

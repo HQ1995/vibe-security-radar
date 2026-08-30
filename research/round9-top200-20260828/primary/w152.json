@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-2e662d822e0d6c12a76b1af5",
+  "case_id": "GHSA-4x4r-mq42-wwmf",
+  "repo": "chaiscript/chaiscript",
+  "advisory_ids": [
+    "CVE-2026-3383",
+    "GHSA-4x4r-mq42-wwmf"
+  ],
+  "bug_semantics": "When locally supplied ChaiScript executes integer compound remainder with a zero right-hand operand (for example, `ret %= 0`), `Boxed_Number::go` dispatches to `Operators::Opers::assign_remainder` and performs native C++ integer `%=` without first calling `check_divide_by_zero`. The processor therefore raises SIGFPE and can terminate the embedding process instead of producing ChaiScript's arithmetic error.",
+  "flaw_origin": "Commit dd918c524d0bc9d081df723f42e18874874e4cf7 consolidated the helper-based numeric operators into `Boxed_Number::go` using `if constexpr`, but omitted the existing zero-divisor guards from ordinary remainder, quotient assignment, and remainder assignment. Commit 9bbe7238278f96141b51ab4c6e5313ffc2879bea restored the ordinary-remainder and quotient-assignment guards but put the third guard on `assign_bitwise_and` rather than `assign_remainder`, so the `%=` crash remained. The 2021 formatting commit cff6a0acedbc1b8e53aeef118570929b50a711c9 only preserved/reformatted that already-vulnerable logic.",
+  "introducer_sha": "dd918c524d0bc9d081df723f42e18874874e4cf7",
+  "introducer_parent": "8568b61014e9ede0afb24d064aefba3204836106",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw BIC commit object names human author and committer Jason Turner <jason@emptycrate.com> and contains only the subject `Use if constexpr in boxed_number`; it has no Co-Authored-By, Generated-with, bot, or other AI trailer/identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "9237acbbb94814bd94c1effb8b10f3a6eb0b15fe",
+  "direct_fix_sha": "9237acbbb94814bd94c1effb8b10f3a6eb0b15fe",
+  "evidence": [
+    "First-party issue https://github.com/ChaiScript/ChaiScript/issues/634 identifies `include/chaiscript/dispatchkit/boxed_number.hpp:236`, `Boxed_Number::go<int, int>`, and the PoC loop `ret %= i` beginning at zero; its ASan trace records SIGFPE at the native remainder assignment.",
+    "`git show dd918c524d0bc9d081df723f42e18874874e4cf7 -- include/chaiscript/dispatchkit/boxed_number.hpp` shows the refactor deleting helper `binary_int_go`, whose `assign_remainder` case called `check_divide_by_zero(u)` immediately before `t %= u`, and adding the flattened `assign_remainder` case with bare `*t_lhs %= c_rhs`.",
+    "Direct parent-tree verification with `git grep -n -B 2 -A 2 't %= u' 8568b61014e9ede0afb24d064aefba3204836106 -- include/chaiscript/dispatchkit/boxed_number.hpp` finds parent lines 246-250 with `check_divide_by_zero(u)` immediately before `t %= u`; the corresponding BIC-tree grep finds lines 240-243 with no guard. Thus the vulnerable missing-check mechanism is absent from the immediate parent and first appears in dd918c524d0bc9d081df723f42e18874874e4cf7.",
+    "`git log -L 235,237:include/chaiscript/dispatchkit/boxed_number.hpp 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe^` and pickaxe history trace the live line through formatting commit cff6a0acedbc1b8e53aeef118570929b50a711c9 to dd918c524d0bc9d081df723f42e18874874e4cf7. `git show 9bbe7238278f96141b51ab4c6e5313ffc2879bea` proves the attempted 2017 repair added checks to ordinary `%` and `/=` but mistakenly added the third check under `assign_bitwise_and`, not `%=`.",
+    "The BIC is a one-parent ordinary commit, not a merge or squash aggregate. `git cat-file commit dd918c524d0bc9d081df723f42e18874874e4cf7` gives parent 8568b61014e9ede0afb24d064aefba3204836106, author/committer Jason Turner <jason@emptycrate.com>, and no trailers.",
+    "Version cross-check exposes an advisory-summary mismatch: tag v6.1.0 peels to ac0d7ce94925f8eac367533b276d9d7db13a77ae, does not contain the BIC, and its tree still has `check_divide_by_zero(u)` immediately before `t %= u`. The c++17 history containing the BIC entered develop later via merge c19705da5d6551c5be3730b8f3ebdc87217bf8b7 on 2018-05-29. Tag wasm-latest peels to 340e7d4b1607c05d91b7eb81c67e3316938da8b1, contains the BIC, and has the unguarded line at boxed_number.hpp:236. Therefore the bundle summary's phrase `up to 6.1.0` is not supported by the v6.1.0 tag even though the later default-branch/snapshot code is demonstrably vulnerable.",
+    "Landing/direct fix 9237acbbb94814bd94c1effb8b10f3a6eb0b15fe (https://github.com/ChaiScript/ChaiScript/pull/672) moves `check_divide_by_zero(c_rhs)` from `assign_bitwise_and` to `assign_remainder`, rethrows `arithmetic_error`, and adds regression cases for `% 0` and `%= 0`. No repository tag contains this fix commit, while wasm-latest predates it, so the fix is verified in repository history but not in a tagged release boundary."
+  ],
+  "reasoning": "The security-relevant operation is the assignment form `%=` in the numeric fast path, not the async wrapper used by the PoC. Before dd918c524d0bc9d081df723f42e18874874e4cf7, the immediate-parent implementation explicitly checked the divisor in `binary_int_go`; that refactor rewrote the same dispatch and dropped the check, so it is the smallest causal BIC rather than the later merge or formatting commit. The next commit intended to restore divide-by-zero handling but misplaced the `%=` guard on bitwise-and, explaining why the defect survived until the 2026 fix. The version graph places this defect after the v6.1.0 tag and in the later wasm-latest snapshot, so the advisory's textual release range is inaccurate, but the vulnerable lifecycle and direct fix remain fully reconstructable. AI attribution is judged exclusively from the BIC commit object: its author, committer, message, and trailer set contain no AI/bot signal. Any automation or AI associated with the much later repair cannot causally attribute the 2017 BIC; the resulting verdict is NOT_AI.",
+  "remaining_gap": null
+}

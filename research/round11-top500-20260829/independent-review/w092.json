@@ -1,0 +1,24 @@
+{
+  "worker": "w092",
+  "review_agent_id": "r389_w092",
+  "class_id": "alias-bbc49a380904cdd63ec41325",
+  "case_id": "GHSA-jjmm-46cq-987q",
+  "repo": "renovatebot/renovate",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. Attacker-controlled Hermit depName/version values form toPackage/packagesToInstall without shell quoting, then enter `./hermit install ${...}`; Renovate's exec() reaches promisified child_process.exec, so shell metacharacters execute. The vendor advisory independently states the same unescaped install/uninstall mechanism.",
+    "atomic_bic": "Confirmed b96f4e3d91445e6626398a5b94e69f759995738c as the earliest surviving public first-write commit. It adds lib/modules/manager/hermit/artifacts.ts as a new file, including getHermitPackage() and the unquoted install command; this is not a move, refactor, revert, or squash aggregate, and its sole parent is e987069a3aa392183c64a4ff8c4845d124762239.",
+    "immediate_parent_absence": "Confirmed with the immediate parent available: e987069a3aa392183c64a4ff8c4845d124762239 has neither lib/modules/manager/hermit/artifacts.ts nor an exact `./hermit install` hit under the Hermit manager, while b96f4e3 adds the vulnerable sink.",
+    "squash_member_decomposition": "Confirmed. Mainline b696abb3c2741508fbb4029f39153140a3722e1e is the one-parent GitHub squash for #16258 and must not be treated as the atomic BIC. Earlier b96f4e3 (combined PR) and later same-parent ab6b9280d64602d3876b371f521418c882cc1b84 (split PR) both contain the exact vulnerable artifacts.ts blob 4a24996452ed577206fbb8b99d9ee05ed7b234dd; b96f4e3 predates ab6b928 and is the first-write object.",
+    "affected_and_fixed_release_membership": "Confirmed. Tag 32.135.0 resolves to b696abb and contains the unquoted install join; 32.134.0 resolves to ab7ddb5e3c5c3b402acd7c3679d4e415f8092dde, does not contain b696abb, and has no Hermit artifacts file. Fix 59de985bb27ce6ae9e316f4b0552f746e725bc0d is an ancestor of 40.33.0 but not 40.32.7; those tags respectively show quoted and unquoted install/uninstall joins. This matches the current CVE and vendor range >=32.135.0 <40.33.0.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed direct fix 59de985bb27ce6ae9e316f4b0552f746e725bc0d. Its Hermit diff changes both toUninstall.join(' ') and toInstall.join(' ') to map(quote).join(' '), closing the exact shell-injection paths; 40.32.7 retains both unquoted paths and 40.33.0 contains both quoted paths.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI using only b96f4e3's commit object. Author and committer are Yun Lai <ylai@squareup.com>; the commit body contains no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, bot, or other AI-origin marker. Later squash metadata and the human-authored fix were not used to attribute the BIC."
+  },
+  "findings": [
+    "The primary record correctly distinguishes the atomic public first-write b96f4e3 from the mainline squash b696abb and the later same-blob split member ab6b928.",
+    "The vulnerability, release boundaries, direct fix, and BIC-only human attribution independently replay from the assigned advisory and clone with no material contradiction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

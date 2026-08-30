@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-11a634b1375c88bebfe978b1",
+ "case_id": "GHSA-gx77-xgc2-4888",
+ "repo": "ray-project/ray",
+ "advisory_ids": [
+  "CVE-2025-34351",
+  "GHSA-gx77-xgc2-4888"
+ ],
+ "bug_semantics": "The advisory claimed that Ray 2.52.0 ships token authentication for dashboard/Jobs/RPC interfaces disabled unless RAY_AUTH_MODE=token is set, so a network attacker can submit jobs and execute code on an exposed cluster. In-tree this is RAY_CONFIG AUTH_MODE/auth_mode defaulting to \"disabled\" and GetAuthenticationMode() returning AuthenticationMode::DISABLED unless the string is \"token\". Vendor docs treat this as a documented, opt-in defense-in-depth control for a trusted-network product model, not a missing authentication step that Ray promised by default.",
+ "flaw_origin": "Token-auth scaffolding was first added in b197fa84a6088e9bdd4e3f829097eef44ed4ed21 ([Core] Add authentication token logic, PR #58046), which introduced RAY_CONFIG(std::string, auth_mode, \"disabled\") and GetAuthenticationMode() falling through to DISABLED. d496ea87808706333703be6ff25ecc9472330fd5 only renamed the env/config key to AUTH_MODE. Later non-master branches briefly flipped the default to token and back; public tags ray-2.52.0 through ray-2.57.0 and HEAD still default to disabled. CVE.org later REJECTED CVE-2025-34351 (2025-12-02/09) as not a valid vulnerability under the vendor security model and as conflicting with CVE-2023-48022. GitHub GHSA-gx77-xgc2-4888 remains listed, but CVE.org rejection is authoritative per protocol.",
+ "introducer_sha": "b197fa84a6088e9bdd4e3f829097eef44ed4ed21",
+ "introducer_parent": "77a96d9df09fe4a0731c04448b79b36c129840d3",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent; claimed first-write author Sampan S Nayak <sampansnayak2@gmail.com>, committer GitHub <noreply@github.com>; trailers are Signed-off-by: sampan <sampan@anyscale.com> and Co-authored-by: sampan <sampan@anyscale.com> (same human), no Generated-with/Copilot/ChatGPT/Claude/Cursor/bot-author markers.",
+ "verdict": "FALSE_POSITIVE",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": "GHSA-gx77-xgc2-4888 summary: token auth disabled by default; affected <=2.52.0, first_patched_version null; GitHub withdrawn_at null. CVE.org/NVD/Tenable/OpenCVE: CVE-2025-34351 state REJECTED (updated 2025-12-09). Rejected reason: CNA withdrew at MITRE TL-Root request under Dispute Policy; assignment did not identify a valid vulnerability based on vendor product security model and conflicts with CVE-2023-48022. Code: ray-2.52.0 and later tags including ray-2.57.0 have RAY_CONFIG(std::string, AUTH_MODE, \"disabled\") in src/ray/common/ray_config_def.h; GetAuthenticationMode() in src/ray/rpc/authentication/authentication_mode.cc returns TOKEN only if AUTH_MODE==\"token\" else DISABLED. First write of that default is b197fa84a6088e9bdd4e3f829097eef44ed4ed21 vs parent 77a96d9df09fe4a0731c04448b79b36c129840d3 which lacks authentication_mode.cc and AUTH_MODE/auth_mode config (git cat-file -e parent:src/ray/rpc/authentication/authentication_mode.cc fails). d496ea87 is a rename-only of auth_mode->AUTH_MODE. Docs at HEAD still say authentication is disabled by default in 2.52.0 with a planned future default change. No public-tag flip of default to token on master. Vendor docs: https://docs.ray.io/en/latest/ray-security/token-auth.html.",
+ "reasoning": "Protocol requires CVE.org over GitHub withdrawn_at. CVE-2025-34351 is rejected: the CNA determined the insecure-default claim is not a valid vulnerability given Ray/Anyscale trusted-network security model and duplicates CVE-2023-48022. Therefore the assigned advisory cluster is FALSE_POSITIVE, not NOT_AI. The claimed mechanism (opt-in token auth with default disabled) is real code and was first written in b197fa84, but that is a documented product default, not a judged vulnerability after CNA rejection. No patched version exists because the vendor did not treat this as a defect to flip on the release line. AI markers on the claimed first-write are absent; that is moot once the advisory is rejected.",
+ "remaining_gap": null
+}

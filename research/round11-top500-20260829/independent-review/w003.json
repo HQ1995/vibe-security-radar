@@ -1,0 +1,27 @@
+{
+  "worker": "w003",
+  "review_agent_id": "r389_w003",
+  "class_id": "alias-836fd8cd5fc2ca104f082da3",
+  "case_id": "GHSA-j3gw-mm62-q9gj",
+  "repo": "n8n-io/n8n",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "confirmed: at the BIC, getNodeParameter resolves workflow expressions through workflow.expression.getParameterValue, and Snowflake executeQuery passes the resolved query string to snowflake-sdk as sqlText with empty binds; externally controlled expression bytes therefore become SQL syntax. The vendor advisory describes the same unparameterized-expression SQL injection and the positional-bind remediation.",
+    "atomic_bic": "confirmed: 98fb09eefb7a98081c7599b4d03e646970da9267 first creates the Snowflake node and writes both getNodeParameter('query', i) and execute(connection, query, []); the same commit already uses positional ? binds for insert/update, making the executeQuery empty-binds choice part of the original implementation rather than a later omission.",
+    "immediate_parent_absence": "confirmed: 98fb09eefb7a98081c7599b4d03e646970da9267 has immediate parent 5d7840b1f66d330030cd19a09acafb97d769676b, and that parent has no packages/nodes-base/nodes/Snowflake/Snowflake.node.ts. The default-branch squash carrier c87382c0867a2628b111d18291c9110d228feab2 likewise has parent e8f53effb4f53ede3632221809ab83b8e07d363c with no Snowflake node.",
+    "squash_member_decomposition": "confirmed: PR #1230 is carried on the default branch by squash c87382c0867a2628b111d18291c9110d228feab2. Reconstructed member 98fb09eefb7a98081c7599b4d03e646970da9267 writes the vulnerable sink; its child 311e0bbaeebe34401a12a77620e628303f8d4dd3 changes only whitespace/icon-related content and leaves the executeQuery sink unchanged. The 2026 default-branch fix is bundle squash 2222fe3a6c886a9059f28e1b6d4bdb10ee420624; its available PR-head bundle 97f5ba3f824019665adb81a9976174e5f778d71d produces the same Snowflake tree, while the inner private #262 member is not reconstructable. This fix-side limitation does not affect the decomposed BIC or BIC-only attribution.",
+    "affected_release_membership": "confirmed: c87382c0867a2628b111d18291c9110d228feab2 is an ancestor of n8n@1.123.66, n8n@2.31.4, and n8n@2.32.0; each tag still contains expression replacement followed by execute(connection, query, []) and has no queryReplacement option.",
+    "fixed_release_membership": "confirmed: n8n@1.123.67 contains 1cd2c5fb22a906058cc083c3af2d561ce7f4332d, n8n@2.31.5 contains f6cb6cf3ab177c3740a5ef624b89bae5165405a1, and n8n@2.32.1 contains f69dfc6dd2178a14ea1624d2e1d403c2e755042f. Each fixed tag contains queryReplacement and passes its values as Snowflake binds.",
+    "direct_fix_or_unpatched": "confirmed: against parent 69c86333b28c6843e5469945625dd43e62575fe6, 2222fe3a6c886a9059f28e1b6d4bdb10ee420624 adds Query Parameters, converts them to binds, replaces execute(connection, query, []) with execute(connection, query, binds), and adds a regression test in which O'Brien remains a bound value rather than entering SQL text. The three release-line backports make the equivalent change.",
+    "bic_only_ai_attribution": "confirmed: git cat-file -p for BIC 98fb09eefb7a98081c7599b4d03e646970da9267 identifies human author/committer ricardo and contains no Co-authored-by, Generated-with, Claude, Cursor, Copilot, ChatGPT, OpenAI, or Anthropic marker. Carrier c87382c0867a2628b111d18291c9110d228feab2 is also human-authored with no AI marker. AI trailers on 2026 fix bundles are fix-side evidence only and do not transfer to the 2020 BIC."
+  },
+  "findings": [
+    "The authoritative vendor advisory GHSA-652q-gvq3-74qv is published and not withdrawn; CVE-2026-72750 is PUBLISHED and describes the same CWE-89 mechanism and fixed versions 1.123.67, 2.31.5, and 2.32.1.",
+    "Independent local-history replay agrees with the primary record's mechanism, atomic introducer, parent boundary, affected/fixed release topology, direct fix, and NOT_AI attribution.",
+    "The later beedfb609ccde2ef202e08566580a2e1a6b6eafa SQL-editor overhaul makes expression replacement explicit but preserves the pre-existing execute(connection, query, []) sink, so it is not the BIC.",
+    "The primary record correctly keeps fix-side Claude/Cursor markers out of causal authorship judgment."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

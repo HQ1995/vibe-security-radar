@@ -1,0 +1,38 @@
+{
+ "class_id": "alias-1199e99a4ad0ed02210f1b3d",
+ "case_id": "GHSA-xj74-834m-p9pc",
+ "repo": "asyncfuncai/deepwiki-open",
+ "advisory_ids": [
+  "CVE-2026-72602",
+  "GHSA-xj74-834m-p9pc"
+ ],
+ "bug_semantics": "AsyncFuncAI deepwiki-open exposes `GET /local_repo/structure` which takes an attacker-controlled absolute filesystem `path` query parameter and, with no authentication and no path restriction, walks and returns a listing of the directory plus the contents of its first README.md (`os.path.isdir(path)` then `os.walk(path)`). WIKI_AUTH_MODE defaults to false and the endpoint never consults it, so an unauthenticated remote attacker can enumerate sensitive directory contents on the host (CWE-22 Path Traversal / arbitrary directory listing).",
+ "flaw_origin": "Commit 88b21921898b4be30f695882ce8c8ab712d905d9 (\"feat: Add local folder support\", 2025-05-08, author+committer Hieu Huynh <hieuh18@pm.me>) added the entire endpoint in api/api.py: the raw `path: str = Query(...)` accepted verbatim, `os.path.isdir(path)` check, `os.walk(path)` listing, README read — no auth guard, no allowlist/containment of the path — exactly the code present at advisory reference commit 16f35a0fc028 (2026-06-03). Parent 9acbd97a33 lacks the endpoint.",
+ "introducer_sha": "88b21921898b4be30f695882ce8c8ab712d905d9",
+ "introducer_parent": "9acbd97a331ba6d268b07a80efa3d534e2bda7d5",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent — the BIC commit object names author Hieu Huynh <hieuh18@pm.me> for both author and committer with a plain human message; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object.",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": [
+  "Advisory (CVE-2026-72602 / GHSA-xj74-834m-p9pc): path traversal through commit 16f35a0 allows unauthenticated remote attackers to obtain directory listings for arbitrary filesystem paths via the local-repository structure endpoint; absolute path parameter accepted; WIKI_AUTH_MODE defaults to false.",
+  "Endpoint at advisory commit 16f35a0fc028 (api/api.py line 276): `@app.get(\"/local_repo/structure\")`, `get_local_repo_structure(path: str = Query(None, ...))`, only 400-no-path and 404-not-a-dir guards, then `os.walk(path)` returning a sorted file_tree and README content — no authentication and no path containment; the only WIKI_AUTH_MODE gate in the file protects delete_wiki_cache (line 520), not this endpoint.",
+  "BIC creation check: 88b21921898b (2025-05-08) adds the identical endpoint block (+54 lines in api/api.py) including `os.walk(path)` and the same guard set; parent 9acbd97a33 lacks the route. Auth framework itself arrived later (806ed9d92da8 2025-06-04, #185) and still did not gate this endpoint — the omission originates with the endpoint's creation.",
+  "Unfixed-in-clone check: `git log --all` after 16f35a0 shows the endpoint moved by refactors (b5e766699b7f 2026-07-30 #565, cbd1ebd137dd 2026-08-04 #568) to api/routers/wiki.py, but at HEAD (c6bea82b68d4, 2026-08-16) the same os.walk(path) endpoint persists with the WIKI_AUTH_MODE gate still only on delete_wiki (api/routers/wiki.py line 180); no traversal/auth fix commit exists in the clone, and the advisory lists no fix release.",
+  "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1 88b21921898b` — Hieu Huynh only; grep for claude/copilot/anthropic/openai/generated/co-authored/cursor/junie finds nothing (NONE-88B2 sentinel).",
+  "ppa re-checked line-level 2026-08-29 against clone history: git show 9acbd97a:api/api.py has 0 matches for local_repo/os.walk (grep exit 1); the BIC 88b21921 adds the whole @app.get(\"/local_repo/structure\") handler with os.path.isdir(path) + os.walk(path) as new lines. -> introducer_parent_absent=true."
+ ],
+ "reasoning": "Vulnerability first: the advisory's mechanism (unauthenticated directory listing via an absolute-path parameter on the local-repo structure endpoint) maps 1:1 onto the handler added by 88b21921898b — same route, same parameter, same os.walk listing — and the code persists verbatim at the advisory's 16f35a0 and even at HEAD, so the flaw is born with the endpoint. BIC choice: 88b21921898b is the commit creating the named sink (the /local_repo/structure handler) with the flawed design (raw absolute path, no auth, no containment); its parent lacks the route; later refactor commits are moves, not BICs. Unpatched: no fix commit or fix release exists in the clone or the advisory, so fix_sha/direct_fix_sha are null and backfill is noted in remaining_gap. AI decision: BIC-only attribution — the BIC object carries only the human identity Hieu Huynh with no AI marker, so NOT_AI.",
+ "remaining_gap": "No fix commit exists yet in the clone (endpoint still unguarded at HEAD c6bea82b68d4, 2026-08-16) and the advisory names no fixed release; fix_sha/direct_fix_sha left null — backfill when a remediation commit lands.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "No fix commit exists yet in the clone; /local_repo/structure remains unguarded at HEAD c6bea82b68d4 (2026-08-16) and the advisory names no fixed release.",
+  "potential_fix": {
+   "approach": "Validate the repo path against a configured root allowlist, resolve realpaths, and reject traversal/symlink escape before reading the directory tree.",
+   "rationale": "Confining reads to the configured repository root prevents arbitrary directory enumeration outside the deployment root."
+  }
+ }
+}

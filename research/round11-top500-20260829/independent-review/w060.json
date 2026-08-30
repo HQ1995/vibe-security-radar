@@ -1,0 +1,25 @@
+{
+  "worker": "w060",
+  "review_agent_id": "r389_w060_retry",
+  "class_id": "alias-2a3e3756ad19bfeb21b92cee",
+  "case_id": "GHSA-jwj6-pgg9-m3v5",
+  "repo": "siyuan-note/siyuan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed at v3.7.3: validateFile interpolates attacker-controlled File.name or derived filename without escaping into li markup, passes it to showMessage, and showMessage inserts the resulting string with insertAdjacentHTML or innerHTML. The desktop Electron configuration has nodeIntegration=true and contextIsolation=false, supporting the advisory's XSS-to-RCE impact.",
+    "atomic_bic": "Confirmed f40ed985e10b0f8391d6c94367cc85b9b5fad6bd as the smallest surviving public first-write: the commit adds both app/src/protyle/upload/index.ts with the vulnerable filename interpolations and app/src/dialog/message.ts with the HTML sink. Path-add history and pickaxe history identify no earlier public commit for these lines.",
+    "immediate_parent_absence": "Confirmed immediate parent e650b8100c22e7fd9b9e28c3866af72e0242784a. Its 24-file tree has no app directory and app/src/protyle/upload/index.ts is absent, so the vulnerable source-to-sink path is absent.",
+    "squash_member_decomposition": "The BIC is a one-parent 1,214-file initial open-source dump. No replace refs or earlier public path/member commits exist in the clone, so no finer public member SHA can be reconstructed; treating the bulk dump as the surviving public BIC is justified.",
+    "affected_and_fixed_release_membership": "Confirmed the BIC is an ancestor of v2.0.14, v3.7.3, and v3.7.4-alpha.6, while the fix is not; those checked releases retain the unescaped source and HTML sink. No v3.7.4 tag exists. The fix is an ancestor of v3.8.0-alpha.2 and v3.8.0, whose upload path applies escapeHtml. This independently confirms the primary's warning that advisory/CVE v3.7.4 metadata does not match tagged release topology.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 991d693c97f8c7d772b0105a21bed10d6c783d79. Its immediate parent 77c97d6a4d4982986bcee931e4e18a5d952f9d40 still interpolates file.name and filename unescaped; the fix imports escapeHtml and wraps all three validateFile filename insertions.",
+    "bic_only_ai_attribution": "Confirmed from the BIC commit object only: author and committer are Liang Ding <d@b3log.org>, the commit is GPG-signed, and its subject/body contain no Co-Authored-By, generated-with, Copilot, Cursor, Claude, GPT, OpenAI, or bot marker. The 2026 fix commit was not used for origin attribution."
+  },
+  "findings": [
+    "CVE-2026-74902 is PUBLISHED and the vendor GHSA-jf56-jrhq-j2qp is published and not withdrawn; the vulnerability is not a withdrawn or rejected advisory.",
+    "The primary correctly separates the real vulnerability and direct fix from the inaccurate v3.7.4 release metadata.",
+    "The public-history BIC and BIC-only attribution support NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

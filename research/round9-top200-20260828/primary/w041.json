@@ -1,0 +1,35 @@
+{
+  "class_id": "alias-78d46b827d538183c6838580",
+  "case_id": "GHSA-4fmc-f52r-93hm",
+  "repo": "filebrowser/filebrowser",
+  "advisory_ids": [
+    "CVE-2026-72838",
+    "GHSA-4fmc-f52r-93hm"
+  ],
+  "bug_semantics": "An authenticated user with Create permission could create a TUS upload with a small finite Upload-Length, then send a PATCH body larger than Upload-Length minus Upload-Offset. tusPatchHandler streamed the entire body to the file with io.Copy before comparing the resulting offset with the cached declared length; reaching or exceeding that length merely completed the upload. The excess bytes therefore remained on disk, and repeated oversized PATCH uploads could exhaust the filesystem.",
+  "flaw_origin": "PR #5270 member 6337c4452529dfc018885a7d05cc4f1e217316c5 first made FileBrowser accept and retain the client's finite Upload-Length: it added registerUpload/getActiveUploadLength, retrieved that value in tusPatchHandler, and used it only after the pre-existing unbounded io.Copy to unregister a completed upload. Its direct parent advertised Upload-Length: -1 and neither parsed nor tracked a declared length, so the advisory-specific promise-and-bypass mechanism did not yet exist. GitHub later squash-merged the PR as 0f27c91eca581482ce4f82f6429f5dac12f8b64e.",
+  "introducer_sha": "6337c4452529dfc018885a7d05cc4f1e217316c5",
+  "introducer_parent": "47b3e218ad7ffac4bc62294ec589a33ef3d4ea04",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "6337c4452529dfc018885a7d05cc4f1e217316c5",
+    "76cf7bd5c2357f7950617f6ea4b5e65e8b4e8429",
+    "99edda74cfa313d2737bcbd12ed558aa59e27e1e",
+    "e5d946caa23d13315a2f41db4cb2cec532e750f1",
+    "cf93e5c40d1d5ab063657d66aa2f71931e9d3c4b",
+    "79aac661d144526b914e7d7ae3ecb7f7bce027d4",
+    "a33c697360bb1dfce38ada5e3d8cafb7180aef2e",
+    "c2c696c212adfa7725908846ed4d1aad36706da5",
+    "9959cd1c9fb3e5d9ea450625b989afd3db54f019",
+    "56b7b2a5d9f8970ba842c0a698884a8fe73a7180",
+    "40e184929ab0d8f73ed39f414942d4dfdb225427"
+  ],
+  "ai_marker": "absent — the BIC commit object for 6337c4452529dfc018885a7d05cc4f1e217316c5 names human author and committer Ramires Viana <59319979+ramiresviana@users.noreply.github.com>; its complete message is 'fix: drop modify permission for uploading new file' and contains no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "4daddec6f200b03a721197d8c0b4b652c994894e",
+  "direct_fix_sha": "4daddec6f200b03a721197d8c0b4b652c994894e",
+  "evidence": "First-party advisory https://github.com/filebrowser/filebrowser/security/advisories/GHSA-ffv3-7h97-993q identifies PATCH /api/tus/..., affected versions <=2.63.18, patched version 2.63.19, and direct fix 4daddec6f200b03a721197d8c0b4b652c994894e. In tag v2.63.18, http/tus_handlers.go registers Upload-Length during POST, retrieves it during PATCH, performs bytesWritten, err := io.Copy(openFile, r.Body), and only afterwards computes newOffset and completes when newOffset >= uploadLength. git log -S over http/tus_handlers.go leads to squash 0f27c91eca581482ce4f82f6429f5dac12f8b64e. GitHub's PR #5270 commits endpoint reconstructs eleven members; member patch https://github.com/filebrowser/filebrowser/commit/6337c4452529dfc018885a7d05cc4f1e217316c5.patch is the first member that adds finite Upload-Length parsing/tracking and the post-copy completion comparison. Direct-parent tree https://raw.githubusercontent.com/filebrowser/filebrowser/47b3e218ad7ffac4bc62294ec589a33ef3d4ea04/http/tus_handlers.go has no activeUploads, registerUpload, getActiveUploadLength, or getUploadLength; POST ignores Upload-Length and HEAD returns Upload-Length: -1, directly proving the finite-length bypass absent. Squash reconstruction is exact at the landing boundary: git show reports squash 0f27c91eca581482ce4f82f6429f5dac12f8b64e tree b0768b78cd59fcbb1ba36352faf6bd7bd6c13756, equal to PR head 40e184929ab0d8f73ed39f414942d4dfdb225427's tree from the PR API. Tag ancestry checks show v2.38.0 does not contain the squash, v2.39.0 does, v2.63.18 contains it, and v2.63.19 contains fix 4daddec6f200b03a721197d8c0b4b652c994894e plus regression commit 4c3cb4bc9b7a165ef42cf79f0e0842bbc42e26fd. The fix bounds copying with io.LimitReader(r.Body, remaining+1), rejects offset beyond declared length, truncates an over-length chunk, and returns 413.",
+  "reasoning": "The vulnerability is not merely that FileBrowser allowed large authorized uploads; the advisory explicitly excludes unbounded ordinary uploads. Its security-relevant invariant began when FileBrowser accepted a finite TUS Upload-Length and represented that length as the accepted upload bound. The smallest causal commit is therefore decomposed member 6337c4452529dfc018885a7d05cc4f1e217316c5, not the 2023 commit that originally added an unbounded PATCH copier, not later ttlcache/refactor members, and not aggregate squash 0f27c91eca581482ce4f82f6429f5dac12f8b64e. The member introduced both sides of the flawed mechanism around the unchanged io.Copy: finite length storage/retrieval and an after-the-write newOffset >= uploadLength completion test. Its immediate parent directly lacks the finite declaration contract, while the squash tree proves the member landed and the tag checks place it from v2.39.0 through v2.63.18. Fix 4daddec6f200b03a721197d8c0b4b652c994894e restores the invariant at the write boundary and is present in v2.63.19. Finally, only the BIC commit object was considered for AI attribution; it has human author/committer metadata and no AI marker or trailer, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

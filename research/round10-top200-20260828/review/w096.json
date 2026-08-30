@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-4f97d3580c6c97848d20a8f3",
+ "case_id": "GHSA-g5c4-g774-r8rq",
+ "repo": "cerebrate-project/cerebrate",
+ "advisory_ids": [
+  "CVE-2026-53901",
+  "GHSA-g5c4-g774-r8rq"
+ ],
+ "bug_semantics": "Generic CRUD add() marshals request body through patchEntity without stripping the primary key. A caller who can POST an add endpoint can therefore set id on a newEmptyEntity (object spoofing / identifier collision). A later guard unsets $params['id'] before __massageInput(), which copies request->getData() into $input, so attacker-supplied id still reaches patchEntity.",
+ "flaw_origin": "62c9050fb2c5fb0d351594dec8bbec645860940b first added app/src/Controller/Component/CRUDComponent.php with add() doing patchEntity($data, $this->request->getData()). Parent dccf9d5fd6c1ad13d5983a5c13ef41456551aa71 has no CRUDComponent path. Later a7348e52 extracted __massageInput() still copying getData(); 7159034e added the ineffective unset($params['id']) before massage. Those are not the first write of the sink.",
+ "introducer_sha": "62c9050fb2c5fb0d351594dec8bbec645860940b",
+ "introducer_parent": "dccf9d5fd6c1ad13d5983a5c13ef41456551aa71",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "aff1ca707c8f926d00cda3deb39ff9bf59cdf18e",
+ "direct_fix_sha": "aff1ca707c8f926d00cda3deb39ff9bf59cdf18e",
+ "evidence": "GHSA-g5c4-g774-r8rq / CVE-2026-53901 remains published (withdrawn_at null). Direct fix aff1ca707c8f926d00cda3deb39ff9bf59cdf18e (iglocska) moves the id unset from $params to $input after __massageInput(); tagged in v1.37. BIC 62c9050 author/committer iglocska <andras.iklody@gmail.com>; git cat-file -p is GPG-signed with no Co-Authored-By/Generated-with/bot trailer. git cat-file -e parent:app/src/Controller/Component/CRUDComponent.php fails (path absent). 7159034e is a later incomplete guard on the same human-authored file, not the first write. ppa re-checked line-level 2026-08-29: git show dccf9d5f:app/src/Controller/Component/CRUDComponent.php fails (fatal: path does not exist); the entire add() mass-assignment flow is new in BIC 62c9050f which creates the file -> introducer_parent_absent=true.",
+ "reasoning": "The vulnerability is real mass-assignment of id on CRUD add. The smallest first-write of add() patching request data is human-authored 62c9050 (2020-06-09). No AI authorship signal is on that commit object. Later AI-only follow-up work does not attribute the BIC. Advisory is live, so not FALSE_POSITIVE.",
+ "remaining_gap": ""
+}

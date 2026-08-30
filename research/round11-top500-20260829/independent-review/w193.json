@@ -1,0 +1,25 @@
+{
+  "worker": "w193",
+  "review_agent_id": "r389_w193",
+  "class_id": "alias-d7380c8820f083472a4e4c3a",
+  "case_id": "GHSA-9h5v-pfqq-x599",
+  "repo": "faisalman/ua-parser-js",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. In 2.0.9, HTTP Sec-CH-UA-Model is copied by stripQuotes without UA_MAX_LENGTH, then parseCH constructs 'droid 9; ' + uaCH[MODEL] + ')' and passes it through the device regex map containing / ([\\w ]+) miui\\/v?\\d/i. The ordinary User-Agent path is capped at 500, while the attacker-controlled Client Hints model is not.",
+    "atomic_bic": "Confirmed aed89f0b414fe75d843f983636d389bc1f94147e. It is the smallest release-history commit that adds the rgxMapper reparse of the unbounded Client Hints model and therefore completes the vulnerable path. fc851b40c5db6fe582f2bb017aec694b00b1f9f6 added the MIUI regex earlier but did not make Client Hints reach it; 1d8eab09f1dab19d72e9904e848c280869c3f24b later only moved the surviving code.",
+    "immediate_parent_absence": "Confirmed. aed89f0b414fe75d843f983636d389bc1f94147e has the single parent 48c221b50b92eecb43069fe718fbf476dbc28164. That parent already has the MIUI regex and unbounded CH model extraction, but has no 'droid 9' reparse and only assigns the model, so the complete advisory mechanism is absent.",
+    "squash_member_decomposition": "Confirmed non-squash atomic history. The BIC is a one-parent source commit. The separate 86473bd53fd6233c824390cc66e442af6a88f6c3 bulk import exists only on origin/gh-pages and is excluded because the finer public release-history member aed89f0b414fe75d843f983636d389bc1f94147e is reconstructible and directly verified.",
+    "affected_and_fixed_release_membership": "Confirmed against Git ancestry and current advisory metadata. The BIC is absent from 2.0.0 and present in 2.0.1 and 2.0.9. Fix 90354d3458495628b1d3ba68a9d76673e6d14fc5 is absent from 2.0.9 and present in 2.0.10. CVE.org is PUBLISHED and both CVE.org and GHSA give the affected range >=2.0.1, <2.0.10; GHSA names 2.0.10 as first patched and is not withdrawn.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed direct fix 90354d3458495628b1d3ba68a9d76673e6d14fc5. It introduces normalizeHeaderValue with UA_MAX_LENGTH, applies it to Client Hints fields and item lists, tightens the MIUI regex prefix, and adds the GHSA PoC timing regression test. Its parent lacks these changes, and 2.0.10 CHANGELOG names GHSA-9h5v-pfqq-x599.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. The raw aed89f0b414fe75d843f983636d389bc1f94147e commit object records Faisal Salman <f@faisalman.com> as both author and committer, has an empty body and empty trailers, and contains no Co-Authored-By, Generated-with, bot, Copilot, or Cursor marker. AI-marked commits elsewhere in the repository were not used."
+  },
+  "findings": [
+    "The advisory describes a real, published availability vulnerability: an unauthenticated server request can supply an oversized Sec-CH-UA-Model that withClientHints() sends into the vulnerable device regex map.",
+    "The primary selected the correct atomic BIC, parent, affected-version boundary, direct fix, and BIC-only NOT_AI verdict.",
+    "No correction to the primary record is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

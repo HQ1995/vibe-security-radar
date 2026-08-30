@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-46ec3e25bc434c274446722a",
+  "case_id": "GHSA-6928-5hpx-7r3v",
+  "repo": "rconfig/rconfig",
+  "advisory_ids": [
+    "CVE-2026-77914",
+    "GHSA-6928-5hpx-7r3v"
+  ],
+  "bug_semantics": "The authenticated GET /download-export endpoint accepted an attacker-controlled filename query parameter, concatenated it directly to export_path(), checked only file_exists(), and passed the resulting path to response()->download(). Traversal components such as ../ therefore escaped the exports directory and disclosed any application-readable file; the issue was an arbitrary read only, not file write or code execution.",
+  "flaw_origin": "Commit 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8 created FileDownloadController.php and first wrote the vulnerable expression `$path = export_path() . $_GET['filename'];` plus the unchecked download sink. The controller became remotely reachable when 5eda5fcf38a87a1ceb39762474df6c2211def9fb added /download-export inside the auth middleware group. Later commit 9049917b3807924bb301f35635d17958b23888cd retained the vulnerable method while adding unrelated import/export UI functionality; it did not originate the flaw.",
+  "introducer_sha": "0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8",
+  "introducer_parent": "09fa5a4eac1abb8ee5010bb85b39411f36a6fa5e",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — BIC commit object has no AI author/co-author/Generated-with marker; see evidence",
+  "verdict": "NOT_AI",
+  "fix_sha": "d133a466a2df9d065177de9a8ed50f1bfe438aee",
+  "direct_fix_sha": "d133a466a2df9d065177de9a8ed50f1bfe438aee",
+  "evidence": [
+    "First-party repository advisory https://github.com/rconfig/rconfig/security/advisories/GHSA-m5rw-jcrm-mmwc describes an authenticated export-download path traversal allowing reads outside the export directory, requires authentication, and names 8.2.13 as patched. Its displayed affected-version constraint `<8.2.12` conflicts with its own remediation text and repository history: `git grep -n -F 'export_path() . $_GET['\\''filename'\\'']' core-8.2.12 -- app/Http/Controllers/FileDownloadController.php` finds the vulnerable line at line 23, while core-8.2.13 contains the basename and containment checks. Thus core-8.2.12 is affected and 8.2.13 is the first fixed release.",
+    "`git show --format= --find-renames 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8 -- app/Http/Controllers/FileDownloadController.php app/Http/Helpers.php` shows a new controller whose download_export() directly concatenates `$_GET['filename']` to export_path(), calls file_exists(), then response()->download(), and a new export_path() helper. `git log -L 20,28:app/Http/Controllers/FileDownloadController.php cc83dc07b9a011fcabb50cb916a91b393e8ad4f3` traces those vulnerable lines through 9049917b3807924bb301f35635d17958b23888cd back to their creation in 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8.",
+    "The independent pickaxe check `git log --all -S\"export_path() . \\$_GET['filename']\" -- app/Http/Controllers/FileDownloadController.php` returns only introduction 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8 and removal d133a466a2df9d065177de9a8ed50f1bfe438aee. The introducer is a small ordinary three-file feature commit (35 insertions and 5 deletions), not a merge, refactor, move, revert, release commit, or squash aggregate.",
+    "Direct-parent verification: `git ls-tree -r 09fa5a4eac1abb8ee5010bb85b39411f36a6fa5e -- app/Http/Controllers/FileDownloadController.php` produces no entry, and `git grep -n -E 'download_export|export_path\\(\\).*filename|\\$_GET\\[' 09fa5a4eac1abb8ee5010bb85b39411f36a6fa5e -- app routes` produces no match. The parent therefore lacks both the new controller and the vulnerable data flow.",
+    "`git show --unified=30 5eda5fcf38a87a1ceb39762474df6c2211def9fb -- routes/web.php` shows `Route::get('/download-export', ...@download_export)` added inside `Route::group(['middleware' => 'auth'], ...)`, establishing the authenticated HTTP attack path. `git tag --contains 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8` and the equivalent route-commit containment include core-8.0.0 through core-8.2.16; `git tag --contains d133a466a2df9d065177de9a8ed50f1bfe438aee` begins at core-8.2.13. `git rev-parse core-8.2.12^{} core-8.2.13^{}` resolves the adjacent release commits to 28b88100001c277f30a46ef8f512af2e0f59928b and 72b60a41d9589f3b2e0c5ea0062734b6a0b5a86d.",
+    "`git show d133a466a2df9d065177de9a8ed50f1bfe438aee -- app/Http/Controllers/FileDownloadController.php` removes raw $_GET concatenation, reduces the request value with basename(), and requires the real path to be a file under the resolved export directory before download, closing both traversal and symlink escapes. Follow-up 25d6d2f4314f3c38186d98df9c11da8fe0222862 centralizes the already-effective check in PathContainmentService; it is a refactor, not the first direct fix. The first-party core-8.2.13 release notes likewise state that export downloads are contained to the export directory.",
+    "BIC-only AI check: `git cat-file -p 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8` shows author and committer `danielrConfig <daniel@rconfig.com>` and only the subject `feat: add file download functionality and export path helper`; there is no Co-Authored-By, Generated-with, bot identity, or other AI marker in the commit object. The later direct fix d133a466a2df9d065177de9a8ed50f1bfe438aee does contain a Claude co-author trailer, but the protocol excludes fix-only AI evidence from the introducer verdict."
+  ],
+  "reasoning": "The smallest commit that actually wrote the unsafe source-to-sink path is 0813dca72e26bca7f091bb7ffa2da3f3c18d7ac8; line history and pickaxe agree, and its immediate parent has neither the controller nor an equivalent path. The later authenticated route commit activated the already-written flaw but did not write the vulnerable lines. Direct fix d133a466a2df9d065177de9a8ed50f1bfe438aee first enforced basename and resolved-path containment and is present from core-8.2.13 onward. Because the BIC commit object has a normal human author/committer and no AI marker, the correct BIC-only verdict is NOT_AI despite explicit Claude co-authorship on the later fix.",
+  "remaining_gap": null
+}

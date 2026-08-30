@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-832bcad68a60bbefd3b93422",
+  "case_id": "GHSA-9hgc-g3w5-67cm",
+  "repo": "ibm/mcp-context-forge",
+  "advisory_ids": [
+    "CVE-2026-53708",
+    "GHSA-9hgc-g3w5-67cm"
+  ],
+  "bug_semantics": "The privileged /admin/gateways/test flow performed a security decision on DNS answers obtained while validating the submitted hostname, then gave an httpx-based ResilientHttpClient a URL containing that same hostname. The client therefore performed an independent connection-time resolution. An attacker controlling DNS could return a public address for validation and then rebind the hostname to a private, loopback, link-local, or cloud-metadata address for the actual request, bypassing the SSRF network checks.",
+  "flaw_origin": "PR #3115 member d34f611030166bbdd4ea2d93d909098c9dc8d934 first inserted SecurityValidator.validate_url(str(request.base_url), ...) into admin_test_gateway while retaining construction of full_url from the validated hostname string and passing that URL to ResilientHttpClient. SecurityValidator._validate_ssrf used socket.getaddrinfo for the check, but the member did not preserve or bind the checked address for the later connection. The repository landed PR #3115 as squash d549137791f10c59c00ec3e89cb55cd560a8248f; later allowlist work made the limitation more explicit but did not originate it.",
+  "introducer_sha": "d34f611030166bbdd4ea2d93d909098c9dc8d934",
+  "introducer_parent": "f1c78d290e2901b4c58ee64e575e049b0f8b2bb3",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "b73f98a438c0459c644967e3c5d65dfe3c611351",
+    "f1c78d290e2901b4c58ee64e575e049b0f8b2bb3",
+    "d34f611030166bbdd4ea2d93d909098c9dc8d934",
+    "6f8bfd49f8571a93e13de951d6a43b5df8fe852b",
+    "1a84e514f9f36e498aa41feb146d0ccd96454fd6",
+    "65fb876725cb6c3e0bc7e22bf98e6195466852bc",
+    "486ea1b3a75d97d70c9736de8dc3b93250c0823a"
+  ],
+  "ai_marker": "absent: git cat-file -p d34f611030166bbdd4ea2d93d909098c9dc8d934 shows human author and committer Mihai Criveti <crivetimihai@gmail.com>; the complete message has only Refs: S-02, S-03 and Signed-off-by: Mihai Criveti <crivetimihai@gmail.com>. It contains no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "fba11a99babd80779fa05510b35fb6a153bbacaf",
+  "direct_fix_sha": "fba11a99babd80779fa05510b35fb6a153bbacaf",
+  "evidence": "Advisory: https://github.com/IBM/mcp-context-forge/security/advisories/GHSA-9hgc-g3w5-67cm describes <1.0.3 as affected and 1.0.3 as first patched, with validation-time socket.getaddrinfo followed by an independent ResilientHttpClient lookup. BIC decomposition: https://github.com/IBM/mcp-context-forge/pull/3115.patch exposes seven original members; PATCH 3/7 is d34f611030166bbdd4ea2d93d909098c9dc8d934, specifically titled 'fix: outbound url validation hardening and behavior consistency'. Its mcpgateway/admin.py hunk at lines 12511-12532 adds SecurityValidator.validate_url and constructs full_url from returned validated_base_url; the same tree at lines 12577-12593 puts full_url in request_kwargs and calls ResilientHttpClient.request. In mcpgateway/common/validators.py, _validate_ssrf resolves the hostname with socket.getaddrinfo and checks the resulting addresses. Immediate-parent verification: git show f1c78d290e2901b4c58ee64e575e049b0f8b2bb3:mcpgateway/admin.py at lines 12508-12535 shows direct construction from request.base_url and no validation-time DNS security decision; git diff f1c78d290e2901b4c58ee64e575e049b0f8b2bb3 d34f611030166bbdd4ea2d93d909098c9dc8d934 -- mcpgateway/admin.py is the 14-line hunk that first couples the DNS-validating check to the still-hostname-based request. The public squash d549137791f10c59c00ec3e89cb55cd560a8248f contains the member's vulnerable flow. Fix verification: git diff ce31d2a84e2c1d0eda5c6c4696e21086bec71fdb fba11a99babd80779fa05510b35fb6a153bbacaf changes validate_gateway_test_url to return validated_url, hostname, and resolved_ip; mcpgateway/admin.py replaces the URL authority with the checked IP, restores the original Host authority, and supplies extensions.sni_hostname, removing the independent hostname lookup from this flow. Commit view: https://github.com/IBM/mcp-context-forge/commit/fba11a99babd80779fa05510b35fb6a153bbacaf. Version boundary: git tag --contains d549137791f10c59c00ec3e89cb55cd560a8248f includes v1.0.0-RC2, v1.0.0-RC-3, v1.0.0, v1.0.1, and v1.0.2; git merge-base --is-ancestor fba11a99babd80779fa05510b35fb6a153bbacaf v1.0.2 fails, while the same command for v1.0.3 succeeds. git tag --contains fba11a99babd80779fa05510b35fb6a153bbacaf starts at v1.0.3, and v1.0.3:pyproject.toml declares mcp-contextforge-gateway version 1.0.3. Release: https://github.com/IBM/mcp-context-forge/releases/tag/v1.0.3.",
+  "reasoning": "The vulnerability is not merely that the endpoint could make an outbound request; its defining flaw is the split security transaction introduced when a DNS-resolving SSRF check was added without binding its result to the eventual socket. The decomposed PR history is necessary because public commit d549137791f10c59c00ec3e89cb55cd560a8248f aggregates unrelated OAuth, authentication-timing, SSRF, and test work. Original member d34f611030166bbdd4ea2d93d909098c9dc8d934 is the smallest causal change: it alone adds the gateway-test validation call and then continues to pass the hostname URL to ResilientHttpClient. Its immediate parent f1c78d290e2901b4c58ee64e575e049b0f8b2bb3 has an unrestricted hostname request but not the advisory's check/use DNS race, so the exact vulnerable mechanism is absent there. Later commits 2b5b9e9a145304c466966c560e82d4682849b13a and fb4d9a2616f22dcc64239b250b1c6389b638de4f strengthened allowlisting and documented the known rebinding limitation; they preserved rather than originated the race. Direct fix fba11a99babd80779fa05510b35fb6a153bbacaf carries the checked IP into the actual request while preserving Host and TLS SNI, and its tag ancestry exactly matches the 1.0.3 patched boundary. Finally, the complete d34f611030166bbdd4ea2d93d909098c9dc8d934 commit object has human identities and no AI authorship marker, so under BIC-only attribution this is a closed NOT_AI result.",
+  "remaining_gap": null
+}

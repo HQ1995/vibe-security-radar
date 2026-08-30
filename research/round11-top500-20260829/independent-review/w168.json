@@ -1,0 +1,25 @@
+{
+  "worker": "w168",
+  "review_agent_id": "r389_w168",
+  "class_id": "alias-058d831b72758b99e08df17d",
+  "case_id": "GHSA-5vpg-rj7q-qpw2",
+  "repo": "yiisoft/yii2",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed independently. At fix parent f635d552241c348be8a0020f531a3e278e89b6d9, View::renderFile passes caller params unchanged to renderPhpFile; renderPhpFile then executes extract($_params_, EXTR_OVERWRITE) in the same scope as local $_file_ before require $_file_. A params key _file_ therefore replaces the intended include path. ErrorHandler::renderFile contains the same collision on its fallback path. Live GHSA and CVE records describe this mechanism; GHSA withdrawn_at is null and CVE state is PUBLISHED.",
+    "atomic_bic": "Confirmed 269ce903bdfb3a41e2a5b2cfc8e47bb898e54481. Its diff directly adds renderFileInternal($_file_, $_params_) with extract($_params_, EXTR_OVERWRITE) followed by require($_file_). Earlier e585c69fbbfa2c5d096c7661e0cb3293f4da3f21 used EXTR_PREFIX_SAME, and cf6d2699540f8148c197d0d97a1819216b451d33 used EXTR_OVERWRITE but required the object property $this->file; neither has the local-path overwrite mechanism. Later renderFile/renderPhpFile changes preserve or move the already vulnerable combination.",
+    "immediate_parent_absence": "Confirmed. The BIC has immediate parent 9d1b97189d44fd4d323253196f654917b0147826. That parent extracts with EXTR_OVERWRITE but requires $this->file and has no local $_file_ include target, so the advisory's parameter-name collision is absent.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC is a regular one-parent commit, not a merge or squash aggregate, and the vulnerable function is directly present in its own diff. There is no finer public member to substitute; later inline, rename, path-move, foreach-polyfill/revert, try/catch, and style commits do not first introduce the mechanism.",
+    "affected_release_membership": "Confirmed. The BIC is an ancestor of tags 2.0.0 and 2.0.54. The annotated 2.0.54 tag peels to 1389aacf035b0ad573aa84a16cdf7c3d3d5c3c5d, whose View::renderPhpFile still contains extract($_params_, EXTR_OVERWRITE) followed by require $_file_. This agrees with the live affected range < 2.0.55.",
+    "fixed_release_membership": "Confirmed. Fix 109878b491dbffa541032bc99fb5e26d12cd0375 is not an ancestor of 2.0.54 but is an ancestor of annotated tag 2.0.55, which peels to babee66def599432735a1ed39c9cf0bc5163a775. The 2.0.55 tree contains the closure isolation, and the live advisory names 2.0.55 as first patched.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 109878b491dbffa541032bc99fb5e26d12cd0375. It moves extraction and inclusion into a closure whose include path comes from func_get_arg(0), preventing an extracted _file_ variable from replacing it in both View and ErrorHandler. It adds regression tests that pass a secret path as _file_ and require the safe view output, and framework/CHANGELOG.md explicitly records CVE-2026-39850.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC object only. Commit 269ce903bdfb3a41e2a5b2cfc8e47bb898e54481 records Qiang Xue <qiang.xue@gmail.com> as both author and committer on 2012-04-15, message 'view.', and no co-author, generator, bot, or other AI marker trailers. Fix-commit metadata was not used for authorship attribution."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, BIC, immediate parent, release gates, direct fix, and BIC-only NOT_AI attribution all reproduce from the advisory and clone evidence.",
+    "No field correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

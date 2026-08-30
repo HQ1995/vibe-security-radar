@@ -1,0 +1,42 @@
+{
+  "class_id": "alias-ae26194e37c245ca76ae19d4",
+  "case_id": "GHSA-g3wj-5278-jq3m",
+  "repo": "karakeep-app/karakeep",
+  "advisory_ids": [
+    "CVE-2026-75774",
+    "GHSA-g3wj-5278-jq3m"
+  ],
+  "bug_semantics": "When EMAIL_VERIFICATION_REQUIRED is enabled, NextAuth callbacks.signIn in apps/web/server/auth.ts rejects unverified users only inside the credentials (email/password) branch. The OAuth/OIDC branch (credentials undefined) never consults serverConfig.auth.emailVerificationRequired or user.emailVerified and returns true, so a remote OAuth callback can issue a next-auth.session-token for an email the server-wide policy was supposed to gate. Preconditions are non-default EMAIL_VERIFICATION_REQUIRED=true plus a configured OAuth/OIDC provider that does not itself enforce email ownership (CWE-287).",
+  "flaw_origin": "The incomplete gate was first written in 93049e864ae6d281b60c23dee868bca3f585dd4a (2025-07-10, 'feat: Add support for email verification'). That commit introduced EMAIL_VERIFICATION_REQUIRED and placed the emailVerified throw only under if (credentials), then explicitly documented the OAuth skip with a TODO ('We're blindly trusting oauth providers to validate emails / oauth users can sign in even if email verification is enabled') before an unconditional return true. Parent aae3ef17eccf0752edb5ce5638a58444ccb6ce3a already had OAuth sign-in but no email-verification policy, so there was no policy to bypass until this first-write.",
+  "introducer_sha": "93049e864ae6d281b60c23dee868bca3f585dd4a",
+  "introducer_parent": "aae3ef17eccf0752edb5ce5638a58444ccb6ce3a",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Mohamed Bassem <me@mbassem.com>, committer Mohamed Bassem <me@mbassem.com>, no Co-Authored-By/Generated-with/Made-with trailers (git cat-file -p 93049e864ae6d281b60c23dee868bca3f585dd4a)",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "CVE.org CVE-2026-75774 state=PUBLISHED (cveMetadata.state, datePublished 2026-08-18T11:15:09.946Z); GHSA-g3wj-5278-jq3m withdrawn_at=null. CNA VulDB maps CWE-287 to apps/web/server/auth.ts OAuth Sign-In; vendor has not rejected the report.",
+    "First-party issue https://github.com/karakeep-app/karakeep/issues/2920 (open, 0 comments, created 2026-07-02): OAuth sign-in bypasses EMAIL_VERIFICATION_REQUIRED because the emailVerified check lives only in the credentials branch of callbacks.signIn; sink is return true on the OAuth path.",
+    "git log -S 'emailVerificationRequired' -- apps/web/server/auth.ts and git log -S 'blindly trusting oauth' -- apps/web/server/auth.ts both return only 93049e864ae6d281b60c23dee868bca3f585dd4a (feat: Add support for email verification, 2025-07-10).",
+    "git log -L '/emailVerificationRequired/,+20:apps/web/server/auth.ts' first-writes the credentials-only gate in 93049e86; later 6736c5a0fd7df269f0f7390bb3711a4d19c442d7 only adds logEvent around the same credentials throw. git log -L '/blindly trusting oauth/,+3:apps/web/server/auth.ts' is solely 93049e86.",
+    "BIC commit object is a single-parent non-merge: tree d39c0b4221486dbc82461a505f205d162a9e4def parent aae3ef17eccf0752edb5ce5638a58444ccb6ce3a author/committer Mohamed Bassem <me@mbassem.com>; message is the single line 'feat: Add support for email verification' with empty %(trailers). GitHub /commits/93049e86.../pulls returned [].",
+    "Parent tree aae3ef17:apps/web/server/auth.ts signIn (credentials) { return true } then OAuth profile-email/disableSignups checks; git grep emailVerificationRequired aae3ef17 -- '*.ts' is empty. BIC apps/web/server/auth.ts lines 186-192 add the credentials-only emailVerified throw; lines 200-204 add the OAuth-trust TODO and return true.",
+    "Tag membership: git merge-base --is-ancestor 93049e86 v0.26.0 succeeds; is-ancestor vs v0.25.0 fails. First v0.* tag containing the BIC is v0.26.0; v0.25.0 has no emailVerificationRequired. Matches reporter range >=0.26.0 (CVE CNA listed 0.1-0.32.0, which is overly broad for versions without the policy).",
+    "Unpatched at research time: git grep 'blindly trusting oauth' hits v0.32.0:apps/web/server/auth.ts:239, v0.33.2:267, and HEAD ebf892c45b80246570b31a3d86a392c4caa8e1c6:267. HEAD still returns true at apps/web/server/auth.ts:279 with the credentials-only gate at 238-248. Issue #2920 remains open; no linked fix PR. Later auth.ts commits (6736c5a0 logging, f7d04297 credential ratelimit, b2b2579b OAuth alg) do not apply emailVerified to OAuth."
+  ],
+  "reasoning": "Vulnerability first: EMAIL_VERIFICATION_REQUIRED is a single global login policy, but NextAuth signIn enforces user.emailVerified only when credentials is set. OAuth callbacks skip that branch, hit the acknowledged TODO, and return true, issuing a session. CVE-2026-75774 is PUBLISHED (not withdrawn/rejected), so this is a real CWE-287 inconsistency, not FALSE_POSITIVE. BIC search used -S/-L on the gate and the TODO, not an AI-marker hunt. 93049e864ae6d281b60c23dee868bca3f585dd4a is the smallest first-write of the policy-plus-OAuth-skip; parent aae3ef17eccf0752edb5ce5638a58444ccb6ce3a has OAuth but no verification policy, so it is not a BIC. The commit is not a move/refactor/revert/backport/release/squash: one parent, human author=committer, no GitHub squash committer, no associated PR. It is an ancestor of v0.26.0 and of every later v0.* tag through v0.33.2, and is absent from v0.25.0. AI judgment is BIC-object-only: Mohamed Bassem authored and committed with no Co-Authored-By/Generated-with/Made-with/bot identity, hence NOT_AI. No landed fix exists (fix_sha/direct_fix_sha null) with confirmed unpatched at HEAD.",
+  "remaining_gap": "unpatched: no upstream fix commit through HEAD ebf892c45b80246570b31a3d86a392c4caa8e1c6 (also present in v0.32.0 and v0.33.2); GitHub issue karakeep-app/karakeep#2920 remains open with 0 comments and no linked PR.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "The OAuth signIn path still returns true without an emailVerified check at HEAD ebf892c45b80246570b31a3d86a392c4caa8e1c6 and at tags v0.32.0/v0.33.2; issue #2920 is open with no maintainer response or merged remediation.",
+    "potential_fix": {
+      "approach": "After resolving user in callbacks.signIn, apply if (serverConfig.auth.emailVerificationRequired && user && !user.emailVerified) throw before both the credentials and OAuth success returns; for OAuth also require the provider profile email_verified claim to be true instead of blindly trusting profile.email.",
+      "rationale": "Moving the existing credentials gate out of if (credentials) closes the skipped OAuth branch that currently reaches return true; requiring the OIDC email_verified claim addresses the root cause named in the BIC TODO.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/karakeep-app/karakeep/issues/2920"
+    }
+  }
+}

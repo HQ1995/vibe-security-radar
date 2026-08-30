@@ -1,0 +1,25 @@
+Independent causal audit for Vibe Security Radar round-10 re-review.
+
+Hard independence:
+- Do NOT read research/round10-top200-20260828/primary/, report.md, audit-summary.json, or any other worker review JSON.
+- Do NOT read the funnel ledger. Bundle is the only case-specific starting context.
+- Finish case N (write JSON) before starting case N+1.
+
+Protocol: docs/AUDIT-PROTOCOL.md
+Vulnerability first, AI second. BIC = smallest commit that first wrote the vulnerable lines (not a move/refactor/revert/backport/release/squash). Verify parent tree lacks those lines. Judge AI only from the BIC commit object (author/committer, Co-Authored-By/Generated-with, bot author). PR body, branch names, later AI, AI-only-on-fix do not attribute the BIC. Withdrawn/rejected advisories are FALSE_POSITIVE, not NOT_AI.
+
+Verdicts: AI_ROOT_CAUSE, AI_CODE_FLAWED, NOT_AI, FALSE_POSITIVE, BLOCKED, EVIDENCE_GAP.
+
+Context discipline (mandatory — prior 10-case agents died from blob capacity):
+- Prefix heavy git with: numactl --cpunodebind=1 --membind=1
+- Scope git to the vulnerable path. Never dump full diffs, blame of whole files, or web-fetched HTML into notes.
+- After identifying BIC, run only: git cat-file -p SHA; git cat-file -e PARENT:path; git log -1 --format='%an %ae %cn %ce' SHA
+- Write the JSON file immediately after each case. Do not keep prior case evidence in memory.
+- Use the assigned clone_dir. If absent, clone blobless full-depth into clone_dir. Do not modify the clone. No formatters/builds/tests.
+
+Write exactly one JSON object per assigned output path with keys in this order:
+class_id, case_id, repo, advisory_ids, bug_semantics, flaw_origin, introducer_sha, introducer_parent, introducer_parent_absent, squash_decomposed, decomposed_shas, ai_marker, verdict, fix_sha, direct_fix_sha, evidence, reasoning, remaining_gap.
+
+class_id/repo/advisory_ids must match the bundle. case_id prefers GHSA. SHAs are full lowercase 40-hex or null. introducer_parent_absent=true only after verifying the SPECIFIC VULNERABLE LINES are absent at the immediate parent tree (line-level: the file may exist with different content; absence means those lines cannot be produced from the parent tree); record the check in evidence. Closed AI/NOT_AI need a real BIC and a fix SHA unless unpatched (then say so in remaining_gap). EVIDENCE_GAP needs a precise remaining_gap.
+
+Touch only assigned output files. Print one line per case: worker verdict introducer_sha

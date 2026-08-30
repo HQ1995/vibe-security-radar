@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-7469482026e29ecd98266360",
+  "case_id": "GHSA-4vj5-vh2w-8g5j",
+  "repo": "tigervnc/tigervnc",
+  "advisory_ids": [
+    "CVE-2026-34352",
+    "GHSA-4vj5-vh2w-8g5j"
+  ],
+  "bug_semantics": "x0vncserver captures the local X screen into an MIT-SHM segment created with shmget(IPC_PRIVATE, size, IPC_CREAT|0777). Mode 0777 makes the segment world-readable and world-writable, so another local user can observe framebuffer contents, overwrite what is sent to VNC clients, or crash x0vncserver by racing the mapping. CWE-732. Fixed by tightening the mode to 0600.",
+  "flaw_origin": "The world-writable shmget mode was first written in the 2004-10-08 SVN import of x0vncserver/Image.cxx (Image::createShmImage). A 2005 rewrite moved the same IPC_CREAT|0777 call into ShmImage::Init; a 2006 directory migration moved the file to unix/x0vncserver/Image.cxx. Those later commits carried the already-vulnerable permission; they did not introduce it.",
+  "introducer_sha": "47ed8d321c32c6b741cff1f4ff686165c4f269f4",
+  "introducer_parent": "266bb36cd47555280fffd3aab1ed86683e26d748",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; BIC author/committer Constantin Kaplinsky <const@tightvnc.com> (2004-10-08 SVN import git-svn-id trunk@2); no Co-Authored-By, Generated-with, or bot identity on the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "0b5cab169d847789efa54459a87659d3fd484393",
+  "direct_fix_sha": "0b5cab169d847789efa54459a87659d3fd484393",
+  "evidence": "Advisory GHSA-4vj5-vh2w-8g5j / CVE-2026-34352 (NVD vulnStatus=Modified, not rejected/withdrawn): Image.cxx in x0vncserver before TigerVNC 1.16.2 uses incorrect SHM permissions. Cited fix https://github.com/TigerVNC/tigervnc/commit/0b5cab169d847789efa54459a87659d3fd484393. git show --format='' -U3 0b5cab169d847789efa54459a87659d3fd484393 -- unix/x0vncserver/Image.cxx: ShmImage::Init shmget(..., IPC_CREAT|0777) -> IPC_CREAT|0600 (parent 6986ab02758206d98325d7d6e6a8beea06c836e5). git log -S 'IPC_CREAT|0777' --reverse -- x0vncserver/Image.cxx unix/x0vncserver/Image.cxx first hit 47ed8d321c32c6b741cff1f4ff686165c4f269f4 (Constantin Kaplinsky, Initial revision, 2004-10-08). git cat-file -p 47ed8d321c32c6b741cff1f4ff686165c4f269f4: author/committer Constantin Kaplinsky <const@tightvnc.com> 1097228637 +0000; body 'Initial revision' plus git-svn-id trunk@2; no AI trailers. git cat-file -e 266bb36cd47555280fffd3aab1ed86683e26d748:x0vncserver/Image.cxx fails (parent is empty cvs2svn init). Same commit already contains shmget(..., IPC_CREAT|0777) in Image::createShmImage. Later carriers, not BICs: d31fd31a96e494f8abc97500cc6ebcad7afe68af rewrote createShmImage into ShmImage::Init but parent e09819b57706656b837a33b4a1d539d7f22be909 already had IPC_CREAT|0777; b30ae7facbdf8273f34f5d67d3d2e9c81db75576 moved x0vncserver/Image.cxx -> unix/x0vncserver/Image.cxx. v1.16.1 still has IPC_CREAT|0777; v1.16.2 tree has IPC_CREAT|0600 via cherry-pick a3fbb54278ebe91bf573f44b32d64e78a33a4828 of 0b5cab16. 0b5cab16 is an ancestor of HEAD. OSS-security 2026/03/26/7 matches the same one-line permission change.",
+  "reasoning": "The vulnerability is a real CWE-732 in MIT-SHM creation, not a withdrawn advisory. The smallest first-write of the 0777 mode is the 2004 Image.cxx add; parent tree lacks that path. 2005/2006 commits are rewrite/move carriers of the same permission. BIC commit object is a human SVN import (Kaplinsky / TightVNC) with no AI authorship markers, so verdict is NOT_AI. Direct fix on current path is 0b5cab16 (0777->0600); 1.16.2 ships the cherry-pick of that change.",
+  "remaining_gap": null
+}

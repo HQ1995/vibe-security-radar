@@ -1,0 +1,27 @@
+{
+  "worker": "w236",
+  "review_agent_id": "r389_w236",
+  "class_id": "alias-cb429e86f759d4d6ac86939b",
+  "case_id": "GHSA-w4qj-vxw3-g77r",
+  "repo": "liftoff-sr/cipster",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. At affected revision 632336d414ef708a542377c1aa8d6fdb7c70a760, DeserializeMRReq accepts the two-byte path 7f 41 because the outer word count is one, then deserialize_symbolic interprets 0x7f as a 31-byte symbol and memcpy reads 31 bytes although only one path byte remains. Issue 53 documents the normal SendRRData call chain and an ASan global-buffer-overflow at this sink. CVE-2026-16013 is PUBLISHED, and the repository owner acknowledged the report and pushed the fix, so this is not a withdrawn or rejected advisory.",
+    "atomic_bic": "Confirmed as 186ffccd18abdcaa255f1fcb42a1a57bd920e538. Reverse -S history identifies it as the first commit adding deserialize_symbolic and both unchecked declared-length copy loops. Commit 491dddf6b34ec66f01b6e1f4c2be248bca1568fe only converts the surviving symbol loop to unchecked memcpy during the BufReader refactor; it does not originate the flaw.",
+    "immediate_parent_absence": "Confirmed. The BIC has the single immediate parent 2d6b8f3eaafde2e6090cf76966b3d338f7e2b4f6, whose cipepath.c and cipepath.h contain neither deserialize_symbolic nor symbol_size or the corresponding declared-length copy. The BIC diff adds the vulnerable parser and call from DeserializePadded.",
+    "squash_member_decomposition": "Confirmed not applicable. The BIC is a single-parent public commit, GitHub reports no associated pull request, and no finer public member history is reconstructable. Although the commit is broad, it directly first-writes the vulnerable function, so the public commit itself is the atomic BIC.",
+    "affected_release_membership": "Confirmed at the advisory's rolling-release revision. There are no repository tags or GitHub releases. The BIC is an ancestor of the explicitly affected commit 632336d414ef708a542377c1aa8d6fdb7c70a760, while the fix is not its ancestor.",
+    "fixed_release_membership": "Confirmed at commit granularity because this rolling-release repository has no tags or releases. Affected commit 632336d414ef708a542377c1aa8d6fdb7c70a760 is an ancestor of fix 886a4d090e1c5b0475f0b1c2fe0606a8f0d6a519, matching the CVE record's named patch and the owner's issue-closing statement.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix 886a4d090e1c5b0475f0b1c2fe0606a8f0d6a519. It replaces both unchecked symbolic memcpy-and-advance sequences with BufReader::get_bytes; that method checks requested count against the reader limit and throws on over-read, and DeserializeMRReq catches the resulting range error and rejects the request.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI from the BIC only. The BIC commit object and GitHub commit record show human author and committer Dick Hollenbeck <dick@softplc.com> on 2016-10-19, with no Co-Authored-By, Generated-with, bot, or other AI marker. No signal from the 2026 report or fix was used for attribution."
+  },
+  "findings": [
+    "The primary record's vulnerability mechanism, BIC, parent, refactor distinction, affected ancestry, and direct fix all reproduce against the clone and first-party issue.",
+    "The advisory validity gate independently passes: the CVE.org record is PUBLISHED and the repository owner explicitly stated that the fix was pushed.",
+    "No correction is required; the absence of tags and releases is accurately handled as rolling-release commit membership rather than inferred version membership.",
+    "The NOT_AI verdict is supported solely by the verified 2016 BIC identity and commit object, not by later remediation metadata."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

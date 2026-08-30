@@ -1,0 +1,36 @@
+{
+  "class_id": "alias-25ae2f7da15baf48545a92bb",
+  "case_id": "GHSA-wrwh-rpq4-87hf",
+  "repo": "free5gc/free5gc",
+  "advisory_ids": [
+    "CVE-2026-40245",
+    "GHSA-wrwh-rpq4-87hf"
+  ],
+  "bug_semantics": "GET /nudr-dr/v2/application-data/influenceData/subs-to-notify must reject a request with no dnn, snssai, internal-Group-Id, or supi filter, and must also stop after a malformed snssai. The vulnerable handler writes a 400 response for either validation failure but does not return, then queries all matching Traffic Influence Subscriptions and appends their data, including SUPI/IMSI values, to the unauthenticated response body.",
+  "flaw_origin": "Commit fc6e50f8530f9e02778052fcf3a7ac0ad4ce6526 introduced the defect while refactoring processor functions into route handlers. Its parent returned immediately from HandleApplicationDataInfluenceDataSubsToNotifyGet on an empty query or malformed snssai; the new handler preserved both checks but replaced the parent response-return path with c.JSON calls lacking return statements, then unconditionally invoked ApplicationDataInfluenceDataSubsToNotifyGetProcedure. This is a semantic regression created by the refactor, not a pure move of a pre-existing flaw.",
+  "introducer_sha": "fc6e50f8530f9e02778052fcf3a7ac0ad4ce6526",
+  "introducer_parent": "61f725a76b313250f98801d06769478678fae79f",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": {
+    "scope": "introducer_only",
+    "status": "none",
+    "commit": "fc6e50f8530f9e02778052fcf3a7ac0ad4ce6526",
+    "evidence": "GitHub records human author and committer ian60509 <ian.60509@gmail.com>; the message is 'refactor: processor as route handler', the commit is unsigned, has one parent, and contains no AI/LLM/Copilot attribution or trailer. The source header says OpenAPI Generator, which is deterministic code generation and not evidence of LLM authorship."
+  },
+  "verdict": "NOT_AI",
+  "fix_sha": "86686276a7e226183ee786e3dd6714ec56c78fda",
+  "direct_fix_sha": "86686276a7e226183ee786e3dd6714ec56c78fda",
+  "evidence": [
+    "The GitHub advisory GHSA-wrwh-rpq4-87hf and CVE-2026-40245 describe unauthenticated disclosure of Traffic Influence Subscription data and SUPIs after the handler emits HTTP 400 but continues processing.",
+    "At introducer parent 61f725a76b313250f98801d06769478678fae79f, internal/sbi/producer/data_repository.go returns an HTTP 400 response immediately for malformed snssai and for an empty filter set, so the database procedure is not called on either validation failure.",
+    "Introducer fc6e50f8530f9e02778052fcf3a7ac0ad4ce6526 adds internal/sbi/processor/influence_data_subscriptions_collection.go. In HandleApplicationDataInfluenceDataSubsToNotifyGet, both failure branches call c.JSON(http.StatusBadRequest, problemDetails) without return, followed unconditionally by ApplicationDataInfluenceDataSubsToNotifyGetProcedure and c.JSON(http.StatusOK, rspData).",
+    "The introducer has exactly one parent, 61f725a76b313250f98801d06769478678fae79f. No pull-request squash/member aggregate or finer public member was found for this direct commit; later file moves preserve the same missing-return behavior and are not selected as the BIC.",
+    "Direct fix 86686276a7e226183ee786e3dd6714ec56c78fda, parent ce36d00028def38a98c1bf4e2be97645b544e93d, adds return immediately after both relevant c.JSON(http.StatusBadRequest, problemDetails) calls in internal/sbi/api_datarepository.go.",
+    "Release inspection shows udr v1.2.0-v1.2.2 use the safe producer-return implementation; v1.2.3 is the first affected udr tag, and v1.4.4 remains affected. In the superproject, free5gc v3.4.1 points to safe udr v1.2.2, v3.4.2 points to affected udr v1.2.3, and the latest inspected release v4.2.3 points to affected udr v1.4.4. The direct fix is present on udr main at db69aa0e5b827306d4b8f1420c98fc13300ead66 but is not contained in an inspected release tag.",
+    "BIC-only AI review found no AI marker in the introducer author, committer, message, signature state, or trailers; the OpenAPI Generator file header is not an AI-authorship marker."
+  ],
+  "reasoning": "The advisory mechanism is reproduced by source control flow: validation writes an error but execution falls through to an unfiltered repository query. The immediate parent proves both validation failures terminated before querying. Therefore fc6e50f8530f9e02778052fcf3a7ac0ad4ce6526 is the atomic causal BIC despite its refactor label; earlier endpoint-introduction and later relocation commits are excluded because the earlier implementation was safe and later moves inherited the flaw. Commit 86686276a7e226183ee786e3dd6714ec56c78fda directly reverses the defect by restoring the two terminating returns. The latest inspected releases remain vulnerable, while main is fixed. Because the BIC itself has human identity metadata and no AI marker, the vulnerability is real but is classified NOT_AI.",
+  "remaining_gap": ""
+}

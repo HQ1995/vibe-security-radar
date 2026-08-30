@@ -1,0 +1,26 @@
+{
+  "worker": "w329",
+  "review_agent_id": "r389_w329",
+  "class_id": "alias-e6afbab1e30ebd77e4bf14a9",
+  "case_id": "GHSA-6hc7-9rph-cm99",
+  "repo": "vladimir-tokarev-cyera/llama-cpp-security-patches",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: with --sleep-idle-seconds enabled, server_res_generator::wait_until_no_sleep() releases mutex_tasks after observing !sleeping without retaining an active-handler reference. start_loop() can then enter sleep and server_context_impl::destroy() resets llama_init, freeing the model-owned llama_vocab, while the HTTP worker continues through the cached ctx_server.vocab pointer. The patch repository's proposed fix adds the missing active-request lifetime guard and nulls vocab, matching this race/UAF mechanism.",
+    "atomic_bic": "CONFIRMED: e6ab62c4a1af57fcba5c982ced53c2522b9517d1 is the smallest public first-write that adds llama_init.reset() to destroy() while leaving the cached vocab pointer unchanged. Earlier PR members establish sleep/wait and destroy scaffolding, but do not free llama_init there; later members cannot be the first write.",
+    "immediate_parent_absence": "CONFIRMED: the BIC has the single parent 44a5a26c32ec7d41706680a4d2ca1f268c9166a2. In that parent, destroy() frees mctx, slot state, and batch state but does not reset llama_init; vocab is still assigned from llama_model_get_vocab(model). The UAF-producing model free is therefore absent from the immediate parent.",
+    "squash_member_decomposition": "CONFIRMED: PR #18228 exposes a linear 14-member chain from e1d7b43409436682a8adf77ff2b95ad7a7bcc9df through 06a5ebe187caa458ea8f1d865e744e8b31f58ef4. The master landing ddcb75dd8ac42dc23eb84f13bb17670fe9f2d49b is a one-parent GitHub squash whose message aggregates those members, so it is not the atomic BIC. The misleading member 105e2f3cf67cf726e9ea9761faf4c1bdd824370d titled 'fix use-after-free' only gates metrics.init() on !is_resume and does not repair this vocab race.",
+    "affected_release_membership": "CONFIRMED: refs/tags/b7492 resolves exactly to squash landing ddcb75dd8ac42dc23eb84f13bb17670fe9f2d49b. GitHub comparison reports that b9060 (ad092246587b16299291056a78bf6f73f636f114) and b9445 (af6528e6df5d798f7f1363ec1141699be0f638e2) are descendants of that landing, with ddcb75dd as their merge base.",
+    "fixed_release_membership": "NOT_APPLICABLE_CONFIRMED_UNPATCHED: no merged upstream fix or fixed release exists. PR #24063 is closed with merged_at=null; its proposed head 7fb1044b81dafe3cd4f177ca3976b66cf1fbff73 is not an upstream merged fix.",
+    "direct_fix_or_unpatched_state": "CONFIRMED_UNPATCHED: upstream master c589f0ed10c643678c4707dd160c21ac7633ebc0 still has destroy() resetting llama_init and nulling ctx_tgt/model_tgt/mctx without nulling vocab; wait_until_no_sleep() still returns without an active-request count, and start_loop() may still call the sleep teardown immediately afterward. The corresponding patch file supplies the absent refcount/release and vocab-null changes, but only in the third-party patch repository.",
+    "bic_only_ai_attribution": "CONFIRMED_NOT_AI: the BIC object names Xuan Son Nguyen <son@huggingface.co> as both author and committer and its complete commit message contains no AI/bot marker or co-author trailer. The PR member chain and squash likewise identify the same human author with no AI trailer. Cursor Co-Authored-By trailers occur on 7c8f244a7d94f7c323ba277fcb24ff051339acd2 and later commits in the separate remediation repository, so they are fix-only evidence and do not attribute the BIC."
+  },
+  "findings": [
+    "CVE.org currently records CVE-2026-43631 as PUBLISHED, and GHSA-6hc7-9rph-cm99 has withdrawn_at=null; this is a real vulnerability rather than a withdrawn or rejected advisory.",
+    "The CNA range begins at b7492, which is exactly the squash landing containing the atomic member BIC; the independently inspected immediate-parent and child source establish the first vulnerable free.",
+    "The primary NOT_AI conclusion is supported independently. AI markers in the selected repository belong only to the proposed remediation commits and must not be transferred to the upstream introducer."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": "No merged upstream fix SHA or fixed release exists. This is an unpatched-state gap, not a gap in the NOT_AI attribution: upstream master c589f0ed10c643678c4707dd160c21ac7633ebc0 remained vulnerable at review time, while PR #24063 / 7fb1044b81dafe3cd4f177ca3976b66cf1fbff73 remained unmerged."
+}

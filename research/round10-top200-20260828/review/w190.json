@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-45f548ff3ae9facb19d90c28",
+  "case_id": "GHSA-xgmr-hcvf-x3qc",
+  "repo": "owen2345/camaleon-cms",
+  "advisory_ids": [
+    "CVE-2026-73330",
+    "GHSA-xgmr-hcvf-x3qc"
+  ],
+  "bug_semantics": "Authenticated admins can POST a crafted email to /admin/settings/test_email. When SMTP/delivery raises, the exception message can reflect that recipient address. test_email then does render inline: e.message, so Rails evaluates the reflected string as ERB and executes attacker-controlled Ruby as the Rails process user.",
+  "flaw_origin": "On 2016-06-16 Owen Peredo added test_email and chose render inline: e.message for SMTP errors. That is the first write of the SSTI sink. Later RuboCop and site-data edits kept the same inline render; the 2.9.2 fix only switched it to render plain:.",
+  "introducer_sha": "7dd48f47922526b5524b055c473d9c93a4cebcc6",
+  "introducer_parent": "298dc823fd2eff379c174ef239e571450d3562a4",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Owen Peredo <owenperedo@gmail.com>, committer Owen Peredo <owenperedo@gmail.com>; cat-file -p shows only subject \"admin: added button to send test emails \\\"smtp configuration\\\"\" with no Co-Authored-By, Generated-with, or bot identity",
+  "verdict": "NOT_AI",
+  "fix_sha": "092de84dc706e3d6ed2e66e5c634092dc488fb69",
+  "direct_fix_sha": "092de84dc706e3d6ed2e66e5c634092dc488fb69",
+  "evidence": "Advisory GHSA-xgmr-hcvf-x3qc / CVE-2026-73330 (withdrawn_at null; GHSA still listed): CamaleonCMS <=2.9.1 SSTI via test_email; RubySec patched >=2.9.2; PR https://github.com/owen2345/camaleon-cms/pull/1145. Clone owen2345_camaleon-cms. git log -S \"render inline: e.message\" -- \"*.rb\" yields only 7dd48f47922526b5524b055c473d9c93a4cebcc6 (add) and 092de84dc706e3d6ed2e66e5c634092dc488fb69 (remove). BIC 7dd48f47 first added def test_email with rescue => e; render inline: e.message, status: 502 in app/controllers/camaleon_cms/admin/settings_controller.rb. Parent 298dc823fd2eff379c174ef239e571450d3562a4 has no test_email and no render inline: e.message. git log -L /def test_email/,/^      end/:settings_controller.rb shows later 67787c28 (RuboCop reindent, same inline render), ec95cb29 (adds current_site/url_base, keeps inline), then 092de84d (inline->plain). 2.9.1 still has render inline; 2.9.2 has render plain. merge-base --is-ancestor BIC 2.9.1 yes; fix not ancestor of 2.9.1; fix is ancestor of 2.9.2. Direct fix 092de84d merged by 1b29de38434b03da04c674138023943dda94bb13 (PR #1145).",
+  "reasoning": "The SSTI is the rescue path rendering SMTP exception text as an ERB inline template. The mechanism first appears in 7dd48f47 (2016), a single-parent commit that added the whole test_email action. Parent tree verification shows the sink absent. Later commits only restyle or add mailer data; they did not introduce inline rendering. Fix 092de84d is the first content change of the sink (inline to plain) and is in 2.9.2, matching patched >=2.9.2. BIC author/committer is Owen Peredo with no AI trailers or bot identity, so NOT_AI.",
+  "remaining_gap": null
+}

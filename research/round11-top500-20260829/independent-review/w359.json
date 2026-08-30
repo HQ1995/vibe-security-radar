@@ -1,0 +1,26 @@
+{
+  "worker": "w359",
+  "review_agent_id": "r389_w359",
+  "class_id": "alias-12854677e89b09dccb101c3e",
+  "case_id": "GHSA-w573-9ffj-6ff9",
+  "repo": "netty/netty",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: on 64-bit Linux, an SCM_RIGHTS cmsg with two ints has cmsg_len 24 and fits the 24-byte CMSG_SPACE(sizeof(int)) receive buffer without MSG_CTRUNC; the exact CMSG_LEN(sizeof(int)) equality rejects it after both fds are installed, closes neither, retries recvmsg, and the Java EAGAIN-to-0 path exits the read loop. FILE_DESCRIPTORS mode makes this reachable for epoll and kqueue domain sockets.",
+    "atomic_bic": "CONFIRMED: 3030b4afe30f96b59807b24bd4f5250d41de283f is the single-parent, affected-lineage first write of the exact-length check, retry loop, missing MSG_CTRUNC handling, EAGAIN mapping, and FILE_DESCRIPTORS reachability; the change is a coherent feature commit, not a move or aggregate requiring a finer public member.",
+    "immediate_parent_absence": "CONFIRMED: f771a97592d95d70cbb6f6b5afb6e4a3a450a499 has a one-shot recvFd with MSG_CTRUNC handling, no CMSG_LEN(sizeof(int)) equality, and no DomainSocketReadMode.FILE_DESCRIPTORS; case-specific grep of its C and Java tree found neither latter construct.",
+    "squash_member_decomposition": "CONFIRMED: the BIC has exactly one parent and directly introduces the vulnerable feature. Same-message commits 495fa6be3cf725a0abc68cefd71116ab718fff3e and cabecee127264e53acaa093ca45d3900b138b881 are separate lineages and are not ancestors of the affected 4.1/4.2 tags; 075a54af3e607c20eeaf7809a2a08602abd5d735 and 3cc405296310643bccddc8c81998c97f25b3201c are later rename/extraction changes.",
+    "affected_release_membership": "CONFIRMED: 3030b4afe30f96b59807b24bd4f5250d41de283f is an ancestor of netty-4.1.0.Final and netty-4.2.0.Final, and netty-4.1.134.Final contains the vulnerable native function. The PUBLISHED CVE record identifies versions before 4.1.135.Final and 4.2.0.Final through 4.2.14.Final as affected.",
+    "fixed_release_membership": "CONFIRMED: 652663cb50c3be6378969be2cf84472743e0109f is not an ancestor of netty-4.1.134.Final but is an ancestor of netty-4.1.135.Final; 89aa20ad1c5356b44e1294a59ec05e1ab1fe5924 is not an ancestor of netty-4.2.14.Final but is an ancestor of netty-4.2.15.Final.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: direct fixes 652663cb50c3be6378969be2cf84472743e0109f (4.1) and 89aa20ad1c5356b44e1294a59ec05e1ab1fe5924 (4.2) reset the msghdr, walk SCM_RIGHTS cmsgs, close unexpected descriptors, and return errors for truncation or invalid multiplicity.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Norman Maurer as both author and committer and contains no AI, bot, Generated-with, or Co-Authored-By marker. AI attribution was assessed only on this BIC, supporting NOT_AI."
+  },
+  "findings": [
+    "The advisory is a real, non-rejected CWE-772 descriptor leak: CVE-2026-45536 is PUBLISHED, and the frozen GHSA has withdrawn_at=null.",
+    "Independent clone replay confirms the primary record's BIC, immediate parent, mechanism, movement history, direct fixes, and affected/fixed tag boundaries.",
+    "The primary NOT_AI verdict follows from the human-authored 2015 BIC and absence of an AI marker on that BIC."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

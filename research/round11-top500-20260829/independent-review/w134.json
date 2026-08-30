@@ -1,0 +1,45 @@
+{
+  "worker": "w134",
+  "review_agent_id": "r389_w134",
+  "class_id": "alias-9c511674d1389c1bc95dc86d",
+  "case_id": "GHSA-94g3-g5v7-q4jg",
+  "repo": "phpseclib/phpseclib",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "In c30f3b7e9a73c6579e0b6fa1f99d9cbcaea5ae28, Rijndael defaults to CBC, decrypt() sends plaintext to _unpad(), and _unpad() reads the attacker-influenced final byte then takes a length-dependent invalid-padding branch. The frozen GHSA identifies CWE-208 and fix ccc21aef71eb170e9bf819b167e67d1fd9e6e788; CVE.org independently reports CVE-2026-32935 as PUBLISHED with affected ranges beginning at 0.1.1."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "c30f3b7e9a73c6579e0b6fa1f99d9cbcaea5ae28 is the smallest surviving public commit that first adds phpseclib/Crypt/Rijndael.php and its data-dependent _unpad validity branch. AES in tag 0.1.1 extends Rijndael; the BIC is an ancestor of 0.1.1 and every checked affected release. Later a4e72f7811589135fcfcdced34fc859d3ffd13eb adds the zero-length operand, 9bd3c793d3ceb5a0f32900aa83eb58e9f549e356 changes the invalid result, and 55ff00cc35e81d663cb6c0c6031fb02f6ded5608 moves the logic into Crypt_Base, so none is the first write."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "git rev-parse c30f3b7e^ resolves to a78d7df66031ee1be64cfab2f8a4ea29f6be182a. That tree has no Rijndael.php or AES.php; its DES _unpad only strips the final-byte length and has no length-validity branch. The reviewed AES/Rijndael mechanism is therefore absent from the immediate parent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a single-parent, non-merge Git object importing one identified SourceForge SVN revision, r20, and adds Rijndael.php. No finer public Git member is represented or reconstructable in the permitted clone; the commit itself is the smallest surviving public first-write object, not a later move, merge, or squash aggregate."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is absent from 0.1.0 and is an ancestor of 0.1.1, 1.0.26, 2.0.51, and 3.0.49. Those last affected tags contain the short-circuit predicate. Fix ccc21aef71eb170e9bf819b167e67d1fd9e6e788 is absent from 1.0.26, 2.0.51, and 3.0.49, but is an ancestor of 1.0.27, 2.0.52, and 3.0.50; those fixed tags contain the non-short-circuit predicate. This matches the CVE.org affected ranges."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "ccc21aef71eb170e9bf819b167e67d1fd9e6e788 is a single-parent one-line direct fix in Crypt/Base.php: it changes `!$length || $length > $this->block_size` to `!$length | ($length > $this->block_size)`, forcing both checks to execute. The same fixed predicate is present in the first patched 1.x, 2.x, and 3.x tags."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC commit object names Jim Wigginton <terrafrost@php.net> as author and committer on 2009-02-01. Its message contains only the Rijndael description and git-svn-id; it has no AI/bot identity or AI-assistance trailer. Attribution is based only on this BIC, not on the 2026 fix or later carrier commits."
+    }
+  },
+  "findings": [
+    "The primary record's NOT_AI verdict is supported by an independently replayed source-to-sink, first-write, parent-boundary, release-membership, direct-fix, and BIC-attribution chain.",
+    "No field correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

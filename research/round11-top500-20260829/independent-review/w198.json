@@ -1,0 +1,25 @@
+{
+  "worker": "w198",
+  "review_agent_id": "r389_w198",
+  "class_id": "alias-01cce0b6fc0d53af48fe3e7a",
+  "case_id": "GHSA-fv6j-9p8m-c3wr",
+  "repo": "mtrudel/bandit",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: HTTP/2 response data exceeding the shared connection send window is retained in pending_sends while the stream process blocks in GenServer.call(..., :infinity). Before f6914aad14bb1365dd6f306aa592cfb0819bed3e, neither elapsed time nor RST_STREAM/stream termination released that queued reply closure, so PING traffic could keep the connection alive while processes and Plug-held resources accumulated.",
+    "atomic_bic": "CONFIRMED: 6feadb31189d18b7dcda6c663112cd3bbaf63a46 is the earliest exact-path -S history hit for both pending_sends in connection.ex and :infinity in adapter.ex, and its diff introduces the queue, deferred reply closure, and unbounded synchronous wait together. Later ba755c03776bb37b13bbba496b26f073b7f68a06/fff06efe3be962b484bd4d3eb339372fda5a231f move the wait into Stream, while b2b43570c29ae0b9451efadf08b93a07b5e13a00 extracts finish_data/5; they do not first write the flaw.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 7a53ff9c37aafb05e4c37de0a6c9f5fbc919f117 has no pending_sends and its adapter send_data uses the default finite GenServer.call/2 timeout; the deferred noreply/on_unblock path is absent.",
+    "squash_member_decomposition": "CONFIRMED: the BIC is a single-parent public commit with no PR reference or trailers and no finer public member object to substitute. It is the smallest surviving first-write object, not a merge, revert, refactor, or identifiable squash aggregate.",
+    "affected_release_membership": "CONFIRMED: 6feadb31189d18b7dcda6c663112cd3bbaf63a46 is not an ancestor of tag 0.3.3 but is an ancestor of tag 0.3.4 (0.3.4~1); tag 0.3.4 contains both pending_sends and the :infinity call. This matches the current CVE.org CNA affected lower bound 0.3.4 / BIC SHA.",
+    "fixed_release_membership": "CONFIRMED: f6914aad14bb1365dd6f306aa592cfb0819bed3e is not an ancestor of tag 1.12.4 but is an ancestor of tag 1.12.5 (1.12.5~1); only 1.12.5 contains pending_send_timeout, expire_pending_sends, and purge_pending_send. This matches the current CNA exclusive upper bounds 1.12.5 / fix SHA.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: direct fix f6914aad14bb1365dd6f306aa592cfb0819bed3e adds a 15-second deadline, expires queued sends on inbound traffic, purges them on RST_STREAM and stream termination, replies with timeout/reset errors, and makes Stream handle those replies. Its immediate parent d38cf046c9a3cae4d0f88001c2ceb4143f86366b lacks these releases.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Mat Trudel as both author and committer, has subject 'Implement send flow control', and has no trailers or AI/bot markers. AI-assisted later reporting, reproduction, refactoring, or remediation is excluded from BIC attribution, so NOT_AI follows from the BIC alone."
+  },
+  "findings": [
+    "Independent replay confirms the primary vulnerability lifecycle, atomic BIC, release range, direct fix, and BIC-only authorship conclusion.",
+    "CVE-2026-74836 is currently PUBLISHED in the CVE.org CVEAWG record; this is a real vulnerability rather than a withdrawn/rejected advisory."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

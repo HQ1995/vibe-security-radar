@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-f606e1d015bb6a499ee40b04",
+  "case_id": "GHSA-rvgr-q8fx-r93h",
+  "repo": "owen2345/camaleon-cms",
+  "advisory_ids": [
+    "CVE-2026-73331",
+    "GHSA-rvgr-q8fx-r93h"
+  ],
+  "bug_semantics": "Authenticated SQL injection (CWE-89) in Camaleon CMS PostUniqValidator. Creating or editing a post with editor/author privileges submits post[slug]; the validator splits record.slug via translations_array and interpolates each fragment s into an ActiveRecord where() fragment as posts.slug LIKE '%-->#{s}<!--%'. Only the equality arm (slug = ?) is bound. A crafted slug with SQL metacharacters is therefore compiled into the uniqueness query, enabling boolean- or union-style blind extraction (and limited modification) of SQLite application tables, including admin credentials and configuration. Draft posts skip the check; published/pending posts hit it on save.",
+  "flaw_origin": "The interpolated LIKE uniqueness query was first written in the public-history root commit 671a7ed178c7265e4c5d33d805a9b3a8cd7b3db6 (2015-07-09, Owen) as class PostUniqValidator inside app/models/post.rb line 7. Later commits only moved or reformatted that same interpolation: CamaleonCms namespacing (415cbda60318a41e750ba0069acd4a8d2464d699, 2015-10-16) and extraction to app/validators/camaleon_cms/post_uniq_validator.rb (ee214d02598ca0b423bc236850d26ed6f3bc9d6b, 2020-10-23). Those are not BICs. Parameterization landed in 6c23d05da15342bc718cd65d52f58fbf2b626187 and merged via PR #1144.",
+  "introducer_sha": "671a7ed178c7265e4c5d33d805a9b3a8cd7b3db6",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Owen <owen@skylogix.net>, committer Owen <owen@skylogix.net>; git cat-file -p and interpret-trailers show no Co-Authored-By, Generated-with, Signed-off-by, or bot identity (2015-07-09 root commit 'Version 1.0').",
+  "verdict": "NOT_AI",
+  "fix_sha": "39130b3c9091e73f832b5e9b526286f0393c6ee9",
+  "direct_fix_sha": "6c23d05da15342bc718cd65d52f58fbf2b626187",
+  "evidence": [
+    "CVE.org CVE-2026-73331 state=PUBLISHED (CNA VulnCheck; datePublished 2026-08-12; not rejected/withdrawn). NVD vulnStatus=Received. GHSA-rvgr-q8fx-r93h withdrawn_at=null. Affected CamaleonCMS 0 .. <= 2.9.1.",
+    "Researcher writeup https://enrik-m.github.io/posts/Camaleon-CMS-Vulnerabilties/ section 4.2: hidden post[slug] on post create returns HTTP 500 on a single quote; sqlmap confirmed boolean-based SQLi as editor against SQLite. Vendor PR https://github.com/owen2345/camaleon-cms/pull/1144 credits Amir Aliu and Enrik Mustafa and describes parameterized slug validation.",
+    "Vulnerable sink at tag 2.9.1 (cc71e01c909c9e7fa23ddc115981773ce1242b49) app/validators/camaleon_cms/post_uniq_validator.rb:12-14 interpolates slug_array into LIKE '%-->#{s}<!--%' while binding only record.slug for equality.",
+    "git log -L '/slug LIKE/,+1:app/models/camaleon_cms/post.rb' ee214d02^ traces the interpolation unchanged from root 671a7ed178c7265e4c5d33d805a9b3a8cd7b3db6 through 415cbda6 (table_name prefix) to the 2020 extract. git log -S \"LIKE '%-->#{s}<!--%'\" yields only 671a7ed1 (add), ee214d02 (move to validator), 6c23d05d (remove/parameterize).",
+    "BIC 671a7ed178c7265e4c5d33d805a9b3a8cd7b3db6 is the sole root (git rev-list --max-parents=0 --all; git rev-parse 671a7ed1^ fails 'Needed a single revision'). app/models/post.rb:7 first writes posts.slug LIKE '%-->#{s}<!--%'. No finer public parent/member exists to decompose; squash_decomposed=false.",
+    "Tag membership: git merge-base --is-ancestor 671a7ed1 2.9.1 succeeds; 39130b3c is not an ancestor of 2.9.1 and is an ancestor of 2.9.2 (45c15c72bf415015322512bc1f8069bdff240dd4, 2026-05-01). 2.9.1 still has LIKE '%--> interpolation; 2.9.2 has slug LIKE ? binds. CHANGELOG 2.9.2: Security fix SQL Injection in PostUniqValidator, PR #1144.",
+    "direct_fix_sha 6c23d05da15342bc718cd65d52f58fbf2b626187 (texpert, 2026-04-26) replaces interpolated LIKE with conditions << \"#{post_table}.slug LIKE ?\" / params << \"%-->#{s}<!--%\". Parent bca703c4fdee1f5011337d8f2eb91815830d4c5d still interpolates. Merge 39130b3c9091e73f832b5e9b526286f0393c6ee9 lands PR #1144 on origin/master; first parent still interpolated, merge tree parameterized.",
+    "BIC commit-object AI check: author/committer Owen <owen@skylogix.net>, empty trailer set, not a bot. AI attribution is judged only on this object; later PR #1144 / 2.9.2 work is the fix, not the introducer."
+  ],
+  "reasoning": "CVE-2026-73331 is a real, published CWE-89 in PostUniqValidator: user-controlled post slug is concatenated into a LIKE SQL fragment during uniqueness validation on post save. The GitHub advisory is not withdrawn; CVE.org remains PUBLISHED, so this is not FALSE_POSITIVE. git log -L/-S show the interpolated LIKE first appearing in the 2015-07-09 public root 671a7ed1 as PostUniqValidator in app/models/post.rb. That commit has no parent (verified by rev-parse ^ failure and max-parents=0), so the lines are absent from any prior tree by construction; no reconstructable finer public member exists, making the root a valid BIC rather than a discarded squash aggregate. Subsequent modularization and the 2020 validator extract only relocate the same interpolation and are excluded as BIC. The first commit that actually rewrote the sink to bound parameters is 6c23d05d, merged to master as 39130b3c (PR #1144) and released in 2.9.2, matching the advisory range <=2.9.1 affected / later patched. The BIC commit object is human (Owen, 2015) with no Co-Authored-By/Generated-with/bot markers, so the verdict is NOT_AI. Fix-side authorship is irrelevant to BIC attribution.",
+  "remaining_gap": null
+}

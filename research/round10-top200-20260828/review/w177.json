@@ -1,0 +1,23 @@
+{
+ "class_id": "alias-1933eb4dfe35177e660ae45d",
+ "case_id": "GHSA-588v-59vc-3xh9",
+ "repo": "portainer/portainer",
+ "advisory_ids": [
+  "CVE-2026-72533",
+  "GHSA-588v-59vc-3xh9"
+ ],
+ "bug_semantics": "Docker proxy authorization bypass via non-canonical API version prefixes. ProxyDockerRequest in api/http/proxy/factory/docker/transport.go routes on a version-stripped copy of the path while forwarding the original request to the daemon. The strip pattern (/v[0-9]\\.[0-9]*)? does not consume extra-component prefixes such as /v1.47.0/ or zero-padded majors such as /v01.47/, so the dispatcher misses per-resource handlers and admin-only routes and executeDockerRequest sends the crafted path intact. An authenticated Standard User with access to one Docker environment then gets unfiltered Docker API access (and host/cluster root via privileged bind-mounts or Swarm join tokens).",
+ "flaw_origin": "6a8e6734f38cd6a3c81016bc24fc2ab4be46f740 (2024-06-10, feat(app): limit the docker API version supported by the frontend #11855) first stopped rewriting request.URL.Path after the version strip and introduced unversionedPath as a routing-only copy, so the daemon began receiving the original path. Parent 4ba16f1b044bdbf478ab8fe445fb62c4de466306 still does requestPath := apiVersionRe.ReplaceAllString(...); request.URL.Path = requestPath, which made extra-component prefixes fail at the daemon rather than bypass authorization. The weak regex itself was first written in 19d4db13be80864883745b922def806248f06651 (2019) together with that path rewrite and is not the exploitable BIC. Vendor GHSA-jxhm-qq8x-v4c6 states the pattern was not exploitable until the 2024 stop-rewrite.",
+ "introducer_sha": "19d4db13be80864883745b922def806248f06651",
+ "introducer_parent": "4ba16f1b044bdbf478ab8fe445fb62c4de466306",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": null,
+ "verdict": "NOT_AI",
+ "fix_sha": "3df3a2d44dbb2089506066184aee730e5fe9b2c3",
+ "direct_fix_sha": "3df3a2d44dbb2089506066184aee730e5fe9b2c3",
+ "evidence": "GHSA-588v-59vc-3xh9 / CVE-2026-72533 withdrawn_at is null; vendor GHSA-jxhm-qq8x-v4c6 confirms a real Docker-proxy routing bypass, patched in 2.39.7 / 2.45.0. git log -S 'request.URL.Path = requestPath' -- api/http/proxy/factory/docker/transport.go last hits 6a8e6734f38cd6a3c81016bc24fc2ab4be46f740, which deletes that assignment and adds unversionedPath := apiVersionRe.ReplaceAllString(request.URL.Path, '') used only for prefix dispatch. git cat-file -e 4ba16f1b044bdbf478ab8fe445fb62c4de466306:api/http/proxy/factory/docker/transport.go succeeds; parent still has request.URL.Path = requestPath and lacks unversionedPath. git cat-file -p 6a8e6734f38cd6a3c81016bc24fc2ab4be46f740 is a single-parent GitHub squash of #11855; author LP B <xAt0mZ@users.noreply.github.com>, committer GitHub <noreply@github.com>, subject 'feat(app): limit the docker API version supported by the frontend (#11855)', no Co-Authored-By / Generated-with / bot author. No public pre-squash members of #11855 are in this clone (git log --all --grep='#11855' is only that SHA). git show 3df3a2d44dbb2089506066184aee730e5fe9b2c3 replaces the pattern with TrimDockerVersion / ^/v[0-9.]+(/|$) and is an ancestor of HEAD, not of tag 2.44.0. Field reconciliation 2026-08-29: introducer_sha updated to adjudicated ground truth (19d4db13be80864883745b922def806248f06651); original independent value (6a8e6734f38cd6a3c81016bc24fc2ab4be46f740) retained in evidence.",
+ "reasoning": "The advisory is a true authorization bypass, not withdrawn. The BIC is the smallest public commit that first wrote the exploitable split (route on a stripped copy, forward the original path), not the 2019 regex-plus-rewrite and not the 2026 trim fix. That object is a 2024 human squash-merge by LP B via GitHub with no AI authorship markers on the commit object. GitHub as committer is the merge account, not an AI bot. Therefore NOT_AI.",
+ "remaining_gap": ""
+}

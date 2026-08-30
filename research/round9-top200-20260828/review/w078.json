@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-ee178c0022a3bba9e0cecb1f",
+  "case_id": "GHSA-8wf8-frjg-xv74",
+  "repo": "lsfusion/platform",
+  "advisory_ids": [
+    "CVE-2025-13265",
+    "GHSA-8wf8-frjg-xv74"
+  ],
+  "bug_semantics": "When archive unpacking is enabled for received mail, or when MakeUnzipFileAction is invoked, an attacker-controlled ZIP/RAR entry name is appended to a temporary output-directory path without canonical containment validation. A traversal name can therefore make FileOutputStream write outside the staging directory; the subsequent cleanup of outputFile can then delete the escaped target after overwriting it. The shared ZipUtils implementation ultimately exposed the same sink to both EmailReceiver and MakeUnzipFileAction.",
+  "flaw_origin": "Commit 557102b69a04a7476d244d4ea6f9c24c29e55827 introduced the first affected lifecycle: optional automatic archive unpacking in EmailReceiver plus ZIP/RAR extractors that used archive-provided names directly in output paths. Commit ce3cf594f118e720279abdb78116a597956bbe41 later independently added the same unsafe pattern to MakeUnzipFileAction. Commit 4950d66839375b11a4706fe1b5bd5f28ec9abf17 was a refactor that deleted both local implementations and centralized their still-vulnerable behavior in ZipUtils, so it is not the BIC.",
+  "introducer_sha": "557102b69a04a7476d244d4ea6f9c24c29e55827",
+  "introducer_parent": "6747b4ead5e8f26ccd36ecb33e77aa9ea9335fe1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "No AI marker in the BIC commit object: `git cat-file commit 557102b69a04a7476d244d4ea6f9c24c29e55827` shows human author and committer Vandrouny <filipchyk.andrei@gmail.com> and only the message `[server] Опция распаковки архивов при приёме почты`; there are no Co-Authored-By, Generated-with, bot, or AI trailers.",
+  "verdict": "NOT_AI",
+  "fix_sha": "90d058b9007c1e9b0babc0aac50fe2f292fb947d",
+  "direct_fix_sha": "90d058b9007c1e9b0babc0aac50fe2f292fb947d",
+  "evidence": [
+    "Upstream issue https://github.com/lsfusion/platform/issues/1545 identifies both MakeUnzipFileAction and EmailReceiver, describes unvalidated archive filenames causing arbitrary overwrite/deletion, gives a ZipUtils.unpackFile ZIP PoC, says affected through 6.1, and was closed 2026-03-26.",
+    "Run `git show --format=raw 557102b69a04a7476d244d4ea6f9c24c29e55827`: the one-parent feature commit adds the Email account `unpack` option and new ZIP/RAR extraction methods. In the ZIP method it assigns `fileName = ze.getName()`, constructs `new File(outputDirectory.getPath() + \"/\" + fileName)`, writes through FileOutputStream, and then deletes outputFile; the RAR branch does the analogous construction from FileHeader names.",
+    "Direct parent check: `git grep -n -E 'unpackZIPFile|unpackRARFile|unpack\\[Account\\]' 6747b4ead5e8f26ccd36ecb33e77aa9ea9335fe1 -- server/src/main/java/lsfusion/server/mail/EmailReceiver.java server/src/main/resources/lsfusion/system/Email.lsf` returns no matches. Thus the immediate parent lacks both the vulnerable extractors and their activation property.",
+    "History cross-check: `git log --follow -S 'outputFile = new File(outputDirectory.getPath() + \"/\" + fileName);' -- server/src/main/java/lsfusion/server/physics/dev/integration/external/to/mail/EmailReceiver.java` reaches 557102b69a04a7476d244d4ea6f9c24c29e55827; `git log -L 680,725:server/src/main/java/lsfusion/server/physics/dev/integration/external/to/mail/EmailReceiver.java e92be0e267b80f18ec1269c2ff68ed34973eaeaa` also traces the unsafe ZIP sink back to that commit. The same history shows later moves/refactors rather than an earlier affected email extractor.",
+    "Lifecycle cross-check: `git show ce3cf594f118e720279abdb78116a597956bbe41` adds MakeUnzipFileAction with the same unchecked ZIP/RAR path construction; `git show 4950d66839375b11a4706fe1b5bd5f28ec9abf17` removes those local methods and creates ZipUtils with their unchecked behavior while routing both MakeUnzipFileAction and EmailReceiver through it.",
+    "The first remediation was incomplete. `git show 1aefa1fd67bb644e6d4f5682051fc85b81048322` adds only `!filePath.contains(\"../\")` around ZIP file entries; 547f9c92df24969fb34f6d7009bfeb3d7727c67a is its release-branch cherry-pick. Tag 6.2 contains 547f9c92df24969fb34f6d7009bfeb3d7727c67a, but the guard still misses backslash traversal on Windows, directory entries, and the RAR path.",
+    "Complete source fix: `git show 90d058b9007c1e9b0babc0aac50fe2f292fb947d -- server/src/main/java/lsfusion/server/physics/dev/integration/external/to/file/ZipUtils.java` replaces the string check with canonical-path `isInsideDirectory` checks for ZIP files, ZIP directories, and RAR entries. Its own commit message explicitly records that the prior guard missed backslashes and directory entries. `git tag --contains 90d058b9007c1e9b0babc0aac50fe2f292fb947d` returns no tag, so the complete fix is in source but no tagged release contains it in this clone.",
+    "Version boundary: `git tag --contains 557102b69a04a7476d244d4ea6f9c24c29e55827 --sort=creatordate` starts at 1.3.0, while `git merge-base --is-ancestor 557102b69a04a7476d244d4ea6f9c24c29e55827 1.2.4` is false. Tags 6.1 and 6.2 retain the vulnerable/partially guarded lifecycle respectively; no tag contains the complete fix. The GitHub advisory metadata still lists `<= 6.0-beta2` and no patched version, while its prose and the upstream issue say affected through 6.1.",
+    "BIC-only AI check: `git cat-file commit 557102b69a04a7476d244d4ea6f9c24c29e55827` contains no AI/bot identity or trailer. Any AI signal on the later complete fix is outside the protocol's BIC-only attribution rule."
+  ],
+  "reasoning": "The earliest repository change that created an affected attack path is the 2017 EmailReceiver archive-unpack feature, not the later MakeUnzipFileAction copy and not the 2025 move into ZipUtils. Its direct parent has neither the extractors nor the option that invokes them, and both -S and -L history converge on the feature commit. The BIC is a normal one-parent human commit whose commit object has no AI attribution, so the vulnerability is NOT_AI. The March 2026 issue-closing patch and its 6.2 cherry-pick are only partial containment; the July 2026 canonical-path commit is the first complete source fix and is not yet in a tag. AI attribution on that later fix cannot change the BIC-only verdict.",
+  "remaining_gap": null
+}

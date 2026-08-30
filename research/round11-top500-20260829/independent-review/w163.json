@@ -1,0 +1,45 @@
+{
+  "worker": "w163",
+  "review_agent_id": "r389_w163",
+  "class_id": "alias-ba93eb313ecd1541903f6cc9",
+  "case_id": "GHSA-hjjv-j557-q7r3",
+  "repo": "krayin/laravel-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-38528 is PUBLISHED and GHSA-hjjv-j557-q7r3 is not withdrawn. The advisory identifies authenticated SQL injection through GET /admin/leads rotten_lead[in]. In the vulnerable tree, request()->input('rotten_lead.in') is concatenated directly into havingRaw() after a grouped query computes the rotten_lead alias, so attacker input reaches a raw SQL HAVING clause without binding."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "All-history -G tracing of the exact havingRaw/rotten_lead sink identifies f344238f734bcba261a885870ba9d205fb8aeccf as its first public write. Its diff introduces both the computed rotten_lead alias and the vulnerable concatenating filter; later 98aea6943bf0edab2b8565ce6476d65a978a3029, c9ad06079c5604594565b5e9a20b9297e077ba8e, and 62ac294c35a93676c8bd09322fe35bb69b756fc3 only preserve or reformat that sink."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent is e985cb089b2ccf6a8a36611c4d22a19e23e564cf. Exact-path git grep on that parent finds neither rotten_lead nor havingRaw, while the child diff adds the vulnerable construct. The parent object is present, so primary introducer_parent_absent=false is consistent with object availability, not vulnerability presence."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "f344238f734bcba261a885870ba9d205fb8aeccf is a one-parent, non-merge public commit whose own diff writes the sink. It is already the smallest reconstructable public history object; there is no squash or merge aggregate to decompose, so squash_decomposed=false and decomposed_shas=[] are correct."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is absent from v1.2.3 and an ancestor of v1.2.4. For the advisory's 2.2 line, it is an ancestor of v2.2.0 through v2.2.5; v2.2.0-v2.2.3 retain direct concatenation. Fix 2a3724cb7e9e65ab98f2b42c8ca2c98dede48f62 is not an ancestor of v2.2.0-v2.2.3 and is an ancestor of v2.2.4-v2.2.5; tag contents confirm binding begins in v2.2.4, whose changelog records the rotten-lead SQL injection fix."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "The parent of 2a3724cb7e9e65ab98f2b42c8ca2c98dede48f62 still concatenates rotten_lead.in. The one-file fix hunk replaces that interpolation with havingRaw($tablePrefix.'rotten_lead = ?', [(int) request()->input('rotten_lead.in')]), directly closing the documented source-to-sink mechanism. Tested advisory commit ba25b7e7f8e108ef006b1314df5e6103f25ae94d contains the BIC but not the fix and retains the vulnerable line."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Only BIC f344238f734bcba261a885870ba9d205fb8aeccf was used for attribution. Its commit object names prabhat gautam <prabhatkumar.oc082@webkul.in> as both author and committer on 2022-08-31, has subject 'added rotten lead filter', and contains no co-author, generated-with, bot, or other AI marker. Later commits and the fix were not used to infer BIC authorship; NOT_AI is confirmed."
+    }
+  },
+  "findings": [
+    "The primary correctly classifies a real, non-withdrawn SQL injection rather than a false positive.",
+    "The primary's BIC, immediate parent, direct fix, release boundary, and BIC-only NOT_AI attribution independently reproduce from the permitted clone and advisory evidence."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

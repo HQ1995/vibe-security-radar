@@ -1,0 +1,52 @@
+{
+  "worker": "w189",
+  "review_agent_id": "r389_w189",
+  "class_id": "alias-c19a6318057f9e3f0a63be9a",
+  "case_id": "GHSA-4xh5-jcj2-ch8q",
+  "repo": "controlplaneio-fluxcd/flux-operator",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The Web UI OIDC path evaluates default CEL fallbacks to an empty username and empty groups, returns both without a non-empty check, and builds rest.ImpersonationConfig from them; client-go then omits impersonation headers, so requests use the operator service-account credentials."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "eba38678c032e2846edaae9ad2f9987ea82178ad is the smallest first writer: it simultaneously adds the empty-fallback defaults, unvalidated OIDC extraction, protected-resource handoff, and impersonating client construction. Exact -S history starts at this commit; later commits only move or refactor the mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent c0ec979278f5b0affa562a6189262a2597f987f0 exists, but all four Web UI source files containing the mechanism are absent from its tree. The primary evidence says the same, so its introducer_parent_absent=false value is internally inconsistent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "eba38678c032e2846edaae9ad2f9987ea82178ad is a regular single-parent commit and the first reconstructable member of PR #519; merge 9b3e45c39a4377c046ab761234cbb387ba774a93 retains the member chain, so no squash decomposition is required."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is not an ancestor of v0.36.0 and is an ancestor of v0.37.0, v0.38.0, and v0.39.0. Thus the first tagged vulnerable release is v0.37.0 even though the GHSA range says >=0.36.0."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Direct fix c4c82e7f270200a81d99d16be32809fccfa3749e is not in v0.39.0 and is in v0.40.0; v0.40.0 contains the SanitizeAndValidate call and implementation."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "c4c82e7f270200a81d99d16be32809fccfa3749e adds post-CEL impersonation sanitization and rejects empty username plus groups; merge 084540424f6de8ba5d88fb1fd1e8472ba29afd7e lands that member through PR #610."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC object names Matheus Pimenta as both author and committer, is PGP-signed, and has only a matching Signed-off-by trailer; it has no Co-Authored-By, generated-with, bot, or other AI marker. Fix or review metadata was not transferred to the BIC."
+    }
+  },
+  "findings": [
+    "CVE-2026-23990 is currently PUBLISHED and GHSA-4xh5-jcj2-ch8q is not withdrawn; the vulnerability and NOT_AI verdict are supported.",
+    "Primary field introducer_parent_absent=false contradicts both the checked parent tree and the primary evidence; the vulnerable Web UI mechanism is absent in the immediate parent.",
+    "The advisory version range over-approximates by one tag: v0.36.0 does not contain the BIC, while v0.37.0 through v0.39.0 do."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

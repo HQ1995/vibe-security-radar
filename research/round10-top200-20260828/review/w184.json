@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-318d59f675a98f00d8c75709",
+  "case_id": "GHSA-x5mx-wq8q-46ph",
+  "repo": "jovancoding/network-ai",
+  "advisory_ids": [
+    "CVE-2026-73615",
+    "GHSA-x5mx-wq8q-46ph"
+  ],
+  "bug_semantics": "CWE-436 SandboxPolicy matcher/executor interpretation conflict: isCommandAllowed, requiresApproval, and assessRisk glob-match the raw quote-preserving command.trim() string, while the executor tokenizes (parseCommandLine/tokenizeCommand strips quotes and collapses whitespace) then spawn(shell:false). Quoted forms such as rm -rf '/' and git \"push\" origin main evade blocklist and approval globs but run as the unquoted argv.",
+  "flaw_origin": "First write of lib/agent-runtime.ts in 58ebcf3a491efd4358a47d317afbf9f6deca5002 (feat: Phase 9 — Agent Runtime). Parent ed292f211aaabc776803d130a3b11713627daea7 has no that path. SandboxPolicy.matchesAny(trimmed, blockedCommands/allowedCommands) and requiresApproval(command.trim()) were introduced there; the then-executor was /bin/sh -c which already interpreted quotes, so the same glob bypass existed from first write. 379f77656b578144e03415c5b134d8309a4b5792 (CVE-2026-54051) switched spawn to shell:false + tokenizeCommand but left matchers on trimmed — incomplete adjacent remediator, not the BIC.",
+  "introducer_sha": "58ebcf3a491efd4358a47d317afbf9f6deca5002",
+  "introducer_parent": "ed292f211aaabc776803d130a3b11713627daea7",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "none; BIC author/committer jovanSAPFIONEER <jovan@sapfioneer.example>; no Co-Authored-By/Generated-with/bot author on the commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "f294d33642a9c5218f1a64d7b159ca70d06f63e4",
+  "direct_fix_sha": "f294d33642a9c5218f1a64d7b159ca70d06f63e4",
+  "evidence": "CVE-2026-73615 is PUBLISHED (VulnCheck CNA; GHSA withdrawn_at null). Vendor GHSA-9v4f-j8cv-fhxw patched in 5.15.1. git cat-file -e parent:lib/agent-runtime.ts fails (path absent). BIC isCommandAllowed/requiresApproval match command.trim() via globMatch; ShellExecutor used /bin/sh -c. After 379f776 matchers still call matchesAny(trimmed, ...) while tokenizeCommand strips quotes. Fix f294d33642a9c5218f1a64d7b159ca70d06f63e4 (parent b10672cc007e0831efd8295e832a4e178fa18829) adds canonicalize() = argv.join(' ') and routes blocklist/allowlist/approval/risk through it; CHANGELOG [5.15.1] names GHSA-9v4f-j8cv-fhxw. git log -1 authors on BIC/fix are jovanSAPFIONEER, no AI trailers.",
+  "reasoning": "Real CWE-436: security globs see a different string than the executed argv because quotes/extra spaces are literal to globMatch and invisible after tokenization (and previously after /bin/sh -c). Vulnerability-first BIC is the first-write of those raw-string matcher lines (58ebcf3), not the later tokenizer-only CVE-2026-54051 fix. BIC commit object is human-authored with no AI markers, so NOT_AI. Direct fix is f294d33 (v5.15.1).",
+  "remaining_gap": ""
+}

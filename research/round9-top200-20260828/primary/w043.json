@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-4631fb0f3bdbc5b714e5f25f",
+  "case_id": "GHSA-hqhc-8hp4-hrwc",
+  "repo": "open-webui/open-webui",
+  "advisory_ids": [
+    "CVE-2025-63391",
+    "GHSA-hqhc-8hp4-hrwc"
+  ],
+  "bug_semantics": "The claimed authentication bypass does not exist. In v0.6.32, GET /api/config is intentionally public so the pre-authentication login UI can obtain application identity, locale, enabled OAuth provider names, and login-related feature flags; configuration that could cross a confidentiality boundary is emitted only inside the explicit authenticated admin/user branch.",
+  "flaw_origin": "The public disclosure and unreviewed GHSA mischaracterized a discovery/bootstrap endpoint as a critical authenticated function and treated its entire response as unauthenticated. The same handler distinguishes public bootstrap fields from sensitive fields, so there is no flawed code origin to attribute for this rejected claim.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "not applicable: no vulnerability BIC exists, so no BIC commit object can be inspected for author, committer, bot identity, or AI trailers without substituting an unrelated historical change",
+  "verdict": "EVIDENCE_GAP",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "The current authoritative NVD record at https://nvd.nist.gov/vuln/detail/CVE-2025-63391 is REJECTED and states: 'Further investigation showed that it was not a security issue.' MITRE withdrew it on 2026-06-29.",
+    "Open WebUI's first-party disposition at https://docs.openwebui.com/security/vendor-dispositions/cve-2025-63391/ says 'Rejected, mischaracterized', 'there is no advisory and no affected Open WebUI release', and explains that /api/config is deliberately public for login bootstrap while sensitive fields are role-gated.",
+    "The GitHub Advisory API record remains type=unreviewed, github_reviewed_at=null, repository_advisory_url=null, and vulnerabilities=[]; it repeats the reporter's <=0.6.32 claim but supplies neither a vulnerable package range nor a patched version or fix reference.",
+    "At tag v0.6.32 (37d1c85c996e1bdcd505e1e6d62b2f17acd8df23), backend/open_webui/main.py:get_app_config parses an optional valid session, returns only bootstrap fields to an anonymous caller, and places default models/prompts, user_count, execution/audio/file settings, permissions, Google Drive and OneDrive values, UI configuration, and license metadata under `if user is not None and (user.role in [\"admin\", \"user\"])`.",
+    "The public fields in the same v0.6.32 handler are application name/version/locale, OAuth provider display names, and login/client capability flags such as auth, trusted-header mode, password confirmation, LDAP, signup, login-form, websocket, and update-check; no credential, secret, token, password, or private key is returned on the anonymous branch.",
+    "The client confirms the public contract: v0.6.32 src/routes/+layout.svelte calls getBackendConfig during application initialization, and src/routes/auth/+page.svelte consumes config.features.auth, auth_trusted_header, enable_ldap, and onboarding before sign-in to select and render the login flow.",
+    "`git merge-base --is-ancestor cbadf39d7d73638214b8a2bea5946f46290c3749 v0.6.32` and `git merge-base --is-ancestor 0c5fbdedd8aa9da7f2e153d4b9fc7aad7b915a59 v0.6.32` both succeeded: authenticated response gating and the explicit admin/user role restriction predate the claimed affected tag.",
+    "Because the vendor and CNA establish that no vulnerability or affected release exists, there is no security fix SHA, no smallest real BIC, and therefore no immediate-parent absence or BIC-only AI-authorship fact to verify. Assigning the endpoint's original feature commit as a BIC would falsely convert intended public behavior into a vulnerability."
+  ],
+  "reasoning": "Vulnerability-first reconstruction closes the reported lifecycle as a rejected false positive rather than a code flaw. The endpoint must be reachable before authentication because the login UI needs its bootstrap response. At the exact claimed boundary v0.6.32, the backend first derives an optional user from a valid token, exposes only discovery/login fields anonymously, and conditionally includes sensitive configuration only for authenticated admin or user roles. Frontend call sites corroborate that design. The authoritative vendor disposition says no sensitive field reaches an unauthenticated caller, no release is affected, and no action is required; the issuing CNA subsequently withdrew the CVE as not a security issue. Therefore selecting any historical commit as introducer or fix would substitute a different issue and violate smallest-real-BIC causality. Parent absence, squash decomposition, version-boundary patch membership, and commit-object AI attribution are inapplicable because the claimed flaw has no BIC or fix.",
+  "remaining_gap": "The verdict taxonomy has no REJECTED/FALSE_POSITIVE value, so AI attribution cannot be closed as NOT_AI or an AI verdict without fabricating a BIC. A corrected advisory would need to identify a concrete sensitive field returned anonymously in a specific release and its corresponding remediation; the withdrawn record, unreviewed GHSA, first-party handler, and vendor disposition provide none."
+}

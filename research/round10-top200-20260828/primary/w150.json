@@ -1,0 +1,38 @@
+{
+ "class_id": "alias-4bed7efdf17c1089549ff6a2",
+ "case_id": "GHSA-6p2w-vm5p-8648",
+ "repo": "chatgptnextweb/nextchat",
+ "advisory_ids": [
+  "CVE-2025-50735",
+  "GHSA-6p2w-vm5p-8648"
+ ],
+ "bug_semantics": "The Next.js catch-all route app/api/webdav/[...path]/route.ts proxies WebDAV requests to a user-supplied endpoint. The route joins the attacker-controlled catch-all path segments with params.path.join('/') and interpolates them straight into the proxied URL target without canonicalizing or rejecting dot segments, while its method/allowlist guards use raw string suffix matching (targetPath.endsWith(fileName)) that dot segments bypass. A request path containing ../ therefore escapes the intended backup.json-scoped directory and the proxy fetches/returns arbitrary WebDAV paths (CWE-22), disclosing sensitive information via the authenticated or anonymous WebDAV endpoints.",
+ "flaw_origin": "Commit 038fa3b301794050ec7e59325aa00f25b3ce3257 (\"fix: add webdav request filter\", 2024-03-14, author Fred <fred@nextchat.dev>) created app/api/webdav/[...path]/route.ts and wrote the vulnerable pattern in the same change: `const endpointPath = subpath.join('/');`, suffix-only guards (`endpointPath.endsWith(folder/fileName)`), and `const targetUrl = `${protocol}://${endpoint + endpointPath}`;` with no dot-segment rejection. The parent tree (9a8497299d11706f096a4fc10ff0ab5af43465c7) lacks the file entirely. The same-day commits 86452146 and 99aa0643 only swap endsWith targets to new URL(endpointPath).pathname parsing, still without dot-segment canonicalization; 9fb8fbcc (2024-06-24) adds SSRF endpoint-host validation but leaves params.path.join('/') uncanonicalized — the sink line `const endpointPath = params.path.join('/')` persists at HEAD (line 65 of the file at defdcdb5, post-v2.16.1) and in tag v2.16.0 (line 64).",
+ "introducer_sha": "038fa3b301794050ec7e59325aa00f25b3ce3257",
+ "introducer_parent": "9a8497299d11706f096a4fc10ff0ab5af43465c7",
+ "introducer_parent_absent": true,
+ "squash_decomposed": false,
+ "decomposed_shas": [],
+ "ai_marker": "absent — the BIC commit object names author and committer Fred <fred@nextchat.dev> (2024-03-14), message body is the single line \"fix: add webdav request filter\"; no Co-Authored-By, Generated-with, or bot/AI identity anywhere on the object (grep over %an/%ae/%cn/%ce/%B found nothing).",
+ "verdict": "NOT_AI",
+ "fix_sha": null,
+ "direct_fix_sha": null,
+ "evidence": [
+  "Advisory (CVE-2025-50735 / GHSA-6p2w-vm5p-8648): directory traversal in NextChat through 2.16.0 — the WebDAV proxy fails to canonicalize or reject dot path segments in its catch-all route (app/api/webdav/[...path]/route.ts), letting attackers read sensitive information via authenticated or anonymous WebDAV endpoints; CWE-22; researcher writeup fai1424/Vulnerability-Research CVE-2025-50735.",
+  "BIC creation check: `git log --all --diff-filter=A -- 'app/api/webdav/[...path]/route.ts'` reports exactly one commit, 038fa3b3 (2024-03-14); `git cat-file -e 9a849729:app/api/webdav/[...path]/route.ts` fails, so the file — and its uncanonicalized `params.path` interpolation — does not exist in the parent tree (introducer_parent_absent=true).",
+  "Vulnerable state at tag v2.16.0: `git show v2.16.0:app/api/webdav/[...path]/route.ts` line 64 `const endpointPath = params.path.join('/');` with suffix-only guards `targetPath.endsWith(folder/fileName)` (lines 86/99/112) and no '../' filtering; the identical sink line persists at HEAD defdcdb5 (line 65), and `git diff v2.16.0 HEAD -- app/api/webdav` is empty.",
+  "No fix in repository: `git log v2.16.0..HEAD -- app/api/webdav` is empty; the latest tags (v2.16.0, v2.16.1) and all branches (--all) contain no post-advisory canonicalization change; NVD/searches show the project had not shipped a fix when the advisory was published 2025-11-03. Hence fix_sha/direct_fix_sha are null (unpatched).",
+  "Relocation/hardening history is not the origin: 86452146 (same day) retargets the guards through new URL(endpointPath).pathname, 9fb8fbcc (2024-06-24) adds endpoint host allowlisting against SSRF, 716899c0 (2024-08-03) fixes status checking — none touches the params.path join; the whole --follow history of the route file is 15 commits, all later than 038fa3b3.",
+  "AI-marker screening: `git log --format='%an <%ae>%n%cn <%ce>%n%B' -1 038fa3b3` shows only the human identity Fred and the one-line message; no claude/copilot/anthropic/openai/generated/co-authored marker on the BIC object."
+ ],
+ "reasoning": "Vulnerability first: the advisory pins the sink to the catch-all WebDAV proxy route's failure to canonicalize dot segments; the code shows params.path.join('/') interpolated into the proxied URL with endsWith-based guards that dot segments defeat, so the traversal primitive is the route's path handling. BIC choice: the route file was created once by 038fa3b3 with the vulnerable join already present, and the immediate parent tree lacks the file, making it the unique introducer; later commits refine guards (URL parsing, endpoint allowlist) but never add dot-segment rejection, so they are not origins and no fix exists to date (fix_sha null, unpatched — consistent with the advisory's no-patched-version state through 2.16.0/2.16.1). Squash check: a 3-file change adding the proxy route plus client URL plumbing is a single cohesive feature-filter commit, not a decomposed squash; squash_decomposed=false. AI decision: BIC-only attribution — the 2024 commit object carries only a human identity and no AI marker, so NOT_AI.",
+ "remaining_gap": "No upstream fix exists as of the audit date (repo HEAD defdcdb5 post-v2.16.1 still contains the uncanonicalized sink), so fix_sha/direct_fix_sha are null; if the project later patches the route, the fix commit should be backfilled.",
+ "unpatched": {
+  "confirmed": true,
+  "reason": "No upstream fix exists as of the audit date; repo HEAD defdcdb5 post-v2.16.1 still contains the uncanonicalized WebDAV proxy sink.",
+  "potential_fix": {
+   "approach": "Restrict the WebDAV proxy to configured origin hosts/paths, canonicalize the requested path, and reject traversal outside the allowlist before proxying.",
+   "rationale": "An origin allowlist plus path canonicalization prevents the catch-all route from proxying attacker-chosen internal or arbitrary hosts."
+  }
+ }
+}

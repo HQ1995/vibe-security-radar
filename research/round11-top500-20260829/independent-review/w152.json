@@ -1,0 +1,28 @@
+{
+  "worker": "w152",
+  "review_agent_id": "r389_w152",
+  "class_id": "alias-29ed9ad1912c63854b7e92fe",
+  "case_id": "GHSA-6p87-gwpg-qp8w",
+  "repo": "zanllp/infinite-image-browsing",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: at pre-fix 7b6a81bb74298204cada8a956fc1b0212cf50dfc and affected v1.8.0, is_path_trusted accepts path.startswith(parent_path) without a separator, so an allowed /data/images prefix also trusts /data/images_private; check_path_trust gates the file-serving path when access control is enabled.",
+    "atomic_bic": "PASS: git log -L and blame identify 5f98c26b86f7e6bc049131441dd3a6aa5c2f0670 as the first public write of both vulnerable startswith comparisons; later changes retarget or normalize paths without first-writing this mechanism.",
+    "immediate_parent_absence": "PASS: 5f98c26b86f7e6bc049131441dd3a6aa5c2f0670 has the single parent 684dcb63fae43ca8edefc3f98c9ee6b7f4845b75, whose Python tree has neither is_path_trusted nor startswith(parent_path); its existing need_cache uses os.path.commonpath instead.",
+    "squash_member_decomposition": "PASS WITH PRIMARY EVIDENCE CORRECTION: the BIC is not a squash aggregate; it is the first of two preserved member commits in PR #234, followed by 0a8b050bc1ae4ec30f8c8e07fe2ac593951f5e70 and merged by a008ab7104545ca52df9ab00a32ff1fd073140e0. Thus squash_decomposed=false remains correct, but the primary statement that the BIC had no associated PR is false.",
+    "affected_release_membership": "PASS: the BIC is an ancestor of v0.0.1 and v1.8.0; v1.8.0 still contains path.startswith(parent_path), matching the CVE record's affected range through 1.8.0.",
+    "fixed_release_membership": "PASS: neither direct fix d1a6a818c00ee7ab4b058f585df8deb2426362f2 nor merge fix 4057a624c7a23a36f0b4dc6a545b40767d602450 is an ancestor of v1.8.0, while both are ancestors of v1.9.0, whose source contains parent_path + os.sep.",
+    "direct_fix_or_unpatched_state": "PASS: d1a6a818c00ee7ab4b058f585df8deb2426362f2 directly changes the vulnerable comparison to path.startswith(parent_path + os.sep) and changes path normalization to realpath; 4057a624c7a23a36f0b4dc6a545b40767d602450 is its two-parent merge cited by the advisory.",
+    "bic_only_ai_attribution": "PASS: the BIC commit object, and only that object for attribution, names zanllp <qc@zanllp.cn> as both author and committer, has the plain message 'Add access control to ensure data security', no trailers or AI marker, and maps on GitHub to a human User account. Later fixer identity is irrelevant."
+  },
+  "findings": [
+    "The primary causal verdict NOT_AI is supported: CVE-2026-77814 is PUBLISHED, the prefix-collision mechanism is present in affected history, 5f98c26b86f7e6bc049131441dd3a6aa5c2f0670 is the atomic BIC, and BIC-only metadata has no AI marker.",
+    "Primary evidence item 7 incorrectly says GitHub showed no associated PR. GitHub's exact commit-to-pulls endpoint associates the BIC with PR #234; that PR contains preserved commits 5f98c26b86f7e6bc049131441dd3a6aa5c2f0670 and 0a8b050bc1ae4ec30f8c8e07fe2ac593951f5e70 and merges them as a008ab7104545ca52df9ab00a32ff1fd073140e0.",
+    "The PR correction does not change the BIC or verdict: the vulnerable lines were already written in the first preserved PR member, while the second member fixes an unrelated missing argument and whitespace."
+  ],
+  "corrected_fields": {
+    "evidence[6]": "Replace 'GitHub commit search hash:5f98c26b repo:zanllp/infinite-image-browsing returns the same object with author login zanllp; no associated PR' with 'GitHub maps 5f98c26b86f7e6bc049131441dd3a6aa5c2f0670 to human user zanllp and associates it with PR #234, where it is the first preserved member commit; PR #234 is merged by a008ab7104545ca52df9ab00a32ff1fd073140e0 after member 0a8b050bc1ae4ec30f8c8e07fe2ac593951f5e70.'"
+  },
+  "remaining_gap": null
+}

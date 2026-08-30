@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-0412a4a35285dd21de0f0227",
+  "case_id": "GHSA-chfm-cm6h-q5x7",
+  "repo": "concretecms/concretecms",
+  "advisory_ids": ["CVE-2026-7881", "GHSA-chfm-cm6h-q5x7"],
+  "bug_semantics": "Express Entry Detail block action_view_express_entity($exEntryID) loaded a Concrete\\Core\\Entity\\Express\\Entry by sequential primary key (entityManager->find(Entry::class, $exEntryID)) with no per-entry authorization. The only gate was that the loaded entry's entity UUID equaled the block's configured exEntityID. Express Entry List links put that sequential getId() into /view_express_entity/{id}, so a visitor to a page hosting the block could enumerate integers and read every Express form submission for that entity (CWE-639 IDOR).",
+  "flaw_origin": "The IDOR was first written on 2016-05-11 in e6a4e05418afa0be7206790a9d38e820202eb1b3 (Andrew Embler), which added action_view_express_entity as a Doctrine find-by-PK of Express\\Entry plus a same-entity equality check, with no Permission\\Checker and no non-sequential public identifier. The parent tree still had a document-library-copied controller and no such action. That lookup remained the public-history mechanism through 9.5.0 (syntax-only rewrites; 2025-08-25 e7dbf850 restored Entry::class after a 2025-06-29 export/import typo used Entity::class). 9.5.1 switched lookup to ObjectManager::getEntryByPublicIdentifier and added canViewExpressEntries().",
+  "introducer_sha": "e6a4e05418afa0be7206790a9d38e820202eb1b3",
+  "introducer_parent": "2148c9289c2791875be55669315f94b10dc33378",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Andrew Embler <andrew@concrete5.org>, committer Andrew Embler <andrew@concrete5.org>; message 'more work' with only Former-commit-id trailers; no Co-Authored-By, Generated-with, or bot author.",
+  "verdict": "NOT_AI",
+  "fix_sha": "f22b9dff59454391a50a255a39995bf635deea9e",
+  "direct_fix_sha": "766c732c56180d9a1890733c0d97c39fc5d32b7f",
+  "evidence": [
+    "CVE.org CVE-2026-7881 state=PUBLISHED (not rejected/withdrawn); CNA title/description match GHSA-chfm-cm6h-q5x7: IDOR in Express Entry Detail via exEntryID, unauthorized access to Express form submissions; GHSA withdrawn_at=null; first patched 9.5.1. CNA git range lists lessThan 9.5.0, but GHSA/OSV and the 9.5.0 tree show 9.5.0 still vulnerable — advisory is real, not FALSE_POSITIVE.",
+    "Vendor 9.5.1 notes (H1 3620490 / CVE-2026-7881): sequential IDs replaced with Express Entry public identifiers; CVSS 6.3. Reporter Tristan Madani.",
+    "Vulnerable 9.5.0 code concrete/blocks/express_entry_detail/controller.php:158-176: $entry = $exEntryID ? $this->entityManager->find(Entry::class, $exEntryID) : null; then only if ($entry->getEntity()->getID() == $entity->getID()) { set entry; view(); }. No Checker.",
+    "git log -L :action_view_express_entity:concrete/blocks/express_entry_detail/controller.php: first appearance is e6a4e05418afa0be7206790a9d38e820202eb1b3 (2016-05-11 Andrew Embler 'more work') at web/concrete/blocks/express_entry_detail/controller.php:79-89: find('Concrete\\Core\\Entity\\Express\\Entry', $exEntryID) + same-entity check.",
+    "Parent 2148c9289c2791875be55669315f94b10dc33378 ('express form'): git grep action_view_express_entity / exEntryID on web/concrete/blocks/express_entry_detail/controller.php is empty; parent file still has document-library helpers (getTableExpandableProperties) and no Entry lookup.",
+    "e6a4e054 also added list-block link URL::to($detailPage, 'view_express_entity', $entity->getId()) in web/concrete/blocks/express_entry_list/view.php, putting a sequential integer on the detail action path.",
+    "Former-commit-id 07533168da7a5d214bdea6f371aa7954aa53b3fd is the same author/date/message/diff as e6a4e054 but unreachable from HEAD/tags (history rewrite); c54c7c388e68168dad5bea694431a01667cb0b30 is missing. No finer public member; squash_decomposed=false.",
+    "2025-06-29 a498a28cebb06da891dcd5d50eabeb04b90d1aaa accidentally changed find(Entry) to find(Entity::class, $exEntryID); 2025-08-25 e7dbf850949cedb8b0dfe38ffd43d946ded55682 (Michele Locati, GPG, no AI trailers) restored find(Entry::class, $exEntryID). Restore of the 2016 mechanism, not the first write.",
+    "Tag membership: e6a4e054 is ancestor of 8.0, 8.5.0, 9.0.0, 9.5.0 (c747e425266ac50c12b5f2f74fa895ecec5cd777). Fix f22b9dff is not in 9.5.0 and is in 9.5.1 (92bae566b9ec573cfb3017fcbb6db454a6586997) and 9.5.2.",
+    "Landing fix f22b9dff59454391a50a255a39995bf635deea9e 'Sec fixes 9.5.1 (#12920)' (Andrew Embler / GitHub squash-merge, parent 534841df7efff24065f17c9debb6d91c24430b61) changes find(Entry::class) to ObjectManager::getEntryByPublicIdentifier, adds Checker::canViewExpressEntries(), and switches list view links to getPublicIdentifier().",
+    "Direct fix 766c732c56180d9a1890733c0d97c39fc5d32b7f 'Fix H1 3620490' (Andrew Embler, 2026-05-06) is the PR #12920 member with the same Express detail/list patch; not an ancestor of tag 9.5.1 because #12920 was squash-merged as f22b9dff.",
+    "BIC commit-object AI check: git cat-file -p e6a4e054 shows author/committer Andrew Embler <andrew@concrete5.org>, subject 'more work', Former-commit-id trailers only; grep of author/committer/subject/body for Co-Authored-By/Generated-with/Copilot/Cursor/Claude/ChatGPT/bot is empty."
+  ],
+  "reasoning": "CVE-2026-7881 / GHSA-chfm-cm6h-q5x7 is a published vendor-confirmed CWE-639 IDOR, not withdrawn. The attack is: on a page with an Express Entry Detail block in list/URL mode, replace the sequential exEntryID path argument; action_view_express_entity Doctrine-finds that Entry by PK and renders it if it belongs to the block's entity, with no view-entry permission and with enumerable integer keys. git log -L shows that function was first written in e6a4e054 (2016-05-11). Immediate parent 2148c928 exists and was inspected: the controller file is present but action_view_express_entity and any Entry PK lookup are absent, so this is a first-write not a move. Former-commit-id 07533168 is a rewritten twin of the same snapshot, not a smaller public member. Later 2018–2025 edits only added SEO/canonical/PHP8/export-import; the 2025 Entity::class typo briefly broke the action and e7dbf850 restored the original sequential Entry lookup — a restore, not the BIC. 9.5.0 still has find(Entry::class, $exEntryID); 9.5.1 contains squash f22b9dff from PR #12920, whose member 766c732 ('Fix H1 3620490') is the direct patch (public identifier + canViewExpressEntries). AI is judged only on the BIC object: human author/committer Andrew Embler in 2016, no AI trailers or bot identity. Therefore NOT_AI.",
+  "remaining_gap": null
+}

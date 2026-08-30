@@ -1,0 +1,38 @@
+{
+  "worker": "w055",
+  "review_agent_id": "r389_w055",
+  "class_id": "alias-0157e5debe5f4235ad716950",
+  "case_id": "GHSA-c23v-2w7h-h6m9",
+  "repo": "git.kernel.org/pub/scm/linux/kernel/git/stable/linux",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: for QP/CQ registrations, user-controlled req page counts can select the no-PBLE path independently of the actual ib_umem DMA-block count; the copier then advances through every DMA block into the fixed four-entry pgaddrmem array and can overwrite adjacent heap fields.",
+    "atomic_bic": "CORRECTION_REQUIRED: b48c24c2d710cf34810c555dcef883a3d35a9c08 is a later irdma replacement-port commit, not the first atomic introduction of this mechanism. b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 first made the existing i40iw path vulnerable by deleting the explicit !use_pbles && page_cnt > MAX_SAVE_PAGE_ADDRS rejection while leaving the unbounded copier and req-derived use_pbles decisions in place.",
+    "immediate_parent_absence": "PASS for corrected BIC: parent d4165e3abdf16707602c10f0d678d4d564a87e35 contains the explicit four-entry page-count guard, so the out-of-bounds path is absent there; b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 has exactly one parent.",
+    "squash_member_decomposition": "PASS: corrected BIC b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 is a focused single-parent commit, not a merge or squash aggregate. Copy detection identifies b48c24c2d710's verbs.c as a 20% copy of i40iw_verbs.c, and the surrounding public series identifies irdma as the replacement driver; therefore b48c24c2d710 is a later member/port retaining the flaw, not the BIC.",
+    "affected_fixed_release_membership": "CORRECTION_REQUIRED: b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 is not an ancestor of v4.9 but is an ancestor of v4.10-rc1 and v4.10, so the mechanism predates the advisory's v5.14 lower bound. The listed fixes are absent from the immediately preceding stable tags and present in v5.15.212, v6.1.178, v6.6.145, v6.12.97, v6.18.40, v7.1.5, and v7.2 respectively.",
+    "direct_fix_or_unpatched": "PASS: history search shows the protective i40iw guard is removed only by b6a529da69ce and is not restored before i40iw is replaced; b48c24c2d710 retains the same no-PBLE overflow with an ineffective total_cnt==0 equality check. Mainline 5ebb3ed757be3e04cf803026004aa0beaeb13e9b directly bounds both PBLE and four-entry inline-array writes, with the six listed stable backports applying the same fix.",
+    "bic_only_ai_attribution": "PASS: corrected BIC b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 is authored by Henry Orosco and committed by Doug Ledford, contains only human Signed-off-by trailers, and has no Co-Authored-By, Generated-by/with, Assisted-by, bot, or model marker. BIC-only verdict remains NOT_AI."
+  },
+  "findings": [
+    "Primary incorrectly treats the vulnerable i40iw predecessor as irrelevant because it lacks the later total_cnt equality check. The predecessor has the same security effect and source-to-sink path: after b6a529da69ce removes the actual page-count guard, an oversized umem reaches the fixed pgaddrmem[4] no-PBLE destination and the copier advances past it.",
+    "The authoritative CVE record is PUBLISHED and its listed git range starts at b48c24c2d710/v5.14, but clone history proves the same mechanism existed in the same Linux driver lineage from b6a529da69ce/v4.10; the affected-release evidence in primary is therefore incomplete.",
+    "The direct-fix and BIC-only AI conclusions survive the correction: 5ebb3ed757be is the direct mainline closure for the surviving irdma path, and the corrected 2016 BIC has no AI marker."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The flaw was first introduced by b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3 in i40iw. That commit removed the explicit rejection of no-PBLE registrations whose actual page_cnt exceeded MAX_SAVE_PAGE_ADDRS (4), while i40iw_copy_user_pgaddrs still wrote every mapped page and QP/CQ use_pbles remained derived from separate request page-count fields. The immediate parent d4165e3abdf16707602c10f0d678d4d564a87e35 contains the guard. The later irdma replacement series copied this mechanism into b48c24c2d710 and added an equality check that is ineffective when total_cnt is zero.",
+    "introducer_sha": "b6a529da69ce880ee4d0f3730ef46ead7f7cd0d3",
+    "introducer_parent": "d4165e3abdf16707602c10f0d678d4d564a87e35",
+    "ai_marker": "absent; corrected BIC author Henry Orosco <henry.orosco@intel.com>, committer Doug Ledford <dledford@redhat.com>; commit object contains Signed-off-by trailers for Shiraz Saleem, Henry Orosco, and Doug Ledford, with no Co-Authored-By, Generated-by/with, Assisted-by, bot, or model identity",
+    "evidence": [
+      "git show b6a529da69ce^:drivers/infiniband/hw/i40iw/i40iw_verbs.c shows if (!use_pbles && (iwmr->page_cnt > MAX_SAVE_PAGE_ADDRS)) return -ENOMEM immediately before i40iw_setup_pbles chooses pgaddrmem; the b6a529da69ce diff deletes exactly that guard.",
+      "At b6a529da69ce, i40iw_copy_user_pgaddrs iterates all mapped pages and advances pbl without a destination-length bound; i40iw_reg_user_mr derives QP/CQ use_pbles from req.sq_pages/req.rq_pages/req.cq_pages rather than the actual mapped page count, while i40iw_mr.pgaddrmem has four entries.",
+      "git log -S for the deleted guard shows its addition in d37498417947 and removal in b6a529da69ce, with no restoration before the replacement. Copy detection maps i40iw/i40iw_verbs.c to irdma/verbs.c at 20%, and fa0cf568fd765 identifies irdma as the replacement driver.",
+      "merge-base ancestry: corrected BIC is absent from v4.9 and present in v4.10-rc1/v4.10. Stable fix ancestry is absent/present across v5.15.211/212, v6.1.177/178, v6.6.144/145, v6.12.96/97, v6.18.39/40, and v7.1.4/5; mainline fix is absent from v7.1 and present in v7.2.",
+      "CVE.org API reports CVE-2026-74390 state PUBLISHED, and GitHub advisory GHSA-c23v-2w7h-h6m9 has withdrawn_at=null. Their published affected range begins at b48c24c2d710/v5.14, which does not account for the earlier i40iw lineage established by repository history."
+    ],
+    "reasoning": "The security invariant is the capacity of the inline destination, not the spelling of the later failed equality check. The parent of b6a529da69ce rejects every no-PBLE registration whose actual mapped page count exceeds the four-entry array. b6a529da69ce removes that invariant while preserving an unbounded source walk and request-derived QP/CQ no-PBLE selection, so it is the first atomic commit whose parent is safe and whose tree admits this out-of-bounds write. b48c24c2d710 later ports the vulnerable lineage into replacement driver irdma and cannot be the BIC under the protocol's move/refactor exclusion. The corrected BIC predates v4.10 and has no AI marker, so the final authorship verdict remains NOT_AI, but the introducer and affected-release evidence require correction."
+  },
+  "remaining_gap": null
+}

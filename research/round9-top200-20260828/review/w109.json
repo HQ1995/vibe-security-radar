@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-d8d5f984280850d3c30c2832",
+  "case_id": "alias-d8d5f984280850d3c30c2832",
+  "repo": "preactjs/preact",
+  "advisory_ids": [
+    "CVE-2026-22028",
+    "GHSA-36hm-qxxp-pg3m"
+  ],
+  "bug_semantics": "Preact's client renderer accepts only genuine VNodes, whose createVNode path gives them an own constructor value of exactly undefined. The regression changed the JSON-injection gate in src/diff/index.js from newVNode.constructor !== UNDEFINED to the coercive newVNode.constructor != UNDEFINED (and similarly softened related VNode checks). An attacker-controlled JSON object can therefore supply constructor:null: because null == undefined, the loose inequality is false and the gate does not reject the object. If unvalidated JSON-derived data is passed as a child/render value, an object such as {type:'span',props:{children:'Malicious'},__v:1,constructor:null} is treated as a VNode and can inject HTML, potentially script-capable markup absent CSP. The server-side preact-render-to-string path was not affected.",
+  "flaw_origin": "A human-authored bundle-size refactor deliberately golfed strict equality checks to loose equality. The first PR member commit changed the security-sensitive constructor guard despite its adjacent 'prevent JSON-injection' comment; the second member reverted three other strict-equality changes but left this guard loose. GitHub squash-landed the two-member PR as a69aada2799626d3afbfc1eb6550611ca2444a4d.",
+  "introducer_sha": "017ac5e370c9198b12b61818279eb84f221d7747",
+  "introducer_parent": "ccd1e71e59018c09fe9c874376170b7aab52014f",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "017ac5e370c9198b12b61818279eb84f221d7747",
+    "7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c"
+  ],
+  "ai_marker": "No AI marker on the BIC commit object. `git cat-file commit 017ac5e370c9198b12b61818279eb84f221d7747` shows author and committer Ryan Christian <rchristian@ryanchristian.dev> and only the subject `refactor: Golf down unnecessary strict equality checks`; it has no Co-Authored-By, Generated-with, AI-tool trailer, or bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "37c3e030ab19337f10d32cd49d1c3d14e102d890",
+  "direct_fix_sha": "37c3e030ab19337f10d32cd49d1c3d14e102d890",
+  "evidence": [
+    "First-party GHSA-36hm-qxxp-pg3m describes HTML injection via JSON type confusion, the client-only regression, affected ranges >=10.26.5 <10.26.10, >=10.27.0 <10.27.3, and >=10.28.0 <10.28.2, and says the patches restore strict equality.",
+    "PR #4723's first-party patch at https://github.com/preactjs/preact/pull/4723.patch identifies member 1 as 017ac5e370c9198b12b61818279eb84f221d7747 and member 2 as 7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c. `git cat-file commit 7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c` gives parent 017ac5e370c9198b12b61818279eb84f221d7747. `git rev-parse 7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c^{tree} a69aada2799626d3afbfc1eb6550611ca2444a4d^{tree}` returns the identical tree 5d2fb404e53a5a6dffa3a7ac4f568d6ed6434345 for both, proving the landed a69aada squash is reconstructable and is not the smallest BIC.",
+    "`git show --format=raw 017ac5e370c9198b12b61818279eb84f221d7747 -- src/diff/index.js` shows parent ccd1e71e59018c09fe9c874376170b7aab52014f and the causal one-line change from `if (newVNode.constructor !== UNDEFINED) return NULL;` to `if (newVNode.constructor != UNDEFINED) return NULL;`. `git log 7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c -S'newVNode.constructor != UNDEFINED' -- src/diff/index.js` returns only 017ac5e370c9198b12b61818279eb84f221d7747; `git log 7ed5aeb0246305e3b42e314c1a59bcaa405e6a8c -L 64,68:src/diff/index.js` also attributes that transition to 017ac5e370c9198b12b61818279eb84f221d7747.",
+    "Direct parent verification: `git grep -n -F 'newVNode.constructor !== UNDEFINED' ccd1e71e59018c09fe9c874376170b7aab52014f -- src/diff/index.js` finds the strict guard at line 67, while `git grep -n -F 'newVNode.constructor != UNDEFINED' 017ac5e370c9198b12b61818279eb84f221d7747 -- src/diff/index.js` finds the vulnerable loose guard at line 67. The parent is also exactly tag 10.26.4 (`git for-each-ref 'refs/tags/10.26.*'`), and `git log --reverse --ancestry-path ccd1e71e59018c09fe9c874376170b7aab52014f..10.26.5` shows squash landing a69aada2799626d3afbfc1eb6550611ca2444a4d before release commit/tag 10.26.5.",
+    "`git show 37c3e030ab19337f10d32cd49d1c3d14e102d890` shows the direct 10.x fix restoring strict `===`/`!==` constructor checks in src/create-element.js, src/diff/children.js, and src/diff/index.js. `git log --reverse --ancestry-path 10.28.1..10.28.2` gives 37c3e030ab19337f10d32cd49d1c3d14e102d890 immediately before the 10.28.2 release commit. Equivalent direct backports are 79378b40533feafa36c0d84d48738b8198573894 before tag 10.27.3 and c373f23c482308761a9827a6433aa94bbc56b1f2 before tag 10.26.10. The parallel main/11 fix c1bcde3a1d724746018defa7a01d586044d5c99f adds the regression payload with constructor:null.",
+    "Tag-state verification with `git grep -n -F 'newVNode.constructor' <tag> -- src/diff/index.js` shows strict `!==` in 10.26.4, loose `!=` in 10.26.5, 10.26.9, 10.27.2, and 10.28.1, then restored strict `!==` in 10.26.10, 10.27.3, and 10.28.2, matching the advisory's affected and fixed boundaries.",
+    "BIC-only AI check: `git cat-file commit 017ac5e370c9198b12b61818279eb84f221d7747` yields tree b6f844afc80461b070131dd54c8cdeb934fd2292, parent ccd1e71e59018c09fe9c874376170b7aab52014f, human author/committer Ryan Christian <rchristian@ryanchristian.dev>, and a one-line subject with no trailers. The GitHub committer on later squash a69aada2799626d3afbfc1eb6550611ca2444a4d is not used for the AI judgment."
+  ],
+  "reasoning": "The vulnerability is caused by JavaScript's null/undefined loose equality at a gate whose security invariant requires exact undefined. The smallest available commit that first writes that behavior is original PR member 017ac5e370c9198b12b61818279eb84f221d7747, not its byte-for-byte-equivalent landed squash. Its immediate parent has the strict check, and the vulnerable code first ships in 10.26.5. Direct 10.x fix 37c3e030ab19337f10d32cd49d1c3d14e102d890 restores strict checks and leads to 10.28.2, with equivalent backports leading to 10.27.3 and 10.26.10. The BIC commit object contains only a human identity and no AI provenance signal, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

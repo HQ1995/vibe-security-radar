@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-3fe1aae34e939b979aaa5c7c",
+  "case_id": "GHSA-56p5-8mhr-2fph",
+  "repo": "harttle/liquidjs",
+  "advisory_ids": [
+    "CVE-2026-35525",
+    "GHSA-56p5-8mhr-2fph"
+  ],
+  "bug_semantics": "LiquidJS treated a lexically resolved pathname under a configured template root as proof that the file ultimately opened was under that root. Node's file APIs then followed symlinks, so an attacker-controlled symlink located inside a trusted partials/layouts/root directory could target any readable file outside the directory; include, render, or layout would parse and render the external target.",
+  "flaw_origin": "Commit 8fbbec089fa4e3db4bec47462b1c08dd65c36648 first introduced filesystem-backed template loading and the include tag. Its index.js handleCache() resolved the requested name with path.resolve(this.options.root, filepath) and immediately passed that non-canonical pathname to fs.readFileSync(), while tags/include.js routed an evaluated include name into handleCache(). That is the first complete path-check/path-construction-to-file-open mechanism that follows an in-root symlink without validating the target; later Loader.withinDir(), FS.contains(), file moves, and separate partials/layouts roots preserved or re-expressed the same flaw rather than introducing it.",
+  "introducer_sha": "8fbbec089fa4e3db4bec47462b1c08dd65c36648",
+  "introducer_parent": "21bde3cb6d1096d7c03f5a047683cb3a83f8b4d2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: git cat-file commit 8fbbec089fa4e3db4bec47462b1c08dd65c36648 shows author and committer harttle <yangjvn@126.com>, timestamp 2016-06-24, subject 'tag:include', and no message body, Co-Authored-By, Generated-with, Made-with, bot identity, or other trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "529dd67eeb6b125637623d6a723601f0938d3613",
+  "direct_fix_sha": "529dd67eeb6b125637623d6a723601f0938d3613",
+  "evidence": [
+    "First-party advisory https://github.com/harttle/liquidjs/security/advisories/GHSA-56p5-8mhr-2fph describes the pathname-versus-realpath mismatch and demonstrates partials/link.liquid pointing outside the trusted root; the assigned advisory bundle records affected liquidjs versions <=10.25.2 and first patched version 10.25.3.",
+    "At the vulnerable tip abc058be0f33d6372cd2216f4945183167abeb25, git blame src/fs/fs-impl.ts lines 44-48 attributes contains(root,file)—nodeResolve(root), separator normalization, then file.startsWith(root)—to aebeae9e1bbb8472af7788dfd09a08cb6de58e1c. git log -L traces that function to aebeae9e; the predecessor Loader.withinDir() to 9cfa43b8aee6a980f39d99f1cdb2be730ca21731; and the inline referenced.startsWith(dir) checks through a3455ebd0b207141c34630c0af44d917db2ca1dd and the Loader introduced by b9ae479b653a34fadb98c324c4683dd1fdd31af1. These are later representations of lexical containment, not the first unsafe file open.",
+    "git show 8fbbec089fa4e3db4bec47462b1c08dd65c36648 shows the atomic first mechanism: index.js added renderFile()/handleCache(), path.resolve(this.options.root, filepath), and fs.readFileSync(filepath), and new tags/include.js evaluated the include name and called liquid.handleCache(filepath). The commit's package.json version was 1.1.4; git tag --contains reports v1.2.0 as the first repository tag containing it, followed by every tagged release through the affected v10.25.2 boundary.",
+    "Immediate-parent verification was direct: git ls-tree -r 21bde3cb6d1096d7c03f5a047683cb3a83f8b4d2 -- tags/include.js returned no path; git diff --name-status parent..8fbbec089 reported 'A tags/include.js'; and git grep -E 'handleCache|renderFile|readFileSync' 21bde3cb6d1096d7c03f5a047683cb3a83f8b4d2 -- index.js returned no matches. Thus the include/file-loading path and vulnerable open are absent from the immediate parent.",
+    "PR #867 (https://github.com/harttle/liquidjs/pull/867) landed as 529dd67eeb6b125637623d6a723601f0938d3613. Its src/fs/fs-impl.ts change makes async and sync contains() resolve both root and candidate with realpath/realpathSync before prefix comparison, and its tests create an in-root symlink to an outside file and require contains/containsSync to return false.",
+    "The PR squash was cross-checked against its source branch: abc058be0f33d6372cd2216f4945183167abeb25..origin/fix-fs-contains contains cca3da6147fbc59a5a78875015295327a9ee59e9, b181b08543ed69b081c72fc3ba59f6b5159d9fe9, and 3538864119abdc7e2b82705950c9f3235c5c2235; the landed 529dd67 commit contains the complete realpath remediation. This fix-side squash does not change the atomic, non-squash BIC fields.",
+    "Version ancestry is exact: v10.25.2 resolves to 521177e3f63c160c2e093cc4f2b151f51f333f45 and does not contain 529dd67eeb6b125637623d6a723601f0938d3613; v10.25.3 resolves to release commit 8f69a0839903d85c7b5c9097e39ecce6ac3eab05 whose parent is 529dd67eeb6b125637623d6a723601f0938d3613. The v10.25.3 first-party release page lists 'use realpath for fs.contains (#867) (529dd67)'."
+  ],
+  "reasoning": "The vulnerability is caused by checking or constructing only a lexical path and then allowing the filesystem to dereference it. Starting from the advisory and fix, blame and git log -L lead to the 2021 FS.contains() helper, but stopping there would misclassify a refactor as the BIC. Following its predecessor Loader.withinDir() and inline startsWith checks leads to the 2021 Loader, and following the actual resolve-to-read data flow farther back reaches 8fbbec089: the first commit that added include/renderFile filesystem loading, rooted path.resolve(), and an unchecked fs.readFileSync() sink. Its immediate parent contains none of that capability, so 8fbbec089 is the smallest real first-writer. The flaw survived the later partials/layouts split and lexical containment helpers until 529dd67 canonicalized both sides with realpath; the vulnerable and patched tags straddle that fix exactly. Only the 8fbbec089 commit object controls attribution: it is a 2016 human-authored commit with no AI marker. AI markers on the 2026 fix squash are fix-only and therefore irrelevant to BIC attribution. The closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

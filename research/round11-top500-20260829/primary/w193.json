@@ -1,0 +1,30 @@
+{
+  "class_id": "alias-d7380c8820f083472a4e4c3a",
+  "case_id": "GHSA-9h5v-pfqq-x599",
+  "repo": "faisalman/ua-parser-js",
+  "advisory_ids": ["CVE-2026-48125", "GHSA-9h5v-pfqq-x599"],
+  "bug_semantics": "UAParser.js 2.0.1–2.0.9 ReDoS in withClientHints(): HTTP Client Hints copy Sec-CH-UA-Model via stripQuotes() with no UA_MAX_LENGTH (unlike User-Agent, capped at 500). parseCH() then builds the synthetic string 'droid 9; ' + model + ')' and runs the full device regex map, including / ([\\w ]+) miui\\/v?\\d/i. The nested [\\w ]+ plus a following space causes polynomial backtracking on long space-separated tokens (PoC: 'A '.repeat(25000) with Android/mobile hints). Availability-only; server-side UAParser(headers).withClientHints() is the attack path.",
+  "flaw_origin": "The unbounded CH_MODEL copy and the MIUI regex already existed, but parseCH DEVICE only assigned uaCH[MODEL] and did not regex-parse it, so Client Hints could not reach the ReDoS engine. aed89f0b414fe75d843f983636d389bc1f94147e (Fix #660) first wrote rgxMapper.call(reParse, 'droid 9; ' + uaCH[MODEL] + ')', rgxMap) without truncating the model, completing the CVE mechanism. Same-day earlier fc851b40c5db6fe582f2bb017aec694b00b1f9f6 first wrote the MIUI pattern; 2.0.0 has neither and is outside the affected range.",
+  "introducer_sha": "aed89f0b414fe75d843f983636d389bc1f94147e",
+  "introducer_parent": "48c221b50b92eecb43069fe718fbf476dbc28164",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: author Faisal Salman <f@faisalman.com>, committer Faisal Salman <f@faisalman.com>; commit body empty; no Co-Authored-By, Generated-with, or bot trailers on the BIC object",
+  "verdict": "NOT_AI",
+  "fix_sha": "90354d3458495628b1d3ba68a9d76673e6d14fc5",
+  "direct_fix_sha": "90354d3458495628b1d3ba68a9d76673e6d14fc5",
+  "evidence": [
+    "CVE.org/cveawg CVE-2026-48125 state=PUBLISHED (not rejected/withdrawn); CNA GitHub_M; GHSA-9h5v-pfqq-x599 withdrawn_at=null. Range >=2.0.1 <2.0.10, patched 2.0.10. Confirm refs: advisory, commit 90354d3458495628b1d3ba68a9d76673e6d14fc5, release 2.0.10.",
+    "At tag 2.0.9: src/main/ua-parser.js:615 / ([\\w ]+) miui\\/v?\\d/i ; :1190 [MODEL, stripQuotes(uach[CH_MODEL])] unbounded; :1339-1343 parseCH DEVICE concatenates uaCH[MODEL] into 'droid 9; '+model+')' then rgxMapper. UA string path still uses UA_MAX_LENGTH=500 (setUA :1478).",
+    "git log -S 'droid 9;' -- src/main/ua-parser.js src/ua-parser.js is a single hit: aed89f0b414fe75d843f983636d389bc1f94147e 2024-11-30 'Fix #660 - Infer device vendor & type from sec-ch-ua-model' (author/committer Faisal Salman). Single parent 48c221b50b92eecb43069fe718fbf476dbc28164; not a merge/squash.",
+    "Parent-tree check: git grep 'droid 9' 48c221b50b92eecb43069fe718fbf476dbc28164 -- src/main/ua-parser.js empty. Parent parseCH DEVICE only this.set(MODEL, uaCH[MODEL]) plus Xbox special-case; no reParse. Parent already has the MIUI regex at :557 and unbounded stripQuotes(uach[CH_HEADER_MODEL]) at :1075.",
+    "git log -L 1242,1250:src/main/ua-parser.js 2.0.1 first-writes the reParse block at aed89f0b. Later 1d8eab09f1dab19d72e9904e848c280869c3f24b only moves UAItem methods onto the shared prototype (not a BIC). 2.0.9 blame of :1343 landing on 1d8eab09 is that move.",
+    "Ingredient, not BIC: git log -L 578,578:src/main/ua-parser.js 2.0.1 and blame of 2.0.9:615 first-write fc851b40c5db6fe582f2bb017aec694b00b1f9f6 (2024-11-30 08:35) added / ([\\w ]+) miui\\/v?\\d/i. Parent of fc851b40 has only /miuibrowser\\/([\\w\\.]+)/i. That commit does not regex-parse CH model.",
+    "Tag membership: aed89f0b and fc851b40 are NOT ancestors of 2.0.0 (38baf844fc3e96f72d9b91e0772c8c10655fd5f7) and ARE ancestors of 2.0.1 (51dce55e650eab110f403c2b5e6114b460e52fcd) and 2.0.9 (425b616123138de0a2a2b27893c54f8c544d2e75). Matches affected >=2.0.1.",
+    "Direct fix 90354d3458495628b1d3ba68a9d76673e6d14fc5 (2026-05-21): normalizeHeaderValue() trims CH headers to UA_MAX_LENGTH; MODEL/PLATFORM/etc. and itemListToArray use it; MIUI regex tightened to /; ([\\w ]+) miui\\/v?\\d/i; adds test/unit/redos.js with the advisory PoC asserting <100ms. Not in 2.0.9; ancestor of 2.0.10 (4121c59060c3f9b814f07978c361e44016028c74). CHANGELOG 2.0.10 names GHSA-9h5v-pfqq-x599.",
+    "BIC commit-object AI check: git cat-file -p aed89f0b shows author/committer Faisal Salman <f@faisalman.com>, one-line subject, empty body, empty %(trailers). No Co-Authored-By, Generated-with, Copilot, Cursor, or bot identity. (fc851b40 likewise human-only; not used for the verdict.)"
+  ],
+  "reasoning": "CVE-2026-48125 / GHSA-9h5v-pfqq-x599 is a published, non-withdrawn ReDoS: crafted Sec-CH-UA-Model is copied without UA_MAX_LENGTH and fed to device regexes in withClientHints(). 2.0.0 already had unbounded stripQuotes of CH_HEADER_MODEL and withClientHints(), but parseCH DEVICE did not run rgxMapper on the model, so 2.0.0 is correctly unaffected. The MIUI backtracking regex landed the same day in fc851b40, still only on length-capped User-Agent strings. The smallest commit that first wrote the CVE mechanism is aed89f0b, which introduced reParse of 'droid 9; ' + uaCH[MODEL] + ')' against the device map while the model stayed unbounded. Immediate parent 48c221b5 lacks 'droid 9' / reParse and was verified in-tree; aed89f0b is a single-parent first-write, not a move, revert, or squash. Subsequent 1d8eab09 only relocated those lines. The fix 90354d3 both caps CH values at 500 and tightens the MIUI regex, and is the first patched release 2.0.10. AI is judged only on the BIC object: human maintainer author and committer, no AI/bot trailers, so NOT_AI.",
+  "remaining_gap": null
+}

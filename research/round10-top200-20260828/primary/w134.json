@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-a7a9d1ae9e06ebfc32cc7a98",
+  "case_id": "GHSA-m273-6v24-x4m4",
+  "repo": "mmaitre314/picklescan",
+  "advisory_ids": [
+    "CVE-2025-71321",
+    "GHSA-m273-6v24-x4m4"
+  ],
+  "bug_semantics": "Picklescan extracts GLOBAL/STACK_GLOBAL references from a pickle and decides whether the file is dangerous through an enumerated module/callable blocklist. In affected releases, `distutils.file_util.write_file` was absent from `_unsafe_globals`; therefore a pickle whose reducer returned that callable was not counted as dangerous (`issues_count` remained zero), even though unpickling it can overwrite an attacker-chosen file and thereby cause denial of service or enable code execution.",
+  "flaw_origin": "The initial scanner implementation introduced the vulnerable denylist design and matching path in `src/picklescan/scanner.py`: only globals explicitly present in `_suspicious_globals` were reported, while every omitted callable—including `distutils.file_util.write_file`—passed without an issue. Later renaming this table to `_unsafe_globals` and surfacing unmatched entries as merely Suspicious did not remove the dangerous-count bypass. Thus the smallest origin is the commit that first added both the incomplete blocklist and its match-only reporting logic, not a later refactor or release commit.",
+  "introducer_sha": "c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e",
+  "introducer_parent": "6a76b8c3ac67dc04181e600614ecf2a423cca326",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the BIC commit object identifies author `Matthieu Maitre <mmaitre314@users.noreply.github.com>` and committer `Matthieu Maitre` / `@mmaitre314`, with subject `Implement Pickle scanner`, an empty body, no `Co-Authored-By` or `Generated-with` trailer, and no bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "direct_fix_sha": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+  "evidence": [
+    "First-party advisory: https://github.com/mmaitre314/picklescan/security/advisories/GHSA-m273-6v24-x4m4 describes the `distutils.file_util.write_file` reducer, arbitrary overwrite impact, and the required blocklist addition; the GitHub advisory API record in the assigned bundle specifies affected `picklescan < 0.0.33` and first patched `0.0.33`.",
+    "BIC: https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e (`Implement Pickle scanner`) adds `src/picklescan/scanner.py`, including `_suspicious_globals` at added lines 14-26 and `scan_pickle_bytes` at added lines 77-89. The loop uses `_suspicious_globals.get(g[0])` and increments `issues_count` only on an explicit module/callable match; `distutils` is absent.",
+    "Direct-parent verification: https://github.com/mmaitre314/picklescan/tree/6a76b8c3ac67dc04181e600614ecf2a423cca326 contains only `.gitignore`, `conda.yaml`, `LICENSE`, `README.md`, `requirements.txt`, and `setup.cfg`; there is no `src/` tree or scanner, so both the vulnerable blocklist and match-only reporting lines are absent in the immediate parent.",
+    "Affected-version check: local tag `v0.0.2` resolves to `1c86244db5b6dee7a63fabeda03ef2ef7fe6a899`; https://raw.githubusercontent.com/mmaitre314/picklescan/1c86244db5b6dee7a63fabeda03ef2ef7fe6a899/src/picklescan/scanner.py contains the inherited blocklist/reporting implementation and no `distutils` entry. This confirms the flaw in an early released tag after the BIC.",
+    "Upper vulnerable boundary: local tag `v0.0.32` resolves to `d3273f4225da08c0998177a5ac0588724fa4bba0`, which is also the direct parent of the fix. Its `src/picklescan/scanner.py` blocklist includes `open`, `os`, and `shutil` but no `distutils`; `_build_scan_result_from_raw_globals` classifies an unmatched global only as Suspicious and leaves `issues_count` unchanged: https://raw.githubusercontent.com/mmaitre314/picklescan/d3273f4225da08c0998177a5ac0588724fa4bba0/src/picklescan/scanner.py.",
+    "Direct fix: https://github.com/mmaitre314/picklescan/commit/70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab adds `\"distutils.file_util\": \"*\"  # arbitrary file write via distutils.file_util.write_file()` to `_unsafe_globals` and adds the `GHSA-m273-6v24-x4m4.pkl` regression fixture/assertion expecting `Global(\"distutils.file_util\", \"write_file\", SafetyLevel.Dangerous)`. The commit message directly links this advisory; PR: https://github.com/mmaitre314/picklescan/pull/53.",
+    "Fixed-version check: local tag `v0.0.33` resolves exactly to fix commit `70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab`, matching the advisory's first-patched boundary and release https://github.com/mmaitre314/picklescan/releases/tag/v0.0.33.",
+    "BIC-only attribution check used the raw BIC commit page/object and patch at https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e and https://github.com/mmaitre314/picklescan/commit/c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e.patch: human author/committer, empty message body, and no AI/co-author/generated trailer."
+  ],
+  "reasoning": "The attack is not that Picklescan itself invokes `write_file`; it is a detection failure that lets a malicious pickle be accepted downstream and then execute `distutils.file_util.write_file` when deserialized. History tracing places the causal origin at `c1d5abdcc740e0d08a0d12d015d08e1e6f29a67e`, which first created the scanner, its enumerated dangerous-global list, and the logic that reports only listed entries. Its immediate parent has no scanner source at all, directly proving absence. Later list expansion and safe/unsafe refactors preserved the omission, as demonstrated at tags v0.0.2 and v0.0.32, so they are continuations rather than smaller introducers. Commit `70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab` directly closes this exact bypass by blocking the module and adding an advisory-specific regression case, and v0.0.33 points to that commit. Finally, the BIC commit object contains only human identity metadata and no AI marker; under BIC-only attribution this is therefore NOT_AI.",
+  "remaining_gap": null
+}

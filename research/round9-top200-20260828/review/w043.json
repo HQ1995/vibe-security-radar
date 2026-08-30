@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-4631fb0f3bdbc5b714e5f25f",
+  "case_id": "GHSA-HQHC-8HP4-HRWC",
+  "repo": "open-webui/open-webui",
+  "advisory_ids": [
+    "CVE-2025-63391",
+    "GHSA-hqhc-8hp4-hrwc"
+  ],
+  "bug_semantics": "The top-level GET /api/config route accepts requests without an authentication dependency. In v0.6.32 an unauthenticated request still receives instance identity/version, OAuth-provider names, and authentication/security feature flags including auth mode, trusted-header auth, LDAP, API-key, signup, login-form, WebSocket, and update-check settings. An optional bearer token or cookie only selects additional authenticated fields; absence of a token is not rejected. This is the information-disclosure/authentication-bypass behavior described by CVE-2025-63391/GHSA-hqhc-8hp4-hrwc.",
+  "flaw_origin": "Original implementation: single-parent commit 733e963c44d0ffd71bfc1acedb185c42592db66e directly added the unauthenticated top-level /api/config route and returned application configuration. Later commits expanded the public response. Commit cbadf39d7d73638214b8a2bea5946f46290c3749 added optional user detection and gated richer user-only configuration, but deliberately retained a public response and therefore did not close the advisory's stated unauthenticated configuration disclosure.",
+  "introducer_sha": "733e963c44d0ffd71bfc1acedb185c42592db66e",
+  "introducer_parent": "7a730c3f0f162f95ebb901106b042fcebbcf161c",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "Advisory reference https://gist.github.com/Cristliu/889471313b3c698fff74d32b7717807c states affected versions <= v0.6.32 and defines the impact as unauthenticated disclosure from /api/config of auth status, enabled features, and security settings.",
+    "Run `git show --format=fuller --unified=80 733e963c44d0ffd71bfc1acedb185c42592db66e -- backend/main.py`: the single-parent commit adds `@app.get(\"/api/config\")`, `async def get_app_config()` with no Depends authentication, and a configuration response. Run `git log --all --reverse -S'async def get_app_config' -- backend/main.py backend/open_webui/main.py`; the first result is this commit. `git log 76806a998f56d93e09a1bcf38c6ec4be15ca108c -L :get_app_config:backend/main.py` independently traces the function to the same addition.",
+    "Direct parent check: `git show 7a730c3f0f162f95ebb901106b042fcebbcf161c:backend/main.py` has the API mounts followed immediately by the root SPA mount and contains neither /api/config nor get_app_config; the child diff adds both. Thus the vulnerable route/config response is absent from the immediate parent.",
+    "`git blame -L 1655,1708 v0.6.32 -- backend/open_webui/main.py` attributes the public route decorator at line 1657 and the base return at lines 1689/1691 to 733e963c44d0ffd71bfc1acedb185c42592db66e. The same blame shows cbadf39d7d73638214b8a2bea5946f46290c3749 added optional user lookup while leaving OAuth providers and the public features object outside the authenticated-user conditional.",
+    "Version boundary: `git tag --contains 733e963c44d0ffd71bfc1acedb185c42592db66e | sort -V` starts at v0.1.102; that tag resolves to commit 4a47833f838088a0309edad2f85ff247b2ad6e00. `git merge-base --is-ancestor` returns success for the BIC against v0.6.32 (37d1c85c996e1bdcd505e1e6d62b2f17acd8df23), v0.6.33 (8d7d79d54b9160425fc5050b3484bec40dd3b44e), and audited HEAD 01f4282f1ffe0d6212f58d3afbeae21fffd0c4be, described as v0.11.0-2-g01f4282f1.",
+    "No closing fix is present in the audited history: `git diff v0.6.32..v0.6.33 -- backend/open_webui/main.py` makes no authentication change to get_app_config, and `git show v0.6.33:backend/open_webui/main.py` still defines the route without Depends and returns configuration when user is None. Audited HEAD backend/open_webui/main.py likewise defines `async def get_app_config(request: Request)` without an authentication dependency and returns public configuration after optional token parsing. Therefore the advisory's asserted <=0.6.32 closing boundary is not supported by repository history, and no fix/direct-fix SHA can be assigned.",
+    "BIC-only AI check: `git cat-file -p 733e963c44d0ffd71bfc1acedb185c42592db66e` shows author and committer Timothy J. Baek <timothyjrbeck@gmail.com> and message `feat: sd backend integration`, with no Co-authored-by, Generated-with, bot identity, or other AI marker. No evidence from later commits or fixes was used for the AI judgment."
+  ],
+  "reasoning": "The advisory's causal property is an unauthenticated configuration route. The smallest real commit that first created that property is the direct single-parent implementation commit 733e963c44d0ffd71bfc1acedb185c42592db66e; its parent directly lacks the route, while moves and later response expansions are not introducers. Although cbadf39d7d73638214b8a2bea5946f46290c3749 reduced what anonymous callers receive, v0.6.32 still exposes exactly the categories the advisory calls sensitive, and neither v0.6.33 nor the much later audited HEAD adds mandatory authentication. This is therefore an explicit unpatched-history result rather than an invented fix boundary. The BIC commit object contains only a human author/committer and no AI disclosure or bot signal, so the BIC-only verdict is NOT_AI.",
+  "remaining_gap": "Unpatched in the validated public clone through audited HEAD 01f4282f1ffe0d6212f58d3afbeae21fffd0c4be (v0.11.0-2-g01f4282f1): no closing fix commit or fixed release exists in this history, and the advisory's claimed <=0.6.32 boundary is contradicted by v0.6.33 and HEAD retaining the unauthenticated route."
+}

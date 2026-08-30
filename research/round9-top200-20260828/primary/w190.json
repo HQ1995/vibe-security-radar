@@ -1,0 +1,41 @@
+{
+  "class_id": "alias-630ec49f6b8117dead46dea2",
+  "case_id": "GHSA-j8cg-23h3-5p99",
+  "repo": "classroomio/classroomio",
+  "advisory_ids": [
+    "CVE-2025-67298",
+    "GHSA-j8cg-23h3-5p99"
+  ],
+  "bug_semantics": "ClassroomIO treated email-verification state and token contents as client authority. The profile table's existing own-row UPDATE policy allowed an authenticated user to set the newly added is_email_verified column directly through PostgREST. Independently, the emailed verification value was only Base64-encoded JSON containing a client-selected profileId and orgSiteName; /api/verify decoded it without a signature, expiry, one-time-use check, authenticated-user binding, or ownership check and used profileId in a privileged profile update. An attacker could therefore self-verify through the profile API or forge data for the verification endpoint to mark a chosen profile verified without controlling its mailbox.",
+  "flaw_origin": "PR #215's first member commit, 69ba4c1a23504004f9d888312916862fb93003bf, created the verification-email route, the /api/verify route, and the profile verification columns. It first wrote both the unsigned btoa(JSON.stringify({ profileId, orgSiteName })) token construction and the unvalidated profile update, while the pre-existing policy \"Users can update own profile.\" permitted an authenticated owner to update all profile columns. Member 947cfc06ca3a858972e8faafd096c7f662ef6086 later changed /api/verify to getServerSupabase, completing the arbitrary-profile service-role attack path, but it retained rather than originated the client-authoritative token and update mechanism. GitHub squash bd905b580a203309e244db16b06187c5103924cc landed the reconstructed member series on main.",
+  "introducer_sha": "69ba4c1a23504004f9d888312916862fb93003bf",
+  "introducer_parent": "62a32a62046302c6247b863f9f39cd610125c083",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "69ba4c1a23504004f9d888312916862fb93003bf",
+    "7a5061a8b5f714f92556fcd41a0bfa9ddafa12a6",
+    "0819fdb0a6589d8d92c48ec8a2fd5579a69f1490",
+    "947cfc06ca3a858972e8faafd096c7f662ef6086",
+    "6da395eadf17063ca2bf0e065efbac3676a46735",
+    "78f5b776add244cbb6bd865bb9027686266ee571",
+    "3b0c5e0d433ec609ccf88ae38e964258259631ab",
+    "dd71b639355ad09aa02b225e2e126975261962fa"
+  ],
+  "ai_marker": "absent — the raw BIC commit object identifies author and committer as emmanuel <chifez1@gmail.com>, has the message \"worked on the email verification\", and has no trailers at all: no Co-Authored-By, Generated-with, AI-tool, or bot marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "25d1a8d710fed1a4de98f02f1bcfdf215c149be5",
+  "direct_fix_sha": "25d1a8d710fed1a4de98f02f1bcfdf215c149be5",
+  "evidence": [
+    "The first-party release https://github.com/classroomio/classroomio/releases/tag/v0.2.6 describes the two repaired mechanisms as client-side verification-status manipulation and Base64 token forgery; the disclosure at https://gist.github.com/prashunbaral/70c4f6f9d9ff8b82295623073eb41f3a documents /rest/v1/profile, /api/email/verify_email, and /api/verify?data=... and identifies versions before v0.2.6.",
+    "git log --follow on apps/dashboard/src/routes/api/verify/+server.js reaches mainline squash bd905b580a203309e244db16b06187c5103924cc (PR #215). The surviving origin/email-verification ref is dd71b639355ad09aa02b225e2e126975261962fa; git log from merge base 62a32a62046302c6247b863f9f39cd610125c083 reconstructs the eight listed member commits. Stable patch-id for 62a32a62046302c6247b863f9f39cd610125c083..dd71b639355ad09aa02b225e2e126975261962fa and 5a566cbb4fce2da442779386f8181c734b53caaf..bd905b580a203309e244db16b06187c5103924cc is identical: 31d5be347fff141758a91c5ba2cef7c805d3ea41.",
+    "git show of 69ba4c1a23504004f9d888312916862fb93003bf creates apps/dashboard/src/routes/api/email/verify_email/+server.js with verificationData = JSON.stringify({ profileId, orgSiteName }) and btoa(verificationData), creates apps/dashboard/src/routes/api/verify/+server.js with atob/JSON.parse followed by profile.update({ is_email_verified: true, ... }).eq('id', profileId), and creates supabase/migrations/20240320081809_email_verification.sql adding is_email_verified and verified_at. git log --all -S'btoa(verificationData)' confirms 69ba4c1a23504004f9d888312916862fb93003bf as the earliest object containing that construction; bd905b580a203309e244db16b06187c5103924cc is its squash landing.",
+    "Direct immediate-parent verification used git ls-tree -r 62a32a62046302c6247b863f9f39cd610125c083 for apps/dashboard/src/routes/api/email/verify_email/+server.js, apps/dashboard/src/routes/api/verify/+server.js, and supabase/migrations/20240320081809_email_verification.sql; it returned no entries. The BIC diff creates all three paths, so the vulnerable lines and columns are absent from the BIC's immediate parent tree.",
+    "At the BIC, supabase/migrations/20231115082347_remote_schema.sql contains CREATE POLICY \"Users can update own profile.\" ON public.profile FOR UPDATE USING (auth.uid() = id), with no column restriction. Adding is_email_verified to that row therefore immediately exposed the direct authenticated self-verification path. PR member 947cfc06ca3a858972e8faafd096c7f662ef6086 replaces the /api/verify anon client with getServerSupabase; by v0.2.5 that helper uses PRIVATE_SUPABASE_SERVICE_ROLE, while /api/verify has no authentication or integrity check and updates the decoded profileId.",
+    "Version-tree checks show v0.1.1 (commit a33594ab1aa7026ee39e7f44bc35d5dfe604e766) has neither verification route, while v0.1.2 (commit b1307a8f7d31ae0e9b144058dc4f6955fcadc02d) has both; git tag --contains bd905b580a203309e244db16b06187c5103924cc includes v0.1.2 through v0.2.5. At v0.2.5 (commit 900f5ec12979f512ae8f333312aee78973a054f5), git grep finds searchParams.get('data'), atob, and the is_email_verified update in /api/verify. Thus the repository's first tagged vulnerable boundary is v0.1.2, and the last vulnerable release is v0.2.5; the advisory's broad wording is versions before v0.2.6.",
+    "Release tag v0.2.6 dereferences exactly to 25d1a8d710fed1a4de98f02f1bcfdf215c149be5. Its direct diff replaces the Base64 JSON link with a cryptographically random stored token, checks profile/email at creation, validates existence/expiry/one-time use/current email during verification, and adds prevent_email_verification_manipulation plus a trigger blocking direct verification-flag updates outside the secure function. git grep at v0.2.6 finds searchParams.get('token'), verify_email_with_token, and the protection trigger, establishing the patched boundary and that the release commit itself is the direct fix.",
+    "git cat-file commit 69ba4c1a23504004f9d888312916862fb93003bf shows tree 57edbb4866cecd53997518b23b6824c7f750a22c, sole parent 62a32a62046302c6247b863f9f39cd610125c083, author/committer emmanuel <chifez1@gmail.com>, and only the one-line message. No BIC commit-object AI attribution signal exists."
+  ],
+  "reasoning": "The advisory combines two manifestations of one broken trust boundary: verification state was directly mutable by the profile owner, and the mail-link endpoint accepted an unauthenticated, attacker-generated identity payload. The first PR member 69ba4c1a23504004f9d888312916862fb93003bf is the smallest source commit because it simultaneously added the mutable columns and first wrote the unsigned token/decode/update lines; its direct parent contains none of those paths. The later service-client change made the forged-link path capable of updating arbitrary profiles, but it did not write the flawed payload or authorization decision, and the direct own-profile bypass already existed from 69ba4c1a23504004f9d888312916862fb93003bf onward. The aggregate bd905b580a203309e244db16b06187c5103924cc is excluded as a squash because the complete member graph survives and its aggregate patch-id matches the squash. The flaw persists in the last pre-patch tag v0.2.5 and is removed at v0.2.6 by 25d1a8d710fed1a4de98f02f1bcfdf215c149be5. Finally, the BIC's raw commit object has a human author/committer and no AI trailer or bot identity; later commits, PR metadata, and the fix are irrelevant to BIC-only attribution. The closed verdict is therefore NOT_AI.",
+  "remaining_gap": null
+}

@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-eef1295aa7e4c251193da5b1",
+  "case_id": "GHSA-6qr6-c44j-c793",
+  "repo": "chaiscript/chaiscript",
+  "advisory_ids": [
+    "CVE-2026-2655",
+    "GHSA-6qr6-c44j-c793"
+  ],
+  "bug_semantics": "The script-visible async() function launched std::async(std::launch::async, t_func) without making the spawned work part of the ChaiScript engine's lifetime. A script could finish while async functions were still evaluating identifiers against Dispatch_Engine maps; engine teardown then freed those map nodes, and a worker's subsequent lookup compared a freed std::string key in chaiscript::str_less::operator(), producing a heap use-after-free.",
+  "flaw_origin": "Commit 52d03a66b15358e8fd2caeb5b063044c8aa839d2 first registered the ChaiScript async() API in include/chaiscript/chaiscript_stdlib.hpp and returned an independently executing std::future, but introduced no engine-owned thread tracking or destructor join. Later commits only adjusted registration syntax, module ownership, bootstrap qualification, and formatting while preserving that lifetime mismatch until the 2026 fix.",
+  "introducer_sha": "52d03a66b15358e8fd2caeb5b063044c8aa839d2",
+  "introducer_parent": "a32a180a063d9186ca38b2708a9c19d50da378db",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the raw BIC commit object names author Jason Turner <jason@emptycrate.com> and committer Jason Turner <jason@emptycrate.com>; its message is only 'Add future support, and fix returning of r-values' and has no Co-Authored-By, Generated-with, bot identity, or other AI trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7b95ff5126f0365c101b08fa33b50ae387342484",
+  "direct_fix_sha": "8dbb5eddcead54ff8b44b6646d491fec921a1720",
+  "evidence": [
+    "First-party report https://github.com/ChaiScript/ChaiScript/issues/632 documents the reproducer: two async(func) calls keep evaluating an undefined identifier after the main script exits; ASAN shows the worker reading a freed map key in include/chaiscript/chaiscript_defines.hpp:201 through Dispatch_Engine::get_object while the main thread destroys the map.",
+    "git log -L 52,54:include/chaiscript/chaiscript_stdlib.hpp 7b95ff5126f0365c101b08fa33b50ae387342484^ follows the vulnerable registration through formatting/refactor commits cff6a0acedbc1b8e53aeef118570929b50a711c9, 70cdbef69333a5fecd6e9e034d9e1428a544c8a5, 5ff97979fd85db218112f0a69d21fe2f95ef9abc, and 630c618ae7d87bd7bee7979997f31bad7fecd803 to the actual addition in 52d03a66b15358e8fd2caeb5b063044c8aa839d2.",
+    "git log --all -S'std::async(std::launch::async' -- include/chaiscript/chaiscript_stdlib.hpp returns only the 2015 addition 52d03a66b15358e8fd2caeb5b063044c8aa839d2 and the 2026 removal 7b95ff5126f0365c101b08fa33b50ae387342484, corroborating the smallest BIC and fix endpoints.",
+    "Direct parent-tree verification: git grep -n -E 'std::async|\"async\"' a32a180a063d9186ca38b2708a9c19d50da378db -- include/chaiscript returns no match, while the same command at 52d03a66b15358e8fd2caeb5b063044c8aa839d2 finds include/chaiscript/chaiscript_stdlib.hpp:50 registering async() with std::async(std::launch::async, t_func).",
+    "Tag boundary verification: git tag --contains 52d03a66b15358e8fd2caeb5b063044c8aa839d2 starts at v5.6.0 and includes v6.1.0; git merge-base --is-ancestor succeeds for BIC -> v5.6.0 and fails for BIC -> v5.5.1. Thus v5.5.1 predates the mechanism, v5.6.0 is the first release tag containing it, and the advisory's latest affected v6.1.0 contains it.",
+    "Issue #632 was closed as fixed by PR https://github.com/ChaiScript/ChaiScript/pull/656. Direct PR commit 8dbb5eddcead54ff8b44b6646d491fec921a1720 moves async registration into ChaiScript_Basic, tracks engine-owned std::threads, and joins them in Dispatch_Engine::~Dispatch_Engine before shared state is destroyed; review commit 530b492b8e1e729b19656f637ca36095f9d98df2 only adds defaulted move operations. GitHub squash commit 7b95ff5126f0365c101b08fa33b50ae387342484 lands both changes.",
+    "Release-boundary verification: v6.1.0 is an ancestor of landed fix 7b95ff5126f0365c101b08fa33b50ae387342484, but git tag --contains that fix returns no tags in the validated history. The vulnerability is therefore fixed after v6.1.0 on develop, with no later tagged release present in the clone.",
+    "git cat-file commit 52d03a66b15358e8fd2caeb5b063044c8aa839d2 provides the BIC-only attribution evidence: human author and committer Jason Turner, the single parent a32a180a063d9186ca38b2708a9c19d50da378db, and no trailers. Although the much later fix is bot-authored and includes a Claude co-author trailer, protocol excludes fix-only AI evidence from BIC attribution."
+  ],
+  "reasoning": "The crash frame in str_less is only where the stale map key is dereferenced; the causal flaw is the unowned lifetime of script-launched asynchronous evaluation. The smallest commit that made this attack path possible is 52d03a66b15358e8fd2caeb5b063044c8aa839d2: it added both future support and the script-visible async() wrapper that launches immediately on another thread, without any relationship to Dispatch_Engine destruction. Its immediate parent contains neither std::async nor an async registration, so parent absence is directly proven. Line history shows subsequent commits preserved the same mechanism rather than introducing it. The BIC falls between v5.5.1 and v5.6.0 and remains in v6.1.0. The direct fix 8dbb5eddcead54ff8b44b6646d491fec921a1720, landed by squash as 7b95ff5126f0365c101b08fa33b50ae387342484 after v6.1.0, makes the engine own and join outstanding worker threads before teardown. Finally, only the 2015 BIC commit object controls attribution: it is a Jason Turner human commit with no AI marker. AI disclosure on the 2026 fix cannot retroactively attribute the vulnerable introduction, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

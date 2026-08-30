@@ -1,0 +1,27 @@
+{
+  "worker": "w336",
+  "review_agent_id": "r389_w336",
+  "class_id": "alias-ea74e4f064c4de916175da2d",
+  "case_id": "GHSA-37g4-vx3r-j5q5",
+  "repo": "tainacan/tainacan",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: unauthenticated query var search reaches $current_args['search'] and is emitted raw inside the taxonomy search input value attribute, permitting reflected attribute breakout/XSS with user interaction.",
+    "atomic_bic": "CONFIRMED: 8a01249afd463b57fa9ad8246fe2eacebb94a91b first adds tainacan_get_taxonomies_search(), its raw value-attribute echo, query-var ingestion, and the taxonomy-page call site.",
+    "immediate_parent_absence": "CONFIRMED: fc308b84d39281bbc22c8b4bdb1a607ce069c9b8 contains neither tainacan_get_taxonomies_search nor the current_args['search'] echo.",
+    "squash_member_decomposition": "CONFIRMED_NOT_APPLICABLE: the BIC is a normal single-parent commit whose own diff adds the vulnerable sink; it is not a merge, move, revert, release aggregate, or squash requiring member reconstruction.",
+    "affected_release_membership": "CONFIRMED: BIC 8a01249 is an ancestor of tags 0.20.3 and 1.0.0 but not 0.20.2; tag 1.0.0 retains the raw echo, matching CVE.org's affected-through-1.0.0 range.",
+    "fixed_release_membership": "CONFIRMED: fix 8468fb4ec76c709d5ae2852d1fc64986b1dc73cf is not an ancestor of 1.0.0 and is an ancestor of 1.0.1; tag 1.0.1 contains esc_attr around the search value.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: 8468fb4ec76c709d5ae2852d1fc64986b1dc73cf directly changes the vulnerable raw echo to esc_attr($current_args['search']); its parent is advisory-cited vulnerable commit 2491612ee9d5b14baa70862ba2308ee925de0938.",
+    "bic_only_ai_attribution": "CONFIRMED: BIC object 8a01249 has human author and committer mateuswetah and no Co-Authored-By, Generated-with, bot, Copilot, Cursor, or ChatGPT marker; attribution was not inferred from the later fix."
+  },
+  "findings": [
+    "CVE.org records CVE-2025-12746 as PUBLISHED, assigned by Wordfence, for reflected XSS via search in Tainacan <= 1.0.0; no rejected or withdrawn disposition was found.",
+    "Independent commit-diff and line-history replay identifies 8a01249 as the first public writer of the exact vulnerable sink and fc308b84 as its verified clean immediate parent.",
+    "Independent ancestry and tag-content checks establish vulnerable 1.0.0 and fixed 1.0.1 membership, with direct fix 8468fb4 applying the required attribute escaping.",
+    "The primary NOT_AI judgment is supported by BIC-only authorship evidence and all required causal gates close."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

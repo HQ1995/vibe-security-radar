@@ -1,0 +1,26 @@
+{
+  "worker": "w148",
+  "review_agent_id": "r389_w148",
+  "class_id": "alias-8bf8bbd5e482aa9745b674d8",
+  "case_id": "GHSA-j5c4-cwjr-6vv5",
+  "repo": "gitlab.torproject.org/tpo/core/tor",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: conflux_process_link() accepted CONFLUX_LINK after BEGIN had attached n_streams or resolving_streams; link_circuit() reached cfx_add_leg(), whose validate_circ_has_no_streams() nulled the OR-circuit stream-list heads without clearing edge-connection on_circuit back-pointers, leaving a dangling pointer and UAF when the circuit was freed.",
+    "atomic_bic": "CONFIRMED: 336a24754d117b46793ce6824e35ff6b7962bf9d is the reverse -S first-write for validate_circ_has_no_streams() and adds src/core/or/conflux_pool.c, including conflux_process_link() without a stream-freshness guard. Later edits do not first-write the defect.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent 2f865b4bba1bedc96f17b696916d74c392c83e1b has neither src/core/or/conflux_pool.c nor either causal symbol.",
+    "squash_member_decomposition": "CONFIRMED NOT APPLICABLE: the BIC is a one-parent, non-merge commit in the public Prop#329 series; it is the smallest surviving public object that first wrote both causal code paths, with no finer public member to decompose.",
+    "affected_fixed_release_membership": "CONFIRMED: the BIC is absent from tor-0.4.8.0-alpha-dev and ancestral to tor-0.4.8.1-alpha; direct fix 81e8aa45b2ba59c926c6b30fc6b775cdfc65f37e is absent from tor-0.4.8.25 and tor-0.4.9.9 but ancestral to tor-0.4.9.10. This matches the CVE affected interval 0.4.8.1-alpha inclusive to 0.4.9.10 exclusive and the tagged changelog.",
+    "direct_fix_or_unpatched_state": "CONFIRMED DIRECT FIX: 81e8aa45b2ba59c926c6b30fc6b775cdfc65f37e adds the exact n_streams/resolving_streams rejection in conflux_process_link(); its immediate parent f293a1ca9fcb9aa2f8dd050090ca17671611ffff lacks that guard, and the BIC is its ancestor.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC object names David Goulet as author, Mike Perry as committer, and only a David Goulet Signed-off-by trailer; it has no Co-Authored-By, Generated-with, Assisted-By, bot identity, or named AI-tool marker. The Claude marker occurs only on the later fix and is excluded from BIC attribution.",
+    "advisory_disposition": "CONFIRMED: the CVE.org record is PUBLISHED with no rejectedReasons, and the first-party tor-0.4.9.10 changelog identifies TROVE-2026-025 and the same mechanism; this is not a withdrawn or rejected advisory."
+  },
+  "findings": [
+    "Independent clone replay supports the primary vulnerability lifecycle, BIC, parent, direct fix, release boundaries, and BIC-only attribution.",
+    "The 1745-line new-file BIC is broad but remains atomic under the protocol because it is a linear public commit, its parent lacks the file and causal symbols, and no finer public member exists.",
+    "The fix commit's Assisted-By: Claude 4.8 Opus trailer is remediation evidence only and does not transfer AI authorship to the 2023 BIC."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-113734af995969c6c674ebd0",
+  "case_id": "GHSA-f643-3rc2-j27w",
+  "repo": "apache/airflow",
+  "advisory_ids": [
+    "CVE-2026-59244",
+    "GHSA-f643-3rc2-j27w"
+  ],
+  "bug_semantics": "Task SDK _get_variable (var.json) deserializes JSON then masks only if isinstance(var_val, str), so dict Variable values are never passed to mask_secret and appear in cleartext in Rendered Templates.",
+  "flaw_origin": "first-write of the post-json.loads isinstance(str) mask_secret guard in task-sdk/src/airflow/sdk/execution_time/context.py _get_variable; mask_secret already accepted dicts but the new guard skipped them.",
+  "introducer_sha": "98f918150e717777088c884f6ee275d1912f9209",
+  "introducer_parent": "e23f980acdaa4074cb222140edb62b0c330bdff1",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "",
+  "verdict": "NOT_AI",
+  "fix_sha": "cd28fbde0bef19837d2e85d1de256c7bc1d7d370",
+  "direct_fix_sha": "cd28fbde0bef19837d2e85d1de256c7bc1d7d370",
+  "evidence": "CVE-2026-59244 cveMetadata.state=PUBLISHED (not withdrawn/rejected). Parent e23f980acdaa4074cb222140edb62b0c330bdff1 already has _get_variable json.loads(deserialize_json) with no mask; git cat-file -e PARENT:task-sdk/src/airflow/sdk/execution_time/context.py succeeds; grep of parent for isinstance(var_val, str)|mask_secret(var_val finds nothing. BIC 98f918150e717777088c884f6ee275d1912f9209 (#50895) first inserts if isinstance(var_val, str): mask_secret(var_val, key) after json.loads. Later 049123e8c730ea471dc5e93b69a21d6b1fddba91 copies the same str-only guard onto the SecretCache path (not first-write). Fix cd28fbde0bef19837d2e85d1de256c7bc1d7d370 (#68975) adds _mask_and_deserialize_variable that mask_secret(raw) then mask_secret(val) for dict. BIC commit object: author Amogh Desai <amoghrajesh1999@gmail.com>, committer GitHub <noreply@github.com> (PR merge), no Co-Authored-By/Generated-with/bot author.",
+  "reasoning": "Real patched leak: CVE names the isinstance(str) guard that drops dict var.json values. Those lines first appear in 98f918; parent had deserialize without that guard. Authorship on the BIC object is human (Amogh Desai); GitHub merge committer is not an AI marker. Verdict NOT_AI.",
+  "remaining_gap": ""
+}

@@ -1,0 +1,50 @@
+{
+  "worker": "w076",
+  "review_agent_id": "r389_w076_retry",
+  "class_id": "alias-7875e54bf013d1b99e2ba3a9",
+  "case_id": "GHSA-jqpp-mfm2-hfw2",
+  "repo": "thorsten/phpmyfaq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-76215 is PUBLISHED and the CNA record defines phpMyFAQ <4.1.7 as affected by missing parent-FAQ visibility checks on comments and attachments. The vendor advisory independently says comment endpoints expose comments, commenter personal data, and attachment metadata of restricted records. Tag 4.1.6 calls getCommentsData(recordId, FAQ) and AttachmentFactory::fetchByRecordId(recordId) without a parent visibility gate."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "5611aa5356c9b80cedb8eef16f4d3dea44eb8987 is the exact public first-write of getAttachmentsFromFaq: its api.php hunk adds an unauthenticated fetchByRecordId(recordId) child-resource endpoint. An all-ref exact-string pickaxe begins at this commit. The independently copied comments sink begins at 9b518ea4ca9bd666f1064ea7396e2f6f999b8d4c and is explicitly accounted for; the earliest class introducer remains 5611aa5356c9b80cedb8eef16f4d3dea44eb8987."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent is 5d1c692d99300ebdc7c6782be08fdeff7a421fae. That tree has no getAttachmentsFromFaq or attachment fetch in api.php, while its getFaq path already sets user/groups and PMF_Faq::getRecord applies queryPermission over faqdata_group and faqdata_user. The comments first-write parent 7ca2a6d0952ab0ebbd58a44fef968e736d40eb70 likewise has no getComments handler."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is a one-parent public commit, not a merge. Its vulnerable endpoint is an indivisible added api.php hunk; no finer public member exists. The 2023 commit 7cb8c2cde1df566fdee27e1ad649c6cb800285aa deletes the existing switch arms and recreates equivalent controller methods, so it is a move/refactor and not the BIC."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "git merge-base --is-ancestor confirms the BIC is in tag 4.1.6. The 4.1.6 controller methods contain getCommentsData and fetchByRecordId but no isFaqAccessibleForUser check. The BIC is also contained by the 2.9.0 release line, including 2.9.0-alpha3 and stable 2.9.0."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "10636a21189beb59c08db8a2d300d159406e4b8e is not an ancestor of 4.1.6 and is an ancestor of 4.1.7. Stable tags containing it start at 4.1.7; 4.1.7 contains isFaqAccessibleForUser in Faq and both API controllers. This matches the CNA affected range (<4.1.7) and vendor upgrade instruction."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct inspection of 10636a21189beb59c08db8a2d300d159406e4b8e shows it adds parent visibility checks to CommentController and AttachmentController, adds Faq::isFaqAccessibleForUser with permission/active/date filters, and suppresses frontend comments for the access-denied sentinel. It directly closes every advisory surface described by the primary record."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The raw BIC commit object identifies author and committer Thorsten Rinne <thorsten@phpmyfaq.de> on 2015-03-10 and contains only the subject Added API endpoint for links to attachments (#982), with no AI/tool attribution or co-author trailer. Later refactors and the 2026 fix were excluded from attribution. The NOT_AI verdict is therefore supported on the BIC alone."
+    }
+  },
+  "findings": [
+    "Independent clone replay confirms the primary vulnerability mechanism, earliest class BIC, parent contrast, lineage through the 2023 controller move, and direct fix.",
+    "The comments and attachments sinks have distinct public first-writes (2016 and 2015 respectively); the primary record preserves both and correctly uses the earlier attachments first-write as the class introducer.",
+    "Authoritative CVE and vendor records are live, non-withdrawn evidence for a real CWE-862 fixed in 4.1.7; this is not a FALSE_POSITIVE case."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

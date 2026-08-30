@@ -1,0 +1,32 @@
+{
+  "class_id": "alias-7b2a06cfdc0ea75844a0a7a4",
+  "case_id": "GHSA-hhmc-q9hp-r662",
+  "repo": "codeigniter4/codeigniter4",
+  "advisory_ids": [
+    "CVE-2026-63222",
+    "GHSA-hhmc-q9hp-r662"
+  ],
+  "bug_semantics": "UploadedFile is constructed with the multipart client's filename as its name. When move(targetPath) is called without a second name argument, the vulnerable implementation selects getName() and appends it to the normalized target directory without removing traversal components. An attacker-controlled filename such as ../../public/shell.php can therefore make move_uploaded_file() write outside the intended upload directory.",
+  "flaw_origin": "Commit eb5bc0669202bf0d67bb5a53758b9a3942a0da0e changed move() from sending the caller's targetPath directly to move_uploaded_file() to treating targetPath as a directory, defaulting name to getName(), and writing to targetPath.name. Because getName() initially holds the untrusted client filename and the new default path performed no basename or sanitization step, this commit first created the vulnerable default-name path traversal mechanism.",
+  "introducer_sha": "eb5bc0669202bf0d67bb5a53758b9a3942a0da0e",
+  "introducer_parent": "dd7b5f5ac8987cb38590bc095c06b02b738dc7b2",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: the BIC commit object names human author and committer Lonnie Ezell <lonnieje@gmail.com> and contains no Co-Authored-By, Generated-with, bot, Copilot, ChatGPT, Claude, Gemini, or AI-assisted trailer/marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "20ebcf4694d96d3c97fbc3938e360730e4f54618",
+  "direct_fix_sha": "20ebcf4694d96d3c97fbc3938e360730e4f54618",
+  "evidence": [
+    "CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-63222 reports CVE-2026-63222 state PUBLISHED, CodeIgniter4 versions < 4.7.4 affected, and 4.7.4 fixed; it confirms the unsanitized no-second-argument UploadedFile::move() traversal mechanism and references the vendor advisory and fix.",
+    "Vendor advisory https://github.com/codeigniter4/CodeIgniter4/security/advisories/GHSA-hhmc-q9hp-r662 identifies codeigniter4/framework < 4.7.4 as affected, 4.7.4 as patched, and explains that an attacker-controlled filename such as ../../public/shell.php escapes the intended upload directory when move() has no second argument.",
+    "git show eb5bc0669202bf0d67bb5a53758b9a3942a0da0e -- system/HTTP/Files/UploadedFile.php shows the BIC adding `$name = is_null($name) ? $this->getName() : $name;` and changing move_uploaded_file() to use `$targetPath.$name`; the commit has the single parent dd7b5f5ac8987cb38590bc095c06b02b738dc7b2.",
+    "Direct parent-tree verification with git show dd7b5f5ac8987cb38590bc095c06b02b738dc7b2:system/HTTP/Files/UploadedFile.php finds neither the default-to-getName expression nor targetPath/name concatenation: it passes targetPath directly to move_uploaded_file(). The same exact searches find both vulnerable expressions in the BIC tree.",
+    "git cat-file commit eb5bc0669202bf0d67bb5a53758b9a3942a0da0e identifies Lonnie Ezell <lonnieje@gmail.com> as both author and committer; a case-insensitive scan of the complete commit object finds no Co-Authored-By, Generated-with, bot, Copilot, ChatGPT, Claude, Gemini, or AI-assisted marker.",
+    "git ancestry checks place eb5bc0669202bf0d67bb5a53758b9a3942a0da0e in v4.0.0-alpha.1, release 4.0.0 (47dbb16bb5e5784f45bf09a7380016f2d36f7c39), and v4.7.3 (723162211eb3c17f222f943c4610311dcf9167f1), consistent with the affected range before 4.7.4.",
+    "Direct fix https://github.com/codeigniter4/CodeIgniter4/commit/20ebcf4694d96d3c97fbc3938e360730e4f54618 has one parent f5e463b9a3e986389ce285963e51a7f1fab6559f; its parent tree still contains `$name ??= $this->getName();`, while the fix tree replaces that default with sanitize_filename($this->getName()) and adds a traversal regression test.",
+    "git merge-base --is-ancestor shows fix 20ebcf4694d96d3c97fbc3938e360730e4f54618 is absent from v4.7.3 and present in v4.7.4 (2bd0f01d2813f9ec06db42643ce39d9f5428bf6d), matching https://github.com/codeigniter4/CodeIgniter4/releases/tag/v4.7.4."
+  ],
+  "reasoning": "The advisory mechanism is real and independently matches the source lifecycle: UploadedFile begins with a client-controlled name; the BIC first made omission of move()'s second argument select that name and concatenate it beneath the destination directory without sanitization; and the immediate parent lacks both causal additions. Later syntax and formatting commits only rewrote the surviving behavior and are not introducers. The direct fix sanitizes only this framework-chosen default, leaves an explicit caller-supplied second name under caller control as documented, and reaches the first patched release v4.7.4. The BIC is an ordinary single-parent commit, not a move, revert, backport, or squash aggregate, so no member decomposition is applicable. Its complete commit object has human author/committer identity and no AI marker. AI evidence on the later fix is irrelevant to BIC attribution; the closed verdict is therefore NOT_AI.",
+  "remaining_gap": null
+}

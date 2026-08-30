@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-51237e26602164e07bc952d4",
+  "case_id": "GHSA-p6w2-c4j5-7xhm",
+  "repo": "nasa/fprime-gds",
+  "advisory_ids": [
+    "CVE-2026-72577",
+    "GHSA-p6w2-c4j5-7xhm"
+  ],
+  "bug_semantics": "The Flask GDS in src/fprime_gds/flask/app.py registers command, telemetry, log, sequence, and file up/down endpoints with no authentication. PUT /commands/<command> issues spacecraft commands after a client-supplied 0xfeedcafe key that is hardcoded in shipped JS; POST /upload/files and PUT /upload/destination accept unauthenticated file uplink and destination changes. An unauthenticated network client can therefore command connected FSW and write files on the ground station. CWE-306.",
+  "flaw_origin": "First write of the Flask REST layer on 2019-06-08: app.py registers unauthenticated /commands and related histories; commands.py implements PUT /commands/<command> gated only by hardcoded 0xfeedcafe. Parent tree has no flask/ tree. Later commits wired send_command, added updown, and kept the same missing-auth design; none added login/token/before_request auth.",
+  "introducer_sha": "c632f1ab5c071a708ada5aeb7a5a969ea41a68ec",
+  "introducer_parent": "7551706a0a8352876e64244fed4941acea2a6f0c",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": "Advisory GHSA-p6w2-c4j5-7xhm / CVE-2026-72577 (published 2026-08-10, withdrawn_at null) describes missing Flask auth through 3.4.3. BIC c632f1ab5c071a708ada5aeb7a5a969ea41a68ec (author/committer Michael D Starch <Michael.D.Starch@jpl.nasa.gov>, 2019-06-08, subject 'mstarch: initial implementation of REST API for ETC') is a single-parent first-write: git cat-file -p shows only parent 7551706a0a8352876e64244fed4941acea2a6f0c; git cat-file -e PARENT:src/fprime_gds/flask/app.py and PARENT:src/fprime_gds/flask/commands.py fail (paths absent). Commit object has no Co-Authored-By/Generated-with/bot author. HEAD fbcb6e7cffc85a82f99557c3258593ed89449430 (2026-08-19, after CVE publication) still has construct_app() with no before_request/login/token auth; commands.py still gates only on 0xfeedcafe; updown.py PUT/POST have no auth. Path-scoped git log on src/fprime_gds/flask after 2026-08-10 has only history/JSON-lexer commits, not auth. Default --gui-addr is 127.0.0.1 but that is a bind default, not authentication.",
+  "reasoning": "The vulnerability is real missing authentication on a critical GDS command and file-uplink surface. The smallest commit that first wrote those unauthenticated Flask routes and the 0xfeedcafe command PUT is c632f1ab; the parent tree lacks the flask tree; the commit is not a move/squash/revert. Authorship on that BIC object is human JPL engineer Michael D Starch with no AI marker, so AI did not introduce the flaw. No later Flask commit added authentication through HEAD, so the finding is unpatched.",
+  "remaining_gap": "unpatched as of clone HEAD fbcb6e7cffc85a82f99557c3258593ed89449430 (2026-08-19); no upstream auth-adding commit in src/fprime_gds/flask after CVE-2026-72577 publication.",
+  "unpatched": {
+    "confirmed": true,
+    "reason": "No authentication was added to the Flask GDS through clone HEAD fbcb6e7cffc85a82f99557c3258593ed89449430 (2026-08-19, after CVE-2026-72577 published 2026-08-10). Path-scoped history of src/fprime_gds/flask after the advisory only changes history retention and a JSON lexer.",
+    "potential_fix": {
+      "approach": "Require authentication on all Flask REST routes before command issue, sequence compile, log serve, and file up/down: e.g. Flask-HTTPAuth or a reverse-proxy-enforced session, reject unauthenticated PUT /commands/<command>, POST /upload/files, and PUT /upload/destination, and remove or rotate the client-hardcoded 0xfeedcafe key so it cannot substitute for auth.",
+      "rationale": "The sink is missing authentication for critical GDS functions; binding defaults and a well-known 0xfeedcafe key do not authenticate the caller. Auth-gating those mutating endpoints closes unauthenticated spacecraft command injection and ground-station file write.",
+      "reference_commit": null,
+      "reference_url": "https://github.com/advisories/GHSA-p6w2-c4j5-7xhm"
+    }
+  }
+}

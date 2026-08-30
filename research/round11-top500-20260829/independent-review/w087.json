@@ -1,0 +1,52 @@
+{
+  "worker": "w087",
+  "review_agent_id": "r389_w087",
+  "class_id": "alias-95d59874178ef31f5a8d1bce",
+  "case_id": "GHSA-jfh6-w7r2-rj74",
+  "repo": "rocketchat/rocket.chat",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "At fix parent 18f5eb45d098ca64d403fdae4704211000efba29, POST method.callAnon/:method is authRequired:false and invokes Meteor.callAsync after the generic DDP limiter; sendForgotPasswordEmail is a remotely callable Meteor method that reaches Accounts.sendResetPasswordEmail and has no method-specific DDPRateLimiter rule. Fix 3a61c3afed2df5d1555282e496e9f854c9e69916 adds exactly that rule at 10 calls per 60000 ms keyed by clientAddress."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "git log --all --reverse --diff-filter=A -SsendForgotPasswordEmail over the method path starts at 063bb185131539f2d309abd5d599add22e3989e9. Its patch creates server/methods/sendForgotPasswordEmail.coffee with the unauthenticated method, reset-mail sink, boolean result, and no dedicated limiter; later add hits are conversion or movement. It is the smallest surviving public object even though the feature commit also changes client files."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The sole parent is 1f072dfa6ae3cc06fb9d6abd5c9422ffdd1a5efc. The method file does not exist there and a parent-tree grep under server finds neither sendForgotPasswordEmail nor sendResetPasswordEmail."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS_NOT_APPLICABLE",
+      "evidence": "The BIC has one parent, ordinary 2015 commit metadata, and no merge or squash marker; there is no finer public member object to substitute. The 2026 GitHub squash is the fix, not the BIC."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "EVIDENCE_GAP",
+      "evidence": "Local ancestry and file checks verify unpatched 7.10.14, 8.6.0, and 8.7.0 and patched 7.10.15, 8.6.2, 8.7.1, and 8.8.0-rc.0. However, the current vendor advisory and PUBLISHED CVE record say affected <8.7.2 and <8.8.0, which classifies local 8.7.1 and 8.8.0-rc.0 as affected despite both tags containing the limiter. The clone has neither 8.7.2 nor 8.8.0, so the authoritative version boundary conflict cannot be closed locally."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "3a61c3afed2df5d1555282e496e9f854c9e69916 directly imports DDPRateLimiter and registers the sendForgotPasswordEmail method rule; its parent file lacks the rule. Branch backports likewise introduce the same rule, while checked predecessor tags lack it."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC object alone has author and committer Rodrigo Nascimento <rodrigoknascimento@gmail.com>, date 2015-05-24, one parent, no trailers, no git note, and no AI or bot marker. Fix authorship was not used. This supports NOT_AI."
+    },
+    "advisory_disposition": {
+      "status": "PASS",
+      "evidence": "CVE-2026-75575 is currently PUBLISHED, the vendor advisory is live, and the supplied GHSA has withdrawn_at:null; FALSE_POSITIVE is not applicable."
+    }
+  },
+  "findings": [
+    "The primary NOT_AI verdict, vulnerability mechanism, atomic BIC 063bb185131539f2d309abd5d599add22e3989e9, parent 1f072dfa6ae3cc06fb9d6abd5c9422ffdd1a5efc, and direct fix 3a61c3afed2df5d1555282e496e9f854c9e69916 independently reproduce.",
+    "The release evidence contains an unresolved authoritative contradiction: vendor/CVE ranges mark 8.7.1 and 8.8.0-rc.0 affected, while those exact local tags contain the limiter backport/main fix. The primary mentions both sides but incorrectly leaves remaining_gap null.",
+    "This release-boundary correction does not change the BIC-only NOT_AI attribution."
+  ],
+  "corrected_fields": {
+    "remaining_gap": "Reconcile vendor/CVE affected ranges (<8.7.2 and <8.8.0) with the local tags 8.7.1 and 8.8.0-rc.0 that already contain the limiter, and verify the absent fixed tags 8.7.2 and 8.8.0 before claiming complete affected/fixed release closure."
+  },
+  "remaining_gap": "Affected/fixed release membership is not fully closed because authoritative advisory ranges conflict with local tag contents, and the named fixed tags 8.7.2 and 8.8.0 are unavailable in the clone."
+}

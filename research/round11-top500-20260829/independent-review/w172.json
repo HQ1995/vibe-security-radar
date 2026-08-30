@@ -1,0 +1,26 @@
+{
+  "worker": "w172",
+  "review_agent_id": "r389_w172",
+  "class_id": "alias-1ef0eabe9ffcd2dbdfc37878",
+  "case_id": "GHSA-hwrq-8wxh-q4xv",
+  "repo": "julien040/anyquery",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed independently. In server mode, an unauthenticated MySQL-protocol client can execute CREATE VIRTUAL TABLE. Registered json_reader/csv_reader modules pass their caller-controlled source to openMmapedFile/downloadFile, whose go-getter client accepts remote URLs without an IP, scheme, or metadata-address restriction, enabling SSRF to loopback, private networks, and 169.254.169.254.",
+    "atomic_bic": "Confirmed edfe9dcb68ffcf6c5832c5f2f6a1ef79909ed6e6 as the smallest first-write. Its cohesive feature diff adds module/helper.go with unrestricted getter.Client, adds read_json.go/read_csv.go, and registers json_reader/csv_reader on Namespace.Register, which the pre-existing server path already uses. git log -S getter.Client identifies this commit as the first write; later 05c4dea951597e087a43e061b322f62893e833fb merely adds log_reader using the existing helper.",
+    "immediate_parent_absence": "Confirmed against immediate parent bda27e2926a4bfbf621ba11f2b40611a2d5e9233: module/helper.go and module/read_json.go do not exist, json_reader/csv_reader registration is absent, and the only parent-tree getter.Client use is plugin installation rather than a SQL virtual-table fetch. The server's instance.Register path is already present.",
+    "squash_member_decomposition": "Confirmed no decomposition is required. The BIC has exactly one parent and directly contains the atomic reader/helper/registration introduction; it is not a merge, move, refactor, revert, or aggregate hiding a finer public member.",
+    "affected_release_membership": "Confirmed edfe9dcb68ffcf6c5832c5f2f6a1ef79909ed6e6 is an ancestor of tag 0.4.4, matching the advisory's vulnerable range < 0.4.5. The sandbox fix is not an ancestor of 0.4.4.",
+    "fixed_release_membership": "Confirmed 27f84fc168310455eaf81ec4ba87eed20298670c is an ancestor of tag 0.4.5 through merge 32b6ee945033c4c36c08d2e5805e7747da9da8cf and remains in HEAD. The vendor 0.4.5 release names GHSA-hwrq-8wxh-q4xv and lists that fix commit.",
+    "direct_fix_or_verified_unpatched_state": "Confirmed 27f84fc168310455eaf81ec4ba87eed20298670c is the direct mechanism fix: server sandboxing is enabled by default, RestrictionsFromFlags leaves AllowRemote false unless explicitly relaxed, CheckSource rejects remote sources, go-getter is restricted to the file getter, and all reader modules receive the restrictions object. Its test denies http://169.254.169.254/latest/meta-data/. Although the commit subject names two related CVEs, its diff directly closes this GHSA's SSRF and the vendor release associates the GHSA with it.",
+    "bic_only_ai_attribution": "Confirmed NOT_AI using only the BIC object. Author and committer are julien040 <48369040+julien040@users.noreply.github.com>; the message is only '✨ Add JSON and CSV tables'; there is no bot identity, Co-Authored-By, Generated-with, Cursor, Copilot, Claude, GPT, or other AI marker. Repository-level ai_commits signals were not used to attribute this BIC."
+  },
+  "findings": [
+    "The vendor GHSA remains published with withdrawn_at null and affected range < 0.4.5; CVE.org currently returns CVE_RECORD_DNE, but the vendor's 0.4.5 security release explicitly associates GHSA-hwrq-8wxh-q4xv with the sandbox remediation, so the advisory is not shown to be withdrawn or rejected.",
+    "The primary record correctly distinguishes the first vulnerable json_reader/csv_reader implementation from the advisory PoC's later log_reader reuse.",
+    "The primary introducer, parent, direct fix, release membership, and NOT_AI verdict all survive independent replay."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

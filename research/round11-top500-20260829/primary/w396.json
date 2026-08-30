@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-35690d5deb754cef2ec0427a",
+  "case_id": "GHSA-3j3q-wp9x-585p",
+  "repo": "kcp-dev/kcp",
+  "advisory_ids": [
+    "CVE-2026-39429",
+    "GHSA-3j3q-wp9x-585p"
+  ],
+  "bug_semantics": "When the root shard embedded the cache server, it mounted the cache handler at /services/cache/ on preHandlerChainMux, which runs before the root shard's authentication and authorization chain. The cache server's own Complete method explicitly nulled its authentication and authorization options, so an unauthenticated network client reaching the root shard could read replicated control-plane data and issue writes; malicious RBAC writes could briefly influence shared authorization informers before the replication controller deleted them.",
+  "flaw_origin": "Commit 44b4682b63e6edbc4f63014adfa27d395ea958c2 created installCacheServer and its pre-handler-mux registration but left the function unreachable. The next single-parent commit e426bc4e86f34af728e479e6b951f1c12b8b0ccd is the atomic BIC because it first called s.installCacheServer(ctx) from Server.Run when Cache.Enabled, making the unauthenticated /services/cache/ handler reachable; direct parent 20ebcca851fe79264fc454dd93ae9e81256f3884 has no such call.",
+  "introducer_sha": "e426bc4e86f34af728e479e6b951f1c12b8b0ccd",
+  "introducer_parent": "20ebcca851fe79264fc454dd93ae9e81256f3884",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: raw commit object e426bc4e86f34af728e479e6b951f1c12b8b0ccd names Lukasz Szaszkiewicz <lukasz.szaszkiewicz@gmail.com> as both author and committer and contains only the subject 'wire cache server in kcp', with no Co-Authored-By, Generated-with, bot identity, or other AI trailer.",
+  "verdict": "NOT_AI",
+  "fix_sha": "416922b09843a0753a808e1d0793e447f39b0492",
+  "direct_fix_sha": "416922b09843a0753a808e1d0793e447f39b0492",
+  "evidence": [
+    "GitHub advisory https://github.com/kcp-dev/kcp/security/advisories/GHSA-3j3q-wp9x-585p is published, not withdrawn, and states that the root shard exposes /services/cache/ through preHandlerChainMux before authn/authz, permitting unauthenticated reads and writes; CVE.org API record CVE-2026-39429 is PUBLISHED and describes the same mechanism.",
+    "git show e426bc4e86f34af728e479e6b951f1c12b8b0ccd -- pkg/server/server.go adds exactly the Cache.Enabled block in Server.Run that invokes s.installCacheServer(ctx); pkg/server/cache.go, introduced one commit earlier by 44b4682b63e6edbc4f63014adfa27d395ea958c2, registers preparedCacheServer.Handler at /services/cache/ on s.preHandlerChainMux.",
+    "git grep -n installCacheServer 20ebcca851fe79264fc454dd93ae9e81256f3884 -- pkg/server/server.go returns no match, directly verifying that the BIC parent does not activate the vulnerable embedded cache server; e426bc4e86f34af728e479e6b951f1c12b8b0ccd is single-parent and is not a merge or squash aggregate.",
+    "git show -s --format=raw e426bc4e86f34af728e479e6b951f1c12b8b0ccd records human author and committer Lukasz Szaszkiewicz and no trailers; the full BIC is an ancestor of tags v0.29.0 through v0.29.3 and v0.30.0 through v0.30.3.",
+    "git show 416922b09843a0753a808e1d0793e447f39b0492 shows the direct mainline repair: it removes pkg/cache/server/options/options.go's TODO plus Authentication=nil and Authorization=nil, adds concrete authentication and authorization options, and passes the root shard authenticator into the embedded cache server in pkg/server/cache.go.",
+    "The fix was carried to release branches as 1885d644fe64a24db200e0336795e7c1162a0f71 (release-0.29) and ed4a84b808d649cea25f562de3e8fe0f3bde868d (release-0.30), both titled 'Enhance inter-shard authentication'; ancestry checks place those repairs in the official patched tags v0.29.3 and v0.30.3.",
+    "Release metadata discrepancy is explicit and reproducible: the GitHub/CVE advisories call v0.29.2 and v0.30.2 affected and v0.29.3/v0.30.3 first patched, while git merge-base --is-ancestor shows release fixes 1885d644fe64a24db200e0336795e7c1162a0f71 and ed4a84b808d649cea25f562de3e8fe0f3bde868d already contained in tags v0.29.2 and v0.30.2; the subsequent .2-to-.3 diffs touch only bootstrap/controller CA and retry-loop changes, not cache authentication. This metadata inconsistency does not alter the verified BIC or BIC-only authorship verdict."
+  ],
+  "reasoning": "The vulnerability requires both an unauthenticated cache handler and a reachable path that bypasses the root shard chain. The cache installation helper existed at 44b4682b63e6edbc4f63014adfa27d395ea958c2, but it was dead code until e426bc4e86f34af728e479e6b951f1c12b8b0ccd wired it into Server.Run; therefore e426bc4e86f34af728e479e6b951f1c12b8b0ccd is the smallest public commit that first made the flawed mechanism exploitable. Its immediate parent lacks the call, and all named affected release lines descend from it. Fix 416922b09843a0753a808e1d0793e447f39b0492 supplies cache-server authn/authz and reuses the parent shard authenticator, with release-branch equivalents in both official patched lines. The official advisory's first-patched version labels conflict with the repository tag ancestry, but both .3 patched tags contain the verified repair and no alternative fix appears in the .2-to-.3 deltas. Because the BIC commit object has only a human author/committer and no AI marker, the protocol requires NOT_AI regardless of later repository AI activity or who authored the fix.",
+  "remaining_gap": null
+}

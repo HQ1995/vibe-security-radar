@@ -1,0 +1,23 @@
+{
+  "class_id": "alias-0e6e647b9fc341bf599a3113",
+  "case_id": "GHSA-x27p-5f68-m644",
+  "repo": "trinodb/trino",
+  "advisory_ids": [
+    "CVE-2026-34214",
+    "GHSA-x27p-5f68-m644"
+  ],
+  "bug_semantics": "Iceberg REST catalog static and vended object-storage credentials were copied from FileIO into Jackson-serialized write and table-execute handles (fileIoProperties). Query JSON (UI and /ui/api/query/{id}, /v1/query/{query_id}) includes those handles, so a user with SQL write/procedure rights could recover access keys from their own query JSON.",
+  "flaw_origin": "97308450703c0de91da501f3571876b908a5bf23 Support vended s3 credentials in the Iceberg REST catalog first added fileIoProperties to IcebergWritableTableHandle, IcebergTableExecuteHandle, and IcebergSplit, populated from table.io().properties() (including s3.access-key-id / s3.secret-access-key / s3.session-token). Parent 28c3c1172d331962eda6aa1066b419127a9b9668 still has those files but no fileIoProperties. Later record conversions only moved the field. Matches GHSA range [439, 480).",
+  "introducer_sha": "97308450703c0de91da501f3571876b908a5bf23",
+  "introducer_parent": "28c3c1172d331962eda6aa1066b419127a9b9668",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent on BIC 97308450703c0de91da501f3571876b908a5bf23: author Alex Jo jo.alex2144@gmail.com, committer David Phillips david@acz.org; no Co-Authored-By/Generated-with; not a bot author",
+  "verdict": "NOT_AI",
+  "fix_sha": "d82519245e82fa23a6ea608e99417a566ae52cff",
+  "direct_fix_sha": "d82519245e82fa23a6ea608e99417a566ae52cff",
+  "evidence": "GHSA-x27p-5f68-m644 and CVE-2026-34214 remain published (CVE.org PUBLISHED; NVD Analyzed); withdrawn_at null. Sink is query-JSON serialization of Iceberg write/execute handles carrying FileIO credentials. git log -S fileIoProperties on IcebergWritableTableHandle, IcebergTableExecuteHandle, and IcebergSplit first-writes at 97308450703c0de91da501f3571876b908a5bf23. git cat-file -p that SHA: single parent 28c3c1172d331962eda6aa1066b419127a9b9668; message is only the feature title; author Alex Jo / committer David Phillips; no AI trailers. git cat-file -e PARENT:path succeeds for all three handle files; git grep fileIoProperties on PARENT:path is empty, on BIC it is present including @JsonProperty. Ancestry: BIC in tag 439, not 438. Fix d82519245e82fa23a6ea608e99417a566ae52cff (in 480, not 479) removes fileIoProperties from those handles and moves credentials onto ConnectorTableCredentials via TaskUpdateRequest, so they are no longer in query JSON. Later handle-to-record commits only relocated the field.",
+  "reasoning": "Real CWE-212/312 leak: credentials in serialized Iceberg handles exposed through query JSON. BIC is the smallest public first-write of those lines, not a move/refactor/revert/backport/release squash; parent tree verified lacking fileIoProperties. AI judged only from that commit object: human author/committer, no bot, no Co-Authored-By/Generated-with. Fix-side Co-authored-by Marius Grama does not attribute the BIC.",
+  "remaining_gap": ""
+}

@@ -40,7 +40,7 @@ export function isPublicProse(text: string | null | undefined): boolean {
   const words = value.split(/\s+/).filter(Boolean);
   if (words.length < 5) return false;
   const slashes = (value.match(/\//g) ?? []).length;
-  if (slashes >= 4 && !/[.!?]\s/.test(value)) return false;
+  if (slashes >= 4 && words.length < 12 && !/[.!?]\s/.test(value)) return false;
   return /[a-z]/i.test(value);
 }
 

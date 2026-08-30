@@ -1,0 +1,47 @@
+{
+  "worker": "w067",
+  "review_agent_id": "r389_w067",
+  "class_id": "alias-5e05862d35973d2798ac8f44",
+  "case_id": "GHSA-8vh5-mgjj-w6hg",
+  "repo": "nltk/nltk",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "In tag 3.9.4, nltk/pathsec.py sets ENFORCE = False. validate_path, validate_zip_archive, and validate_network_url warn on rejected paths, traversal members, and restricted URLs when ENFORCE is false, then wrappers continue to builtins.open or network access. SECURITY.md in 3.9.4 explicitly calls this the default warn-only transition mode. The first-party GHSA-p3m8-78j2-g5p3 is published, not withdrawn, and identifies CWE-1188; CVE-2026-62388 is PUBLISHED as of 2026-08-29."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "4386e344d94c5bd0071ee52732638f6929d59d8a creates nltk/pathsec.py with ENFORCE = False and the warn-versus-raise branches. git log --all --reverse -S'ENFORCE = False' -- nltk/pathsec.py returns only this commit, and blame at 3.9.4 and at 155e40343cff0bf50d233e274a12e04d1428b1d9^ attributes the surviving default line to it."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "4386e344d94c5bd0071ee52732638f6929d59d8a is a one-parent commit whose immediate parent is a9e09fae60ec87b4c841d6252131a8e2ff5dfd07; parent-tree lookup confirms nltk/pathsec.py is absent, and parent-wide Python grep finds no ENFORCE symbol."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is not a squash aggregate: it is an atomic topic-branch member, absent from first parent and present through second parent of the two-parent merge aec4fce1b84ad725b8975f7365b23a4f626572a9. The direct fix landing 155e40343cff0bf50d233e274a12e04d1428b1d9 is a GitHub squash; PR 3593 has three members, and member 1ac29c310eb4f978e6c477361d587dd07c54c32b contains the exact False-to-True change while the other two members contain Windows/file-URI follow-ups."
+    },
+    "affected_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "BIC 4386e344d94c5bd0071ee52732638f6929d59d8a is not an ancestor of 3.9.3 but is an ancestor of 3.9.4, whose file has ENFORCE = False. Fix 155e40343cff0bf50d233e274a12e04d1428b1d9 is not an ancestor of 3.9.4 and is an ancestor of v3.10.0-rc1 and v3.10.0, both of which have ENFORCE = True. The first-party advisory records <= 3.9.4 affected and >= 3.10.0 patched."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "155e40343cff0bf50d233e274a12e04d1428b1d9 directly changes nltk/pathsec.py from ENFORCE = False to ENFORCE = True; its immediate parent 4b71ed5cd39722037a20888759409940c4227e6f still has False."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC commit object and GitHub commit API identify human author and committer Eric Kafe (ekaf), with subject 'Add central path/file access control' and no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, GPT, or bot marker. The later a634475dcb0cd7f4346614dd1f4209bd21592bd5 commit is explicitly titled 'Add more Copilot suggestions' and edits pathsec.py, but preserves ENFORCE = False; it did not first write the vulnerable default and is excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "The primary NOT_AI verdict and its BIC, parent, carrier, release, and direct-fix SHAs independently reproduce.",
+    "The primary bug_semantics incorrectly presents NLTK_PATHSEC_ENFORCE as an effective way to enable enforcement in 3.9.4. git grep over tag 3.9.4 finds no NLTK_PATHSEC_ENFORCE reference; that release hardcodes ENFORCE = False, so only runtime assignment to nltk.pathsec.ENFORCE enables enforcement. The first-party advisory's environment-variable snippet does not match the shipped 3.9.4 source."
+  ],
+  "corrected_fields": {
+    "bug_semantics": "nltk.pathsec is the centralized I/O sentinel for path, file, URL/SSRF, zip-slip, and related loads. In shipped 3.9.4 it hardcodes ENFORCE = False, so detected violations generally warn and execution continues instead of raising. The affected tag does not read NLTK_PATHSEC_ENFORCE; enforcement can be enabled only by assigning nltk.pathsec.ENFORCE = True at runtime. Version 3.10.0 changes the shipped default to ENFORCE = True."
+  },
+  "remaining_gap": null
+}

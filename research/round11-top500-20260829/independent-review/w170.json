@@ -1,0 +1,50 @@
+{
+  "worker": "w170",
+  "review_agent_id": "r389_w170",
+  "class_id": "alias-0be1caf9b41978e4de8eb5bd",
+  "case_id": "GHSA-mf78-3rpf-r784",
+  "repo": "julien040/anyquery",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "Server mode registers json_reader and csv_reader on the same SQLite namespace used by MySQL clients. Authentication is optional, and the BIC reader arguments reach openMmapedFile/downloadFile and hashicorp/go-getter without a directory policy, so a remote client of an exposed server can read files accessible to the server process."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "Targeted -S history for both CreateModule(\"json_reader\" and CreateModule(\"csv_reader\" first resolves to edfe9dcb68ffcf6c5832c5f2f6a1ef79909ed6e6. That commit atomically adds the unrestricted helper, both reader modules, and namespace registration; the pre-existing server alone had no file-reading virtual table."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The BIC is present with immediate parent bda27e2926a4bfbf621ba11f2b40611a2d5e9233. Parent-tree cat-file checks show module/helper.go, module/read_csv.go, and module/read_json.go are absent, while the BIC adds them and registers the modules; introducer_parent_absent=false is correct."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "rev-list and commit-object inspection show edfe9dcb68ffcf6c5832c5f2f6a1ef79909ed6e6 has exactly one parent, matching maintainer author/committer identity and timestamps, no merge shape, and a direct 1303-line feature addition. It is the smallest surviving public first-write commit, so squash_decomposed=false and decomposed_shas=[] are correct."
+    },
+    "affected_and_fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "merge-base checks show the BIC is an ancestor of tag 0.4.4, while 27f84fc168310455eaf81ec4ba87eed20298670c is not; the fix is an ancestor of tag 0.4.5. Tag 0.4.4 still has unrestricted downloadFile/openMmapedFile and no module/restrictions.go. The vendor 0.4.5 release explicitly lists this GHSA and the fix commit."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "27f84fc168310455eaf81ec4ba87eed20298670c directly adds Restrictions.CheckSource, threads Restrictions into reader modules, enables sandboxing by default for server mode, and adds TestSandboxLocalFileRead rejecting csv_reader('/etc/passwd'). Its immediate parent lacks those changes; merge commit 32b6ee945033c4c36c08d2e5805e7747da9da8cf only lands the fix branch."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "AI attribution was checked only on BIC edfe9dcb68ffcf6c5832c5f2f6a1ef79909ed6e6. Its commit object names julien040 as both author and committer, has identical author/committer timestamps, subject '✨ Add JSON and CSV tables', and no trailers or AI-generation marker. The primary NOT_AI verdict is supported."
+    },
+    "advisory_disposition": {
+      "status": "PASS",
+      "evidence": "Live checks found the GitHub reviewed advisory withdrawn_at=null and affected range <0.4.5; the repository advisory shows vendor publication on 2026-06-09, and release 0.4.5 names GHSA-mf78-3rpf-r784. CVE.org currently returns CVE_RECORD_DNE/404 for CVE-2026-54629, but there is no withdrawal or rejection evidence."
+    }
+  },
+  "findings": [
+    "The primary identifies the correct vulnerability mechanism, atomic BIC, immediate parent, and direct fix.",
+    "The affected/fixed tag boundary independently reproduces as 0.4.4 unpatched and 0.4.5 patched.",
+    "The BIC-only authorship evidence supports NOT_AI; no verdict-changing inconsistency was found."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

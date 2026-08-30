@@ -1,0 +1,24 @@
+{
+  "worker": "w268",
+  "review_agent_id": "r389_w268",
+  "class_id": "alias-073938ef4ff64e3cf957d867",
+  "case_id": "GHSA-x4cc-vgcc-h5h4",
+  "repo": "gitlab.gnome.org/gnome/libsoup",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: soup_message_headers_set_content_disposition() builds a caller-controlled Content-Disposition value through set_content_foo(); at the vulnerable revision replace_common()/append_common() accepts CR/LF unchanged, and both HTTP/1 request and response serializers append each stored name/value as '%s: %s\\r\\n', enabling header injection or response splitting. The live CVE.org record is PUBLISHED and GitLab issue 486 documents the same PoC-backed mechanism.",
+    "atomic_bic": "CONFIRMED: 732fcd4bb6899f8585f13789fadfc1de56c4a879 is the first history hit for set_content_foo() calling soup_message_headers_replace_common(hdrs, header_name, str->str); its exact hunk changes the previously validating replace() call to the unvalidated common-header fast path.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is 18ef5ed9166914334e0c107d251525a6d082722e, whose set_content_foo() still calls soup_message_headers_replace(); that public path rejects header values containing CR or LF even with G_DISABLE_CHECKS. The common sink exists in the parent, but Content-Disposition is not routed to it, so the vulnerable source-to-sink edge is absent.",
+    "squash_member_decomposition": "NOT_APPLICABLE: 732fcd4bb6899f8585f13789fadfc1de56c4a879 is a one-parent public commit with no merge or squash metadata; bounded -S and function-history replay expose no finer public member. Although the commit changes multiple fast paths, the Content-Disposition call-site hunk is the smallest surviving first writer of this mechanism.",
+    "affected_and_fixed_release_membership": "CONFIRMED: the BIC is absent from 2.99.7 and present in 2.99.8, 3.0.0, and 3.6.5; tag 2.74.3 retains validating replace(). Mainline fix 5c1a2e9c06a834eb715f60265a877f5b882cc1b1 is contained in 3.7.1, while stable backport 7609c3095f815ea93bdbaeaa76b433ab7d1fb922 is absent from 3.6.5 and contained in 3.6.6.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED: 5c1a2e9c06a834eb715f60265a877f5b882cc1b1 directly adds is_valid_header_value(), makes the common append/replace path reject CR/LF when trusted_value is false, passes false from set_content_foo(), and adds bad Content-Disposition type and filename tests. Its parent still has the unvalidated call.",
+    "bic_only_ai_attribution": "CONFIRMED: the BIC commit object names Carlos Garcia Campos <cgarcia@igalia.com> as both author and committer and contains only the subject 'Use header fast paths internally whenever possible'; it has no trailers, bot identity, Generated-with, Copilot, or other AI marker. Fix authorship was not used to infer BIC provenance."
+  },
+  "findings": [
+    "The primary record identifies the correct smallest public BIC, present parent, direct fix, stable backport, affected release boundary, and BIC-only human provenance.",
+    "No protocol-significant contradiction or missing causal gate was found; the primary NOT_AI verdict is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

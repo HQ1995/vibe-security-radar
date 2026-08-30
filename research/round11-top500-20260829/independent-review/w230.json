@@ -1,0 +1,53 @@
+{
+  "worker": "w230",
+  "review_agent_id": "r389_w230",
+  "class_id": "alias-5966b54d9e5177fac38be456",
+  "case_id": "GHSA-wp3c-7fhf-vm5h",
+  "repo": "liftoff-sr/cipster",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "detail": "At affected commit 1802525be27d33e19a9a83c163e331a1d13b1892, a writable kCipByteArrayLength reaches CipAttribute::SetAttrData -> DecodeData and replaces a shared ByteBuf limit with an unbounded wire uint16. Later generic kCipByteArray GetAttrData/EncodeData reads, or SetAttrData/DecodeData writes, according to that inflated limit rather than the real allocation. Issue #47 demonstrates both 64-to-512-byte ASan paths through the public AttributeInsert API; stock Assembly attr 4 is read-only, so the supported scope is API-enabled deployments, not the default sample."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "sha": "90721b00e44e461d14501bb20714a4d71d9e18e4",
+      "detail": "git log --all --reverse -S and blame independently identify this as the first surviving public commit that jointly added kCipByteArrayLength, the capacity-less ByteBuf representation, and the wire-driven '*bb = ByteBuf(bb->data(), aBuf.get16())' rewrite. Later changes before the fix preserve the same mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "sha": "d06f16ea2ef9a10b894324a80ec686443708ed59",
+      "detail": "The immediate parent is present and lacks kCipByteArrayLength and class ByteBuf. Its kCipByteArray decode copies a caller-preconfigured CipByteArray length and contains no network-controlled companion-length rewrite, so the reviewed mechanism is absent."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "detail": "The BIC has exactly one parent and is not a merge. Although its diff is broad, the vulnerable lines are first written in this smallest surviving public Git object; no finer member commit is represented in the full, non-shallow clone or linked from the exact public commit page. decomposed_shas remains empty."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "detail": "The advisory names exact affected snapshot 1802525be27d33e19a9a83c163e331a1d13b1892, and git merge-base verifies the BIC is its ancestor. The repository has no tags, so there is no released-version tag membership or version range to assert."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "detail": "The advisory names exact patch e745d9d4a8ca3a13689066983a1269fe1e567674. It descends from both the BIC and affected snapshot and is an ancestor of current origin/master. The repository has no tags, so fixed status is commit/branch membership only, not a claimed release version."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "sha": "e745d9d4a8ca3a13689066983a1269fe1e567674",
+      "detail": "The fix parent e8e9dba09bf56962807d3504b783ccdb6287f3e4 still performs the unbounded ByteBuf rebuild. The fix introduces CipByteArray {data, capacity, length}, rejects over-capacity length and data writes, emits only validated length bytes, and maps rejection to kCipErrorInvalidAttributeValue, directly closing both read and write variants."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "detail": "The raw BIC object is authored and committed by Dick Hollenbeck <dick@softplc.com> on 2018-07-24 and has no Co-Authored-By, Generated-with, or other AI marker. Claude appears only as co-author of the 2026 fix and is correctly excluded from BIC attribution."
+    }
+  },
+  "findings": [
+    "CVE.org currently records CVE-2026-76987 as PUBLISHED, and GHSA-wp3c-7fhf-vm5h has withdrawn_at=null; this is not a FALSE_POSITIVE or withdrawn advisory.",
+    "The primary record's introducer, parent, direct fix, mechanism scope, and NOT_AI attribution all match independent advisory and local-Git replay.",
+    "No release tags exist; the primary correctly relies on exact affected/fix commits and ancestry rather than inventing a package release range."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

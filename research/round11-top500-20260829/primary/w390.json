@@ -1,0 +1,40 @@
+{
+  "class_id": "alias-30842547202bb7b00688a14b",
+  "case_id": "GHSA-jv4p-mhmp-69vw",
+  "repo": "3em0/cve_repo",
+  "advisory_ids": [
+    "CVE-2026-7847",
+    "GHSA-jv4p-mhmp-69vw"
+  ],
+  "bug_semantics": "Langchain-Chatchat's uploaded-file handler derives file_id as URL-safe base64 of purpose/date/filename. The value is deterministic and reversible, so a low-privileged adjacent attacker who can guess an upload date and filename can construct another file's identifier and use the file retrieval or deletion routes to access that path.",
+  "flaw_origin": "The vulnerable _get_file_id implementation and the routes that consume it were first written in public PR member commit 4507c7078486ee95778bad6a96840f421dec98c0. Its verified parent a1429a350a1433d548680f2a712b2aec205562e4 had only a deprecated files stub; the member replaces that stub and adds the deterministic encoder, decoder, content route, and delete route atomically. Upstream commit 27f0f512a37db4b816da543ca566b0e70d395f4d is the one-parent squash landing of that member. Later commit 5c650a8 only moved the file at 100% similarity and is not the BIC.",
+  "introducer_sha": "4507c7078486ee95778bad6a96840f421dec98c0",
+  "introducer_parent": "a1429a350a1433d548680f2a712b2aec205562e4",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "4507c7078486ee95778bad6a96840f421dec98c0"
+  ],
+  "ai_marker": "No AI marker is present on BIC 4507c7078486ee95778bad6a96840f421dec98c0: its commit metadata and single-commit PR #3573 identify liunux4odoo and contain no AI trailer, bot authorship, or AI-generation claim.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "GitHub commit 4507c7078486ee95778bad6a96840f421dec98c0 shows one parent a1429a350a1433d548680f2a712b2aec205562e4 and adds _get_file_id returning base64.urlsafe_b64encode(f\"{purpose}/{today}/{filename}\".encode()).decode(), together with the decoding file-path and content/delete routes.",
+    "PR #3573 exposes exactly one pre-squash member, 4507c7078486ee95778bad6a96840f421dec98c0; upstream landing 27f0f512a37db4b816da543ca566b0e70d395f4d has the same 107-addition/5-deletion patch and one parent a1429a350a1433d548680f2a712b2aec205562e4.",
+    "The path history shows 5c650a8 as a 100%-similarity move from chatchat-server/.../openai_routes.py to libs/chatchat-server/.../openai_routes.py, preserving rather than introducing the vulnerable lines.",
+    "The v0.3.0 tag contains the deterministic encoder and reversible decoder. The published CVE record marks versions 0.3.1.0 through 0.3.1.3 affected, while the GitHub advisory reports <=0.3.1.3 and no patched version.",
+    "Current upstream master still contains the same deterministic _get_file_id implementation. Issue #5464 has no linked development branch or pull request, so no direct fix commit is available.",
+    "The only observed AI trailer is on disclosure-repository commit 58b5c1aba218aec104463c83ca594bbe13ff237a, dated 2026 and adding the vulnerability report; it is not the 2024 BIC and is excluded from BIC authorship judgment."
+  ],
+  "reasoning": "The security mechanism is real and the CVE record is PUBLISHED, not rejected or withdrawn. Atomic history places the first vulnerable implementation in the human-attributed PR member 4507c7078486ee95778bad6a96840f421dec98c0; its parent lacks the implementation, the squash landing preserves it, and later moves preserve it. Because AI attribution is evaluated only on that BIC and the BIC has no AI marker, the correct causal verdict is NOT_AI. The flaw shipped by v0.3.0, remains in the advisory's affected 0.3.1.x releases, and is still present on master without a direct fix.",
+  "remaining_gap": "",
+  "unpatched": {
+    "confirmed": true,
+    "evidence": "GitHub Advisory GHSA-jv4p-mhmp-69vw lists no patched version, issue #5464 links no fix, and current upstream master retains the vulnerable deterministic encoder.",
+    "potential_fix": {
+      "approach": "Generate a cryptographically random opaque identifier for each upload, store the identifier-to-file metadata mapping server-side, and authorize every read, overwrite, and delete against the owning principal.",
+      "rationale": "An unpredictable identifier removes the date/filename guessing oracle, while server-side ownership checks prevent possession or construction of an identifier from granting access."
+    }
+  }
+}

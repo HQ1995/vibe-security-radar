@@ -1,0 +1,33 @@
+{
+  "class_id": "alias-9e7908f98131a2caf6e60992",
+  "case_id": "alias-9e7908f98131a2caf6e60992",
+  "repo": "classroomio/classroomio",
+  "advisory_ids": [
+    "CVE-2025-65675",
+    "GHSA-gfvq-wmqw-q9j2"
+  ],
+  "bug_semantics": "An authenticated user can supply a crafted SVG as a profile image because the shared UploadImage control only provides a client-side accept hint and performs no type, extension, or content validation. The selected File is uploaded to the public Supabase avatars bucket under a generated .webp name, its public URL is stored in profile.avatar_url, and the researcher's documented victim action of opening the stored profile picture in a new tab causes JavaScript embedded in the SVG response to execute. This is stored XSS with victim interaction.",
+  "flaw_origin": "05ed2b74ee25aaeddefc62121202ee97ed8637f0 is the smallest mainline commit that creates the complete vulnerable source-to-sink path: it adds src/components/UploadImage/index.svelte, accepts the selected browser File without validating it, and changes src/routes/profile/[id].svelte to upload that File to the public avatars bucket and persist the returned publicURL as avatar_url. Later type annotations, size checks, and the monorepo relocation preserve rather than originate the flaw.",
+  "introducer_sha": "05ed2b74ee25aaeddefc62121202ee97ed8637f0",
+  "introducer_parent": "26798f1e93d437f0a2661333450c7b669e365de1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "BIC commit-object check: `git cat-file -p 05ed2b74ee25aaeddefc62121202ee97ed8637f0` identifies human author and committer `rotimi-best <best@classroomio.com>` and contains only the subject `Upload avatar`; there is no Co-Authored-By, Generated-with, bot identity, or other AI marker in the commit object.",
+  "verdict": "NOT_AI",
+  "fix_sha": "900f5ec12979f512ae8f333312aee78973a054f5",
+  "direct_fix_sha": "900f5ec12979f512ae8f333312aee78973a054f5",
+  "evidence": [
+    "The assigned GHSA/CVE description and https://github.com/Rivek619/CVE-2025-65675 identify ClassroomIO 0.1.13, authenticated malicious SVG profile upload, persistent storage, and execution after the stored profile picture is opened in a new tab.",
+    "Run `git show --format=fuller --patch 05ed2b74ee25aaeddefc62121202ee97ed8637f0`. The diff creates src/components/UploadImage/index.svelte; onFileSelected takes e.target.files[0] and immediately readAsDataURL(image), while the file input's `.jpg, .jpeg, .png` accept value is only a browser hint. The same commit changes src/routes/profile/[id].svelte to upload avatar to Supabase storage `.from('avatars')`, obtain getPublicUrl(filename), and assign updates.avatar_url.",
+    "Run `git log -L 17,36:apps/dashboard/src/lib/components/UploadImage/index.svelte 900f5ec12979f512ae8f333312aee78973a054f5^`. Following the vulnerable selection logic through its historical path reaches its first addition at 05ed2b74ee25aaeddefc62121202ee97ed8637f0; intervening commits only add typing, a size limit, or change dispatch behavior. `git log 900f5ec12979f512ae8f333312aee78973a054f5 -S \".from('avatars')\" -- src apps/dashboard/src` independently reaches the same commit for the profile storage sink.",
+    "Direct parent check: `git grep -n -e \"from('avatars')\" -e UploadImage -e 'type=\"file\"' 26798f1e93d437f0a2661333450c7b669e365de1 -- src` returns no matches. The 05ed2b7 diff adds both the previously absent UploadImage file and the profile upload/persistence path, so parent absence is directly verified.",
+    "Run `git log 900f5ec12979f512ae8f333312aee78973a054f5 --follow -- apps/dashboard/src/lib/components/UploadImage/index.svelte`. It traces the component back through 41e29014effc9aeca3a467599b9f972383a821b7's monorepo relocation to 05ed2b74ee25aaeddefc62121202ee97ed8637f0. The candidate is a one-parent feature commit, not a merge, release/backport, revert, move, or squash aggregate.",
+    "Run `git show v0.1.13:apps/dashboard/src/lib/components/UploadImage/index.svelte` and `git show 'v0.1.13:apps/dashboard/src/routes/profile/[id]/+page.svelte'`. The affected tag still has only a size check plus an accept hint, then uploads the unvalidated File to the public avatars bucket under `user/<name><time>.webp` and stores response.publicUrl. `git tag --contains 05ed2b74ee25aaeddefc62121202ee97ed8637f0` includes every repository release tag beginning at v0.1.0, including the advisory's v0.1.13.",
+    "Run `git show --format=fuller --patch 900f5ec12979f512ae8f333312aee78973a054f5`. This direct security commit adds validateImageUpload MIME/extension allowlists excluding SVG and invokes them before the profile/general image upload controls accept a File. Its annotated tag v0.2.5 points directly to this commit and describes the critical SVG XSS fix.",
+    "Version boundary is reproducible with `git tag --contains 900f5ec12979f512ae8f333312aee78973a054f5`: the first fixed tag is v0.2.5 (followed by v0.2.6 and later), while v0.1.13 and v0.2.0 through v0.2.4 do not contain the fix. The advisory itself lists only 0.1.13 and leaves patched versions unknown, so the broader boundary comes from repository ancestry and the project's security-release tag.",
+    "Run `git cat-file -p 05ed2b74ee25aaeddefc62121202ee97ed8637f0` for BIC-only AI evidence. The exact object has tree 52f86b7290635ad48e4c54f96d57501daa8530f6, sole parent 26798f1e93d437f0a2661333450c7b669e365de1, human author/committer rotimi-best <best@classroomio.com>, and message `Upload avatar`, with no trailers or bot/AI marker. No signal from the later fix was used for the verdict."
+  ],
+  "reasoning": "The vulnerability's necessary upload, public-storage, and profile-URL persistence operations first enter the fix's mainline ancestry together in 05ed2b74ee25aaeddefc62121202ee97ed8637f0, and its immediate parent lacks them. History tracing rules out the later monorepo move and subsequent refactors as introducers. The affected v0.1.13 tree retains the vulnerable mechanism; the repository's direct fix and v0.2.5 security tag establish the closing release boundary. The BIC commit object has a human identity and no AI attribution, generated-code trailer, or bot marker, so under the required BIC-only rule this is NOT_AI.",
+  "remaining_gap": null
+}

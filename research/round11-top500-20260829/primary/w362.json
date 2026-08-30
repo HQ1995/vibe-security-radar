@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-15cffb35a4c6e322cc2635d0",
+  "case_id": "GHSA-9c54-x2g4-v92j",
+  "repo": "sigstore/timestamp-authority",
+  "advisory_ids": [
+    "CVE-2026-49835",
+    "GHSA-9c54-x2g4-v92j"
+  ],
+  "bug_semantics": "The timestamp-authority HTTP server installs wrapMetrics inside setupGlobalMiddleware, which the source comments as running before routing. wrapMetrics records Prometheus histogram/summary/counter vectors using the raw request path (r.URL.Path) and, after later monitoring additions, the raw HTTP method (r.Method) as label values. client_golang registers a permanent time series for every distinct label set, so an unauthenticated client can send unique unmatched paths (for example /api/v1/timestamp/<uuid>) or arbitrary methods, including those that 404, and grow unbounded in-process metric cardinality until the process OOMs (CWE-770).",
+  "flaw_origin": "The first public write of the flawed mechanism is repo-root commit 880365399bca9279049e7c77c554d26f2aaafa31 (2022-08-16, Hayden Blauzvern). That commit added pkg/generated/restapi/configure_timestamp_server.go wrapMetrics labeling MetricLatency with r.URL.Path and pkg/api/metrics.go HistogramVec labels [path, code]. The file header marks it as the go-swagger configure hook that is safe to edit and not overwritten. The commit message states the tree was copied from Rekor. cbb7b65f4dd62b70d5f53c1d0ab4644bcedd1140 (Add monitoring #67) later added MetricLatencySummary, MetricRequestLatency, and MetricRequestCount still keyed on raw path plus r.Method, expanding the same unbounded-label design rather than introducing it.",
+  "introducer_sha": "880365399bca9279049e7c77c554d26f2aaafa31",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent; author Hayden Blauzvern <hblauzvern@google.com>, committer Hayden Blauzvern <hblauzvern@google.com>; only trailer is Signed-off-by: Hayden Blauzvern <hblauzvern@google.com>; GPG-signed; no Co-Authored-By, Generated-with, Copilot, Cursor, ChatGPT, or bot identity on the BIC commit object",
+  "verdict": "NOT_AI",
+  "fix_sha": "506ec57b6ac2ea1e4739322e47453469425b69b5",
+  "direct_fix_sha": "506ec57b6ac2ea1e4739322e47453469425b69b5",
+  "evidence": [
+    "CVE.org CVE-2026-49835 state=PUBLISHED (GitHub_M, 2026-07-17); not withdrawn/rejected. GHSA-9c54-x2g4-v92j withdrawn_at=null. Ubuntu/OSV describe the same wrapMetrics path/method cardinality OOM, fixed in 2.1.0.",
+    "CVE CNA references the patch https://github.com/sigstore/timestamp-authority/commit/506ec57b6ac2ea1e4739322e47453469425b69b5 and https://github.com/sigstore/timestamp-authority/releases/tag/v2.1.0. Advisory body text saying 'update to v2.0.7' is a doc error: git tag -l v2.0.7 is empty; first patched tag is v2.1.0.",
+    "git log -L :wrapMetrics:pkg/generated/restapi/configure_timestamp_server.go yields three commits only: 880365399bca9279049e7c77c554d26f2aaafa31 (create wrapMetrics with path: r.URL.Path), cbb7b65f4dd62b70d5f53c1d0ab4644bcedd1140 (add more vectors + method: r.Method), 506ec57b6ac2ea1e4739322e47453469425b69b5 (allowlist).",
+    "BIC 880365399bca9279049e7c77c554d26f2aaafa31 is a parentless root: git rev-list --parents -n 1 shows only that SHA; git rev-parse 880365399bca9279049e7c77c554d26f2aaafa31^ fails. No finer public member exists in this repo. Message: 'Initial commit / Code is copied over from Rekor'.",
+    "At BIC, wrapMetrics (configure_timestamp_server.go:131-146) does MetricLatency.With({\"path\": r.URL.Path, \"code\": status}); setupGlobalMiddleware (lines 106-118) installs it globally with the comment 'The middleware configuration happens before anything'. pkg/api/metrics.go defines HistogramVec timestamp_api_latency with labels path,code.",
+    "Parent of #67 still has only the path-labeled MetricLatency wrapMetrics; cbb7b65 then adds MetricLatencySummary (path,code), MetricRequestLatency (path,method), and MetricRequestCount (code,path,method). Same mechanism, larger surface; not the BIC.",
+    "Pre-fix tree ee10addd351dc6ee98cce8ff8fd371d7c46da954 and tag v2.0.6 (9583b6186084a309cb6ccaf4323a29781901e962) still pass r.URL.Path and r.Method straight into the four metric vectors (configure_timestamp_server.go:176-207). v1.2.9 likewise still uses raw path/method labels; 506ec57 is not an ancestor of v1.2.9.",
+    "Fix 506ec57b6ac2ea1e4739322e47453469425b69b5 (PR #1374 squash onto main, parent ee10addd351dc6ee98cce8ff8fd371d7c46da954) allowlists paths /ping, /api/v1/timestamp, /api/v1/timestamp/certchain and methods GET/POST/HEAD/OPTIONS, else \"unrecognized\". git merge-base --is-ancestor 506ec57 v2.0.6 fails; ancestor of v2.1.0 (58ae149676e193d2dd7e7ee53f231b83fdd10fad) succeeds. Release notes list PR #1374. Fork commit 7bd30815f397f1088f21fb37f5f3f9f7d64775c9 has the same tree/parent but is not on main; CVE cites 506ec57.",
+    "BIC commit-object AI check: git cat-file -p / git log -1 --format author/committer/body on 880365399bca9279049e7c77c554d26f2aaafa31 show Hayden Blauzvern <hblauzvern@google.com> for both author and committer, Signed-off-by only, GPG signature present, no Co-Authored-By/Generated-with/bot trailers.",
+    "OSV GIT range for https://github.com/sigstore/timestamp-authority is introduced=0, fixed=506ec57b6ac2ea1e4739322e47453469425b69b5 (and v2.1.0 tag 58ae149); affected tags include v0.1.0 through v2.0.6, matching root-commit BIC membership (BIC is ancestor of v0.1.0, v1.2.9, v2.0.6, v2.1.0)."
+  ],
+  "reasoning": "CVE-2026-49835 / GHSA-9c54-x2g4-v92j is a published, non-withdrawn CWE-770: wrapMetrics, installed before routing, used attacker-controlled URL path and HTTP method as Prometheus labels, so unique requests created unbounded permanent time series and could OOM the TSA. git log -L / -S show that function and the path: r.URL.Path label were first written in the parentless initial commit 880365399bca9279049e7c77c554d26f2aaafa31; the immediate parent is absent (root commit), and no reconstructable finer public member exists in this repository. That first write is already sufficient for the path-cardinality DoS the advisory describes. cbb7b65 (monitoring #67) only added more vectors and method labels on the same design, so it is not the BIC. The fix that lands the allowlist is 506ec57b6ac2ea1e4739322e47453469425b69b5, cited by the CNA, present in v2.1.0 and absent from v2.0.6 / v1.2.9, matching the patched boundary (advisory prose 'v2.0.7' is a nonexistent tag). AI is judged only from the BIC commit object: human Google author/committer Hayden Blauzvern, Signed-off-by only, GPG-signed, no commit-object AI marker. Therefore the real vulnerability is human-authored: NOT_AI.",
+  "remaining_gap": null
+}

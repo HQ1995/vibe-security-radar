@@ -1,0 +1,49 @@
+{
+  "worker": "w295",
+  "review_agent_id": "r389_w295",
+  "class_id": "alias-67d47274d2d864426a971733",
+  "case_id": "GHSA-qgp8-v765-qxx9",
+  "repo": "cloudflare/workers-oauth-provider",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "The authorization path stores codeChallenge only when supplied, while the vulnerable token path gates verification solely on !!grantData.codeChallenge. Stripping code_challenge therefore leaves a non-PKCE grant, and a later token request carrying code_verifier is accepted while the verifier is ignored, matching the RFC 9700 PKCE downgrade mechanism."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "b1079e7beb5f4821a0ffc7ae07670c417b66d07d is the single-parent commit that first adds optional code_challenge capture, grant persistence, and the skip-if-no-codeChallenge verifier branch; the commit diff is the smallest surviving public first-write of the vulnerable mechanism."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "The immediate parent is present as 4fb0f128cce4306bde33c14b2309833be669c826, and git grep of that tree finds no code_challenge, codeChallenge, code_verifier, or PKCE symbol in oauth-provider.ts."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC is an ordinary one-parent commit, not a squash aggregate. Later 7d3fdde29c540c67867e653311cb635203cab627 only rewrites the predicate to isPkceEnabled, and 941684c4398a5da9bcbfb9550b0ee0c5213db796 is a 99% path rename; neither is a first-write member requiring decomposition."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "b1079e7beb5f4821a0ffc7ae07670c417b66d07d is an ancestor of tag v0.0.4, while merge fix 09a2adb2f197469e5b64e8b89c22b6687cacabc1 is not. The published npm 0.0.4 artifact contains the isPkceEnabled conditional and lacks the downgrade rejection."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "GitHub GHSA and the Cloudflare CNA record identify versions below 0.0.5 as affected and 0.0.5 as patched. The published npm 0.0.5 artifact contains the exact downgrade rejection, and both direct fix d954473f066f0daa3949717fd4d6e805d2ac618b and merge 09a2adb2f197469e5b64e8b89c22b6687cacabc1 are ancestors of tag v0.0.6."
+    },
+    "direct_fix_or_unpatched_state": {
+      "status": "PASS",
+      "evidence": "d954473f066f0daa3949717fd4d6e805d2ac618b directly adds the !isPkceEnabled && codeVerifier rejection and a matching regression test; merge commit 09a2adb2f197469e5b64e8b89c22b6687cacabc1 lands that commit through PR 27."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "Attribution is based only on the BIC commit object: its subject says Ask Claude to implement PKCE support, and its body explicitly records transition to Claude Code plus the prompt requesting the PKCE implementation. No later fix or unrelated repository AI marker is needed for the attribution."
+    }
+  },
+  "findings": [
+    "The advisory is live and published: GHSA-qgp8-v765-qxx9 has withdrawn_at=null, and CVE-2025-4144 is PUBLISHED by Cloudflare.",
+    "The primary record's mechanism, BIC, parent, release, fix, and BIC-only AI-attribution claims independently reproduce from the advisory, clone, and npm artifacts."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

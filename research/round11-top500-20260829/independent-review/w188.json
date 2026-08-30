@@ -1,0 +1,27 @@
+{
+  "worker": "w188",
+  "review_agent_id": "r389_w188",
+  "class_id": "alias-c18618ce23ece28347b904c4",
+  "case_id": "GHSA-m5p4-gvpx-4mvr",
+  "repo": "datadog/guarddog",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: attacker-controlled Semgrep message, location, and code fields reach the default human-readable terminal sink without C0/C1 escaping; v2.9.0 renders them by direct concatenation.",
+    "atomic_bic": "CONFIRMED: fab6f964209154c40ad031d1e944ada34419b5e4 first adds both the finding dictionaries and print_scan_results sink; reverse -S history identifies it as the first writer.",
+    "immediate_parent_absence": "CONFIRMED: immediate parent f035c31c09f91926d38baceb5c3f77ddd4f273a9 has neither the printer nor the list-of-dicts finding shape and emits scan output through pprint, which escapes ESC as a representation.",
+    "squash_member_decomposition": "CONFIRMED_NOT_SQUASH: fab6f964209154c40ad031d1e944ada34419b5e4 is the first of three preserved commits in PR 54; the later two-parent merge is 567a3e8e2548d07544cc9b2a818188056774c303, so the atomic member is directly inspectable.",
+    "affected_release_membership": "CONFIRMED: fab6f964209154c40ad031d1e944ada34419b5e4 is an ancestor of v2.6.0 and v2.9.0; the reporter extraction be780e60f761b9799666a506a8bb743527f78874 is absent from v2.5.0 and present in v2.6.0, matching the advisory range >=2.6.0,<=2.9.0.",
+    "fixed_release_membership": "CONFIRMED: fix ec0705814fa3ebb0bf1507df3f4751cad5d0dda5 is not an ancestor of v2.9.0 and is an ancestor of v2.10.0.",
+    "direct_fix_or_verified_unpatched_state": "CONFIRMED_DIRECT_FIX: ec0705814fa3ebb0bf1507df3f4751cad5d0dda5 adds a C0/C1 control-character sanitizer and applies it to identifiers, errors, rule names, descriptions, messages, locations, and code in the human-readable reporter.",
+    "bic_only_ai_attribution": "CONFIRMED_NOT_AI: the BIC object and GitHub record name human author and committer Christophe Tafani-Dereeper, contain only the subject 'Reformat code to allow for a nice output', have no AI/bot/co-author trailers, and carry a valid personal GPG signature."
+  },
+  "findings": [
+    "The substantive NOT_AI verdict, BIC, parent, and direct fix are independently confirmed.",
+    "Primary field introducer_parent_absent=false contradicts the verified parent-tree absence and the primary's own prose; it must be true."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true
+  },
+  "remaining_gap": null
+}

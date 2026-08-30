@@ -1,0 +1,25 @@
+{
+  "class_id": "alias-08c60a471099b9b2b8f09f27",
+  "case_id": "GHSA-5gh2-94qg-qppq",
+  "repo": "nltk/nltk",
+  "advisory_ids": [
+    "CVE-2026-71513",
+    "GHSA-5gh2-94qg-qppq"
+  ],
+  "bug_semantics": "CWE-502 incomplete pickle allowlist in nltk/picklesec.py: AllowlistUnpickler.find_class admits a global when the module string matches allowed_modules (prefix) or an exact (module, name) pair, then calls pickle.Unpickler.find_class. It never rejects a dotted name, so protocol>=4 getattr-chains names such as sklearn.os.system out of an allowed namespace. TransitionParser.parse loads caller-supplied models via allowlisted_pickle_load(allowed_modules=numpy/scipy/sklearn), so a crafted model executes arbitrary callables.",
+  "flaw_origin": "The advisory sink is the module-only AllowlistUnpickler, not the earlier warn-and-execute pickle_load. GitHub squash merge f26b3753038d937b68145daf15e9636f8451053c (#3631, 2026-07-01) first put that class on nltk/nltk default history; parent 8493007b3ec04bfa132ed5ca9cbecf127ecc9eda has RestrictedUnpickler/WarningUnpickler only. The squash decomposes to public PR member 7c233bdb55d394fe7f8cdd87b62ad08040e0d922 (2026-06-18), which first wrote find_class as `if (module, name) in allowed_globals or _module_allowed(module): return super().find_class(module, name)`. Parent 16a32d680d070254d5744e33fa83f9c0056d5a1f still lacks AllowlistUnpickler. Later PR bullets (tests, punkt helper, Copilot string-guard) did not add the dotted-name check. v3.10.0\u2013v3.10.2 keep that find_class at the advisory lines; c3e37113742a1ebeeb4f2ca58941f320f98805ea (2026-08-10) first rejects dotted names and tightens namespace resolution.",
+  "introducer_sha": "7c233bdb55d394fe7f8cdd87b62ad08040e0d922",
+  "introducer_parent": "16a32d680d070254d5744e33fa83f9c0056d5a1f",
+  "introducer_parent_absent": false,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "7c233bdb55d394fe7f8cdd87b62ad08040e0d922"
+  ],
+  "ai_marker": null,
+  "verdict": "NOT_AI",
+  "fix_sha": "c3e37113742a1ebeeb4f2ca58941f320f98805ea",
+  "direct_fix_sha": "c3e37113742a1ebeeb4f2ca58941f320f98805ea",
+  "evidence": "CVE.org CVE-2026-71513 state=PUBLISHED (VulnCheck CNA; affected semver 3.10.0 to <3.10.3); GHSA-5gh2-94qg-qppq withdrawn_at=null. Clone nltk/nltk. git log -S 'class AllowlistUnpickler' -- nltk/picklesec.py -> f26b3753038d937b68145daf15e9636f8451053c. git cat-file -p f26b375: author Litesh Ghute <61110758+LiteshGhute@users.noreply.github.com>, committer GitHub <noreply@github.com>, subject fix(security): prevent pickle RCE in TransitionParser model loading (CWE-502) (#3631), parent 8493007b3ec04bfa132ed5ca9cbecf127ecc9eda, no Co-Authored-By/Generated-with; squash body lists later 'address Copilot review comments' (string-to-allowed_modules guard), which is not an AI trailer on the first-write. git log -1 --format='%an %ae %cn %ce' f26b375: Litesh Ghute 61110758+LiteshGhute@users.noreply.github.com GitHub noreply@github.com. git cat-file -e 8493007b:nltk/picklesec.py succeeds; grep AllowlistUnpickler/_module_allowed/allowlisted_pickle_load on that parent is empty. v3.10.2 nltk/picklesec.py L119-L124 is the module-only find_class. GitHub PR #3631 commits: 7c233bdb55d394fe7f8cdd87b62ad08040e0d922 author/committer LiteshGhute <liteshghute10@gmail.com>, message only the CWE-502 subject, parent 16a32d680d070254d5744e33fa83f9c0056d5a1f; that blob first added AllowlistUnpickler and the unguarded super().find_class path. git cat-file -e 16a32d68:nltk/picklesec.py succeeds; grep AllowlistUnpickler on 16a32 is empty (RestrictedUnpickler.find_class only). 7c233 is not stored in the assigned clone (cat-file -t fails); authorship and patch taken from the public GitHub commit object. git cat-file -p c3e3711: author/committer alvations <alvations@gmail.com>, parent 006000117a9e3132a8074d16f2587e837f41b9b0 still has the v3.10.2 find_class; patch adds dotted-name reject plus _resolve. merge-base --is-ancestor c3e3711 v3.10.3 and HEAD succeed; v3.10.3 picklesec.py contains 'has a dotted name, which is forbidden'.",
+  "reasoning": "The published CVE is a real incomplete-remediation pickle RCE: an allowlist that checks only the module string and then lets Unpickler.find_class getattr-chain dotted names. That find_class was first written in public PR member 7c233bdb55d394fe7f8cdd87b62ad08040e0d922 (human LiteshGhute, no AI markers on that commit object) and landed via squash f26b3753038d937b68145daf15e9636f8451053c. A later Copilot-review bullet and the 2026-08-10 AI-irrelevant fix commit do not attribute the BIC. Closed as NOT_AI.",
+  "remaining_gap": ""
+}

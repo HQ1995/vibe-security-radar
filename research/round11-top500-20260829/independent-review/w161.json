@@ -1,0 +1,24 @@
+{
+  "worker": "w161",
+  "review_agent_id": "r389_w161",
+  "class_id": "alias-9541a14c8a379770f6b9502d",
+  "case_id": "GHSA-xpm4-qfqg-g2wr",
+  "repo": "gitlab.freedesktop.org/networkmanager/networkmanager",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "Confirmed. The private-connection path hardening passes file-valued 802.1X certificates and keys to wpa_supplicant as blobs, but ca-path and phase2-ca-path are directories and remained raw user-selected paths. Without a ca-cert, an unprivileged owner of a private WPA-Enterprise profile can select the trust directory and authenticate a rogue server. The CVE.org record is PUBLISHED and the Red Hat CNA describes this as an incomplete fix for CVE-2025-9615; the GHSA is not withdrawn.",
+    "atomic_bic": "Confirmed as e85cc46d0b36cdba50fe8411cc93d55a49ebfccf. The older e5ed391f288d7e2a653aa19d58ae0dedbc9a67f7 first added general ca_path/ca_path2 emission, but e85cc46d is the smallest commit that creates this advisory's incomplete private_user security boundary: it adds private_user and blob/path guards for file-valued siblings while leaving both directory emits outside that boundary. The commit is single-parent and is neither a move, revert, merge, nor release aggregate.",
+    "immediate_parent_absence": "Confirmed against a1928b4459a771acbc943dfd41ed3c3426ddb4a6. The parent contains the pre-existing raw ca_path/ca_path2 emits but no private_user field or private-user blob/path restriction, so the specific incomplete-fix state does not exist there.",
+    "squash_member_decomposition": "Confirmed. e85cc46d is an ordinary member of the issue1809 topic merged by 1756ec54e384cc7e66878e9eecf7dd713df9de29, not a squash. Unreferenced object 36ea70c0993cb48d3155c2de6d6c8e48a2b08c60 has the same stable patch-id, but no branch or tag contains it; e85cc46d is the surviving public-history object and needs no decomposition.",
+    "affected_and_fixed_release_membership": "Confirmed in the frozen clone. e85cc46d is absent from tag 1.57.0-dev and present in 1.57.1-dev, 1.58-rc1, and 1.58.0. Mainline fix a8e87381a3e70060abd721d9a347f42b2ba68e6e is not contained in a release-like tag in this snapshot; its explicit cherry-pick 15aa1a8963ee014f5eb8306b305b158293c10643 is contained in tag 1.58.1, so 1.58.0 is affected and 1.58.1 is fixed.",
+    "direct_fix_or_unpatched_state": "Confirmed direct fix a8e87381a3e70060abd721d9a347f42b2ba68e6e. It adds private_user && !ca_path_override rejection for both ca_path and ca_path2, sets an error, adds regression coverage using an attacker-controlled CA directory, names e85cc46d in its Fixes trailer, and names CVE-2026-19685. Commit 15aa1a8963ee014f5eb8306b305b158293c10643 explicitly records itself as its 1.58 branch cherry-pick.",
+    "bic_only_ai_attribution": "Confirmed. The raw e85cc46d commit object names human author Beniamino Galvani and human committer Inigo Huguet and contains no Co-Authored-By, Generated-with, bot, or other AI marker. Repository-level AI scan signals and the later fix author are not attribution evidence for the BIC."
+  },
+  "findings": [
+    "The primary record's mechanism, introducer, parent, non-squash treatment, direct fix, release membership, and NOT_AI attribution all reproduce from the designated bundle, advisory records, and clone.",
+    "The distinction between the 2009 ca-path feature and the 2025 incomplete private_user remediation is material and is correctly handled by the primary record."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

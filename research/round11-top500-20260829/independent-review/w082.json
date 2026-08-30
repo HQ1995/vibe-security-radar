@@ -1,0 +1,26 @@
+{
+  "worker": "w082",
+  "review_agent_id": "r389_w082",
+  "class_id": "alias-7f3d6094eefe8d0aa8a8d8d4",
+  "case_id": "GHSA-rh9x-7xjc-vwx2",
+  "repo": "sparklemotion/nokogiri",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: the CRuby transform path allocates params before converting each Ruby parameter with StringValueCStr; an embedded NUL raises before the historical free/ruby_xfree, leaking the array. The vendor advisory identifies this exact CWE-401 availability mechanism, about 24-32 bytes per call, with no memory corruption and JRuby unaffected.",
+    "atomic_bic": "CONFIRMED: d20552c9a3e3def794bb9a74e6f14cab64b5342a is the first public commit found by reverse -S history to write StringValueCStr(entry) in the allocated transform-parameter loop. Although it mechanically replaces StringValuePtr in 19 files, the relevant hunk itself first creates the advisory's embedded-NUL exception path and is the smallest surviving public commit object.",
+    "immediate_parent_absence": "CONFIRMED: the sole parent is f5a9dc9a8e0f7579be86909685e56643db96a351, whose transform loop allocates params, uses StringValuePtr(entry), reaches xsltApplyStylesheet, and then frees params; it lacks the embedded-NUL StringValueCStr raise that defines this advisory.",
+    "squash_member_decomposition": "CONFIRMED: d20552c9a3e3def794bb9a74e6f14cab64b5342a is a single-parent commit, not a merge or squash aggregate. Merge cc6c3d884a93e84652badac53db9588d19c2c6d4 has parents f5a9dc9a and d20552c9, so the introducer remains an independently addressable member and no finer public decomposition is required.",
+    "affected_release_membership": "CONFIRMED: d20552c9 is absent from v1.6.7.2 and v1.6.8.rc1, present in v1.6.8.rc2 and v1.6.8, and remains present in v1.19.2. The v1.19.2 source still has ruby_xcalloc followed by an unprotected StringValueCStr loop.",
+    "fixed_release_membership": "CONFIRMED: v1.19.3 resolves to c139a3da0fe0cae7499a0bafa20f2875877c585b and contains backport caeaac41f874f0944f9397c78bf6c1bfac2cb472; v1.19.2 does not. The vendor advisory and v1.19.3 changelog both state affected <1.19.3 and patched 1.19.3.",
+    "direct_fix_or_unpatched_state": "CONFIRMED: direct fix b81d745bf5d82b578a577adf3d5a45b047b92a31 runs parameter construction under rb_protect, frees params on exception, and re-raises with rb_jump_tag; its regression test exercises a NUL-containing value under memwatch. Backport caeaac41 has the same stable patch-id and is the release-line fix, while b81d745 is on main and not in v1.19.3.",
+    "bic_only_ai_attribution": "CONFIRMED: the d20552c9 commit object names human author and committer Lars Kanis, dated 2016, and contains no Co-Authored-By, Generated-with, bot, or other AI marker. Attribution is based only on this BIC, not on the 2026 advisory or remediation commits; NOT_AI is supported."
+  },
+  "findings": [
+    "CVE-2026-79771 is PUBLISHED and points to the vendor advisory GHSA-v2fc-qm4h-8hqv; the vendor advisory is published, not withdrawn, and specifies nokogiri <1.19.3 as affected and 1.19.3 as patched.",
+    "The allocation predates the BIC (introduced with the transform implementation in 3561a5deb95b1f5a386588a5ea43f313272d9feb), but d20552c9 is the first write of the advisory-specific embedded-NUL raise after allocation; the allocation-only commit is therefore not this advisory's BIC.",
+    "The direct and backported fixes have identical stable patch-id a1d87b6e1df43edf43a2a1efef9ba8962d905d79, closing the mechanism on main and the v1.19.x release line respectively."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

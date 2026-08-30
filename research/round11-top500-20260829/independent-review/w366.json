@@ -1,0 +1,49 @@
+{
+  "worker": "w366",
+  "review_agent_id": "r389_w366",
+  "class_id": "alias-17f10907f108e2dd5a472b52",
+  "case_id": "GHSA-vxvf-xvm3-p8j5",
+  "repo": "openstack/horizon",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE-2026-43002 is PUBLISHED and the vendor advisory identifies Horizon >=25.6.0 <25.7.3. Commit 3e2ff4e063fb46dc2a790670648dc6e1ca9b5a79 writes request.GET['next'] into request.session before authentication; Django then persists a new server-side session for unauthenticated requests, bypassing the existing HorizonMiddleware unauthenticated early return and enabling session-store exhaustion."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "git log -S post_login_redirect, the one-file BIC diff, and blame/ancestry evidence identify single-parent commit 3e2ff4e063fb46dc2a790670648dc6e1ca9b5a79 as the smallest landed commit that first writes the vulnerable session key."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "Immediate parent 827a566d349020853e0370b6bf90066dd56b6ec2 resolves locally, and a full-tree git grep finds no post_login_redirect; the BIC diff introduces all four references in openstack_auth/views.py."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "The BIC has one parent and changes only openstack_auth/views.py. Gerrit change 950302 has two patch-set revisions of the same change; patch set 2 is the landed BIC and is the second parent of Zuul merge af96b50bd0047312c9362350a8be2851c3ded51f. The merge is not the BIC, and there is no squash aggregate or finer landed member to substitute."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "The BIC is not an ancestor of 25.5.0, but is an ancestor of 25.6.0, 25.7.0, 25.7.1, and 25.7.2; those affected tags contain post_login_redirect in openstack_auth/views.py."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "Stable fix 78d0d05c606c570afe080fcbe2814d8d836d20fe is an ancestor of tag 25.7.3 but not 25.7.2, and 25.7.3 no longer contains post_login_redirect. Master fix ac250004a62b909f33b4a06b41123aa0e46244f0 is an ancestor of 26.0.0, which also lacks the vulnerable key."
+    },
+    "direct_fix_or_verified_unpatched_state": {
+      "status": "PASS",
+      "evidence": "Direct fix ac250004a62b909f33b4a06b41123aa0e46244f0 removes the unauthenticated session write and carries the redirect in a cookie; 78d0d05c606c570afe080fcbe2814d8d836d20fe is its explicit stable/2026.1 cherry-pick and is the fix shipped in 25.7.3."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "The BIC commit object alone shows human author and committer dchakalov <dchakalov@godaddy.com>, with only Change-Id and Signed-off-by trailers. Its author, committer, message, and trailers contain no AI generator, AI co-author, bot identity, or other AI marker; the later Zuul merge and fix commits were excluded from attribution."
+    }
+  },
+  "findings": [
+    "The primary NOT_AI verdict is supported by an independently replayed vulnerability-first causal chain from the parent-clean tree through the landed BIC to affected and fixed releases.",
+    "No primary field requires correction."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

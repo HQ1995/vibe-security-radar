@@ -1,0 +1,32 @@
+{
+  "worker": "w046",
+  "review_agent_id": "r389_w046",
+  "class_id": "alias-d73a78ad7526fd6c59b3b8c3",
+  "case_id": "GHSA-2xx8-j85v-j7wh",
+  "repo": "krayin/laravel-crm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "CONFIRMED: CVE.org is PUBLISHED and the GitHub advisory is not withdrawn. At v2.2.0 the authenticated PersonController routes show, edit, update, and destroy accept an id and read or mutate PersonRepository records without checking person.user_id, while PersonDataGrid and search restrict results through bouncer()->getAuthorizedUserIds(); arbitrary ids therefore bypass the cross-owner boundary (CWE-639).",
+    "atomic_bic": "CORRECTION_REQUIRED: 57b53f31bf737597e6e7d9d85e026795ac103815 is the atomic mechanism introducer, not 5666961a54370c577de7ad3e718716626dedb980. Commit 57b53f31 adds persons.user_id ownership plus authorized-user filtering to PersonDataGrid and search in one single-parent change, but leaves show/edit/update/destroy as unscoped id operations. The 2021 commit 5666961a wrote edit/update before this per-owner security boundary existed, so it did not itself introduce the advisory's cross-owner BOLA.",
+    "immediate_parent_absence": "CONFIRMED for corrected BIC: parent 51c1356a15a57cd1cf80a9bdacc37ed8d4b5edc7 is present and verifiable. It already has the direct id operations but has neither the persons.user_id migration/model ownership nor the PersonDataGrid/search authorized-user filtering, so the advisory's cross-owner ownership boundary and resulting bypass are absent in the immediate parent.",
+    "squash_member_decomposition": "CONFIRMED: 57b53f31 is an ordinary one-parent commit, not a merge. The relevant owner column/model and list/search authorization changes coexist in that public commit; no finer public member topology is present to decompose, so the surviving public atomic object is the BIC.",
+    "affected_fixed_release_membership": "CONFIRMED with metadata caveat: 57b53f31 is an ancestor of tags v2.0.0 through v2.2.3, including advisory-tested v2.2.0. PersonController has zero preventUnauthorizedAccess calls in v2.2.0, v2.2.1, v2.2.2, and v2.2.3, and four in v2.2.4 and v2.2.5. Merge e1eb78586fc1bba0204de12222a7f10b53986cc9 first appears in v2.2.4. The GitHub advisory's <=2.2.0 and first_patched_version=null metadata therefore lags the repository release history.",
+    "direct_fix_or_unpatched": "CONFIRMED direct fix: cccc12df2c405f6c00633bff13d7befd8dd0ee4f adds ownership checks to edit/update/destroy and filters massDestroy; its child fb5ae0fe1c41572aa94f5bb6e1075dbfdefaf1b5 adds the missing show check. Merge e1eb78586fc1bba0204de12222a7f10b53986cc9 lands both; first parent 2fd20b335d4569bc5b48f478b0fbe8705ad48dae is unpatched, and v2.2.4 is the first containing tag.",
+    "bic_only_ai_attribution": "CONFIRMED NOT_AI on corrected BIC only: git cat-file for 57b53f31 records human author and committer Jitendra <jitendra@webkul.in>, a single parent, and message 'Person/Organization sales owner added and refactor view perimission checks', with no Co-Authored-By, generated-with, Copilot, Cursor, bot, or other AI marker. Signals on the 2026 fix are irrelevant."
+  },
+  "findings": [
+    "The primary correctly establishes a real, unwithdrawn CWE-639 vulnerability, the unpatched v2.2.0 endpoint behavior, the two-step direct fix, merge landing, and first fixed tag v2.2.4.",
+    "The primary chooses the first historical edit/update lookup as BIC even though its own lifecycle evidence shows that contact ownership and authorized-user visibility were introduced only by 57b53f31; the immediate-parent counterfactual therefore points to 57b53f31.",
+    "Changing the BIC does not change the final authorship verdict because 57b53f31 also has no BIC-local AI evidence."
+  ],
+  "corrected_fields": {
+    "introducer_sha": "57b53f31bf737597e6e7d9d85e026795ac103815",
+    "introducer_parent": "51c1356a15a57cd1cf80a9bdacc37ed8d4b5edc7",
+    "introducer_parent_absent": false,
+    "flaw_origin": "The cross-owner BOLA first exists in 57b53f31bf737597e6e7d9d85e026795ac103815 (2024-08-14), which introduces persons.user_id ownership and filters PersonDataGrid/search by authorized user ids while leaving show/edit/update/destroy as unrestricted id-keyed operations. Its parent has the object operations but no per-owner boundary. Earlier endpoint commits are prerequisite history, not the atomic BIC for this advisory mechanism.",
+    "ai_marker": "absent; corrected BIC 57b53f31 has human author/committer Jitendra <jitendra@webkul.in>, one parent, and no AI/bot marker or attribution trailer",
+    "reasoning": "The advisory mechanism is not merely an id lookup: it is bypass of the contact-owner authorization boundary. The immediate-parent test makes 57b53f31 causal because its parent lacks ownership and authorized-user list/search scoping, while its child introduces that boundary incompletely across the same endpoints. Repository topology and tag ancestry confirm the BIC and release lifecycle; BIC-local metadata still supports NOT_AI."
+  },
+  "remaining_gap": "Authoritative GitHub advisory version metadata remains stale: it reports <=2.2.0 and no patched version, while immutable tag ancestry shows the checks absent through v2.2.3 and first present in v2.2.4."
+}
