@@ -1,0 +1,48 @@
+You are conducting one independent second-pass causal review for Vibe Security Radar.
+
+One vulnerability, one clean context. You are not the original auditor. Independently re-establish every gate. Do not copy the primary's conclusion unless your own evidence supports it.
+
+Read only:
+- /home/hanqing/agents/ai-slop/docs/AUDIT-PROTOCOL.md
+- /home/hanqing/agents/ai-slop/docs/DATA-SCHEMA.md
+- /home/hanqing/agents/ai-slop/research/round11-top500-20260829/prompt-independent-review-111.txt (this file)
+- the one assigned bundle JSON
+- the one assigned canonical primary JSON
+- that case's clone and first-party advisory/CVE/commit/PR/tag/release sources
+
+Do NOT read: the funnel ledger, any other case-*.json, any other primary/w*.json, independent-review/, independent-review-disagreement.md, disagreement-rereview/, grok-independent-review-111-handoff.md except as already quoted in your task, campaign reports, histograms, or another reviewer's output.
+
+VULNERABILITY FIRST, AI SECOND. Independently establish:
+1. Real vulnerability mechanism and complete source-to-sink.
+2. Smallest surviving public atomic BIC (not a move, refactor, revert, import, squash aggregate).
+3. Immediate-parent absence of that mechanism (parent-tree check).
+4. Squash/merge/member decomposition when reconstructable.
+5. Affected and fixed release membership from exact objects.
+6. Direct fixing commit, or verified explicit unpatched state.
+7. AI role from BIC-object signals only: author/committer, Co-Authored-By, Generated-with, bot/generator markers. Never invert search to find an AI commit and call it the BIC.
+
+Attribution rule:
+- Named human author/committer on the actual BIC, with no AI/bot/generator/co-author marker, supports NOT_AI.
+- Absence of an AI trailer alone does not close identity when the object is an anonymous/placeholder/huge untraceable snapshot.
+- FALSE_POSITIVE only when the claimed vulnerability itself is disproved or the advisory is withdrawn/rejected. Imprecise impact or release metadata is CORRECTION_REQUIRED, not FALSE_POSITIVE.
+- GitHub withdrawn_at is not authoritative; check CVE.org / vendor disposition.
+
+Before research: sha256 the assigned bundle and primary files. If either hash does not match the assignment row, write review_verdict=BLOCKED with remaining_gap naming the mismatch, and stop.
+
+Heavy git/network: prefix `numactl --cpunodebind=1 --membind=1`. Use the assigned clone_dir. Do not modify the clone. Never run formatters, linters, builds, or tests except a minimal compile/test you must run to prove a mechanism (prefer git show / parent-tree).
+
+Write exactly one JSON object to the assigned review_out path. Keys in this exact order:
+worker, review_agent_id, class_id, case_id, repo, primary_verdict, review_verdict, protocol_checks, findings, corrected_fields, remaining_gap
+
+Rules:
+- worker, class_id, case_id, repo, primary_verdict MUST match the assignment row exactly (including odd case_id values).
+- review_agent_id identifies this clean context (e.g. r111_<worker>).
+- review_verdict is exactly one of CONFIRMED, CORRECTION_REQUIRED, EVIDENCE_GAP, BLOCKED.
+- protocol_checks MUST contain exactly these keys: vulnerability_mechanism, atomic_bic, immediate_parent_absence, squash_member_decomposition, affected_release_membership, fixed_release_membership, direct_fix_or_unpatched, bic_only_ai_attribution.
+- Every check must say PASS, FAIL, or GAP and cite exact evidence. Commit IDs must be full 40-hex.
+- findings is a list of concrete findings.
+- corrected_fields is an object of exact proposed replacements for canonical primary fields. Empty {} for CONFIRMED. CORRECTION_REQUIRED requires at least one corrected field.
+- EVIDENCE_GAP and BLOCKED require a precise non-empty remaining_gap. CONFIRMED uses remaining_gap null.
+- A mechanically valid record is not complete unless all causal checks were actually researched.
+
+Touch only the assigned review_out file. Do not modify the primary, bundle, clone, ledger, website, roster, reports, or another worker's output.

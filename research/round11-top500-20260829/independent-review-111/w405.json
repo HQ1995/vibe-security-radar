@@ -1,0 +1,31 @@
+{
+  "worker": "w405",
+  "review_agent_id": "r111_w405",
+  "class_id": "alias-4019fd990f77003e051f7f3f",
+  "case_id": "GHSA-gcvm-c75m-h4p4",
+  "repo": "apache/openmeetings",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-34020 is CVE.org PUBLISHED (Apache CNA; GHSA withdrawn_at null). UserWebService is @Path(\"/user\") and login is @GET @Path(\"/login\") binding @QueryParam(\"user\") and @QueryParam(\"pass\"), then User u = userDao.login(...) and a Sessiondata SID is returned on success. Pre-fix parent 270ed504fe2962fd6710d9e0fcaff2f43befbfcc still has that GET/query form; credentials therefore enter the request URL (CWE-598) and authenticating callers receive a session. Apache oss-security 2026-04-09 and OPENMEETINGS-2816 describe the same REST GET query-credential login.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is Apache SVN r1689219 (2015-07-05T06:16:40.940794Z, creator solomax, log '[OPENMEETINGS-1118] SOAP/REST services are reorganized and simplified'), which modified /openmeetings/trunk/singlewebapp/openmeetings-webservice/src/main/java/org/apache/openmeetings/webservice/UserWebService.java to login(@WebParam @QueryParam(\"user\") String login, @WebParam @QueryParam(\"pass\") String pass) while retaining @GET @Path(\"/login\"). Git history only begins at parentless OPENMEETINGS-1297 snapshots 7afb6b9ce7ca4d576fb29bd70868ad1ffff4af07 and be2c8e450b634992366abab4d82145d8c9d745e1, which already contain the QueryParam login and are copies, not first-writes. No Git SHA exists for r1689219; introducer_sha/introducer_parent remain null.",
+    "immediate_parent_absence": "PASS: SVN tree at r1689218 of the same UserWebService.java has @GET @Path(\"/login\") public Long login(@WebParam String SID, @WebParam String username, @WebParam String userpass) and contains no QueryParam import or @QueryParam(\"user\")/@QueryParam(\"pass\"). r1689218 itself did not touch that file (file last changed r1683280); the r1689218 tree is still the immediate predecessor of r1689219 and lacks the advisory's two-query-parameter REST login.",
+    "squash_member_decomposition": "PASS: r1689219 is a single Subversion commit (DAV log-item version-name 1689219), not a git squash/merge. Later r1719765 copied /openmeetings/trunk/singlewebapp@r1719125 to /openmeetings/application/trunk and is a directory restructure, not a first-write. No reconstructable finer public members.",
+    "affected_release_membership": "PASS: CNA/GHSA range is from 3.1.3 before 9.0.0. Tag 3.1.3RC3 commit ed278b0a418156e4b35d01be6b3723655c4bb0cc and peeled 8.1.0 commit 6e39df0c66374341163889006d38d11cd89b5071 both still have @GET login with @QueryParam(\"user\")/@QueryParam(\"pass\"). e758715c801d9ffa1f40c05d6567f7b8799d6fc9 is not an ancestor of 6e39df0c66374341163889006d38d11cd89b5071. Exact objects also show the same GET/query login on 3.1.0RC1 (4ef0f31b9b23c88c3448bc7032e8a3014aac3b1b) and 3.1.2 (ec8117c4ab942262f06836f1efe5985ae600e12c); that is extra vendor-floor slack, not absence of the issue inside the published window.",
+    "fixed_release_membership": "PASS: Peeled tag 9.0.0 is bff7dfecd5044418471ffc3733f235226585ea06. git merge-base --is-ancestor e758715c801d9ffa1f40c05d6567f7b8799d6fc9 bff7dfecd5044418471ffc3733f235226585ea06 succeeds, and 9.0.0 UserWebService.login is @POST with @FormParam(\"user\")/@FormParam(\"pass\").",
+    "direct_fix_or_unpatched": "PASS: Direct fix is single-parent Git commit e758715c801d9ffa1f40c05d6567f7b8799d6fc9 (parent 270ed504fe2962fd6710d9e0fcaff2f43befbfcc, message '[OPENMEETINGS-2816] WS login method now uses POST'), which switches UserWebService.login from @GET/@QueryParam to @POST/@FormParam and updates AbstractWebServiceTest.loginNoCheck from query GET to form POST. JIRA OPENMEETINGS-2816 is Closed/Fixed for 9.0.0.",
+    "bic_only_ai_attribution": "PASS: BIC object is SVN r1689219 with creator-displayname solomax and log '[OPENMEETINGS-1118] SOAP/REST services are reorganized and simplified'; no Co-Authored-By, Generated-with, bot, or generator field. 2015 Subversion metadata has no Git-style committer/trailers. oss-security credits 4ra2n only as finder of CVE-2026-34020, which is not BIC authorship. Git blame of the later annotated QueryParam lines onto 55fcb949ae2dd1d482b89835c662a60f946244b8 is a 2021 swagger wrapper, not the first-write."
+  },
+  "findings": [
+    "Independent sha256 matched the assignment for both the bundle (6b2047d6ed6de5974e3b62e962d0ad5ca86928c99d448147f61ed8366a660977) and primary (f4be40ee5b3a054f3f68c271ba9531acf09b83e628816aed960fbfb1ace5655c).",
+    "Real CWE-598: unauthenticated GET /user/login binds user/pass from the query string, userDao.login consumes them, and success creates a session SID.",
+    "CVE-2026-34020 remains PUBLISHED at the Apache CNA; GHSA-gcvm-c75m-h4p4 withdrawn_at is null. Not FALSE_POSITIVE.",
+    "BIC is verified non-Git SVN r1689219 by solomax on 2015-07-05; Git roots 7afb6b9ce7ca4d576fb29bd70868ad1ffff4af07 and be2c8e450b634992366abab4d82145d8c9d745e1 are parentless OPENMEETINGS-1297 copies that already carry the flaw.",
+    "Parent-tree absence holds at r1689218 (old GET login(SID, username, userpass) without QueryParam user/pass).",
+    "Direct Git fix e758715c801d9ffa1f40c05d6567f7b8799d6fc9 is in 9.0.0 (bff7dfecd5044418471ffc3733f235226585ea06) and not in 8.1.0 (6e39df0c66374341163889006d38d11cd89b5071).",
+    "BIC authorship is human solomax with no AI/bot/generator marker; finder credit to 4ra2n is not introducer evidence.",
+    "Primary NOT_AI is independently supported. No canonical field replacements."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

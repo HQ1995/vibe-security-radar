@@ -1,0 +1,28 @@
+{
+  "worker": "w412",
+  "review_agent_id": "r111_w412",
+  "class_id": "alias-4fcbc61bb0c50fc602bdc6e5",
+  "case_id": "GHSA-f6ww-3ggp-fr8h",
+  "repo": "xmldom/xmldom",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-91 injection, not withdrawn. GHSA-f6ww-3ggp-fr8h (withdrawn_at null) and CVE-2026-41674 (cveMetadata.state=PUBLISHED, CNA GitHub_M) describe the same source-to-sink: programmatic DocumentType.publicId/systemId/internalSubset stored verbatim by createDocumentType, then XMLSerializer.serializeToString concatenates those fields into the DOCTYPE with no grammar check. A quote or '>' in publicId/systemId, or ']>' in internalSubset, terminates or rewrites the declaration so attacker markup/declarations appear outside the intended DOCTYPE; a downstream parser with entity expansion can then take XXE-class impact. Parse path is out of scope (SAX PubidLiteral/SystemLiteral). Live sink at 0.9.9 lib/dom.js DOCUMENT_TYPE_NODE (buf.push of pubid/sysid/internalSubset then '>').",
+    "atomic_bic": "PASS: Smallest surviving public commit that first made the mechanism effective is 64cd7b6e5ef838e98d418d0e90aba5f5db1e4478 (author/committer jindw <jindw@xidea.org>, 2012-01-06). Its DOCUMENT_TYPE_NODE hunk deletes the shadowed `var buf = ['<!DOCTYPE ',nodeName]` and writes `buf.push('<!DOCTYPE ',node.name)`, after which unchecked publicId/systemId/internalSubset are appended to the caller-owned buffer that serializeToString joins. Earlier 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 first drafted the same formatter text, but reassigned the helper parameter to a local array that is never joined; that draft is dead code, not the BIC. Later 726b47117ae19e497a2c8c89908cc0bee7fb2e51 / 0.9.0 createDocumentType(internalSubset) only expand reachability.",
+    "immediate_parent_absence": "PASS: Immediate parent 4e759a92ea4dab7e88dbd9317869447629b5f369 (dom.js identical serializer to 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432) still has XMLSerializer.prototype.serializeToString create an outer buf, call serializeToString(node,buf), and return buf.join(''), while the DOCUMENT_TYPE_NODE case does `var buf = ['<!DOCTYPE ',nodeName]` and returns without pushing to the parameter. Parent tree therefore emits no DOCTYPE text. Root 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 has no XMLSerializer/serializeToString at all.",
+    "squash_member_decomposition": "PASS: `git rev-list --parents -n 1` is `64cd7b6e5ef838e98d418d0e90aba5f5db1e4478 4e759a92ea4dab7e88dbd9317869447629b5f369` — one parent, not a merge. No reconstructable squash members; the buffer-routing first-write is the atomic public object.",
+    "affected_release_membership": "PASS: Tag 0.1.0 points at 64cd7b6e5ef838e98d418d0e90aba5f5db1e4478. merge-base --is-ancestor confirms the BIC is in 0.1.0, 0.6.0 (legacy xmldom <=0.6.0), 0.8.12 (not 0.8.13 backport), 0.9.0, and 0.9.9 (not 0.9.10 fix). Matches GHSA/CVE ranges @xmldom/xmldom <0.8.13 and >=0.9.0,<0.9.10 plus xmldom <=0.6.0.",
+    "fixed_release_membership": "PASS: Direct fix 372008f9ae0e20fd69f761c7b79e202598267314 is contained by tags 0.9.10/0.9.11/0.9.12 and is not an ancestor of 0.9.9. 0.8 backport 6ca3a416353a4d3143d172c5240c138e296a3258 is contained by 0.8.13/0.8.14/0.8.15 and is not an ancestor of 0.8.12. Matches first_patched_version 0.9.10 and 0.8.13.",
+    "direct_fix_or_unpatched": "PASS: Advisory-linked direct fix 372008f9ae0e20fd69f761c7b79e202598267314 (parent 7207a4b0e0bcc228868075ed991665ef9f73b1c2) adds requireWellFormed PubidLiteral/SystemLiteral/']>' checks in DOCUMENT_TYPE_NODE before the existing concatenation; parent 7207a4b0e0bcc228868075ed991665ef9f73b1c2 still emits those fields with no DocumentType checks. Backport 6ca3a416353a4d3143d172c5240c138e296a3258 (parent 5e4173ceeca53d60c93a0e35f6eaa0804ee503a5) does the same on 0.8. Default path remains verbatim unless `{ requireWellFormed: true }` is passed; that residual is documented, not unpatched, and does not change the introducer.",
+    "bic_only_ai_attribution": "PASS: BIC object 64cd7b6e5ef838e98d418d0e90aba5f5db1e4478 is author and committer jindw <jindw@xidea.org>, empty message, no Co-Authored-By/Generated-with/Signed-off-by trailers, no bot identity. Attribution is from this BIC only; later coauthored 726b47117ae19e497a2c8c89908cc0bee7fb2e51 is not the introducer. Named human, no AI/generator marker => NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-41674 is PUBLISHED (not rejected/withdrawn); GHSA-f6ww-3ggp-fr8h withdrawn_at is null. The claimed DocumentType serialization injection is a real vulnerability.",
+    "Effective BIC is 64cd7b6e5ef838e98d418d0e90aba5f5db1e4478, which routed the previously discarded DOCUMENT_TYPE_NODE formatter into the joined serialization buffer. Immediate parent 4e759a92ea4dab7e88dbd9317869447629b5f369 lacks emitted-DOCTYPE.",
+    "5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 first wrote the unchecked formatter but shadowed `buf`, so it is not the BIC.",
+    "Fix 372008f9ae0e20fd69f761c7b79e202598267314 (0.9.10) and backport 6ca3a416353a4d3143d172c5240c138e296a3258 (0.8.13) are the direct closures; opt-in requireWellFormed does not reclassify authorship.",
+    "BIC-object authorship is human jindw with no AI/bot/generator markers; primary NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

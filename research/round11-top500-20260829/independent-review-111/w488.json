@@ -1,0 +1,28 @@
+{
+  "worker": "w488",
+  "review_agent_id": "r111_w488",
+  "class_id": "alias-ec9be0f27c0fb8db4666bc3f",
+  "case_id": "GHSA-3934-423W-4JQ3",
+  "repo": "hashicorp/nomad",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-59. HashiCorp HCSEC-2026-14 and CVE-2026-6959 (CNA state PUBLISHED, not rejected) describe arbitrary host file read/write as the Nomad process user via allocation log named-pipe symlink swap. Source: a task can replace stdout/stderr FIFOs under the shared alloc logs dir (logmon_hook joins logDir with .<task>.stdout.fifo / .<task>.stderr.fifo) or replace the logs directory itself. Sink: host-namespace logmon opens those paths without O_NOFOLLOW (at introduction fifo.New -> containerd OpenFifo O_RDONLY|O_CREAT|O_NONBLOCK; at v2.0.0 os.OpenFile(path, unix.O_RDONLY, os.ModeNamedPipe) in client/lib/fifo/fifo_unix.go). On task restart logmon is recreated, follows the symlink, and copies host file bytes into attacker-readable task logs, or creates FIFOs/logs in an attacker-chosen host directory. Fix 2a09fd62c23880ff306499ae03fe64628d82a23f confines Unix FIFO ops with os.Root/mkfifoat (O_NOFOLLOW) and bind-mounts alloc/logs read-only.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is PR #4656 member dd220bfb36a03668102c9c727a5c97c638056a67 (author/committer Nick Ethier <nethier@hashicorp.com>, subject 'logmon: new logmon plugin to manage task logs'). It adds client/logmon/logmon.go with newLogRotatorWrapper calling fifo.New(path) on an allocation-supplied FifoDir/LogDir path. Single parent 6ab891313bb01f69a19411bda4d1625de3bbc447. Not a move/refactor/revert. Pre-v0.9 logging used os.Pipe (fcc4149c55399eb4979cd3fe3fb983cfe6c8449a / v0.8.6 executor), not host-reopened alloc FIFOs.",
+    "immediate_parent_absence": "PASS: Parent 6ab891313bb01f69a19411bda4d1625de3bbc447 has no client/logmon tree (git cat-file: path exists on disk but not in the parent). Parent logging still uses os.Pipe in client/driver/executor/logging.go. fifo.New/Open have no callers outside client/lib/fifo itself. Aggregate parent da8f053a0da73b1b054d6fe9b624ae16459735c7 likewise has no client/logmon.",
+    "squash_member_decomposition": "PASS: Main-history 5b14d24bf4626bab420d00783d92bcf25e0b641e is a single-parent squash ('executor v2 (#4656)', parent da8f053a0da73b1b054d6fe9b624ae16459735c7) whose message concatenates PR members. GitHub PR #4656 lists 35 public members including dd220bfb36a03668102c9c727a5c97c638056a67. That member is not an ancestor of v0.9.0/main; the squash is. First-write of the sink remains the reconstructable public member, not the aggregate.",
+    "affected_release_membership": "PASS: Vendor/CNA: Nomad CE/Enterprise from 0.9.0 below 2.0.1. Tag v0.8.6 peels to fcc4149c55399eb4979cd3fe3fb983cfe6c8449a (no client/logmon; 5b14d24bf4626bab420d00783d92bcf25e0b641e is not an ancestor). Tag v0.9.0 peels to 28e768721992df5097203eea6e2b247abd56ca6f and contains 5b14d24bf4626bab420d00783d92bcf25e0b641e plus logmon using fifo.CreateAndRead. Tag v2.0.0 is 7a90601f4d9bc473718311fe5167c0c1f66500ba and still opens FIFOs with os.OpenFile without O_NOFOLLOW; CHANGELOG has no CVE-2026-6959.",
+    "fixed_release_membership": "PASS: Tag v2.0.1 is 5c11f948ba7e9e709abf7f2ab7895ba5b44feb39, CHANGELOG cites CVE-2026-6959 / GH-27918, and contains backport 62bf44e1b1d2ccb9bf10c1338d803512f9dbd1d2 (not main 2a09fd62c23880ff306499ae03fe64628d82a23f). git show --format='' of 2a09fd62c23880ff306499ae03fe64628d82a23f and 62bf44e1b1d2ccb9bf10c1338d803512f9dbd1d2 is identical. Enterprise 1.11.5 / 1.10.11 are not OSS tags; they are vendor-stated in HCSEC-2026-14 and the PUBLISHED CVE record.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is 2a09fd62c23880ff306499ae03fe64628d82a23f (sole parent 7939e3af3f36eb96278a5f96186462545c2887c0; Tim Gross <tgross@hashicorp.com>; 'protect logmon from symlink attacks (#3957)'). It switches Unix FIFO create/open/remove to os.Root-relative operations and bind-mounts t.LogDir onto SharedTaskDir/logs read-only. GHSA withdrawn_at is null; CVE.org cveMetadata.state is PUBLISHED.",
+    "bic_only_ai_attribution": "PASS: Attribution is only on BIC dd220bfb36a03668102c9c727a5c97c638056a67. Author and committer are Nick Ethier <nethier@hashicorp.com> (GitHub nickethier). Message has no Co-Authored-By / Generated-with / bot trailer. Diff's only 'generated' notice is the conventional protoc-gen-go header on client/logmon/proto/logmon.pb.go. Named human, 2018, no AI/generator marker, so NOT_AI. FALSE_POSITIVE does not apply."
+  },
+  "findings": [
+    "CVE-2026-6959 / GHSA-3934-423w-4jq3 / HCSEC-2026-14 is a published, non-withdrawn symlink-follow bug in host-side logmon FIFO handling (CWE-59), not a false advisory.",
+    "Atomic BIC is public PR #4656 member dd220bfb36a03668102c9c727a5c97c638056a67, which first wrote fifo.New on alloc-controlled log paths; parent 6ab891313bb01f69a19411bda4d1625de3bbc447 has no logmon and no fifo.New callers.",
+    "5b14d24bf4626bab420d00783d92bcf25e0b641e is the squash that first put that mechanism on the v0.9.0 line; v0.8.6 (fcc4149c55399eb4979cd3fe3fb983cfe6c8449a) is unaffected.",
+    "Direct fix 2a09fd62c23880ff306499ae03fe64628d82a23f lives on main; v2.0.1 (5c11f948ba7e9e709abf7f2ab7895ba5b44feb39) ships identical backport 62bf44e1b1d2ccb9bf10c1338d803512f9dbd1d2.",
+    "BIC authorship is human (Nick Ethier) with no AI/bot/co-author marker; primary NOT_AI stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

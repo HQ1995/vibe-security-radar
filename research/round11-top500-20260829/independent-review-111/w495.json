@@ -1,0 +1,27 @@
+{
+  "worker": "w495",
+  "review_agent_id": "r111_w495",
+  "class_id": "alias-02eaef7d14238358fc68d45b",
+  "case_id": "GHSA-xv9c-v5pw-jxvf",
+  "repo": "misp/misp-modules",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-62143 CNA state is PUBLISHED (cve.org/cveawg record, assigner CIRCL, not rejected/withdrawn). GHSA-xv9c-v5pw-jxvf is published 2026-07-13T09:31:43Z with withdrawn_at null and CWE-918. Source-to-sink on 52cda9caa003cafe87e14ae3721db5e16f6f111a: handler() reads request['url'] -> fetchHTML() -> is_safe_url() -> _is_ip_blocked(parsed.hostname) compares ipaddress.ip_address(ip_str) directly to IPv4 BLOCKED_RANGES (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16) plus ::1/128, then requests.get(url, timeout=10) and returns markdownify output. Local stdlib: urlparse('http://[::ffff:127.0.0.1]/').hostname is ::ffff:127.0.0.1, ipaddress.ip_address of that is IPv6Address with ipv4_mapped 127.0.0.1, and membership in 127.0.0.0/8 is False without normalization (same for ::ffff:169.254.169.254 vs 169.254.0.0/16). Literal and DNS-result paths both call _is_ip_blocked.",
+    "atomic_bic": "PASS: 52cda9caa003cafe87e14ae3721db5e16f6f111a is a single-parent commit (parent 89abdc6855c84084c2d412205c0deff6b82bc593) that first inserted BLOCKED_RANGES, _is_ip_blocked without ipv4_mapped, _hostname_resolves_to_blocked_ip, is_safe_url, and the guarded requests.get. git log -S'_is_ip_blocked' --reverse on html_to_markdown.py starts at this SHA. git blame -l at v3.0.8 (09457559c684f8b3bad71d6b095c1a9dfaedffea) and at direct-fix parent cc5ce935cae339d6f5f624e981762d65e1c2d1fa attributes those guard lines to 52cda9caa003cafe87e14ae3721db5e16f6f111a. Not a move/revert; 01a522f2772fc31eeed379ccf23750c8a3d401db is a later black-only whitespace change.",
+    "immediate_parent_absence": "PASS: parent 89abdc6855c84084c2d412205c0deff6b82bc593:misp_modules/modules/expansion/html_to_markdown.py has fetchHTML doing unguarded r = requests.get(url) and no BLOCKED_RANGES/_is_ip_blocked/is_safe_url in that file. git grep of those identifiers on the parent tree finds only an unrelated qrcode.py is_safe_url, not the advisory-specific IPv4-mapped comparison bypass.",
+    "squash_member_decomposition": "PASS: 52cda9caa003cafe87e14ae3721db5e16f6f111a has exactly one parent and is not a merge. It bundles CSRF/qrcode/jinja edits with the html_to_markdown guard, but no finer public member commit writes those guard lines. Carrier merge cd2c106dda1fe1716e9579dfd131a8b4fdcfe0f2 (Merge branch 'main') first brought the lines onto the v3.0.8 first-parent history via second parent a77a40d8de30b52437ebfd5b80dc86ac08e9615d; blame still names 52cda9caa003cafe87e14ae3721db5e16f6f111a. squash_decomposed remains false; decomposed_shas empty.",
+    "affected_release_membership": "PASS: tag v3.0.8 peels to 09457559c684f8b3bad71d6b095c1a9dfaedffea and is an ancestor of the BIC (merge-base --is-ancestor 52cda9caa003cafe87e14ae3721db5e16f6f111a v3.0.8) and is not an ancestor of the fix. Tag v3.0.7 peels to f9306291a34ff61783b994254bb5a8ce12ea889a and does not contain the BIC. CNA affected window is versions through v3.0.8; the first observed release tag containing the flawed guard is v3.0.8.",
+    "fixed_release_membership": "PASS: tag v3.0.9 peels to ab155c42cb3b4a2ddee7bb5cbe006805b09dff3e and contains both 3bae4108a3ba1e507727d5264697fd7303ba0b89 and follow-up ad2a0511c52449ad4fec97a30f4848f92676bed7. v3.0.8 does not contain the fix. v3.0.9 is the first observed release tag with the mapped-address normalization.",
+    "direct_fix_or_unpatched": "PASS: direct fix 3bae4108a3ba1e507727d5264697fd7303ba0b89 (parent cc5ce935cae339d6f5f624e981762d65e1c2d1fa), cited as CNA patch, adds _normalize_ip_address returning ip.ipv4_mapped or ip, uses it in _is_ip_blocked, rejects URLs without hostname, and adds tests for ::ffff:127.0.0.1 / ::ffff:169.254.169.254 literals and DNS-mapped loopback. Follow-up ad2a0511c52449ad4fec97a30f4848f92676bed7 only switches to getattr(ip, 'ipv4_mapped', None) for IPv4Address compatibility.",
+    "bic_only_ai_attribution": "PASS: judged only on BIC 52cda9caa003cafe87e14ae3721db5e16f6f111a. git cat-file/log: author and committer David Cruciani <david.cruciani@circl.lu>, GPG-signed, body '- As reported by Bilal Teke', no Co-Authored-By/Generated-with/bot/generator/Codex/Copilot trailers. GitHub commit object author/committer login DavidCruciani (https://github.com/MISP/misp-modules/commit/52cda9caa003cafe87e14ae3721db5e16f6f111a). Named human provenance supports NOT_AI. (Codex branch names on the later fix are outside BIC-only attribution.)"
+  },
+  "findings": [
+    "CVE-2026-62143 / GHSA-xv9c-v5pw-jxvf is a real IPv4-mapped IPv6 SSRF bypass of html_to_markdown's IP allow-guard; CNA PUBLISHED, GHSA not withdrawn.",
+    "Atomic first-write BIC of the defective _is_ip_blocked/is_safe_url guard is 52cda9caa003cafe87e14ae3721db5e16f6f111a; parent 89abdc6855c84084c2d412205c0deff6b82bc593 has only unrestricted requests.get in that module.",
+    "Direct fix is 3bae4108a3ba1e507727d5264697fd7303ba0b89; first fixed tag is v3.0.9; affected tagged release with the flawed guard is v3.0.8.",
+    "BIC authorship is named human David Cruciani / DavidCruciani with no AI/bot/generator marker; primary NOT_AI stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

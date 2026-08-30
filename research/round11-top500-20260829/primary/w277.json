@@ -10,10 +10,10 @@
   "flaw_origin": "The MongoDB-ObjectId-to-PDF sink was first written by human collaborator Francis Onukwu (onfranciis) in e968bc95b8a1098d25d47d62615c4dd15e721941 (feat: create downloadPdf), a reconstructable member of merge PR #473. Immediate parent 4d74cb369fd8ab6ee998e35f92e54bcb7af01d13 already called downloadPdf from the unauthenticated /download router (ef38c0f932e3413b766d87486292f8d4163f79a6) but lacked the handler file; e968bc95 is the smallest commit that first wrote Model.findById/generatePdf. The /download mount had been unauthenticated since f22dc173e4e5e89364c20b9b2289f078f1eafc8a (static res.download only). A two-day isValidAdminToken wrap in 2b7eda9d51a1071ae15427290c22f993b7865e61 never shipped in a tag and was stripped by 050af4c7a5e07d9db07cfc3ed4fdcbe5f3ca86f6 before 2.1.0; that strip is a revert of an unreleased mitigation, not the BIC.",
   "introducer_sha": "e968bc95b8a1098d25d47d62615c4dd15e721941",
   "introducer_parent": "4d74cb369fd8ab6ee998e35f92e54bcb7af01d13",
-  "introducer_parent_absent": false,
+  "introducer_parent_absent": true,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "absent; author onfranciis <onukwuf@gmail.com>, committer onfranciis <onukwuf@gmail.com>; no Co-Authored-By, Generated-with, or bot trailers on the BIC commit object",
+  "ai_marker": "Absent; BIC author and committer are the named non-bot account onfranciis <onukwuf@gmail.com>, with no AI, bot, generator, co-author, or signature marker.",
   "verdict": "NOT_AI",
   "fix_sha": null,
   "direct_fix_sha": null,
@@ -26,7 +26,8 @@
     "git log -L 42,42:backend/src/app.js: 2b7eda9d51a1071ae15427290c22f993b7865e61 added isValidAdminToken on /download; 050af4c7a5e07d9db07cfc3ed4fdcbe5f3ca86f6 removed it two days later. No release tag contains 2b7eda9d without 050af4c7 (first subsequent tag 2.1.0 already includes the strip). Blame of HEAD line 42 is 050af4c7, used only as a lead; revert of an unreleased mitigation is not the BIC.",
     "Tag membership: e968bc95 is an ancestor of 4.1.0 (012f39a43bdb899c9337fe76797f25357d473ff4) and 4.1.1 (82ff5d1bcb8aa5a3feda5e7f94d71ba00d3a1a50) and of 2.1.0; not an ancestor of 2.0.0.",
     "Unpatched: HEAD e935dec13cf8b6082a7e7fc4736669e5151a80a3, 4.1.0, and 4.1.1 still mount /download without adminAuth.isValidAuthToken. Issue https://github.com/idurar/idurar-erp-crm/issues/1428 remains open (2026-02-25). Unmerged PR https://github.com/idurar/idurar-erp-crm/pull/1487 (head ebac0684d87db1c179f5be706c75c8d656d5e00b, merged_at=null) would add the JWT gate.",
-    "BIC commit object: author/committer onfranciis <onukwuf@gmail.com>; empty body; %(trailers) empty; not a bot."
+    "BIC commit object: author/committer onfranciis <onukwuf@gmail.com>; empty body; %(trailers) empty; not a bot.",
+    "Historical BIC paths are app.js, routes/coreRoutes/coreDownloadRouter.js, and handlers/downloadHandler/downloadPdf.js; backend/src paths apply only to later trees."
   ],
   "reasoning": "CVE-2026-72600 is a real published CWE-284 finding, not a withdrawn advisory. The described bug is unauthenticated ObjectId enumeration against /download, which on-demand generates invoice PDFs from MongoDB. That sink first appears when downloadPdf.js is added in e968bc95; the parent tree lacks the file, so the vulnerable lines are absent immediately before the BIC. PR #473 is a merge with four public member commits, so the merge itself is not the BIC. The pre-existing unauthenticated /download mount (f22dc173) only served static files and is a different mechanism. A later isValidAdminToken wrap was reverted before any tag, so 050af4c7 is not the first-write. AI is judged only from the BIC commit object: human author/committer onfranciis, no Co-Authored-By/Generated-with/bot markers, hence NOT_AI. No landed fix exists on master, 4.1.0, 4.1.1, or HEAD; the case is unpatched, with the concrete potential fix being the same JWT middleware already used on /api (as proposed in open PR #1487 / issue #1428).",
   "remaining_gap": "Unpatched: no upstream fix SHA on master/4.1.1/HEAD; issue #1428 open; PR #1487 unmerged. Confirmed unpatched object with potential_fix.approach and potential_fix.rationale is recorded in the unpatched field.",

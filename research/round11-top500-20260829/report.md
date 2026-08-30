@@ -3,7 +3,8 @@
 Wave of 500 `UNANALYZED`/`PARTIALLY_ANALYZED` ledger cases ranked for
 true-positive likelihood after excluding every class/advisory in
 `research/round10-top200-20260828/`. Protocol:
-`docs/AUDIT-PROTOCOL.md`. This wave does not land ledger rows.
+`docs/AUDIT-PROTOCOL.md`. The reconciled results were landed to the canonical
+Neon ledger and exported to the repository after all publication gates passed.
 
 ## Selection
 
@@ -16,16 +17,16 @@ true-positive likelihood after excluding every class/advisory in
 - known-TP-repo cases: 29
 - excluded overlap: 0
 - ledger sha256 at freeze: `a4363c412889e029530cdac09e5336da4b07652d9c2a61807f27cb0033b4cabc`
-- ledger sha256 at verification: `33954fd68b206cba1a0187abbe9a2b0deff606543cf6a59bdb1b13007d0f5c0a`
+- ledger sha256 at verification: `cb2d41daa464c00f81a59e46c9810273c352a60c8397d19828f5fb5d0c2be617`
 - ledger changed since freeze: `True`
 - frozen selection recomputed from live ledger: `False`
 
 ## Verdict histogram
 
-- `NOT_AI`: 479
-- `AI_ROOT_CAUSE`: 11
+- `NOT_AI`: 477
+- `AI_ROOT_CAUSE`: 9
 - `FALSE_POSITIVE`: 7
-- `EVIDENCE_GAP`: 2
+- `EVIDENCE_GAP`: 6
 - `AI_CODE_FLAWED`: 1
 
 ## Independent review of the original completed set
@@ -35,10 +36,7 @@ true-positive likelihood after excluding every class/advisory in
 - `CORRECTION_REQUIRED`: 94
 - `EVIDENCE_GAP`: 15
 
-These second-pass verdicts are review findings; they do not silently mutate
-the primary records below. The 111 records completed after the original freeze
-were each audited by their own clean-context worker but are not part of this
-389-record second-pass set.
+These are the historical second-pass findings for the original 389-record set.
 
 ### CORRECTION_REQUIRED
 
@@ -48,21 +46,55 @@ w002 w006 w007 w008 w011 w019 w021 w023 w025 w039 w040 w046 w048 w049 w052 w053 
 
 w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 
+## Disagreement re-review landing
+
+- re-researched cases: 33
+- `CORRECTION_REQUIRED`: 18
+- `FIELD_ERRATUM`: 7
+- `CONFIRMED`: 6
+- `EVIDENCE_GAP`: 2
+
+The 33-case clean-context disagreement re-review has been reconciled into
+the canonical primary records. `FIELD_ERRATUM` is a derived landing scope,
+not a new protocol review-verdict enum. Six `CONFIRMED` cases required no
+canonical field change.
+
+## Independent review of the final 111 and reconciliation
+
+- reviewed records: 111
+- `CONFIRMED`: 92
+- `CORRECTION_REQUIRED`: 17
+- `EVIDENCE_GAP`: 2
+- substantive reconciliation records: 25
+- accepted verdict changes: `w350 NOT_AI → EVIDENCE_GAP`; `w434 EVIDENCE_GAP → NOT_AI`
+- rejected verdict change: `w440 FALSE_POSITIVE → NOT_AI`
+
+## Canonical ledger landing
+
+- run id: `a5427fbc-7520-575e-be07-b56ecfdc51d0`
+- change set id: `829910c2-b608-4125-ac18-54b21357358b`
+- rows finalized: 500
+- assessments appended: 500
+- exported ledger sha256: `cb2d41daa464c00f81a59e46c9810273c352a60c8397d19828f5fb5d0c2be617`
+- local export equals canonical database: `True`
+- publication records: 260
+- publication gate: `pass`
+
 ## Cases
 
 | worker | class_id | case_id | repo | verdict | introducer | fix |
 |---|---|---|---|---|---|---|
 | w000 | `alias-7a67e4c2cdfe7bc6ade411ee` | GHSA-723w-crw6-p9hx | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `fafdfeed1b27` | `f4a1ba660063` |
 | w001 | `alias-7e22d7fa18af10c1d907af89` | GHSA-2664-hr5v-554w | n8n-io/n8n | AI_CODE_FLAWED | `562d867483e8` | `ca3d42d83865` |
-| w002 | `alias-7e64c88c0c888e3970b52934` | GHSA-c7vw-vfxj-3mvh | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `e588aaa3a53e` | `e0c999ea4442` |
+| w002 | `alias-7e64c88c0c888e3970b52934` | GHSA-c7vw-vfxj-3mvh | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `8a5ed7e62417` | `e0c999ea4442` |
 | w003 | `alias-836fd8cd5fc2ca104f082da3` | GHSA-j3gw-mm62-q9gj | n8n-io/n8n | NOT_AI | `98fb09eefb7a` | `2222fe3a6c88` |
 | w004 | `alias-83777bf84c8decf57a1040f6` | GHSA-m6wx-qjxf-vr9v | n8n-io/n8n | NOT_AI | `4b06a2c6f9e7` | `2222fe3a6c88` |
 | w005 | `alias-85011a48722a9639c2f0a160` | GHSA-hf5p-745p-2j3h | n8n-io/n8n | NOT_AI | `d184bf77fee4` | `ca3d42d83865` |
 | w006 | `alias-85443fa0b01cc0d808288b99` | GHSA-h5rm-9fhh-5phj | n8n-io/n8n | AI_ROOT_CAUSE | `6d88b9e1e9f2` | `ca3d42d83865` |
-| w007 | `alias-877be5bb530812a4d6690884` | GHSA-243r-jm6r-f6pp | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `4c7ae852c784` | `809416b74d27` |
-| w008 | `alias-8e92c18748b743d8804419d4` | GHSA-jw8h-gwjw-g7rc | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `5e3104481d98` | `65134868c092` |
+| w007 | `alias-877be5bb530812a4d6690884` | GHSA-243r-jm6r-f6pp | jahlives/openssl_encrypt | FALSE_POSITIVE | `—` | `—` |
+| w008 | `alias-8e92c18748b743d8804419d4` | GHSA-jw8h-gwjw-g7rc | jahlives/openssl_encrypt | FALSE_POSITIVE | `—` | `—` |
 | w009 | `alias-9402a2a390a2eb47bc0e4e2c` | GHSA-w672-239g-c3gr | gitpython-developers/gitpython | NOT_AI | `0cd09bd30648` | `f2550b65bf60` |
-| w010 | `alias-950b2e4a9ba1a6d6dbeb274f` | GHSA-2726-phmx-rc26 | gitpython-developers/gitpython | NOT_AI | `e6108c7997f5` | `ffcb5359e876` |
+| w010 | `alias-950b2e4a9ba1a6d6dbeb274f` | GHSA-2726-phmx-rc26 | gitpython-developers/gitpython | NOT_AI | `b425301ad16f` | `ffcb5359e876` |
 | w011 | `alias-96f4c59aa038773f281647b9` | GHSA-gvq9-cmxr-844m | jahlives/openssl_encrypt | AI_ROOT_CAUSE | `fafdfeed1b27` | `1d519a1eb1a2` |
 | w012 | `alias-9a594a7143ab4a4c32745a8f` | GHSA-78pq-g4m8-fx2c | gitpython-developers/gitpython | NOT_AI | `3fd37230e76a` | `a495ccd3b547` |
 | w013 | `alias-afab3229357f1f461e4dc206` | GHSA-mhfq-f35q-x62m | gitpython-developers/gitpython | NOT_AI | `1047b41e2e92` | `3af0c2516c5e` |
@@ -71,7 +103,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w016 | `alias-9e0672fd644f341c296fbe2a` | GHSA-3r5q-vfpj-wprr | lin-snow/ech0 | NOT_AI | `06c9290a6821` | `eab62379c795` |
 | w017 | `alias-9f86fe98cd5e320fab857870` | GHSA-m3r5-hc33-p4wf | lin-snow/ech0 | NOT_AI | `896116abca94` | `9ce19a3b0d07` |
 | w018 | `alias-d492ba1b45be4598a185b391` | GHSA-7v7f-8gw6-2q2x | lin-snow/ech0 | NOT_AI | `5aa2fd32f9f8` | `cecc2c19b590` |
-| w019 | `alias-db82daf2886088440e14b14f` | GHSA-q8hh-m6v5-4f3x | lin-snow/ech0 | AI_ROOT_CAUSE | `b47fa1c75d89` | `1b8c64d0da2f` |
+| w019 | `alias-db82daf2886088440e14b14f` | GHSA-q8hh-m6v5-4f3x | lin-snow/ech0 | AI_ROOT_CAUSE | `b47fa1c75d89` | `—` |
 | w020 | `alias-e03a488b396dbfba39fde27d` | GHSA-wcrg-p6mv-jx2j | scriban/scriban | NOT_AI | `46054810b50b` | `7fdf19df7db0` |
 | w021 | `alias-e882f68bc400d7b151121ca2` | GHSA-q84q-h76q-mqp7 | scriban/scriban | NOT_AI | `774f70d8aea6` | `205ca6a7c234` |
 | w022 | `alias-f4fa8f88498d39fc78df240f` | GHSA-q5qx-vc88-69hw | scriban/scriban | NOT_AI | `46054810b50b` | `2d01bd15a111` |
@@ -167,16 +199,16 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w112 | `alias-070fe58ed470532aedcac78d` | GHSA-g82f-9pw7-773w | concretecms/concretecms | NOT_AI | `6c4fb938c3b4` | `d088e93b1f42` |
 | w113 | `alias-08e8fe4d350d1966937efe07` | GHSA-pv2v-6w2v-97x6 | concretecms/concretecms | NOT_AI | `ac4e7e16808a` | `f22b9dff5945` |
 | w114 | `alias-0c8feb9a0f1e625b5a3e6062` | GHSA-f4vq-pj32-gr4q | concretecms/concretecms | NOT_AI | `10236caea734` | `2b7557793f04` |
-| w115 | `alias-0d0aa97a4a7d3e00410cf0f1` | GHSA-v3pr-hxpr-mfm8 | apache/mina | NOT_AI | `691a9df5a0af` | `850592195d92` |
+| w115 | `alias-0d0aa97a4a7d3e00410cf0f1` | GHSA-v3pr-hxpr-mfm8 | apache/mina | NOT_AI | `—` | `409171daa076` |
 | w116 | `alias-109b899f0cf05c4efa0695e6` | GHSA-h4f4-gv6h-x824 | magento/magento2 | NOT_AI | `1e26bd94f729` | `13cef1b7d1b4` |
 | w117 | `alias-1a6e3850e1433264420875f5` | GHSA-x2fp-hj8c-mmxh | concretecms/concretecms | NOT_AI | `66f16af85c73` | `f22b9dff5945` |
 | w118 | `alias-3e8b7b2e80fa2d1dfed87cf4` | GHSA-f2wh-grmh-r6jm | apache/mina | NOT_AI | `691a9df5a0af` | `8b1dadb55b1d` |
 | w119 | `alias-409ea4c8fad7cb1ef5f4a9ff` | GHSA-8jmm-3xwx-w974 | alistgo/alist | NOT_AI | `c8f3e8ab4d2f` | `69629ca76a8f` |
 | w120 | `alias-40b43adce242ab999c257ae8` | GHSA-3qpq-r242-jqj7 | phpseclib/phpseclib | NOT_AI | `e793461543d1` | `d53d2021bcb9` |
 | w121 | `alias-47d2f1cf18c1cdb6371ca640` | GHSA-gw2x-mfwr-h46p | xuxueli/xxl-job | NOT_AI | `9293c61ca0a8` | `7a5239f3b427` |
-| w122 | `alias-49cb8bc669519766e2354303` | GHSA-85jx-x9r4-45m2 | magento/magento2 | NOT_AI | `1b8236afe67f` | `10fdaddfd21f` |
+| w122 | `alias-49cb8bc669519766e2354303` | GHSA-85jx-x9r4-45m2 | magento/magento2 | EVIDENCE_GAP | `1b8236afe67f` | `10fdaddfd21f` |
 | w123 | `alias-587aafec5fb95f291cdc6961` | GHSA-xgfm-992v-h2hr | magento/magento2 | NOT_AI | `d551d1e3f70f` | `f83cc26ca1d1` |
-| w124 | `alias-5c3e16ae9067c397a3d90c2f` | GHSA-995c-6rp3-4m4x | apache/mina | NOT_AI | `691a9df5a0af` | `cca24d646c89` |
+| w124 | `alias-5c3e16ae9067c397a3d90c2f` | GHSA-995c-6rp3-4m4x | apache/mina | NOT_AI | `—` | `cca24d646c89` |
 | w125 | `alias-66e81fedf4c23ff5c8ef4e1d` | GHSA-x4q4-7phh-42j9 | alistgo/alist | NOT_AI | `f275f83de02b` | `fd693936a13f` |
 | w126 | `alias-73ab00fb6220757929a348a0` | GHSA-r355-75hw-r8jf | magento/magento2 | NOT_AI | `3d6bdb94951c` | `bf1f471de6c0` |
 | w127 | `alias-7912978619fc13b2f8a82bec` | GHSA-wh92-6q6g-px7j | magento/magento2 | NOT_AI | `f281a0539385` | `8075ae194288` |
@@ -188,7 +220,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w133 | `alias-9c1dc487cc303e12be49dd74` | GHSA-8297-v2rf-2p32 | apache/mina | NOT_AI | `691a9df5a0af` | `8b1dadb55b1d` |
 | w134 | `alias-9c511674d1389c1bc95dc86d` | GHSA-94g3-g5v7-q4jg | phpseclib/phpseclib | NOT_AI | `c30f3b7e9a73` | `ccc21aef71eb` |
 | w135 | `alias-9cfb31e894bfee65d0797496` | GHSA-jgj7-c8vj-w563 | ulisesbocchio/jasypt-spring-boot | NOT_AI | `0376d901df2b` | `—` |
-| w136 | `alias-c7aad5ce4820970f195d932e` | GHSA-vf5j-865m-mq7c | apache/mina | NOT_AI | `691a9df5a0af` | `cca24d646c89` |
+| w136 | `alias-c7aad5ce4820970f195d932e` | GHSA-vf5j-865m-mq7c | apache/mina | NOT_AI | `—` | `cca24d646c89` |
 | w137 | `alias-d20985c8d4cbc26053fa600f` | GHSA-r854-jrxh-36qx | phpseclib/phpseclib | NOT_AI | `df0fe2386a66` | `ffe48b6b1b1a` |
 | w138 | `alias-f6e0454ecae71dba8cd3ca59` | GHSA-j4rh-7jcr-qm69 | misp/misp-modules | NOT_AI | `1457575dda5a` | `52cda9caa003` |
 | w139 | `alias-ffbea6af31e554be88138163` | GHSA-g9w4-m5fx-x3wv | yoast-dist/duplicate-post | NOT_AI | `8011c3bac314` | `34df3b057ef4` |
@@ -219,7 +251,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w164 | `alias-ca3f8b4c76fdbc59511621e9` | GHSA-j8gj-mw5g-642g | krayin/laravel-crm | NOT_AI | `64b90d623f8a` | `6e37f3919f42` |
 | w165 | `alias-d05c668b4ff23b0fff488539` | GHSA-cqgm-j57m-cj34 | tainacan/tainacan | NOT_AI | `2dc5cf5c6f6e` | `579d28d7752b` |
 | w166 | `alias-ed8fcd1b91b3cfdf27137bc9` | GHSA-2xjx-542r-phch | iomad/iomad | NOT_AI | `3f09d1b3d7f6` | `0c9f8d9ee05d` |
-| w167 | `alias-049d9e990bc63abaa2897f2a` | GHSA-hv8m-jj95-wg3x | messagepack-csharp/messagepack-csharp | NOT_AI | `bf5f2dd91bad` | `719e690abae8` |
+| w167 | `alias-049d9e990bc63abaa2897f2a` | GHSA-hv8m-jj95-wg3x | messagepack-csharp/messagepack-csharp | NOT_AI | `36104610053f` | `719e690abae8` |
 | w168 | `alias-058d831b72758b99e08df17d` | GHSA-5vpg-rj7q-qpw2 | yiisoft/yii2 | NOT_AI | `269ce903bdfb` | `109878b491db` |
 | w169 | `alias-0a2cc5322720d2111a6e0c03` | GHSA-ffj4-jq7m-9g6v | datadog/guarddog | NOT_AI | `cd08be9a2e3f` | `b2e10d2f5a0e` |
 | w170 | `alias-0be1caf9b41978e4de8eb5bd` | GHSA-mf78-3rpf-r784 | julien040/anyquery | NOT_AI | `edfe9dcb68ff` | `27f84fc16831` |
@@ -232,7 +264,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w177 | `alias-40f1da5aec5a3423703d1343` | GHSA-382j-8mxh-c7x2 | messagepack-csharp/messagepack-csharp | NOT_AI | `35682022fa24` | `26d4e743ca2a` |
 | w178 | `alias-41c66fdf3bfbc6dd2b335ecb` | GHSA-v75r-vx73-82pj | cyclonedx/cyclonedx-node-npm | NOT_AI | `7da79c148dae` | `9f646253f426` |
 | w179 | `alias-5a21f357f433c1977460060b` | GHSA-xrcf-6jh3-ggvx | julien040/anyquery | NOT_AI | `90e7eaa8f3d7` | `27f84fc16831` |
-| w180 | `alias-61165ef6b55810915b62b216` | GHSA-98wm-cxpw-847p | invoiceninja/invoiceninja | NOT_AI | `192722b7a475` | `b81a3fc30257` |
+| w180 | `alias-61165ef6b55810915b62b216` | GHSA-98wm-cxpw-847p | invoiceninja/invoiceninja | EVIDENCE_GAP | `—` | `b81a3fc30257` |
 | w181 | `alias-63b664d85451309a6a17605f` | GHSA-vh6j-jc39-fggf | messagepack-csharp/messagepack-csharp | NOT_AI | `62700694def6` | `b9cb6050908f` |
 | w182 | `alias-86108b6dcf06c918d8dace0a` | GHSA-x3f9-vcp2-hgcw | bagisto/bagisto | NOT_AI | `55b71e1e663c` | `90a962fe2044` |
 | w183 | `alias-95879d037bbd7985705d50c1` | GHSA-x5rw-qvvp-5cgm | bagisto/bagisto | NOT_AI | `3e44549e6545` | `b2b1cf625772` |
@@ -258,8 +290,8 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w203 | `alias-e2ca9e9dcb1995266dd86326` | GHSA-23xx-x3px-xxpj | mtrudel/bandit | NOT_AI | `aa68cfc718dd` | `d38cf046c9a3` |
 | w204 | `alias-810b8e6e8a7b57af6c81b51b` | GHSA-r3r8-w3g2-hq7h | rnpgp/rnp | NOT_AI | `020c61c4814d` | `1a2359d623e4` |
 | w205 | `alias-b41bfb6d8d97ab855af0d56b` | GHSA-p63x-hq5f-7f58 | harry0703/moneyprinterturbo | NOT_AI | `00052b4c5037` | `18f5e478979b` |
-| w206 | `alias-04ff4a2ae20f049dd85b8235` | GHSA-5gr5-vmmr-82g6 | erupts/erupt | FALSE_POSITIVE | `—` | `—` |
-| w207 | `alias-079ef85ce8e0fdd73dd256a9` | GHSA-rpg2-jvhp-h354 | redhatinsights/yggdrasil | NOT_AI | `7b21c5241774` | `196d0cbea42f` |
+| w206 | `alias-04ff4a2ae20f049dd85b8235` | GHSA-5gr5-vmmr-82g6 | erupts/erupt | NOT_AI | `1405b8b1fe76` | `58ed8631700f` |
+| w207 | `alias-079ef85ce8e0fdd73dd256a9` | GHSA-rpg2-jvhp-h354 | redhatinsights/yggdrasil | NOT_AI | `68ec1b651433` | `196d0cbea42f` |
 | w208 | `alias-8f8b4319ac4e99b5aba756ca` | GHSA-f5xg-cfpj-2mw6 | nervjs/taro | NOT_AI | `33cf18fabb67` | `c2e321a8b6fc` |
 | w209 | `alias-a122f80ebfd92a7aa1d59582` | GHSA-mm3p-j368-7jcr | unjs/ipx | NOT_AI | `a60fb0d44b96` | `81693ddbfc06` |
 | w210 | `alias-3264bc95406d406529a1f8fc` | GHSA-qv97-5qr8-2266 | input-output-hk/mithril | NOT_AI | `07b38289ad8e` | `0b411eab64e9` |
@@ -341,7 +373,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w286 | `alias-adb7a0b5f04189f71c9aa3e2` | GHSA-5m3h-w8g2-q63h | quickjs-ng/quickjs | NOT_AI | `c27cdfc43d5e` | `397310610529` |
 | w287 | `alias-b4ec3138287d9cd939470cea` | GHSA-2gmr-vqp5-r9qg | quickjs-ng/quickjs | NOT_AI | `878647e21dec` | `ea3e9d77454e` |
 | w288 | `alias-c9df92813e9608dcdc6e0e43` | GHSA-9cx2-fwcj-qq73 | xorbitsai/inference | NOT_AI | `224f81247ca5` | `77511b444b09` |
-| w289 | `alias-f5fb798bcd081371c625de96` | GHSA-w4x2-2pcx-2cpc | fishcodetech/muteki | NOT_AI | `013ab6bf5fde` | `—` |
+| w289 | `alias-f5fb798bcd081371c625de96` | GHSA-w4x2-2pcx-2cpc | fishcodetech/muteki | EVIDENCE_GAP | `013ab6bf5fde` | `—` |
 | w290 | `alias-38cfc55a9eb78b42318e66ea` | GHSA-wg5p-8h9p-3mr7 | naranor/agent-coderag | NOT_AI | `b6bb9d7f25dc` | `1d917513cd95` |
 | w291 | `alias-48fc20ef32757cb47993d255` | GHSA-8rw6-p7m8-63jp | surrealdb/surrealdb | NOT_AI | `c4386f1549ba` | `8f89b260bb96` |
 | w292 | `alias-061db5e605f24329a6bbff0b` | GHSA-5c4f-pxmx-xcm4 | apache/cassandra | NOT_AI | `0b83682b40d3` | `066c489d764d` |
@@ -364,7 +396,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w309 | `alias-2826ec37bcd89c3d3b60ce5b` | GHSA-c2p7-hcxm-xqhj | vas3k/taxhacker | NOT_AI | `d8711b714285` | `—` |
 | w310 | `alias-31fd62e8e6aaa9072c014bc3` | GHSA-cqj6-j4f4-mcpp | horilla-opensource/horilla-crm | NOT_AI | `61c54bbb22a3` | `730b5a44ff06` |
 | w311 | `alias-4f401d448319feb66dd70aa2` | GHSA-9848-6qgw-2748 | webmin/webmin | NOT_AI | `b30868ce165f` | `da18a16c84ae` |
-| w312 | `alias-59701fdd6d717f8118b77521` | GHSA-jfqq-rfm8-8frm | hashcat/hashcat | NOT_AI | `ef52453de952` | `6f374c4ff7d5` |
+| w312 | `alias-59701fdd6d717f8118b77521` | GHSA-jfqq-rfm8-8frm | hashcat/hashcat | EVIDENCE_GAP | `ef52453de952` | `6f374c4ff7d5` |
 | w313 | `alias-62829739710228997e8c4372` | GHSA-g2r8-97m7-62w9 | duckdb/duckdb-aws | NOT_AI | `07991443a780` | `7d04119ee8d3` |
 | w314 | `alias-6d9b7e7f3b75552edf8715ff` | GHSA-25qx-69jj-jfcj | alseambusher/crontab-ui | NOT_AI | `0c6cc5512adf` | `—` |
 | w315 | `alias-84436ad872bfed39828d8257` | GHSA-6gxr-4p8w-gxc9 | vladimir-tokarev-cyera/llama-cpp-security-patches | NOT_AI | `addae65fd44d` | `—` |
@@ -402,7 +434,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w347 | `alias-06b2ef7b16018ac9a7216b91` | GHSA-wc96-39fc-566f | netty/netty | NOT_AI | `6d1b5b0908d3` | `5b68c61f37aa` |
 | w348 | `alias-06d6d55842cbfd997f678dea` | GHSA-3g6v-2r68-prfc | traefik/traefik | NOT_AI | `8c7634bcde59` | `8447bfc71e97` |
 | w349 | `alias-077abd95bb91831299565a00` | GHSA-hf52-78x8-6w3w | apache/activemq | NOT_AI | `3953b9aaefae` | `b6f9a14e1a6a` |
-| w350 | `alias-077cc4b3147cc625c47b1f29` | GHSA-5rvc-5cwx-g5x8 | free5gc/free5gc | NOT_AI | `058e9e86db17` | `88de9fa74a1b` |
+| w350 | `alias-077cc4b3147cc625c47b1f29` | GHSA-5rvc-5cwx-g5x8 | free5gc/free5gc | EVIDENCE_GAP | `058e9e86db17` | `88de9fa74a1b` |
 | w351 | `alias-0784ec5526213f338f2a4d58` | GHSA-qh43-xrjm-4ggp | kimai/kimai | NOT_AI | `d807cdeae944` | `999d820d4ca1` |
 | w352 | `alias-0b9a1025278f32f7203f668a` | GHSA-84wq-86v6-x5j6 | phpoffice/phpspreadsheet | NOT_AI | `509f27e5c601` | `9019a9c9da1d` |
 | w353 | `alias-0d40a6a1747b260fc33a44d2` | GHSA-rfg2-pjw2-56x2 | python-zeroconf/python-zeroconf | NOT_AI | `c3a39f874a5c` | `0ad3f37b5b85` |
@@ -445,10 +477,10 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w390 | `alias-30842547202bb7b00688a14b` | GHSA-jv4p-mhmp-69vw | 3em0/cve_repo | NOT_AI | `4507c7078486` | `—` |
 | w391 | `alias-313df99aad9c3dbf3f72d299` | GHSA-hcm4-6hpj-vghm | zarf-dev/zarf | NOT_AI | `92b743d02930` | `93f9c33a9d47` |
 | w392 | `alias-32e785e30659db177e40706e` | GHSA-3p28-73q7-45xp | free5gc/free5gc | NOT_AI | `3ae828b1315f` | `c38a82fd0170` |
-| w393 | `alias-32e930b5ec70ab3155cf4fb5` | GHSA-jv9x-w4gm-hwcm | kimai/kimai | NOT_AI | `836a530b8615` | `cbdf91f316ba` |
-| w394 | `alias-34709288e949e49d4b83921d` | GHSA-j9cw-hwqf-85w7 | fluent/fluentd | NOT_AI | `441867361653` | `f5f2b7cddf8a` |
-| w395 | `alias-34948015081a21a97e196a75` | GHSA-pfrv-63w8-q7rq | byaidu/pdfmathtranslate | FALSE_POSITIVE | `—` | `—` |
-| w396 | `alias-35690d5deb754cef2ec0427a` | GHSA-3j3q-wp9x-585p | kcp-dev/kcp | NOT_AI | `e426bc4e86f3` | `416922b09843` |
+| w393 | `alias-32e930b5ec70ab3155cf4fb5` | GHSA-jv9x-w4gm-hwcm | kimai/kimai | NOT_AI | `82cd0c5ed2d2` | `cbdf91f316ba` |
+| w394 | `alias-34709288e949e49d4b83921d` | GHSA-j9cw-hwqf-85w7 | fluent/fluentd | NOT_AI | `335d3b2b709a` | `f5f2b7cddf8a` |
+| w395 | `alias-34948015081a21a97e196a75` | GHSA-pfrv-63w8-q7rq | byaidu/pdfmathtranslate | NOT_AI | `500bcca42f40` | `—` |
+| w396 | `alias-35690d5deb754cef2ec0427a` | GHSA-3j3q-wp9x-585p | kcp-dev/kcp | NOT_AI | `44b4682b63e6` | `416922b09843` |
 | w397 | `alias-3598903927f77b31ad026eed` | GHSA-v33r-r6h2-8wr7 | kimai/kimai | NOT_AI | `0714fc6ac657` | `a0601c8cb28f` |
 | w398 | `alias-36cf156a616c2d7c972ba960` | GHSA-rhr9-hgcm-x289 | gravitl/netmaker | NOT_AI | `57f19cdc8f6a` | `db2f005ea034` |
 | w399 | `alias-36e5cce518d278333ee982f4` | GHSA-3xc2-h5r3-wv3r | kimai/kimai | NOT_AI | `9a85b737b35f` | `16703081cdbd` |
@@ -467,17 +499,17 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w412 | `alias-4fcbc61bb0c50fc602bdc6e5` | GHSA-f6ww-3ggp-fr8h | xmldom/xmldom | NOT_AI | `64cd7b6e5ef8` | `372008f9ae0e` |
 | w413 | `alias-5130c7e029f64ad71c1c7504` | GHSA-253q-9q78-63x4 | jmlepisto/clatter | NOT_AI | `6453c23382cb` | `b65ae6e9b801` |
 | w414 | `alias-516513eed680733543944c00` | GHSA-phxq-526m-79px | spring-projects/spring-graphql | NOT_AI | `a1165051eb53` | `63a89ed1379b` |
-| w415 | `alias-53086d69ef6d1b9c6f30bf6e` | GHSA-h9q6-hc68-35rp | shamaton/msgpack | NOT_AI | `22d35bc1e4ff` | `269f54e9483a` |
+| w415 | `alias-53086d69ef6d1b9c6f30bf6e` | GHSA-h9q6-hc68-35rp | shamaton/msgpack | NOT_AI | `8c8c814cd610` | `269f54e9483a` |
 | w416 | `alias-56fd2b54c66f104a9bad64b8` | GHSA-rr89-w3h9-m66j | mattiasw/exifreader | NOT_AI | `88e93582f71a` | `5f116128adc1` |
 | w417 | `alias-5a15473e9aae8d5f94242b5b` | GHSA-5rmx-256w-8mj9 | h44z/wg-portal | NOT_AI | `94f0b26304e0` | `fe4485037a25` |
 | w418 | `alias-5d19fad05e02b87183c6bf07` | GHSA-x288-3778-4hhx | angular/angular-cli | NOT_AI | `3c9697a8c34a` | `6cf621c905de` |
 | w419 | `alias-5d999522924c1b5dd36c7ad5` | GHSA-53h4-8rc4-f539 | slimphp/slim | NOT_AI | `4f84a8cee4eb` | `e12cb05ca2a1` |
 | w420 | `alias-5ec06c86235aa6e00d461fb8` | GHSA-f7xc-5852-fj99 | saloonphp/saloon | NOT_AI | `4fbbd5f5f6ff` | `d418356b6257` |
-| w421 | `alias-5f52522c6f016b598fd4dd0b` | GHSA-hrmw-qprp-wgmc | phpoffice/phpspreadsheet | NOT_AI | `62da380674d6` | `f1eb4e6980d5` |
+| w421 | `alias-5f52522c6f016b598fd4dd0b` | GHSA-hrmw-qprp-wgmc | phpoffice/phpspreadsheet | NOT_AI | `edc003ad1645` | `f1eb4e6980d5` |
 | w422 | `alias-5fd878b2fa29730f576105a5` | GHSA-5846-7qm3-r52j | hackingrepo/dssrf-js | NOT_AI | `6885ccae01fb` | `668c21792cd1` |
 | w423 | `alias-6201a37efcc390bc5e77cd78` | GHSA-77vg-94rm-hx3p | sveltejs/devalue | NOT_AI | `819f1ac7475a` | `206ca6712fbc` |
 | w424 | `alias-654f8af5e27af03626a25f8d` | GHSA-4g5x-hcwm-82jw | zhenorzz/goploy | NOT_AI | `16f6e848b8cb` | `d51aa15ebc0a` |
-| w425 | `alias-661ba9c25d5b81cb58258a1b` | GHSA-x8qp-wqqm-57ph | intlify/vue-i18n | NOT_AI | `154076727da3` | `49f982443ab8` |
+| w425 | `alias-661ba9c25d5b81cb58258a1b` | GHSA-x8qp-wqqm-57ph | intlify/vue-i18n | NOT_AI | `69489802dea2` | `49f982443ab8` |
 | w426 | `alias-683b0a2c791c7e09e4a85ba6` | GHSA-qc2x-6f54-m6h9 | python-zeroconf/python-zeroconf | NOT_AI | `e814dd1e6848` | `544449596e64` |
 | w427 | `alias-696849a1ba7b0ba3ba2fb199` | GHSA-j759-j44w-7fr8 | xmldom/xmldom | NOT_AI | `5fb8fb92b2cb` | `fda7cc313de3` |
 | w428 | `alias-69a56edd2872b02919a7aa96` | GHSA-4rm2-28vj-fj39 | dedoc/scramble | NOT_AI | `f8cc090269b4` | `b54b0c43bdeb` |
@@ -486,7 +518,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w431 | `alias-71ed34a89b276f47ba2df810` | GHSA-gqw4-4w2p-838q | composer/composer | NOT_AI | `dd1fd0e306db` | `4fcc13d428f2` |
 | w432 | `alias-721ca2e5bf5c6f8c896e54a7` | GHSA-2gr4-ppc7-7mhx | codeigniter4/codeigniter4 | NOT_AI | `2bd4f8f5053d` | `29299349e7d2` |
 | w433 | `alias-764e1cb0cc9cbb2a37321577` | GHSA-c66c-vq6w-fvh5 | siderolabs/omni | NOT_AI | `7486bb8d20d4` | `13c3f2897898` |
-| w434 | `alias-76a1f9bfe1bf09fc91f70eaa` | GHSA-hmqr-wjmj-376c | gravitl/netmaker | EVIDENCE_GAP | `34cac9ced04f` | `—` |
+| w434 | `alias-76a1f9bfe1bf09fc91f70eaa` | GHSA-hmqr-wjmj-376c | gravitl/netmaker | NOT_AI | `34cac9ced04f` | `0c4d431df2b5` |
 | w435 | `alias-76b6bdf9567124529666db74` | GHSA-w5r5-m38g-f9f9 | authlib/joserfc | NOT_AI | `86d25febaca0` | `696a9611ab98` |
 | w436 | `alias-77cf5118e417cfdb350fea15` | GHSA-4hgg-c4rr-6h7f | gravitl/netmaker | NOT_AI | `cb940ac68466` | `5617d97ce616` |
 | w437 | `alias-79b8158cf102410bb7a1c941` | GHSA-65mp-fq8v-56jr | jugmac00/flask-reuploaded | NOT_AI | `45b77b494769` | `d64c6b2f71cb` |
@@ -494,10 +526,10 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w439 | `alias-7e21407cc08de7646d210ce7` | GHSA-87m4-826x-3crx | phpoffice/phpspreadsheet | NOT_AI | `93c94eb31d59` | `1433b34843af` |
 | w440 | `alias-8350e4ca675bf95a0ab51c1e` | GHSA-5mq8-78gm-pjmq | kepano/defuddle | FALSE_POSITIVE | `7b9c01b8dc97` | `7cd4a27447b4` |
 | w441 | `alias-8390ae3f5e804bd13d8971db` | GHSA-rrjr-v56m-ww88 | g-research/parquetsharp | NOT_AI | `c4564c2eaf2a` | `d87081931cde` |
-| w442 | `alias-86f9902c6c6a756100d51582` | GHSA-26rh-24rg-j3vv | zhenorzz/goploy | NOT_AI | `05c15c06abff` | `b49eabe903c7` |
+| w442 | `alias-86f9902c6c6a756100d51582` | GHSA-26rh-24rg-j3vv | zhenorzz/goploy | NOT_AI | `fdd819900c59` | `b49eabe903c7` |
 | w443 | `alias-87309aca08e97e031f07444b` | GHSA-c9w5-rwh3-7pm9 | codeigniter4/codeigniter4 | NOT_AI | `ec2dc8b43e78` | `f5e463b9a3e9` |
 | w444 | `alias-887158b2240e3e92704a6c59` | GHSA-fxxf-w25w-mcx2 | jenkinsci/credentials-binding-plugin | NOT_AI | `3f6decef43ea` | `e52b2328afde` |
-| w445 | `alias-8d6078ff40410b86338dad03` | GHSA-86vw-mfpg-wwv9 | jsonata-js/jsonata | NOT_AI | `c1721bfacb9a` | `d6ffc17cb16a` |
+| w445 | `alias-8d6078ff40410b86338dad03` | GHSA-86vw-mfpg-wwv9 | jsonata-js/jsonata | NOT_AI | `06f323d7c7a7` | `d6ffc17cb16a` |
 | w446 | `alias-8ff3e3491ba1099c624cc12e` | GHSA-999r-qq7v-r334 | aws/aws-cdk | NOT_AI | `6a16cf26e727` | `a92105c64c4f` |
 | w447 | `alias-906b1ddfad74662995a82a58` | GHSA-vcrf-j523-4mrf | aws/aws-cdk | NOT_AI | `1a25fc6d9971` | `baa9e1dff469` |
 | w448 | `alias-99269a04002d2569a57a9292` | GHSA-jp3q-wwp3-pwv9 | solspace/craft-freeform | NOT_AI | `7dd80f030aa6` | `b9adad6cdf1e` |
@@ -517,7 +549,7 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w462 | `alias-b357e7947151ec34d5a566ec` | GHSA-f9f8-rm49-7jv2 | composer/composer | NOT_AI | `0b94fd209aee` | `3f5e7f9fbfa5` |
 | w463 | `alias-b414e635ca1236122779eb57` | GHSA-x6wf-f3px-wcqx | xmldom/xmldom | NOT_AI | `5fb8fb92b2cb` | `7207a4b0e0bc` |
 | w464 | `alias-b6d507cdcd65a2b033fcb04a` | GHSA-gcq2-9pq2-cxqm | chimurai/http-proxy-middleware | NOT_AI | `a12a59df4250` | `a1ac3158541d` |
-| w465 | `alias-b9036092203163b6beed15b6` | GHSA-29rf-f4vv-pvq6 | authorizerdev/authorizer | NOT_AI | `4e48320cf19e` | `66fe488fd2a4` |
+| w465 | `alias-b9036092203163b6beed15b6` | GHSA-29rf-f4vv-pvq6 | authorizerdev/authorizer | NOT_AI | `4e48320cf19e` | `2a9d22f3ab45` |
 | w466 | `alias-b9c9ee85a11154b51e58be76` | GHSA-xm5m-wgh2-rrg3 | sigstore/timestamp-authority | NOT_AI | `b7c9c9f82ee8` | `9583b6186084` |
 | w467 | `alias-c0bba41923717755adb233b5` | GHSA-x746-7m8f-x49c | kludex/starlette | NOT_AI | `dd11c69b5b11` | `e3f972225adb` |
 | w468 | `alias-c34d7ded879e9355f989173d` | GHSA-xh43-g2fq-wjrj | angular/angular-cli | NOT_AI | `8db316149ed6` | `f086eccc36d1` |
@@ -533,8 +565,8 @@ w010 w029 w088 w115 w122 w123 w133 w139 w165 w166 w252 w280 w289 w358 w387
 | w478 | `alias-d7d398aa233342f0464b2144` | GHSA-pr7j-96cj-549h | fluent/fluentd | NOT_AI | `fe73c272eed3` | `990921518971` |
 | w479 | `alias-d85e65477aebdcdf95288e74` | GHSA-phvx-9mgw-67r5 | python-zeroconf/python-zeroconf | NOT_AI | `061a2aa3c6e8` | `95561e28b249` |
 | w480 | `alias-ddec734b1bb1dfab2ff3968f` | GHSA-3g76-f9xq-8vp6 | eclipse-vertx/vert.x | NOT_AI | `58238be403a9` | `c64a707b6de8` |
-| w481 | `alias-de19269741ef7437dd9ec8ed` | GHSA-rpc5-pm7q-hjmp | naver/billboard.js | NOT_AI | `8413325db50b` | `49e079cdd466` |
-| w482 | `alias-e22205d9a7fc391fa1a1fa10` | GHSA-q23m-vm9r-5745 | stefanprodan/podinfo | NOT_AI | `1dde723cf969` | `cbebb20fd485` |
+| w481 | `alias-de19269741ef7437dd9ec8ed` | GHSA-rpc5-pm7q-hjmp | naver/billboard.js | NOT_AI | `1ae188f09b86` | `49e079cdd466` |
+| w482 | `alias-e22205d9a7fc391fa1a1fa10` | GHSA-q23m-vm9r-5745 | stefanprodan/podinfo | NOT_AI | `153f4dce4547` | `cbebb20fd485` |
 | w483 | `alias-e65ab0afd50c091aa8290563` | GHSA-v74m-68w4-83qm | seopanel/seo-panel | NOT_AI | `b8092087fd04` | `440a00b68741` |
 | w484 | `alias-e7045e68192add7278e098de` | GHSA-wh4c-j3r5-mjhp | xmldom/xmldom | NOT_AI | `5fb8fb92b2cb` | `2b852e836ab8` |
 | w485 | `alias-e76fe79d8bbaf8eee43a4eaf` | GHSA-cg4g-m8jx-vjv2 | hackingrepo/dssrf-js | NOT_AI | `6885ccae01fb` | `9211f91bf532` |

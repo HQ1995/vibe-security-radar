@@ -1,0 +1,33 @@
+{
+  "worker": "w480",
+  "review_agent_id": "r111_w480",
+  "class_id": "alias-ddec734b1bb1dfab2ff3968f",
+  "case_id": "GHSA-3g76-f9xq-8vp6",
+  "repo": "eclipse-vertx/vert.x",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS Real DoS: with server-side SNI enabled, Netty SniHandler calls SSLHelper.serverNameMapper which on non-null SNI does sslContextMaps[idx].computeIfAbsent(serverName, ...) into unbounded ConcurrentHashMap<String,SslContext>. Wildcard/broad cert mappings make distinct matching names all succeed, so an unauthenticated client can grow retained SslContext objects. GHSA-3g76-f9xq-8vp6 (not withdrawn) and CVE-2026-6860 cveMetadata.state=PUBLISHED (CNA Eclipse, datePublished 2026-05-06) describe this; vendor blogs for 4.5.27/5.0.12 cite PR 6102/6103 as CVE-2026-6860. Parent SSLProviderImpl instead keyed by Certificate (computeIfAbsent(mgr.getCertificateChain(null)[0], ...)), so wildcard names collapsed to one cert and did not grow unbounded.",
+    "atomic_bic": "PASS Smallest surviving public first-write is single-parent 58238be403a9a073aeaa47813bf0151ac1ff0d14 (subject NetClientBuilder; parent b83f2c1f2e358d8e66c193675b68398267472dbd). That commit first adds Map<String, SslContext>[] sslContextMaps = new ConcurrentHashMap[] and createContext(... serverName ...) computeIfAbsent(serverName, ...) in src/main/java/io/vertx/core/net/impl/SSLHelper.java while SslContextFactoryImpl.createContext no longer caches by certificate. Not a merge, move, or revert; later SslChannelProvider/SslContextProvider copies are refactors of this mechanism.",
+    "immediate_parent_absence": "PASS Direct parent-tree check on b83f2c1f2e358d8e66c193675b68398267472dbd: git grep finds no computeIfAbsent(serverName and no Map<String, SslContext> under src/main/java. Parent SSLHelper.serverNameMapper delegates to sslContextFactory.getContext; SSLProviderImpl caches Map<Certificate, SslContext> via computeIfAbsent(certificate, ...).",
+    "squash_member_decomposition": "PASS 58238be403a9a073aeaa47813bf0151ac1ff0d14 has exactly one parent (b83f2c1f2e358d8e66c193675b68398267472dbd), ordinary commit object (tree 6db65a524c2918fae98ad9f9601bd6778e0d7933), GitHub commit page is not a squash-merge PR aggregate, and no finer public members reconstruct the serverName-keyed cache write. squash_decomposed remains false.",
+    "affected_release_membership": "PASS 58238be403a9a073aeaa47813bf0151ac1ff0d14 is not an ancestor of 4.3.3 (c3977fca2179d6f1581f9be175a74ae61b2a854e) but is an ancestor of 4.3.4 (574499e110ec3a561be9338ebcb39518eaf720e6), 4.3.8, 4.4.0, 4.4.9, 4.5.0, 4.5.26 (1751afbb48a695421d9547e78ee868f350e5461f), 5.0.0, and 5.0.11 (17daa03e93011f338d207db41fd6aefd6b63add0). Tag 4.3.3 still has Map<Certificate, SslContext> + computeIfAbsent(cert); 4.3.4/4.3.8 SSLHelper, 4.4.9/4.5.26 SslChannelProvider, and 5.0.11 SslContextProvider all retain unbounded serverName-keyed ConcurrentHashMap. Matches GHSA ranges >=4.3.4,<=4.3.8 / >=4.4.0,<=4.4.9 / >=4.5.0,<=4.5.26 / >=5.0.0,<=5.0.11.",
+    "fixed_release_membership": "PASS Direct 5.0 fix c64a707b6de83feeb0317e848345684860f0ab2f is absent from 5.0.11 and present in 5.0.12 (244f9e7d87f854961df930b2383a990999523be9). Parallel 4.x fix a459d30df85b70e8f62e80b2d2aaac79ca767e63 is absent from 4.5.26 and present in 4.5.27 (5f9de79d6c6c0086033d540797b19c9794d2c156). 4.3.x and 4.4.x tags never contain either fix (GHSA first_patched_version null for those ranges). 5.0.12 SslContextProvider and 4.5.27 SslChannelProvider replace ConcurrentHashMap with LruCache<>(DEFAULT_SNI_CACHE_SIZE=16).",
+    "direct_fix_or_unpatched": "PASS PR 6102 merged one-commit 5.0 fix c64a707b6de83feeb0317e848345684860f0ab2f (parent b1b817892996b31451884ae44d439cd1408e85a3) replacing unbounded SNI maps with bounded LruCache; PR 6103 merged 4.x a459d30df85b70e8f62e80b2d2aaac79ca767e63. Fixes directly close unbounded retention rather than a side refactor. 9dc5b3f6fa4bb2c38afbc2ae4213a3f12ec6ff2a is the later 5.1.0 line copy.",
+    "bic_only_ai_attribution": "PASS BIC 58238be403a9a073aeaa47813bf0151ac1ff0d14 author and committer are Julien Viet <julien@julienviet.com>; message is only 'NetClientBuilder'; cat-file shows no Co-Authored-By, Generated-with, Signed-off-by bot, or other generator trailer; patch body has no Copilot/Cursor/ChatGPT/assistant markers. Named human authorship on the actual BIC supports NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-6860 is PUBLISHED (not rejected/withdrawn). GHSA-3g76-f9xq-8vp6 withdrawn_at is null. Mechanism is CWE-770-style unbounded SNI SslContext cache growth, not a false positive.",
+    "BIC 58238be403a9a073aeaa47813bf0151ac1ff0d14 first writes SSLHelper sslContextMaps as ConcurrentHashMap keyed by serverName and populate via computeIfAbsent(serverName, ...); parent b83f2c1f2e358d8e66c193675b68398267472dbd used a Certificate-keyed map in SSLProviderImpl, which does not retain a distinct context per matching SNI name.",
+    "Source-to-sink at the BIC: HttpServerWorker/NetServerImpl construct SniHandler(sslHelper.serverNameMapper(vertx)); mapper calls createContext(..., serverName, ...); non-null names hit the unbounded map. Distinct wildcard-matching SNI names therefore accumulate SslContext entries.",
+    "Primary verdict NOT_AI is independently supported: Julien Viet is author and committer with no BIC-object AI marker.",
+    "Primary introducer_parent_absent=false contradicts the parent-tree result and the primary prompt rule that this flag is true only after verifying the mechanism is absent in the parent tree. It must be true.",
+    "Primary ai_marker=null does not quote the required absent/author/committer/trailer check string.",
+    "Primary fix_sha/direct_fix_sha c64a707b6de83feeb0317e848345684860f0ab2f is the correct 5.0 direct fix (PR 6102); a459d30df85b70e8f62e80b2d2aaac79ca767e63 is the matching 4.5.27 fix (PR 6103) and does not replace the 5.0 SHA."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true,
+    "ai_marker": "absent; author and committer Julien Viet <julien@julienviet.com>; no Co-Authored-By, Generated-with, or bot/generator trailer on 58238be403a9a073aeaa47813bf0151ac1ff0d14"
+  },
+  "remaining_gap": null
+}

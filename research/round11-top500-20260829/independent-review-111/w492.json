@@ -1,0 +1,28 @@
+{
+  "worker": "w492",
+  "review_agent_id": "r111_w492",
+  "class_id": "alias-fe018c127a88d4f1324fb7f4",
+  "case_id": "GHSA-x229-w2j4-h748",
+  "repo": "3em0/cve_repo",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real overwrite/TOCTOU in OpenAI-compatible files API. `_get_file_id` encodes only `{purpose}/{YYYY-MM-DD}/{file.filename}`; `files()` then `open(file_path, \"wb\")` with no uniqueness or conflict check; `retrieve_file_content` returns live `FileResponse(_get_file_path(file_id))`. Same-day same-name uploads share an ID and the later write replaces bytes later reads. PoC in GH issue 5463 and 3em0 report `Vuln-2-Silent-File-Overwrite.md`. CVE-2026-7846 is PUBLISHED at cveawg.mitre.org (CWE-367/CWE-362); GHSA-x229-w2j4-h748 withdrawn_at is null and first_patched_version is null.",
+    "atomic_bic": "PASS: First public write of `_get_file_id` + `open(..., \"wb\")` + live content GET is PR #3573 member 4507c7078486ee95778bad6a96840f421dec98c0 (author/committer liunux4odoo, message 添加 openai 兼容的 files 接口; parent a1429a350a1433d548680f2a712b2aec205562e4; single parent). Later path moves (5c650a8dc342c76531e8dcf23d116f9dc81547d9) and formatting (16aa94d101c9efcd3f1291724ea848cdfe951ae6) keep the same ID/overwrite/read mechanism.",
+    "immediate_parent_absence": "PASS: Parent a1429a350a1433d548680f2a712b2aec205562e4 `chatchat-server/chatchat/server/api_server/openai_routes.py` ends at a deprecated stub `@openai_router.post(\"/files\", deprecated=\"暂不支持\") async def files(): ...` with no `_get_file_id`, no `openai_files` path, and no content GET. Parent-tree grep finds no `_get_file_id`.",
+    "squash_member_decomposition": "PASS: PR #3573 has exactly one member, 4507c7078486ee95778bad6a96840f421dec98c0. GitHub merge_commit_sha 27f0f512a37db4b816da543ca566b0e70d395f4d is a single-parent squash (parent a1429a350a1433d548680f2a712b2aec205562e4, subject includes (#3573)); member is not an ancestor of the squash or of HEAD. Squash is the landing aggregate, not the atomic BIC.",
+    "affected_release_membership": "PASS: Squash 27f0f512a37db4b816da543ca566b0e70d395f4d is an ancestor of tag v0.3.0 (9d8acafef8f41f5658828b5850731d121b45b38a) and v0.3.1 (a6a9193b5002061719f0eee62c6310bd5b1b7f63). Both tagged trees still define `_get_file_id` and `open(file_path, \"wb\")`. PyPI langchain-chatchat 0.3.1.3 sdist still has purpose/date/filename IDs and live FileResponse. GHSA range is <= 0.3.1.3; CVE lists 0.3.1.0–0.3.1.3.",
+    "fixed_release_membership": "PASS: No patched release. GHSA first_patched_version is null. PyPI latest is still 0.3.1.3. master HEAD 49165d6af4438aa7e8a1f71ce276db55f4405151 `libs/chatchat-server/chatchat/server/api_server/openai_routes.py` still has the same `_get_file_id` and overwrite/read pair. Post-v0.3.1 commit 2a71d05f53a140df0a226208a7b4c4bf87c9976b touches the file but not the ID/overwrite sink.",
+    "direct_fix_or_unpatched": "PASS: No direct fix SHA. Issue https://github.com/chatchat-space/Langchain-Chatchat/issues/5463 closed 2026-05-27T22:06:37Z by github-actions[bot] as stale with closed_by_pull_requests.total_count=0. Unpatched remains confirmed; opaque per-upload IDs plus immutable retrieval would close the sink.",
+    "bic_only_ai_attribution": "PASS: BIC 4507c7078486ee95778bad6a96840f421dec98c0 is named human liunux4odoo <liunux@qq.com> as author and committer; patch/mail headers have no Co-Authored-By, Generated-with, bot, or generator trailer. PR #3573 user is liunux4odoo. Claude Opus 4.6 Co-Authored-By is only on 3em0/cve_repo report commit 58b5c1aba218aec104463c83ca594bbe13ff237a (2026-04-03), which did not write upstream vulnerable lines."
+  },
+  "findings": [
+    "CVE-2026-7846 remains PUBLISHED; GHSA-x229-w2j4-h748 is not withdrawn. The filename-derived ID plus wb overwrite plus live content GET is a real integrity issue, not a false advisory.",
+    "Atomic BIC is PR #3573 member 4507c7078486ee95778bad6a96840f421dec98c0; squash 27f0f512a37db4b816da543ca566b0e70d395f4d is the default-branch landing aggregate and is correctly not treated as BIC.",
+    "Immediate parent a1429a350a1433d548680f2a712b2aec205562e4 still has only the deprecated files stub, so the mechanism is first-written on the BIC.",
+    "BIC authorship is human liunux4odoo with no AI marker. The only AI trailer is on the 2026 3em0 report commit and is not BIC evidence.",
+    "v0.3.0, v0.3.1, PyPI 0.3.1.3, and current master still carry the sink. Issue 5463 has no linked fix PR. Primary NOT_AI plus unpatched is correct."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,28 @@
+{
+  "worker": "w474",
+  "review_agent_id": "r111_w474",
+  "class_id": "alias-c94f43a01ee83c9cd57f67bc",
+  "case_id": "GHSA-c3gj-q88f-7hqj",
+  "repo": "studio-42/elfinder",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: GHSA-c3gj-q88f-7hqj (published 2026-05-07, withdrawn_at null) and CVE-2026-44521 (cvelistV5 state PUBLISHED) describe authenticated SQL injection in elFinderVolumeMySQL via a crafted target hash. On tag 2.1.67, decode() in php/elFinderVolumeDriver.class.php base64-decodes the hash and returns abspathCE()->_abspath() with no numeric-id check; MySQL _abspath() is identity (php/elFinderVolumeMySQL.class.php). That decoded string is interpolated into SQL in cacheDir() (WHERE f.parent_id='$path'), _joinPath() (WHERE parent_id='$dir'), _stat() (WHERE f.id='$path'), and _fopen() (WHERE id='$path'). Installations using LocalFileSystem are out of scope.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is 357fc6f645056198c079d1d08d03cb46cdbaaacf ('connector: inner api minor changes. mysql driver now use id as path'). It switches decode() to $this->_abspath($path), makes MySQL _abspath()/_relpath() identity, and first interpolates unvalidated decoded ids into getstat()/ _scandir()/_fopen() (WHERE f.id/parent_id/id=\"$path\"). Single parent 03297033d07606e7eb09aab6409afdeebdbc6554; not a move-only or revert commit. git log -S 'WHERE f.id=\"' on the MySQL driver lists 357fc6f as the earliest hit. Later 15cc46ea27e1700fc0d37d5244f8ff2d698d1fe8 (PSR-2) and e8c0b47b906523e4d4fe729017a009bba7d9ab06 rewrite line ownership of cacheDir/_joinPath/_stat/_fopen but already inherited the unvalidated-id invariant from 15cc46ea^.",
+    "immediate_parent_absence": "PASS: Parent 03297033d07606e7eb09aab6409afdeebdbc6554:src/connectors/php/elFinderVolumeMySQL.class.php uses filesystem path values with db->real_escape_string() in fileinfo(), _scandir(), and _fopen() (WHERE f.path / p.path / path=\"$escaped\"). Parent decode() prepends $this->root rather than treating the decoded blob as a raw object id. The numeric-id-as-path interpolation mechanism is absent in that parent tree.",
+    "squash_member_decomposition": "PASS: BIC 357fc6f645056198c079d1d08d03cb46cdbaaacf has exactly one parent (03297033d07606e7eb09aab6409afdeebdbc6554); ^2 does not exist, so no squash/merge members to reconstruct. Direct fix 6f7593fcac442644ecb00a999871aae966363bc1 is titled 'Merge commit from fork' but public history also has a single parent 340e600d2abcf686f98bfc3499c8b6259fdc2d53; second parent is not in the clone, so no finer public member is reconstructable.",
+    "affected_release_membership": "PASS: Advisory range is <=2.1.67. git merge-base --is-ancestor 357fc6f645056198c079d1d08d03cb46cdbaaacf 2.1.67-src succeeds (2.1.67-src = c6367e1cba9f3f1666e0318fce33b0815baf51df). php/elFinderVolumeMySQL.class.php is byte-identical between tags 2.1.67-src and 2.1.67 (6bb7f26614f16a214b71dee50b857f9ff989ccb5). Tag 2.1.67 contains the raw interpolations and has no normalizePathId.",
+    "fixed_release_membership": "PASS: CVE/GHSA patched version is 2.1.68. git merge-base --is-ancestor 6f7593fcac442644ecb00a999871aae966363bc1 2.1.68-src succeeds (2.1.68-src = 38d47774f26d2b7d18f49e54b4e4f85d2d706d50). Packaged build d03a9c7ad84ce0b6c33f25c2eb570e7d13d07fe9 ('src build elFinder-2.1-94b5e89b0') is an ancestor of tag 2.1.68 (270e019f87945eaac165fd82c1354356e2ab20a9). Both 2.1.68 and 2.1.68-src define normalizePathId at php/elFinderVolumeMySQL.class.php:263 and the two tag blobs are byte-identical.",
+    "direct_fix_or_unpatched": "PASS: Direct public fix is 6f7593fcac442644ecb00a999871aae966363bc1. It adds normalizePathId()/pathId(), overrides decode() to reject non-digits, and converts cacheDir/_joinPath/_stat/_fopen plus remaining id sinks to integer-formatted SQL. Parent 340e600d2abcf686f98bfc3499c8b6259fdc2d53 still has WHERE f.parent_id='$path' and WHERE f.id='$path'. Packaged carrier is d03a9c7ad84ce0b6c33f25c2eb570e7d13d07fe9.",
+    "bic_only_ai_attribution": "PASS: BIC 357fc6f645056198c079d1d08d03cb46cdbaaacf author and committer are Dmitry Levashov <dio@std42.ru> (AuthorDate/CommitDate 2011-04-27). Commit object has no Co-Authored-By, Generated-with, bot identity, or other AI/generator trailer. Named human authorship on the actual BIC supports NOT_AI."
+  },
+  "findings": [
+    "Real CWE-89 in the MySQL volume driver: attacker-controlled target hashes decode to non-numeric SQL fragments and reach id/parent_id predicates without validation. GHSA-c3gj-q88f-7hqj is live; CVE-2026-44521 is PUBLISHED, not withdrawn/rejected.",
+    "Causal BIC is 357fc6f645056198c079d1d08d03cb46cdbaaacf, which first made decoded hashes the MySQL object-id path and interpolated them unescaped. Immediate parent 03297033d07606e7eb09aab6409afdeebdbc6554 still queried escaped filesystem paths.",
+    "Surviving 2.1.67 sink names cacheDir/_joinPath/_stat/_fopen come from later human rewrites (notably 15cc46ea27e1700fc0d37d5244f8ff2d698d1fe8 and e8c0b47b906523e4d4fe729017a009bba7d9ab06); those are not the first writers of the trust-boundary error.",
+    "Direct fix 6f7593fcac442644ecb00a999871aae966363bc1 plus packaged build d03a9c7ad84ce0b6c33f25c2eb570e7d13d07fe9 close the sink in 2.1.68. Affected artifact 2.1.67 lacks normalizePathId.",
+    "BIC authorship is a named 2011 human with no AI/bot/generator marker; verdict remains NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

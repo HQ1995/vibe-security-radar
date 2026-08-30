@@ -18,6 +18,7 @@ def main() -> None:
     manifest = jsonl(LANE / "manifest.jsonl")
     summary = json.loads((LANE / "selection-summary.json").read_text())
     coverage = json.loads((LANE / "coverage.json").read_text())
+    landing = json.loads((LANE / "ledger-landing-result.json").read_text())
     records = []
     for item in manifest:
         path = ROOT / item["primary_out"]
@@ -29,7 +30,8 @@ def main() -> None:
         "Wave of 500 `UNANALYZED`/`PARTIALLY_ANALYZED` ledger cases ranked for",
         "true-positive likelihood after excluding every class/advisory in",
         "`research/round10-top200-20260828/`. Protocol:",
-        "`docs/AUDIT-PROTOCOL.md`. This wave does not land ledger rows.",
+        "`docs/AUDIT-PROTOCOL.md`. The reconciled results were landed to the canonical",
+        "Neon ledger and exported to the repository after all publication gates passed.",
         "",
         "## Selection",
         "",
@@ -65,15 +67,61 @@ def main() -> None:
             lines.append(f"- `{verdict}`: {count}")
         lines.extend([
             "",
-            "These second-pass verdicts are review findings; they do not silently mutate",
-            "the primary records below. The 111 records completed after the original freeze",
-            "were each audited by their own clean-context worker but are not part of this",
-            "389-record second-pass set.",
+            "These are the historical second-pass findings for the original 389-record set.",
         ])
         for verdict in ("CORRECTION_REQUIRED", "EVIDENCE_GAP", "BLOCKED"):
             workers = [r["worker"] for r in reviews if r["review_verdict"] == verdict]
             if workers:
                 lines.extend(["", f"### {verdict}", "", " ".join(workers)])
+    correction_path = LANE / "canonical-corrections.jsonl"
+    if correction_path.exists():
+        corrections = jsonl(correction_path)
+        scopes = Counter(row["correction_scope"] for row in corrections)
+        lines.extend([
+            "",
+            "## Disagreement re-review landing",
+            "",
+            f"- re-researched cases: {len(corrections)}",
+        ])
+        for scope in ("CORRECTION_REQUIRED", "FIELD_ERRATUM", "CONFIRMED", "EVIDENCE_GAP"):
+            lines.append(f"- `{scope}`: {scopes[scope]}")
+        lines.extend([
+            "",
+            "The 33-case clean-context disagreement re-review has been reconciled into",
+            "the canonical primary records. `FIELD_ERRATUM` is a derived landing scope,",
+            "not a new protocol review-verdict enum. Six `CONFIRMED` cases required no",
+            "canonical field change.",
+        ])
+    review111 = [
+        json.loads(path.read_text())
+        for path in sorted((LANE / "independent-review-111").glob("w[0-9][0-9][0-9].json"))
+    ]
+    review111_verdicts = Counter(row["review_verdict"] for row in review111)
+    reconciliation111 = jsonl(LANE / "review-111-reconciliation.jsonl")
+    lines.extend([
+        "",
+        "## Independent review of the final 111 and reconciliation",
+        "",
+        f"- reviewed records: {len(review111)}",
+    ])
+    for verdict, count in review111_verdicts.most_common():
+        lines.append(f"- `{verdict}`: {count}")
+    lines.extend([
+        f"- substantive reconciliation records: {len(reconciliation111)}",
+        "- accepted verdict changes: `w350 NOT_AI → EVIDENCE_GAP`; `w434 EVIDENCE_GAP → NOT_AI`",
+        "- rejected verdict change: `w440 FALSE_POSITIVE → NOT_AI`",
+        "",
+        "## Canonical ledger landing",
+        "",
+        f"- run id: `{landing['run_id']}`",
+        f"- change set id: `{landing['change_set_id']}`",
+        f"- rows finalized: {landing['rows']}",
+        f"- assessments appended: {landing['assessments']}",
+        f"- exported ledger sha256: `{landing['export_sha256']}`",
+        f"- local export equals canonical database: `{landing['database_export_identical']}`",
+        f"- publication records: {landing['publication_records']}",
+        f"- publication gate: `{landing['publication_gate']}`",
+    ])
     lines.extend(["", "## Cases", ""])
     lines.append("| worker | class_id | case_id | repo | verdict | introducer | fix |")
     lines.append("|---|---|---|---|---|---|---|")

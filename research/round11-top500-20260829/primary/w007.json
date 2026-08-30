@@ -2,18 +2,21 @@
   "class_id": "alias-877be5bb530812a4d6690884",
   "case_id": "GHSA-243r-jm6r-f6pp",
   "repo": "jahlives/openssl_encrypt",
-  "advisory_ids": ["CVE-2026-74881", "GHSA-243r-jm6r-f6pp"],
-  "bug_semantics": "Standalone FastAPI servers installed CORSMiddleware with allow_origins defaulting to [\"*\"] and allow_credentials=True (telemetry also allow_headers=[\"*\"]; key-server also allow_methods/allow_headers=[\"*\"]). Starlette reflects the request Origin when wildcard origins are combined with credentials, so any site can make authenticated cross-origin API calls as a visiting user (CWE-942). First-party GHSA-c65f-x25w-62jv names server/key-server/app/main.py and server/telemetry-server/app/main.py plus CORS_ORIGINS=* defaults; CVE-2026-74881 / GHSA-243r-jm6r-f6pp is the VulnCheck/NVD record of that advisory. Affected < 1.4.0, patched 1.4.0.",
-  "flaw_origin": "The wildcard-origin plus allow_credentials=True CORSMiddleware was first written as new files in 4c7ae852c784c9986d087c5956a77fa563a05a35 (telemetry server: main.py:23-29, config.py cors_origins=[\"*\"]). Parent 457f88d09cc365cdbb85b083a29f0956804730be has no server/ tree and no CORS. fafdfeed1b279cfe61e86cd8adc132b206eef8d4 copied the same pattern into the key-server ~46 minutes later; 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 later copied it into openssl_encrypt_server. No public PR/member commits reconstruct a finer BIC; 4c7ae852 is a single-parent first-write.",
-  "introducer_sha": "4c7ae852c784c9986d087c5956a77fa563a05a35",
-  "introducer_parent": "457f88d09cc365cdbb85b083a29f0956804730be",
+  "advisory_ids": [
+    "CVE-2026-74881",
+    "GHSA-243r-jm6r-f6pp"
+  ],
+  "bug_semantics": "FALSE_POSITIVE: permissive CORS exists, but protected operations require explicit bearer tokens sent by native clients rather than browser-ambient credentials. No source-to-sink lets an attacker origin act with a visitor's authority.",
+  "flaw_origin": null,
+  "introducer_sha": null,
+  "introducer_parent": null,
   "introducer_parent_absent": false,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
-  "verdict": "AI_ROOT_CAUSE",
-  "fix_sha": "809416b74d2749cdcffb484cd65b057e1685cc13",
-  "direct_fix_sha": "809416b74d2749cdcffb484cd65b057e1685cc13",
+  "ai_marker": null,
+  "verdict": "FALSE_POSITIVE",
+  "fix_sha": null,
+  "direct_fix_sha": null,
   "evidence": [
     "CVE.org CVE-2026-74881 state=PUBLISHED (VulnCheck CNA); GHSA-243r-jm6r-f6pp withdrawn_at=null, type=unreviewed, references first-party https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-c65f-x25w-62jv; GHSA-c65f state=published withdrawn_at=null, affected < 1.4.0, patched 1.4.0, fix named as 809416b.",
     "git log -S CORSMiddleware --all: earliest add is 4c7ae852c784c9986d087c5956a77fa563a05a35 (2025-12-30 telemetry), then fafdfeed1b279cfe61e86cd8adc132b206eef8d4 (key-server), then 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 (unified server).",
@@ -27,6 +30,6 @@
     "Later copy 8170b3e0 introduced openssl_encrypt_server CORS_ORIGINS=* with allow_credentials=True (docker-compose CORS_ORIGINS:-* / .env.example CORS_ORIGINS=*). 2c0b7ca26624981e012ae58510890e9bd578a6ea (2026-01-03) tightened unified config defaults; GHSA-c65f still names 809416b as the standalone fix. Residual compose '*' at v1.4.0 is outside the advisory-named sink closed by 809416b.",
     "Links: https://github.com/jahlives/openssl_encrypt/commit/4c7ae852c784c9986d087c5956a77fa563a05a35 ; https://github.com/jahlives/openssl_encrypt/commit/809416b74d2749cdcffb484cd65b057e1685cc13 ; https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-c65f-x25w-62jv ; https://github.com/advisories/GHSA-243r-jm6r-f6pp ; https://www.cve.org/CVERecord?id=CVE-2026-74881"
   ],
-  "reasoning": "CVE-2026-74881 is a published VulnCheck record of first-party GHSA-c65f-x25w-62jv (not withdrawn/rejected); GHSA-243r-jm6r-f6pp is the GitHub Advisory Database wrapper of that CVE. The vulnerability is real: CORSMiddleware with default allow_origins=['*'] and allow_credentials=True on the standalone telemetry and key-server apps, which Starlette will satisfy by reflecting an attacker Origin. git log -S / -L from v1.4.0 show the telemetry CORS block and cors_origins=['*'] default were first written in 4c7ae852c784c9986d087c5956a77fa563a05a35 as brand-new files; the immediate parent 457f88d09cc365cdbb85b083a29f0956804730be exists and lacks those paths and any CORS strings, so this is a first-write BIC rather than a move/refactor/revert. No public PR members exist to decompose the large Claude-generated feature commit, so it is the smallest surviving public object. fafdfeed and 8170b3e0 are later copies of the same mechanism, not the BIC. 809416b is the advisory-named direct fix (defaults to [] plus production wildcard rejection) and is an ancestor of the v1.4.0 patched tag. AI attribution uses only the BIC commit object, which carries Co-Authored-By Claude Sonnet 4.5 and a Claude Code generated trailer while author/committer remain human Tobi; that is commit-object co-authorship on the commit that first wrote the flawed CORS combination, hence AI_ROOT_CAUSE.",
+  "reasoning": "False positive: the telemetry server permits GET and POST while the key-server copy uses wildcard methods. Public endpoints were already unauthenticated, protected routes require caller-supplied bearer headers, and v1.3.6 lacks the named server paths. The cited commits are lineage/hardening evidence, not a vulnerability lifecycle.",
   "remaining_gap": null
 }

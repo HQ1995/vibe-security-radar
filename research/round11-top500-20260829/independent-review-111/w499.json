@@ -1,0 +1,28 @@
+{
+  "worker": "w499",
+  "review_agent_id": "r111_w499",
+  "class_id": "alias-6e1af5a5e935507ed1982c45",
+  "case_id": "GHSA-8xqr-cc5h-9wvp",
+  "repo": "friendica/friendica",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-89. Source is unauthenticated photo image view in mod/photos.php: $order_field = $_GET['order'] ?? '' under $cmd === 'view'; photos_content only denies anonymous users when system.block_public is set. Any nonempty order other than created is passed to DBStructure::existsColumn('photo', [$order_field]) at origin/develop:mod/photos.php:677. existsColumn builds SHOW COLUMNS FROM `<escaped table>` LIKE '<unescaped $column>'; then DBA::p($sql) with no bound args (origin/develop:src/Database/DBStructure.php:714). Database::p uses PDO::query when args is empty (src/Database/Database.php PDO branch) and mysqli::query for SHOW (command not in select/update/insert/delete). CVE-2026-72550 is PUBLISHED at cveawg.mitre.org (not rejected/withdrawn); GHSA-8xqr-cc5h-9wvp withdrawn_at is null.",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the advisory source-to-sink is f8f3689a0d7fa0c2ed886646dde8d284233e923f (single parent fde223327fb39b0dff84eceb2af29734f7c78aac; +2/-1 in mod/photos.php only: import DBStructure and existsColumn('photo', [$order_field]) predicate). git log -S \"existsColumn('photo'\" --all -- mod/photos.php isolates this SHA; HEAD blame of the caller line is that commit. Not a move/refactor/revert of existing vulnerable lines.",
+    "immediate_parent_absence": "PASS: Parent fde223327fb39b0dff84eceb2af29734f7c78aac:mod/photos.php has $order_field = $_GET['order'] ?? '' then `elseif (!empty($order_field))` feeding Photo::selectToArray order params only; that tree has no existsColumn call in photos.php. Parent existsColumn already concatenates SHOW COLUMNS LIKE, but nothing on this advisory path supplied request data to it.",
+    "squash_member_decomposition": "PASS: BIC is a non-merge one-parent commit. GitHub PR #12596 (nupplaphil/friendica bug/errors -> friendica/friendica develop) lists exactly one commit, head sha f8f3689a0d7fa0c2ed886646dde8d284233e923f, base fde223327fb39b0dff84eceb2af29734f7c78aac; no finer public member exists.",
+    "affected_release_membership": "PASS: f8f3689a0d7fa0c2ed886646dde8d284233e923f is an ancestor of tags 2023.04, 2023.04-1, 2023.05, 2023.12, 2024.03, 2024.08, 2024.12, 2024.12-1, 2026.01, 2026.05, 2026.05-1 and of origin/stable, origin/develop, origin/2026.08-rc. Tag 2023.01 (9d7e172d2c106eee94b3fddfa42cc023532228d3) does not contain it. The existsColumn('photo' caller plus SHOW COLUMNS LIKE sink are present on 2023.04, 2026.05-1, origin/stable, origin/develop, and origin/2026.08-rc.",
+    "fixed_release_membership": "PASS: No patched versions in GHSA/CVE (CVE affected 0 through 2026.08-dev; GHSA patched Unknown). Caller and sink remain on origin/stable, origin/develop, origin/2026.08-rc after advisory publication 2026-08-11. No vendor fix object in clone refs.",
+    "direct_fix_or_unpatched": "PASS: Explicit unpatched. No post-advisory commit on mod/photos.php, DBStructure.php, or Database.php closes the interpolation. Potential fix: bind/validate the LIKE column (or allowlist photo schema) instead of concatenating $column into SHOW COLUMNS.",
+    "bic_only_ai_attribution": "PASS: Judged only on f8f3689a0d7fa0c2ed886646dde8d284233e923f. Author and committer are Philipp <admin@philipp.info>; GitHub maps both to human user nupplaphil (id 379654), Friendica collaborator who opened PR #12596. Complete message is only `Fix https://github.com/friendica/friendica/issues/12486#issuecomment-1368540088` with no Co-Authored-By/Generated-with/bot/generator trailer. Local object carries a gpgsig (RSA 7F66A592B29F650734D099B224A7501396EB5432). Not inverted from an AI-marked search."
+  },
+  "findings": [
+    "CVE-2026-72550 / GHSA-8xqr-cc5h-9wvp describes unauthenticated SQLi via photo-view order into an unescaped SHOW COLUMNS query; CVE.org state is PUBLISHED and the mechanism is present in current Friendica trees.",
+    "The atomic BIC that first connected $_GET['order'] to existsColumn's raw SHOW COLUMNS construction is f8f3689a0d7fa0c2ed886646dde8d284233e923f; parent fde223327fb39b0dff84eceb2af29734f7c78aac lacks that edge.",
+    "The change was the sole commit of human-authored PR #12596, intended to stop invalid order columns (issue comment 1368540088: unknown column `posted` in ORDER BY), not a squash or import snapshot.",
+    "BIC identity is named human Philipp / nupplaphil with matching committer, PGP signature, and no AI/bot markers, supporting NOT_AI.",
+    "First extant containing release tag is 2023.04; 2023.01 does not contain the BIC. Maintained refs through origin/2026.08-rc still carry source and sink, matching explicit unpatched."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,31 @@
+{
+  "worker": "w465",
+  "review_agent_id": "r111_w465",
+  "class_id": "alias-b9036092203163b6beed15b6",
+  "case_id": "GHSA-29rf-f4vv-pvq6",
+  "repo": "authorizerdev/authorizer",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Live GHSA-29rf-f4vv-pvq6 / CVE-2026-35511 (withdrawn_at null on the GitHub advisory pages; cveawg CVE-2026-35511 is CVE_RECORD_DNE/404, not a rejected disposition) describes zero-click takeover: OAuth callback GetUserByEmail, replace user with existingUser, append provider to SignupMethods, auto-set EmailVerifiedAt when nil, UpdateUser, password never cleared. Exact objects at researcher HEAD 73679faa53cd215c7524d651046e402c43809786:internal/http_handlers/oauth_callback.go:125/164/173-181/219 match that chain; internal/graphql/login.go:102-107 still rejects basic-auth while EmailVerifiedAt is nil, so auto-verify is what opens persistent password login. Source-to-sink is real.",
+    "atomic_bic": "PASS: Smallest surviving public commit that first wrote the existing-account auto-verify is 4e48320cf19e12a7195643dcbcf0360acb0821d8 (single parent 34a91f3195c98069b35ddcdfd59a142d6865c63e; git show adds only if user.EmailVerifiedAt == nil { now := time.Now().Unix(); user.EmailVerifiedAt = &now } to server/handlers/oauth_callback.go after password copy). Not a merge. git log -G 'user.EmailVerifiedAt == nil' on oauth_callback paths first hits this SHA. Mixed 60-file commit, but the vulnerable lines have no finer public member.",
+    "immediate_parent_absence": "PASS: Parent 34a91f3195c98069b35ddcdfd59a142d6865c63e:server/handlers/oauth_callback.go already GetUserByEmail, copies existingUser.Password, appends provider, UpdateUser, but EmailVerifiedAt is assigned only on the new-user branch (line 89). git grep EmailVerifiedAt on that parent file is solely that signup assignment. Parent server/resolvers/login.go:42-44 returns 'email not verified' while EmailVerifiedAt is nil. Complete durable-password takeover chain is absent in the immediate parent.",
+    "squash_member_decomposition": "PASS: 4e48320cf19e12a7195643dcbcf0360acb0821d8 is a single-parent non-merge; author=committer Lakhan Samani; subject 'fix: bug with authorizer url' with empty body and no (#N)/GitHub squash trailers. No reconstructable public members.",
+    "affected_release_membership": "PASS: merge-base --is-ancestor shows 4e48320cf19e12a7195643dcbcf0360acb0821d8 in tag 0.10.0 (40dcf67de9b7b6c2bafdf67886eaa25e6740d285) and not in 0.9.0 (ac416bfc7b84fe8912a5ee596c1022a5ce44f478). First closer 2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d is absent from 2.0.0 (fc8984a2b91e9242c4dde5da48bdc584413ca5a0) and present from 2.0.1 onward. 2.4.0-rc.15 (7f34a65179b66034518b3e40807cb093ac4e0a72) already contains 2a9d22f3 and the pre-hijack delete at oauth_callback.go:235-268, so rc.15 is not in the affected window for this mechanism.",
+    "fixed_release_membership": "PASS: Tag 2.0.1^{commit} is exactly 2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d. Advisory-cited 66fe488fd2a4e7acf1e517334344d5e8f3ddd296 is not an ancestor of 2.4.0-rc.15 and is an ancestor of 2.4.0-rc.16 (3f17f68a9e0706e3b1686632ff961ac46eab1da5); that rc.15/rc.16 cut is the later nOAuth PR, not first membership of a closer for this sink.",
+    "direct_fix_or_unpatched": "PASS: Direct closer of the described sink is 2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d (#503): parent 6d9bef1aaba3f867f8c769b93eb7fc80e4e7b0a2 still has user=existingUser and if user.EmailVerifiedAt == nil auto-verify; the commit deletes the unverified row and AddUser a fresh OAuth user without the attacker password. 66fe488fd2a4e7acf1e517334344d5e8f3ddd296 is the GHSA-referenced follow-on (provider email attestation + bounding that delete via accountHasState); its parent 9c3ac813b05480c3bfef8186364ce8b0b32a4b68 already contains the #503 pre-hijack delete, so 66fe488 is not the first closer of this chain.",
+    "bic_only_ai_attribution": "PASS: git cat-file commit 4e48320cf19e12a7195643dcbcf0360acb0821d8: author and committer Lakhan Samani <lakhan.m.samani@gmail.com>, message solely 'fix: bug with authorizer url', no Co-Authored-By/Generated-with/bot/generator marker. Named human on the BIC supports NOT_AI. Later GitHub-committer SHAs (2a9d22f3, 66fe488) are not the BIC and were not used for origin attribution."
+  },
+  "findings": [
+    "Real vulnerability: OAuth callback links by email, keeps basic-auth password, and auto-verifies a previously unverified local row, enabling pre-registration password takeover after the victim's normal OAuth login.",
+    "BIC is 4e48320cf19e12a7195643dcbcf0360acb0821d8 adding the existing-account EmailVerifiedAt nil-to-now block; parent 34a91f3195c98069b35ddcdfd59a142d6865c63e still left that row unverified and login.go blocked password login.",
+    "BIC object is human-authored Lakhan Samani with no AI/bot/generator marker; independent AI-role gate agrees with primary_verdict NOT_AI.",
+    "Primary fix_sha/direct_fix_sha 66fe488fd2a4e7acf1e517334344d5e8f3ddd296 is the advisory reference and later nOAuth/pre-hijack hardening, not the first closer of this sink. Direct fix is 2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d, which is tag 2.0.1. First affected tag is 0.10.0; last affected among the 2.x line is 2.0.0. Treating 2.4.0-rc.15 as still vulnerable to this mechanism is incorrect.",
+    "Advisory remains published (GitHub GHSA pages live; GitHub withdrawn_at not authoritative and CVE.org has no rejected record)."
+  ],
+  "corrected_fields": {
+    "fix_sha": "2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d",
+    "direct_fix_sha": "2a9d22f3ab45dc60c6229a6dd1526cee5f9add8d"
+  },
+  "remaining_gap": null
+}

@@ -2,15 +2,18 @@
   "class_id": "alias-5c3e16ae9067c397a3d90c2f",
   "case_id": "GHSA-995c-6rp3-4m4x",
   "repo": "apache/mina",
-  "advisory_ids": ["CVE-2026-42778", "GHSA-995c-6rp3-4m4x"],
+  "advisory_ids": [
+    "CVE-2026-42778",
+    "GHSA-995c-6rp3-4m4x"
+  ],
   "bug_semantics": "AbstractIoBuffer.getObject() deserializes untrusted Java native serialization streams. The CVE-2024-52046 classname allowlist (acceptMatchers) was applied too late: readClassDescriptor() still executed Class.forName(className, true, classLoader) before any matcher check, so a disallowed class's static initializer could already have run; resolveClass() then consulted acceptMatchers only after ObjectStreamClass.forClass() was already non-null. CVE-2026-41409 moved that check earlier on 2.0.X only. 2.1.11 and 2.2.6 shipped without that early-allowlist patch, so 2.1.x through 2.1.11 and 2.2.x through 2.2.6 remained exploitable via IoBuffer.getObject() (CWE-502, CVSS 9.8).",
-  "flaw_origin": "The distinctive incomplete-allowlist was first written on 2.2.X in 691a9df5a0aff0dddeedc5181f6e5832ee90dcea (2024-11-04, message 'pom.xml'): it introduced acceptMatchers and a resolveClass() loop that filters only after Class.forName(..., true) in readClassDescriptor() had already initialized the named class. Parent 23e6ee17 still returned clazz with no allowlist. f9cc5ada later removed unused debug remnants without moving the check earlier. 2.1.X independently received the same late-check in cdb59eb6 (first in 2.1.10). The 2.0.X early-allowlist commit 8b1dadb5 (2026-04-23) was not applied before 2.1.11/2.2.6; the missing ports are ba8c355d (2.1.12) and cca24d64 (2.2.7).",
-  "introducer_sha": "691a9df5a0aff0dddeedc5181f6e5832ee90dcea",
-  "introducer_parent": "23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25",
-  "introducer_parent_absent": false,
+  "flaw_origin": "Apache SVN r349422 first adds ByteBuffer.getObject()/ObjectInputStream.readObject(); exact predecessor r349421 lacks the path. Later Git imports and 2024 allowlist work are not the BIC.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "absent; author and committer are emmanuel lecharny <elecharny@apache.org>; git cat-file -p 691a9df5a0aff0dddeedc5181f6e5832ee90dcea has a single parent, message 'pom.xml', and no Co-Authored-By, Generated-with, Signed-off-by, or bot identity trailers",
+  "ai_marker": "Apache SVN r349422 names ASF account trustin, mapped to Trustin Lee, and contains no AI, bot, generator, or co-author marker.",
   "verdict": "NOT_AI",
   "fix_sha": "cca24d646c898adf7e01a765ebf6d677cc02b696",
   "direct_fix_sha": "cca24d646c898adf7e01a765ebf6d677cc02b696",
@@ -31,5 +34,5 @@
     "Pre-allowlist Class.forName(..., true) in getObject() dates to Trustin Lee 2007 (moved into AbstractIoBuffer by 9265133922c62e9391c6364b04b550416f3b05d2); that unbounded-deser sink is CVE-2024-52046, not this incomplete-allowlist CVE. BIC is the first late-allowlist write, not that move."
   ],
   "reasoning": "Vulnerability-first: CVE.org PUBLISHED CVE-2026-42778 is the 2.1.X/2.2.X leftover of CVE-2026-41409, itself the incomplete CVE-2024-52046 allowlist. The attack is IoBuffer.getObject() on untrusted bytes; readClassDescriptor() Class.forName(..., true) runs <clinit> for an attacker-chosen class name before acceptMatchers can reject it. Vendor range 2.1.0–2.1.11 / 2.2.0–2.2.6 names whole product lines; the late-allowlist residual that this CVE describes first exists in 2.2.4 (691a9df5) and 2.1.10 (cdb59eb6). BIC is 691a9df5, the earliest public first-write of those late-check lines: parent 23e6ee17 lacks acceptMatchers and returns clazz unfiltered; 691a9df5 is a regular single-parent commit, not a move/merge/squash, and no finer public member reconstructs the hunk. f9cc5ada is a later cleanup, not a first-write. Parallel 2.1.X introduction cdb59eb6 is independent and later. Fix that closes the 2.2.X BIC path is cca24d64 (in 2.2.7, absent from 2.2.6); ba8c355d is the 2.1.12 counterpart. AI judged only from the BIC commit object: human Apache author/committer elecharny@apache.org, empty trailers, not a bot. Verdict NOT_AI.",
-  "remaining_gap": null
+  "remaining_gap": "Scalar fix fields select the 2.2.x direct fix; 2.1.x is fixed by ba8c355d82a010d677455df43b49725d21dbd07a. First fixed tags are 2.2.7 and 2.1.12."
 }

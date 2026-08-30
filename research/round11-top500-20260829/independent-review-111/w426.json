@@ -1,0 +1,28 @@
+{
+  "worker": "w426",
+  "review_agent_id": "r111_w426",
+  "class_id": "alias-683b0a2c791c7e09e4a85ba6",
+  "case_id": "GHSA-qc2x-6f54-m6h9",
+  "repo": "python-zeroconf/python-zeroconf",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE.org CVE-2026-48487 is state=PUBLISHED (not rejected/withdrawn); GHSA-qc2x-6f54-m6h9 withdrawn_at is null. At fix parent 28bb01f23951f7883d8c3af66b6d537c34c516c7, src/zeroconf/_protocol/incoming.py _read_character_string (lines 253-259) and _read_string (261-265) slice self.data[self.offset:self.offset+length] and add the declared length to self.offset with no _data_len check. _read_record uses those readers for A/AAAA/TXT/HINFO. _read_others (267-301) appends rec when rec is not None even if self.offset != the declared end (283). answers() (188-200) catches DECODE_EXCEPTIONS from a later record and still returns accumulated _answers. RecordManager.async_updates_from_response (record_manager.py 77-91, 117-125, 154-158) inserts unexpired answers via cache.async_add_records; ServiceInfo._unpack_text_into_properties (info.py 419-441) treats cached TXT bytes as properties.",
+    "atomic_bic": "PASS: git log -L of _read_string/_read_character_string through incoming.py, _protocol.py, _dns.py, dns.py, zeroconf/__init__.py, zeroconf.py, Zeroconf.py shows every later change is a move, rename, format, typing, or inlining of the same slice. The first write of silent truncated reads is e814dd1e6848d8c7ec03660d347ea4a34390c37d (single parent 488de8826ddd58646358900d057a4a1632492948), which replaced exact-width struct.unpack with info = self.data[self.offset:self.offset+length] still advancing by length (Zeroconf.py 507-511). ac081cf00addde1ceea2c076f73905fdb293de3a later inlined an equivalent slice into _read_character_string instead of calling the already-vulnerable _read_string; that is not a new BIC. Earliest tag containing the BIC is 0.13.",
+    "immediate_parent_absence": "PASS: Parent tree 488de8826ddd58646358900d057a4a1632492948:Zeroconf.py lines 511-517 uses format='!'+str(len)+'s'; struct.unpack(format, self.data[self.offset:self.offset+length]). A short slice cannot satisfy the declared struct width (python3 struct.error: unpack requires a buffer of 65535 bytes) so the truncated record is not returned or appended. The silent-truncation mechanism is absent from that parent.",
+    "squash_member_decomposition": "PASS: e814dd1e6848d8c7ec03660d347ea4a34390c37d has exactly one parent (git rev-list --parents). It is not a merge and has no reconstructable member commits; squash_decomposed=false is correct for the BIC.",
+    "affected_release_membership": "PASS: git merge-base --is-ancestor shows e814dd1e6848d8c7ec03660d347ea4a34390c37d in tag 0.13 (earliest repo tag) through 0.149.12 (fix absent) and later. Advisory/CVE affected range is < 0.149.16. PyPI JSON has files for 0.149.12; tags 0.149.13-0.149.15 contain the later fix but are not the first published patched package.",
+    "fixed_release_membership": "PASS: 544449596e645fcaad3834fa0cb614a54f847a82 is absent from tag 0.149.12 and present in 0.149.13, 0.149.14, 0.149.15, and 0.149.16. PyPI JSON 404s for 0.149.13/0.149.14/0.149.15 and returns 68 files for 0.149.16. Issue #1769 states 0.149.13 was deleted/incomplete due to PyPI space, matching GHSA/CVE first patched version 0.149.16.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is squash merge 544449596e645fcaad3834fa0cb614a54f847a82 (parent 28bb01f23951f7883d8c3af66b6d537c34c516c7; GitHub PR #1756 merge_commit_sha). It adds _data_len overrun checks to both payload readers and drops/resyncs when self.offset != declared end. PR head is c6111f9a587d86ff5f224ce0b9b1473d190a96c7; members d23b02950b4e9b73ffc2b197d99810e79c64c003 and c6111f9a587d86ff5f224ce0b9b1473d190a96c7 have combined stable patch-id b693994524f39eeca5b9eaf628ca22f95aa9852e, identical to the squash.",
+    "bic_only_ai_attribution": "PASS: git cat-file -p e814dd1e6848d8c7ec03660d347ea4a34390c37d names author and committer William McBrine <wmcbrine@gmail.com> and message 'Minor simplification of the pack/unpack routines in Zeroconf.' with no Co-Authored-By, Generated-with, bot, or other AI trailer. Copilot comments on PR #1756 are on the fix, not the BIC."
+  },
+  "findings": [
+    "Published CVE-2026-48487 / GHSA-qc2x-6f54-m6h9 is a real CWE-130 mDNS parser-to-cache flaw: attacker-declared RDLENGTH plus Python slice truncation desynchronizes DNSIncoming and seeds DNSCache/ServiceInfo.",
+    "Atomic BIC is e814dd1e6848d8c7ec03660d347ea4a34390c37d; parent 488de8826ddd58646358900d057a4a1632492948 still rejects short payloads via struct.unpack.",
+    "Later file splits, renames, and ac081cf00addde1ceea2c076f73905fdb293de3a inlining preserved the slice semantics rather than introducing them.",
+    "Direct fix 544449596e645fcaad3834fa0cb614a54f847a82 is patch-equivalent to PR #1756 members; first published patched package is 0.149.16.",
+    "BIC object is a named human author/committer with no AI/bot/generator marker, so the causal verdict is NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

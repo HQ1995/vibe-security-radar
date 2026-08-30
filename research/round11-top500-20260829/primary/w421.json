@@ -7,15 +7,13 @@
     "GHSA-hrmw-qprp-wgmc"
   ],
   "bug_semantics": "The HTML writer passed an attacker-controlled cell value through a custom number format and escaped the result only when the formatted string exactly equalled the original value. For an unquoted @ text placeholder plus any literal text, such as '. @' or '@ ', Formatter substituted the raw cell value and returned early without invoking the HTML writer's escaping callback; the added literal made the formatted value unequal to the original, so Writer/Html.php also skipped htmlspecialchars(). An uploaded spreadsheet could therefore emit a raw script-capable tag into generated HTML and cause stored XSS when that HTML was viewed.",
-  "flaw_origin": "The reconstructable PR #1464 member commit 62da380674d68bd6bc432c88146fd965246d9085 changed non-RichText HTML cell rendering from unconditional htmlspecialchars() after number formatting to a conditional escape only when $cellData === $origData, in order to preserve formatter-produced HTML such as color spans. Its direct parent 1861412d608f5e66ed0155632b5b93d9ba5c94bc unconditionally escaped every formatted non-RichText cell. GitHub later squash-landed the PR as 97a80f383c1487e18c70a097b6ba2352dfd764cf, but the smaller reconstructed member is the causal BIC.",
-  "introducer_sha": "62da380674d68bd6bc432c88146fd965246d9085",
-  "introducer_parent": "1861412d608f5e66ed0155632b5b93d9ba5c94bc",
+  "flaw_origin": "The completing write is edc003ad164521d10d96ac9f2f670b543511b806, which first made Formatter::toFormattedString substitute a raw string cell into an unquoted @ format mask and return before the writer callback. Direct parent ad0b68c7cbd414c8de9e06c0447f2d20bf8a8d02 still returned non-numeric values unchanged, so Writer/Html.php's pre-existing `$cellData === $origData` htmlspecialchars still ran. PR #1464 member 62da380674d68bd6bc432c88146fd965246d9085 (later squash-landed as 97a80f383c1487e18c70a097b6ba2352dfd764cf) introduced that equality guard but did not yet apply @ formats to strings; it is a latent sink, not the BIC for this advisory.",
+  "introducer_sha": "edc003ad164521d10d96ac9f2f670b543511b806",
+  "introducer_parent": "ad0b68c7cbd414c8de9e06c0447f2d20bf8a8d02",
   "introducer_parent_absent": true,
-  "squash_decomposed": true,
-  "decomposed_shas": [
-    "62da380674d68bd6bc432c88146fd965246d9085"
-  ],
-  "ai_marker": "absent: BIC commit object 62da380674d68bd6bc432c88146fd965246d9085 has author and committer Owen Leibman <eclipsechasers2@yahoo.com>; its full message contains no Co-Authored-By, Generated-with, bot identity, or other AI marker",
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent: BIC commit object edc003ad164521d10d96ac9f2f670b543511b806 has author and committer MarkBaker <mark@demon-angel.eu>; its full message contains no Co-Authored-By, Generated-with, bot identity, or other AI marker",
   "verdict": "NOT_AI",
   "fix_sha": "f1eb4e6980d537ec85fc20be5950f9ad65d47ffd",
   "direct_fix_sha": "f1eb4e6980d537ec85fc20be5950f9ad65d47ffd",

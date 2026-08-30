@@ -10,11 +10,11 @@
   "flaw_origin": "LYNX-732 (1b8236afe67fa961d4517e326ca278cb3daf406c, 2025-02-25) first added AllCustomerGroups.php, GetCustomerGroup.php, CustomerGroup.php, GetCustomerGroupName.php, and default-true graphql_share_* flags in Customer/etc/config.xml. The resolver calls GroupRepositoryInterface::getList() with no GraphQL user-type or Magento_Customer::group check. Immediate parent f112c7a7bba2808d4046f22eacc76791634623db has no those resolvers and no allCustomerGroups schema field.",
   "introducer_sha": "1b8236afe67fa961d4517e326ca278cb3daf406c",
   "introducer_parent": "f112c7a7bba2808d4046f22eacc76791634623db",
-  "introducer_parent_absent": false,
+  "introducer_parent_absent": true,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "absent. Author Deepak Soni <deepaksoni@adobe.com>; committer GitHub <noreply@github.com> (web-flow); subject only 'LYNX-732: Provide customer group related information via GraphQL API'; no Co-Authored-By, Generated-with, Cursor, Copilot, or other AI trailers.",
-  "verdict": "NOT_AI",
+  "ai_marker": "Conditional only: 1b8236afe67fa961d4517e326ca278cb3daf406c has a named human and no AI marker, but no first-party source binds this local mechanism uniquely to CVE-2025-49549.",
+  "verdict": "EVIDENCE_GAP",
   "fix_sha": "10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6",
   "direct_fix_sha": "8c99a5941650ddd90912dd0c451f9c32f956bff9",
   "evidence": [
@@ -32,5 +32,5 @@
     "BIC AI check: git log -1 --format author/committer/body on 1b8236afe67 shows only Deepak Soni / GitHub noreply and the LYNX-732 subject; no Co-Authored-By or Generated-with. AI judged from this commit object only."
   ],
   "reasoning": "Vulnerability-first: CVE-2025-49549 is a published Adobe CWE-863 (not withdrawn/rejected). First-party APSB25-50 plus the credited reporter's gist and Adobe LYNX-839 KB identify the mechanism as 2.4.8 GraphQL personalization APIs leaking customer-group names. REST already requires Magento_Customer::group for GroupRepositoryInterface::getList; LYNX-732 exposed that list on anonymous GraphQL behind a default-true share flag, which is incorrect authorization / ACL bypass with C:L (names only). Adobe's PR:H/admin wording and the GHSA 'Authenticated' title do not match the public unauthenticated query; the code path and reporter PoC are unauthenticated, while the protected resource is an admin ACL. Related 2.4.8-p1 GraphQL removals (allCartRules/allCatalogRules) are the same LYNX-838 family and may map to CVE-2025-43585 or CVE-2025-49550; this case is bound to Damien's allCustomerGroups write-up. BIC search used the first-party GraphQL feature add, not an AI-first invert: git log --diff-filter=A on AllCustomerGroups.php and the LYNX-732 commit are the first write; parent tree lacks the resolvers and schema field. GitHub web-flow committed a single-parent object with no reconstructable public members, so 1b8236afe67 is a valid smallest surviving BIC. It precedes 2.4.8 GA and is absent from 2.4.8-beta2/2.4.7-p5. The 2.4.8-p1 packaging commit removes the files (fix_sha); LYNX-838 is the named develop deletion (direct_fix_sha). AI decision is BIC-only: human Adobe author Deepak Soni, GitHub as committer, no AI trailers, therefore NOT_AI.",
-  "remaining_gap": null
+  "remaining_gap": "Resolve the identity conflict between the public allCustomerGroups lifecycle in 2.4.8 and the authoritative advisory's older high-privilege release lines before attributing the CVE."
 }

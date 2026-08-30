@@ -41,4 +41,8 @@ record, or vendor release artifact. Secondary summaries are leads only.
 `NOT_AI` requires a real vulnerability, the smallest permitted public BIC,
 verified immediate-parent absence, and BIC-object signals supporting a named
 human writer without AI/bot/generator markers. Positive AI signals must be on
-the BIC itself. Missing or ambiguous BIC identity remains fail-closed.
+the BIC itself. Fail closed when the atomic BIC cannot be identified, or when
+the BIC object has no resolvable named human or AI/bot identity. A named human
+author/committer on the BIC, with no Co-Authored-By / Generated-with / bot /
+generator marker, closes `NOT_AI`. Absence of an AI trailer is not by itself an
+`EVIDENCE_GAP`.

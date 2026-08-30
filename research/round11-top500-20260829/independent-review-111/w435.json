@@ -1,0 +1,27 @@
+{
+  "worker": "w435",
+  "review_agent_id": "r111_w435",
+  "class_id": "alias-76b6bdf9567124529666db74",
+  "case_id": "GHSA-w5r5-m38g-f9f9",
+  "repo": "authlib/joserfc",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-27932 is PUBLISHED (cveMetadata.state=PUBLISHED; GHSA-w5r5-m38g-f9f9 withdrawn_at=null). Source-to-sink at tag 1.6.2 (52c6ffd37eca2bfc0968677a1276742290fb51cb) src/joserfc/_rfc7518/jwe_algs.py PBES2HSAlgKeyEncryption.decrypt_cek: p2c = headers['p2c'] then compute_derived_key(..., p2c) which constructs PBKDF2HMAC(iterations=p2c) with no upper bound. At that tag HeaderParameter('PBES2 Count','int',True) only type-checks via _value_validators['int']/is_int. Attacker-controlled protected-header p2c therefore drives unbounded PBKDF2 CPU during JWE decrypt when a PBES2 alg is enabled, before JWT claim checks.",
+    "atomic_bic": "PASS: git log --all --reverse -S'PBES2HSAlgModel' and -S'PBKDF2HMAC' first hit 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 ('feat(jwe): added ECDH-ES, PBES2-HS related algs'), a single-parent ordinary commit (parent b70333fd58bceb0afa38fad7214e3ce55586c4c2). Its inspectable diff first adds class PBES2HSAlgModel with EXTRA_HEADERS p2s/p2c, unwrap() reading obj.protected['p2c'], and get_aes_key() calling PBKDF2HMAC(iterations=p2c). Later 3716e8e16f6b86919d97a0c88aad610f377511d6 is quote-style only on the already-unbounded flow; b9379f7d4e5f440594c45d6961f64cb3acd37e24 is a rfc7518 -> _rfc7518 rename of jwe_algs.py. Neither first-writes the mechanism.",
+    "immediate_parent_absence": "PASS: Parent tree b70333fd58bceb0afa38fad7214e3ce55586c4c2 has src/joserfc/rfc7518/jwe_algs.py but no PBES2HSAlgModel, no p2c consumption, and no PBKDF2HMAC anywhere in that tree (grep empty). Parent only has commented placeholders '# PBES2-HS256+A128KW' etc. at the bottom of jwe_algs.py. Mechanism is absent from the immediate parent.",
+    "squash_member_decomposition": "PASS: 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 is not a merge (one parent) and is not a squash/import aggregate; the vulnerable PBES2 implementation is in the commit's own file diff. No reconstructable member commits. squash_decomposed=false is correct.",
+    "affected_release_membership": "PASS: Earliest tag containing the BIC is 0.2.0 (9d1e927f20c2ecbe846ad63a323494e98764c108); git merge-base --is-ancestor 86d25febaca03a7628787b7aa1d6d21ccd9e65a7 0.2.0 succeeds. Tag 1.6.2 is 52c6ffd37eca2bfc0968677a1276742290fb51cb: contains the BIC, does not contain the fix, and still has headers['p2c'] -> iterations=p2c. Matches GHSA/CVE affected '< 1.6.3' / '<= 1.6.2'.",
+    "fixed_release_membership": "PASS: First tag containing fix 696a9611ab982c45ee2190ed79ca8e1d8e09398f is 1.6.3 (f06540f931b8f258806e7cb6cde68394ecbbfd9e). git merge-base --is-ancestor of the fix into 1.6.2 fails and into 1.6.3 succeeds. 1.6.2..1.6.3 is only 696a9611ab982c45ee2190ed79ca8e1d8e09398f then f06540f931b8f258806e7cb6cde68394ecbbfd9e; docs/changelog.rst at 1.6.3 records 'JWE: Set a max value for p2c header.' GitHub advisory first_patched_version is 1.6.3.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is 696a9611ab982c45ee2190ed79ca8e1d8e09398f ('fix(jwe): set max value for p2c'). It adds validate_p2c (reject p2c > 300000) and binds it as HeaderParameter('PBES2 Count', validate_p2c, True). Tag 1.6.3 tree contains that function. Not unpatched.",
+    "bic_only_ai_attribution": "PASS: Judged only on BIC 86d25febaca03a7628787b7aa1d6d21ccd9e65a7: author and committer are both Hsiaoming Yang <me@lepture.com>; object has a GPG signature and message 'feat(jwe): added ECDH-ES, PBES2-HS related algs' with no Co-Authored-By, Generated-with, bot identity, or other AI/generator trailer. Named human authorship on the actual BIC supports NOT_AI."
+  },
+  "findings": [
+    "Real CWE-770 DoS: attacker-controlled JWE protected-header p2c is passed as PBKDF2HMAC.iterations during PBES2 decrypt. CVE-2026-27932 remains PUBLISHED.",
+    "Atomic BIC is 86d25febaca03a7628787b7aa1d6d21ccd9e65a7; immediate parent b70333fd58bceb0afa38fad7214e3ce55586c4c2 lacks PBES2 derivation.",
+    "Direct fix 696a9611ab982c45ee2190ed79ca8e1d8e09398f ships in tag 1.6.3 (f06540f931b8f258806e7cb6cde68394ecbbfd9e); 1.6.2 (52c6ffd37eca2bfc0968677a1276742290fb51cb) is still vulnerable.",
+    "BIC commit object is human-authored (Hsiaoming Yang) with no AI/bot/generator markers; primary NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

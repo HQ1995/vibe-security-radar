@@ -1,0 +1,30 @@
+{
+  "worker": "w475",
+  "review_agent_id": "r111_w475",
+  "class_id": "alias-cbc0b29ff84b0551b441f93f",
+  "case_id": "GHSA-g2pg-6438-jwpf",
+  "repo": "sveltejs/devalue",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-405 DoS. GHSA-g2pg-6438-jwpf (withdrawn_at=null) and CVE-2026-22775 (cveMetadata.state=PUBLISHED; NVD vulnStatus=Modified, not Rejected) both state that ArrayBuffer hydration expects a base64 string but does not check that assumption. Source-to-sink on the BIC tree: parse() JSON.parse's attacker input, unflatten/hydrate dispatches on value[0]==='ArrayBuffer', assigns const base64=value[1], and calls decode64(base64) with no typeof check (bbf86c2df544f3855603012b70d2be2200c7dbf3:src/parse.js). decode64/asciiToBinary then iterate i < data.length (src/base64.js explicitly 'Does not do any input validation'). A JSON object payload with a large .length that is not divisible by 4 skips data.replace and drives CPU work plus string-growth memory in the loop. The same unguarded ArrayBuffer case remains at v5.6.1 (5e07a67eda945b3ac2ebac26b18863beabee7357) and at fix-parent e46afa64dd2b25aa35fb905ba5d20cea63aabbf7.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is bbf86c2df544f3855603012b70d2be2200c7dbf3 (author/committer Loris Sigrist <sigrist@hasch.io>, message 'Add support for ArrayBuffers and TypedArrays', single parent 50af63e2b2c648f6e6ea29904a14faac25a581fc). git log --diff-filter=A -- src/base64.js and git log -S decode64 -- src/parse.js both start at this commit. Later e46f4c8f4724e673344100790312740a65491d66 only retargets TypedArray hydration onto nested ArrayBuffer records and leaves the ArrayBuffer decode64(value[1]) path in place. Carrier merge 0bbcc968140e088f341593624d4cef62696b8ec0 (PR #69) is not the first write.",
+    "immediate_parent_absence": "PASS: Parent commit object 50af63e2b2c648f6e6ea29904a14faac25a581fc exists in the clone (git cat-file -t = commit). Parent src/parse.js has no ArrayBuffer/TypedArray cases and no decode64 import; git grep -E 'decode64|ArrayBuffer|TypedArray' on that tree is empty. git diff 50af63e2b2c648f6e6ea29904a14faac25a581fc..bbf86c2df544f3855603012b70d2be2200c7dbf3 adds src/base64.js and the unguarded ArrayBuffer/TypedArray hydrate branches.",
+    "squash_member_decomposition": "PASS: BIC bbf86c2df544f3855603012b70d2be2200c7dbf3 is a one-parent non-merge commit, not a squash aggregate. GitHub PR #69 lists that SHA as a distinct member later merged by 0bbcc968140e088f341593624d4cef62696b8ec0. No finer public first-write exists; squash_decomposed=false and decomposed_shas=[] are correct.",
+    "affected_release_membership": "PASS: Advisory/CVE range is npm devalue >=5.1.0,<5.6.2. git merge-base --is-ancestor bbf86c2df544f3855603012b70d2be2200c7dbf3 v5.0.0 (0c35c0e7a6a37172c7f049eaae4e7079559ba250) is false; ancestor of v5.1.0 (293d70bb7a3312741c370c8989fff0b5525647de) and v5.6.1 (5e07a67eda945b3ac2ebac26b18863beabee7357) is true. v5.1.0 and v5.6.1 package.json versions are 5.1.0 and 5.6.1; both still call decode64(value[1]) with no string check. Fix 11755849fa0634ae294a15ec0aef2f43efcad7c4 is not an ancestor of v5.6.1.",
+    "fixed_release_membership": "PASS: First patched version 5.6.2. Tag v5.6.2 peels to fcf4e88275f2e2e45b9ea70ffaa5247c8f55f057; 11755849fa0634ae294a15ec0aef2f43efcad7c4 is an ancestor of that tag and is not an ancestor of v5.6.1. v5.6.2:src/parse.js throws 'Invalid ArrayBuffer encoding' when typeof base64 !== 'string'. GitHub release v5.6.2 changelog cites 1175584 as 'fix: validate input for ArrayBuffer parsing'.",
+    "direct_fix_or_unpatched": "PASS: Direct public fix is 11755849fa0634ae294a15ec0aef2f43efcad7c4 (single parent e46afa64dd2b25aa35fb905ba5d20cea63aabbf7). Diff vs that parent inserts the ArrayBuffer typeof-string guard and a non-string regression path, matching GHSA/CVE/NVD patch URL https://github.com/sveltejs/devalue/commit/11755849fa0634ae294a15ec0aef2f43efcad7c4. The object is a GitHub private-fork squash ('Merge commit from fork') whose private members are not reconstructable in public history; the cited public object is still the direct closer of this sink.",
+    "bic_only_ai_attribution": "PASS: BIC object bbf86c2df544f3855603012b70d2be2200c7dbf3 has Author and Committer Loris Sigrist <sigrist@hasch.io> (GitHub login LorisSigrist), one-line message 'Add support for ArrayBuffers and TypedArrays', and no Co-Authored-By, Generated-with, bot, or generator trailer. Named human authorship on the actual BIC with no AI/bot marker yields NOT_AI. AI signals on later commits (including GitHub-committer on the fix) are out of scope."
+  },
+  "findings": [
+    "CVE-2026-22775 is PUBLISHED and GHSA-g2pg-6438-jwpf is not withdrawn; the ArrayBuffer decode64 type-confusion DoS is a real vulnerability, so FALSE_POSITIVE does not apply.",
+    "Atomic BIC is bbf86c2df544f3855603012b70d2be2200c7dbf3; parent 50af63e2b2c648f6e6ea29904a14faac25a581fc lacks the mechanism; e46f4c8f4724e673344100790312740a65491d66 is a later refactor, not the first write.",
+    "Release topology matches the advisory: BIC enters at v5.1.0, remains unguarded through v5.6.1, and the typeof-string guard lands in v5.6.2 via 11755849fa0634ae294a15ec0aef2f43efcad7c4.",
+    "BIC-only authorship is human (Loris Sigrist); primary verdict NOT_AI is independently supported.",
+    "Primary field introducer_parent_absent=true is inconsistent with the verified parent commit object 50af63e2b2c648f6e6ea29904a14faac25a581fc present in the clone and used for the parent-tree check; it must be false."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": false
+  },
+  "remaining_gap": null
+}

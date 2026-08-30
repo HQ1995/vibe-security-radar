@@ -1,0 +1,28 @@
+{
+  "worker": "w441",
+  "review_agent_id": "r111_w441",
+  "class_id": "alias-8390ae3f5e804bd13d8971db",
+  "case_id": "GHSA-rrjr-v56m-ww88",
+  "repo": "g-research/parquetsharp",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Live GHSA-rrjr-v56m-ww88 (withdrawn_at=null) and CVE.org CVE-2026-42241 state=PUBLISHED describe attacker-declared decimal column width causing DecimalConverter.ReadDecimal stack overflow DoS. Source: ColumnDescriptor.TypeLength (csharp/ColumnDescriptor.cs:30 wraps ColumnDescriptor_Type_Length from the Parquet schema). At tag 18.1.0 (f0ee0b90b4156f1b526e592d8fc1df641b663d81) LogicalRead.cs:141/:160 pass columnDescriptor.TypeLength into ConvertDecimal, which at :522/:530 builds ByteArray(pointer, typeLength) and calls DecimalConverter.ReadDecimal. Sink: csharp/DecimalConverter.cs:21 `stackalloc byte[byteArray.Length]` with no bound. Fix test TestVeryWideDecimal uses typeWidth 10_000_000 annotated as causing stack overflow if stackalloc is used.",
+    "atomic_bic": "PASS: Smallest public first-write of the unbounded ReadDecimal stackalloc and the TypeLength-fed ConvertDecimal path is PR #482 member c4564c2eaf2a0622372ff3816a3a076cdf9507d8 (parent 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1; message 'Support arbitrary length byte arrays for decimal data'; creates csharp/DecimalConverter.cs). git log -S 'stackalloc byte[byteArray.Length]' over 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1..dec1216487fc2f059d83dd73b303920543a374a1 returns only that member. Mainline 227d8387c267809d599cbc8e945e31a8a97c840b is the squash carrier of the same tree, not the atomic BIC.",
+    "immediate_parent_absence": "PASS: Direct parent 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1 has no csharp/DecimalConverter.cs (`git cat-file -e` path-missing). `git grep` of ReadDecimal, stackalloc byte[byteArray.Length], and DecimalConverter under csharp on that parent is empty. Pre-existing decimal reads used Decimal128 for fixed 16-byte FLBA, not attacker-width stackalloc.",
+    "squash_member_decomposition": "PASS: GitHub PR #482 lists eight linear members from parent 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1 to head dec1216487fc2f059d83dd73b303920543a374a1: c4564c2eaf2a0622372ff3816a3a076cdf9507d8, 09d9c67c19634d99fad579ca5b41152bb03bb72c, e4fc7db0d1e0486b7a43dbf5c31900ff108d06d2, 9ffb0cfea466f6f785c9bb71848726484c0b530f, 8d7aeb4b8439c2de8a178230ff49798bdd7be703, 6dc2c938fba1c86b9c0b9d2858ecd44e0c195c74, 93131b581c2e1ab8d48145dd6daa933c9cf1f841, dec1216487fc2f059d83dd73b303920543a374a1. Local `git log` of that range matches. Squash merge 227d8387c267809d599cbc8e945e31a8a97c840b (merge_commit_sha of #482) and PR head both have tree 9fbc8a278a8a447247dc3453408f84544d5b7721; squash parent is 4deb3707d54ccef6d8d1d19ab61ae03ef1322fa1.",
+    "affected_release_membership": "PASS: Advisory/CVE affected range is NuGet >=18.1.0,<23.0.0.1. Carrier 227d8387c267809d599cbc8e945e31a8a97c840b is an ancestor of tag 18.1.0 (f0ee0b90b4156f1b526e592d8fc1df641b663d81) and tag 23.0.0 (3bc2a6402e830bfc3f1bd3f8341cfdf51fba2d96). At 18.1.0 and 23.0.0, DecimalConverter.cs still has unbounded `stackalloc byte[byteArray.Length]`. Atomic BIC c4564c2eaf2a0622372ff3816a3a076cdf9507d8 is not a mainline ancestor of 18.1.0 because GitHub squashed; the tree-equivalent carrier is.",
+    "fixed_release_membership": "PASS: First patched version 23.0.0.1 is exactly tag 23.0.0.1 = d87081931cdecfd2e4401909ecefd220b3ee2a91. That squash is not an ancestor of vulnerable tag 23.0.0 (3bc2a6402e830bfc3f1bd3f8341cfdf51fba2d96). At 23.0.0.1, ReadDecimal uses MaxStackAllocSize=1024 and ArrayPool<byte> for larger widths (DecimalConverter.cs:24-26, :172).",
+    "direct_fix_or_unpatched": "PASS: PR #642 is linear ce6478385fad87c33715c4f79843707343b96365 -> 6824d297f9c7a798222fa6cfc693f0f954a2b08f ('Add a limit on stackalloc size', first MaxStackAllocSize/ArrayPool change) -> 9be471ac81e4abc65a24adc38cbff4b91104ef11 -> ad8e53f30d1b7794c2b1d3c3e2ce9b5fccc413f3. Squash d87081931cdecfd2e4401909ecefd220b3ee2a91 and PR head ad8e53f30d1b7794c2b1d3c3e2ce9b5fccc413f3 share tree 1687855d8efa2d1fa203e4bf2826f4ad08b10e2a. Direct atomic fix is 6824d297f9c7a798222fa6cfc693f0f954a2b08f; mainline/release object is d87081931cdecfd2e4401909ecefd220b3ee2a91.",
+    "bic_only_ai_attribution": "PASS: Raw `git cat-file -p` of BIC c4564c2eaf2a0622372ff3816a3a076cdf9507d8 is author Adam Reeve <adreeve@gmail.com> 1696995551 +1300, committer Adam Reeve <adam.reeve@gr-oss.io> 1724725778 +1200, one-line subject, no Co-Authored-By/Generated-with/bot/generator trailer. GitHub PR #482 user is adamreeve (human). AI role judged only on this BIC object: absent, so NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-42241 is PUBLISHED at cveawg.mitre.org; GHSA-rrjr-v56m-ww88 is a reviewed GitHub advisory with withdrawn_at=null. This is a real vulnerability, not FALSE_POSITIVE.",
+    "Mechanism is file-controlled Parquet decimal type length -> LogicalRead.ConvertDecimal ByteArray.Length -> unbounded stackalloc in DecimalConverter.ReadDecimal, producing stack-overflow DoS on untrusted reads.",
+    "Atomic BIC is PR #482 member c4564c2eaf2a0622372ff3816a3a076cdf9507d8; squash 227d8387c267809d599cbc8e945e31a8a97c840b is the tree-equivalent mainline carrier ancestral to tags 18.1.0 and 23.0.0.",
+    "Direct fix member 6824d297f9c7a798222fa6cfc693f0f954a2b08f bounds stack allocation at 1024 bytes and rents from ArrayPool; squash/tag 23.0.0.1 is d87081931cdecfd2e4401909ecefd220b3ee2a91.",
+    "BIC author and committer are named human Adam Reeve with no AI/bot/generator markers; primary verdict NOT_AI matches BIC-only attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

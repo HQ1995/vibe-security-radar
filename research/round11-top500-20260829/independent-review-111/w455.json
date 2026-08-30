@@ -1,0 +1,29 @@
+{
+  "worker": "w455",
+  "review_agent_id": "r111_w455",
+  "class_id": "alias-a4adef64bffbfff031ff7150",
+  "case_id": "GHSA-3p24-9x7v-7789",
+  "repo": "nationalsecurityagency/emissary",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-35582 is CVE.org state=PUBLISHED (cveawg.mitre.org/api/cve/CVE-2026-35582; datePublished 2026-04-18; not rejected). GitHub GHSA-3p24-9x7v-7789 is live High, withdrawn_at=null. Source-to-sink on 8.42.0^{commit} 29b54cad43fa55ab42db2722bf3583b8e22d9f58 Executrix.java: raw IN_FILE_ENDING/OUT_FILE_ENDING at 121-122 and setters 1176-1195; TempFileNames.java 29-36 concatenates endings into inputFilename/outputFilename; getCommand replaceAll of <INPUT_PATH>/<OUTPUT_PATH>/<INPUT_NAME>/<OUTPUT_NAME> then returns {\"/bin/sh\",\"-c\",...} at 1055-1065 and the TempFileNames overload at 1105-1115. A place-config author can inject shell metacharacters (CWE-78/CWE-116).",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the complete legacy chain is root commit c702bb7d697567b5d3a0710b225ee15a695e5534 (author/committer Michael Wall <mjwall@gmail.com>, message 'Initial commit'). git show of that tree's Executrix.java has unvalidated config reads 106-107, suffix concat into names[IN/OUT/INPATH/OUTPATH] 137-140, unescaped replaceAll 849-852, /bin/sh -c 872, and raw setters 901-920. Reverse -S on IN_FILE_ENDING, this.inFileEnding = argInFileEnding, <INPUT_PATH>, and \"/bin/sh\" under Executrix.java all start at that SHA. Later d88cb58c5acdb9bb38d632605d3655e1ac39816c (parent ee88bcfd8708deece1ca27a4dca884e020c7207a) first adds TempFileNames.java as a second unescaped path; parent tree has no TempFileNames.java and already contains the legacy sink, so it is not the BIC.",
+    "immediate_parent_absence": "PASS: git rev-list --parents -n 1 c702bb7d697567b5d3a0710b225ee15a695e5534 returns only that SHA; git rev-list --max-parents=0 main is only that SHA. No parent tree exists, so the mechanism is absent from any immediate parent. (Unrelated gh-pages root 51eaffae09174bd70305c8de98f1912bf3b3caa7 has no Executrix and is not an ancestor of main.)",
+    "squash_member_decomposition": "PASS: c702bb7d697567b5d3a0710b225ee15a695e5534 is a non-merge public-history root (single tree 5924029734dc1a5386bb328ec5ef947f508cca37, no parents). No reconstructable squash/merge members exist in the non-shallow clone.",
+    "affected_release_membership": "PASS: Annotated tag 8.42.0 (tag object 894a61dfc5e747f5df24f2195c2847058b099e5d) peels to 29b54cad43fa55ab42db2722bf3583b8e22d9f58. merge-base --is-ancestor c702bb7d697567b5d3a0710b225ee15a695e5534 8.42.0 is true; merge-base --is-ancestor 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8 8.42.0 is false. 8.42.0 Executrix still assigns IN_FILE_ENDING/OUT_FILE_ENDING and setters without cleanFileEnding and still builds /bin/sh -c. Matches GHSA vulnerable_version_range <= 8.42.0 and CVE affected < 8.43.0.",
+    "fixed_release_membership": "PASS: Annotated tag 8.43.0 (tag object 891d16b9509a632c9c2006599777cd3f24c5a397) peels to dd0d619db42496604b56406d3d5e6fffc5a72c0b, whose sole parent is the fix 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8. merge-base --is-ancestor of that fix into 8.43.0 is true. 8.43.0 Executrix.java applies cleanFileEnding at config 127-128 and setters 1192-1211. GitHub release 8.43.0 lists 'sanitize file ending values in Executrix'. Matches first_patched_version 8.43.0.",
+    "direct_fix_or_unpatched": "PASS: Direct one-parent fix 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8 over 082b263a19532454b24dfbed1605311854ea778f adds INVALID_FILE_ENDING_CHARS/cleanFileEnding and applies it to config reads and both setters (Executrix.java +24/-4; ExecutrixTest.java +97). Parent 082b263a19532454b24dfbed1605311854ea778f still has raw assignments at 121-122 and 1176-1195. Cited by GHSA and CVE references.",
+    "bic_only_ai_attribution": "PASS: Judged only on BIC object c702bb7d697567b5d3a0710b225ee15a695e5534. git cat-file -p shows author and committer Michael Wall <mjwall@gmail.com> timestamp 1527872480 -0400 and complete message 'Initial commit' with no Co-Authored-By, Generated-with, bot identity, or other AI/generator marker. Named human authorship supports NOT_AI."
+  },
+  "findings": [
+    "Independent sha256 of the assigned bundle is 6d8488478dab66f90fcc8ba64ac0f1e06a09e7ab670ff5b9d8ab91265d5f1f6b and of the assigned primary is f2200b6cddaa1d13de8d905e53acdf8a4b44a1e637dfe94b171d5be2b69f1bc0; both match the assignment row.",
+    "The advisory describes a real published command-injection defect (CWE-78/CWE-116): unvalidated IN_FILE_ENDING/OUT_FILE_ENDING values are concatenated into temp names/paths, substituted into command templates, and executed via /bin/sh -c.",
+    "The public-history BIC is root c702bb7d697567b5d3a0710b225ee15a695e5534, which already contains every link of the legacy source-to-sink; it is not a move/refactor/revert and has no decomposable public members.",
+    "d88cb58c5acdb9bb38d632605d3655e1ac39816c only replicates the already-present mechanism into TempFileNames and is not the introducer.",
+    "Direct fix 1faf33f2494c0128f250d7d2e8f2da99bbd32ae8 is in tag 8.43.0 (dd0d619db42496604b56406d3d5e6fffc5a72c0b) and absent from tag 8.42.0 (29b54cad43fa55ab42db2722bf3583b8e22d9f58), matching GHSA/CVE release bounds.",
+    "BIC commit-object signals are named human Michael Wall <mjwall@gmail.com> with no AI/bot/generator marker; primary verdict NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

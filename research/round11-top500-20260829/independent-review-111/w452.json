@@ -1,0 +1,28 @@
+{
+  "worker": "w452",
+  "review_agent_id": "r111_w452",
+  "class_id": "alias-a23290c2b2cbee12e9caeb01",
+  "case_id": "GHSA-9j26-99jh-v26q",
+  "repo": "wwbn/avideo-encoder",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-29058 is PUBLISHED (cveMetadata.state=PUBLISHED, GHSA withdrawn_at=null). Source-to-sink on the unfixed parent e0c27689f33f253e49799ff5f8f62edd31cdee2e: objects/getImage.php decodes $_GET['base64Url'] with no auth, interpolates into get_ffmpeg().\" -i \\\"{$url}\\\" ...\", and calls execAsync(); objects/security.php (included from objects/include_config.php) only FILTER_VALIDATE_URL on the decoded value; execAsync wraps the string in nohup and shell_exec. FILTER_VALIDATE_URL does not block $(cmd) in a URL path, so the shell runs attacker substitution. Confirmed live exploit class (CWE-78), not a withdrawn/rejected advisory.",
+    "atomic_bic": "PASS: 036052b948a616ec91fe54b5d3ff84e2dd048a4d (2017-09-25, single parent c4a64b1a5d2cabbfb3e930423c0be77a5e4c678e) first-wrote objects/getImageFromVIdeo.php with `$url = base64_decode($_GET['url']); $exec = \"ffmpeg -i {$url} -f image2 -vframes 1 {$destination}\"; shell_exec($exec);`. That is the smallest surviving public first-write of unescaped user URL interpolation into an ffmpeg shell command. 1d209ed97981582007ebf5cce1280b75fd9298dd only retargets $_GET['url'] to $_GET['base64Url']; a702adc250ce9a08c9265efd9e97be9714ea2d85 is a 100% similarity rename to objects/getImage.php. Neither is the BIC.",
+    "immediate_parent_absence": "PASS: Parent tree c4a64b1a5d2cabbfb3e930423c0be77a5e4c678e has no objects/getImageFromVIdeo.php, no objects/getImage.php, and no base64_decode($_GET[...]) of a request URL into ffmpeg. Parent ffmpeg uses are Encoder/Format pathFileName templates, a different surface.",
+    "squash_member_decomposition": "PASS: 036052b948a616ec91fe54b5d3ff84e2dd048a4d is a single-parent non-merge commit adding an 11-line new file plus one .htaccess rewrite. No merge members or finer public first-write exist to reconstruct. Later rename/param commits are not squash aggregates of the introduction.",
+    "affected_release_membership": "PASS: Tag 3.0 (8698477ecede42ccb38c59b32a74704f78a30fd5, installationVersion 3.0) and tag 3.7 (d10742173dd3d9ab0f3f40a8ea30682f922de484, installationVersion 3.7) are ancestors of neither the fix; both contain objects/getImage.php with unescaped `$url` in ffmpeg and exec()/execAsync(). Tag 1.0 does not contain the BIC. CVE.org affected: versions before 7.0.",
+    "fixed_release_membership": "PASS: Tag 7.0 is 5e594d1ce71aa8c1ed711e2d496ea5325a502d21 with installationVersion 7.0; 78178d11541d44b238c4dfd9241cacb031db3765 is an ancestor of that tag. At 7.0, getImage.php uses escapeshellarg($url) as $urlEscaped and security.php rejects shell metacharacters. CVE.org: patched in 7.0.",
+    "direct_fix_or_unpatched": "PASS: Direct fix 78178d11541d44b238c4dfd9241cacb031db3765 (parent e0c27689f33f253e49799ff5f8f62edd31cdee2e) is the first objects/getImage.php commit to add escapeshellarg and to replace every `\\\"{$url}\\\"` ffmpeg interpolation with {$urlEscaped}; it also adds metacharacter rejection in objects/security.php and bumps $installationVersion from 6.0 to 7.0.",
+    "bic_only_ai_attribution": "PASS: AI role judged only on 036052b948a616ec91fe54b5d3ff84e2dd048a4d. Author and committer are daniel <daniel@daniel-DC1A-S> at 2017-09-25T15:41:22-03:00; subject 'Get image from streaming'; empty body; no Co-Authored-By, Generated-with, bot, or generator trailer. Named human on a small first-write, so NOT_AI."
+  },
+  "findings": [
+    "Bundle and primary sha256 match the assignment (5071731ef421312674423c34d42b7bfacfc9c522c4076b7e01b8d17d73686816 / 64ebd0d193bc4af7f8fef91b1c03bca54927889d34888419e08e6880b1e9bf0b).",
+    "Unauthenticated OS command injection via decoded GET URL interpolated into ffmpeg is real: pre-fix getImage.php on e0c27689f33f253e49799ff5f8f62edd31cdee2e builds get_ffmpeg().\" -i \\\"{$url}\\\"\" and execAsync() nohup/shell_execs it; security.php FILTER_VALIDATE_URL does not neutralize $().",
+    "Atomic BIC is 036052b948a616ec91fe54b5d3ff84e2dd048a4d (parent c4a64b1a5d2cabbfb3e930423c0be77a5e4c678e), which first added the unescaped shell_exec ffmpeg sink; 1d209ed97981582007ebf5cce1280b75fd9298dd and a702adc250ce9a08c9265efd9e97be9714ea2d85 are later parameter/file renames only.",
+    "Direct fix 78178d11541d44b238c4dfd9241cacb031db3765 is in tag 7.0; tags 3.0 and 3.7 carry the BIC without that fix.",
+    "BIC authorship is 2017 human daniel with no AI/bot/generator markers; independent verdict matches primary NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

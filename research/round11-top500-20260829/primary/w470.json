@@ -6,18 +6,18 @@
     "CVE-2026-35583",
     "GHSA-hxf2-gm22-7vcm"
   ],
-  "bug_semantics": "The unauthenticated JAX-RS configuration endpoints passed the path parameter into Configs.validate(), whose blacklist rejected literal slash, backslash, '..', blank input, and a trailing dot but allowed percent signs and other non-allowlisted characters. The validated name was then appended with '.cfg' and passed to ConfigUtil.getConfigStream(), which constructs and opens a filesystem path under the configured directory. GHSA-hxf2-gm22-7vcm and published CVE-2026-35583 classify this as CWE-22 because encoded, double-encoded, or normalization variants could bypass the blacklist and disclose configuration data outside the intended directory.",
+  "bug_semantics": "The JAX-RS configuration endpoints (/api/configuration/{name} and /api/configuration/detailed/{name}) passed the path parameter into Configs.validate(), whose blacklist rejected literal slash, backslash, '..', blank input, and a trailing dot but allowed percent signs and other non-allowlisted characters. The validated name was then appended with '.cfg' and passed to ConfigUtil.getConfigStream(), which constructs and opens a filesystem path under the configured directory. At introduction the routes sat behind Jetty DigestAuthenticator on /* (only /api/health was unauthenticated). GHSA-hxf2-gm22-7vcm and published CVE-2026-35583 classify this as CWE-22 because encoded, double-encoded, or normalization variants could bypass the blacklist and disclose configuration data outside the intended directory.",
   "flaw_origin": "PR #352 introduced the configuration API and the vulnerable blacklist in squash commit 99ef64d4860d9a113c4c6482ef8e575330123f83. GitHub's surviving PR-member history decomposes that squash into 91a632b5fc860028b962d14ec163a387a45d2541, 70cdc725f0bf90e81871bd92a9864c95775b78ed, and c6f68a96ead85c57bfee5873a77ac72616708091. The first member, 91a632b5fc860028b962d14ec163a387a45d2541, adds Configs.java with the vulnerable validate() method; its parent 6443531b40f3a2c5096bf8a0f0419324a1385f84 lacks that file. The later members preserve validate(), so 91a632b5fc860028b962d14ec163a387a45d2541 is the atomic BIC.",
   "introducer_sha": "91a632b5fc860028b962d14ec163a387a45d2541",
   "introducer_parent": "6443531b40f3a2c5096bf8a0f0419324a1385f84",
-  "introducer_parent_absent": false,
+  "introducer_parent_absent": true,
   "squash_decomposed": true,
   "decomposed_shas": [
     "91a632b5fc860028b962d14ec163a387a45d2541",
     "70cdc725f0bf90e81871bd92a9864c95775b78ed",
     "c6f68a96ead85c57bfee5873a77ac72616708091"
   ],
-  "ai_marker": null,
+  "ai_marker": "BIC 91a632b5fc860028b962d14ec163a387a45d2541 author and committer are GitHub user dev-mlb (dev-mlb@users.noreply.github.com); message is only 'added a new command for viewing configs'; no Co-Authored-By, Generated-with, Copilot, bot, or other generator trailer on the object. NOT_AI follows from BIC-object signals only; squash/fix authorship is not used as the BIC.",
   "verdict": "NOT_AI",
   "fix_sha": "33d260d2cfbccc626c7b4c945496dd3832135736",
   "direct_fix_sha": "33d260d2cfbccc626c7b4c945496dd3832135736",

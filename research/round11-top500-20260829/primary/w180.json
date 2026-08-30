@@ -6,17 +6,17 @@
     "CVE-2026-33628",
     "GHSA-98wm-cxpw-847p"
   ],
-  "bug_semantics": "Stored XSS in invoice line-item descriptions (and sibling string fields product_key/custom_value1-4). Invoice Ninja treats those fields as rich HTML and interpolates them into client-portal HTML and PDF-design HTML. The only input-side control was a case-sensitive substring denylist in CleanLineItems::cleanLineItem() — originally str_replace('</','<-'), later the token list ['</sc','onerror','prompt(','alert(')]. Event-handler and javascript: payloads that omit those exact tokens (vendor tests cite <svg onload=confirm(document.domain)>, <details ontoggle=confirm(1)>, <input onfocus=confirm(1) autofocus>, <a href=\"javascript:confirm(1)\">, <img src=x onmouseover=alert(1)>) survive storage and execute for any user who can create invoices when a victim opens the invoice preview/portal. CWE-79 / CWE-184 / CWE-116. CVE-2026-33628 is PUBLISHED (not rejected/withdrawn). Fixed in v5.13.4 by replacing the denylist with Purify::clean($field, true).",
+  "bug_semantics": "Stored HTML bypasses the historical input denylist, but no reachable unsanitized v5.13.0 portal/PDF sink is established: both advisory-named render paths already call Purify::clean().",
   "flaw_origin": "The incomplete denylist was first written in 192722b7a47556bef14e0460df25d71ee570a73a (2024-02-12, 'Minor adjustments') as str_replace('</','<-') on item notes and product_key inside CleanLineItems, plus the same pattern on public_notes/footer/terms/private_notes in Request::decodePrimaryKeys. Immediate parent 2c253710111b9189524e273e8416650088fec425 has no XSS filter on those line-item fields. Later 5a14b85e narrowed '</' to '</sc'; 4a7819d2 added onerror/prompt(/alert( and custom_value*; 962af3bf only refactored the same tokens into a loop (not a BIC). The client-portal sink {!! $product['notes'] !!} was switched from escaped {{ }} earlier in 1c9450a6 (2023-07-20), so HTML execution predates the denylist; 192722b7 is the first write of the flawed disallow-list that the advisory and vendor tests name as the bypassed control, and it is the line the v5.13.4 fix replaced.",
-  "introducer_sha": "192722b7a47556bef14e0460df25d71ee570a73a",
-  "introducer_parent": "2c253710111b9189524e273e8416650088fec425",
-  "introducer_parent_absent": false,
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": null,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "absent; author David Bomba <turbo124@gmail.com>, committer David Bomba <turbo124@gmail.com>; subject 'Minor adjustments'; git cat-file -p shows no Co-Authored-By, Generated-with, Copilot, Cursor, ChatGPT, Claude, or bot trailers",
-  "verdict": "NOT_AI",
+  "ai_marker": null,
+  "verdict": "EVIDENCE_GAP",
   "fix_sha": "b81a3fc302573fc4a53d61e8537dd19154ce1091",
-  "direct_fix_sha": "b81a3fc302573fc4a53d61e8537dd19154ce1091",
+  "direct_fix_sha": null,
   "evidence": [
     "CVE.org/MITRE CVE-2026-33628 state=PUBLISHED (datePublished 2026-03-26, dateUpdated 2026-03-27); GHSA-98wm-cxpw-847p withdrawn_at=null; affected < 5.13.4, patched 5.13.4; not FALSE_POSITIVE.",
     "Vendor tests added in the fix (tests/Unit/XssSanitizationTest.php) section 'Vulnerability #2 — CleanLineItems: denylist bypass payloads' use the report payloads <svg onload=confirm(document.domain)>, <details open ontoggle=confirm(1)>, <input onfocus=confirm(1) autofocus>, <a href=\"javascript:confirm(1)\">, <img src=x onmouseover=alert(1)>.",
@@ -31,5 +31,5 @@
     "BIC commit-object AI check: author/committer David Bomba <turbo124@gmail.com>; cat-file -p has only the one-line message 'Minor adjustments'; no Co-Authored-By/Generated-with/Copilot/Cursor/ChatGPT/Claude/bot trailers."
   ],
   "reasoning": "Vulnerability-first: CVE-2026-33628/GHSA-98wm-cxpw-847p is a published stored XSS (CWE-79) via incomplete denylist (CWE-184) on invoice line-item descriptions. Reproduction is any authenticated invoice editor storing an event-handler payload that the token list does not cover; the payload is later rendered as HTML in the client portal html-viewer and in PDF/HTML preview pipelines. At disclosure (v5.13.0) html-viewer already wrapped notes in Purify::clean, and PdfService purified the full document, but input sanitization remained the four-token denylist; vendor tests and the patch both treat CleanLineItems as the broken control and replace it with fragment Purify so every sink is covered. BIC search used git log -S / file history on the patched lines, not AI-marked commits. The smallest first-write of those denylist lines is 192722b7; its parent tree lacks the filter, and later commits only change tokens or refactor the loop (962af3bf is explicitly a refactor). The earlier 1c9450a6 escaped-to-unescaped portal switch explains why HTML executes, but it is not the denylist the advisory bypasses and is not the hunk the fix rewrote. AI is judged only on 192722b7: human maintainer identity, no commit-object AI markers, therefore NOT_AI. Fix SHA is the advisory-cited b81a3fc, first present in tag v5.13.4.",
-  "remaining_gap": null
+  "remaining_gap": "Identify an affected-release source-to-sink that bypasses the existing Purify calls, or reconcile the published advisory with the inspected v5.13.0 trees."
 }

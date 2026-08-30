@@ -1,0 +1,33 @@
+{
+  "worker": "w470",
+  "review_agent_id": "r111_w470",
+  "class_id": "alias-c7fc1af06fb91d8488eb1750",
+  "case_id": "GHSA-hxf2-gm22-7vcm",
+  "repo": "nationalsecurityagency/emissary",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: GHSA-hxf2-gm22-7vcm and CVE-2026-35583 are published (CVE.org state PUBLISHED; repo advisory state published, withdrawn_at null) as CWE-22. On BIC 91a632b5fc860028b962d14ec163a387a45d2541, JAX-RS GET /api/configuration/{name} and /api/configuration/detailed/{name} inject @PathParam name into getConfigsResponse() -> validate() (blacklist of blank, '\\', '/', '..', trailing '.') -> append CONFIG_FILE_ENDING -> ConfigUtil.getConfigInfo()/getConfigStream() which does getConfigFile(name) then Files.newInputStream. Percent and other non-allowlisted characters pass the blacklist; the name is then used as a filesystem path under the configured directory. Jetty ConstraintSecurityHandler at the same BIC authenticates /* (DigestAuthenticator) except /api/health, so the endpoints are not unauthenticated even though GHSA CVSS is PR:N.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is PR #352 member 91a632b5fc860028b962d14ec163a387a45d2541 (message 'added a new command for viewing configs'), which adds src/main/java/emissary/server/api/Configs.java including the vulnerable validate(). It is not a move/refactor/revert. Mainline squash 99ef64d4860d9a113c4c6482ef8e575330123f83 ('add a config command (#352)', parent 9220b501674cc9d24f83488187c4361d6f61cddd) is the aggregate, not the BIC.",
+    "immediate_parent_absence": "PASS: Parent 6443531b40f3a2c5096bf8a0f0419324a1385f84 has no src/main/java/emissary/server/api/Configs.java (git cat-file: path exists on disk but not in parent). Parent tree has other /api classes (Agents, Env, HealthCheckAction, ...) but no configuration-name validate() or /configuration/{name} route.",
+    "squash_member_decomposition": "PASS: GitHub PR #352 (merged 2023-01-18T16:24:43Z) lists exactly three members: 91a632b5fc860028b962d14ec163a387a45d2541 -> 70cdc725f0bf90e81871bd92a9864c95775b78ed ('updates based on pr comments') -> c6f68a96ead85c57bfee5873a77ac72616708091 ('rebase changes'). Member 2 does not touch Configs.java. Member 3 only retargets RESERVED_PROPS -> RESERVED_SERVICE_CONFIG_KEYS; validate() is unchanged. Squash 99ef64d4860d9a113c4c6482ef8e575330123f83 carries the same validate() as the first member.",
+    "affected_release_membership": "PASS: First release tag containing squash 99ef64d4860d9a113c4c6482ef8e575330123f83 is 7.12.0 (peeled 9414600e5b1798b6bec41baa69c2468670ea55a2). Tag 7.11.0 (82a790b9457a061dfa294e95abbb1cda5317b4dc) lacks Configs.java. Tag 8.38.0 (89f4b8660daa74fdb4c45210b0bc3c70609a4ea5) still has the blacklist validate() and does not contain the fix. GHSA/CVE list affected as < 8.39.0 / <= 8.38.0 (Maven gov.nsa.emissary:emissary).",
+    "fixed_release_membership": "PASS: Tag 8.39.0 (peeled 5e3d58513b4cc0362537c60f21983d62ddf40599) is an ancestor of/contains 33d260d2cfbccc626c7b4c945496dd3832135736; 8.38.0 does not. GitHub tag 8.39.0 points at that commit; PR #1292 milestone is v8.39.0; first patched version is 8.39.0.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is 33d260d2cfbccc626c7b4c945496dd3832135736 (PR #1292 squash, parent 5b909b5b8ae9da88ccf2a9a10fc2251607ab7ea6). Parent still has the blacklist. The fix adds Pattern VALID_CONFIG_NAME = ^[a-zA-Z0-9._-]+$ and rejects encoded/double-encoded/Unicode tests in ConfigsTest.java.",
+    "bic_only_ai_attribution": "PASS: BIC 91a632b5fc860028b962d14ec163a387a45d2541 author and committer are GitHub user dev-mlb (dev-mlb@users.noreply.github.com); message is only 'added a new command for viewing configs'; no Co-Authored-By, Generated-with, Copilot, bot, or other generator trailer on the object. NOT_AI follows from BIC-object signals only; squash/fix authorship is not used as the BIC."
+  },
+  "findings": [
+    "CVE-2026-35583 / GHSA-hxf2-gm22-7vcm is a real published CWE-22: configuration API path parameter -> blacklist validate() -> ConfigUtil.getConfigStream filesystem open. CVE.org state is PUBLISHED; GitHub advisory is published with withdrawn_at null.",
+    "Atomic BIC is PR #352 member 91a632b5fc860028b962d14ec163a387a45d2541, which first writes Configs.java and validate(). Immediate parent 6443531b40f3a2c5096bf8a0f0419324a1385f84 lacks that file and route.",
+    "Mainline 99ef64d4860d9a113c4c6482ef8e575330123f83 is a squash aggregate of reconstructable members 91a632b5fc860028b962d14ec163a387a45d2541, 70cdc725f0bf90e81871bd92a9864c95775b78ed, c6f68a96ead85c57bfee5873a77ac72616708091; later members do not introduce validate().",
+    "Direct allowlist fix 33d260d2cfbccc626c7b4c945496dd3832135736 lands in 8.39.0; 8.38.0 and first-affected 7.12.0 still have the blacklist.",
+    "BIC authorship is named human dev-mlb with no AI/bot/generator marker, so the primary NOT_AI verdict is correct.",
+    "Primary field introducer_parent_absent is false even though the parent-tree check shows the mechanism is absent; that boolean must be true.",
+    "Primary bug_semantics calls the JAX-RS configuration endpoints unauthenticated, but BIC EmissaryServer.buildSecurityHandler() requires DigestAuthenticator on /* (only /api/health is no-auth)."
+  ],
+  "corrected_fields": {
+    "introducer_parent_absent": true,
+    "bug_semantics": "The JAX-RS configuration endpoints (/api/configuration/{name} and /api/configuration/detailed/{name}) passed the path parameter into Configs.validate(), whose blacklist rejected literal slash, backslash, '..', blank input, and a trailing dot but allowed percent signs and other non-allowlisted characters. The validated name was then appended with '.cfg' and passed to ConfigUtil.getConfigStream(), which constructs and opens a filesystem path under the configured directory. At introduction the routes sat behind Jetty DigestAuthenticator on /* (only /api/health was unauthenticated). GHSA-hxf2-gm22-7vcm and published CVE-2026-35583 classify this as CWE-22 because encoded, double-encoded, or normalization variants could bypass the blacklist and disclose configuration data outside the intended directory."
+  },
+  "remaining_gap": null
+}

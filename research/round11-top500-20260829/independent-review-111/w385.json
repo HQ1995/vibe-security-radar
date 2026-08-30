@@ -1,0 +1,28 @@
+{
+  "worker": "w385",
+  "review_agent_id": "r111_w385",
+  "class_id": "alias-29efd4ddf3f9c9aad7a4ced9",
+  "case_id": "GHSA-44hj-4m45-frj3",
+  "repo": "fluent/fluentd",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-22 path traversal, not withdrawn. GHSA-44hj-4m45-frj3 and CVE-2026-44024 (CVE.org state PUBLISHED, CNA GitHub_M) describe unvalidated ${tag} expansion in file-path templates. At v1.19.2 extract_placeholders (lib/fluent/plugin/output.rb:804-805) does rvalue.gsub('${tag}', metadata.tag) with no path-boundary check; out_file.write (lib/fluent/plugin/out_file.rb:216-217,251-253) then uses that path in FileUtils.mkdir_p / File.open, so an untrusted input tag with ../ or an absolute path escapes the configured directory. Source-to-sink: attacker-controlled tag -> extract_placeholders substitution -> out_file filesystem write.",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the unvalidated ${tag} substitution is 1f53273438dbecdee50f55836d3afbe5df7b3c26 (single parent e82c40d64188a66b049a9a2ef04911454621a104; adds lib/fluent/plugin/output.rb with extract_placeholders doing rvalue.gsub('${tag}', metadata.tag) at original lines 432-433). Later 9eb470e9ecf15cdb53ba7d87e5052f2f51ad82cb only refactors the same gsub (blame on v1.19.2:805); that refactor is not the BIC.",
+    "immediate_parent_absence": "PASS: Parent e82c40d64188a66b049a9a2ef04911454621a104 has no lib/fluent/plugin/output.rb (git cat-file -e fails) and git grep extract_placeholders over that tree returns no matches. Parent ${tag} hits are only filter_record_transformer tests, not output path expansion.",
+    "squash_member_decomposition": "PASS: 1f53273438dbecdee50f55836d3afbe5df7b3c26 is a normal one-parent commit (rev-list --min-parents=2 on that commit is empty), message 'add Output plugin implementation (including buffering) for v0.14 plugin API', not a squash/merge aggregate; no finer public members to reconstruct.",
+    "affected_release_membership": "PASS: 1f53273438dbecdee50f55836d3afbe5df7b3c26 is an ancestor of v0.14.0 (08e280bdbc98f1f9fc77d13f78b3193993005f93; gsub present at lib/fluent/plugin/output.rb:484) and of v1.19.2 (3e573b154dc971f49ec8787f1b8b96aaec2e07cf). v1.19.2 still has the unvalidated gsub and does not contain 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437 (merge-base --is-ancestor exit 1). Matches GHSA affected <= 1.19.2 / CVE prior to 1.19.3.",
+    "fixed_release_membership": "PASS: Tag v1.19.3 (object 43c860907e3d6a92c922233fd16eb2ed9ea16b69, annotated tag on de1347678b7ea9a68689685c952396055452c260) contains 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437 and INVALID_PATH_COMPONENT_PATTERN in lib/fluent/plugin/output.rb (lines 47, 830, 837, 875). Release notes list PR #5391. Master-line equivalent 88601e3c75a83b3211688a5d46cd50e915faca39 is not an ancestor of v1.19.3.",
+    "direct_fix_or_unpatched": "PASS: Direct fix on the patched 1.19 line is 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437 (PR #5391, referenced by CVE-2026-44024): adds INVALID_PATH_COMPONENT_PATTERN / PARENT_DIRECTORY_PATTERN checks before ${tag} and chunk-key substitution, plus tests for ../, absolute paths, split ${tag[0]}, split-variable, and safe paths. Closes the shared extract_placeholders sink used by out_file.",
+    "bic_only_ai_attribution": "PASS: AI role judged only on BIC 1f53273438dbecdee50f55836d3afbe5df7b3c26. Author and committer are TAGOMORI Satoshi <tagomoris@gmail.com> (2016-04-18); cat-file headers have a single parent, no Co-Authored-By, Generated-with, bot, or generator trailer. Named human authorship with no AI marker supports NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-44024 is PUBLISHED on CVE.org (not rejected/withdrawn); GHSA-44hj-4m45-frj3 withdrawn_at is null.",
+    "Mechanism is unvalidated ${tag}/chunk-key placeholder expansion in Fluent::Plugin::Output#extract_placeholders, consumed by out_file path writes.",
+    "Atomic BIC is 1f53273438dbecdee50f55836d3afbe5df7b3c26; parent e82c40d64188a66b049a9a2ef04911454621a104 lacks the output extract_placeholders implementation.",
+    "v1.19.2 contains the BIC and lacks the fix; v1.19.3 contains 45c87a81f3ac0b72b3f9dcfe8cfb5f9038f81437.",
+    "BIC has named human author/committer and no AI/bot/generator markers, so the real vulnerability is NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

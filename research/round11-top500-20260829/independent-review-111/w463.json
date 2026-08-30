@@ -1,0 +1,27 @@
+{
+  "worker": "w463",
+  "review_agent_id": "r111_w463",
+  "class_id": "alias-b414e635ca1236122779eb57",
+  "case_id": "GHSA-x6wf-f3px-wcqx",
+  "repo": "xmldom/xmldom",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS — CVE-2026-41675 is PUBLISHED (cveMetadata.state=PUBLISHED; GitHub_M CNA; not rejected). GHSA-x6wf-f3px-wcqx withdrawn_at=null. Mechanism: createProcessingInstruction(target, data) stores attacker-controlled data without rejecting ?>; XMLSerializer.serializeToString concatenates <? + target/name + space + node.data + ?> verbatim, so an embedded ?> closes the PI and remaining text is live XML. At tag 0.9.9 lib/dom.js:2240-2246 assigns node.data = data with no delimiter check and lib/dom.js:2965-2966 does return buf.push('<?', node.target, ' ', node.data, '?>'). Same sink at 0.8.12 lib/dom.js PROCESSING_INSTRUCTION_NODE and at 0.6.0 lib/dom.js:1122-1123.",
+    "atomic_bic": "PASS — smallest public first-write of the complete source-to-sink is 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 (2012-01-04, single parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7). That object adds function XMLSerializer() and serializeToString; the PI branch is return buf.push(\"<?\",node.nodeName,\" \",node.data,\"?>\") (dom.js around the new serializer). git rev-list --count parent..BIC is 1. Later prettier/walkDOM commits (6601a114..., c007c51...) rewrite the same concatenation and are not first-writes.",
+    "immediate_parent_absence": "PASS — parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 is the repo root (no parents). Its tree has no XMLSerializer, serializeToString, or buf.push('<?' sink. Parent does construct PIs: Document.prototype.createProcessingInstruction at dom.js:552-557 stores node.target/node.data unsanitized, and PROCESSING_INSTRUCTION_NODE=7 exists, but there is no serialization path. git grep for serialize/XMLSerializer/buf.push PI output on that tree is empty except unrelated sizzle/xpath toString comments.",
+    "squash_member_decomposition": "PASS — BIC has exactly one parent; git log --merges parent..BIC is empty. No reconstructable merge members, cherry-picks, or pre-serializer public commits. The large accompanying rewrite of xpath.js/dom-handler.js does not hide a finer public introducer of the PI serializer.",
+    "affected_release_membership": "PASS — git merge-base --is-ancestor 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 0.1.0 (and 0.6.0, 0.8.12, 0.9.0, 0.9.9) succeeds. git tag --contains that SHA starts at 0.1.0. Tag 0.1.0:dom.js still has case PROCESSING_INSTRUCTION_NODE: return buf.push(\"<?\",node.nodeName,\" \",node.data,\"?>\"). Matches GHSA/CVE ranges xmldom <=0.6.0, @xmldom/xmldom <0.8.13, and @xmldom/xmldom >=0.9.0,<0.9.10.",
+    "fixed_release_membership": "PASS — 7207a4b0e0bcc228868075ed991665ef9f73b1c2 is an ancestor of tag 0.9.10 and not of 0.9.9; git tag --contains starts at 0.9.10. LTS counterpart c6874ab39b95852036ed65f0422c1893c5a01775 is an ancestor of tag 0.8.13 and not of 0.8.12 or 0.6.0; git tag --contains starts at 0.8.13. Neither fix is in 0.6.0, matching first_patched_version null for package xmldom.",
+    "direct_fix_or_unpatched": "PASS — advisory-referenced direct fix 7207a4b0e0bcc228868075ed991665ef9f73b1c2 (parent fda7cc313de30243fea35cada64e0bb12099c2a1) inserts requireWellFormed guards in the PROCESSING_INSTRUCTION_NODE case, throwing InvalidStateError when node.data contains ?> before the existing buf.push('<?', node.target, ' ', node.data, '?>'). LTS c6874ab39b95852036ed65f0422c1893c5a01775 (parent b397540889086da868c30c366ad5c220d1a750c7) adds the ?> check only. Default serialization remains verbatim unless {requireWellFormed:true} is passed, which is the vendor-documented patched behavior, not an unpatched finding.",
+    "bic_only_ai_attribution": "PASS — git cat-file -p 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432: author and committer are jindw <jindw@xidea.org>, empty subject/body, no Co-Authored-By/Generated-with/Signed-off-by trailers, no notes, no bot identity. Named human on the BIC object with no generator marker supports NOT_AI. Search was not inverted from AI-marked commits."
+  },
+  "findings": [
+    "Real CWE-91 PI delimiter injection: unvalidated PI data serialized between <? and ?> so ?> in data becomes a PI terminator and following markup is reparsed as elements (GHSA PoC <?a ?><z/><?q ?>).",
+    "BIC 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 is the first public commit that adds XMLSerializer/serializeToString and the unguarded PROCESSING_INSTRUCTION_NODE concatenation; parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 only stored PI data.",
+    "Affected objects include 0.1.0 through 0.6.0, 0.8.12, and 0.9.9; patched objects are 0.8.13 (c6874ab39b95852036ed65f0422c1893c5a01775) and 0.9.10 (7207a4b0e0bcc228868075ed991665ef9f73b1c2).",
+    "BIC authorship is human jindw <jindw@xidea.org> dated 2012-01-04T12:45:15+00:00 with no AI/bot trailers; primary NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

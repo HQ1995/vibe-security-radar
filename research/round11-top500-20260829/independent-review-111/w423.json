@@ -1,0 +1,29 @@
+{
+  "worker": "w423",
+  "review_agent_id": "r111_w423",
+  "class_id": "alias-6201a37efcc390bc5e77cd78",
+  "case_id": "GHSA-77vg-94rm-hx3p",
+  "repo": "sveltejs/devalue",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-770 DoS. GHSA-77vg-94rm-hx3p is GitHub-reviewed, withdrawn_at=null; CVE.org CVE-2026-42570 state=PUBLISHED (not withdrawn/rejected). Source: devalue.parse(serialized) JSON.parse's attacker-controlled text then unflatten(). Sink: unflatten SPARSE branch treats value[0]===-7 as [-7, length, idx, val, ...] and executes new Array(len) with untrusted length. On V8, many small SPARSE entries with large declared lengths eagerly allocate contiguous backing stores far beyond payload size and exhaust memory. Fix 206ca6712fbc380a4571c59de9ab04b91110792d documents this in src/parse.js and adds ~20GB implied-allocation regression tests in test/index.test.js.",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the SPARSE parse path and the eager allocation is 819f1ac7475ab37547645cfb09bf2f678a799cf0. git log -S 'const array = new Array(len)' -- src/parse.js and git log -L 218,238:src/parse.js at 14933f78ff6b712829162628682b0a1993e75d19 both first add those lines in 819f1ac7475ab37547645cfb09bf2f678a799cf0. Diff vs parent adds src/parse.js SPARSE branch including const len = value[1] and const array = new Array(len), plus src/constants.js export const SPARSE = -7. 40f1db13afdd65c8e2ebd02f684276c273ef81b0 is later (validates len/idx, still new Array(len)) and is neither BIC nor fix.",
+    "immediate_parent_absence": "PASS: 819f1ac7475ab37547645cfb09bf2f678a799cf0 has exactly one parent, 0f04d4d678eac39ad5d7a07d1956275d7874e81c. Parent src/parse.js has parse()->unflatten() and only new Array(value.length) for dense arrays; git grep on that parent tree finds no SPARSE symbol and no new Array(len). Tag v5.6.2 (fcf4e88275f2e2e45b9ea70ffaa5247c8f55f057) is an ancestor of the parent and likewise has no SPARSE parse branch.",
+    "squash_member_decomposition": "PASS: BIC message is GitHub 'Merge commit from fork' listing private-fork subjects (better encoding for sparse arrays, misc improvements, nits, rename, more validity, less bad) but the object has a single parent, so it is a squash, not a two-parent merge. git log --all --grep on those unique subjects, GitHub commit 819f1ac7475ab37547645cfb09bf2f678a799cf0, and /commits/.../pulls all recover no separate public member SHA. The first surviving public object is therefore the atomic BIC; squash_decomposed remains false.",
+    "affected_release_membership": "PASS: Advisory/CVE range >=5.6.3 and <5.8.1 / <=5.8.0 matches tag objects. 819f1ac7475ab37547645cfb09bf2f678a799cf0 is not an ancestor of v5.6.2 (fcf4e88275f2e2e45b9ea70ffaa5247c8f55f057) and is an ancestor of v5.6.3 (a4a37d208a4d1bdd0d58c82e5644c87cab855259), the first tag that contains it (then v5.6.4, v5.7.0, v5.7.1, v5.8.0). v5.6.3^{}:src/parse.js still has new Array(len); v5.8.0^{} 14933f78ff6b712829162628682b0a1993e75d19:src/parse.js:226 still has const array = new Array(len). npm 5.6.2 is the prior published tag, not the unreleased package.json version string on the BIC tree.",
+    "fixed_release_membership": "PASS: First tag containing 206ca6712fbc380a4571c59de9ab04b91110792d is v5.8.1 (annotated tag 09dfda755bd14ccfb1702af56318d7d306da826d, target 796ea83a76eb7e0f2af376f9c2c875f1d057f50f). v5.8.0 does not contain the fix. v5.8.0..v5.8.1 is only 206ca6712fbc380a4571c59de9ab04b91110792d then Version Packages (#152). v5.8.1^{}:src/parse.js uses const array = [] plus MAX_ARRAY_INDEX dictionary-mode trick and array.length = len; GitHub release v5.8.1 cites 206ca67 as 'fix: force sparse arrays to allocate sparsely'. First patched npm version 5.8.1 matches.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is 206ca6712fbc380a4571c59de9ab04b91110792d (parent 14933f78ff6b712829162628682b0a1993e75d19 = v5.8.0). It removes new Array(len) from the SPARSE branch, hydrates into [], forces dictionary elements via array[MAX_ARRAY_INDEX]/delete, then assigns array.length = len. That is the GHSA/CVE referenced commit; not unpatched.",
+    "bic_only_ai_attribution": "PASS: Judged only on BIC 819f1ac7475ab37547645cfb09bf2f678a799cf0. Author Elliott Johnson <hello@ell.iott.dev> (GitHub user elliott-with-the-longest-name-on-github); committer GitHub <noreply@github.com> / web-flow (platform squash committer, not an AI generator); sole Co-authored-by is Rich Harris <richard.a.harris@gmail.com>. Commit object/message has no Generated-with, Copilot, Cursor, ChatGPT, or other AI/bot co-author marker. Named humans on the actual BIC support NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-42570 is PUBLISHED on CVE.org (CNA GitHub_M); GHSA-77vg-94rm-hx3p is reviewed with withdrawn_at null. This is a real sparse-array allocation DoS, not a withdrawn advisory.",
+    "Complete path: parse() -> JSON.parse -> unflatten hydrate of SPARSE [-7, len, ...] -> new Array(len) with attacker-chosen len; V8 eager contiguous allocation yields CWE-770 memory exhaustion.",
+    "Public BIC is squash-from-fork 819f1ac7475ab37547645cfb09bf2f678a799cf0; immediate parent 0f04d4d678eac39ad5d7a07d1956275d7874e81c lacks SPARSE and new Array(len). No finer public member commit is reconstructable.",
+    "40f1db13afdd65c8e2ebd02f684276c273ef81b0 only adds integer/range checks and keeps the eager constructor; it is not the introducer or the fix.",
+    "Release membership independently matches the advisory: first affected tag v5.6.3, last affected v5.8.0, first fixed v5.8.1 via 206ca6712fbc380a4571c59de9ab04b91110792d.",
+    "BIC authorship signals are human (Elliott Johnson, Co-authored-by Rich Harris) with GitHub as merge committer and no AI trailers; verdict NOT_AI is supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

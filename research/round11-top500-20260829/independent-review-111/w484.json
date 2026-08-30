@@ -1,0 +1,28 @@
+{
+  "worker": "w484",
+  "review_agent_id": "r111_w484",
+  "class_id": "alias-e7045e68192add7278e098de",
+  "case_id": "GHSA-wh4c-j3r5-mjhp",
+  "repo": "xmldom/xmldom",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-91 XML injection. Attacker-controlled `]]>` reaches a CDATASection via unvalidated `Document.createCDATASection` or CharacterData mutation (`appendData`/`replaceData`/`insertData`/`.data`/`.textContent`), then `XMLSerializer` emits `'<![CDATA[' + node.data + ']]>'` verbatim so the terminator closes the section and the remainder becomes markup. Confirmed at tag 0.9.8 `lib/dom.js` `createCDATASection` (no `]]>` check) and `case CDATA_SECTION_NODE: return buf.push(g.CDATA_START, node.data, g.CDATA_END)`. CVE-2026-34601 cveMetadata.state=PUBLISHED (cveawg.mitre.org, not rejected). GHSA-wh4c-j3r5-mjhp withdrawn_at is null. Parse-path CDATA is out of scope (SAX stops at first `]]>`).",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the serializer sink is 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 (2012-01-04, jindw <jindw@xidea.org>), which newly adds `function XMLSerializer(){}` and `case CDATA_SECTION_NODE: return buf.push( '<![CDATA[',node.data,']]>');` in `dom.js`. `git log -S '<![CDATA['` shows this as the earliest hit. Single parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 (also the clone root). Not a merge. The commit also rewrites unrelated files, but no finer public object exists that first wrote those serializer lines.",
+    "immediate_parent_absence": "PASS: Parent tree 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7:dom.js already has unvalidated `Document.prototype.createCDATASection` (lines 546-551) and CDATASection, but `git grep` of serialize/XMLSerializer/`<![CDATA[` over `*.js` is empty. No CDATA serialization sink, so the advisory mechanism is absent on the parent.",
+    "squash_member_decomposition": "PASS: `git rev-list --parents -n 1 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432` yields exactly one parent `5d770d4c04466fd4a99b0762d28b8d1d111ba0c7`. Not a merge; empty message; no reconstructable inner members between repo root and this object. `decomposed_shas` remain empty.",
+    "affected_release_membership": "PASS: BIC 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 is an ancestor of tags 0.6.0 (`c80a161172cc4d8733583bf0cf59abfa589f6d9e`), 0.8.11 (`c0f14011c7cf93af60b2541898065b7136594f6b^{commit}`), and 0.9.8 (`4a1e6e9a74d578fab0173ff89f674e8a22c5699e^{commit}`). Those tags still emit CDATA verbatim (`0.6.0`/`0.8.11` `return buf.push( '<![CDATA[',node.data,']]>');`; `0.9.8` `buf.push(g.CDATA_START, node.data, g.CDATA_END)`). Matches GHSA ranges xmldom<=0.6.0, @xmldom/xmldom<0.8.12 and >=0.9.0,<0.9.9.",
+    "fixed_release_membership": "PASS: Direct fix 2b852e836ab86dbbd6cbaf0537f584dd0b5ac184 is an ancestor of tag 0.9.9 (`7ffb16bce1170c7314151379531147637ab772a1^{commit}`) and not of 0.9.8. 0.8.x backport ed08df7572f4236d4fd88d16063c3fd8f59c7884 is an ancestor of 0.8.12 (`189cb78a83e81e1515880988a399e863a8be85ac^{commit}`) and not of 0.8.11. 0.9.9 `createCDATASection` throws on `]]>` and serializes with `node.data.replace(/]]>/g, ']]]]><![CDATA[>')`; 0.8.12 has the same two mitigations. Legacy 0.6.0 has no patched descendant, matching first_patched_version null.",
+    "direct_fix_or_unpatched": "PASS: Direct closing commit on the 0.9 line is 2b852e836ab86dbbd6cbaf0537f584dd0b5ac184 (`fix: XML injection via unsafe CDATA serialization (GHSA-wh4c-j3r5-mjhp) (#969)`): `data.indexOf(']]>') !== -1` throws INVALID_CHARACTER_ERR in `createCDATASection`, and CDATA serialization splits `]]>` to `]]]]><![CDATA[>`. Same pair in backport ed08df7572f4236d4fd88d16063c3fd8f59c7884 (#968). Later 0.9.10 requireWellFormed/splitCDATASections work is a follow-on, not the first closure.",
+    "bic_only_ai_attribution": "PASS: BIC 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 object has author and committer jindw <jindw@xidea.org>, timestamp 1325681115 +0000, empty message, no Co-Authored-By/Generated-with/bot/generator trailers. Named human on the actual BIC; 2026 fix authorship (Christian Bewernitz / GitHub noreply) is not used. Verdict NOT_AI."
+  },
+  "findings": [
+    "Bundle sha256 a1f802c881bc746258c22c1a20a7a31facca5f590cf61f220d28ac8bab8ed47b and primary sha256 60f5a335304efe7ea59ddaf26d2ad5ca917a7087c881046c2e6c22b059e79520 match the assignment.",
+    "Source-to-sink is CDATA terminator in node.data -> verbatim XMLSerializer CDATA emission; mutation APIs exist on the BIC CharacterData prototype, so the sink is sufficient even if createCDATASection later gained a guard.",
+    "Introducer 5fb8fb92b2cb9d7c6b8b5477900e90619b14e432 / parent 5d770d4c04466fd4a99b0762d28b8d1d111ba0c7 / fix 2b852e836ab86dbbd6cbaf0537f584dd0b5ac184 / 0.8 backport ed08df7572f4236d4fd88d16063c3fd8f59c7884 match the primary.",
+    "CVE-2026-34601 is PUBLISHED; GHSA-wh4c-j3r5-mjhp is not withdrawn. CNA prose that 'xmldom 0.6.0' is patched is contradicted by the same record's affected range and by tag 0.6.0 still containing the verbatim CDATA sink; that is description noise, not a disproved bug.",
+    "BIC has no AI marker; primary verdict NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

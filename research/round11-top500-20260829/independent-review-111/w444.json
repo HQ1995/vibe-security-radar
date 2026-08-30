@@ -1,0 +1,29 @@
+{
+  "worker": "w444",
+  "review_agent_id": "r111_w444",
+  "class_id": "alias-887158b2240e3e92704a6c59",
+  "case_id": "GHSA-fxxf-w25w-mcx2",
+  "repo": "jenkinsci/credentials-binding-plugin",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-22 residual of SECURITY-3672. Source is attacker-controlled FileCredentials.getFileName() supplied to FileBinding.write / ZipFileBinding.write. Incomplete sanitization at BIC 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed uses controller-local java.io.File.getName(), which on Unix does not treat backslash as a separator, then hudson.FilePath.child(baseName) on the node. FilePath.resolvePathIfRelative converts '\\' to '/' on Unix and FilePath.normalize() collapses '..' across both separators, so payloads such as '..\\\\..\\\\p0wn3d.txt' escape UnbindableDir (WorkspaceList.tempDir secrets directory) and copyFrom/unzipFrom write or extract outside that directory. Vendor https://www.jenkins.io/security/advisory/2026-05-27/#SECURITY-3790 and CVE.org CVE-2026-48922 (state PUBLISHED) confirm arbitrary node-filesystem writes and possible RCE when a low-privileged user can supply file/zip credentials to a job on the built-in node. Direct fix e52b2328afdebcb69852687392fde94b174eaec4 switches to new FilePath(new File(...)).getName(), whose getName() splits on both '/' and '\\\\'.",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the residual mechanism is single-parent commit 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed (tag 720.v3f6decef43ea_). git log -S 'new File(credentials.getFileName()).getName()' on FileBinding.java and ZipFileBinding.java shows that string is added only there and removed only at e52b2328afdebcb69852687392fde94b174eaec4. The commit is a 3-file SECURITY-3672 patch (two production writes plus Security3672Test.java), not a move, refactor, revert, import, or squash aggregate.",
+    "immediate_parent_absence": "PASS: Immediate parent 80e905ef14eb17d43c454b65f1f9d4b9008c6743 (tag 719.v80e905ef14eb_) has FilePath secret = dir.child(credentials.getFileName()) in both bindings and contains neither java.io.File.getName() basename extraction nor dir.child(baseName). git diff 80e905ef14eb17d43c454b65f1f9d4b9008c6743..3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed is the first insertion of that residual sanitization. Parent unsanitized raw-name writes are SECURITY-3672, not this File.getName()/FilePath separator-mismatch mechanism.",
+    "squash_member_decomposition": "PASS: git rev-list --parents -n 1 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed yields exactly one parent 80e905ef14eb17d43c454b65f1f9d4b9008c6743. No merge, no reconstructable squash members, decomposed_shas empty.",
+    "affected_release_membership": "PASS: refs/tags/720.v3f6decef43ea_ is a commit tag resolving exactly to BIC 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed. That tree still has String baseName = new File(credentials.getFileName()).getName() in FileBinding.java:54 and ZipFileBinding.java:61. Vendor/CVE affected boundary is Credentials Binding Plugin <=720.v3f6decef43ea_. Parent tag 719.v80e905ef14eb_ is the prior incomplete-fix predecessor.",
+    "fixed_release_membership": "PASS: refs/tags/725.ve52b_2328a_fde is a commit tag resolving exactly to e52b2328afdebcb69852687392fde94b174eaec4. That tree has new FilePath(new File(credentials.getFileName())).getName() in both bindings and no File.getName() basename. git merge-base --is-ancestor 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed e52b2328afdebcb69852687392fde94b174eaec4 succeeds. Only the SECURITY-3790 commit between 720 and 725 touches those two production files. Vendor first patched version is 725.ve52b_2328a_fde.",
+    "direct_fix_or_unpatched": "PASS: Direct production fix is e52b2328afdebcb69852687392fde94b174eaec4 (author/committer Daniel Beck, message [SECURITY-3790], parent 2965546b586225567b52cfc9b170b9f448729d32). git diff of that commit replaces new File(...).getName() with new FilePath(new File(...)).getName() in both write() methods and adds SECURITY-3790 tests for backslash traversal plus degenerate '.', '..', empty, '/', '\\\\' names. Not unpatched.",
+    "bic_only_ai_attribution": "PASS: BIC object 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed has author and committer Kevin-CB <kguerroudj@cloudbees.com>, GPG signature, and message body exactly 'SECURITY-3672' with empty trailers. git cat-file -p has no Co-Authored-By, Generated-with, bot identity, or other AI/generator marker. Named human on the actual BIC; AI role is absent, supporting NOT_AI. Attribution was not inverted from an AI-marked commit."
+  },
+  "findings": [
+    "CVE-2026-48922 / GHSA-fxxf-w25w-mcx2 / SECURITY-3790 is a published, non-withdrawn path-traversal in credentials-binding FileBinding and ZipFileBinding; CVE.org cveMetadata.state is PUBLISHED with Jenkins as CNA.",
+    "Vendor advisory states this is an incomplete fix of SECURITY-3672; 720.v3f6decef43ea_ and earlier do not properly sanitize file/zip credential names; 725.ve52b_2328a_fde is the first patched release.",
+    "Atomic BIC of the residual mechanism is 3f6decef43ea5eebde2251ec5ea81b7eeeaa21ed: first write of new File(credentials.getFileName()).getName() then dir.child(baseName) in both binding classes, with SECURITY-3672 tests only for '../../../../' payloads.",
+    "Immediate parent 80e905ef14eb17d43c454b65f1f9d4b9008c6743 uses raw dir.child(credentials.getFileName()) and does not contain the File.getName() residual.",
+    "Direct fix e52b2328afdebcb69852687392fde94b174eaec4 is the SECURITY-3790 sanitization using FilePath.getName() (both separators) plus backslash and degenerate-name tests.",
+    "BIC authorship is named human Kevin-CB <kguerroudj@cloudbees.com> with no AI/bot/generator/co-author markers; independent verdict is NOT_AI, matching the primary."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

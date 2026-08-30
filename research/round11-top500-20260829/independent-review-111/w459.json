@@ -1,0 +1,28 @@
+{
+  "worker": "w459",
+  "review_agent_id": "r111_w459",
+  "class_id": "alias-b1eb0e4cc547b8a4c33d7ca4",
+  "case_id": "GHSA-jq42-7mfv-hm57",
+  "repo": "rust-lang/cargo",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-61 cache-poisoning sink. CVE.org CVE-2026-5223 is state=PUBLISHED (not rejected/withdrawn). Vendor advisory https://blog.rust-lang.org/2026/05/25/cve-2026-5223/ and GHSA-jq42-7mfv-hm57 describe a third-party-registry .crate tarball that extracts one level below its own <crate>-<version> cache dir and overwrites a sibling crate in the shared registry source cache; crates.io forbids symlink uploads so it is out of scope. Source-to-sink: RegistrySource unpacks under the shared src parent; a symlink entry under the crate prefix plus a later in-prefix path that traverses that symlink writes sibling cache contents, later compiled as that crate's source. 0.96.0 still calls entry.unpack_in(parent) in src/cargo/sources/registry/mod.rs with no EntryType rejection.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is 9fba127e4feafdece943637a85ab67fa7af02b02 (single parent 99c8768f801457fac6f56a6c1fe676e6d63aa529, not a merge). git log -S tar.unpack --reverse on registry.rs/mod.rs starts at this object: unpack_package switched from File::create + io::util::copy of each tar member to tar.unpack(&dst.dir_path()), i.e. type-aware extraction into the shared registry-source parent, explicitly to preserve executable bits. Original unpack at 18e884d8d (and the immediate parent) only created ordinary files. Later 0b9e38225957337997cde1270b3ad5f84a14182a added a lexical starts_with(prefix) check and entry.unpack_in(parent) but did not reject symlink entry types, so it is incomplete hardening, not the BIC.",
+    "immediate_parent_absence": "PASS: git show 99c8768f801457fac6f56a6c1fe676e6d63aa529:src/cargo/sources/registry.rs unpack_package iterates tar.files(), joins filename_bytes() onto dst.dir_path(), mkdir_recursive, then File::create + copy. No Archive::unpack, unpack_in, or symlink/entry-type handling; symlink members cannot be materialized and followed. Mechanism is absent at the immediate parent tree.",
+    "squash_member_decomposition": "PASS: 9fba127e4feafdece943637a85ab67fa7af02b02 is a normal one-parent commit (rev-list --min-parents=2 count 0). Public history has no reconstructable finer member that first wrote tar.unpack in registry unpack_package; the laundry-list message is a bundled feature commit, not a merge/squash whose members survive as separate public objects.",
+    "affected_release_membership": "PASS: merge-base --is-ancestor 9fba127e4feafdece943637a85ab67fa7af02b02 0.1.0 (efb482d9ed820e26e79329d73bdd0a26c4cebf41) succeeds, so the BIC is in every shipped Cargo tag from 0.1.0 through 0.96.0 (f2d3ce0bd7f24a49f8f72d9000448f8838c4e850). 0.96.0 still unpacks via unpack_in without EntryType filtering. Matches GHSA cargo <0.97.0 and CVE.org Cargo >=1.0.0 <1.96.0 / vendor 'all Cargo shipped before Rust 1.96.0'.",
+    "fixed_release_membership": "PASS: 312d5575ac924de000b3582ed0e7520dea216894 is not an ancestor of tag 0.96.0 and is an ancestor of tag 0.97.0 (30a34c6821b57de0aaec83a901aca39f88f6778c, parents include 312d5575ac924de000b3582ed0e7520dea216894). 0.97.0 src/cargo/sources/registry/mod.rs imports tar::EntryType and rejects non Regular/Directory entries before unpack_in. Matches GHSA first_patched_version 0.97.0 and vendor/CVE Rust 1.96.0.",
+    "direct_fix_or_unpatched": "PASS: Direct fix that closes the symlink sink is 312d5575ac924de000b3582ed0e7520dea216894 (author Josh Triplett, committer Emily Albini): match entry.header().entry_type() allows only Regular | Directory, else bail. Parent of that commit has no EntryType check. Master source of the same patch is 285cebf58911eca5b7f177f5d0b1c53e1f646577 on https://github.com/rust-lang/cargo/pull/17031; that SHA is not an ancestor of Cargo 0.97.0, so the first-patched-tag object is 312d5575ac924de000b3582ed0e7520dea216894.",
+    "bic_only_ai_attribution": "PASS: git cat-file -p 9fba127e4feafdece943637a85ab67fa7af02b02: author and committer Alex Crichton <alex@alexcrichton.com>, dated 2014, parent 99c8768f801457fac6f56a6c1fe676e6d63aa529, no Co-Authored-By / Generated-with / bot / generator trailer. Attribution is from this BIC object only; no inverted AI-commit search. Named human authorship with no AI marker supports NOT_AI."
+  },
+  "findings": [
+    "CVE-2026-5223 / GHSA-jq42-7mfv-hm57 is a live published advisory: third-party-registry tarball symlink following can overwrite a sibling crate's cache under the shared registry source directory; crates.io is excluded by upload policy.",
+    "BIC is 9fba127e4feafdece943637a85ab67fa7af02b02, the first surviving write of Archive::unpack into the shared src parent; parent 99c8768f801457fac6f56a6c1fe676e6d63aa529 only File::create-copies members as ordinary files.",
+    "0b9e38225957337997cde1270b3ad5f84a14182a is incomplete lexical path-prefix hardening that kept unpack_in and did not introduce the mechanism.",
+    "Fix in first patched Cargo 0.97.0 / Rust 1.96.0 is 312d5575ac924de000b3582ed0e7520dea216894 rejecting symlink and other unexpected tar entry types; PR 17031's 285cebf58911eca5b7f177f5d0b1c53e1f646577 is the master equivalent.",
+    "BIC commit object is human-authored by Alex Crichton with no AI/bot/generator markers, so the primary NOT_AI verdict stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

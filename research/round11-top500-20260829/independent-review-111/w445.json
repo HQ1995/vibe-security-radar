@@ -1,0 +1,42 @@
+{
+  "worker": "w445",
+  "review_agent_id": "r111_w445",
+  "class_id": "alias-8d6078ff40410b86338dad03",
+  "case_id": "GHSA-86vw-mfpg-wwv9",
+  "repo": "jsonata-js/jsonata",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-1333. GHSA-86vw-mfpg-wwv9 (withdrawn_at null) and CVE-2026-52746 cveMetadata.state=PUBLISHED describe $toMillis ISO-8601 validation ReDoS. Source: attacker-controlled timestamp into functionToMillis / later toMillis with no picture. Sink: iso8601regex.test(timestamp) on '^\\d{4}(-[01]\\d)*(-[0-3]\\d)*(T[0-2]\\d:[0-5]\\d:[0-5]\\d)*(\\.\\d+)?([+-][0-2]\\d:?[0-5]\\d|Z)?$' whose three * optional groups enable superlinear backtracking on non-matching near-matches. Direct fix d6ffc17cb16a8e53c222205bd274624e919cce0b changes those three * to ?.",
+    "atomic_bic": "PASS: First writer of the patched * groups is one-parent 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2 (parent 27e38f470f9c7bc69cee01064ebef9262b1b3559), GitHub PR 141 member 'Update regex, add additional test cases and move some over from sift'. Primary introducer c1721bfacb9a13833248309aa31fe3478b04bc41 is not a BIC: it is a module-split move/refactor that copies the already-present regex from src/jsonata.js into src/datetime.js. Landing squash 283137ca60ba33df0dea92f6a399aacdbedc7b51 is not a BIC (squash aggregate; members reconstructable).",
+    "immediate_parent_absence": "PASS: git show 27e38f470f9c7bc69cee01064ebef9262b1b3559:jsonata.js has iso8601regex as the myintervals nested pattern, not '(-[01]\\d)*(-[0-3]\\d)*(T[0-2]\\d:[0-5]\\d:[0-5]\\d)*'. git grep on that parent finds no * date/time groups. Primary parent check fails: 5e65aff620167854810cde88c2a2580403d9eb38:src/jsonata.js:4825 already contains the identical vulnerable regex and iso8601regex.test(timestamp).",
+    "squash_member_decomposition": "PASS: PR 141 merge_commit_sha 283137ca60ba33df0dea92f6a399aacdbedc7b51 is a one-parent squash whose message lists two bullets; GitHub /pulls/141/commits and clone objects reconstruct 27e38f470f9c7bc69cee01064ebef9262b1b3559 (different regex), 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2 (first * pattern), and merge 0ca041962b81ef0ea38edddc2dee734486fea710 whose tree 71c866082af6a6a91bfab48a6b9c30b7c0ba1cf0 equals the squash tree. 06f323d7 is ancestor of 0ca04196. Primary squash_decomposed=false is wrong.",
+    "affected_release_membership": "PASS: Squash 283137ca60ba33df0dea92f6a399aacdbedc7b51 is in v1.5.1 (jsonata.js has the * regex) and later v1/v2 tags including v1.8.8 and v2.1.1. Immediate prior tag v1.5 (a753f42d7958186c6da7c4208303c8efd4b6dda8) still has the linear regex '^\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d\\.\\d+([+-][0-2]\\d:[0-5]\\d|Z)$'. Primary claim that v1.5.4 lacks iso8601regex/toMillis is false (present in jsonata.js). GHSA range '< 1.8.9' is imprecise for pre-v1.5.1 tags.",
+    "fixed_release_membership": "PASS: git merge-base --is-ancestor d6ffc17cb16a8e53c222205bd274624e919cce0b v2.2.0 succeeds and fails for v2.1.1; v2.2.0 datetime.js has ? groups. v1 backport f659e42c24e680f61b3c449dc0415b918a020869 is in v1.8.9 not v1.8.8; v1.8.9 datetime.js has the ? regex. Release notes for v2.2.0 cite PR 793 / GHSA-86vw-mfpg-wwv9; v1.8.9 cites PR 825.",
+    "direct_fix_or_unpatched": "PASS: Direct mainline fix is d6ffc17cb16a8e53c222205bd274624e919cce0b (PR 793 title 'fix iso8601 regex pattern', one-line * to ? on src/datetime.js). Advisory-listed 80ba95d170f74e3f20f4f36b8b77d8c85cea7686 is PR 782 fractional-second parseInteger fix, not regex-complexity. v1 equivalent is f659e42c24e680f61b3c449dc0415b918a020869.",
+    "bic_only_ai_attribution": "PASS: AI judged only on 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2: author and committer Matt Bailey <baileym1@uk.ibm.com>, message has no Co-Authored-By/Generated-with/bot/generator trailer. Named human, no AI marker => NOT_AI. (Landing squash 283137ca author Matt Bailey <mattbaileyuk@users.noreply.github.com>, committer Andrew Coleman <andrew_coleman@uk.ibm.com>, also unmarked. Primary BIC c1721bf is likewise unmarked humans but is not the BIC.)"
+  },
+  "findings": [
+    "CVE-2026-52746 is PUBLISHED (cveawg.mitre.org); GHSA-86vw-mfpg-wwv9 withdrawn_at is null. Real $toMillis ISO-8601 regex ReDoS, not FALSE_POSITIVE.",
+    "Primary introducer_sha c1721bfacb9a13833248309aa31fe3478b04bc41 is a move/refactor ('enable higher-order extension functions') that copies iso8601regex and toMillis from already-vulnerable src/jsonata.js into src/datetime.js. Immediate parent 5e65aff620167854810cde88c2a2580403d9eb38:src/jsonata.js:4825 already has the * regex and iso8601regex.test(timestamp).",
+    "True first-write of the patched mechanism is reconstructable PR 141 member 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2, which replaced the myintervals regex with '^\\d{4}(-[01]\\d)*(-[0-3]\\d)*(T[0-2]\\d:[0-5]\\d:[0-5]\\d)*(\\.\\d+)?([+-][0-2]\\d:?[0-5]\\d|Z)?$' while functionToMillis still called iso8601regex.test(timestamp).",
+    "PR 141 landed as squash 283137ca60ba33df0dea92f6a399aacdbedc7b51 (tree-identical to merge 0ca041962b81ef0ea38edddc2dee734486fea710). Primary squash_decomposed=false missed these public members.",
+    "Earliest tagged object with the * regex is v1.5.1; v1.5 still has the linear regex. Primary evidence that the feature starts at v1.6.0 / that v1.5.4 lacks toMillis is path-scoped to datetime.js and is wrong.",
+    "Direct fix remains d6ffc17cb16a8e53c222205bd274624e919cce0b in v2.2.0 not v2.1.1; v1 backport f659e42c24e680f61b3c449dc0415b918a020869 in v1.8.9 not v1.8.8. 80ba95d170f74e3f20f4f36b8b77d8c85cea7686 is not the regex fix.",
+    "Corrected BIC 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2 is named-human Matt Bailey with no AI/bot/generator marker, so the NOT_AI verdict stands after BIC correction."
+  ],
+  "corrected_fields": {
+    "flaw_origin": "The patched ReDoS regex with repeated optional * groups was first written in 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2 (PR 141 member; parent 27e38f470f9c7bc69cee01064ebef9262b1b3559 still has the myintervals nested ISO-8601 pattern and no '(-[01]\\d)*' groups). That commit keeps functionToMillis(timestamp) calling iso8601regex.test(timestamp). GitHub PR 141 reconstructs members 27e38f470f9c7bc69cee01064ebef9262b1b3559, 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2, and merge 0ca041962b81ef0ea38edddc2dee734486fea710; the public landing squash 283137ca60ba33df0dea92f6a399aacdbedc7b51 has the same tree as 0ca04196 and is therefore not the BIC. Later c1721bfacb9a13833248309aa31fe3478b04bc41 only moves the already-vulnerable regex and $toMillis path from src/jsonata.js into src/datetime.js.",
+    "introducer_sha": "06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2",
+    "introducer_parent": "27e38f470f9c7bc69cee01064ebef9262b1b3559",
+    "introducer_parent_absent": true,
+    "squash_decomposed": true,
+    "decomposed_shas": [
+      "27e38f470f9c7bc69cee01064ebef9262b1b3559",
+      "06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2",
+      "0ca041962b81ef0ea38edddc2dee734486fea710"
+    ],
+    "ai_marker": "absent: BIC 06f323d7c7a7ce7efc8c97407053f9f66e0cd9e2 author and committer are Matt Bailey <baileym1@uk.ibm.com>; message is only 'Update regex, add additional test cases and move some over from sift' with no Co-Authored-By, Generated-with, bot identity, or other AI marker"
+  },
+  "remaining_gap": null
+}

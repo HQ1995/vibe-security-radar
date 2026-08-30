@@ -1,0 +1,27 @@
+{
+  "worker": "w390",
+  "review_agent_id": "r111_w390",
+  "class_id": "alias-30842547202bb7b00688a14b",
+  "case_id": "GHSA-jv4p-mhmp-69vw",
+  "repo": "3em0/cve_repo",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-330 in chatchat-space/Langchain-Chatchat. Upload handler POST /v1/files calls _get_file_id which returns base64.urlsafe_b64encode(f\"{purpose}/{today}/{filename}\".encode()).decode() with no nonce; _get_file_path base64-decodes that id into BASE_TEMP_DIR/openai_files/{purpose}/{date}/{filename}; GET /v1/files/{file_id}/content and DELETE /v1/files/{file_id} consume the constructed id with no ownership check. CVE-2026-7847 cveMetadata.state=PUBLISHED (not rejected/withdrawn); GHSA-jv4p-mhmp-69vw withdrawn_at=null. PoC in issue #5464 and 3em0/cve_repo Langchain-Chatchat/Vuln-3-Predictable-File-ID.md.",
+    "atomic_bic": "PASS: Smallest surviving public first-write is PR #3573 member 4507c7078486ee95778bad6a96840f421dec98c0 (single parent a1429a350a1433d548680f2a712b2aec205562e4). It first adds _get_file_id, _get_file_path, content, and delete routes. Later 5c650a8dc342c76531e8dcf23d116f9dc81547d9 is a rename of openai_routes.py (status=renamed, additions=0, deletions=0) and is not the BIC.",
+    "immediate_parent_absence": "PASS: Parent tree a1429a350a1433d548680f2a712b2aec205562e4 chatchat-server/chatchat/server/api_server/openai_routes.py ends in a deprecated stub `@openai_router.post(\"/files\", deprecated=\"暂不支持\") async def files(): ...` and contains no _get_file_id, no urlsafe_b64encode of purpose/date/filename, and no content/delete file routes.",
+    "squash_member_decomposition": "PASS: GitHub PR #3573 lists exactly one commit 4507c7078486ee95778bad6a96840f421dec98c0. Merge/squash landing 27f0f512a37db4b816da543ca566b0e70d395f4d has the same single parent a1429a350a1433d548680f2a712b2aec205562e4 and an identical 107/5 patch (member .diff equals landing .diff). No finer public member exists.",
+    "affected_release_membership": "PASS: Tag v0.3.0 object 9d8acafef8f41f5658828b5850731d121b45b38a contains the deterministic encoder. Tag v0.3.1 and PyPI langchain-chatchat 0.3.1, 0.3.1.1, 0.3.1.2, 0.3.1.3 retain it. GHSA range is <=0.3.1.3; CVE lists 0.3.1.0–0.3.1.3 (no PyPI artifact named 0.3.1.0; 0.3.1 is the matching release).",
+    "fixed_release_membership": "PASS: GHSA first_patched_version is null / patched versions None. No git tag or PyPI release after 0.3.1.3 removes the encoder. Master pyproject version remains 0.3.1.3.",
+    "direct_fix_or_unpatched": "PASS: Unpatched. Issue chatchat-space/Langchain-Chatchat#5464 has no linked PR/commit and was auto-closed stale on 2026-05-27T22:06:36Z by github-actions[bot]. File at master HEAD 49165d6af4438aa7e8a1f71ce276db55f4405151 still implements the same _get_file_id encoder (blob matches 2a71d05f53a140df0a226208a7b4c4bf87c9976b). Potential fix: opaque random file ids plus server-side ownership checks.",
+    "bic_only_ai_attribution": "PASS: BIC 4507c7078486ee95778bad6a96840f421dec98c0 author and committer are liunux4odoo <liunux@qq.com>; message is only `添加 openai 兼容的 files 接口` with no Co-Authored-By, Generated-with, bot, or generator trailer. PR #3573 user is liunux4odoo. Disclosure clone commit 58b5c1aba218aec104463c83ca594bbe13ff237a (Co-Authored-By: Claude Opus 4.6) only adds the 2026 report markdown and is not the BIC."
+  },
+  "findings": [
+    "CVE-2026-7847 is a published VulDB record for deterministic reversible OpenAI-compatible file ids in Langchain-Chatchat _get_file_id; the GHSA is not withdrawn.",
+    "Atomic BIC is human PR member 4507c7078486ee95778bad6a96840f421dec98c0; parent a1429a350a1433d548680f2a712b2aec205562e4 has only the deprecated files stub; squash 27f0f512a37db4b816da543ca566b0e70d395f4d is the identical landing, not a finer first-write.",
+    "No AI/bot/generator marker on that BIC object; the Claude trailer is confined to 3em0/cve_repo report commit 58b5c1aba218aec104463c83ca594bbe13ff237a.",
+    "The encoder is present from git tag v0.3.0 through PyPI 0.3.1.3 and current master; issue #5464 never produced a fix commit, so unpatched is correct and the primary NOT_AI verdict stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

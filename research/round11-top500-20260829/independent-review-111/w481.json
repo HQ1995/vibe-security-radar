@@ -1,0 +1,38 @@
+{
+  "worker": "w481",
+  "review_agent_id": "r111_w481",
+  "class_id": "alias-de19269741ef7437dd9ec8ed",
+  "case_id": "GHSA-rpc5-pm7q-hjmp",
+  "repo": "naver/billboard.js",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-1513 / GHSA-rpc5-pm7q-hjmp is PUBLISHED CWE-79 (Naver CNA; GHSA withdrawn_at null). Attacker-controlled chart options bind into HTML/SVG DOM. Source: tooltip.contents / tooltip.format.*, data ids, legend.contents.template, point.pattern. Sink: d3 .html() on tooltip (and later legend/point defs). c69320a25b6a2539809bcd74a3cc13deed80d8a3 wraps several sinks with a blacklist sanitize(); 49e079cdd466fc8ba7ab208988181e5b7a5f336b then adds entity decoding, control-character stripping, stronger event-handler/URI filters, and tests for encoded/PortSwigger/OWASP/mutation/polyglot payloads. Issue #4078 describes XSS via various options.",
+    "atomic_bic": "PASS: smallest surviving public first-write of the option-to-HTML path is root commit 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 (2013-05-09, 'Initial commit'). c3.js:_getConfig(['tooltip','contents'], ...) then tooltip.html(__tooltip_contents(selectedData)). Primary BIC 8413325db50b8ab81606702765a85e38f289b28b ('the birth') is a later c3-to-billboard rewrite that copies the same sink into src/internals/tooltip.js; it is not the first write.",
+    "immediate_parent_absence": "PASS: 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 is a root object (git rev-list --parents -n 1 yields only that SHA); no parent tree can hold the mechanism. Primary parent-check fails: 23369a19d5f457afee675e684512c59c7b5c2036 already has $$.tooltip.html(config.tooltip_contents.call(...)) in src/tooltip.js:23,126 and c3.js:7963,8066 plus field sanitise() at c3.js:8002-8010. Missing src/internals/tooltip.js is a path rename, not mechanism absence.",
+    "squash_member_decomposition": "PASS: 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 has no parent and no reconstructable members (single-file initial snapshot). 8413325db50b8ab81606702765a85e38f289b28b is a single-parent rewrite, not a squash with recoverable public members. Direct fix 49e079cdd466fc8ba7ab208988181e5b7a5f336b tree bf7a5f11ec569c061365208fff37a49f2bf5ff99 matches PR #4085 member 587dc7a2c41c1e5240da83cc498f2745a8bbaa37 (same parent 059a785f82bdfcd3e21ce7455eca3b5ed9207841).",
+    "affected_release_membership": "PASS: tag 3.17.4 = ca6724ad84f7dddf15e5cf116d8a2affd078267e is not an ancestor-descendant of 49e079cdd466fc8ba7ab208988181e5b7a5f336b (merge-base --is-ancestor fix 3.17.4 exits 1). 3.17.4 does contain incomplete sanitizer c69320a25b6a2539809bcd74a3cc13deed80d8a3 and ffd9f6f8a8baabe0e001cf28319b2f5a5480a866. Matches advisory range < 3.18.0.",
+    "fixed_release_membership": "PASS: tag 3.18.0 = 3abbe9a4e10c02ece62a3cb8e3cf362beceb6099 contains 49e079cdd466fc8ba7ab208988181e5b7a5f336b. CHANGELOG.md at that tag names #4085/#4078 and 49e079c. First patched version 3.18.0 matches GHSA/CVE.",
+    "direct_fix_or_unpatched": "PASS: GHSA/NVD/commit URL cite 49e079cdd466fc8ba7ab208988181e5b7a5f336b ('fix(util): update sanitization function (#4085)', Ref #4078). It is the direct sanitizer strengthening that lands in 3.18.0. PR member 587dc7a2c41c1e5240da83cc498f2745a8bbaa37 has identical tree. Later 3.18.0-window commits c3496bcc51f7dab655c0793c1563bc32622c04ed / 478ce36781d6cff6e78390bea4117a9c2ec1f114 / 74452c630ac04ab59553a0455b035d36b786e92e reinforce the same sanitizer; they are not the origin.",
+    "bic_only_ai_attribution": "PASS: BIC 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 author Masayuki Tanaka <masayuki0812@mac.com>, committer masayuki <masayuki_tanaka@xica.net>, 2013-05-09, message 'Initial commit'; cat-file shows no Co-Authored-By, Generated-with, bot, or generator trailer. Even the primary's 2017 rewrite 8413325db50b8ab81606702765a85e38f289b28b is authored/committed by Jae Sung Park with only 'the birth'. Fix-side 2026 commits are not BIC. Verdict NOT_AI stands."
+  },
+  "findings": [
+    "The XSS is real: user-supplied chart option HTML/SVG reaches d3 .html() / defs without adequate sanitization. CVE-2026-1513 state is PUBLISHED (Naver CNA, 2026-01-28); GHSA-rpc5-pm7q-hjmp is not withdrawn.",
+    "Primary introducer_sha 8413325db50b8ab81606702765a85e38f289b28b is not the BIC. Immediate parent 23369a19d5f457afee675e684512c59c7b5c2036 already implements tooltip.html(config.tooltip_contents.call(...)) in src/tooltip.js and c3.js. 8413325 is the billboard.js fork rewrite ('the birth'), a move/import of the existing mechanism.",
+    "True atomic BIC is root 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 (c3.js, 2013-05-09): tooltip.contents is a config option and is assigned via tooltip.html(__tooltip_contents(selectedData)). No parent; no finer public member.",
+    "Sibling sinks are later extensions of the same option-binding class, not earlier origins: legend.contents 26de1472edaecf6de68facca432070745f25954b (2017-09-15); point_pattern 8f1b56f1bd29e70bfbababcac6a72c515704fade (2017-12-04). c3 added field-level sanitise() in de3864650300488a63d0541620e9828b00e94b42 (2016-05-01) but left custom contents unsanitized.",
+    "Incomplete remediations before 3.18.0 include bb0ac8a5863f9ecd4ff07e30d0b5a332674ff42c (2023; narrowed sanitise to script/img), c69320a25b6a2539809bcd74a3cc13deed80d8a3 (2026-01-13 blacklist wrap of sinks), and ffd9f6f8a8baabe0e001cf28319b2f5a5480a866 (2026-01-14). Encoded/control-character/polyglot bypasses remain until 49e079cdd466fc8ba7ab208988181e5b7a5f336b.",
+    "Fix/release boundary matches the advisory: 3.17.4=ca6724ad84f7dddf15e5cf116d8a2affd078267e lacks 49e079c; 3.18.0=3abbe9a4e10c02ece62a3cb8e3cf362beceb6099 contains it.",
+    "BIC-only AI attribution is human. 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 is Masayuki Tanaka, 2013, no AI markers. Primary NOT_AI is correct; recorded BIC/parent/flaw_origin/ai_marker are not."
+  ],
+  "corrected_fields": {
+    "introducer_sha": "1ae188f09b86289decf5c1a4a70d2c9e28b5a373",
+    "introducer_parent": null,
+    "introducer_parent_absent": true,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "flaw_origin": "The earliest surviving public Git object that writes the option-to-HTML XSS path is root commit 1ae188f09b86289decf5c1a4a70d2c9e28b5a373 ('Initial commit', 2013-05-09): c3.js binds config tooltip.contents via _getConfig(['tooltip','contents'], ...) and sinks it with tooltip.html(__tooltip_contents(selectedData)). It has no parent. 8413325db50b8ab81606702765a85e38f289b28b ('the birth', 2017-06-08) only rewrites that already-present c3 mechanism into src/internals/tooltip.js; parent 23369a19d5f457afee675e684512c59c7b5c2036 still contains $$.tooltip.html(config.tooltip_contents.call(...)) in src/tooltip.js and c3.js. Later sibling option sinks (legend.contents 26de1472edaecf6de68facca432070745f25954b, point_pattern 8f1b56f1bd29e70bfbababcac6a72c515704fade) and incomplete sanitizers (de3864650300488a63d0541620e9828b00e94b42, bb0ac8a5863f9ecd4ff07e30d0b5a332674ff42c, c69320a25b6a2539809bcd74a3cc13deed80d8a3) extend or weakly mitigate the same path.",
+    "ai_marker": "No AI marker, AI-authorship trailer, bot identity, or AI attribution appears on BIC 1ae188f09b86289decf5c1a4a70d2c9e28b5a373. Author Masayuki Tanaka <masayuki0812@mac.com>, committer masayuki <masayuki_tanaka@xica.net>, 2013-05-09, message 'Initial commit'."
+  },
+  "remaining_gap": null
+}

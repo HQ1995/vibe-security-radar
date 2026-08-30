@@ -2,8 +2,11 @@
   "class_id": "alias-96f4c59aa038773f281647b9",
   "case_id": "GHSA-gvq9-cmxr-844m",
   "repo": "jahlives/openssl_encrypt",
-  "advisory_ids": ["CVE-2026-74894", "GHSA-gvq9-cmxr-844m"],
-  "bug_semantics": "The standalone FastAPI key server wired POST /api/v1/keys (upload) and POST /api/v1/keys/{fingerprint}/revoke to Depends(verify_api_token). verify_api_token in server/key-server/app/api/v1/keys.py (lines 48-87) only required a non-empty Authorization: Bearer <string>; it never checked a JWT, HMAC, issued-token store, or any secret. Any caller sending Authorization: Bearer x was treated as authenticated and could upload arbitrary public-key bundles or revoke any stored key. GET /api/v1/keys/search was already public (no auth dependency), so listing/search did not itself need the bypass. CWE-287.",
+  "advisory_ids": [
+    "CVE-2026-74894",
+    "GHSA-gvq9-cmxr-844m"
+  ],
+  "bug_semantics": "The Bearer dependency accepted any non-empty token, enabling unauthenticated upload of an otherwise-valid self-signed attacker-controlled bundle. Search was intentionally public, and revocation still required a valid ownership signature.",
   "flaw_origin": "The stub was the original production implementation, not a later regression. fafdfeed1b279cfe61e86cd8adc132b206eef8d4 first added server/key-server/app/api/v1/keys.py with comments 'In production, validate token against database or JWT' / 'For now, simple token check (replace with proper validation)' and then returned True. That placeholder remained the live FastAPI auth dependency until the HMAC fix.",
   "introducer_sha": "fafdfeed1b279cfe61e86cd8adc132b206eef8d4",
   "introducer_parent": "4c7ae852c784c9986d087c5956a77fa563a05a35",
@@ -27,6 +30,6 @@
     "Tag/branch membership: fafdfeed and 1d519a1e are both ancestors of v1.4.0; neither is on v1.3.6 or remotes/origin/releases/1.3.x (file absent at v1.3.6). git grep 'simple token check' v1.4.0 is empty; git grep hmac.compare_digest v1.4.0 -- server/key-server/app/api/v1/keys.py hits line 110. BIC precedes the affected <1.4.0 development range; the fix is in v1.4.0 (CVE 1.4.0 unaffected). First-party patched_versions remains null because the GHSA was published 2026-02-10 before the 2026-03-03 v1.4.0 tag.",
     "Later deletions 488f30c0/89ace4a1/4986a1b1 remove server/key-server/ after the unified-server move; they are not the security fix. No other file in public history contains def verify_api_token."
   ],
-  "reasoning": "Vulnerability-first: CVE-2026-74894 / GHSA-gvq9-cmxr-844m alias the vendor GHSA-4g2c-wpgj-49w8. CVE.org state is PUBLISHED and the GitHub repo advisory is published with withdrawn_at null, so this is not FALSE_POSITIVE. The sink is verify_api_token used as a FastAPI dependency on key upload and revoke: it accepted any non-empty Bearer string and returned True, which is CWE-287 authentication bypass. Search was already unauthenticated, so the causal core is write/revoke, not listing. Line-level history and pickaxe both show the stub first appeared as a new file in fafdfeed1b279cfe61e86cd8adc132b206eef8d4 and was unchanged until 1d519a1eb1a29936d087fc7d98dc84a4718098c9 replaced it with HMAC validation. The immediate parent 4c7ae852c784c9986d087c5956a77fa563a05a35 has neither the path nor the symbol, so fafdfeed is the first write, not a move/refactor/revert. It is a large single-parent feature commit, but public GitHub/git history has no reconstructable member commits or feature PR, so it is the smallest surviving BIC (squash_decomposed=false). Cross-check: the keyserver never existed on 1.3.x tags; the stub lived on the 1.4.x development line between 2025-12-30 and the 2026-02-10 fix; v1.4.0 contains the HMAC code and not the stub, matching CVE affected <1.4.0 / 1.4.0 unaffected. AI is judged only from the BIC commit object: human author Tobi, plus Generated-with Claude Code and Co-Authored-By Claude Sonnet 4.5. That co-authorship is on the commit that first wrote the flawed mechanism, which is AI_ROOT_CAUSE. The fix commit's later Claude Opus trailer is ignored for attribution.",
+  "reasoning": "AI_ROOT_CAUSE remains closed on fafdfeed1b279cfe61e86cd8adc132b206eef8d4. The public Git line shows a vulnerable development interval, but v1.3.6 lacks the subsystem and v1.4.0 contains both BIC and fix; describe <1.4.0 only as vendor metadata.",
   "remaining_gap": null
 }

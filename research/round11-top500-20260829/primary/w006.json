@@ -2,14 +2,19 @@
   "class_id": "alias-85443fa0b01cc0d808288b99",
   "case_id": "GHSA-h5rm-9fhh-5phj",
   "repo": "n8n-io/n8n",
-  "advisory_ids": ["CVE-2026-77068", "GHSA-h5rm-9fhh-5phj"],
-  "bug_semantics": "Authenticated instance-level MCP (global:member) can pass an attacker-chosen node type into @n8n/workflow-sdk schema loading. loadSchema/tryLoadSchemaForNodeType split that type into pkg/nodeName and path.join() those components under the schema nodes/ root, then require() the resulting module with no separator, NUL, or '..' rejection and no realpath containment check. A type such as x.../../../evil therefore resolves outside the schema tree; Node loads and executes the attacker file in the n8n MAIN process (CWE-22 path traversal to RCE). The MCP validate-node tool feeds node.type straight into validateNodeConfig; validateWorkflow does the same from workflow JSON node.type. Vendor GHSA-6h4x-896x-fw5m (published 2026-08-05) and CVE-2026-77068 (VulnCheck, CVE.org published, not withdrawn/rejected) describe this loader. Patched in n8n 2.33.4 and 2.34.1 by rejecting unsafe path components and requiring require.resolve() to land inside the realpath of nodesRoot.",
+  "advisory_ids": [
+    "CVE-2026-77068",
+    "GHSA-h5rm-9fhh-5phj"
+  ],
+  "bug_semantics": "Path traversal reaches dynamic require. CNA metadata says 2.0.0, but Git containment first proves the unsafe loader carrier in n8n@2.9.0 and the advisory-specific MCP source-to-sink in n8n@2.25.1; n8n@2.33.3 and n8n@2.34.0 are verified affected endpoints.",
   "flaw_origin": "The unsafe mapping was first written in reconstructable PR #24535 member 6d88b9e1e9f24901985b1fb4e4200f18bd550e1b (2026-01-28), feat(workflow-sdk): integrate Zod schema validation into validate(), which added packages/@n8n/workflow-sdk/src/validation/schema-validator.ts. That commit introduced nodeTypeToPathComponents (split on '.', strip only a leading @n8n/), path.join(schemaBasePath, 'nodes', pkg, nodeName, version+'.schema'), and require(schemaPath) with no traversal guard, then called validateNodeConfig(node.type, ...) from validateWorkflow. Immediate parent d5f2772381a8d91592fd47845fef5422f80cf9d9 lacks the file and the loadSchema/require-from-node-type mechanism. GitHub squash 9729c2a5da7b59fdbf62b95c100e085a2c2daa4d (#24535, n8n@2.9.0) is the first mainline carrier, not the BIC. Later tryLoadSchemaModule refactors preserved the same unsanitized join+require; MCP validate_node_config (#31047) only exposed the existing sink to member-supplied type strings.",
   "introducer_sha": "6d88b9e1e9f24901985b1fb4e4200f18bd550e1b",
   "introducer_parent": "d5f2772381a8d91592fd47845fef5422f80cf9d9",
   "introducer_parent_absent": false,
   "squash_decomposed": true,
-  "decomposed_shas": ["6d88b9e1e9f24901985b1fb4e4200f18bd550e1b"],
+  "decomposed_shas": [
+    "6d88b9e1e9f24901985b1fb4e4200f18bd550e1b"
+  ],
   "ai_marker": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
   "verdict": "AI_ROOT_CAUSE",
   "fix_sha": "ca3d42d8386515cd9f044377a15a632cd09b62f0",
@@ -27,6 +32,6 @@
     "Patched-tag membership: 170cfc787015d352488f6b6403af07a74e95ca1d is in n8n@2.34.1 and not in n8n@2.34.0 (backport #35569). 0405fc550f55051f6c459252f5860fa78d27ab80 is in n8n@2.33.4 and not in n8n@2.33.3 (backport #35565); 2.33.3..2.33.4 workflow-sdk diff is the same +isSafePathComponent/+tests on the unmoved schema-validator.ts. ca3d42d is not in n8n@2.34.0; it is in n8n@2.35.0+. BIC 6d88b9e / carrier 9729c2a precede both patched boundaries.",
     "BIC-only AI: git cat-file -p 6d88b9e1e9f24901985b1fb4e4200f18bd550e1b author Mutasem Aldmour <mutasem@n8n.io>, committer Mutasem Aldmour <mutasem@n8n.io>, trailer Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>. No bot author. AI judgment does not use #24535 PR body, later MCP/AI-builder refactors, or the fix bundle Co-authored-by: Matsu."
   ],
-  "reasoning": "Vulnerability first: GHSA-6h4x-896x-fw5m / CVE-2026-77068 are live (CVE.org VulnCheck record; GitHub withdrawn_at is not authoritative and is null). The sink is @n8n/workflow-sdk schema loading used by MCP validate-node (and validateWorkflow): unsanitized node type -> path.join under nodes/ -> require() in the MAIN process. BIC search used git log -L/-S and parent trees, not an AI-first scan. The smallest first-write of those lines is reconstructed PR #24535 member 6d88b9e1e9f24901985b1fb4e4200f18bd550e1b, which added schema-validator.ts loadSchema require(path.join(..., pkg, nodeName, ...)) and wired validateNodeConfig(node.type). Parent d5f27723 exists and lacks the file and the mechanism (introducer_parent_absent=false). The master squash 9729c2a (#24535, n8n@2.9.0) is a squash aggregate carrying the same lines and is not the BIC; squash_decomposed=true with decomposed_shas=[6d88b9e]. Later tryLoadSchemaModule extraction and the file move to node-parameter-schema/ are refactors, not first-writes. MCP validate_node_config (2026-06-02) made member-supplied type strings a documented RCE path but did not introduce the loader. Fixes land at the advisory boundaries: ca3d42d on master (identical schema-validator.ts to n8n@2.34.1), 170cfc in n8n@2.34.1, 0405fc in n8n@2.33.4; 2.34.0 and 2.33.3 remain unpatched. AI only from the BIC commit object: explicit Co-Authored-By Claude Opus 4.5 on 6d88b9e, which first wrote the flawed join+require, so AI_ROOT_CAUSE.",
+  "reasoning": "AI_ROOT_CAUSE remains closed on the BIC. Treat 2.0.0 as contradicted CNA metadata, not a code-proven lower bound; n8n@2.33.4 and n8n@2.34.1 are verified fixed endpoints.",
   "remaining_gap": null
 }

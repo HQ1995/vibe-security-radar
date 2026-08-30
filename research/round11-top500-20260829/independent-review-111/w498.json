@@ -1,0 +1,29 @@
+{
+  "worker": "w498",
+  "review_agent_id": "r111_w498",
+  "class_id": "alias-6c4e7f2b0f7f275b96c3a230",
+  "case_id": "GHSA-4887-2gc3-6j9r",
+  "repo": "cisagov/malcolm",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real CWE-863 authorization mismatch. CVE.org CVE-2026-19670 is PUBLISHED (icscert, 2026-08-18). Vendor GHSA-jr6p-63pg-hr6g and CISA ICSA-26-230-01 describe the same sink: check_rbac() pattern-matches ngx.var.request_uri (raw, percent-encoded) via ngx.re.find against path_role_envs (e.g. ^/(auth|htadmin|admin_login)), while nginx location ~* ^/(htadmin|admin_login)(\\.php)\\b(.*) in nginx/nginx_auth_basic_location.conf dispatches on the decoded URI. A miss takes the unmatched-path branch return ngx.HTTP_OK. On v26.07.1 (2c19ef04d85230634ac70cc68b8f418a0666afec) normalize_uri_for_rbac() only strips the query string and collapses literal /../; it never calls ngx.unescape_uri. nginx/nginx_auth_keycloak.conf invokes nginx_helpers.check_rbac after authentication. GET /%68tadmin.php therefore fails the Lua pattern and is fail-opened while nginx still routes to htadmin. GitHub Advisory Database GHSA-4887-2gc3-6j9r withdrawn_at is null; GHSA-f2v6-8cj4-mhr6 is a CNA cross-reference mix-up to an unrelated archive-bomb advisory and does not withdraw this CVE.",
+    "atomic_bic": "PASS: Smallest surviving public first-write of the encoded-URI source is eb4e64da6da1ee764d0ac9c83e1f0a9280003211 (one parent e87c50c30d60551185305e2d045c11c3509dbda0; nginx/lua/nginx_auth_helpers.lua only: local uri = ngx.var.uri -> local uri = ngx.var.request_uri:match(\"^[^?]+\") or \"\" in check_rbac, plus the same swap in set_headers). Not a move/rename (M nginx/lua/nginx_auth_helpers.lua), merge, revert object, or squash aggregate. Earlier 00e5740a50dec00b25fd578eb3dddc2c1ff366bd first added check_rbac with ngx.var.request_uri, but 7c9893aaa15d73cd260d464f3c131dedf072a0e1 replaced it with ngx.var.uri; those lines do not survive. First release tag containing the surviving write is v25.06.0; no public tag contains 00e5740 without also containing eb4e64. Later 1a04f117a8527965dbbf52967f4f5917309fcff7 wraps request_uri in traversal-only normalize_uri_for_rbac() and does not introduce or remove the percent-encoding mismatch.",
+    "immediate_parent_absence": "PASS: Parent tree e87c50c30d60551185305e2d045c11c3509dbda0:nginx/lua/nginx_auth_helpers.lua has check_rbac using local uri = ngx.var.uri (decoded/normalized $uri) and set_headers using ngx.var.uri. The raw ngx.var.request_uri match source is absent, so percent-encoded /%68tadmin.php would not disagree with nginx location matching on that parent.",
+    "squash_member_decomposition": "PASS: eb4e64da6da1ee764d0ac9c83e1f0a9280003211 is a single-parent non-merge (`git rev-parse ^2` fails). Diff is two substitutions in one file. No reconstructable squash/PR members; no further decomposition.",
+    "affected_release_membership": "PASS: CVE/CISA/GHSA-jr6p affected bound is Malcolm <= 26.07.1. git merge-base --is-ancestor eb4e64da6da1ee764d0ac9c83e1f0a9280003211 v26.07.1 succeeds; is-ancestor 82b5fc5271fe6844520afca6ef68cf615b67113f v26.07.1 fails. Tag v26.07.1^{commit}=2c19ef04d85230634ac70cc68b8f418a0666afec still has normalize_uri_for_rbac without ngx.unescape_uri. v25.06.0 is the first tag containing the BIC.",
+    "fixed_release_membership": "PASS: CVE/CISA/GHSA-jr6p patched bound is 26.08.0. git merge-base --is-ancestor 82b5fc5271fe6844520afca6ef68cf615b67113f v26.08.0 succeeds. Tag v26.08.0^{commit}=07bbccdfe2732fb5c5147070cdfca2857b85bacc contains path = ngx.unescape_uri(path) inside normalize_uri_for_rbac.",
+    "direct_fix_or_unpatched": "PASS: Direct fix is 82b5fc5271fe6844520afca6ef68cf615b67113f (parent 538057a7c0776010efe40aa71874db06f1c7d42d), message 'nginx: fix RBAC bypass via percent-encoding, case, and slash mismatch'. It inserts ngx.unescape_uri before slash/traversal collapse and lowercasing. Fix parent still feeds raw request_uri through traversal-only normalize_uri_for_rbac with no unescape. BIC is an ancestor of the fix. Unpatched is not claimed.",
+    "bic_only_ai_attribution": "PASS: BIC object eb4e64da6da1ee764d0ac9c83e1f0a9280003211 author and committer are Seth Grover <seth.d.grover@gmail.com>, PGP-signed, message only 'cisagov/Malcolm#460, work in progress for roles', empty trailers, no Co-Authored-By / Generated-with / Copilot / assisted-by / bot identity. Attribution is from this BIC only; search was not inverted from an AI-marked commit."
+  },
+  "findings": [
+    "CVE-2026-19670 remains PUBLISHED; vendor PoC GHSA-jr6p-63pg-hr6g and CISA ICSA-26-230-01 independently confirm the percent-encoded RBAC bypass with affected <=26.07.1 and fixed 26.08.0.",
+    "Source-to-sink on v26.07.1: authenticated check_rbac() -> normalize_uri_for_rbac(ngx.var.request_uri) without unescape -> ngx.re.find on path_role_envs -> fail-open ngx.HTTP_OK, while location ~* ^/(htadmin|admin_login)(\\.php) serves the decoded path.",
+    "Surviving BIC is eb4e64da6da1ee764d0ac9c83e1f0a9280003211 switching check_rbac from ngx.var.uri to ngx.var.request_uri:match(\"^[^?]+\"); parent e87c50c30d60551185305e2d045c11c3509dbda0 lacks that source.",
+    "1a04f117a8527965dbbf52967f4f5917309fcff7 (in v26.07.0) is an incomplete traversal remediator for a related CVE and does not percent-decode; 82b5fc5271fe6844520afca6ef68cf615b67113f is the direct percent-decode fix and is in v26.08.0.",
+    "BIC has a named human author/committer and a PGP signature with no AI/bot/generator/co-author marker, so the real vulnerability is NOT_AI.",
+    "CVE.org/NVD GHSA-4887-2gc3-6j9r incorrectly cites GHSA-f2v6-8cj4-mhr6 (raw-stream/lzip archive bomb); CISA ICSA-26-230-01 correctly cites GHSA-jr6p-63pg-hr6g. That metadata clash does not disprove the vulnerability or change BIC/fix/AI attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

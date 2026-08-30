@@ -1,0 +1,28 @@
+{
+  "worker": "w473",
+  "review_agent_id": "r111_w473",
+  "class_id": "alias-c917fe8f2f6bde8cc20ff533",
+  "case_id": "GHSA-937x-gpqr-72gg",
+  "repo": "jugmac00/flask-reuploaded",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: Real incomplete-fix denylist bypass (CWE-434/CWE-178). Source is attacker-influenced UploadSet.save(..., name=). After d64c6b2f71cb73734fc38baa0e3e156926361288, name is sanitized with secure_filename() and assigned as basename without lowercase_ext(); re-validation at flask_uploads.py:343-348 does ext = extension(basename) then extension_allowed(ext). extension() (extensions.py:101-106) preserves case; AllExcept.__contains__ (extensions.py:97-98) and SCRIPTS tokens ('js','php',...) are case-sensitive/lowercase; so name='shell.PHP' yields ext='PHP' and is allowed. Default path get_basename() uses lowercase_ext() and correctly denies 'php'. Sink is storage.save(target) at flask_uploads.py:374. Parent unrestricted override is CVE-2026-27641; this advisory is the case-folding asymmetry of the new guard.",
+    "atomic_bic": "PASS: Smallest public first-write of the flawed re-validation is d64c6b2f71cb73734fc38baa0e3e156926361288 (single parent 9e813e919c4f8d9ef17c7fe8ecc0c2efa8fee118). git log -L 343,348:src/flask_uploads/flask_uploads.py and git log -S 'ext = extension(basename)' both stop at that commit inserting the six lines '# Re-validate extension after name override' / ext = extension(basename) / extension_allowed. Object is a regular commit (not a merge); GitHub commit page shows a direct maintainer commit with no reconstructable PR members.",
+    "immediate_parent_absence": "PASS: Parent tree 9e813e919c4f8d9ef17c7fe8ecc0c2efa8fee118:src/flask_uploads/flask_uploads.py assigns basename = name (lines 321-325) with no re-validation; git grep finds no 'Re-validate extension after name override' and no 'ext = extension(basename)'. lowercase_ext is used only in get_basename (line 283). The case-preserving guard and its denylist asymmetry do not exist on the parent.",
+    "squash_member_decomposition": "PASS: d64c6b2f71cb73734fc38baa0e3e156926361288 has exactly one parent (9e813e919c4f8d9ef17c7fe8ecc0c2efa8fee118); not a merge/squash aggregate. No finer public member commits are reconstructable. squash_decomposed=false and decomposed_shas=[] are correct.",
+    "affected_release_membership": "PASS: Release commit ae31c3f91da40b465ca5e8f57d93f063b4553e23 ('Release 1.5.0') is the child of the BIC, changes pyproject.toml 1.5.0.dev -> 1.5.0, and still has ext = extension(basename) at flask_uploads.py:344 with no lowercase_ext on the override path. origin/release/1.5.0 (eec045bb69c03ad480a0cca4592be1a8e8098874) shares the same tree. PyPI Flask-Reuploaded 1.5.0 (uploaded 2026-02-21) exists. GHSA affected <=1.5.0 matches this shipped object. 1.4.0 (0b050952856ed28b1d5f534c951c07bf7dabbeff) lacks the re-validation lines (parent CVE, not this variant).",
+    "fixed_release_membership": "PASS: Direct fix 5ded76092429c6eb8a4af941b14fbde40a38fff4 inserts basename = lowercase_ext(basename) immediately before the re-validation, adds test_extension_bypass_case_folding_via_name_parameter (name='backdoor.PHP' vs AllExcept(SCRIPTS)), and sets pyproject.toml 1.5.0 -> 1.6.0. GitHub Advisory Database GHSA-937x-gpqr-72gg lists patched 1.6.0. PyPI 1.6.0 (uploaded 2026-06-06) changelog documents that security fix. Fix is a descendant of the BIC and of ae31c3f91da40b465ca5e8f57d93f063b4553e23.",
+    "direct_fix_or_unpatched": "PASS: Direct fixing commit is 5ded76092429c6eb8a4af941b14fbde40a38fff4 (parent 17509f0bf9436566085a10ad49946c5e5022d3c1). It closes the sink by normalizing the override basename before extension_allowed and save. Not unpatched. Vendor GHSA remains published (repo advisory 2026-06-06; GitHub Advisory Database patched 1.6.0). CVE.org/MITRE API returns CVE_RECORD_DNE for CVE-2026-54567; NVD CVE 2.0 returns 0 results — no rejected/withdrawn record. GitHub withdrawn_at is not treated as authoritative.",
+    "bic_only_ai_attribution": "PASS: BIC d64c6b2f71cb73734fc38baa0e3e156926361288 author is Jürgen Gmach <juergen.gmach@canonical.com>, committer Jürgen Gmach <juergen.gmach@googlemail.com>; full message has no Co-Authored-By, Generated-with, bot identity, or generator trailer. Named human identities on the actual BIC with no AI/bot markers support NOT_AI. Search was not inverted from an AI commit."
+  },
+  "findings": [
+    "Independently re-established source-to-sink: name override -> secure_filename (case preserved) -> extension() -> AllExcept case-sensitive membership -> storage.save(target); default path lowercase_ext() still denies 'php'.",
+    "Atomic BIC of this incomplete-fix variant is d64c6b2f71cb73734fc38baa0e3e156926361288; parent 9e813e919c4f8d9ef17c7fe8ecc0c2efa8fee118 lacks the flawed re-validation lines.",
+    "Affected shipped object is 1.5.0 (ae31c3f91da40b465ca5e8f57d93f063b4553e23 / identical tree eec045bb69c03ad480a0cca4592be1a8e8098874); direct fix 5ded76092429c6eb8a4af941b14fbde40a38fff4 is the 1.6.0 boundary and is on PyPI.",
+    "BIC commit object is human-authored/committed with no AI markers; primary verdict NOT_AI is independently supported.",
+    "Repository advisory HTML still shows Patched versions None while GHSA/PyPI show 1.6.0; that UI field is stale relative to the published GitHub Advisory Database and does not change the causal verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -2,7 +2,10 @@
   "class_id": "alias-df6deb3c385573a2438386f1",
   "case_id": "GHSA-8qr5-q795-mv79",
   "repo": "code100x/cms",
-  "advisory_ids": ["CVE-2026-52021", "GHSA-8qr5-q795-mv79"],
+  "advisory_ids": [
+    "CVE-2026-52021",
+    "GHSA-8qr5-q795-mv79"
+  ],
   "bug_semantics": "withMobileAuth in src/middleware.ts (matcher /api/mobile/:path*) treats mere presence of an Auth-Key request header as authorization and returns NextResponse.next() without comparing the value to any server-side secret and without overwriting request headers. JWT verification is skipped. Downstream handlers, including src/app/api/mobile/search/route.ts, then JSON.parse a client-supplied g header as the authenticated user and query purchased course/video titles and IDs. An unauthenticated caller can send Auth-Key: anything plus a forged g JSON body and receive HTTP 200 search results (CWE-306/CWE-200). CVE.org CVE-2026-52021 is PUBLISHED (MITRE CNA; GHSA withdrawn_at null).",
   "flaw_origin": "PR #1303 member a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9 (rishavvajpayee, 2024-09-25, 'feat: added middleware for mobile routes') first wrote if (req.headers.get('Auth-Key')) { return NextResponse.next(); } while moving withMobileAuth from src/withMobileAuth.ts into src/middleware.ts and wiring matcher /api/mobile/:path*. The immediate parent cd900552043f414334dc9a03e14b40add8c84cd4 still required a JWT (Authorization Bearer + validateJWT) and had no Auth-Key presence bypass. Same-PR signin already compared Auth-Key to EXTERNAL_LOGIN_AUTH_SECRET; the middleware omitted that check. Later member 4bac11aaf449d16f1bebed3bf735f56be94a2bcd first made search parse request.headers.get('g'). GitHub squash 90dad10f255751fc47b67a57759b88cf003ac87e landed the mechanism on main.",
   "introducer_sha": "a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9",
@@ -32,7 +35,7 @@
     "BIC-only AI: git cat-file -p a60ba45f26cb15e51d5077b8f2e11c5cbd2c29d9 is author/committer rishavvajpayee <reshavvajpayee@gmail.com> 1727210092 +0530, message 'feat: added middleware for mobile routes', empty body, no trailers. PR-body and squash Co-authored-by: rishavvajpayee on 90dad10 are not BIC-object AI markers."
   ],
   "reasoning": "CVE-2026-52021 is a real unauthenticated information disclosure: mobile API middleware authorizes any request that merely includes an Auth-Key header, then search (and other /api/mobile handlers) accept a client g header as user identity. CVE.org is PUBLISHED; this is not a withdrawn/rejected advisory. The smallest first-write of that presence-only short-circuit is PR #1303 member a60ba45, reconstructed from the GitHub squash 90dad10 (feat: Added cms-mobile routes). A move of withMobileAuth.ts into middleware.ts is not itself the BIC; the new Auth-Key bypass lines are, and they are absent at parent cd90055, which still required JWT. Later PR members did not invent that check (88c4d5f is types; 4bac11a is the g parse that completes the disclosed search PoC). AI is judged only from the BIC commit object: human author/committer rishavvajpayee, no AI trailers, so NOT_AI. No merged fix exists at HEAD 9f3c8f4; unpatched.confirmed records that fact and the concrete secret-compare + strip-g remediation (open PR #1927 is a candidate, not a landed fix_sha).",
-  "remaining_gap": "Unpatched: no merged fix SHA on main/prod/production as of HEAD 9f3c8f426cdaf22948f9f8e16e32f24fb7c9d059; open PR #1927 is unmerged.",
+  "remaining_gap": "Unpatched: no merged fix SHA. No public tag or release substantiates the advisory's v.1.0 label; the atomic PR member is a loose object established by the first-party PR list and direct object inspection, not current git log --all reachability.",
   "unpatched": {
     "confirmed": true,
     "reason": "The Auth-Key presence bypass and client-g identity parse remain in src/middleware.ts and src/app/api/mobile/search/route.ts at audited HEAD 9f3c8f426cdaf22948f9f8e16e32f24fb7c9d059 (2026-01-07). No later commit on main, prod, or production changes the check. Reporter re-verified unpatched on 2026-08-07. GitHub issue #1924 and PR #1927 are still open; #1927 has not merged.",

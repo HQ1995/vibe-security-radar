@@ -1,0 +1,27 @@
+{
+  "worker": "w438",
+  "review_agent_id": "r111_w438",
+  "class_id": "alias-7b2a06cfdc0ea75844a0a7a4",
+  "case_id": "GHSA-hhmc-q9hp-r662",
+  "repo": "codeigniter4/codeigniter4",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": "PASS: CVE-2026-63222 is CVE.org state PUBLISHED (https://cveawg.mitre.org/api/cve/CVE-2026-63222); GHSA-hhmc-q9hp-r662 withdrawn_at is null. Source-to-sink: FileCollection::createFileObject copies $_FILES['name'] into UploadedFile as originalName; the constructor sets $this->name = $originalName; getName() returns that unsanitized client filename; UploadedFile::move($targetPath) with a null second argument concatenates that name onto the destination directory and passes it to move_uploaded_file(), so a name such as ../../public/shell.php writes outside the intended upload directory (CWE-22).",
+    "atomic_bic": "PASS: Smallest surviving public first-write is eb5bc0669202bf0d67bb5a53758b9a3942a0da0e (single parent dd7b5f5ac8987cb38590bc095c06b02b738dc7b2). That commit first added `$name = is_null($name) ? $this->getName() : $name;` and changed move_uploaded_file() from `$targetPath` to `$targetPath.$name`. It is an in-place 9-line functional edit of an existing file (plus docs), not a move, revert, import, or squash aggregate. Later syntax-only rewrites (1dc72c1d65a9c981b0c1b6d1c1af6eb12abfd744 is_null->===, af7fb3f9a5a3c63b5b9e0f1ad15e202bc7b93943 ??=) and overwrite helper bcb9f41c1e5ac98c161709c2e533b5761e40ffb7 are not first-writes.",
+    "immediate_parent_absence": "PASS: Parent tree dd7b5f5ac8987cb38590bc095c06b02b738dc7b2:system/HTTP/Files/UploadedFile.php has `move_uploaded_file($this->path, $targetPath)` at the destination sink and has neither `$name = is_null($name) ? $this->getName() : $name` nor `$targetPath.$name`. git grep -F '$targetPath.$name' on that parent blob is empty. The same two expressions are present in the BIC tree at lines 174 and 176.",
+    "squash_member_decomposition": "PASS: eb5bc0669202bf0d67bb5a53758b9a3942a0da0e is a non-merge ordinary commit (`git rev-list --parents -n 1` yields one parent). No squash/merge members to decompose; decomposed_shas remains empty.",
+    "affected_release_membership": "PASS: merge-base --is-ancestor shows eb5bc0669202bf0d67bb5a53758b9a3942a0da0e is contained in v4.0.0-alpha.1 (febe2f02f2b45d533da7497ad14d2cf065df94c1), 4.0.0 (47dbb16bb5e5784f45bf09a7380016f2d36f7c39), and v4.7.3 (723162211eb3c17f222f943c4610311dcf9167f1). v4.7.3 still has `$name ??= $this->getName();` with no sanitize_filename on that default, matching GHSA/CVE affected range < 4.7.4.",
+    "fixed_release_membership": "PASS: Direct fix 20ebcf4694d96d3c97fbc3938e360730e4f54618 is not an ancestor of v4.7.3 and is an ancestor of v4.7.4 (2bd0f01d2813f9ec06db42643ce39d9f5428bf6d). Tag v4.7.4 tree has `$name = sanitize_filename($this->getName());`. GitHub release https://github.com/codeigniter4/CodeIgniter4/releases/tag/v4.7.4 peels to the same 2bd0f01d2813f9ec06db42643ce39d9f5428bf6d object.",
+    "direct_fix_or_unpatched": "PASS: 20ebcf4694d96d3c97fbc3938e360730e4f54618 (parent f5e463b9a3e986389ce285963e51a7f1fab6559f) is the direct closer: parent still has `$name ??= $this->getName();`; the fix replaces that default with sanitize_filename($this->getName()) when the second argument is null, documents that caller-supplied names stay unsanitized, and adds tests/system/HTTP/Files/FileMovingTest.php::testMoveSanitizesClientNameByDefault using ../../public/shell.php.",
+    "bic_only_ai_attribution": "PASS: Full BIC object eb5bc0669202bf0d67bb5a53758b9a3942a0da0e names human author and committer Lonnie Ezell <lonnieje@gmail.com> (2016-06-15); case-insensitive scan of the complete commit object finds no Co-Authored-By, Generated-with, bot, Copilot, ChatGPT, Claude, Gemini, or AI-assisted marker. Later fix-side Co-authored-by/GitHub committer on 20ebcf4694d96d3c97fbc3938e360730e4f54618 is irrelevant to BIC attribution. Verdict NOT_AI."
+  },
+  "findings": [
+    "Confirmed real CWE-22: unsanitized client filename used as the default destination basename in UploadedFile::move() when the second argument is omitted.",
+    "BIC is eb5bc0669202bf0d67bb5a53758b9a3942a0da0e; immediate parent dd7b5f5ac8987cb38590bc095c06b02b738dc7b2 treats $targetPath as the full destination and therefore lacks the traversal concatenation.",
+    "Direct fix is 20ebcf4694d96d3c97fbc3938e360730e4f54618, first present in v4.7.4 and absent from v4.7.3, matching GHSA-hhmc-q9hp-r662 / CVE-2026-63222.",
+    "BIC authorship is a named human with no AI/bot/generator trailers; independent review agrees with primary_verdict NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -2,15 +2,18 @@
   "class_id": "alias-c7aad5ce4820970f195d932e",
   "case_id": "GHSA-vf5j-865m-mq7c",
   "repo": "apache/mina",
-  "advisory_ids": ["CVE-2026-42779", "GHSA-vf5j-865m-mq7c"],
+  "advisory_ids": [
+    "CVE-2026-42779",
+    "GHSA-vf5j-865m-mq7c"
+  ],
   "bug_semantics": "Apache MINA ObjectSerializationCodecFactory / IoBuffer.getObject() uses a custom ObjectInputStream in AbstractIoBuffer whose resolveClass() is supposed to enforce the acceptMatchers classname allowlist. The check ran only in the else branch (when ObjectStreamClass.forClass() is non-null). The null-clazz branch — taken for type-0 descriptors (primitives/non-serializable, and attacker-crafted type-0 wrappers around serializable gadget classes) — called Class.forName(name, false, classLoader) with no allowlist test, so untrusted bytes could load arbitrary classes and execute gadget-chain RCE. CVE-2026-42779 is the incomplete-fix follow-up to CVE-2026-41635: the hoist-the-filter patch landed on 2.0.X as 2.0.28 but was not applied to 2.1.X or 2.2.X, so 2.1.11 and 2.2.6 still shipped the original bypass. Closed by applying the allowlist before either branch in 2.1.12 and 2.2.7.",
-  "flaw_origin": "The incomplete allowlist was first written on 2.2.X in 691a9df5a0aff0dddeedc5181f6e5832ee90dcea (2024-11-04, emmanuel lecharny): that commit introduced acceptMatchers and attached the matcher loop only to the non-null forClass() branch, leaving the pre-existing null-clazz Class.forName path unfiltered. Immediate parent 23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25 already had the two-branch resolver (null → Class.forName, else → return clazz) but no acceptMatchers. The same incomplete pattern was independently first-written on 2.1.X as cdb59eb6131696a440870ab89ad0e20804eb5ca7 (author 2024-11-06, committed 2024-12-16). Neither first-write is a merge; no finer public member commits reconstruct. 2.0.X received the CVE-2026-41635 hoist in 8b1dadb55b1d3f6b17f4ded10179e6b253ff1cc9 (2.0.28); 2.1.X/2.2.X did not, which is this CVE.",
-  "introducer_sha": "691a9df5a0aff0dddeedc5181f6e5832ee90dcea",
-  "introducer_parent": "23e6ee17bae46bb8e7a76dd7aeb508ec89e76a25",
-  "introducer_parent_absent": false,
+  "flaw_origin": "Apache SVN r349422 first adds the unfiltered buffer-to-ObjectInputStream.readObject() path; r349421 lacks it. Git import/move and later allowlist mutations are excluded.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
   "squash_decomposed": false,
   "decomposed_shas": [],
-  "ai_marker": "absent; BIC author emmanuel lecharny <elecharny@apache.org>, committer emmanuel lecharny <elecharny@apache.org> (GitHub login elecharny); commit-object message is exactly 'pom.xml' with no Co-Authored-By, Generated-with, Signed-off-by, or bot trailers",
+  "ai_marker": "Apache SVN r349422 names ASF account trustin, mapped to Trustin Lee, with no AI, bot, generator, or co-author marker.",
   "verdict": "NOT_AI",
   "fix_sha": "cca24d646c898adf7e01a765ebf6d677cc02b696",
   "direct_fix_sha": "cca24d646c898adf7e01a765ebf6d677cc02b696",
@@ -25,5 +28,5 @@
     "BIC commit-object AI check: git cat-file -p 691a9df5 shows author/committer emmanuel lecharny <elecharny@apache.org> 1730718366 +0100, single parent, message 'pom.xml', no Co-Authored-By/Generated-with/bot headers. GitHub commit API author login elecharny (id 2922517), not a bot. Same human identity on cdb59eb6 and on the 2026-04-29 fixes."
   ],
   "reasoning": "CVE.org records CVE-2026-42779 as PUBLISHED (not withdrawn/rejected): the CVE-2026-41635 allowlist-bypass in AbstractIoBuffer.resolveClass() was left unpatched on 2.1.X and 2.2.X. The mechanism is CWE-502 filter bypass, not missing deserialization entirely. The two-branch resolver (null-clazz Class.forName vs return clazz) has existed since DIRMINA-990 (2014); that structure is not itself this CVE. This CVE exists only once acceptMatchers is applied to one branch and skipped on the other. git log -L / -S on 2.2.6 shows the smallest first-write of that incomplete control is 691a9df5a0aff0dddeedc5181f6e5832ee90dcea: parent 23e6ee17 has no acceptMatchers, the child adds the matcher loop only in else. It is a single-parent non-merge commit; the bulky matcher-class copy does not hide a reconstructable finer public member, so it is a valid BIC. 2.1.X independently first-wrote the same pattern in cdb59eb6 six weeks later; the earlier 2.2.X commit is the class BIC. Tag checks place 691a9df5 before 2.2.4–2.2.6 (last vulnerable 2.2) and the hoist fix cca24d64 at 2.2.7; ba8c355d closes 2.1.12. 2.1.11 and 2.2.6 contain zero AbstractIoBuffer delta from 2.1.10/2.2.5, confirming the claimed CVE-2026-41635 backports never landed. AI judgment is BIC-only: 691a9df5 is authored and committed by long-time MINA PMC member Emmanuel Lécharny with no commit-object AI marker, so the verdict is NOT_AI. Later incomplete-backport chatter and the 2026-04-29 human fixes do not reattribute the introducer.",
-  "remaining_gap": null
+  "remaining_gap": "Scalar fix fields select 2.2.x; the 2.1.x direct fix is ba8c355d82a010d677455df43b49725d21dbd07a."
 }

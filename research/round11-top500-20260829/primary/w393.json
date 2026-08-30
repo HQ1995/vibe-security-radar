@@ -7,16 +7,21 @@
     "GHSA-jv9x-w4gm-hwcm"
   ],
   "bug_semantics": "Before 2.54.0, the Team API mutation endpoints authorized with IsGranted('edit_team') and no Team subject. TeamVoter only supports the entity attributes view, edit, and delete, so it abstained; RolePermissionVoter accepted the subjectless registered edit_team permission. A lower-privilege user granted edit_team could therefore modify membership and customer, project, or activity associations of a team they neither administered nor led.",
-  "flaw_origin": "836a530b8615249ad8854fb5e8a36c08e6cdcd16 first added the Team API mutation methods for members, customers, and projects with the subjectless edit_team authorization; its immediate parent a31e027c5426ff645d43ef6307b4bc27cfa9937e contains none of those methods. 0914ebf737dd9f6acc02343cb02d9d8cfe50676e later extended the same flawed pattern to the two activity-association endpoints. b2d3272151523106027da1d31311bf6fbaf4c7d4 subsequently added the intended admin-or-teamlead object check to TeamVoter, while the API's subjectless checks continued to bypass that voter. Later annotation/attribute conversions preserved the mechanism and are refactors, not the original BIC.",
-  "introducer_sha": "836a530b8615249ad8854fb5e8a36c08e6cdcd16",
-  "introducer_parent": "a31e027c5426ff645d43ef6307b4bc27cfa9937e",
+  "flaw_origin": "82cd0c5ed2d25631381a603d7b58509dfbccf110 first added Team API patchAction with subjectless is_granted('edit_team'); parent 8f3c4d95cfeac9dc84400d519bb586e7e80f5151 has none. 7c0c3813bc2ec72e18bc21dc0dfdb0ecaba95ca6, 37adb2edf6a6009302f0e7e5a9b6ac5db2b80dcb, and 6dfa9815dddb5cfc526a4075cbaaa5ba23e97c02 extended that pattern to member/customer/project associations. Those members were squashed onto master as 836a530b8615249ad8854fb5e8a36c08e6cdcd16 (parent a31e027c5426ff645d43ef6307b4bc27cfa9937e, first tagged in 1.8). 0914ebf737dd9f6acc02343cb02d9d8cfe50676e later added the activity endpoints. b2d3272151523106027da1d31311bf6fbaf4c7d4 added TeamVoter admin/super-admin/teamlead checks on edit/delete, which subjectless edit_team continued to bypass. Annotation-to-attribute conversion 0e91dd886e9f637b3790d70b4dd677c6e71433a1 is a refactor.",
+  "introducer_sha": "82cd0c5ed2d25631381a603d7b58509dfbccf110",
+  "introducer_parent": "8f3c4d95cfeac9dc84400d519bb586e7e80f5151",
   "introducer_parent_absent": false,
-  "squash_decomposed": false,
-  "decomposed_shas": [],
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "82cd0c5ed2d25631381a603d7b58509dfbccf110",
+    "7c0c3813bc2ec72e18bc21dc0dfdb0ecaba95ca6",
+    "37adb2edf6a6009302f0e7e5a9b6ac5db2b80dcb",
+    "6dfa9815dddb5cfc526a4075cbaaa5ba23e97c02"
+  ],
   "ai_marker": {
     "present": false,
     "signals": [],
-    "basis": "The BIC is a GitHub-signed 2020 commit authored by maintainer Kevin Papst. Its commit object and message contain no AI, bot, generated-code, or co-author marker; the bundle's repository-level AI scan signal is not evidence on this BIC."
+    "basis": "Atomic BIC 82cd0c5ed2d25631381a603d7b58509dfbccf110 is an unsigned 2020-01-16 commit authored and committed by Kevin Papst <kpapst@gmx.net> with message 'added API method to update a team' and no AI, bot, generated-code, or co-author marker. The GitHub-signed squash 836a530b8615249ad8854fb5e8a36c08e6cdcd16 is likewise human-authored by Kevin Papst with no AI marker."
   },
   "verdict": "NOT_AI",
   "fix_sha": "cbdf91f316ba9f4ab530127ad19b38fba4df8b0e",
