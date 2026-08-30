@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 
-import { getProseSummary, isPublicProse } from "@/lib/markdown-utils";
+import { isPublicProse, stripMarkdown } from "@/lib/markdown-utils";
+import { formatPublished } from "@/lib/commit-utils";
+import { severityBadgeClass } from "@/lib/constants";
+import { Badge } from "@/components/ui/badge";
 import {
   formatCaseLabel,
   formatContributionClass,
@@ -50,9 +53,23 @@ function contributionHeadline(value: string): string {
 }
 
 function advisoryBlurb(item: ResearchCase): string | null {
-  const blurb = getProseSummary(item.description);
-  if (!blurb || !isPublicProse(blurb)) return null;
+  const blurb = advisoryDescription(item);
+  if (!blurb) return null;
   return blurb;
+}
+
+/** Full advisory text, not the 500-char teaser — rendered with a manual expand. */
+function advisoryDescription(item: ResearchCase): string | null {
+  const full = stripMarkdown(item.description);
+  if (!full || !isPublicProse(full)) return null;
+  return full;
+}
+
+/** Plain-language explanation of the AI-caused mechanism, when fit for visitors. */
+function publicMechanism(item: ResearchCase): string | null {
+  const text = (item.mechanism ?? "").trim();
+  if (!text || !isPublicProse(text)) return null;
+  return text;
 }
 
 function findingSummary(item: ResearchCase): string | null {
@@ -76,6 +93,19 @@ function whatWentWrong(item: ResearchCase): string {
   return (
     findingSummary(item) ?? contributionHeadline(item.contribution_class)
   );
+}
+
+/**
+ * Prefer the audited step title, but drop the generic "AI change"/"Fix" labels —
+ * those say nothing a visitor doesn't already know from the kicker.
+ */
+function cardStepTitle(
+  step: { readonly title: string } | undefined,
+  fallback: string,
+): string {
+  const generic = new Set(["AI change", "AI fix", "Fix", "Root cause"]);
+  if (step?.title && !generic.has(step.title.trim())) return step.title;
+  return fallback;
 }
 
 function whatClosedIt(item: ResearchCase): string | null {
@@ -150,7 +180,7 @@ function CommitLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+      className="inline-flex min-w-0 items-center gap-1 font-mono text-primary hover:underline"
     >
       {shortSha(sha)}
       <ExternalLink className="h-3 w-3" />
@@ -174,7 +204,7 @@ function FileLink({
       href={`https://github.com/${repository}/blob/${sha}/${file}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+      className="inline-flex min-w-0 max-w-full items-center gap-1 break-all font-mono text-primary hover:underline"
     >
       {file}
       <ExternalLink className="h-3 w-3" />
@@ -223,7 +253,7 @@ function CauseFixCard({
   }[tone];
   return (
     <article
-      className={`border border-border border-l-4 p-5 ${toneClass.border} ${
+      className={`min-w-0 border border-border border-l-4 p-5 ${toneClass.border} ${
         muted ? "opacity-75" : ""
       }`}
     >
@@ -273,6 +303,140 @@ function CauseFixCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+/**
+ * Advisory description: fixed-height preview (no ellipsis cut), manual expand.
+ * line-clamp trims visually; <details> supplies the explicit toggle.
+ */
+function AdvisoryDisclosure({
+  text,
+  className,
+}: {
+  readonly text: string;
+  readonly className?: string;
+}) {
+  return (
+    <details className={`group/advisory ${className ?? ""}`}>
+      <summary className="inline-cursor-pointer select-none text-sm font-medium text-primary [&::-webkit-details-marker]:hidden">
+        <span className="group-open/advisory:hidden">Show full advisory description</span>
+        <span className="hidden group-open/advisory:inline">Hide advisory description</span>
+      </summary>
+      <p className="mt-2 max-w-3xl whitespace-pre-line text-base leading-7 text-muted-foreground group-open/advisory:mt-3">
+        {text}
+      </p>
+    </details>
+  );
+}
+
+/**
+ * Plain-language mechanism note: clamped preview, manual expand. Only rendered
+ * when the text passes the public-prose filter.
+ */
+function MechanismDisclosure({
+  item,
+  className,
+}: {
+  readonly item: ResearchCase;
+  readonly className?: string;
+}) {
+  const text = publicMechanism(item);
+  const blurb = advisoryBlurb(item);
+  if (!text || (blurb && stripMarkdown(text).trim() === blurb.trim())) return null;
+  return (
+    <details className={`group/mech ${className ?? ""}`}>
+      <summary className="cursor-pointer select-none text-sm font-medium text-primary [&::-webkit-details-marker]:hidden">
+        <span className="group-open/mech:hidden">What actually happened</span>
+        <span className="hidden group-open/mech:inline">Hide details</span>
+      </summary>
+      <p className="mt-2 max-w-3xl whitespace-pre-line text-sm leading-6 text-muted-foreground">
+        {text}
+      </p>
+    </details>
+  );
+}
+
+/** Right-hand facts card: verification status, dates, severity, releases. */
+function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
+  const statusLine =
+    item.publication_status === "confirmed"
+      ? "All seven evidence gates verified"
+      : item.publication_status === "qualified"
+        ? "Partially verified; remaining gates unresolved"
+        : "Provisional — gate verification in progress";
+  const facts: { label: string; value: ReactNode }[] = [
+    {
+      label: "Published",
+      value: item.published_at ? formatPublished(item.published_at) : "Unavailable",
+    },
+    {
+      label: "Severity",
+      value: item.severity ? (
+        <Badge className={severityBadgeClass(item.severity)}>{item.severity}</Badge>
+      ) : (
+        "Not scored"
+      ),
+    },
+    {
+      label: "Language",
+      value: item.repository_metadata.language || "Unknown",
+    },
+    {
+      label: "AI role",
+      value: formatContributionClass(item.contribution_class),
+    },
+    ...(item.vulnerable_release
+      ? [
+          {
+            label: "Vulnerable release",
+            value: (
+              <span className="font-mono">
+                {releaseLabel(item.vulnerable_release)}
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(item.fixed_release
+      ? [
+          {
+            label: "Fixed release",
+            value: (
+              <span className="font-mono">{releaseLabel(item.fixed_release)}</span>
+            ),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <aside className="h-fit border border-border bg-card p-5 text-sm xl:sticky xl:top-6">
+      <p className="section-kicker">Case facts</p>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{statusLine}</p>
+      <dl className="mt-4 space-y-3">
+        {facts.map(({ label, value }) => (
+          <div key={label} className="flex items-baseline justify-between gap-4">
+            <dt className="shrink-0 text-muted-foreground">{label}</dt>
+            <dd className="text-right">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {item.cwes.length ? (
+        <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border pt-4">
+          {item.cwes.map((cwe) => (
+            <a
+              key={cwe}
+              href={`https://cwe.mitre.org/data/definitions/${cwe.replace(/^CWE-/, "")}.html`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-primary hover:underline"
+            >
+              {cwe}
+            </a>
+          ))}
+        </div>
+      ) : null}
+    </aside>
   );
 }
 
@@ -487,7 +651,7 @@ function DiffHunk({
           </span>
         </span>
       </summary>
-      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-6">
+      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-6 [contain:paint]">
         <code>
           {lines.map((line, index) => (
             <span
@@ -572,21 +736,23 @@ export function CanonicalCaseEvidence({
 
   return (
     <section className="space-y-8 border-t border-border pt-7">
-      <div>
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
         <div className="flex flex-wrap items-center gap-3">
           <p className="section-kicker">How AI contributed</p>
           <span className="border border-primary/25 bg-primary/[0.05] px-2 py-1 font-mono text-[10px] font-semibold text-primary">
             {formatContributionClass(item.contribution_class)}
           </span>
         </div>
-        <h2 className="mt-3 max-w-3xl text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
           {summary ?? contributionHeadline(item.contribution_class)}
         </h2>
         {blurb && blurb !== summary ? (
-          <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
-            {blurb}
-          </p>
+          <AdvisoryDisclosure text={blurb} className="mt-3" />
         ) : null}
+        <MechanismDisclosure item={item} className="mt-5" />
+        </div>
+        <CaseFactsCard item={item} />
       </div>
 
       {introStep && !incomplete ? (
@@ -603,11 +769,11 @@ export function CanonicalCaseEvidence({
       {incomplete ? (
         <IncompleteRemediationFlow item={item} displayId={visibleId} />
       ) : (
-        <div className="grid items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <CauseFixCard
             tone="bad"
             kicker="Root cause"
-            title={leftStep?.title ?? rootCauseTitle(item)}
+            title={cardStepTitle(leftStep, rootCauseTitle(item))}
             detail={
               leftStep?.detail ??
               "The candidate commit below is where the vulnerable behavior appears."
@@ -621,11 +787,7 @@ export function CanonicalCaseEvidence({
           <CauseFixCard
             tone={hasFix ? "good" : "warn"}
             kicker={hasFix ? "Fix" : "Fix status"}
-            title={
-              hasFix
-                ? (rightStep?.title ?? "Security fix")
-                : "No public fix identified"
-            }
+            title={hasFix ? cardStepTitle(rightStep, "Security fix") : "No public fix identified"}
             detail={
               hasFix
                 ? (rightStep?.detail ??
@@ -710,30 +872,6 @@ export function CanonicalCaseEvidence({
           </dl>
         </div>
       )}
-
-      <div className="max-w-xl border-y border-border py-5">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          Releases
-        </p>
-        <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Vulnerable</dt>
-            <dd className="font-mono text-right">
-              {item.vulnerable_release
-                ? releaseLabel(item.vulnerable_release)
-                : "Not established"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Fixed</dt>
-            <dd className="font-mono text-right">
-              {item.fixed_release
-                ? releaseLabel(item.fixed_release)
-                : "Not established"}
-            </dd>
-          </div>
-        </dl>
-      </div>
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
         {item.advisory_url ? (

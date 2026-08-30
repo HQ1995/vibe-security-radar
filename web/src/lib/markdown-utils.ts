@@ -44,24 +44,3 @@ export function isPublicProse(text: string | null | undefined): boolean {
   return /[a-z]/i.test(value);
 }
 
-/** First plain prose paragraph of an advisory, dropping headings, tables and code blocks. */
-export function getProseSummary(text: string | null | undefined): string | null {
-  if (!text) return null;
-  const inTable = (line: string) => line.includes("|") && !line.startsWith("```");
-  const paras: string[] = [];
-  let cur = "";
-  let inCode = false;
-  for (const raw of text.split("\n")) {
-    const line = raw.trim();
-    if (line.startsWith("```")) { inCode = !inCode; continue; }
-    if (inCode) continue;
-    if (line.startsWith("|") || inTable(line) || /^#{1,6}\s/.test(line) || /^\|/.test(line)) { if (cur) { paras.push(cur); cur = ""; } continue; }
-    if (line === "") { if (cur) { paras.push(cur); cur = ""; } continue; }
-    cur = cur ? cur + " " + line : line;
-  }
-  if (cur) paras.push(cur);
-  const para = paras.find((p) => p.length > 40);
-  if (!para) return null;
-  const clean = stripMarkdown(para);
-  return clean.length > 500 ? clean.slice(0, 497) + "..." : clean;
-}

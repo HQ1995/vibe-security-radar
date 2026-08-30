@@ -386,7 +386,7 @@ describe("canonical case evidence", () => {
     }
   });
 
-  it("omits empty release rows instead of showing not recorded", () => {
+  it("shows release facts in the case facts card without not-recorded rows", () => {
     const withRelease = getResearchCaseById("GHSA-5XXX-QHH7-9287");
     const withoutRelease = getResearchCaseById("GHSA-C7RR-QHWX-6Q49");
     expect(withRelease?.vulnerable_release).toBeTruthy();
@@ -394,7 +394,7 @@ describe("canonical case evidence", () => {
 
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={withRelease!} />),
-    ).toContain("Releases");
+    ).toContain("Vulnerable release");
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={withoutRelease!} />),
     ).not.toContain("Not recorded");
