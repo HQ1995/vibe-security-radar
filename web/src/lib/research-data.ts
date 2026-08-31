@@ -34,6 +34,10 @@ export interface ResearchCodeEvidence {
   readonly comparison_hunks: readonly ResearchCodeHunk[];
   readonly candidate_patch_sha256: string | null;
   readonly fix_patch_sha256: string | null;
+  readonly required_anchors?: Readonly<{
+    candidate?: readonly string[];
+    fix?: readonly string[];
+  }>;
   readonly unavailable_reason?: string | null;
 }
 

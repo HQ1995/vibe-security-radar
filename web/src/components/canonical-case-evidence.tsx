@@ -695,12 +695,14 @@ function DiffHunk({
   sha,
   label,
   annotation,
+  anchors,
 }: {
   readonly hunk: ResearchCodeHunk;
   readonly repository: string | null;
   readonly sha: string;
   readonly label: DiffRole;
   readonly annotation: string | null;
+  readonly anchors: readonly string[];
 }) {
   const lines = hunk.code.replace(/\n$/, "").split("\n");
   const added = lines.filter(
@@ -709,64 +711,114 @@ function DiffHunk({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
-  return (
-    <details className="group overflow-hidden border border-border bg-card">
-      <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
-          <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {label}
-          </span>
-          <FileLink repository={repository} sha={sha} file={hunk.file} />
-          <SourceLink repository={repository} sha={sha} />
+  const keyLines = lines.flatMap((line, index) =>
+    anchors.some((anchor) => line.toLowerCase().includes(anchor.toLowerCase()))
+      ? [index]
+      : [],
+  );
+  const keyed = Boolean(annotation && keyLines.length);
+  const ranges = [...new Set([0, ...keyLines])]
+    .sort((left, right) => left - right)
+    .map((index) => [Math.max(0, index - 3), Math.min(lines.length, index + 4)] as const)
+    .reduce<Array<[number, number]>>((merged, [start, end]) => {
+      const previous = merged.at(-1);
+      if (previous && start <= previous[1]) previous[1] = Math.max(previous[1], end);
+      else merged.push([start, end]);
+      return merged;
+    }, []);
+  const segments = ranges.reduce<Array<{ end: number; key: boolean; start: number }>>(
+    (result, [start, end], index) => {
+      const previousEnd = index ? ranges[index - 1][1] : 0;
+      if (previousEnd < start) result.push({ start: previousEnd, end: start, key: false });
+      result.push({ start, end, key: true });
+      if (index === ranges.length - 1 && end < lines.length) {
+        result.push({ start: end, end: lines.length, key: false });
+      }
+      return result;
+    },
+    [],
+  );
+  const renderLines = (start = 0, end = lines.length) => (
+    <code>
+      {lines.slice(start, end).map((line, offset) => (
+        <span
+          key={`${start + offset}-${line}`}
+          className={`block min-w-max px-4 ${
+            line.startsWith("+")
+              ? "bg-emerald-50 text-emerald-900"
+              : line.startsWith("-")
+                ? "bg-red-50 text-red-900"
+                : line.startsWith("@@")
+                  ? "text-primary"
+                  : ""
+          }`}
+        >
+          {line || " "}
         </span>
-        <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
-          <span className="text-emerald-700">+{added}</span>
-          <span className="text-red-700">−{removed}</span>
+      ))}
+    </code>
+  );
+  const header = (
+    <span className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
+        <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
         </span>
-      </summary>
-      <div
-        className={
-          annotation
-            ? "grid border-t border-border xl:grid-cols-[minmax(0,1fr)_18rem]"
-            : "border-t border-border"
-        }
-      >
-        <pre className="overflow-x-auto py-3 text-[12px] leading-5 [contain:paint]">
-          <code>
-            {lines.map((line, index) => (
-              <span
-                key={`${index}-${line}`}
-                className={`block min-w-max px-4 ${
-                  line.startsWith("+")
-                    ? "bg-emerald-50 text-emerald-900"
-                    : line.startsWith("-")
-                      ? "bg-red-50 text-red-900"
-                      : line.startsWith("@@")
-                        ? "text-primary"
-                        : ""
-                }`}
-              >
-                {line || " "}
-              </span>
-            ))}
-          </code>
+        <FileLink repository={repository} sha={sha} file={hunk.file} />
+        <SourceLink repository={repository} sha={sha} />
+      </span>
+      <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
+        <span className="text-emerald-700">+{added}</span>
+        <span className="text-red-700">−{removed}</span>
+      </span>
+    </span>
+  );
+  if (!keyed) {
+    return (
+      <details className="group overflow-hidden border border-border bg-card">
+        <summary className="cursor-pointer select-none [&::-webkit-details-marker]:hidden">
+          {header}
+        </summary>
+        <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
+          {renderLines()}
         </pre>
-        {annotation ? (
-          <aside
-            aria-label="Key code note"
-            className={`border-t-4 px-4 py-4 text-sm leading-6 xl:border-l-4 xl:border-t-0 ${
-              label === "AI change"
-                ? "border-amber-500 bg-amber-50/70 text-amber-950"
-                : label === "Fix"
-                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
-                  : "border-primary bg-primary/[0.04] text-foreground"
-            }`}
-          >
-            {annotation}
-          </aside>
-        ) : null}
+      </details>
+    );
+  }
+  return (
+    <div className="overflow-hidden border border-border bg-card">
+      {header}
+      <div className="border-t border-border">
+        {segments.map(({ start, end, key }) =>
+          key ? (
+            <pre key={`${start}-${end}`} className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
+              {renderLines(start, end)}
+            </pre>
+          ) : (
+            <details key={`${start}-${end}`} className="border-y border-border/70 bg-muted/20">
+              <summary className="cursor-pointer px-4 py-1.5 text-[11px] text-muted-foreground">
+                Show {end - start} hidden lines
+              </summary>
+              <pre className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
+                {renderLines(start, end)}
+              </pre>
+            </details>
+          ),
+        )}
+        <aside
+          aria-label="Key code note"
+          className={`border-t-4 px-4 py-3 text-sm leading-6 ${
+            label === "AI change"
+              ? "border-amber-500 bg-amber-50/70 text-amber-950"
+              : label === "Fix"
+                ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
+                : "border-primary bg-primary/[0.04] text-foreground"
+          }`}
+        >
+          {annotation}
+        </aside>
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -847,11 +899,21 @@ export function CanonicalCaseEvidence({
   }
   const codeHunks = selectedHunks.map((hunk) => {
     const label = hunkRole(hunk);
+    const anchors =
+      label === "AI change"
+        ? (evidence?.required_anchors?.candidate ?? [])
+        : label === "Fix"
+          ? (evidence?.required_anchors?.fix ?? [])
+          : [
+              ...(evidence?.required_anchors?.candidate ?? []),
+              ...(evidence?.required_anchors?.fix ?? []),
+            ];
     return {
       hunk,
       label,
       ...(label === "AI change" ? candidateSource : fixSource),
       annotation: hunkAnnotation(hunk),
+      anchors,
     };
   });
   const codeGroups = [
@@ -958,7 +1020,7 @@ export function CanonicalCaseEvidence({
               >
                 <h3 className="text-sm font-semibold">{group.title}</h3>
               </div>
-              {group.hunks.map(({ hunk, label, repository, sha, annotation }, index) => (
+              {group.hunks.map(({ hunk, label, repository, sha, annotation, anchors }, index) => (
                 <DiffHunk
                   key={`${label}-${index}-${hunk.file}`}
                   hunk={hunk}
@@ -966,6 +1028,7 @@ export function CanonicalCaseEvidence({
                   sha={sha}
                   label={label}
                   annotation={annotation}
+                  anchors={anchors}
                 />
               ))}
             </section>

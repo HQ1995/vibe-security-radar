@@ -436,13 +436,16 @@ describe("canonical case evidence", () => {
     );
   });
 
-  it("keeps diff code collapsed with curated notes beside key hunks", () => {
+  it("expands anchored key lines and folds the surrounding diff context", () => {
     const item = structuredClone(
       getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
     );
     Object.assign(item.code_evidence!.comparison_hunks[0], {
       annotation:
         "The newly added PluginImportGuard and both causal mechanisms are visible in this hunk.",
+    });
+    Object.assign(item.code_evidence!, {
+      required_anchors: { candidate: ["PluginImportGuard"] },
     });
     expect(item?.code_evidence?.comparison_hunks.length).toBeGreaterThan(0);
 
@@ -456,6 +459,7 @@ describe("canonical case evidence", () => {
       "newly added PluginImportGuard and both causal mechanisms",
     );
     expect(html).toContain('aria-label="Key code note"');
+    expect(html).toMatch(/Show \d+ hidden lines/);
     expect(html).not.toContain('<details open=""');
     expect(html).not.toContain("Lines beginning with");
     expect(html).not.toContain("Why this change is shown");
