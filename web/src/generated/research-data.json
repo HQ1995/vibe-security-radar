@@ -9,16 +9,16 @@
   "ledger_reviewed": 2346,
   "ledger_in_progress": 5966,
   "ledger_not_started": 21281,
-  "confirmed_cases": 145,
-  "qualified_cases": 97,
-  "provisional_cases": 4,
+  "confirmed_cases": 154,
+  "qualified_cases": 89,
+  "provisional_cases": 3,
   "exact_publication_dates": 246,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-08-31T03:34:47Z",
+  "generated_at": "2026-08-31T03:41:46Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -5665,7 +5665,7 @@
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "23838a9959550e975d732ae08a44a3a2f0cc084b"
+    "7d1ddbfdb8296058ab787f7c57b8943c0214d14d"
    ],
    "gates": {
     "identity": "PASS",
@@ -5699,7 +5699,7 @@
    ],
    "mechanism_key": null,
    "mechanism": "cand=b7b362ae427c fix=23838a995955 ai=['src/lib/automations/engine.ts:528-546 (candidate-added send_webhook case: `const res = await fetch(cfg.url, {...})` with no destination validation)'] fixrefs=['src/lib/automations/engine.ts:534-536 (+`if (!(await isDeliverableUrl(cfg.url))) throw` immediately before the same fetch), 543-544 (+`redirect: \"manual\"` and 10s timeout in the same request config)']",
-   "scope_statement": "cand=b7b362ae427c fix=23838a995955 ai=['src/lib/automations/engine.ts:528-546 (candidate-added send_webhook case: `const res = await fetch(cfg.url, {...})` with no destination validation)'] fixrefs=['src/lib/automations/engine.ts:534-536 (+`if (!(await isDeliverableUrl(cfg.url))) throw` immediately before the same fetch), 543-544 (+`redirect: \"manual\"` and 10s timeout in the same request config)']",
+   "scope_statement": "The claim is limited to the Claude-coauthored automation send_webhook branch that made server-side requests to account-supplied URLs without the existing SSRF destination guard.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -5708,63 +5708,73 @@
     "named_candidate_count": 1,
     "note": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com> on b7b362ae"
    },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
-     {
-      "sha": "23838a9959550e975d732ae08a44a3a2f0cc084b",
-      "classification": "no_ai_marker",
-      "author": {
-       "name": "Arnas Donauskas",
-       "email": "61235555+ArnasDon@users.noreply.github.com"
-      }
-     }
-    ]
-   },
+   "fix_authorship": null,
    "code_evidence": {
     "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
-    "fix_marker": null,
-    "candidate_url": "https://github.com/arnasdon/wacrm/commit/b7b362ae427ccf4b33b8e8cd147f16410f3ce800",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-8jqh-598v-rfxc",
-    "summary": "The AI-written send_webhook handler fetched a user-supplied webhook URL without the existing SSRF guard, letting authenticated users trigger server-side requests to arbitrary targets.",
+    "fix_marker": "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
+    "candidate_url": "https://github.com/ArnasDon/wacrm/commit/b7b362ae427ccf4b33b8e8cd147f16410f3ce800",
+    "fix_url": "https://github.com/ArnasDon/wacrm/commit/7d1ddbfdb8296058ab787f7c57b8943c0214d14d",
+    "advisory_url": "https://github.com/ArnasDon/wacrm/security/advisories/GHSA-8jqh-598v-rfxc",
+    "summary": "Claude-assisted automation code sent server-side POST requests to account-supplied URLs without the existing SSRF destination check. The direct fix blocks private and reserved targets and redirect bounces before the request.",
+    "mechanism": "The send_webhook branch passed cfg.url and account-controlled headers directly to fetch, which followed redirects by default. The fix applies isDeliverableUrl before the request, disables redirects, and bounds request time.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat(automations): visual flow builder, engine, and logs viewer"
+      "detail": "The new automation action accepted a webhook URL and custom headers, then fetched the destination from the server without the existing SSRF guard."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The direct PR member validates the resolved destination, refuses redirects, and adds a ten-second timeout at the same fetch sink."
      }
     ],
     "candidate_hunks": [
      {
       "file": "src/lib/automations/engine.ts",
-      "code": "@@ -0,0 +1,544 @@\n+import type {\n+  Automation,\n+  AutomationLogStepResult,\n+  AutomationStep,\n+  AutomationTriggerType,\n+  ConditionStepConfig,\n+  KeywordMatchTriggerConfig,\n+  SendMessageStepConfig,\n+  SendWebhookStepConfig,\n+  TagStepConfig,\n+  UpdateContactFieldStepConfig,\n+  WaitStepConfig,\n+  CreateDealStepConfig,\n+  AssignConversationStepConfig,\n+} from '@/types'\n+import { supabaseAdmin } from './admin-client'\n+\n+// ------------------------------------------------------------\n+// Public API\n+// ------------------------------------------------------------\n+\n+export interface AutomationContext {\n+  /** Raw message text, for keyword_match + message_content conditions. */\n+  message_text?: string\n+  /** Conversation the event belongs to, if any. */\n+  conversation_id?: string\n+  /** Arbitrary variables accumulated during execution. */\n+  vars?: Record<string, unknown>\n+  /** The tag id that was added, for tag_added trigger. */\n+  tag_id?: string\n+  /** Agent the conversation was assigned to, for conversation_assigned. */\n+  agent_id?: string\n+}\n+\n+export interface DispatchInput {\n+  userId: string\n+  triggerType: AutomationTriggerType\n+  contactId?: string | null\n+  context?: AutomationContext\n+}\n+\n+/**\n+ * Fire all active automations matching the given trigger for a user.\n+ *\n+ * Must never throw — callers use fire-and-forget from the webhook.\n+ * All errors are caught and logged; per-automation failures are\n+ * recorded into automation_logs with status='failed'.\n+ */\n+export async function runAutomationsForTrigger(input: DispatchInput): Promise<void> {\n+  try {\n+    const db = supabaseAdmin()\n+    const { data: automations, error } = await db\n+      .from('automations')\n+      .select('*')\n+      .eq('user_id', input.userId)\n+      .eq('trigger_type', input.triggerType)\n+      .eq('is_active', true)\n+\n+    if (error) {\n+      console.error('[automations] fetch failed:', error)\n+      return\n+    }\n+    if (!automations || automations.length === 0) return\n+\n+    for (const automation of automations as Automation[]) {\n+      if (!triggerMatches(automation, input.context)) continue\n+      try {\n+        await executeAutomation(automation, input)\n+      } catch (err) {\n+        console.error('[automations] execute failed:', automation.id, err)\n+      }\n+    }\n+  } catch (err) {\n+    console.error('[automations] dispatch failed:', err)\n+  }\n+}\n+\n+/**\n+ * Resume a run that was parked at a wait step. Called from the cron\n+ * endpoint after it grabs a due `automation_pending_executions` row.\n+ */\n+export async function resumePendingExecution(pending: {\n+  id: string\n+  automation_id: string\n+  user_id: string\n+  contact_id: string | null\n+  log_id: string | null\n+  parent_step_id: string | null\n+  branch: 'yes' | 'no' | null",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +396,12 @@ selected from new src/lib/automations/engine.ts\n+    case 'send_webhook': {\n+      const cfg = step.step_config as SendWebhookStepConfig\n+      if (!cfg.url) throw new Error('send_webhook needs url')\n+      const body = cfg.body_template ? interpolate(cfg.body_template, args) : JSON.stringify(args.context)\n+      const res = await fetch(cfg.url, {\n+        method: 'POST',\n+        headers: { 'content-type': 'application/json', ...(cfg.headers ?? {}) },\n+        body,\n+      })\n+      if (!res.ok) throw new Error(`webhook returned ${res.status}`)\n+      return `webhook ${res.status}`\n+    }",
+      "annotation": "The Claude-coauthored feature added an account-configurable send_webhook action that passed cfg.url and custom headers straight to server-side fetch. With no destination check and default redirect following, an authenticated tenant could reach private, loopback, link-local, or metadata endpoints."
      }
     ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+    "fix_hunks": [
      {
       "file": "src/lib/automations/engine.ts",
-      "code": "@@ -0,0 +1,544 @@\n+import type {\n+  Automation,\n+  AutomationLogStepResult,\n+  AutomationStep,\n+  AutomationTriggerType,\n+  ConditionStepConfig,\n+  KeywordMatchTriggerConfig,\n+  SendMessageStepConfig,\n+  SendWebhookStepConfig,\n+  TagStepConfig,\n+  UpdateContactFieldStepConfig,\n+  WaitStepConfig,\n+  CreateDealStepConfig,\n+  AssignConversationStepConfig,\n+} from '@/types'\n+import { supabaseAdmin } from './admin-client'\n+\n+// ------------------------------------------------------------\n+// Public API\n+// ------------------------------------------------------------\n+\n+export interface AutomationContext {\n+  /** Raw message text, for keyword_match + message_content conditions. */\n+  message_text?: string\n+  /** Conversation the event belongs to, if any. */\n+  conversation_id?: string\n+  /** Arbitrary variables accumulated during execution. */\n+  vars?: Record<string, unknown>\n+  /** The tag id that was added, for tag_added trigger. */\n+  tag_id?: string\n+  /** Agent the conversation was assigned to, for conversation_assigned. */\n+  agent_id?: string\n+}\n+\n+export interface DispatchInput {\n+  userId: string\n+  triggerType: AutomationTriggerType\n+  contactId?: string | null\n+  context?: AutomationContext\n+}\n+\n+/**\n+ * Fire all active automations matching the given trigger for a user.\n+ *\n+ * Must never throw — callers use fire-and-forget from the webhook.\n+ * All errors are caught and logged; per-automation failures are\n+ * recorded into automation_logs with status='failed'.\n+ */\n+export async function runAutomationsForTrigger(input: DispatchInput): Promise<void> {\n+  try {\n+    const db = supabaseAdmin()\n+    const { data: automations, error } = await db\n+      .from('automations')\n+      .select('*')\n+      .eq('user_id', input.userId)\n+      .eq('trigger_type', input.triggerType)\n+      .eq('is_active', true)\n+\n+    if (error) {\n+      console.error('[automations] fetch failed:', error)\n+      return\n+    }\n+    if (!automations || automations.length === 0) return\n+\n+    for (const automation of automations as Automation[]) {\n+      if (!triggerMatches(automation, input.context)) continue\n+      try {\n+        await executeAutomation(automation, input)\n+      } catch (err) {\n+        console.error('[automations] execute failed:', automation.id, err)\n+      }\n+    }\n+  } catch (err) {\n+    console.error('[automations] dispatch failed:', err)\n+  }\n+}\n+\n+/**\n+ * Resume a run that was parked at a wait step. Called from the cron\n+ * endpoint after it grabs a due `automation_pending_executions` row.\n+ */\n+export async function resumePendingExecution(pending: {\n+  id: string\n+  automation_id: string\n+  user_id: string\n+  contact_id: string | null\n+  log_id: string | null\n+  parent_step_id: string | null\n+  branch: 'yes' | 'no' | null",
-      "annotation": "",
-      "role": "candidate"
+      "role": "fix",
+      "code": "@@ -16,6 +16,7 @@ import type {\n } from '@/types'\n import { supabaseAdmin } from './admin-client'\n import { engineSendText, engineSendTemplate } from './meta-send'\n+import { isDeliverableUrl } from '@/lib/webhooks/ssrf'\n \n // ------------------------------------------------------------\n // Public API\n@@ -527,11 +528,23 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>\n     case 'send_webhook': {\n       const cfg = step.step_config as SendWebhookStepConfig\n       if (!cfg.url) throw new Error('send_webhook needs url')\n+      // SSRF guard: the URL and headers are account-controlled and the\n+      // server makes the request, so refuse any destination that resolves\n+      // to a private / loopback / link-local / reserved address. Mirrors\n+      // the webhook_endpoints delivery path (see lib/webhooks/deliver.ts).\n+      if (!(await isDeliverableUrl(cfg.url))) {\n+        throw new Error('send_webhook: destination not allowed')\n+      }\n       const body = cfg.body_template ? interpolate(cfg.body_template, args) : JSON.stringify(args.context)\n       const res = await fetch(cfg.url, {\n         method: 'POST',\n         headers: { 'content-type': 'application/json', ...(cfg.headers ?? {}) },\n         body,\n+        // Do NOT follow redirects — a public URL could 3xx-bounce to an\n+        // internal address, defeating the guard above. Bound the request\n+        // so a hung/slow internal host can't tie up the runner.\n+        redirect: 'manual',\n+        signal: AbortSignal.timeout(10_000),\n       })\n       if (!res.ok) throw new Error(`webhook returned ${res.status}`)\n       return `webhook ${res.status}`",
+      "annotation": "The direct PR member routes the destination through the existing SSRF resolver guard before fetch, refuses redirect bouncing, and adds a timeout. These changes close both direct private-address requests and public-to-private redirects at the vulnerable sink."
      }
     ],
-    "candidate_patch_sha256": "9b755992ef8924dd8c3438d3e398022826348cddf8e91a9481119587b4bb88ce",
-    "fix_patch_sha256": null,
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "1aceacde866e96d3c3e7bed432fef4f3a66c54e63e5f15555320d1221dcec7e7",
+    "fix_patch_sha256": "c3f5c0b0c45ffe3c5a8375fbabcad461087d6c4c51a8c9d8abf0f445589b39f8",
     "candidate_patch_files": [
      "src/lib/automations/engine.ts"
-    ]
+    ],
+    "fix_patch_files": [
+     "src/lib/automations/engine.ts"
+    ],
+    "fix_files": [
+     "src/lib/automations/engine.ts"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "case 'send_webhook'",
+      "fetch(cfg.url",
+      "...(cfg.headers ?? {})"
+     ],
+     "fix": [
+      "isDeliverableUrl(cfg.url)",
+      "redirect: 'manual'",
+      "AbortSignal.timeout(10_000)"
+     ]
+    },
+    "code_evidence_source": "research/provisional-closure-20260831/fixgap-a-ledger-patches.notes.md"
    },
    "ir_chain": null,
    "research_status": "git show b7b362ae: subject feat(automations): visual flow builder, engine, and logs viewer, body ends with Co-Authored-By: Claude Opus 4.7 (1M context); creates src/lib/automations/engine.ts with send_webhook fetch. Fix 23838a99 (Merge PR #352 from ArnasDon/fix/ghsa-8jqh-598v-rfxc-webhook-ssrf, +13 engine.ts) adds SSRF guard on send_webhook.",
    "unpatched": null,
    "advisory_url": "https://github.com/arnasdon/wacrm/security/advisories/GHSA-8JQH-598V-RFXC",
-   "publication_issues": [
-    "missing_fix"
-   ],
+   "publication_issues": [],
    "publication_status": "provisional"
   },
   {
@@ -6847,7 +6857,7 @@
    ],
    "mechanism_key": "prompty.ts.nunjucks.unrestricted-environment",
    "mechanism": "The Copilot-coauthored TypeScript v2 runtime created an unrestricted Nunjucks Environment and rendered attacker-controlled templates with host objects. The fix blocks constructor/prototype traversal, function calls, and non-own input data. The advisory has no CVE.",
-   "scope_statement": null,
+   "scope_statement": "The claim is limited to the Copilot-coauthored TypeScript Nunjucks renderer that exposed host objects to attacker-controlled templates; it does not cover the separate JavaScript-frontmatter advisory.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -6885,49 +6895,77 @@
    },
    "code_evidence": {
     "ai_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
-    "fix_marker": null,
+    "fix_marker": "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
     "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-w28w-gp39-m4p6",
-    "summary": "Copilot-coauthored code created an unrestricted Nunjucks environment that let attacker-controlled `.prompty` templates execute code in the host Node.js process.",
+    "fix_url": "https://github.com/microsoft/prompty/commit/e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e",
+    "advisory_url": "https://github.com/microsoft/prompty/security/advisories/GHSA-w28w-gp39-m4p6",
+    "summary": "Copilot-assisted TypeScript code rendered attacker-controlled Nunjucks templates with host objects and unrestricted JavaScript member access. The direct fix blocks prototype traversal and function calls and exposes only copied own data.",
+    "mechanism": "NunjucksRenderer passed prepared inputs directly to an unrestricted Nunjucks Environment. Templates could follow constructor or prototype properties and call host functions; the fix sanitizes inputs, limits lookup to own data properties, and disables calls during rendering.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat: add TypeScript runtime for Prompty v2"
+      "detail": "The new TypeScript renderer created a default Nunjucks runtime and rendered templates against prepared host values without a sandbox boundary."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The direct PR member copies only safe own data, rejects constructor and prototype access, blocks calls, and routes the real sink through those guards."
      }
     ],
     "candidate_hunks": [
      {
       "file": "runtime/typescript/prompty/src/renderers/nunjucks.ts",
       "code": "@@ -0,0 +1,30 @@\n+/**\n+ * Nunjucks renderer — Jinja2-compatible template rendering for TypeScript.\n+ *\n+ * Nunjucks is the standard Jinja2-compatible engine for Node.js.\n+ * This renderer replaces thread-kind inputs with nonce markers\n+ * before rendering.\n+ *\n+ * @module\n+ */\n+\n+import nunjucks from \"nunjucks\";\n+import type { PromptAgent } from \"agentschema\";\n+import type { Renderer } from \"../core/interfaces.js\";\n+import { prepareRenderInputs } from \"./common.js\";\n+\n+const env = new nunjucks.Environment(null, {\n+  autoescape: false,\n+  throwOnUndefined: false,\n+});\n+\n+export class NunjucksRenderer implements Renderer {\n+  async render(\n+    agent: PromptAgent,\n+    template: string,\n+    inputs: Record<string, unknown>,\n+  ): Promise<string> {\n+    const [modified] = prepareRenderInputs(agent, inputs);\n+    return env.renderString(template, modified);\n+  }\n+}",
-      "annotation": "",
+      "annotation": "The Copilot-coauthored TypeScript runtime created a plain Nunjucks environment and sent prepared host values directly to renderString. Attacker-controlled templates could traverse constructor and prototype properties and invoke functions in the host Node.js process.",
       "role": "candidate"
      }
     ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+    "fix_hunks": [
      {
-      "file": "runtime/typescript/prompty/src/renderers/nunjucks.ts",
-      "code": "@@ -0,0 +1,30 @@\n+/**\n+ * Nunjucks renderer — Jinja2-compatible template rendering for TypeScript.\n+ *\n+ * Nunjucks is the standard Jinja2-compatible engine for Node.js.\n+ * This renderer replaces thread-kind inputs with nonce markers\n+ * before rendering.\n+ *\n+ * @module\n+ */\n+\n+import nunjucks from \"nunjucks\";\n+import type { PromptAgent } from \"agentschema\";\n+import type { Renderer } from \"../core/interfaces.js\";\n+import { prepareRenderInputs } from \"./common.js\";\n+\n+const env = new nunjucks.Environment(null, {\n+  autoescape: false,\n+  throwOnUndefined: false,\n+});\n+\n+export class NunjucksRenderer implements Renderer {\n+  async render(\n+    agent: PromptAgent,\n+    template: string,\n+    inputs: Record<string, unknown>,\n+  ): Promise<string> {\n+    const [modified] = prepareRenderInputs(agent, inputs);\n+    return env.renderString(template, modified);\n+  }\n+}",
-      "annotation": "",
-      "role": "candidate"
+      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
+      "role": "fix",
+      "code": "@@ -13,11 +13,91 @@ import type { Prompty } from \"../model/agent/prompty.js\";\n import type { Renderer } from \"../core/interfaces.js\";\n import { prepareRenderInputs } from \"./common.js\";\n \n+type NunjucksRuntime = {\n+  memberLookup: (object: unknown, property: unknown) => unknown;\n+  callWrap: (callable: unknown, name: string, context: unknown, args: unknown[]) => unknown;\n+};\n+\n+const UNSAFE_PROPERTIES = new Set([\"__proto__\", \"constructor\", \"prototype\"]);\n+\n const env = new nunjucks.Environment(null, {\n   autoescape: false,\n   throwOnUndefined: false,\n });\n \n+function safeMemberLookup(object: unknown, property: unknown): unknown {\n+  if (typeof property === \"string\" && UNSAFE_PROPERTIES.has(property)) {\n+    throw new Error(`Unsafe template member access: ${property}`);\n+  }\n+\n+  if (\n+    (typeof property !== \"string\" && typeof property !== \"number\") ||\n+    object === null ||\n+    typeof object !== \"object\"\n+  ) {\n+    return undefined;\n+  }\n+\n+  const descriptor = Object.getOwnPropertyDescriptor(object, property);\n+  return descriptor !== undefined && \"value\" in descriptor ? descriptor.value : undefined;\n+}\n+\n+function safeCallWrap(_callable: unknown, name: string, _context: unknown, _args: unknown[]): never {\n+  throw new Error(`Template function calls are not allowed: ${name}`);\n+}\n+\n+function sanitizeValue(value: unknown, seen = new WeakMap<object, unknown>()): unknown {\n+  if (value === null || typeof value === \"string\" || typeof value === \"number\" || typeof value === \"boolean\") {\n+    return value;\n+  }\n+\n+  if (typeof value !== \"object\") {\n+    return undefined;\n+  }\n+\n+  const existing = seen.get(value);\n+  if (existing !== undefined) {\n+    return existing;\n+  }\n+\n+  if (Array.isArray(value)) {\n+    const result: unknown[] = [];\n+    seen.set(value, result);\n+    for (const item of value) {\n+      result.push(sanitizeValue(item, seen));\n+    }\n+    return result;\n+  }\n+\n+  const result = Object.create(null) as Record<string, unknown>;\n+  seen.set(value, result);\n+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {\n+    if (!UNSAFE_PROPERTIES.has(key) && \"value\" in descriptor) {\n+      result[key] = sanitizeValue(descriptor.value, seen);\n+    }\n+  }\n+  return result;\n+}\n+\n+function sanitizeInputs(inputs: Record<string, unknown>): Record<string, unknown> {\n+  return sanitizeValue(inputs) as Record<string, unknown>;\n+}\n+\n+function renderSafely(template: string, inputs: Record<string, unknown>): string {\n+  const runtime = nunjucks.runtime as unknown as NunjucksRuntime;\n+  const memberLookup = runtime.memberLookup;\n+  const callWrap = runtime.callWrap;\n+  runtime.memberLookup = safeMemberLookup;\n+  runtime.callWrap = safeCallWrap;\n+\n+  try {\n+    return env.renderString(template, inputs);\n+  } finally {\n+    runtime.memberLookup = memberLookup;\n+    runtime.callWrap = callWrap;\n+  }\n+}\n+\n export class NunjucksRenderer implements Renderer {\n   async render(\n     agent: Prompty,",
+      "annotation": "The fix replaces unrestricted JavaScript object traversal with own-data-only lookup, strips unsafe constructor and prototype keys from inputs, and blocks every template function call while Nunjucks renders. Restoring the original runtime hooks in finally confines those guards to this render operation."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
+      "role": "fix",
+      "code": "@@ -25,6 +105,6 @@ export class NunjucksRenderer implements Renderer {\n     inputs: Record<string, unknown>,\n   ): Promise<string> {\n     const [modified] = prepareRenderInputs(agent, inputs);\n-    return env.renderString(template, modified);\n+    return renderSafely(template, sanitizeInputs(modified));\n   }\n }",
+      "annotation": "The vulnerable sink previously passed prepared host values straight to the unrestricted environment. This call-site replacement makes both input sanitization and the guarded Nunjucks runtime mandatory on the actual render path."
      }
     ],
+    "comparison_hunks": [],
     "candidate_patch_sha256": "6053a07104b64c2f032ecb0b30f19d83e258a087861ac41e91817032fb76a18d",
-    "fix_patch_sha256": null,
+    "fix_patch_sha256": "61f2622257aa8beb39bee219cd58dd68a77a4ac93b7ead24b70df5cd8d05ad4c",
     "candidate_patch_files": [
      "runtime/typescript/prompty/src/renderers/nunjucks.ts"
     ],
-    "mechanism": "The Copilot-coauthored TypeScript v2 runtime created an unrestricted Nunjucks Environment and rendered attacker-controlled templates with host objects. The fix blocks constructor/prototype traversal, function calls, and non-own input data. The advisory has no CVE."
+    "fix_patch_files": [
+     "runtime/typescript/packages/core/src/renderers/nunjucks.ts"
+    ],
+    "fix_files": [
+     "runtime/typescript/packages/core/src/renderers/nunjucks.ts"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "new nunjucks.Environment",
+      "env.renderString(template, modified)"
+     ],
+     "fix": [
+      "UNSAFE_PROPERTIES",
+      "Object.getOwnPropertyDescriptor",
+      "runtime.callWrap = safeCallWrap",
+      "renderSafely(template, sanitizeInputs(modified))"
+     ]
+    },
+    "code_evidence_source": "research/provisional-closure-20260831/fixgap-a-w28w-research.md"
    },
    "ir_chain": null,
    "research_status": "git show a0e6108842a3 nunjucks.ts:28 AI co-authored commit commit e4a0ebf49e3a AST",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-w28w-gp39-m4p6",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/microsoft/prompty/security/advisories/GHSA-w28w-gp39-m4p6",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-R9MR-M37C-5FR3",
@@ -7349,17 +7387,17 @@
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
     "kind": "git_tag",
     "sha": "700ff33db7470d4d2dd9674e9e29dc5e6392daa4",
-    "tag": "3.38.1"
+    "tag": "3.38.1",
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false
    },
    "fixed_release": {
-    "contains_fix_ancestor": true,
     "kind": "git_tag",
     "sha": "bca426de7dc36d680285295655dc640dea2aab21",
-    "tag": "3.39.25"
+    "tag": "3.39.25",
+    "contains_fix_ancestor": true
    },
    "published_at": "2026-07-24",
    "severity": "MEDIUM",
@@ -7375,8 +7413,8 @@
     "https://github.com/Budibase/budibase/releases/tag/3.39.25"
    ],
    "mechanism_key": "budibase.automation-test-result.oauth2-token-broadcast",
-   "mechanism": "Claude 700ff33d first adds bindings.oauth2.{accessToken,refreshToken} for SSO users into automation test execution. Parent getUserContextBindings has no oauth2. Fix bca426de adds sanitizeAutomationTestResult before WebSocket emit. Tag 3.38.1 has oauth2 bindings and no sanitizer; 3.39.25 has the sanitizer.",
-   "scope_statement": null,
+   "mechanism": "An automation test copied an SSO user's access and refresh tokens into result output that was broadcast and cached for other builders in the same app.",
+   "scope_statement": "Count the first addition of OAuth2 secrets to automation user bindings and their exposure through shared test-result delivery; exclude unrelated automation behavior.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -7403,49 +7441,111 @@
     ]
    },
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "ai_marker": "Generated with Claude Code; Co-Authored-By: Claude <noreply@anthropic.com>",
     "fix_marker": null,
     "candidate_url": "https://github.com/budibase/budibase/commit/700ff33db7470d4d2dd9674e9e29dc5e6392daa4",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-gh4h-34gr-87r7",
-    "summary": "AI-written code included SSO users' OAuth2 tokens in automation test results, letting any co-builder steal them via WebSocket or cached status.",
+    "fix_url": "https://github.com/budibase/budibase/commit/bca426de7dc36d680285295655dc640dea2aab21",
+    "advisory_url": "https://github.com/advisories/GHSA-gh4h-34gr-87r7",
+    "summary": "Claude-assisted code put an SSO user's access and refresh tokens into automation test results. Another builder in the same app could recover those secrets from a broadcast or cached status response.",
+    "mechanism": "The user-binding helper copied OAuth2 secrets into the event that became trigger output, while the test path distributed that output beyond the builder who started the test.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "[BUDI-9240] Make CurrentUser.oauth available in automation external data connector and API request steps"
+      "detail": "The AI-assisted change added access and refresh tokens to the user object passed through automation execution."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The fix strips OAuth2 data before results leave the server and isolates cached progress by builder."
      }
     ],
+    "required_anchors": {
+     "candidate": [
+      "bindings.oauth2",
+      "accessToken",
+      "refreshToken"
+     ],
+     "fix": [
+      "sanitizeAutomationTestResult(event.result)",
+      "delete outputs.user.oauth2",
+      "${appId || \"unknown\"}:${automationId}:${userId || \"unknown\"}"
+     ]
+    },
     "candidate_hunks": [
      {
       "file": "packages/server/src/sdk/users/utils.ts",
-      "code": "@@ -13,6 +13,7 @@ import {\n   Database,\n   ContextUserMetadata,\n   UserBindings,\n+  isSSOUser,\n } from \"@budibase/types\"\n \n export function combineMetadataAndUser(\n@@ -130,27 +131,25 @@ export function getUserContextBindings(user: ContextUser): UserBindings {\n   if (!user) {\n     return {}\n   }\n-  // Current user context for bindable search\n-  const {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n-  } = user\n-  return {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n+\n+  const bindings: UserBindings = {\n+    _id: user._id,\n+    _rev: user._rev,\n+    firstName: user.firstName,\n+    lastName: user.lastName,\n+    email: user.email,\n+    status: user.status,\n+    roleId: user.roleId,\n+    globalId: user.globalId,\n+    userId: user.userId,\n   }\n+\n+  if (isSSOUser(user) && user.oauth2) {\n+    bindings.oauth2 = {\n+      accessToken: user.oauth2.accessToken,\n+      refreshToken: user.oauth2.refreshToken,\n+    }\n+  }\n+\n+  return bindings\n }",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -130,27 +131,25 @@ export function getUserContextBindings(user: ContextUser): UserBindings {\n   if (!user) {\n     return {}\n   }\n-  // Current user context for bindable search\n-  const {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n-  } = user\n-  return {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n+\n+  const bindings: UserBindings = {\n+    _id: user._id,\n+    _rev: user._rev,\n+    firstName: user.firstName,\n+    lastName: user.lastName,\n+    email: user.email,\n+    status: user.status,\n+    roleId: user.roleId,\n+    globalId: user.globalId,\n+    userId: user.userId,\n   }\n+\n+  if (isSSOUser(user) && user.oauth2) {\n+    bindings.oauth2 = {\n+      accessToken: user.oauth2.accessToken,\n+      refreshToken: user.oauth2.refreshToken,\n+    }\n+  }\n+\n+  return bindings\n }",
+      "annotation": "The AI-assisted change copies both OAuth2 secrets into the user bindings that automation execution later exposes as test output."
      }
     ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+    "fix_hunks": [
      {
-      "file": "packages/server/src/sdk/users/utils.ts",
-      "code": "@@ -13,6 +13,7 @@ import {\n   Database,\n   ContextUserMetadata,\n   UserBindings,\n+  isSSOUser,\n } from \"@budibase/types\"\n \n export function combineMetadataAndUser(\n@@ -130,27 +131,25 @@ export function getUserContextBindings(user: ContextUser): UserBindings {\n   if (!user) {\n     return {}\n   }\n-  // Current user context for bindable search\n-  const {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n-  } = user\n-  return {\n-    _id,\n-    _rev,\n-    firstName,\n-    lastName,\n-    email,\n-    status,\n-    roleId,\n-    globalId,\n-    userId,\n+\n+  const bindings: UserBindings = {\n+    _id: user._id,\n+    _rev: user._rev,\n+    firstName: user.firstName,\n+    lastName: user.lastName,\n+    email: user.email,\n+    status: user.status,\n+    roleId: user.roleId,\n+    globalId: user.globalId,\n+    userId: user.userId,\n   }\n+\n+  if (isSSOUser(user) && user.oauth2) {\n+    bindings.oauth2 = {\n+      accessToken: user.oauth2.accessToken,\n+      refreshToken: user.oauth2.refreshToken,\n+    }\n+  }\n+\n+  return bindings\n }",
-      "annotation": "",
-      "role": "candidate"
+      "file": "packages/server/src/api/controllers/automation.ts",
+      "role": "fix",
+      "code": "@@ -40,6 +40,7 @@ import {\n } from \"@budibase/types\"\n import { testConnection } from \"../../automations/email\"\n import { getActionDefinitions as actionDefs } from \"../../automations/actions\"\n+import { sanitizeAutomationTestResult } from \"../../automations/sanitizeTestResult\"\n import * as triggers from \"../../automations/triggers\"\n import {\n   AutomationTestProgressEvent,",
+      "annotation": "The controller imports the shared result sanitizer used at every outward test-result boundary."
+     },
+     {
+      "file": "packages/server/src/api/controllers/automation.ts",
+      "role": "fix",
+      "code": "@@ -395,10 +396,11 @@ export async function test(\n   const emitProgress = (event: ProgressEventInput) => {\n     const payload: AutomationTestProgressEvent = {\n       ...event,\n+      result: sanitizeAutomationTestResult(event.result),\n       automationId: automation._id!,\n       appId,\n     }\n-    recordTestProgress(appId, automation._id!, payload)\n+    recordTestProgress(appId, automation._id!, payload, ctx.user._id)\n     builderSocket?.emitToRoom(\n       ctx,\n       ctx.appId,",
+      "annotation": "Every progress event is sanitized before caching or WebSocket broadcast, and the cache write is tied to the requesting builder."
+     },
+     {
+      "file": "packages/server/src/api/controllers/automation.ts",
+      "role": "fix",
+      "code": "@@ -421,15 +423,16 @@ export async function test(\n       )\n     })\n     await events.automation.tested(automation)\n+    const sanitizedResult = sanitizeAutomationTestResult(result)\n     emitProgress({\n       status: \"complete\",\n       occurredAt: Date.now(),\n-      result,\n+      result: sanitizedResult,\n     })\n-    return result\n+    return sanitizedResult\n   }\n \n-  clearTestProgress(appId, automation._id!)\n+  clearTestProgress(appId, automation._id!, ctx.user._id)\n \n   if (asyncFlag) {\n     ctx.status = 202",
+      "annotation": "Completed results are sanitized before both the progress event and HTTP response, while cache cleanup is scoped to the same builder."
+     },
+     {
+      "file": "packages/server/src/api/controllers/automation.ts",
+      "role": "fix",
+      "code": "@@ -449,6 +452,6 @@ export async function test(\n \n export async function testStatus(ctx: UserCtx<void, unknown>) {\n   const automationId = ctx.params.id\n-  const status = getTestProgress(ctx.appId, automationId)\n+  const status = getTestProgress(ctx.appId, automationId, ctx.user._id)\n   ctx.body = status || {}\n }",
+      "annotation": "Status polling now reads only the requesting builder's cached automation result."
+     },
+     {
+      "file": "packages/server/src/automations/sanitizeTestResult.ts",
+      "role": "fix",
+      "code": "@@ -0,0 +1,31 @@\n+import { AutomationTestProgressEvent } from \"@budibase/types\"\n+import cloneDeep from \"lodash/cloneDeep\"\n+\n+function stripOAuth2FromOutputs(\n+  outputs?: Record<string, any> | null\n+): Record<string, any> | undefined | null {\n+  if (outputs?.user?.oauth2) {\n+    delete outputs.user.oauth2\n+  }\n+  return outputs\n+}\n+\n+export function sanitizeAutomationTestResult(\n+  result: AutomationTestProgressEvent[\"result\"]\n+): AutomationTestProgressEvent[\"result\"] {\n+  if (!result) {\n+    return result\n+  }\n+\n+  const sanitized: NonNullable<AutomationTestProgressEvent[\"result\"]> =\n+    cloneDeep(result)\n+  if (\"trigger\" in sanitized) {\n+    stripOAuth2FromOutputs(sanitized.trigger.outputs)\n+    for (const step of sanitized.steps || []) {\n+      stripOAuth2FromOutputs(step.outputs)\n+    }\n+  } else {\n+    stripOAuth2FromOutputs(sanitized.outputs)\n+  }\n+  return sanitized\n+}",
+      "annotation": "The sanitizer deep-copies a result and removes OAuth2 data from trigger, step, or action output without mutating execution state."
+     },
+     {
+      "file": "packages/server/src/automations/testProgress.ts",
+      "role": "fix",
+      "code": "@@ -35,15 +35,19 @@ export function stopCleanup() {\n   clearInterval(cleanupInterval)\n }\n \n-const getKey = (appId: string | undefined, automationId: string) =>\n-  `${appId || \"unknown\"}:${automationId}`\n+const getKey = (\n+  appId: string | undefined,\n+  automationId: string,\n+  userId?: string\n+) => `${appId || \"unknown\"}:${automationId}:${userId || \"unknown\"}`\n \n export function recordTestProgress(\n   appId: string | undefined,\n   automationId: string,\n-  event: AutomationTestProgressEvent\n+  event: AutomationTestProgressEvent,\n+  userId?: string\n ) {\n-  const key = getKey(appId, automationId)\n+  const key = getKey(appId, automationId, userId)\n   const state =\n     progressState.get(key) ||\n     ({",
+      "annotation": "The progress cache key now includes the builder ID, preventing two builders in one app from sharing an automation-test slot."
+     },
+     {
+      "file": "packages/server/src/automations/testProgress.ts",
+      "role": "fix",
+      "code": "@@ -75,16 +79,18 @@ export function recordTestProgress(\n \n export function getTestProgress(\n   appId: string | undefined,\n-  automationId: string\n+  automationId: string,\n+  userId?: string\n ) {\n-  const key = getKey(appId, automationId)\n+  const key = getKey(appId, automationId, userId)\n   return progressState.get(key)\n }\n \n export function clearTestProgress(\n   appId: string | undefined,\n-  automationId: string\n+  automationId: string,\n+  userId?: string\n ) {\n-  const key = getKey(appId, automationId)\n+  const key = getKey(appId, automationId, userId)\n   progressState.delete(key)\n }",
+      "annotation": "Read and delete operations use the same user-scoped key as writes, completing cache isolation across the full lifecycle."
      }
     ],
-    "candidate_patch_sha256": "acd97b6e9af9ab003415feaab139e06ec71fac7f4dd702bb121f0f576f7dc794",
-    "fix_patch_sha256": null,
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "d356dfc30def0160d47001ab7711a283b60a4ee99443241710ba8dfc7bfc3618",
+    "fix_patch_sha256": "2940b1be23c0826e29d7d6948539766ee6d52f8522502ec10ab36d51c32671da",
     "candidate_patch_files": [
      "packages/server/src/sdk/users/utils.ts"
-    ]
+    ],
+    "fix_patch_files": [
+     "packages/server/src/api/controllers/automation.ts",
+     "packages/server/src/automations/sanitizeTestResult.ts",
+     "packages/server/src/automations/testProgress.ts"
+    ],
+    "fix_files": [
+     "packages/server/src/api/controllers/automation.ts",
+     "packages/server/src/automations/sanitizeTestResult.ts",
+     "packages/server/src/automations/testProgress.ts"
+    ],
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "research_status": "700ff33db7 (BUDI-9240, Claude Code trailer) adds `if (isSSOUser(user) && user.oauth2) bindings.oauth2 = {accessToken, refreshToken}` in sdk/users/utils.ts getUserContextBindings and passes user context into buildCtx/executeQuery/apiRequest; fix bca426de7d (Dom Barker) adds sanitizeAutomationTestResult stripping oauth2 from trigger/step outputs and scopes testProgress by userId. Not squash: single-theme commit, no (#NNNN).",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-gh4h-34gr-87r7",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/advisories/GHSA-gh4h-34gr-87r7",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-FRVJ-C5QP-XJ4W",
@@ -9284,12 +9384,15 @@
    "vulnerable_release": {
     "kind": "git_tag",
     "sha": "38fd5f31368824222a8dc226540f0d8a79a20771",
-    "tag": "typescript/2.0.0-beta.1"
+    "tag": "typescript/2.0.0-beta.1",
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false
    },
    "fixed_release": {
     "kind": "git_tag",
     "sha": "88ac9948d7d37995edbb2f6d36913436626c39e1",
-    "tag": "typescript/2.0.0-beta.2"
+    "tag": "typescript/2.0.0-beta.2",
+    "contains_fix_ancestor": true
    },
    "published_at": "2026-07-17",
    "severity": "HIGH",
@@ -9307,15 +9410,15 @@
     "https://github.com/microsoft/prompty"
    ],
    "mechanism_key": "prompty.ts.file-resolver.unbounded-root",
-   "mechanism": "Parent Python loader already resolves ${file:...} with no allowed-root check (human 83245b27). Copilot a0e61088/bd50f65d/19137b33 copy that live sink into newly published TypeScript, C#, and Rust runtimes. Fix 88ac9948 adds canonical allowed-root rejection across all four. npm @prompty/core@2.0.0-beta.1 gitHead 38fd5f31 contains the TS origin without the fix; 2.0.0-beta.2 gitHead is 88ac9948.",
-   "scope_statement": null,
+   "mechanism": "The TypeScript loader resolved file references relative to a prompt and read the result without proving that the target remained inside an authorized directory.",
+   "scope_statement": "Count only the Copilot-assisted TypeScript runtime surface; pre-existing Python behavior and the C# and Rust ports are outside this row.",
    "cause_category": "path_link",
    "ai_provenance": {
-    "family": "claude",
+    "family": "copilot",
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": "Co-authored-by: Claude"
+    "note": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
    },
    "fix_authorship": {
     "classification": "ai_assisted",
@@ -9346,48 +9449,113 @@
    },
    "code_evidence": {
     "ai_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
-    "fix_marker": null,
+    "fix_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
     "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-wxhm-2mq7-7697",
-    "summary": "AI-written code copied a file-reference loader without directory checks into TypeScript, C#, and Rust runtimes, allowing prompt files to read arbitrary files via path traversal.",
+    "fix_url": "https://github.com/microsoft/prompty/commit/88ac9948d7d37995edbb2f6d36913436626c39e1",
+    "advisory_url": "https://github.com/advisories/GHSA-wxhm-2mq7-7697",
+    "summary": "A Copilot-assisted TypeScript loader read file references without checking where they resolved. A malicious prompt could use an absolute path or traversal to read files available to the host process.",
+    "mechanism": "The file-reference branch joined attacker-controlled text to the prompt directory and passed the resulting path straight to a synchronous file read.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat: add TypeScript runtime for Prompty v2"
+      "detail": "The new TypeScript runtime added file-reference expansion with no authorized-root check."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The fix enforces canonical allowed roots and rechecks the real target to stop both traversal and symlink escape."
      }
     ],
+    "required_anchors": {
+     "candidate": [
+      "resolve(agentDir, val)",
+      "loadFileContent(filePath)",
+      "readFileSync(path"
+     ],
+     "fix": [
+      "allowedFileRoots",
+      "resolveFileReference",
+      "realpathSync(candidate)",
+      "isWithinAnyRoot"
+     ]
+    },
     "candidate_hunks": [
      {
       "file": "runtime/typescript/prompty/src/core/loader.ts",
-      "code": "@@ -0,0 +1,131 @@\n+/**\n+ * Prompty loader — loads .prompty files into typed PromptAgent objects.\n+ *\n+ * Splits frontmatter (YAML) from the markdown body, resolves\n+ * `${protocol:value}` references (env vars, file includes),\n+ * injects `kind: \"prompt\"`, and delegates to `AgentDefinition.load()`\n+ * from the `agentschema` package.\n+ *\n+ * @module\n+ */\n+\n+import { readFileSync } from \"node:fs\";\n+import { resolve, dirname, extname } from \"node:path\";\n+import matter from \"gray-matter\";\n+import { AgentDefinition, LoadContext, PromptAgent } from \"agentschema\";\n+import \"dotenv/config\";\n+\n+// ---------------------------------------------------------------------------\n+// Public API\n+// ---------------------------------------------------------------------------\n+\n+/**\n+ * Load a `.prompty` file and return a typed `PromptAgent`.\n+ *\n+ * @param path - File system path to a `.prompty` file.\n+ * @returns Fully typed agent definition from agentschema.\n+ */\n+export function load(path: string): PromptAgent {\n+  const resolved = resolve(path);\n+  const raw = readFileSync(resolved, \"utf-8\");\n+  return buildAgent(raw, resolved);\n+}\n+\n+// ---------------------------------------------------------------------------\n+// Internal pipeline\n+// ---------------------------------------------------------------------------\n+\n+function buildAgent(raw: string, filePath: string): PromptAgent {\n+  // 1. Split frontmatter + body\n+  const { data, content } = matter(raw);\n+\n+  // If there's a body (instructions), merge it in\n+  const frontmatter: Record<string, unknown> = data ?? {};\n+  if (content.trim()) {\n+    frontmatter.instructions = content.trim();\n+  }\n+\n+  // 2. Inject kind — .prompty files are always PromptAgents\n+  frontmatter.kind = \"prompt\";\n+\n+  // 3. Load via agentschema with preProcess for ${protocol:value} expansion\n+  const ctx = new LoadContext({\n+    preProcess: makePreProcess(filePath) as (data: Record<string, unknown>) => Record<string, unknown>,\n+  });\n+  const agent = AgentDefinition.load(frontmatter, ctx);\n+  if (!(agent instanceof PromptAgent)) {\n+    throw new TypeError(`Expected PromptAgent, got ${agent?.constructor?.name}`);\n+  }\n+  return agent;\n+}\n+\n+// ---------------------------------------------------------------------------\n+// Reference resolution via preProcess\n+// ---------------------------------------------------------------------------\n+\n+/**\n+ * Return a `preProcess` callback that resolves `${protocol:value}`\n+ * references in every dict the agentschema loader visits.\n+ *\n+ * Supported protocols:\n+ * - `${env:VAR_NAME}` — environment variable (required)\n+ * - `${env:VAR_NAME:default}` — environment variable with default\n+ * - `${file:relative/path}` — load file content (JSON/YAML/text)\n+ */\n+function makePreProcess(agentFile: string): (data: unknown) => unknown {\n+  const agentDir = dirname(agentFile);\n+\n+  return (data: unknown): unknown => {\n+    if (typeof data !== \"object\" || data === null || Array.isArray(data)) {\n+      return data;\n+    }\n+\n+    const record = data as Record<string, unknown>;\n+    for (const [key, value] of Object.entries(record)) {\n+      if (typeof value !== \"string\" || !value.startsWith(\"${\") || !value.endsWith(\"}\")) {\n+        continue;\n+      }\n+\n+      const inner = value.slice(2, -1);",
-      "annotation": "",
-      "role": "candidate"
-     }
-    ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+      "role": "candidate",
+      "code": "@@ -0,0 +75,2 @@ selected from the new file\n+function makePreProcess(agentFile: string): (data: unknown) => unknown {\n+  const agentDir = dirname(agentFile);",
+      "annotation": "The new loader chooses the prompt directory as a base but defines no allowed-root policy."
+     },
      {
       "file": "runtime/typescript/prompty/src/core/loader.ts",
-      "code": "@@ -0,0 +1,131 @@\n+/**\n+ * Prompty loader — loads .prompty files into typed PromptAgent objects.\n+ *\n+ * Splits frontmatter (YAML) from the markdown body, resolves\n+ * `${protocol:value}` references (env vars, file includes),\n+ * injects `kind: \"prompt\"`, and delegates to `AgentDefinition.load()`\n+ * from the `agentschema` package.\n+ *\n+ * @module\n+ */\n+\n+import { readFileSync } from \"node:fs\";\n+import { resolve, dirname, extname } from \"node:path\";\n+import matter from \"gray-matter\";\n+import { AgentDefinition, LoadContext, PromptAgent } from \"agentschema\";\n+import \"dotenv/config\";\n+\n+// ---------------------------------------------------------------------------\n+// Public API\n+// ---------------------------------------------------------------------------\n+\n+/**\n+ * Load a `.prompty` file and return a typed `PromptAgent`.\n+ *\n+ * @param path - File system path to a `.prompty` file.\n+ * @returns Fully typed agent definition from agentschema.\n+ */\n+export function load(path: string): PromptAgent {\n+  const resolved = resolve(path);\n+  const raw = readFileSync(resolved, \"utf-8\");\n+  return buildAgent(raw, resolved);\n+}\n+\n+// ---------------------------------------------------------------------------\n+// Internal pipeline\n+// ---------------------------------------------------------------------------\n+\n+function buildAgent(raw: string, filePath: string): PromptAgent {\n+  // 1. Split frontmatter + body\n+  const { data, content } = matter(raw);\n+\n+  // If there's a body (instructions), merge it in\n+  const frontmatter: Record<string, unknown> = data ?? {};\n+  if (content.trim()) {\n+    frontmatter.instructions = content.trim();\n+  }\n+\n+  // 2. Inject kind — .prompty files are always PromptAgents\n+  frontmatter.kind = \"prompt\";\n+\n+  // 3. Load via agentschema with preProcess for ${protocol:value} expansion\n+  const ctx = new LoadContext({\n+    preProcess: makePreProcess(filePath) as (data: Record<string, unknown>) => Record<string, unknown>,\n+  });\n+  const agent = AgentDefinition.load(frontmatter, ctx);\n+  if (!(agent instanceof PromptAgent)) {\n+    throw new TypeError(`Expected PromptAgent, got ${agent?.constructor?.name}`);\n+  }\n+  return agent;\n+}\n+\n+// ---------------------------------------------------------------------------\n+// Reference resolution via preProcess\n+// ---------------------------------------------------------------------------\n+\n+/**\n+ * Return a `preProcess` callback that resolves `${protocol:value}`\n+ * references in every dict the agentschema loader visits.\n+ *\n+ * Supported protocols:\n+ * - `${env:VAR_NAME}` — environment variable (required)\n+ * - `${env:VAR_NAME:default}` — environment variable with default\n+ * - `${file:relative/path}` — load file content (JSON/YAML/text)\n+ */\n+function makePreProcess(agentFile: string): (data: unknown) => unknown {\n+  const agentDir = dirname(agentFile);\n+\n+  return (data: unknown): unknown => {\n+    if (typeof data !== \"object\" || data === null || Array.isArray(data)) {\n+      return data;\n+    }\n+\n+    const record = data as Record<string, unknown>;\n+    for (const [key, value] of Object.entries(record)) {\n+      if (typeof value !== \"string\" || !value.startsWith(\"${\") || !value.endsWith(\"}\")) {\n+        continue;\n+      }\n+\n+      const inner = value.slice(2, -1);",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +112,13 @@ selected from the new file\n+      } else if (protocol === \"file\") {\n+        const filePath = resolve(agentDir, val);\n+        record[key] = loadFileContent(filePath);\n+      }\n+    }\n+\n+    return record;\n+  };\n+}\n+\n+function loadFileContent(path: string): unknown {\n+  const raw = readFileSync(path, \"utf-8\");\n+  const ext = extname(path).toLowerCase();",
+      "annotation": "A file reference is resolved and immediately read, so absolute paths and traversal can escape the prompt directory."
      }
     ],
-    "candidate_patch_sha256": "89821ec757fbed84b2472592c86c5e32fe2d94e54a4b7d5fbc6d7d49b7ffbe4b",
-    "fix_patch_sha256": null,
+    "fix_hunks": [
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -8,12 +8,20 @@\n  * @module\n  */\n \n-import { readFileSync } from \"node:fs\";\n-import { resolve, dirname, extname } from \"node:path\";\n+import { existsSync, readFileSync, realpathSync } from \"node:fs\";\n+import { dirname, extname, isAbsolute, relative, resolve } from \"node:path\";\n import matter from \"gray-matter\";\n import { LoadContext, SaveContext } from \"../model/context.js\";\n import { Prompty } from \"../model/agent/prompty.js\";\n \n+export interface LoadOptions {\n+  /**\n+   * Additional directories that `${file:...}` references may read from.\n+   * The prompt file's directory is always allowed.\n+   */\n+  allowedFileRoots?: string[];\n+}\n+\n // ---------------------------------------------------------------------------\n // Public API\n // ---------------------------------------------------------------------------",
+      "annotation": "The fix imports canonical-path and relative-path primitives and adds an explicit option for trusted extra roots."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -22,12 +30,13 @@ import { Prompty } from \"../model/agent/prompty.js\";\n  * Load a `.prompty` file and return a typed `Prompty`.\n  *\n  * @param path - File system path to a `.prompty` file.\n+ * @param options - Optional load behavior, including additional allowed file roots.\n  * @returns Fully typed Prompty definition.\n  */\n-export function load(path: string): Prompty {\n+export function load(path: string, options: LoadOptions = {}): Prompty {\n   const resolved = resolve(path);\n   const raw = readFileSync(resolved, \"utf-8\");\n-  return buildAgent(raw, resolved);\n+  return buildAgent(raw, resolved, options);\n }\n \n /**",
+      "annotation": "Loading now accepts the root policy and carries it into agent construction."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -68,7 +77,7 @@ export function defaultSaveContext(\n // Internal pipeline\n // ---------------------------------------------------------------------------\n \n-function buildAgent(raw: string, filePath: string): Prompty {\n+function buildAgent(raw: string, filePath: string, options: LoadOptions): Prompty {\n   // 1. Split frontmatter + body\n   const { data, content } = matter(raw);\n ",
+      "annotation": "Agent construction receives the root policy together with the prompt path."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -80,7 +89,7 @@ function buildAgent(raw: string, filePath: string): Prompty {\n \n   // 2. Load via Prompty.load() with preProcess for ${protocol:value} expansion\n   const ctx = new LoadContext({\n-    preProcess: makePreProcess(filePath) as (data: Record<string, unknown>) => Record<string, unknown>,\n+    preProcess: makePreProcess(filePath, options) as (data: Record<string, unknown>) => Record<string, unknown>,\n   });\n   const agent = Prompty.load(frontmatter, ctx);\n ",
+      "annotation": "Agent construction passes the same root policy into reference preprocessing."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -105,9 +114,16 @@ function buildAgent(raw: string, filePath: string): Prompty {\n  * - `${env:VAR_NAME}` — environment variable (required)\n  * - `${env:VAR_NAME:default}` — environment variable with default\n  * - `${file:relative/path}` — load file content (JSON/YAML/text)\n+ *\n+ * File references are limited to the prompt directory by default. Callers may\n+ * provide additional allowed roots via `allowedFileRoots`.\n  */\n-function makePreProcess(agentFile: string): (data: unknown) => unknown {\n-  const agentDir = dirname(agentFile);\n+function makePreProcess(agentFile: string, options: LoadOptions): (data: unknown) => unknown {\n+  const agentDir = realpathSync(dirname(agentFile));\n+  const allowedRoots = [\n+    agentDir,\n+    ...(options.allowedFileRoots ?? []).map((root) => canonicalizeExistingPath(resolve(root))),\n+  ];\n \n   return (data: unknown): unknown => {\n     if (typeof data !== \"object\" || data === null || Array.isArray(data)) {",
+      "annotation": "The prompt directory and any explicitly trusted roots are canonicalized before reference expansion."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -144,7 +160,7 @@ function makePreProcess(agentFile: string): (data: unknown) => unknown {\n           );\n         }\n       } else if (protocol === \"file\") {\n-        const filePath = resolve(agentDir, val);\n+        const filePath = resolveFileReference(agentDir, val, allowedRoots, key);\n         record[key] = loadFileContent(filePath);\n       }\n     }",
+      "annotation": "The file protocol now uses the guarded resolver instead of reading the directly resolved path."
+     },
+     {
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix",
+      "code": "@@ -153,6 +169,37 @@ function makePreProcess(agentFile: string): (data: unknown) => unknown {\n   };\n }\n \n+function resolveFileReference(agentDir: string, reference: string, allowedRoots: string[], key: string): string {\n+  const candidate = isAbsolute(reference) ? resolve(reference) : resolve(agentDir, reference);\n+  if (!isWithinAnyRoot(candidate, allowedRoots)) {\n+    throw new Error(\n+      `File reference '${reference}' resolves outside allowed roots for key '${key}'. Allowed roots: ${allowedRoots.join(\", \")}`,\n+    );\n+  }\n+  if (!existsSync(candidate)) {\n+    throw new Error(`Referenced file '${reference}' not found for key '${key}' (resolved to ${candidate})`);\n+  }\n+\n+  const resolved = realpathSync(candidate);\n+  if (!isWithinAnyRoot(resolved, allowedRoots)) {\n+    throw new Error(\n+      `File reference '${reference}' resolves outside allowed roots for key '${key}'. Allowed roots: ${allowedRoots.join(\", \")}`,\n+    );\n+  }\n+  return resolved;\n+}\n+\n+function isWithinAnyRoot(path: string, roots: string[]): boolean {\n+  return roots.some((root) => {\n+    const rel = relative(root, path);\n+    return rel === \"\" || (!rel.startsWith(\"..\") && !isAbsolute(rel));\n+  });\n+}\n+\n+function canonicalizeExistingPath(path: string): string {\n+  return existsSync(path) ? realpathSync(path) : resolve(path);\n+}\n+\n function loadFileContent(path: string): unknown {\n   const raw = readFileSync(path, \"utf-8\");\n   const ext = extname(path).toLowerCase();",
+      "annotation": "The resolver rejects lexical escape, verifies existence, canonicalizes the target, and checks again to block symlink escape."
+     }
+    ],
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "36d253c0d7c6d218017e5f44273b3d2c5cf9993bd0d4a93ec0e4974e23de788f",
+    "fix_patch_sha256": "7f145a72d5f6281dcb973092bafd855cf7143b637d692de2b1e629b355408571",
     "candidate_patch_files": [
      "runtime/typescript/prompty/src/core/loader.ts"
-    ]
+    ],
+    "fix_patch_files": [
+     "runtime/typescript/packages/core/src/core/loader.ts"
+    ],
+    "fix_files": [
+     "runtime/typescript/packages/core/src/core/loader.ts"
+    ],
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "research_status": "git show a0e6108842a3 loader.ts:113 commit e4a0ebf49e3a rootDir",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-wxhm-2mq7-7697",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/advisories/GHSA-wxhm-2mq7-7697",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-WJHR-76VG-2HVC",
@@ -16181,9 +16349,9 @@
     "CVE-2026-58195",
     "alias-8fde3b61bfb7a8b43050519d"
    ],
-   "repository": "ruvnet/ruflo",
+   "repository": "ruvnet/agentic-flow",
    "repository_metadata": {
-    "full_name": "ruvnet/ruflo",
+    "full_name": "ruvnet/agentic-flow",
     "language": "TypeScript",
     "archived": false
    },
@@ -16236,23 +16404,92 @@
    },
    "fix_authorship": null,
    "code_evidence": {
-    "summary": "AI-written agentic-flow MCP tools interpolated attacker-controlled parameters into shell commands passed to execSync(), enabling OS command injection.",
-    "ai_marker": null,
-    "steps": [],
-    "candidate_hunks": [],
-    "fix_hunks": [],
+    "ai_marker": "Both origin commits say Generated with Claude Code and carry Co-Authored-By: Claude <noreply@anthropic.com>.",
+    "fix_marker": null,
+    "candidate_url": "https://github.com/ruvnet/agentic-flow/commit/319c98616bc968b6810c6c0b49e04806e7379530",
+    "fix_url": "https://github.com/ruvnet/agentic-flow/commit/a0f9c2bf95b6203b3e1b24f92a7e390d6774de13",
+    "advisory_url": "https://github.com/ruvnet/agentic-flow/security/advisories/GHSA-vcv2-r9jh-99m5",
+    "summary": "Claude-assisted MCP servers inserted tool inputs such as agent names, tasks, keys, and namespaces directly into shell command strings. A caller could break out of the quoted argument and run commands on the server; the fix passes each value as a separate process argument.",
+    "mechanism": "Two Claude-marked commits introduced independent MCP command paths that interpolated request-controlled values into execSync strings. The atomic fix replaces those sinks with execFileSync argument arrays and disables shell interpretation.",
+    "steps": [
+     {
+      "title": "First AI origin",
+      "detail": "The restored stdio server built one shell string from MCP key and namespace values and executed it with execSync."
+     },
+     {
+      "title": "Second AI origin",
+      "detail": "The separate HTTP/SSE server exposed the same command-building pattern to remotely supplied tool arguments."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The fix changed both paths to pass every value as a distinct argv element to execFileSync with shell disabled."
+     }
+    ],
+    "candidate_hunks": [
+     {
+      "file": "agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts",
+      "role": "candidate",
+      "code": "diff --git a/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts b/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts\nnew file mode 100644\n--- /dev/null\n+++ b/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts\n@@ -0,0 +61,10 @@ selected from new file\n+  execute: async ({ key, namespace }) => {\n+    try {\n+      const cmd = `npx claude-flow@alpha memory retrieve \"${key}\" --namespace \"${namespace}\"`;\n+      const result = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });\n+\n+      return JSON.stringify({\n+        success: true,\n+        key,\n+        namespace,\n+        value: result.trim(),",
+      "annotation": "The first origin creates a stdio MCP handler that inserts caller-controlled key and namespace values into one command string. execSync sends that string through a shell, so embedded shell syntax is interpreted instead of treated as data."
+     },
+     {
+      "file": "agentic-flow/src/mcp/fastmcp/servers/http-sse.ts",
+      "role": "candidate",
+      "code": "diff --git a/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts b/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts\nnew file mode 100644\n--- /dev/null\n+++ b/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts\n@@ -0,0 +64,36 @@ selected from new file\n+  }) => {\n+    try {\n+      // Build command with all parameters\n+      let cmd = `npx --yes agentic-flow --agent \"${agent}\" --task \"${task}\"`;\n+\n+      // Provider & Model\n+      if (model) cmd += ` --model \"${model}\"`;\n+      if (provider) cmd += ` --provider ${provider}`;\n+\n+      // API Keys (set as env vars)\n+      const env = { ...process.env };\n+      if (anthropicApiKey) env.ANTHROPIC_API_KEY = anthropicApiKey;\n+      if (openrouterApiKey) env.OPENROUTER_API_KEY = openrouterApiKey;\n+\n+      // Agent Behavior\n+      if (stream) cmd += ' --stream';\n+      if (temperature !== undefined) cmd += ` --temperature ${temperature}`;\n+      if (maxTokens) cmd += ` --max-tokens ${maxTokens}`;\n+\n+      // Directories\n+      if (agentsDir) cmd += ` --agents-dir \"${agentsDir}\"`;\n+\n+      // Output\n+      if (outputFormat) cmd += ` --output ${outputFormat}`;\n+      if (verbose) cmd += ' --verbose';\n+\n+      // Execution\n+      if (timeout) cmd += ` --timeout ${timeout}`;\n+      if (retryOnError) cmd += ' --retry';\n+\n+      const result = execSync(cmd, {\n+        encoding: 'utf-8',\n+        maxBuffer: 10 * 1024 * 1024,\n+        timeout: timeout || 300000,\n+        env\n+      });",
+      "annotation": "The independent HTTP/SSE origin appends remote tool fields such as agent, task, model, provider, and directories to the same shell string before execSync, making the injection path network reachable."
+     }
+    ],
+    "fix_hunks": [
+     {
+      "file": "agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts",
+      "role": "fix",
+      "code": "diff --git a/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts b/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts\n--- a/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts\n+++ b/agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts\n@@ -58,12 +59,15 @@ server.addTool({\n     key: z.string().min(1).describe('Memory key'),\n     namespace: z.string().optional().default('default').describe('Memory namespace')\n   }),\n   execute: async ({ key, namespace }) => {\n     try {\n-      const cmd = `npx claude-flow@alpha memory retrieve \"${key}\" --namespace \"${namespace}\"`;\n-      const result = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });\n+      const result = execFileSync(\n+        'npx',\n+        ['claude-flow@alpha', 'memory', 'retrieve', key, '--namespace', namespace],\n+        { ...NPX_EXEC_OPTS, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }\n+      );\n \n       return JSON.stringify({\n         success: true,\n         key,\n         namespace,",
+      "annotation": "The fix removes the stdio command string and passes key and namespace as separate argv entries. They can no longer become shell syntax."
+     },
+     {
+      "file": "agentic-flow/src/mcp/fastmcp/servers/http-sse.ts",
+      "role": "fix",
+      "code": "diff --git a/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts b/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts\n--- a/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts\n+++ b/agentic-flow/src/mcp/fastmcp/servers/http-sse.ts\n@@ -61,39 +67,41 @@ server.addTool({\n     verbose,\n     timeout,\n     retryOnError\n   }) => {\n     try {\n-      // Build command with all parameters\n-      let cmd = `npx --yes agentic-flow --agent \"${agent}\" --task \"${task}\"`;\n+      // Build argv (NOT a shell string) — every user-supplied value stays a\n+      // separate argv element and cannot be reinterpreted by the shell.\n+      const args: string[] = ['--yes', 'agentic-flow', '--agent', agent, '--task', task];\n \n       // Provider & Model\n-      if (model) cmd += ` --model \"${model}\"`;\n-      if (provider) cmd += ` --provider ${provider}`;\n+      if (model) args.push('--model', model);\n+      if (provider) args.push('--provider', provider);\n \n       // API Keys (set as env vars)\n       const env = { ...process.env };\n       if (anthropicApiKey) env.ANTHROPIC_API_KEY = anthropicApiKey;\n       if (openrouterApiKey) env.OPENROUTER_API_KEY = openrouterApiKey;\n \n       // Agent Behavior\n-      if (stream) cmd += ' --stream';\n-      if (temperature !== undefined) cmd += ` --temperature ${temperature}`;\n-      if (maxTokens) cmd += ` --max-tokens ${maxTokens}`;\n+      if (stream) args.push('--stream');\n+      if (temperature !== undefined) args.push('--temperature', String(temperature));\n+      if (maxTokens) args.push('--max-tokens', String(maxTokens));\n \n       // Directories\n-      if (agentsDir) cmd += ` --agents-dir \"${agentsDir}\"`;\n+      if (agentsDir) args.push('--agents-dir', agentsDir);\n \n       // Output\n-      if (outputFormat) cmd += ` --output ${outputFormat}`;\n-      if (verbose) cmd += ' --verbose';\n+      if (outputFormat) args.push('--output', outputFormat);\n+      if (verbose) args.push('--verbose');\n \n       // Execution\n-      if (timeout) cmd += ` --timeout ${timeout}`;\n-      if (retryOnError) cmd += ' --retry';\n+      if (timeout) args.push('--timeout', String(timeout));\n+      if (retryOnError) args.push('--retry');\n \n-      const result = execSync(cmd, {\n+      const result = execFileSync('npx', args, {\n+        ...NPX_EXEC_OPTS,\n         encoding: 'utf-8',\n         maxBuffer: 10 * 1024 * 1024,\n         timeout: timeout || 300000,\n         env\n       });",
+      "annotation": "The HTTP/SSE fix builds an argv array for every request-controlled field and invokes npx without shell interpretation, directly reversing the exposed sink."
+     }
+    ],
     "comparison_hunks": [],
-    "unavailable_reason": "ruvnet/ruflo is live but introducer 319c986 and fix a0f9c2b are not in upstream history (force-pushed or from a private fork); no patch to compare."
+    "candidate_patch_files": [
+     "agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts",
+     "agentic-flow/src/mcp/fastmcp/servers/http-sse.ts"
+    ],
+    "fix_patch_files": [
+     "agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts",
+     "agentic-flow/src/mcp/fastmcp/servers/http-sse.ts"
+    ],
+    "fix_files": [
+     "agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts",
+     "agentic-flow/src/mcp/fastmcp/servers/http-sse.ts"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "const cmd = `npx claude-flow@alpha memory retrieve",
+      "let cmd = `npx --yes agentic-flow",
+      "const result = execSync(cmd"
+     ],
+     "fix": [
+      "const result = execFileSync(",
+      "['claude-flow@alpha', 'memory', 'retrieve'",
+      "const args: string[] = ['--yes', 'agentic-flow'",
+      "const result = execFileSync('npx', args"
+     ]
+    }
    },
    "ir_chain": null,
    "candidate_sources": [
     {
      "sha": "319c98616bc968b6810c6c0b49e04806e7379530",
-     "repository": "ruvnet/ruflo"
+     "repository": "ruvnet/agentic-flow"
     },
     {
      "sha": "2a1e2777dd6a993f678d9596dd7c6c4fd0c444d9",
-     "repository": "ruvnet/ruflo"
+     "repository": "ruvnet/agentic-flow"
     }
    ],
    "candidate_fix_edges": [
@@ -16271,12 +16508,9 @@
    ],
    "research_status": "OSV GHSA-vcv2-r9jh-99m5 / CVE-2026-58195: prior to 2.0.14, MCP server tools in standalone-stdio.ts and fastmcp servers/tools interpolated params into execSync; OSV fixed ranges list 0c2ec967736a8b6b85832c6bae2a3e74989705ec and da901d06cc5661ebf3f66a962dc116464e7980b0 (the latter verified in ruvnet_ruflo clone: merge of PR #2415, 2026-06-18). Pickaxe `git log --all -S 'execSync(cmd' -- '*src/mcp*'`: earliest hit = 319c9861 (2025-10-04). `git show 8d643867:agentic-flow/src/mcp/fastmcp/servers/stdio-full.ts` shows the same interpolation pattern already present before standalone-stdio.ts existed. Fix PR #170 (head a0f9c2b, merged as 0c2ec967 by rUv, 2026-06-18) rewrote all sinks to execFileSync('npx', argv, {shell:false}) and added tests/security/cwe-78-mcp-execsync.test.ts. Advisory notes prior partial fix 6a06854 (#158) missed MCP files entirely.",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/GHSA-VCV2-R9JH-99M5",
-   "publication_issues": [
-    "missing_candidate",
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/ruvnet/agentic-flow/security/advisories/GHSA-vcv2-r9jh-99m5",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-V52W-28XH-V562",
@@ -19540,7 +19774,7 @@
     "https://github.com/advisories/GHSA-g644-9gfx-q4q4"
    ],
    "mechanism_key": "post:vm2-nesting-require@canonical",
-   "mechanism": "nesting require-policy type confusion",
+   "mechanism": "The incomplete guard compared nesting and require to exact boolean literals, while the downstream resolver used nesting truthiness and accepted only a real require configuration. The final fix applies that structural condition before constructing the resolver.",
    "scope_statement": null,
    "cause_category": "validation_fail_open",
    "ai_provenance": {
@@ -19571,35 +19805,57 @@
     "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
     "fix_marker": null,
     "candidate_url": "https://github.com/patriksimek/vm2/commit/46cbbdde4e19b743974c942278080231004146ca",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-m4wx-m65x-ghrr",
-    "summary": "The AI-written fix used strict equality against `false`, so omitting `require` bypasses the check and allows the insecure `nesting: true` combination.",
+    "fix_url": "https://github.com/patriksimek/vm2/commit/86ab819f202c3a8dad88cef5705f2e416c5188d7",
+    "advisory_url": "https://github.com/patriksimek/vm2/security/advisories/GHSA-M4WX-M65X-GHRR",
+    "summary": "Claude-assisted vm2 hardening rejected only one literal option pair. Other values still built a resolver that exposed vm2 inside the sandbox, letting untrusted code create a nested NodeVM with access to host modules.",
+    "mechanism": "The incomplete guard compared nesting and require to exact boolean literals, while the downstream resolver used nesting truthiness and accepted only a real require configuration. The final fix applies that structural condition before constructing the resolver.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "fix(GHSA-8hg8-63c5-gwmx): reject contradictory { nesting: true, require: false } at construction"
+      "detail": "The Claude-coauthored guard blocked only { nesting: true, require: false }."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The final patch rejects every nesting/require shape that would create a vm2-only resolver."
      }
     ],
     "candidate_hunks": [
      {
       "file": "lib/nodevm.js",
-      "code": "@@ -230,8 +230,15 @@ class NodeVM extends VM {\n \t * @param {customRequire} [options.require.customRequire=require] - Custom require to require host and built-in modules.\n \t * @param {boolean} [options.require.strict=true] - Load required modules in strict mode.\n \t * @param {boolean} [options.nesting=false] -\n-\t * <b>WARNING: Allowing this is a security risk as scripts can create a NodeVM which can require any host module.</b>\n-\t * Allow nesting of VMs.\n+\t * <b>WARNING: <code>nesting: true</code> is an escape hatch — sandbox code\n+\t * can <code>require('vm2')</code> and construct nested NodeVMs whose\n+\t * <code>require</code> config is chosen by the sandbox, NOT constrained by\n+\t * the outer config. Enabling <code>nesting: true</code> grants the sandbox\n+\t * unrestricted host module access. Do not enable for untrusted code.\n+\t * See README \"`nesting: true` is an escape hatch\".</b>\n+\t * Combining <code>nesting: true</code> with <code>require: false</code>\n+\t * throws <code>VMError</code> at construction (GHSA-8hg8-63c5-gwmx) — the\n+\t * pair is contradictory.\n \t * @param {(\"commonjs\"|\"none\")} [options.wrapper=\"commonjs\"] - <code>commonjs</code> to wrap script into CommonJS wrapper,\n \t * <code>none</code> to retrieve value returned by the script.\n \t * @param {string[]} [options.sourceExtensions=[\"js\"]] - Array of file extensions to treat as source code.\n@@ -243,6 +250,28 @@ class NodeVM extends VM {\n \t * @throws {VMError} If the compiler is unknown.\n \t */\n \tconstructor(options = {}) {\n+\t\t// SECURITY (GHSA-8hg8-63c5-gwmx): `nesting: true` injects a NESTING_OVERRIDE\n+\t\t// builtin that exposes `vm2` to the sandbox regardless of `require: false`.\n+\t\t// The sandbox then constructs an inner NodeVM with attacker-chosen `require`\n+\t\t// config (unconstrained by the outer config — by design of nesting) and\n+\t\t// reaches `child_process` for full host RCE. The contradictory option pair\n+\t\t// is the specific trap the advisory describes; reject it at construction\n+\t\t// with a clear error rather than silently producing an unsandboxed config.\n+\t\t// (Bare `nesting: true` without `require: false` continues to work as the\n+\t\t// documented escape hatch; the README \"`nesting: true` is an escape hatch\"\n+\t\t// section explains the broader trade-off.)\n+\t\tif (options.nesting === true && options.require === false) {\n+\t\t\tthrow new VMError(\n+\t\t\t\t'NodeVM `nesting: true` is incompatible with `require: false`. '\n+\t\t\t\t+ '`nesting: true` is an escape hatch that lets sandbox code '\n+\t\t\t\t+ '`require(\\'vm2\\')` and construct nested VMs unconstrained by the outer '\n+\t\t\t\t+ 'config — which contradicts `require: false`. To deny all requires, '\n+\t\t\t\t+ 'remove `nesting: true`. To allow nested VMs, replace `require: false` '\n+\t\t\t\t+ 'with an explicit config (e.g. `require: { builtin: [] }`) so the '\n+\t\t\t\t+ 'tradeoff is visible. See README \"`nesting: true` is an escape hatch\". '\n+\t\t\t\t+ 'Context: GHSA-8hg8-63c5-gwmx.'\n+\t\t\t);\n+\t\t}\n \t\tconst {\n \t\t\tcompiler,\n \t\t\teval: allowEval,",
-      "annotation": "",
-      "role": "candidate"
+      "code": "@@ -243,6 +250,28 @@ class NodeVM extends VM {\n \t * @throws {VMError} If the compiler is unknown.\n \t */\n \tconstructor(options = {}) {\n+\t\t// SECURITY (GHSA-8hg8-63c5-gwmx): `nesting: true` injects a NESTING_OVERRIDE\n+\t\t// builtin that exposes `vm2` to the sandbox regardless of `require: false`.\n+\t\t// The sandbox then constructs an inner NodeVM with attacker-chosen `require`\n+\t\t// config (unconstrained by the outer config — by design of nesting) and\n+\t\t// reaches `child_process` for full host RCE. The contradictory option pair\n+\t\t// is the specific trap the advisory describes; reject it at construction\n+\t\t// with a clear error rather than silently producing an unsandboxed config.\n+\t\t// (Bare `nesting: true` without `require: false` continues to work as the\n+\t\t// documented escape hatch; the README \"`nesting: true` is an escape hatch\"\n+\t\t// section explains the broader trade-off.)\n+\t\tif (options.nesting === true && options.require === false) {\n+\t\t\tthrow new VMError(\n+\t\t\t\t'NodeVM `nesting: true` is incompatible with `require: false`. '\n+\t\t\t\t+ '`nesting: true` is an escape hatch that lets sandbox code '\n+\t\t\t\t+ '`require(\\'vm2\\')` and construct nested VMs unconstrained by the outer '\n+\t\t\t\t+ 'config — which contradicts `require: false`. To deny all requires, '\n+\t\t\t\t+ 'remove `nesting: true`. To allow nested VMs, replace `require: false` '\n+\t\t\t\t+ 'with an explicit config (e.g. `require: { builtin: [] }`) so the '\n+\t\t\t\t+ 'tradeoff is visible. See README \"`nesting: true` is an escape hatch\". '\n+\t\t\t\t+ 'Context: GHSA-8hg8-63c5-gwmx.'\n+\t\t\t);\n+\t\t}\n \t\tconst {\n \t\t\tcompiler,\n \t\t\teval: allowEval,",
+      "role": "candidate",
+      "annotation": "The Claude-coauthored guard checks only the literal pair nesting === true and require === false. The resolver later treats other truthy nesting values and omitted, falsy, or primitive require values as the same vm2-only escape path, so this guard leaves the advisory bypass reachable."
      }
     ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+    "fix_hunks": [
      {
       "file": "lib/nodevm.js",
-      "code": "@@ -230,8 +230,15 @@ class NodeVM extends VM {\n \t * @param {customRequire} [options.require.customRequire=require] - Custom require to require host and built-in modules.\n \t * @param {boolean} [options.require.strict=true] - Load required modules in strict mode.\n \t * @param {boolean} [options.nesting=false] -\n-\t * <b>WARNING: Allowing this is a security risk as scripts can create a NodeVM which can require any host module.</b>\n-\t * Allow nesting of VMs.\n+\t * <b>WARNING: <code>nesting: true</code> is an escape hatch — sandbox code\n+\t * can <code>require('vm2')</code> and construct nested NodeVMs whose\n+\t * <code>require</code> config is chosen by the sandbox, NOT constrained by\n+\t * the outer config. Enabling <code>nesting: true</code> grants the sandbox\n+\t * unrestricted host module access. Do not enable for untrusted code.\n+\t * See README \"`nesting: true` is an escape hatch\".</b>\n+\t * Combining <code>nesting: true</code> with <code>require: false</code>\n+\t * throws <code>VMError</code> at construction (GHSA-8hg8-63c5-gwmx) — the\n+\t * pair is contradictory.\n \t * @param {(\"commonjs\"|\"none\")} [options.wrapper=\"commonjs\"] - <code>commonjs</code> to wrap script into CommonJS wrapper,\n \t * <code>none</code> to retrieve value returned by the script.\n \t * @param {string[]} [options.sourceExtensions=[\"js\"]] - Array of file extensions to treat as source code.\n@@ -243,6 +250,28 @@ class NodeVM extends VM {\n \t * @throws {VMError} If the compiler is unknown.\n \t */\n \tconstructor(options = {}) {\n+\t\t// SECURITY (GHSA-8hg8-63c5-gwmx): `nesting: true` injects a NESTING_OVERRIDE\n+\t\t// builtin that exposes `vm2` to the sandbox regardless of `require: false`.\n+\t\t// The sandbox then constructs an inner NodeVM with attacker-chosen `require`\n+\t\t// config (unconstrained by the outer config — by design of nesting) and\n+\t\t// reaches `child_process` for full host RCE. The contradictory option pair\n+\t\t// is the specific trap the advisory describes; reject it at construction\n+\t\t// with a clear error rather than silently producing an unsandboxed config.\n+\t\t// (Bare `nesting: true` without `require: false` continues to work as the\n+\t\t// documented escape hatch; the README \"`nesting: true` is an escape hatch\"\n+\t\t// section explains the broader trade-off.)\n+\t\tif (options.nesting === true && options.require === false) {\n+\t\t\tthrow new VMError(\n+\t\t\t\t'NodeVM `nesting: true` is incompatible with `require: false`. '\n+\t\t\t\t+ '`nesting: true` is an escape hatch that lets sandbox code '\n+\t\t\t\t+ '`require(\\'vm2\\')` and construct nested VMs unconstrained by the outer '\n+\t\t\t\t+ 'config — which contradicts `require: false`. To deny all requires, '\n+\t\t\t\t+ 'remove `nesting: true`. To allow nested VMs, replace `require: false` '\n+\t\t\t\t+ 'with an explicit config (e.g. `require: { builtin: [] }`) so the '\n+\t\t\t\t+ 'tradeoff is visible. See README \"`nesting: true` is an escape hatch\". '\n+\t\t\t\t+ 'Context: GHSA-8hg8-63c5-gwmx.'\n+\t\t\t);\n+\t\t}\n \t\tconst {\n \t\t\tcompiler,\n \t\t\teval: allowEval,",
-      "annotation": "",
-      "role": "candidate"
+      "code": "@@ -269,37 +269,54 @@ class NodeVM extends VM {\n \t\t} = options;\n \n \t\t// SECURITY (GHSA-m4wx-m65x-ghrr, supersedes GHSA-8hg8-63c5-gwmx):\n-\t\t// `nesting: true` injects a NESTING_OVERRIDE builtin that exposes `vm2` to\n-\t\t// the sandbox. When `requireOpts` is also falsy, `makeResolverFromLegacyOptions`\n-\t\t// hits its `if (!options)` branch and builds a resolver whose ONLY builtin\n-\t\t// is `vm2` — a pure escape primitive (sandbox does `require('vm2')`, builds\n-\t\t// an inner NodeVM with attacker-chosen `require` config, reaches\n-\t\t// `child_process` for host RCE).\n+\t\t// A truthy `nesting` injects a NESTING_OVERRIDE builtin that exposes\n+\t\t// `vm2` to the sandbox. When `requireOpts` is not a real require-config\n+\t\t// object, `makeResolverFromLegacyOptions` produces a resolver whose ONLY\n+\t\t// builtin is `vm2` — a pure escape primitive (sandbox does\n+\t\t// `require('vm2')`, builds an inner NodeVM with attacker-chosen\n+\t\t// `require` config, reaches `child_process` for host RCE).\n \t\t//\n-\t\t// The check must run *after* destructuring and against `requireOpts`, not\n-\t\t// against the raw `options.require`, because the destructuring default\n-\t\t// (`require: requireOpts = false`) collapses every falsy/omitted path to\n-\t\t// the same insecure resolver:\n-\t\t//   - `require: false`           → requireOpts = false   (GHSA-8hg8 PoC)\n-\t\t//   - `require` omitted          → requireOpts = false   (GHSA-m4wx PoC)\n-\t\t//   - `require: undefined`       → requireOpts = false   (default kicks in)\n-\t\t//   - `require: null` / `0` / '' → requireOpts is null/0/''\n-\t\t// All of them hit `if (!options)` in makeResolverFromLegacyOptions and\n-\t\t// produce the NESTING_OVERRIDE-only resolver. Use `!requireOpts` to reject\n-\t\t// every shape that yields that resolver; the documented escape hatch\n-\t\t// (`nesting: true` + an explicit `require` config object, even `{}`)\n-\t\t// continues to work — the developer's intent is then visible.\n-\t\tif (nesting === true && !requireOpts) {\n+\t\t// The guard mirrors the actual reachability of that insecure resolver\n+\t\t// on two axes:\n+\t\t//\n+\t\t// 1. `nesting` truthiness, not strict `=== true`. The override is gated\n+\t\t//    a few lines below by `nesting && NESTING_OVERRIDE`, which fires for\n+\t\t//    ANY truthy value (`1`, `'yes'`, `{}`, `[]`, etc.). The check must\n+\t\t//    cover every truthy `nesting` value the override gate accepts.\n+\t\t//\n+\t\t// 2. `requireOpts` must be an actual require-config object (or a\n+\t\t//    `Resolver` instance), not just \"truthy\". `makeResolverFromLegacyOptions`\n+\t\t//    destructures every primitive/function value to all-`undefined` and\n+\t\t//    falls into the same NESTING_OVERRIDE-only `if (!options)` branch as\n+\t\t//    falsy values do. The shapes that collapse to the insecure resolver:\n+\t\t//      - `require: false` / `undefined` / `null` / `0` / `''`\n+\t\t//          → falsy → `if (!options)` branch\n+\t\t//      - `require: true` / `1` / `'yes'` / `Symbol()` / `function(){}`\n+\t\t//          → truthy non-object → destructured to all-undefined →\n+\t\t//             `makeBuiltinsFromLegacyOptions(undefined, …, override)` →\n+\t\t//             same NESTING_OVERRIDE-only resolver\n+\t\t//    The documented escape hatch (a truthy `nesting` + an explicit\n+\t\t//    `require` config object, even `{}`) continues to work — a non-null\n+\t\t//    object counts as the developer's deliberate acknowledgment of the\n+\t\t//    tradeoff. A custom `Resolver` instance is also accepted (the\n+\t\t//    `customResolver` path below bypasses `makeResolverFromLegacyOptions`\n+\t\t//    entirely, so NESTING_OVERRIDE is never injected into it).\n+\t\tconst hasRealRequireConfig =\n+\t\t\trequireOpts instanceof Resolver\n+\t\t\t|| (typeof requireOpts === 'object' && requireOpts !== null);\n+\t\tif (nesting && !hasRealRequireConfig) {\n \t\t\tthrow new VMError(\n-\t\t\t\t'NodeVM `nesting: true` requires an explicit `require` config. '\n-\t\t\t\t+ '`nesting: true` is an escape hatch that exposes `vm2` to the '\n+\t\t\t\t'NodeVM `nesting` requires an explicit `require` config object. '\n+\t\t\t\t+ '`nesting` is an escape hatch that exposes `vm2` to the '\n \t\t\t\t+ 'sandbox (sandbox code can `require(\\'vm2\\')` and construct nested '\n-\t\t\t\t+ 'VMs unconstrained by the outer config). With `require` falsy or '\n-\t\t\t\t+ 'omitted, the resolver exposes ONLY `vm2` — a pure escape primitive. '\n-\t\t\t\t+ 'To deny all requires, remove `nesting: true`. To allow nested VMs, '\n-\t\t\t\t+ 'pass an explicit `require` config (e.g. `require: { builtin: [] }`) '\n-\t\t\t\t+ 'so the tradeoff is visible. See README \"`nesting: true` is an escape '\n-\t\t\t\t+ 'hatch\". Context: GHSA-m4wx-m65x-ghrr (supersedes GHSA-8hg8-63c5-gwmx).'\n+\t\t\t\t+ 'VMs unconstrained by the outer config). With `require` set to '\n+\t\t\t\t+ 'anything other than a config object (`false`, omitted, `true`, '\n+\t\t\t\t+ 'a number, a string, a function), the resolver exposes ONLY '\n+\t\t\t\t+ '`vm2` — a pure escape primitive. To deny all requires, remove '\n+\t\t\t\t+ '`nesting`. To allow nested VMs, pass an explicit `require` '\n+\t\t\t\t+ 'config (e.g. `require: { builtin: [] }`) so the tradeoff is '\n+\t\t\t\t+ 'visible. See README \"`nesting: true` is an escape hatch\". '\n+\t\t\t\t+ 'Context: GHSA-m4wx-m65x-ghrr (supersedes GHSA-8hg8-63c5-gwmx).'\n \t\t\t);\n \t\t}\n ",
+      "role": "fix",
+      "annotation": "The direct fix mirrors the resolver instead of checking two literals: any truthy nesting value now requires either a non-null configuration object or a Resolver. Every input shape that would create the vm2-only resolver is rejected before sandbox construction."
      }
     ],
-    "candidate_patch_sha256": "e60cc0663bcab5da0605065def15e88160abb680225ec3281687900d88ba343b",
-    "fix_patch_sha256": null,
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "8ffbe6491c5211cff22378213ec20e0111409b83d2d7be6666752272fb09deb3",
+    "fix_patch_sha256": "fdb6d612ba5a1bc32eb5043047e084545d4e20c1dc2dd6adcafa6d9fdca4b817",
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "if (options.nesting === true && options.require === false)"
+     ],
+     "fix": [
+      "const hasRealRequireConfig =",
+      "requireOpts instanceof Resolver",
+      "if (nesting && !hasRealRequireConfig)"
+     ]
+    },
     "candidate_patch_files": [
+     "lib/nodevm.js"
+    ],
+    "fix_patch_files": [
+     "lib/nodevm.js"
+    ],
+    "fix_files": [
      "lib/nodevm.js"
     ]
    },
@@ -19631,11 +19887,9 @@
    },
    "research_status": "git show 46cbbdde -- lib/nodevm.js: if (options.nesting === true && options.require === false) throw new VMError(...)git show 86ab819 -- lib/nodevm.js: 'The prior nesting === true && !requireOpts check left two bypass classes' const hasRealRequireConfig = requireOpts instanceof Resolver || (typeof requireOpts === 'object' && requireOpts !== null); if (nesting && !hasRealRequireConfig) throw01a7552 GHSA destructure !requireOpts46cbbdde commitsubject (#NNNN) squash",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-m4wx-m65x-ghrr",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/patriksimek/vm2/security/advisories/GHSA-M4WX-M65X-GHRR",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-G2G8-95QG-V35H",
@@ -23472,7 +23726,7 @@
    "contribution_class": "AI_INCOMPLETE_REMEDIATION",
    "ledger_status": "AI_ROOT_CAUSE",
    "candidate_set": [
-    "257eb178cfb05335c68f793a5b1fba16c32e3769"
+    "1201cbd82b2cf6d4b56edfc05c763059a12f9fdb"
    ],
    "carrier_set": [
     "1201cbd82b2cf6d4b56edfc05c763059a12f9fdb"
@@ -23515,7 +23769,7 @@
     "https://github.com/modelcontextprotocol/registry/releases/tag/v1.7.7"
    ],
    "mechanism_key": "post:mcp-registry-ssrf@canonical",
-   "mechanism": "safeDialContext misses IPv6 ranges",
+   "mechanism": "The released safeDialContext classifier relied on Go address-class helpers plus CGNAT and omitted 6to4, NAT64 well-known/local-use, and site-local IPv6. The final fix parses and checks those four CIDRs before any dial.",
    "scope_statement": null,
    "cause_category": "ssrf_network",
    "ai_provenance": {
@@ -23558,52 +23812,75 @@
     ]
    },
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
-    "fix_marker": null,
-    "candidate_url": "https://github.com/modelcontextprotocol/registry/commit/257eb178cfb05335c68f793a5b1fba16c32e3769",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-r48c-v28r-pf6v",
-    "summary": "The AI-written safeDialContext blocklist omitted IPv6 6to4/NAT64 ranges, allowing registry HTTP namespace verification to be bypassed via private-network redirection.",
+    "ai_marker": "Generated with Claude Code; Co-authored-by: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "fix_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "candidate_url": "https://github.com/modelcontextprotocol/registry/commit/1201cbd82b2cf6d4b56edfc05c763059a12f9fdb",
+    "fix_url": "https://github.com/modelcontextprotocol/registry/commit/f5f40bd98084466eaf18fe48ea62a0d534caa774",
+    "advisory_url": "https://github.com/modelcontextprotocol/registry/security/advisories/GHSA-R48C-V28R-PF6V",
+    "summary": "Claude-assisted SSRF hardening blocked common private addresses but missed IPv6 ranges that tunnel or translate to internal IPv4 networks. A publisher-controlled domain could still steer namespace verification to protected services.",
+    "mechanism": "The released safeDialContext classifier relied on Go address-class helpers plus CGNAT and omitted 6to4, NAT64 well-known/local-use, and site-local IPv6. The final fix parses and checks those four CIDRs before any dial.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "fix(auth): block SSRF via HTTP namespace verification"
+      "detail": "The Claude-generated release made safeDialContext the dial boundary but shipped an incomplete IPv6 denylist."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The final patch adds the four omitted IPv6 prefixes and checks them before dialing."
      }
     ],
     "candidate_hunks": [
      {
       "file": "internal/api/handlers/v0/auth/http.go",
-      "code": "@@ -4,6 +4,7 @@ import (\n \t\"context\"\n \t\"fmt\"\n \t\"io\"\n+\t\"net\"\n \t\"net/http\"\n \t\"strings\"\n \t\"time\"\n@@ -34,6 +35,9 @@ type DefaultHTTPKeyFetcher struct {\n \n // NewDefaultHTTPKeyFetcher creates a new HTTP key fetcher with timeout\n func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n+\ttransport := http.DefaultTransport.(*http.Transport).Clone()\n+\ttransport.DialContext = safeDialContext\n+\n \treturn &DefaultHTTPKeyFetcher{\n \t\tclient: &http.Client{\n \t\t\tTimeout: 10 * time.Second,\n@@ -42,10 +46,59 @@ func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n \t\t\tCheckRedirect: func(_ *http.Request, _ []*http.Request) error {\n \t\t\t\treturn http.ErrUseLastResponse\n \t\t\t},\n+\t\t\tTransport: transport,\n \t\t},\n \t}\n }\n \n+// safeDialContext resolves the target hostname and refuses to dial loopback,\n+// private (RFC1918, ULA), link-local, or unspecified addresses. Combined with\n+// IsValidDomain rejecting IP literals, this neutralises SSRF abuse of the\n+// well-known fetcher: an attacker cannot reach internal HTTPS services\n+// (Kubernetes API server, internal admin panels, internal DNS-resolved hosts)\n+// even if they control DNS for an attacker domain.\n+//\n+// The hostname is resolved once here; we then dial the resolved IP directly,\n+// which pins the connection against DNS rebinding (a TOCTOU where the resolver\n+// returns a public IP to a pre-flight check and an internal IP to the actual\n+// dial). TLS SNI and the Host header continue to use the original hostname\n+// since they are set by http.Transport from the request URL, not the dial\n+// address.\n+func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {\n+\thost, port, err := net.SplitHostPort(addr)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\tvar resolver net.Resolver\n+\tips, err := resolver.LookupIPAddr(ctx, host)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\tvar d net.Dialer\n+\tfor _, ip := range ips {\n+\t\tif isBlockedIP(ip.IP) {\n+\t\t\tcontinue\n+\t\t}\n+\t\treturn d.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))\n+\t}\n+\treturn nil, fmt.Errorf(\"dial %s: refusing to connect to private or loopback address\", host)\n+}\n+\n+// isBlockedIP reports whether an IP must not be dialled by the namespace\n+// verification fetcher. Covers loopback (127/8, ::1), RFC1918 + ULA via\n+// IsPrivate, link-local (169.254/16, fe80::/10 — includes cloud metadata\n+// 169.254.169.254), and unspecified (0.0.0.0, ::).\n+func isBlockedIP(ip net.IP) bool {\n+\tif ip == nil {\n+\t\treturn true\n+\t}\n+\treturn ip.IsLoopback() || ip.IsPrivate() ||\n+\t\tip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||\n+\t\tip.IsUnspecified()\n+}\n+\n // NewDefaultHTTPKeyFetcherWithClient creates a new HTTP key fetcher with a custom HTTP client.\n // This is primarily useful in tests to inject transports or TLS settings.\n func NewDefaultHTTPKeyFetcherWithClient(client *http.Client) *DefaultHTTPKeyFetcher {",
-      "annotation": "",
-      "role": "candidate"
+      "code": "@@ -4,6 +4,7 @@ import (\n \t\"context\"\n \t\"fmt\"\n \t\"io\"\n+\t\"net\"\n \t\"net/http\"\n \t\"strings\"\n \t\"time\"",
+      "role": "candidate",
+      "annotation": "The released Claude-assisted hardening imports net so namespace verification can resolve and classify addresses before dialing."
      },
-     {
-      "file": "internal/api/handlers/v0/auth/common.go",
-      "code": "@@ -11,6 +11,7 @@ import (\n \t\"errors\"\n \t\"fmt\"\n \t\"math/big\"\n+\t\"net\"\n \t\"regexp\"\n \t\"strings\"\n \t\"time\"\n@@ -376,6 +377,18 @@ func IsValidDomain(domain string) bool {\n \t\treturn false\n \t}\n \n+\t// Reject IP literals — this auth method proves domain ownership, not IP\n+\t// ownership, and IP literals are an SSRF vector into internal networks.\n+\tif net.ParseIP(domain) != nil {\n+\t\treturn false\n+\t}\n+\n+\t// Require at least one dot — rejects single-label names like \"localhost\"\n+\t// or \"kubernetes\" that resolve only inside private networks.\n+\tif !strings.Contains(domain, \".\") {\n+\t\treturn false\n+\t}\n+\n \t// Check for valid characters and structure\n \tdomainPattern := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$`)\n \treturn domainPattern.MatchString(domain)",
-      "annotation": "",
-      "role": "candidate"
-     }
-    ],
-    "fix_hunks": [],
-    "comparison_hunks": [
      {
       "file": "internal/api/handlers/v0/auth/http.go",
-      "code": "@@ -4,6 +4,7 @@ import (\n \t\"context\"\n \t\"fmt\"\n \t\"io\"\n+\t\"net\"\n \t\"net/http\"\n \t\"strings\"\n \t\"time\"\n@@ -34,6 +35,9 @@ type DefaultHTTPKeyFetcher struct {\n \n // NewDefaultHTTPKeyFetcher creates a new HTTP key fetcher with timeout\n func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n+\ttransport := http.DefaultTransport.(*http.Transport).Clone()\n+\ttransport.DialContext = safeDialContext\n+\n \treturn &DefaultHTTPKeyFetcher{\n \t\tclient: &http.Client{\n \t\t\tTimeout: 10 * time.Second,\n@@ -42,10 +46,59 @@ func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n \t\t\tCheckRedirect: func(_ *http.Request, _ []*http.Request) error {\n \t\t\t\treturn http.ErrUseLastResponse\n \t\t\t},\n+\t\t\tTransport: transport,\n \t\t},\n \t}\n }\n \n+// safeDialContext resolves the target hostname and refuses to dial loopback,\n+// private (RFC1918, ULA), link-local, or unspecified addresses. Combined with\n+// IsValidDomain rejecting IP literals, this neutralises SSRF abuse of the\n+// well-known fetcher: an attacker cannot reach internal HTTPS services\n+// (Kubernetes API server, internal admin panels, internal DNS-resolved hosts)\n+// even if they control DNS for an attacker domain.\n+//\n+// The hostname is resolved once here; we then dial the resolved IP directly,\n+// which pins the connection against DNS rebinding (a TOCTOU where the resolver\n+// returns a public IP to a pre-flight check and an internal IP to the actual\n+// dial). TLS SNI and the Host header continue to use the original hostname\n+// since they are set by http.Transport from the request URL, not the dial\n+// address.\n+func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {\n+\thost, port, err := net.SplitHostPort(addr)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\tvar resolver net.Resolver\n+\tips, err := resolver.LookupIPAddr(ctx, host)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\tvar d net.Dialer\n+\tfor _, ip := range ips {\n+\t\tif isBlockedIP(ip.IP) {\n+\t\t\tcontinue\n+\t\t}\n+\t\treturn d.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))\n+\t}\n+\treturn nil, fmt.Errorf(\"dial %s: refusing to connect to private or loopback address\", host)\n+}\n+\n+// isBlockedIP reports whether an IP must not be dialled by the namespace\n+// verification fetcher. Covers loopback (127/8, ::1), RFC1918 + ULA via\n+// IsPrivate, link-local (169.254/16, fe80::/10 — includes cloud metadata\n+// 169.254.169.254), and unspecified (0.0.0.0, ::).\n+func isBlockedIP(ip net.IP) bool {\n+\tif ip == nil {\n+\t\treturn true\n+\t}\n+\treturn ip.IsLoopback() || ip.IsPrivate() ||\n+\t\tip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||\n+\t\tip.IsUnspecified()\n+}\n+\n // NewDefaultHTTPKeyFetcherWithClient creates a new HTTP key fetcher with a custom HTTP client.\n // This is primarily useful in tests to inject transports or TLS settings.\n func NewDefaultHTTPKeyFetcherWithClient(client *http.Client) *DefaultHTTPKeyFetcher {",
-      "annotation": "",
-      "role": "candidate"
+      "code": "@@ -34,6 +35,9 @@ type DefaultHTTPKeyFetcher struct {\n \n // NewDefaultHTTPKeyFetcher creates a new HTTP key fetcher with timeout\n func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n+\ttransport := http.DefaultTransport.(*http.Transport).Clone()\n+\ttransport.DialContext = safeDialContext\n+\n \treturn &DefaultHTTPKeyFetcher{\n \t\tclient: &http.Client{\n \t\t\tTimeout: 10 * time.Second,",
+      "role": "candidate",
+      "annotation": "The default HTTP fetcher is routed through safeDialContext, making its address classifier the security boundary for attacker-controlled publisher domains."
      },
      {
-      "file": "internal/api/handlers/v0/auth/common.go",
-      "code": "@@ -11,6 +11,7 @@ import (\n \t\"errors\"\n \t\"fmt\"\n \t\"math/big\"\n+\t\"net\"\n \t\"regexp\"\n \t\"strings\"\n \t\"time\"\n@@ -376,6 +377,18 @@ func IsValidDomain(domain string) bool {\n \t\treturn false\n \t}\n \n+\t// Reject IP literals — this auth method proves domain ownership, not IP\n+\t// ownership, and IP literals are an SSRF vector into internal networks.\n+\tif net.ParseIP(domain) != nil {\n+\t\treturn false\n+\t}\n+\n+\t// Require at least one dot — rejects single-label names like \"localhost\"\n+\t// or \"kubernetes\" that resolve only inside private networks.\n+\tif !strings.Contains(domain, \".\") {\n+\t\treturn false\n+\t}\n+\n \t// Check for valid characters and structure\n \tdomainPattern := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$`)\n \treturn domainPattern.MatchString(domain)",
-      "annotation": "",
-      "role": "candidate"
+      "file": "internal/api/handlers/v0/auth/http.go",
+      "code": "@@ -42,10 +46,92 @@ func NewDefaultHTTPKeyFetcher() *DefaultHTTPKeyFetcher {\n \t\t\tCheckRedirect: func(_ *http.Request, _ []*http.Request) error {\n \t\t\t\treturn http.ErrUseLastResponse\n \t\t\t},\n+\t\t\tTransport: transport,\n \t\t},\n \t}\n }\n \n+// safeDialContext resolves the target hostname and refuses to dial loopback,\n+// private (RFC1918, ULA), link-local, or unspecified addresses. Combined with\n+// IsValidDomain rejecting IP literals, this neutralises SSRF abuse of the\n+// well-known fetcher: an attacker cannot reach internal HTTPS services\n+// (Kubernetes API server, internal admin panels, internal DNS-resolved hosts)\n+// even if they control DNS for an attacker domain.\n+//\n+// The hostname is resolved once here; we then dial the resolved IP directly,\n+// which pins the connection against DNS rebinding (a TOCTOU where the resolver\n+// returns a public IP to a pre-flight check and an internal IP to the actual\n+// dial). TLS SNI and the Host header continue to use the original hostname\n+// since they are set by http.Transport from the request URL, not the dial\n+// address.\n+func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {\n+\thost, port, err := net.SplitHostPort(addr)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\tvar resolver net.Resolver\n+\tips, err := resolver.LookupIPAddr(ctx, host)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\n+\t// Try each non-blocked address in order, falling through on dial failure.\n+\t// Without this, a stale public AAAA record that no longer routes (or any\n+\t// individually-unreachable IP) breaks auth where the default transport\n+\t// would have recovered by trying the next answer.\n+\t//\n+\t// Each attempt is bounded by perIPDialTimeout so that a single hanging\n+\t// address can't consume the whole http.Client budget. This is a\n+\t// simpler substitute for Happy Eyeballs (parallel A/AAAA racing) — we\n+\t// fail fast and try the next answer instead of racing them.\n+\tconst perIPDialTimeout = 3 * time.Second\n+\n+\tvar lastErr error\n+\tallBlocked := true\n+\tfor _, ip := range ips {\n+\t\tif isBlockedIP(ip.IP) {\n+\t\t\tcontinue\n+\t\t}\n+\t\tallBlocked = false\n+\t\tdialCtx, cancel := context.WithTimeout(ctx, perIPDialTimeout)\n+\t\tvar d net.Dialer\n+\t\tconn, dialErr := d.DialContext(dialCtx, network, net.JoinHostPort(ip.IP.String(), port))\n+\t\tcancel()\n+\t\tif dialErr == nil {\n+\t\t\treturn conn, nil\n+\t\t}\n+\t\tlastErr = dialErr\n+\t}\n+\tif allBlocked {\n+\t\treturn nil, fmt.Errorf(\"dial %s: refusing to connect to private or loopback address\", host)\n+\t}\n+\treturn nil, fmt.Errorf(\"dial %s: all resolved public addresses failed: %w\", host, lastErr)\n+}\n+\n+// cgnatRange covers RFC 6598 Carrier-Grade NAT (100.64.0.0/10), which the\n+// stdlib does not classify via any Is* helper but is reachable on some\n+// cloud / mobile networks where it shadows internal infrastructure.\n+var cgnatRange = func() *net.IPNet {\n+\t_, n, _ := net.ParseCIDR(\"100.64.0.0/10\")\n+\treturn n\n+}()\n+\n+// isBlockedIP reports whether an IP must not be dialled by the namespace\n+// verification fetcher. Covers loopback (127/8, ::1), RFC1918 + ULA via\n+// IsPrivate, link-local (169.254/16, fe80::/10 — includes cloud metadata\n+// 169.254.169.254), unspecified (0.0.0.0, ::), all multicast (admin-scoped\n+// 239/8 and ff00::/8 in addition to link-local-multicast), and CGNAT.\n+func isBlockedIP(ip net.IP) bool {\n+\tif ip == nil {\n+\t\treturn true\n+\t}\n+\treturn ip.IsLoopback() || ip.IsPrivate() ||\n+\t\tip.IsLinkLocalUnicast() || ip.IsMulticast() ||\n+\t\tip.IsUnspecified() ||\n+\t\tcgnatRange.Contains(ip)\n+}\n+\n // NewDefaultHTTPKeyFetcherWithClient creates a new HTTP key fetcher with a custom HTTP client.\n // This is primarily useful in tests to inject transports or TLS settings.\n func NewDefaultHTTPKeyFetcherWithClient(client *http.Client) *DefaultHTTPKeyFetcher {",
+      "role": "candidate",
+      "annotation": "safeDialContext blocks the usual private, loopback, link-local, multicast, unspecified, and CGNAT ranges, but its list omits 6to4, both NAT64 prefixes, and deprecated site-local IPv6. Routed IPv6 wrappers can therefore carry an internal IPv4 destination through this allow decision."
      }
     ],
-    "candidate_patch_sha256": "83eec1f2be9392c9454c58fdb5817f13410e2ba379dd88920565ebd7df642846",
-    "fix_patch_sha256": null,
+    "fix_hunks": [
+     {
+      "file": "internal/api/handlers/v0/auth/http.go",
+      "code": "@@ -109,27 +109,65 @@ func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error\n \treturn nil, fmt.Errorf(\"dial %s: all resolved public addresses failed: %w\", host, lastErr)\n }\n \n+// mustCIDR parses a CIDR literal at init; panics on malformed input so a\n+// typo surfaces at startup rather than letting a nil *IPNet through to the\n+// blocklist check (which would silently fail-open).\n+func mustCIDR(s string) *net.IPNet {\n+\t_, n, err := net.ParseCIDR(s)\n+\tif err != nil {\n+\t\tpanic(fmt.Sprintf(\"auth: invalid CIDR %q: %v\", s, err))\n+\t}\n+\treturn n\n+}\n+\n // cgnatRange covers RFC 6598 Carrier-Grade NAT (100.64.0.0/10), which the\n // stdlib does not classify via any Is* helper but is reachable on some\n // cloud / mobile networks where it shadows internal infrastructure.\n-var cgnatRange = func() *net.IPNet {\n-\t_, n, _ := net.ParseCIDR(\"100.64.0.0/10\")\n-\treturn n\n-}()\n+var cgnatRange = mustCIDR(\"100.64.0.0/10\")\n+\n+// blockedIPv6Prefixes are IPv6 ranges that either embed an arbitrary IPv4\n+// address (and therefore tunnel into RFC1918 / cloud-metadata space on\n+// hosts with the corresponding routing) or are routed into site-local\n+// internal networks. None of these are caught by Go's per-class Is*\n+// helpers.\n+//\n+//\t2002::/16       RFC 3056 6to4 — bits 16-47 are an IPv4 address\n+//\t64:ff9b::/96    RFC 6052 NAT64 well-known — low 32 bits are IPv4\n+//\t64:ff9b:1::/48  RFC 8215 NAT64 local-use — same IPv4-embedding shape\n+//\tfec0::/10       RFC 3879 site-local (deprecated, still routed by some\n+//\t                stacks)\n+var blockedIPv6Prefixes = []*net.IPNet{\n+\tmustCIDR(\"2002::/16\"),\n+\tmustCIDR(\"64:ff9b::/96\"),\n+\tmustCIDR(\"64:ff9b:1::/48\"),\n+\tmustCIDR(\"fec0::/10\"),\n+}\n \n // isBlockedIP reports whether an IP must not be dialled by the namespace\n // verification fetcher. Covers loopback (127/8, ::1), RFC1918 + ULA via\n // IsPrivate, link-local (169.254/16, fe80::/10 — includes cloud metadata\n // 169.254.169.254), unspecified (0.0.0.0, ::), all multicast (admin-scoped\n-// 239/8 and ff00::/8 in addition to link-local-multicast), and CGNAT.\n+// 239/8 and ff00::/8 in addition to link-local-multicast), CGNAT, and\n+// IPv6 prefix families that tunnel to or embed arbitrary IPv4 addresses\n+// (see blockedIPv6Prefixes). IPv4-mapped IPv6 (::ffff:0:0/96) is handled\n+// implicitly: the stdlib Is* helpers honour the To4() fast-path, so e.g.\n+// ::ffff:10.0.0.1 is correctly classified as IsPrivate.\n func isBlockedIP(ip net.IP) bool {\n \tif ip == nil {\n \t\treturn true\n \t}\n-\treturn ip.IsLoopback() || ip.IsPrivate() ||\n+\tif ip.IsLoopback() || ip.IsPrivate() ||\n \t\tip.IsLinkLocalUnicast() || ip.IsMulticast() ||\n \t\tip.IsUnspecified() ||\n-\t\tcgnatRange.Contains(ip)\n+\t\tcgnatRange.Contains(ip) {\n+\t\treturn true\n+\t}\n+\tfor _, p := range blockedIPv6Prefixes {\n+\t\tif p.Contains(ip) {\n+\t\t\treturn true\n+\t\t}\n+\t}\n+\treturn false\n }\n \n // NewDefaultHTTPKeyFetcherWithClient creates a new HTTP key fetcher with a custom HTTP client.",
+      "role": "fix",
+      "annotation": "The direct fix adds fail-fast CIDR parsing and explicitly rejects 2002::/16, 64:ff9b::/96, 64:ff9b:1::/48, and fec0::/10 before dialing. Iterating those prefixes closes each IPv6 translation or site-local route omitted by the original classifier."
+     }
+    ],
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "f7e60098401caee031354790e06f88edca6a4920c9a58f6a146cd5dea1a1ed0d",
+    "fix_patch_sha256": "133f36b0a87d02f9d755eb1326cf790835e0a4746eb73110d2324167ff371a51",
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "transport.DialContext = safeDialContext",
+      "func safeDialContext",
+      "cgnatRange.Contains(ip)"
+     ],
+     "fix": [
+      "func mustCIDR",
+      "mustCIDR(\"2002::/16\")",
+      "for _, p := range blockedIPv6Prefixes"
+     ]
+    },
     "candidate_patch_files": [
-     "internal/api/handlers/v0/auth/http.go",
-     "internal/api/handlers/v0/auth/common.go"
+     "internal/api/handlers/v0/auth/http.go"
+    ],
+    "fix_patch_files": [
+     "internal/api/handlers/v0/auth/http.go"
+    ],
+    "fix_files": [
+     "internal/api/handlers/v0/auth/http.go"
     ]
    },
    "ir_chain": {
@@ -23619,7 +23896,7 @@
     "unresolved_reason": null,
     "attempted_remediation": {
      "candidate_shas": [
-      "257eb178cfb05335c68f793a5b1fba16c32e3769"
+      "1201cbd82b2cf6d4b56edfc05c763059a12f9fdb"
      ],
      "changed": "Added private-IP refusal in safeDialContext.",
      "missed": "Did not cover 6to4, NAT64, site-local, and related translated address forms."
@@ -23634,11 +23911,9 @@
    },
    "research_status": "PR #1227 isBlockedIP commit 257eb178cfb05335c68f793a5b1fba16c32e3769 a64d7f080939947bf34b56f7e6ef86535991c01a Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-r48c-v28r-pf6v",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/modelcontextprotocol/registry/security/advisories/GHSA-R48C-V28R-PF6V",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-8G7G-HMWM-6RV2",
@@ -31235,13 +31510,13 @@
     "f4a1ba660063cd9e17883829e5272a248525a16b"
    ],
    "gates": {
-    "identity": "UNKNOWN",
-    "ai_hunk": "UNKNOWN",
-    "topology": "UNKNOWN",
-    "but_for": "UNKNOWN",
-    "fix_reversal": "UNKNOWN",
-    "release": "UNKNOWN",
-    "uniqueness": "UNKNOWN"
+    "identity": "PASS",
+    "ai_hunk": "PASS",
+    "topology": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "release": "PASS",
+    "uniqueness": "PASS"
    },
    "vulnerable_release": {
     "kind": "advisory_range",
@@ -31256,11 +31531,11 @@
    "published_at": "2026-04-01",
    "severity": null,
    "cwes": [],
-   "description": "CWE-347 (improper verification of cryptographic signature): PublicKeyBundle.from_dict() (openssl_encrypt/modules/key_bundle.py:329-361) deserializes untrusted key-bundle data WITHOUT verifying the self-signature; to_identity() (line 363-391) converts an unverified bundle directly into an Identity, so a caller that forgets the documented 'call verify_signature() after creation' step can encrypt to an attacker-supplied public key (plaintext-integrity exposure; CVSS 4.0 VI:H).",
+   "description": "AI-generated deserialization code accepts unverified key-bundle data and converts it to an Identity, enabling encryption to an attacker-supplied public key.",
    "references": [],
    "mechanism_key": null,
-   "mechanism": "CWE-347 (improper verification of cryptographic signature): PublicKeyBundle.from_dict() (openssl_encrypt/modules/key_bundle.py:329-361) deserializes untrusted key-bundle data WITHOUT verifying the self-signature; to_identity() (line 363-391) converts an unverified bundle directly into an Identity, so a caller that forgets the documented 'call verify_signature() after creation' step can encrypt to an attacker-supplied public key (plaintext-integrity exposure; CVSS 4.0 VI:H).",
-   "scope_statement": null,
+   "mechanism": "PublicKeyBundle.from_dict() decoded caller-controlled keys and a self-signature but returned the bundle without checking that signature. to_identity() then turned the unverified keys into a usable recipient identity. Version 1.4.0 verifies the signature before deserialization returns.",
+   "scope_statement": "This case covers the public bundle deserialization API that returned unverified key material and its direct conversion into a recipient identity; it does not attribute callers that already verified the signature.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -31271,64 +31546,78 @@
    },
    "fix_authorship": null,
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+    "ai_marker": "Generated with Claude Code; Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
     "fix_marker": null,
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/fafdfeed1b279cfe61e86cd8adc132b206eef8d4",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/f4a1ba660063cd9e17883829e5272a248525a16b",
     "advisory_url": "https://github.com/advisories/ghsa-8h88-gxp3-j7pg",
     "summary": "AI-generated deserialization code accepts unverified key-bundle data and converts it to an Identity, enabling encryption to an attacker-supplied public key.",
+    "mechanism": "PublicKeyBundle.from_dict() decoded caller-controlled keys and a self-signature but returned the bundle without checking that signature. to_identity() then turned the unverified keys into a usable recipient identity. Version 1.4.0 verifies the signature before deserialization returns.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat: Implement post-quantum keyserver system with plugin architecture"
+      "detail": "The Claude-generated module decoded a key bundle and exposed to_identity() while leaving signature verification as an optional caller responsibility."
      },
      {
-      "title": "Fix",
-      "detail": "security: Verify key bundle signature on deserialization (GHSA-8h88-gxp3-j7pg)"
+      "title": "Security fix",
+      "detail": "Version 1.4.0 verifies the self-signature inside from_dict() by default and rejects invalid bundles before they can become recipient identities."
      }
     ],
     "candidate_hunks": [
      {
       "file": "openssl_encrypt/modules/key_bundle.py",
-      "code": "@@ -0,0 +1,406 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Public Key Bundle - Self-signed public key distribution format.\n+\n+SECURITY CRITICAL:\n+This module defines the PublicKeyBundle format for distributing public keys\n+via the keyserver system. All bundles are cryptographically self-signed\n+to prevent tampering.\n+\n+SECURITY GUARANTEES:\n+- Immutable dataclass (frozen=True) prevents modification after creation\n+- Self-signature using ML-DSA provides cryptographic proof of authenticity\n+- Strict algorithm whitelists prevent legacy/weak cryptography\n+- Fingerprint always recalculated, never trusted from external sources\n+- Only public keys included, NEVER private keys\n+\n+DESIGN PRINCIPLES:\n+- Zero trust: All bundles from external sources are verified before use\n+- Kerckhoffs's principle: Algorithm names are public, keys remain secret\n+- Defense in depth: Multiple validation layers (signature + fingerprint + algorithms)\n+\"\"\"\n+\n+import base64\n+import json\n+import logging\n+from dataclasses import dataclass\n+from typing import TYPE_CHECKING, Dict, Optional\n+\n+from .pqc_signing import PQCSigner, calculate_fingerprint\n+\n+if TYPE_CHECKING:\n+    from .identity import Identity\n+\n+# Set up module-level logger\n+logger = logging.getLogger(__name__)\n+\n+\n+class KeyBundleError(Exception):\n+    \"\"\"Base exception for key bundle operations\"\"\"\n+\n+    pass\n+\n+\n+class InvalidSignatureError(KeyBundleError):\n+    \"\"\"Raised when bundle signature verification fails\"\"\"\n+\n+    pass\n+\n+\n+class InvalidAlgorithmError(KeyBundleError):\n+    \"\"\"Raised when unsupported algorithm is used\"\"\"\n+\n+    pass\n+\n+\n+class InvalidFingerprintError(KeyBundleError):\n+    \"\"\"Raised when fingerprint doesn't match keys\"\"\"\n+\n+    pass\n+\n+\n+@dataclass(frozen=True)\n+class PublicKeyBundle:\n+    \"\"\"\n+    Immutable, self-signed public key bundle for keyserver distribution.\n+\n+    SECURITY: This class is frozen (immutable) to prevent any modification\n+    after creation. All fields are validated and cryptographically verified.\n+\n+    ALLOWED FIELDS (per Kerckhoffs's principle):\n+    - Algorithm names and parameters (public information)\n+    - Public keys (designed to be public)\n+    - Fingerprints (derived from public keys)\n+    - Timestamps (UTC, no timezone information)\n+\n+    NEVER CONTAINS:\n+    - Private keys (encryption or signing)\n+    - Passwords or passphrases\n+    - Salts or key derivation secrets\n+    - Filenames, file paths, or user data\n+\n+    Attributes:\n+        name: Identity name (e.g., \"alice\")\n+        email: Optional email address\n+        fingerprint: SHA-256 fingerprint of both public keys (hex with colons)\n+        created_at: ISO 8601 timestamp (UTC)\n+        encryption_public_key: Public encryption key bytes (PEM format)\n+        signing_public_key: Public signing key bytes (PEM format)\n+        encryption_algorithm: KEM algorithm (ML-KEM-512/768/1024 only)",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +328,34 @@ selected from new openssl_encrypt/modules/key_bundle.py\n+    @classmethod\n+    def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n+        \"\"\"\n+        Create bundle from dictionary.\n+\n+        SECURITY: Does NOT verify signature. Call verify_signature() after creation.\n+\n+        Args:\n+            data: Dictionary from to_dict()\n+\n+        Returns:\n+            PublicKeyBundle (unverified)\n+\n+        Raises:\n+            KeyError: If required fields missing\n+            ValueError: If data format invalid\n+        \"\"\"\n+        try:\n+            bundle = cls(\n+                name=data[\"name\"],\n+                email=data.get(\"email\"),\n+                fingerprint=data[\"fingerprint\"],\n+                created_at=data[\"created_at\"],\n+                encryption_public_key=base64.b64decode(data[\"encryption_public_key\"]),\n+                signing_public_key=base64.b64decode(data[\"signing_public_key\"]),\n+                encryption_algorithm=data[\"encryption_algorithm\"],\n+                signing_algorithm=data[\"signing_algorithm\"],\n+                self_signature=base64.b64decode(data[\"self_signature\"]),\n+            )\n+            return bundle\n+        except KeyError as e:\n+            raise ValueError(f\"Missing required field in bundle data: {e}\")\n+        except Exception as e:\n+            raise ValueError(f\"Invalid bundle data format: {e}\")",
+      "annotation": "The constructor decodes attacker-supplied public keys and the self-signature, then returns the bundle without checking that signature. A comment leaves verification to every caller, so the trust boundary fails open."
+     },
+     {
+      "file": "openssl_encrypt/modules/key_bundle.py",
+      "role": "candidate",
+      "code": "@@ -0,0 +363,29 @@ selected from new openssl_encrypt/modules/key_bundle.py\n+    def to_identity(self) -> \"Identity\":\n+        \"\"\"\n+        Convert bundle to Identity (public keys only).\n+\n+        SECURITY: Creates Identity WITHOUT private keys (is_own_identity=False).\n+        This is safe for identities received from keyserver.\n+\n+        Returns:\n+            Identity instance (public keys only)\n+        \"\"\"\n+        # Import Identity here to avoid circular import\n+        from .identity import Identity\n+\n+        identity = Identity(\n+            name=self.name,\n+            email=self.email,\n+            fingerprint=self.fingerprint,\n+            created_at=self.created_at,\n+            encryption_algorithm=self.encryption_algorithm,\n+            signing_algorithm=self.signing_algorithm,\n+            encryption_public_key=self.encryption_public_key,\n+            encryption_private_key=None,\n+            signing_public_key=self.signing_public_key,\n+            signing_private_key=None,\n+            is_own_identity=False,\n+        )\n+\n+        logger.debug(f\"Converted bundle to Identity for '{self.name}'\")\n+        return identity",
+      "annotation": "to_identity() accepts that unverified bundle and copies its public keys into a usable recipient Identity. Encryption can therefore target a key chosen by the attacker before authenticity is established."
      }
     ],
     "fix_hunks": [
      {
       "file": "openssl_encrypt/modules/key_bundle.py",
-      "code": "@@ -326,21 +326,21 @@ def to_dict(self) -> Dict:\n         }\n \n     @classmethod\n-    def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n+    def from_dict(cls, data: Dict, verify: bool = True) -> \"PublicKeyBundle\":\n         \"\"\"\n         Create bundle from dictionary.\n \n-        SECURITY: Does NOT verify signature. Call verify_signature() after creation.\n-\n         Args:\n             data: Dictionary from to_dict()\n+            verify: If True (default), verify self_signature before returning.\n+                    Set to False only if verification happens separately.\n \n         Returns:\n-            PublicKeyBundle (unverified)\n+            PublicKeyBundle (verified if verify=True)\n \n         Raises:\n             KeyError: If required fields missing\n-            ValueError: If data format invalid\n+            ValueError: If data format invalid or signature verification fails\n         \"\"\"\n         try:\n             bundle = cls(\n@@ -354,9 +354,16 @@ def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n                 signing_algorithm=data[\"signing_algorithm\"],\n                 self_signature=base64.b64decode(data[\"self_signature\"]),\n             )\n+            if verify:\n+                try:\n+                    bundle.verify_signature()\n+                except Exception as e:\n+                    raise ValueError(f\"Bundle signature verification failed: {e}\")\n             return bundle\n         except KeyError as e:\n             raise ValueError(f\"Missing required field in bundle data: {e}\")\n+        except ValueError:\n+            raise\n         except Exception as e:\n             raise ValueError(f\"Invalid bundle data format: {e}\")\n ",
-      "annotation": "",
-      "role": "fix"
+      "role": "fix",
+      "code": "@@ -326,21 +326,21 @@ class PublicKeyBundle:\n         }\n \n     @classmethod\n-    def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n+    def from_dict(cls, data: Dict, verify: bool = True) -> \"PublicKeyBundle\":\n         \"\"\"\n         Create bundle from dictionary.\n \n-        SECURITY: Does NOT verify signature. Call verify_signature() after creation.\n-\n         Args:\n             data: Dictionary from to_dict()\n+            verify: If True (default), verify self_signature before returning.\n+                    Set to False only if verification happens separately.\n \n         Returns:\n-            PublicKeyBundle (unverified)\n+            PublicKeyBundle (verified if verify=True)\n \n         Raises:\n             KeyError: If required fields missing\n-            ValueError: If data format invalid\n+            ValueError: If data format invalid or signature verification fails\n         \"\"\"\n         try:\n             bundle = cls(\n@@ -354,9 +354,16 @@ class PublicKeyBundle:\n                 signing_algorithm=data[\"signing_algorithm\"],\n                 self_signature=base64.b64decode(data[\"self_signature\"]),\n             )\n+            if verify:\n+                try:\n+                    bundle.verify_signature()\n+                except Exception as e:\n+                    raise ValueError(f\"Bundle signature verification failed: {e}\")\n             return bundle\n         except KeyError as e:\n             raise ValueError(f\"Missing required field in bundle data: {e}\")\n+        except ValueError:\n+            raise\n         except Exception as e:\n             raise ValueError(f\"Invalid bundle data format: {e}\")\n ",
+      "annotation": "Version 1.4.0 makes verification the default, calls verify_signature() before returning the decoded bundle, and converts any failed check into an error. Callers can no longer forget the authenticity check."
      }
     ],
-    "comparison_hunks": [
-     {
-      "file": "openssl_encrypt/modules/key_bundle.py",
-      "code": "@@ -0,0 +1,406 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Public Key Bundle - Self-signed public key distribution format.\n+\n+SECURITY CRITICAL:\n+This module defines the PublicKeyBundle format for distributing public keys\n+via the keyserver system. All bundles are cryptographically self-signed\n+to prevent tampering.\n+\n+SECURITY GUARANTEES:\n+- Immutable dataclass (frozen=True) prevents modification after creation\n+- Self-signature using ML-DSA provides cryptographic proof of authenticity\n+- Strict algorithm whitelists prevent legacy/weak cryptography\n+- Fingerprint always recalculated, never trusted from external sources\n+- Only public keys included, NEVER private keys\n+\n+DESIGN PRINCIPLES:\n+- Zero trust: All bundles from external sources are verified before use\n+- Kerckhoffs's principle: Algorithm names are public, keys remain secret\n+- Defense in depth: Multiple validation layers (signature + fingerprint + algorithms)\n+\"\"\"\n+\n+import base64\n+import json\n+import logging\n+from dataclasses import dataclass\n+from typing import TYPE_CHECKING, Dict, Optional\n+\n+from .pqc_signing import PQCSigner, calculate_fingerprint\n+\n+if TYPE_CHECKING:\n+    from .identity import Identity\n+\n+# Set up module-level logger\n+logger = logging.getLogger(__name__)\n+\n+\n+class KeyBundleError(Exception):\n+    \"\"\"Base exception for key bundle operations\"\"\"\n+\n+    pass\n+\n+\n+class InvalidSignatureError(KeyBundleError):\n+    \"\"\"Raised when bundle signature verification fails\"\"\"\n+\n+    pass\n+\n+\n+class InvalidAlgorithmError(KeyBundleError):\n+    \"\"\"Raised when unsupported algorithm is used\"\"\"\n+\n+    pass\n+\n+\n+class InvalidFingerprintError(KeyBundleError):\n+    \"\"\"Raised when fingerprint doesn't match keys\"\"\"\n+\n+    pass\n+\n+\n+@dataclass(frozen=True)\n+class PublicKeyBundle:\n+    \"\"\"\n+    Immutable, self-signed public key bundle for keyserver distribution.\n+\n+    SECURITY: This class is frozen (immutable) to prevent any modification\n+    after creation. All fields are validated and cryptographically verified.\n+\n+    ALLOWED FIELDS (per Kerckhoffs's principle):\n+    - Algorithm names and parameters (public information)\n+    - Public keys (designed to be public)\n+    - Fingerprints (derived from public keys)\n+    - Timestamps (UTC, no timezone information)\n+\n+    NEVER CONTAINS:\n+    - Private keys (encryption or signing)\n+    - Passwords or passphrases\n+    - Salts or key derivation secrets\n+    - Filenames, file paths, or user data\n+\n+    Attributes:\n+        name: Identity name (e.g., \"alice\")\n+        email: Optional email address\n+        fingerprint: SHA-256 fingerprint of both public keys (hex with colons)\n+        created_at: ISO 8601 timestamp (UTC)\n+        encryption_public_key: Public encryption key bytes (PEM format)\n+        signing_public_key: Public signing key bytes (PEM format)\n+        encryption_algorithm: KEM algorithm (ML-KEM-512/768/1024 only)",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "openssl_encrypt/modules/key_bundle.py",
-      "code": "@@ -326,21 +326,21 @@ def to_dict(self) -> Dict:\n         }\n \n     @classmethod\n-    def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n+    def from_dict(cls, data: Dict, verify: bool = True) -> \"PublicKeyBundle\":\n         \"\"\"\n         Create bundle from dictionary.\n \n-        SECURITY: Does NOT verify signature. Call verify_signature() after creation.\n-\n         Args:\n             data: Dictionary from to_dict()\n+            verify: If True (default), verify self_signature before returning.\n+                    Set to False only if verification happens separately.\n \n         Returns:\n-            PublicKeyBundle (unverified)\n+            PublicKeyBundle (verified if verify=True)\n \n         Raises:\n             KeyError: If required fields missing\n-            ValueError: If data format invalid\n+            ValueError: If data format invalid or signature verification fails\n         \"\"\"\n         try:\n             bundle = cls(\n@@ -354,9 +354,16 @@ def from_dict(cls, data: Dict) -> \"PublicKeyBundle\":\n                 signing_algorithm=data[\"signing_algorithm\"],\n                 self_signature=base64.b64decode(data[\"self_signature\"]),\n             )\n+            if verify:\n+                try:\n+                    bundle.verify_signature()\n+                except Exception as e:\n+                    raise ValueError(f\"Bundle signature verification failed: {e}\")\n             return bundle\n         except KeyError as e:\n             raise ValueError(f\"Missing required field in bundle data: {e}\")\n+        except ValueError:\n+            raise\n         except Exception as e:\n             raise ValueError(f\"Invalid bundle data format: {e}\")\n ",
-      "annotation": "",
-      "role": "fix"
-     }
-    ],
+    "comparison_hunks": [],
     "candidate_patch_sha256": "301c66ad900d9b5a2591f71192abc97b788e7cfee070386582d2f3361dcc34d3",
     "fix_patch_sha256": "ec479da1229a4e27b1f1667c9c07eef0b775aa36fdcb571d01d9decdc34fa15c",
     "candidate_patch_files": [
      "openssl_encrypt/modules/key_bundle.py"
-    ]
+    ],
+    "fix_patch_files": [
+     "openssl_encrypt/modules/key_bundle.py"
+    ],
+    "fix_files": [
+     "openssl_encrypt/modules/key_bundle.py"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "SECURITY: Does NOT verify signature",
+      "return bundle",
+      "def to_identity",
+      "is_own_identity=False"
+     ],
+     "fix": [
+      "verify: bool = True",
+      "bundle.verify_signature()",
+      "Bundle signature verification failed"
+     ]
+    }
    },
    "ir_chain": null,
    "research_status": "None material. Marker is in the commit body of the exact introducer commit; no squash decomposition needed (single-parent commit, no merge). Fix-side Claude Opus 4.6 trailer does not affect verdict. Advisory GHSA-8h88-gxp3-j7pg (github-reviewed 2026-04-01): from_dict() lines 329-361 creates bundles without verifying signature; to_identity() lines 363-391 converts unverified bundle to Identity; key_resolver.py:146-147 verifies before use but the unguarded API path remains callable; fixed in 1.4.0 via commit f4a1ba660063cd9e17883829e5272a248525a16b. Repo verification: git show fafdfeed:openssl_encrypt/modules/key_bundle.py lines ~331-391 reproduce the exact unverified from_dict() (docstring 'SECURITY: Does NOT verify signature. Call verify_signature() after creation') and to_identity() (no verification, creates Identity with is_own_identity=False); file absent at fafdfeed^ (git ls-tree returns nothing); git log --diff-filter=A confirms birth; git log -1 --format=%B fafdfeed shows '🤖 Generated with [Claude Code]' trailer. Fix verified on main (git merge-base --is-ancestor f4a1ba6 HEAD = 0): adds verify=True default, calls bundle.verify_signature() inside from_dict(), raises ValueError; body 'Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>'. Advisory ranges: introduced 0, fixed 1.4.0.",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-8h88-gxp3-j7pg",
    "publication_issues": [],
-   "publication_status": "provisional"
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-4RH7-JWG9-M28M",
@@ -32499,62 +32788,98 @@
     ]
    },
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
+    "ai_marker": "Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>",
     "fix_marker": null,
     "candidate_url": "https://github.com/openclaw/openclaw/commit/9a3800d8e6e69bc0a125dca5760d47515e746454",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-wv46-v6xc-2qhf",
-    "summary": "AI-written code resolved Synology Chat replies by mutable username instead of stable user_id, letting replies be redirected to a different user with the same name.",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/7ade3553b74ee3f461c4acd216653d5ba411f455",
+    "advisory_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-wv46-v6xc-2qhf",
+    "summary": "Claude-assisted Synology Chat code replaced the webhook's stable numeric recipient with a lookup by mutable nickname or username, so a colliding account could receive another user's reply.",
+    "mechanism": "The webhook handler resolved payload.username through the Chat user list and passed that result to the outbound send path instead of retaining payload.user_id.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "fix(synology-chat): resolve Chat API user_id for reply delivery (#23709)"
+      "detail": "The Claude-coauthored squash added nickname and username resolution and used the result as the recipient for immediate and buffered replies."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The direct fix keeps replies on the webhook's stable user_id by default and permits name matching only behind an explicitly dangerous compatibility flag."
      }
     ],
     "candidate_hunks": [
      {
       "file": "extensions/synology-chat/src/webhook-handler.ts",
       "code": "@@ -10,7 +10,7 @@ import {\n   readRequestBodyWithLimit,\n   requestBodyErrorToText,\n } from \"openclaw/plugin-sdk\";\n-import { sendMessage } from \"./client.js\";\n+import { sendMessage, resolveChatUserId } from \"./client.js\";\n import { validateToken, authorizeUserForDm, sanitizeInput, RateLimiter } from \"./security.js\";\n import type { SynologyWebhookPayload, ResolvedSynologyChatAccount } from \"./types.js\";\n \n@@ -225,6 +225,8 @@ export interface WebhookHandlerDeps {\n     chatType: string;\n     sessionKey: string;\n     accountId: string;\n+    /** Chat API user_id for sending replies (may differ from webhook user_id) */\n+    chatUserId?: string;\n   }) => Promise<string | null>;\n   log?: {\n     info: (...args: unknown[]) => void;\n@@ -330,8 +332,29 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n     // ACK immediately so Synology Chat won't remain in \"Processing...\"\n     respondNoContent(res);\n \n+    // Default to webhook user_id; may be replaced with Chat API user_id below.\n+    let replyUserId = payload.user_id;\n+\n     // Deliver to agent asynchronously (with 120s timeout to match nginx proxy_read_timeout)\n     try {\n+      // Resolve the Chat-internal user_id for sending replies.\n+      // Synology Chat outgoing webhooks use a per-integration user_id that may\n+      // differ from the global Chat API user_id required by method=chatbot.\n+      // We resolve via the user_list API, matching by nickname/username.\n+      const chatUserId = await resolveChatUserId(\n+        account.incomingUrl,\n+        payload.username,\n+        account.allowInsecureSsl,\n+        log,\n+      );\n+      if (chatUserId !== undefined) {\n+        replyUserId = String(chatUserId);\n+      } else {\n+        log?.warn(\n+          `Could not resolve Chat API user_id for \"${payload.username}\" — falling back to webhook user_id ${payload.user_id}. Reply delivery may fail.`,\n+        );\n+      }\n+\n       const sessionKey = `synology-chat-${payload.user_id}`;\n       const deliverPromise = deliver({\n         body: cleanText,\n@@ -341,6 +364,7 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n         chatType: \"direct\",\n         sessionKey,\n         accountId: account.accountId,\n+        chatUserId: replyUserId,\n       });\n \n       const timeoutPromise = new Promise<null>((_, reject) =>\n@@ -349,19 +373,19 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n \n       const reply = await Promise.race([deliverPromise, timeoutPromise]);\n \n-      // Send reply back to Synology Chat\n+      // Send reply back to Synology Chat using the resolved Chat user_id\n       if (reply) {\n-        await sendMessage(account.incomingUrl, reply, payload.user_id, account.allowInsecureSsl);\n+        await sendMessage(account.incomingUrl, reply, replyUserId, account.allowInsecureSsl);\n         const replyPreview = reply.length > 100 ? `${reply.slice(0, 100)}...` : reply;\n-        log?.info(`Reply sent to ${payload.username} (${payload.user_id}): ${replyPreview}`);\n+        log?.info(`Reply sent to ${payload.username} (${replyUserId}): ${replyPreview}`);\n       }\n     } catch (err) {\n       const errMsg = err instanceof Error ? `${err.message}\\n${err.stack}` : String(err);\n       log?.error(`Failed to process message from ${payload.username}: ${errMsg}`);\n       await sendMessage(\n         account.incomingUrl,\n         \"Sorry, an error occurred while processing your message.\",\n-        payload.user_id,\n+        replyUserId,\n         account.allowInsecureSsl,\n       );\n     }",
-      "annotation": "",
+      "annotation": "The Claude-coauthored change resolves a stable webhook user ID through mutable nickname or username data, then carries that resolved value into direct reply delivery. A renamed or colliding account can therefore redirect the bot's response.",
       "role": "candidate"
      },
      {
       "file": "extensions/synology-chat/src/channel.ts",
       "code": "@@ -243,6 +243,10 @@ export function createSynologyChatPlugin() {\n             const rt = getSynologyRuntime();\n             const currentCfg = await rt.config.loadConfig();\n \n+            // The Chat API user_id (for sending) may differ from the webhook\n+            // user_id (used for sessions/pairing). Use chatUserId for API calls.\n+            const sendUserId = msg.chatUserId ?? msg.from;\n+\n             // Build MsgContext using SDK's finalizeInboundContext for proper normalization\n             const msgCtx = rt.channel.reply.finalizeInboundContext({\n               Body: msg.body,\n@@ -275,7 +279,7 @@ export function createSynologyChatPlugin() {\n                     await sendMessage(\n                       account.incomingUrl,\n                       text,\n-                      msg.from,\n+                      sendUserId,\n                       account.allowInsecureSsl,\n                     );\n                   }",
-      "annotation": "",
+      "annotation": "The channel uses the resolved chatUserId as the recipient for buffered replies. This completes the vulnerable path from mutable name matching to the outbound send target.",
       "role": "candidate"
      }
     ],
-    "fix_hunks": [],
-    "comparison_hunks": [
+    "fix_hunks": [
+     {
+      "file": "extensions/synology-chat/src/accounts.ts",
+      "role": "fix",
+      "code": "@@ -91,0 +92,1 @@\n+    dangerouslyAllowNameMatching: merged.dangerouslyAllowNameMatching ?? false,",
+      "annotation": "Account resolution now defaults the compatibility flag to false. Deployments that do nothing therefore retain the stable numeric webhook recipient instead of entering mutable-name lookup."
+     },
      {
       "file": "extensions/synology-chat/src/webhook-handler.ts",
-      "code": "@@ -10,7 +10,7 @@ import {\n   readRequestBodyWithLimit,\n   requestBodyErrorToText,\n } from \"openclaw/plugin-sdk\";\n-import { sendMessage } from \"./client.js\";\n+import { sendMessage, resolveChatUserId } from \"./client.js\";\n import { validateToken, authorizeUserForDm, sanitizeInput, RateLimiter } from \"./security.js\";\n import type { SynologyWebhookPayload, ResolvedSynologyChatAccount } from \"./types.js\";\n \n@@ -225,6 +225,8 @@ export interface WebhookHandlerDeps {\n     chatType: string;\n     sessionKey: string;\n     accountId: string;\n+    /** Chat API user_id for sending replies (may differ from webhook user_id) */\n+    chatUserId?: string;\n   }) => Promise<string | null>;\n   log?: {\n     info: (...args: unknown[]) => void;\n@@ -330,8 +332,29 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n     // ACK immediately so Synology Chat won't remain in \"Processing...\"\n     respondNoContent(res);\n \n+    // Default to webhook user_id; may be replaced with Chat API user_id below.\n+    let replyUserId = payload.user_id;\n+\n     // Deliver to agent asynchronously (with 120s timeout to match nginx proxy_read_timeout)\n     try {\n+      // Resolve the Chat-internal user_id for sending replies.\n+      // Synology Chat outgoing webhooks use a per-integration user_id that may\n+      // differ from the global Chat API user_id required by method=chatbot.\n+      // We resolve via the user_list API, matching by nickname/username.\n+      const chatUserId = await resolveChatUserId(\n+        account.incomingUrl,\n+        payload.username,\n+        account.allowInsecureSsl,\n+        log,\n+      );\n+      if (chatUserId !== undefined) {\n+        replyUserId = String(chatUserId);\n+      } else {\n+        log?.warn(\n+          `Could not resolve Chat API user_id for \"${payload.username}\" — falling back to webhook user_id ${payload.user_id}. Reply delivery may fail.`,\n+        );\n+      }\n+\n       const sessionKey = `synology-chat-${payload.user_id}`;\n       const deliverPromise = deliver({\n         body: cleanText,\n@@ -341,6 +364,7 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n         chatType: \"direct\",\n         sessionKey,\n         accountId: account.accountId,\n+        chatUserId: replyUserId,\n       });\n \n       const timeoutPromise = new Promise<null>((_, reject) =>\n@@ -349,19 +373,19 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n \n       const reply = await Promise.race([deliverPromise, timeoutPromise]);\n \n-      // Send reply back to Synology Chat\n+      // Send reply back to Synology Chat using the resolved Chat user_id\n       if (reply) {\n-        await sendMessage(account.incomingUrl, reply, payload.user_id, account.allowInsecureSsl);\n+        await sendMessage(account.incomingUrl, reply, replyUserId, account.allowInsecureSsl);\n         const replyPreview = reply.length > 100 ? `${reply.slice(0, 100)}...` : reply;\n-        log?.info(`Reply sent to ${payload.username} (${payload.user_id}): ${replyPreview}`);\n+        log?.info(`Reply sent to ${payload.username} (${replyUserId}): ${replyPreview}`);\n       }\n     } catch (err) {\n       const errMsg = err instanceof Error ? `${err.message}\\n${err.stack}` : String(err);\n       log?.error(`Failed to process message from ${payload.username}: ${errMsg}`);\n       await sendMessage(\n         account.incomingUrl,\n         \"Sorry, an error occurred while processing your message.\",\n-        payload.user_id,\n+        replyUserId,\n         account.allowInsecureSsl,\n       );\n     }",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "extensions/synology-chat/src/channel.ts",
-      "code": "@@ -243,6 +243,10 @@ export function createSynologyChatPlugin() {\n             const rt = getSynologyRuntime();\n             const currentCfg = await rt.config.loadConfig();\n \n+            // The Chat API user_id (for sending) may differ from the webhook\n+            // user_id (used for sessions/pairing). Use chatUserId for API calls.\n+            const sendUserId = msg.chatUserId ?? msg.from;\n+\n             // Build MsgContext using SDK's finalizeInboundContext for proper normalization\n             const msgCtx = rt.channel.reply.finalizeInboundContext({\n               Body: msg.body,\n@@ -275,7 +279,7 @@ export function createSynologyChatPlugin() {\n                     await sendMessage(\n                       account.incomingUrl,\n                       text,\n-                      msg.from,\n+                      sendUserId,\n                       account.allowInsecureSsl,\n                     );\n                   }",
-      "annotation": "",
-      "role": "candidate"
+      "role": "fix",
+      "code": "@@ -376,0 +377,3 @@\n+  if (!params.account.dangerouslyAllowNameMatching) {\n+    return params.payload.user_id;\n+  }",
+      "annotation": "The reply resolver now returns the stable payload user_id before any nickname or username lookup unless an operator deliberately enables the dangerous compatibility mode."
      }
     ],
-    "candidate_patch_sha256": "2d88d3f1c3dcbd426e72c66a895fa91e4c4f1ff6f97883c60c12cf7c1663f1a9",
-    "fix_patch_sha256": null,
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "8ca5d13c7d7b19b3e1286b26dab9e247b994500d4dfb1ae25dfdd79fccae32ae",
+    "fix_patch_sha256": "1aee95f59e7836d23fa1e330385cf7298777f6e99c2c1cc916f9ee484ba8d895",
     "candidate_patch_files": [
      "extensions/synology-chat/src/webhook-handler.ts",
      "extensions/synology-chat/src/channel.ts"
-    ]
+    ],
+    "fix_patch_files": [
+     "extensions/synology-chat/src/accounts.ts",
+     "extensions/synology-chat/src/webhook-handler.ts"
+    ],
+    "fix_files": [
+     "extensions/synology-chat/src/accounts.ts",
+     "extensions/synology-chat/src/webhook-handler.ts"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "resolveChatUserId(",
+      "replyUserId = String(chatUserId)",
+      "const sendUserId = msg.chatUserId ?? msg.from"
+     ],
+     "fix": [
+      "dangerouslyAllowNameMatching: merged.dangerouslyAllowNameMatching ?? false",
+      "return params.payload.user_id"
+     ]
+    }
    },
    "ir_chain": null,
+   "candidate_sources": [
+    {
+     "sha": "9a3800d8e6e69bc0a125dca5760d47515e746454",
+     "repository": "openclaw/openclaw"
+    }
+   ],
+   "candidate_fix_edges": [
+    {
+     "candidate_sha": "9a3800d8e6e69bc0a125dca5760d47515e746454",
+     "fix_sha": "7ade3553b74ee3f461c4acd216653d5ba411f455",
+     "origin_kind": "direct_commit"
+    }
+   ],
    "research_status": "git show 9a3800d8e6e6 -- extensions/synology-chat/ fetchChatUsers() resolveChatUserId() sendUserId = msg.chatUserId ?? msg.from /commit message PR commit Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com> commit 7ade3553b74ee3f461c4acd216653d5ba411f455 ('fix: gate synology chat reply name matching') accounts.ts channel.ts dangerouslyAllowNameMatching",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-wv46-v6xc-2qhf",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-wv46-v6xc-2qhf",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-FPMV-5WGW-QHHR",
@@ -34031,59 +34356,124 @@
     "ai_marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
     "fix_marker": null,
     "candidate_url": "https://github.com/qhkm/zeptoclaw/commit/2c9deefbf744089c3041885717b92c6f2fc0bf8c",
-    "fix_url": "",
-    "advisory_url": "https://github.com/advisories/ghsa-46q5-g3j9-wx5c",
-    "summary": "AI-written webhook code trusted client-supplied sender and chat_id with auth optional by default, letting attackers spoof allowlisted senders and hijack message routing.",
+    "fix_url": "https://github.com/qhkm/zeptoclaw/commit/bf004a20d3687a0c1a9e052ec79536e30d6de134",
+    "advisory_url": "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
+    "summary": "Claude-coauthored webhook code treated caller-supplied sender and chat_id fields as authenticated identity while request authentication was optional, allowing a remote caller to impersonate an allowlisted sender and steer message routing.",
+    "mechanism": "The handler checked its allowlist against payload.sender and built the inbound session from payload.sender and payload.chat_id; the default auth_token was None, so reachable deployments could accept those claims without proof.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat: add hooks system, deploy templates, and accumulated features"
+      "detail": "The Claude-coauthored commit created the webhook with optional authentication and made both authorization and routing depend on identity fields supplied in JSON."
+     },
+     {
+      "title": "Security fix",
+      "detail": "The direct fix defaults to server-configured sender and chat identifiers, fails startup without a fixed sender, and makes payload identity an explicit legacy opt-in."
      }
     ],
     "candidate_hunks": [
      {
       "file": "src/channels/webhook.rs",
-      "code": "@@ -0,0 +1,1163 @@\n+//! Webhook Inbound Channel Implementation\n+//!\n+//! This module provides a generic HTTP webhook channel for ZeptoClaw. External\n+//! services can POST JSON payloads to a configurable endpoint and have them\n+//! published to the message bus as inbound messages.\n+//!\n+//! # Architecture\n+//!\n+//! ```text\n+//! ┌──────────────────┐         ┌──────────────────┐\n+//! │  External Service│ ──POST─>│  WebhookChannel  │\n+//! │  (any HTTP       │         │  (TcpListener)   │\n+//! │   client)        │         └────────┬─────────┘\n+//! └──────────────────┘                  │\n+//!                                       │ InboundMessage\n+//!                                       ▼\n+//!                              ┌──────────────────┐\n+//!                              │    MessageBus    │\n+//!                              └──────────────────┘\n+//! ```\n+//!\n+//! # Request Format\n+//!\n+//! ```json\n+//! POST /webhook HTTP/1.1\n+//! Content-Type: application/json\n+//! Authorization: Bearer <optional-token>\n+//!\n+//! {\n+//!     \"message\": \"Hello, ZeptoClaw!\",\n+//!     \"sender\": \"external-service\",\n+//!     \"chat_id\": \"webhook-chat-123\"\n+//! }\n+//! ```\n+//!\n+//! # Example\n+//!\n+//! ```ignore\n+//! use std::sync::Arc;\n+//! use zeptoclaw::bus::MessageBus;\n+//! use zeptoclaw::channels::webhook::{WebhookChannel, WebhookChannelConfig};\n+//! use zeptoclaw::channels::BaseChannelConfig;\n+//!\n+//! let config = WebhookChannelConfig::default();\n+//! let base_config = BaseChannelConfig::new(\"webhook\");\n+//! let bus = Arc::new(MessageBus::new());\n+//! let channel = WebhookChannel::new(config, base_config, bus);\n+//! ```\n+\n+use async_trait::async_trait;\n+use serde::Deserialize;\n+use std::sync::atomic::{AtomicBool, Ordering};\n+use std::sync::Arc;\n+use tokio::io::{AsyncReadExt, AsyncWriteExt};\n+use tokio::net::TcpListener;\n+use tracing::{debug, error, info, warn};\n+\n+use crate::bus::{InboundMessage, MessageBus, OutboundMessage};\n+use crate::error::{Result, ZeptoError};\n+\n+use super::{BaseChannelConfig, Channel};\n+\n+/// Maximum allowed request body size (1 MB).\n+const MAX_BODY_SIZE: usize = 1_048_576;\n+\n+/// Maximum allowed header section size (8 KB).\n+const MAX_HEADER_SIZE: usize = 8_192;\n+\n+// --- HTTP response constants ---\n+\n+const HTTP_200_OK: &str = \"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: 16\\r\\nConnection: close\\r\\n\\r\\n{\\\"status\\\":\\\"ok\\\"}\";\n+const HTTP_400_BAD_REQUEST: &str =\n+    \"HTTP/1.1 400 Bad Request\\r\\nContent-Type: application/json\\r\\nConnection: close\\r\\n\\r\\n\";\n+const HTTP_401_UNAUTHORIZED: &str = \"HTTP/1.1 401 Unauthorized\\r\\nContent-Type: application/json\\r\\nContent-Length: 26\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"unauthorized\\\"}\";\n+const HTTP_404_NOT_FOUND: &str = \"HTTP/1.1 404 Not Found\\r\\nContent-Type: application/json\\r\\nContent-Length: 23\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"not found\\\"}\";\n+const HTTP_405_METHOD_NOT_ALLOWED: &str = \"HTTP/1.1 405 Method Not Allowed\\r\\nContent-Type: application/json\\r\\nContent-Length: 32\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"method not allowed\\\"}\";\n+const HTTP_413_PAYLOAD_TOO_LARGE: &str = \"HTTP/1.1 413 Payload Too Large\\r\\nContent-Type: application/json\\r\\nContent-Length: 31\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"payload too large\\\"}\";\n+\n+/// Runtime configuration for the webhook HTTP server.\n+///\n+/// This is the internal runtime configuration, not the serde config struct\n+/// that lives in `config/types.rs`.\n+#[derive(Debug, Clone)]\n+pub struct WebhookChannelConfig {\n+    /// Address to bind the HTTP server to.\n+    pub bind_address: String,\n+    /// Port to listen on.\n+    pub port: u16,\n+    /// URL path to accept webhook requests on.",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +84,33 @@\n+pub struct WebhookChannelConfig {\n+    /// Address to bind the HTTP server to.\n+    pub bind_address: String,\n+    /// Port to listen on.\n+    pub port: u16,\n+    /// URL path to accept webhook requests on.\n+    pub path: String,\n+    /// Optional Bearer token for request authentication.\n+    /// When set, all requests must include a matching `Authorization: Bearer <token>` header.\n+    pub auth_token: Option<String>,\n+}\n+\n+impl Default for WebhookChannelConfig {\n+    fn default() -> Self {\n+        Self {\n+            bind_address: \"127.0.0.1\".to_string(),\n+            port: 9876,\n+            path: \"/webhook\".to_string(),\n+            auth_token: None,\n+        }\n+    }\n+}\n+\n+/// JSON body expected from webhook POST requests.\n+#[derive(Debug, Deserialize)]\n+struct WebhookPayload {\n+    /// The message content.\n+    message: String,\n+    /// Identifier of the sender.\n+    sender: String,\n+    /// Chat/conversation identifier for session routing.\n+    chat_id: String,\n+}",
+      "annotation": "The new webhook defaults Bearer authentication to None and defines sender and chat_id as mandatory client-controlled JSON fields. Nothing in this configuration binds those claims to the caller."
      },
-     {
-      "file": "src/config/types.rs",
-      "code": "@@ -32,6 +32,18 @@ pub struct Config {\n     pub container_agent: ContainerAgentConfig,\n     /// Swarm / multi-agent delegation configuration\n     pub swarm: SwarmConfig,\n+    /// Tool approval configuration\n+    pub approval: crate::tools::approval::ApprovalConfig,\n+    /// Plugin system configuration\n+    pub plugins: crate::plugins::types::PluginConfig,\n+    /// Telemetry export configuration\n+    pub telemetry: crate::utils::telemetry::TelemetryConfig,\n+    /// Cost tracking configuration\n+    pub cost: crate::utils::cost::CostConfig,\n+    /// Batch processing configuration\n+    pub batch: crate::batch::BatchConfig,\n+    /// Hook system configuration\n+    pub hooks: crate::hooks::HooksConfig,\n }\n \n /// Agent configuration\n@@ -63,6 +75,8 @@ pub struct AgentDefaults {\n     pub message_queue_mode: MessageQueueMode,\n     /// Whether to stream the final LLM response token-by-token in CLI mode.\n     pub streaming: bool,\n+    /// Per-session token budget (input + output). 0 = unlimited.\n+    pub token_budget: u64,\n }\n \n /// Default model compile-time configuration.\n@@ -83,6 +97,7 @@ impl Default for AgentDefaults {\n             agent_timeout_secs: 300,\n             message_queue_mode: MessageQueueMode::default(),\n             streaming: false,\n+            token_budget: 0,\n         }\n     }\n }\n@@ -122,6 +137,56 @@ pub struct ChannelsConfig {\n     pub qq: Option<QQConfig>,\n     /// DingTalk configuration\n     pub dingtalk: Option<DingTalkConfig>,\n+    /// Webhook inbound channel configuration\n+    pub webhook: Option<WebhookConfig>,\n+}\n+\n+/// Webhook inbound channel configuration\n+#[derive(Debug, Clone, Serialize, Deserialize)]\n+pub struct WebhookConfig {\n+    /// Whether the channel is enabled\n+    #[serde(default)]\n+    pub enabled: bool,\n+    /// Address to bind the HTTP server to\n+    #[serde(default = \"default_webhook_bind_address\")]\n+    pub bind_address: String,\n+    /// Port to listen on\n+    #[serde(default = \"default_webhook_port\")]\n+    pub port: u16,\n+    /// URL path to accept webhook requests on\n+    #[serde(default = \"default_webhook_path\")]\n+    pub path: String,\n+    /// Optional Bearer token for request authentication\n+    #[serde(default)]\n+    pub auth_token: Option<String>,\n+    /// Allowlist of sender IDs (empty = allow all)\n+    #[serde(default)]\n+    pub allow_from: Vec<String>,\n+}\n+\n+fn default_webhook_bind_address() -> String {\n+    \"127.0.0.1\".to_string()\n+}\n+\n+fn default_webhook_port() -> u16 {\n+    9876\n+}\n+\n+fn default_webhook_path() -> String {\n+    \"/webhook\".to_string()\n+}\n+\n+impl Default for WebhookConfig {\n+    fn default() -> Self {\n+        Self {\n+            enabled: false,\n+            bind_address: default_webhook_bind_address(),\n+            port: default_webhook_port(),\n+            path: default_webhook_path(),\n+            auth_token: None,\n+            allow_from: Vec::new(),\n+        }\n+    }",
-      "annotation": "",
-      "role": "candidate"
-     }
-    ],
-    "fix_hunks": [],
-    "comparison_hunks": [
      {
       "file": "src/channels/webhook.rs",
-      "code": "@@ -0,0 +1,1163 @@\n+//! Webhook Inbound Channel Implementation\n+//!\n+//! This module provides a generic HTTP webhook channel for ZeptoClaw. External\n+//! services can POST JSON payloads to a configurable endpoint and have them\n+//! published to the message bus as inbound messages.\n+//!\n+//! # Architecture\n+//!\n+//! ```text\n+//! ┌──────────────────┐         ┌──────────────────┐\n+//! │  External Service│ ──POST─>│  WebhookChannel  │\n+//! │  (any HTTP       │         │  (TcpListener)   │\n+//! │   client)        │         └────────┬─────────┘\n+//! └──────────────────┘                  │\n+//!                                       │ InboundMessage\n+//!                                       ▼\n+//!                              ┌──────────────────┐\n+//!                              │    MessageBus    │\n+//!                              └──────────────────┘\n+//! ```\n+//!\n+//! # Request Format\n+//!\n+//! ```json\n+//! POST /webhook HTTP/1.1\n+//! Content-Type: application/json\n+//! Authorization: Bearer <optional-token>\n+//!\n+//! {\n+//!     \"message\": \"Hello, ZeptoClaw!\",\n+//!     \"sender\": \"external-service\",\n+//!     \"chat_id\": \"webhook-chat-123\"\n+//! }\n+//! ```\n+//!\n+//! # Example\n+//!\n+//! ```ignore\n+//! use std::sync::Arc;\n+//! use zeptoclaw::bus::MessageBus;\n+//! use zeptoclaw::channels::webhook::{WebhookChannel, WebhookChannelConfig};\n+//! use zeptoclaw::channels::BaseChannelConfig;\n+//!\n+//! let config = WebhookChannelConfig::default();\n+//! let base_config = BaseChannelConfig::new(\"webhook\");\n+//! let bus = Arc::new(MessageBus::new());\n+//! let channel = WebhookChannel::new(config, base_config, bus);\n+//! ```\n+\n+use async_trait::async_trait;\n+use serde::Deserialize;\n+use std::sync::atomic::{AtomicBool, Ordering};\n+use std::sync::Arc;\n+use tokio::io::{AsyncReadExt, AsyncWriteExt};\n+use tokio::net::TcpListener;\n+use tracing::{debug, error, info, warn};\n+\n+use crate::bus::{InboundMessage, MessageBus, OutboundMessage};\n+use crate::error::{Result, ZeptoError};\n+\n+use super::{BaseChannelConfig, Channel};\n+\n+/// Maximum allowed request body size (1 MB).\n+const MAX_BODY_SIZE: usize = 1_048_576;\n+\n+/// Maximum allowed header section size (8 KB).\n+const MAX_HEADER_SIZE: usize = 8_192;\n+\n+// --- HTTP response constants ---\n+\n+const HTTP_200_OK: &str = \"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: 16\\r\\nConnection: close\\r\\n\\r\\n{\\\"status\\\":\\\"ok\\\"}\";\n+const HTTP_400_BAD_REQUEST: &str =\n+    \"HTTP/1.1 400 Bad Request\\r\\nContent-Type: application/json\\r\\nConnection: close\\r\\n\\r\\n\";\n+const HTTP_401_UNAUTHORIZED: &str = \"HTTP/1.1 401 Unauthorized\\r\\nContent-Type: application/json\\r\\nContent-Length: 26\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"unauthorized\\\"}\";\n+const HTTP_404_NOT_FOUND: &str = \"HTTP/1.1 404 Not Found\\r\\nContent-Type: application/json\\r\\nContent-Length: 23\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"not found\\\"}\";\n+const HTTP_405_METHOD_NOT_ALLOWED: &str = \"HTTP/1.1 405 Method Not Allowed\\r\\nContent-Type: application/json\\r\\nContent-Length: 32\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"method not allowed\\\"}\";\n+const HTTP_413_PAYLOAD_TOO_LARGE: &str = \"HTTP/1.1 413 Payload Too Large\\r\\nContent-Type: application/json\\r\\nContent-Length: 31\\r\\nConnection: close\\r\\n\\r\\n{\\\"error\\\":\\\"payload too large\\\"}\";\n+\n+/// Runtime configuration for the webhook HTTP server.\n+///\n+/// This is the internal runtime configuration, not the serde config struct\n+/// that lives in `config/types.rs`.\n+#[derive(Debug, Clone)]\n+pub struct WebhookChannelConfig {\n+    /// Address to bind the HTTP server to.\n+    pub bind_address: String,\n+    /// Port to listen on.\n+    pub port: u16,\n+    /// URL path to accept webhook requests on.",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "src/config/types.rs",
-      "code": "@@ -32,6 +32,18 @@ pub struct Config {\n     pub container_agent: ContainerAgentConfig,\n     /// Swarm / multi-agent delegation configuration\n     pub swarm: SwarmConfig,\n+    /// Tool approval configuration\n+    pub approval: crate::tools::approval::ApprovalConfig,\n+    /// Plugin system configuration\n+    pub plugins: crate::plugins::types::PluginConfig,\n+    /// Telemetry export configuration\n+    pub telemetry: crate::utils::telemetry::TelemetryConfig,\n+    /// Cost tracking configuration\n+    pub cost: crate::utils::cost::CostConfig,\n+    /// Batch processing configuration\n+    pub batch: crate::batch::BatchConfig,\n+    /// Hook system configuration\n+    pub hooks: crate::hooks::HooksConfig,\n }\n \n /// Agent configuration\n@@ -63,6 +75,8 @@ pub struct AgentDefaults {\n     pub message_queue_mode: MessageQueueMode,\n     /// Whether to stream the final LLM response token-by-token in CLI mode.\n     pub streaming: bool,\n+    /// Per-session token budget (input + output). 0 = unlimited.\n+    pub token_budget: u64,\n }\n \n /// Default model compile-time configuration.\n@@ -83,6 +97,7 @@ impl Default for AgentDefaults {\n             agent_timeout_secs: 300,\n             message_queue_mode: MessageQueueMode::default(),\n             streaming: false,\n+            token_budget: 0,\n         }\n     }\n }\n@@ -122,6 +137,56 @@ pub struct ChannelsConfig {\n     pub qq: Option<QQConfig>,\n     /// DingTalk configuration\n     pub dingtalk: Option<DingTalkConfig>,\n+    /// Webhook inbound channel configuration\n+    pub webhook: Option<WebhookConfig>,\n+}\n+\n+/// Webhook inbound channel configuration\n+#[derive(Debug, Clone, Serialize, Deserialize)]\n+pub struct WebhookConfig {\n+    /// Whether the channel is enabled\n+    #[serde(default)]\n+    pub enabled: bool,\n+    /// Address to bind the HTTP server to\n+    #[serde(default = \"default_webhook_bind_address\")]\n+    pub bind_address: String,\n+    /// Port to listen on\n+    #[serde(default = \"default_webhook_port\")]\n+    pub port: u16,\n+    /// URL path to accept webhook requests on\n+    #[serde(default = \"default_webhook_path\")]\n+    pub path: String,\n+    /// Optional Bearer token for request authentication\n+    #[serde(default)]\n+    pub auth_token: Option<String>,\n+    /// Allowlist of sender IDs (empty = allow all)\n+    #[serde(default)]\n+    pub allow_from: Vec<String>,\n+}\n+\n+fn default_webhook_bind_address() -> String {\n+    \"127.0.0.1\".to_string()\n+}\n+\n+fn default_webhook_port() -> u16 {\n+    9876\n+}\n+\n+fn default_webhook_path() -> String {\n+    \"/webhook\".to_string()\n+}\n+\n+impl Default for WebhookConfig {\n+    fn default() -> Self {\n+        Self {\n+            enabled: false,\n+            bind_address: default_webhook_bind_address(),\n+            port: default_webhook_port(),\n+            path: default_webhook_path(),\n+            auth_token: None,\n+            allow_from: Vec::new(),\n+        }\n+    }",
-      "annotation": "",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +382,23 @@\n+// Validate required fields are non-empty\n+if payload.message.trim().is_empty()\n+    || payload.sender.trim().is_empty()\n+    || payload.chat_id.trim().is_empty()\n+{\n+    let body = r#\"{\"error\":\"message, sender, and chat_id must be non-empty\"}\"#;\n+}\n+\n+// Check allowlist\n+if !base_config.is_allowed(&payload.sender) {\n+    info!(\n+        \"Webhook: sender {} not in allowlist, rejecting\",\n+        payload.sender\n+    );\n+}\n+\n+// Build and publish inbound message\n+let inbound = InboundMessage::new(\n+    \"webhook\",\n+    payload.sender.trim(),\n+    payload.chat_id.trim(),\n+    payload.message.trim(),\n+);",
+      "annotation": "The handler authorizes payload.sender and then copies the same caller-supplied sender and chat_id into the inbound message. A forged allowlisted name therefore controls both authorization and session routing."
      }
     ],
-    "candidate_patch_sha256": "49b106af2c09fffa082a9c92bd77536115637a41d288f986ef650a5a38dab4bb",
-    "fix_patch_sha256": null,
+    "fix_hunks": [
+     {
+      "file": "src/config/types.rs",
+      "role": "fix",
+      "code": "@@ -887,0 +888,16 @@ pub struct WebhookConfig {\n+    /// Optional HMAC secret for request signature verification.\n+    #[serde(default)]\n+    pub signature_secret: Option<String>,\n+    /// Header carrying the request HMAC signature when `signature_secret` is set.\n+    #[serde(default = \"default_webhook_signature_header\")]\n+    pub signature_header: String,\n+    /// Server-controlled sender ID used when `trust_payload_identity` is disabled.\n+    #[serde(default)]\n+    pub sender_id: Option<String>,\n+    /// Optional server-controlled chat ID used when `trust_payload_identity` is disabled.\n+    /// Falls back to `sender_id` when omitted.\n+    #[serde(default)]\n+    pub chat_id: Option<String>,\n+    /// When true, accept caller-supplied `sender` and `chat_id` from webhook JSON.\n+    #[serde(default)]\n+    pub trust_payload_identity: bool,\n@@ -915,0 +936,5 @@ impl Default for WebhookConfig {\n+            signature_secret: None,\n+            signature_header: default_webhook_signature_header(),\n+            sender_id: None,\n+            chat_id: None,\n+            trust_payload_identity: false,",
+      "annotation": "The persisted webhook configuration gains server-controlled sender and chat identifiers, while trust_payload_identity defaults to false. Payload identity is no longer the default security principal."
+     },
+     {
+      "file": "src/channels/factory.rs",
+      "role": "fix",
+      "code": "@@ -91,0 +92,5 @@ pub async fn register_configured_channels(\n+                signature_secret: webhook_config.signature_secret.clone(),\n+                signature_header: webhook_config.signature_header.clone(),\n+                sender_id: webhook_config.sender_id.clone(),\n+                chat_id: webhook_config.chat_id.clone(),\n+                trust_payload_identity: webhook_config.trust_payload_identity,",
+      "annotation": "The channel factory carries the fixed server identity and the explicit legacy toggle from persisted configuration into the live webhook handler."
+     },
+     {
+      "file": "src/channels/webhook.rs",
+      "role": "fix",
+      "code": "@@ -112,0 +141,11 @@ pub struct WebhookChannelConfig {\n+    /// Optional HMAC secret for request signature verification.\n+    pub signature_secret: Option<String>,\n+    /// Header carrying the HMAC signature when `signature_secret` is configured.\n+    pub signature_header: String,\n+    /// Server-controlled sender ID used when `trust_payload_identity` is disabled.\n+    pub sender_id: Option<String>,\n+    /// Optional server-controlled chat ID used when `trust_payload_identity` is disabled.\n+    /// Falls back to `sender_id` when omitted.\n+    pub chat_id: Option<String>,\n+    /// When true, accept caller-supplied `sender` and `chat_id` from the JSON payload.\n+    pub trust_payload_identity: bool,\n@@ -121,0 +161,5 @@ impl Default for WebhookChannelConfig {\n+            signature_secret: None,\n+            signature_header: \"X-ZeptoClaw-Signature-256\".to_string(),\n+            sender_id: None,\n+            chat_id: None,\n+            trust_payload_identity: false,",
+      "annotation": "The runtime configuration mirrors the secure default: client identity is distrusted unless the operator deliberately re-enables it, and the sender must come from server configuration."
+     },
+     {
+      "file": "src/channels/webhook.rs",
+      "role": "fix",
+      "code": "@@ -279,0 +313,60 @@\n+fn validate_runtime_config(config: &WebhookChannelConfig) -> Result<()> {\n+    if config.trust_payload_identity {\n+        return Ok(());\n+    }\n+\n+    let sender_id = config\n+        .sender_id\n+        .as_deref()\n+        .map(str::trim)\n+        .unwrap_or_default();\n+    if sender_id.is_empty() {\n+        return Err(ZeptoError::Config(\n+            \"Webhook channel requires sender_id unless trust_payload_identity=true\".to_string(),\n+        ));\n+    }\n+\n+    Ok(())\n+}\n+\n+fn resolve_identity(\n+    payload: &WebhookPayload,\n+    config: &WebhookChannelConfig,\n+) -> Result<(String, String)> {\n+    if config.trust_payload_identity {\n+        let sender = payload.sender.as_deref().map(str::trim).unwrap_or_default();\n+        let chat_id = payload\n+            .chat_id\n+            .as_deref()\n+            .map(str::trim)\n+            .unwrap_or_default();\n+\n+        if sender.is_empty() || chat_id.is_empty() {\n+            return Err(ZeptoError::Channel(\n+                \"message, sender, and chat_id must be non-empty\".to_string(),\n+            ));\n+        }\n+\n+        return Ok((sender.to_string(), chat_id.to_string()));\n+    }\n+\n+    let sender = config\n+        .sender_id\n+        .as_deref()\n+        .map(str::trim)\n+        .unwrap_or_default();\n+    if sender.is_empty() {\n+        return Err(ZeptoError::Config(\n+            \"Webhook channel requires sender_id unless trust_payload_identity=true\".to_string(),\n+        ));\n+    }\n+\n+    let chat_id = config\n+        .chat_id\n+        .as_deref()\n+        .map(str::trim)\n+        .filter(|chat_id| !chat_id.is_empty())\n+        .unwrap_or(sender);\n+\n+    Ok((sender.to_string(), chat_id.to_string()))\n+}",
+      "annotation": "The new resolver fails closed when no fixed sender is configured and returns server-owned sender and chat values by default. Caller-supplied fields are used only inside the explicit trust_payload_identity compatibility branch."
+     },
+     {
+      "file": "src/channels/webhook.rs",
+      "role": "fix",
+      "code": "@@ -419,0 +565,15 @@ impl WebhookChannel {\n+        let (sender_id, chat_id) = match Self::resolve_identity(&payload, config) {\n+            Ok(identity) => identity,\n+            Err(e) => {\n+                debug!(\"Webhook: invalid identity configuration or payload: {}\", e);\n+                let body = format!(\"{{\\\"error\\\":\\\"{}\\\"}}\", e);\n+                let response = format!(\n+                    \"{}Content-Length: {}\\r\\n\\r\\n{}\",\n+                    HTTP_400_BAD_REQUEST,\n+                    body.len(),\n+                    body\n+                );\n+                let _ = stream.write_all(response.as_bytes()).await;\n+                return;\n+            }\n+        };\n@@ -421,5 +582,2 @@ impl WebhookChannel {\n-        if !base_config.is_allowed(&payload.sender) {\n-            info!(\n-                \"Webhook: sender {} not in allowlist, rejecting\",\n-                payload.sender\n-            );\n+        if !base_config.is_allowed(&sender_id) {\n+            info!(\"Webhook: sender {} not in allowlist, rejecting\", sender_id);\n@@ -431,6 +589,1 @@ impl WebhookChannel {\n-        let inbound = InboundMessage::new(\n-            \"webhook\",\n-            payload.sender.trim(),\n-            payload.chat_id.trim(),\n-            payload.message.trim(),\n-        );\n+        let inbound = InboundMessage::new(\"webhook\", &sender_id, &chat_id, payload.message.trim());",
+      "annotation": "Authorization and inbound routing now consume only the resolved identity. The request body no longer directly supplies the allowlist principal or the session chat identifier."
+     },
+     {
+      "file": "src/channels/webhook.rs",
+      "role": "fix",
+      "code": "@@ -485,0 +639,5 @@ impl Channel for WebhookChannel {\n+        if let Err(e) = Self::validate_runtime_config(&self.config) {\n+            self.running.store(false, Ordering::SeqCst);\n+            return Err(e);\n+        }\n+",
+      "annotation": "Startup stops when the secure mode lacks a configured sender_id. This prevents an operator mistake from silently falling back to caller-controlled identity."
+     }
+    ],
+    "comparison_hunks": [],
+    "candidate_patch_sha256": "7cc16ed6a0430108a27c0d24eea9707a5cdcf6129a9219f22f04e378c9704b12",
+    "fix_patch_sha256": "25ec9a5760de1e1629c8a346021e5fa9f66afcafa6442eb1b01bce5a1d4fb28d",
     "candidate_patch_files": [
-     "src/channels/webhook.rs",
-     "src/config/types.rs"
-    ]
+     "src/channels/webhook.rs"
+    ],
+    "fix_patch_files": [
+     "src/config/types.rs",
+     "src/channels/factory.rs",
+     "src/channels/webhook.rs"
+    ],
+    "fix_files": [
+     "src/config/types.rs",
+     "src/channels/factory.rs",
+     "src/channels/webhook.rs"
+    ],
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "auth_token: None",
+      "sender: String",
+      "base_config.is_allowed(&payload.sender)",
+      "payload.chat_id.trim()"
+     ],
+     "fix": [
+      "trust_payload_identity: false",
+      "Webhook channel requires sender_id",
+      "Self::resolve_identity(&payload, config)",
+      "base_config.is_allowed(&sender_id)",
+      "validate_runtime_config(&self.config)"
+     ]
+    }
    },
    "ir_chain": null,
+   "candidate_sources": [
+    {
+     "sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
+     "repository": "qhkm/zeptoclaw"
+    }
+   ],
+   "candidate_fix_edges": [
+    {
+     "candidate_sha": "2c9deefbf744089c3041885717b92c6f2fc0bf8c",
+     "fix_sha": "bf004a20d3687a0c1a9e052ec79536e30d6de134",
+     "origin_kind": "direct_commit"
+    }
+   ],
    "research_status": "git log --all --diff-filter=A -- src/channels/webhook.rs -> only 2c9deefb; fix bf004a20 (#324) adds hmac_sha256_hex/validate_signature/validate_runtime_config/resolve_identity with server-controlled sender_id+chat_id and trust_payload_identity default false, plus tests test_webhook_end_to_end_signature_required etc.; candidate diff shows WebhookPayload with required payload-supplied sender/chat_id and optional auth_token only; candidate pushed directly on mainline 2026-02-14 (linear chain 44227c1->2c9deef->d78b299->35ca114, no merge/PR ref; subject has no (#N))",
    "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-46q5-g3j9-wx5c",
-   "publication_issues": [
-    "missing_fix"
-   ],
-   "publication_status": "qualified"
+   "advisory_url": "https://github.com/qhkm/zeptoclaw/security/advisories/GHSA-46q5-g3j9-wx5c",
+   "publication_issues": [],
+   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-2M67-CXXQ-C3H8",

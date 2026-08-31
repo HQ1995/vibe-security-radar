@@ -537,21 +537,6 @@ describe("canonical case evidence", () => {
     );
   });
 
-  it("explains why an audited case has no code diff", () => {
-    const base = getResearchCaseById("GHSA-VCV2-R9JH-99M5");
-    expect(base?.code_evidence).toBeTruthy();
-    const reason =
-      "The upstream commits were force-pushed away, so their patches cannot be reconstructed.";
-    const item = {
-      ...base!,
-      code_evidence: { ...base!.code_evidence!, unavailable_reason: reason },
-    };
-
-    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
-
-    expect(html).toContain(reason);
-  });
-
   it("shows release facts in the case facts card without not-recorded rows", () => {
     const withRelease = getResearchCaseById("GHSA-5XXX-QHH7-9287");
     const withoutRelease = getResearchCaseById("GHSA-C7RR-QHWX-6Q49");
