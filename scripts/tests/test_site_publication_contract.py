@@ -715,6 +715,26 @@ def test_ir_chain_requires_a_reason_when_original_sha_is_unresolved() -> None:
     assert publish_tp_ledger.publication_errors([case]) == []
 
 
+def test_multiple_ghsa_aliases_require_explicit_identity_adjudication() -> None:
+    case = _case()
+    case.update(
+        case_id="GHSA-1111-2222-3333",
+        class_id="alias-example",
+        aliases=["GHSA-4444-5555-6666"],
+        published_at="2026-01-01",
+    )
+    assert publish_tp_ledger.publication_errors([case]) == [
+        "GHSA-1111-2222-3333: multiple GHSAs "
+        "['GHSA-1111-2222-3333', 'GHSA-4444-5555-6666']"
+    ]
+    overrides = {
+        "cases": {
+            "alias-example": {"aliases_extra": ["GHSA-4444-5555-6666"]}
+        }
+    }
+    assert publish_tp_ledger.publication_errors([case], overrides=overrides) == []
+
+
 def test_ir_chain_normalization_preserves_history_gap_reason() -> None:
     chain = publish_tp_ledger.normalize_ir_chain(
         {
@@ -1793,9 +1813,12 @@ def test_generated_site_data_passes_publication_contract() -> None:
         (root / "scripts/site_preflight_allowlist.json").read_text(encoding="utf-8")
     )
     errors, _, stats = site_preflight.evaluate(payload, allowlist)
+    cases = {case["case_id"]: case for case in payload["cases"]}
 
     assert errors == []
     assert sum(stats["publication_statuses"].values()) == len(payload["cases"])
+    assert "GHSA-723W-CRW6-P9HX" in cases["GHSA-8H88-GXP3-J7PG"]["aliases"]
+    assert "GHSA-CCP9-5G7C-PJ86" in cases["GHSA-J48Q-4C78-RHF9"]["aliases"]
 
 
 if __name__ == "__main__":

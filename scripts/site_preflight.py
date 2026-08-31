@@ -25,6 +25,7 @@ ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 FIX_OBJECT_WITNESS = ROOT / "scripts/published-fix-object-witness.json"
 PUBLICATION_ADJUDICATIONS = ROOT / "scripts/publication_adjudications.json"
 EVIDENCE_FETCH_OVERRIDES = ROOT / "scripts/evidence_fetch_overrides.json"
+PUBLICATION_OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 EVIDENCE_REQUIRED_ROLES = ROOT / "scripts/code-evidence-required-roles.json"
 GHSA_RE = re.compile(r"^GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$", re.I)
 CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,7}$", re.I)
@@ -648,6 +649,7 @@ def evaluate(
     publication_adjudications: dict | None = None,
     evidence_fetch_overrides: dict | None = None,
     evidence_required_roles: dict | None = None,
+    publication_overrides: dict | None = None,
 ) -> tuple[list[str], list[str], dict]:
     allowlist = allowlist or {}
     diff_allow = {
@@ -659,6 +661,13 @@ def evaluate(
         for key, reason in (allowlist.get("missing_release") or {}).items()
     }
     cases = payload.get("cases") or []
+    publication_overrides = (
+        publication_overrides
+        if publication_overrides is not None
+        else load_json(PUBLICATION_OVERRIDES)
+        if PUBLICATION_OVERRIDES.exists()
+        else {}
+    )
     snapshot = payload.get("snapshot") or {}
     errors: list[str] = []
     warnings: list[str] = []
@@ -1134,7 +1143,20 @@ def evaluate(
             )
         ghsas = [item for item in ids if GHSA_RE.match(item)]
         if len(ghsas) > 1:
-            errors.append(f"{case_id}: multiple GHSAs {ghsas}")
+            verified = {
+                str(item).upper()
+                for item in (
+                    (((publication_overrides.get("cases") or {}).get(case.get("class_id")) or {}).get("aliases_extra"))
+                    or []
+                )
+            }
+            unexpected = [
+                item
+                for item in ghsas
+                if item.upper() != key and item.upper() not in verified
+            ]
+            if unexpected:
+                errors.append(f"{case_id}: multiple GHSAs {ghsas}")
         for official in ids:
             owner = seen_official.get(official.upper())
             if owner and owner != case_id:

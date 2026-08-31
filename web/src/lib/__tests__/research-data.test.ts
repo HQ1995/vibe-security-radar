@@ -134,7 +134,6 @@ describe("canonical research data", () => {
         /^GHSA-/i.test(value),
       );
       expect(ghsas).toHaveLength(new Set(ghsas.map((value) => value.toUpperCase())).size);
-      expect(ghsas.length).toBeLessThanOrEqual(1);
       for (const value of [item.case_id, ...item.aliases]) {
         if (!/^(GHSA-|CVE-)/i.test(value)) continue;
         const key = value.toUpperCase();

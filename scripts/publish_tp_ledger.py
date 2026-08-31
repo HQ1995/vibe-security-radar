@@ -891,6 +891,7 @@ def expand_entity_ids(official_ids: list[str]) -> list[str]:
 def publication_errors(
     cases: list[dict],
     dates: dict[str, str] | None = None,
+    overrides: dict | None = None,
 ) -> list[str]:
     errors: list[str] = []
     seen: dict[str, str] = {}
@@ -919,7 +920,20 @@ def publication_errors(
             errors.append(f"{case_id}: listing SHA does not match evidence commit")
         ghsas = [item for item in official_ids_of(case) if GHSA_RE.match(item)]
         if len(ghsas) > 1:
-            errors.append(f"{case_id}: multiple GHSAs {ghsas}")
+            verified = {
+                str(item).upper()
+                for item in (
+                    (((overrides or {}).get("cases") or {}).get(case.get("class_id")) or {}).get("aliases_extra")
+                    or []
+                )
+            }
+            unexpected = [
+                item
+                for item in ghsas
+                if item.upper() != case_id.upper() and item.upper() not in verified
+            ]
+            if unexpected:
+                errors.append(f"{case_id}: multiple GHSAs {ghsas}")
         for official_id in unique(expand_entity_ids(official_ids_of(case))):
             owner = seen.get(official_id)
             if owner and owner != case_id:
@@ -1802,7 +1816,7 @@ def main() -> None:
         raise SystemExit(
             f"CJK leaked into public fields: {leaks[:12]} ({len(leaks)} total)"
         )
-    identity_errors = publication_errors(cases, dates)
+    identity_errors = publication_errors(cases, dates, overrides)
     if identity_errors:
         raise SystemExit(
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
