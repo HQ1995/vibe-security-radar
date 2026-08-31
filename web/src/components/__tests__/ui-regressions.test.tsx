@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import ErrorPage from "@/app/error";
 import Loading from "@/app/loading";
 import AboutPage from "@/app/about/page";
+import CveDetailPage from "@/app/cves/[id]/page";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import { getLangIconKey } from "@/components/language-distribution-chart";
@@ -144,7 +145,6 @@ describe("how we verify page", () => {
     expect(html).toContain("Locate the AI change");
     expect(html).toContain("Prove cause and fix");
     expect(html).toContain("Confirm the release");
-    const snapshot = getResearchSnapshot().snapshot;
     expect(html).toContain(
       `This public index covers ${getResearchCases().length} findings.`,
     );
@@ -155,6 +155,37 @@ describe("how we verify page", () => {
 });
 
 describe("canonical case evidence", () => {
+  it("explains confirmed, qualified, and provisional attribution in plain language", async () => {
+    const cases = [
+      {
+        id: "GHSA-X98J-GH4V-7P7G",
+        status: "AI contribution confirmed",
+        detail: "no required evidence is missing",
+      },
+      {
+        id: "GHSA-WFX9-6H8H-F3GM",
+        status: "AI contribution supported, with limits",
+        detail: "too limited for full confirmation",
+      },
+      {
+        id: "GHSA-Q8HH-M6V5-4F3X",
+        status: "AI contribution still under review",
+        detail: "the attribution is not final",
+      },
+    ];
+
+    for (const { id, status, detail } of cases) {
+      const page = await CveDetailPage({ params: Promise.resolve({ id }) });
+      const html = renderToStaticMarkup(page);
+
+      expect(html).toContain(status);
+      expect(html).toContain(detail);
+      expect(html).toContain("How we verify evidence");
+      expect(html).not.toContain("AI-contributed vulnerability");
+      expect(html).not.toContain("all seven evidence gates");
+    }
+  });
+
   it("searches and filters the full case index", () => {
     const cases = getResearchCases();
     const html = renderToStaticMarkup(<ResearchCaseExplorer cases={cases} />);
@@ -301,11 +332,17 @@ describe("canonical case evidence", () => {
     expect(html).toContain((dump!.code_evidence?.summary ?? "").slice(0, 60));
   });
 
-  it("keeps the summary and causal chain together before the facts card", () => {
+  it("keeps the summary and causal chain together without viewport-sized gaps", async () => {
     const item = getResearchCaseById("CVE-2026-34218");
     expect(item).not.toBeNull();
 
-    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+    const page = await CveDetailPage({
+      params: Promise.resolve({ id: "CVE-2026-34218" }),
+    });
+    const html = renderToStaticMarkup(page);
+    const classes = [...html.matchAll(/class="([^"]*)"/g)]
+      .map((match) => match[1])
+      .join(" ");
 
     expect(html).toContain(
       "grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]",
@@ -315,6 +352,12 @@ describe("canonical case evidence", () => {
     );
     expect(html.indexOf("Root cause")).toBeLessThan(
       html.indexOf("Case facts"),
+    );
+    expect(classes).not.toMatch(
+      /(?:^|\s)(?:[^\s:]+:)*(?:min-h-screen|h-screen|(?:min-)?h-\[(?:[6-9]\d|100)vh\])(?=\s|$)/,
+    );
+    expect(classes).not.toMatch(
+      /(?:^|\s)(?:[^\s:]+:)*(?:(?:py|pt|pb|my|mt|mb|space-y|gap-y)-(?:20|24|28|32|36|40|44|48|52|56|60|64|72|80|96)|h-(?:64|72|80|96))(?=\s|$)/,
     );
   });
 
@@ -366,7 +409,6 @@ describe("canonical case evidence", () => {
     expect(html).toContain("Fixed again");
     expect(html).toContain("3af0c2516c");
     expect(html).toContain("1b0d2d9b91");
-    expect(html).not.toContain("Security fix");
   });
 
   it("never presents unresolved original authorship as human", () => {
@@ -397,14 +439,22 @@ describe("canonical case evidence", () => {
 
   it("keeps the route loading state compact and content-shaped", () => {
     const html = renderToStaticMarkup(<Loading />);
+    const classes = [...html.matchAll(/class="([^"]*)"/g)]
+      .map((match) => match[1])
+      .join(" ");
 
     expect(html).toContain('aria-busy="true"');
     expect(html).toContain("Loading case details");
     expect(html).toContain("xl:grid-cols-[minmax(0,1fr)_22rem]");
-    expect(html).not.toContain("py-32");
+    expect(classes).not.toMatch(
+      /(?:^|\s)(?:[^\s:]+:)*(?:fixed|inset-0|min-h-screen|h-screen|(?:min-)?h-\[(?:[6-9]\d|100)vh\])(?=\s|$)/,
+    );
+    expect(classes).not.toMatch(
+      /(?:^|\s)(?:[^\s:]+:)*(?:py|pt|pb|my|mt|mb|space-y|gap-y)-(?:20|24|28|32|36|40|44|48|52|56|60|64|72|80|96)(?=\s|$)/,
+    );
   });
 
-  it("shows researched hunks and an annotation for previously empty comparisons", () => {
+  it("shows researched hunks with one section-level context per role", () => {
     const item = getResearchCaseById("GHSA-WVPP-8HX9-P66J");
     expect(item).not.toBeNull();
     expect(item?.code_evidence?.comparison_hunks.length).toBeGreaterThan(0);
@@ -415,7 +465,158 @@ describe("canonical case evidence", () => {
     expect(html).not.toContain(
       "A line-by-line code comparison has not been prepared",
     );
-    expect(html).toMatch(/AI introduced this behavior:|The fix adds:|Unsafe git option/);
+    expect(html.match(/AI change context/g)).toHaveLength(1);
+    expect(html.match(/Security fix context/g)).toHaveLength(1);
+    expect(html.match(/Why this change is shown/g)).toHaveLength(
+      item!.code_evidence!.comparison_hunks.length,
+    );
+    expect(html).toContain("not a hunk-specific annotation");
+  });
+
+  it("labels diff roles and explains how to read every hunk", () => {
+    const item = structuredClone(
+      getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
+    );
+    Object.assign(item.code_evidence!.comparison_hunks[0], {
+      annotation:
+        "The newly added PluginImportGuard and both causal mechanisms are visible in this hunk.",
+    });
+    expect(item?.code_evidence?.comparison_hunks.length).toBeGreaterThan(0);
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+    const roleBadges = html.match(/>(?:AI change|Fix|Comparison)<\/span>/g) ?? [];
+
+    expect(html).toContain(
+      "Lines beginning with − were removed; lines beginning with + were added.",
+    );
+    expect(html).toContain(">AI change</span>");
+    expect(html).toContain(">Fix</span>");
+    expect(roleBadges).toHaveLength(
+      item!.code_evidence!.comparison_hunks.length,
+    );
+    expect(html.match(/AI change context/g)).toHaveLength(1);
+    expect(html.match(/Security fix context/g)).toHaveLength(1);
+    expect(html).toContain("Why this change is shown:");
+    expect(html).toContain(
+      "newly added PluginImportGuard and both causal mechanisms",
+    );
+  });
+
+  it("links fix hunks to the verified canonical fix commit", () => {
+    const item = getResearchCaseById("GHSA-QF5V-M7P4-95RP");
+    const canonicalFix = "2569b42bfadbcb7d78b55a00a60f77937e522699";
+    expect(item?.code_evidence?.fix_url).toContain(canonicalFix);
+    expect(item?.minimum_fix_set).toContain(canonicalFix);
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain(
+      `href="https://github.com/fission/fission/blob/${canonicalFix}/pkg/executor/util/merge.go"`,
+    );
+    expect(html).toContain("source fission/fission@2569b42bfa");
+    expect(html).toContain(
+      `href="https://github.com/fission/fission/commit/${canonicalFix}"`,
+    );
+  });
+
+  it("links diff hunks to the repository named by the evidence URLs", () => {
+    const item = getResearchCaseById("CVE-2026-42278");
+    expect(item?.repository).toBe("UltraDAGcom/core");
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain(
+      'href="https://github.com/sumitshahorg/core/blob/8f000e9403a33c693eeb630771bc3d4846473991/crates/ultradag-coin/src/tx/smart_account.rs"',
+    );
+    expect(html).toContain("source sumitshahorg/core@8f000e9403");
+    expect(html).toContain(
+      'href="https://github.com/sumitshahorg/core/blob/fb6ef59d6c1385400e7acea7ae31fc6a473c3051/crates/ultradag-coin/src/state/engine.rs"',
+    );
+    expect(html).toContain("source sumitshahorg/core@fb6ef59d6c");
+  });
+
+  it("uses role-specific repositories in the cause and fix cards", () => {
+    const item = getResearchCaseById("GHSA-VJ3G-5PX3-GR46");
+    const candidate = "a604df8c83d179a6e9fc07987ebef610faaf4991";
+    const fix = "c821099157a9767d4df208c6b12f214946507871";
+    expect(item?.repository).toBe("openclaw/openclaw");
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
+
+    expect(html).toContain(
+      `href="https://github.com/m1heng/clawdbot-feishu/blob/${candidate}/src/media.ts"`,
+    );
+    expect(html).toContain(
+      `href="https://github.com/openclaw/openclaw/blob/${fix}/extensions/feishu/src/media.ts"`,
+    );
+
+    const fetchedContext = getResearchCaseById("GHSA-877V-W3F5-3PCQ");
+    const fetchedContextHtml = renderToStaticMarkup(
+      <CanonicalCaseEvidence item={fetchedContext!} />,
+    );
+    expect(fetchedContextHtml).toContain(
+      'href="https://github.com/m1heng/clawdbot-feishu/commit/4286755f26bcfdd5c704cc4eb0cabfdc1b314e68"',
+    );
+    expect(fetchedContextHtml).toContain(
+      'href="https://github.com/openclaw/openclaw/commit/8a607d7553339fffa97870668c482734db1b2d68"',
+    );
+  });
+
+  it("labels empty, template, and repeated annotations as case-level fallback", () => {
+    const base = getResearchCaseById("CVE-2026-34218");
+    const hunk = base?.code_evidence?.candidate_hunks[0];
+    expect(base).not.toBeNull();
+    expect(hunk).toBeTruthy();
+    const context = "Case context explains why this branch remains vulnerable.";
+    const mechanism = "Mechanism context explains the affected call path.";
+    const item = {
+      ...base!,
+      mechanism,
+      code_evidence: {
+        ...base!.code_evidence!,
+        summary: context,
+        comparison_hunks: [],
+        fix_hunks: [],
+        candidate_hunks: [
+          { ...hunk!, file: "empty-note.swift", annotation: "" },
+          {
+            ...hunk!,
+            file: "template-note.swift",
+            annotation: "AI introduced this behavior: repeated template",
+          },
+          { ...hunk!, file: "summary-note.swift", annotation: context },
+          { ...hunk!, file: "mechanism-note.swift", annotation: mechanism },
+        ],
+      },
+    };
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+
+    expect(html.match(/AI change context/g)).toHaveLength(1);
+    expect(html.match(/Security fix context/g)).toHaveLength(1);
+    expect(html.match(/>AI change<\/span>/g)).toHaveLength(4);
+    expect(html.match(/Why this change is shown/g)).toHaveLength(4);
+    expect(html.match(/not a hunk-specific annotation/g)).toHaveLength(4);
+    expect(html).not.toContain("border-amber-200 bg-amber-50/70");
+    expect(html.split(context)).toHaveLength(7);
+    expect(html.split(mechanism)).toHaveLength(2);
+    expect(html).not.toContain("repeated template");
+  });
+
+  it("explains why an audited case has no code diff", () => {
+    const base = getResearchCaseById("GHSA-VCV2-R9JH-99M5");
+    expect(base?.code_evidence).toBeTruthy();
+    const reason =
+      "The upstream commits were force-pushed away, so their patches cannot be reconstructed.";
+    const item = {
+      ...base!,
+      code_evidence: { ...base!.code_evidence!, unavailable_reason: reason },
+    };
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+
+    expect(html).toContain("Why no code diff is shown:");
+    expect(html).toContain(reason);
   });
 
   it("never ships the empty comparison placeholder", () => {
@@ -425,6 +626,10 @@ describe("canonical case evidence", () => {
     const noHunks: Record<string, true> = { "GHSA-VCV2-R9JH-99M5": true };
     for (const item of getResearchCases()) {
       const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+      const displayedHunkCount = item.code_evidence?.comparison_hunks.length
+        ? item.code_evidence.comparison_hunks.length
+        : (item.code_evidence?.candidate_hunks.length ?? 0) +
+          (item.code_evidence?.fix_hunks.length ?? 0);
       expect(html, item.case_id).not.toContain(
         "A line-by-line code comparison has not been prepared",
       );
@@ -436,6 +641,9 @@ describe("canonical case evidence", () => {
           item.code_evidence?.candidate_hunks?.length,
         item.case_id,
       ).toBeGreaterThan(0);
+      expect(html.match(/Why this change is shown/g), item.case_id).toHaveLength(
+        displayedHunkCount,
+      );
     }
   });
 

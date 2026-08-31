@@ -72,8 +72,9 @@ Causal chain (`ir_chain`, present for every `AI_INCOMPLETE_REMEDIATION` case,
 absent for other classes — they need no remediation chain):
 
 - `original_advisory_ids`, `original_sha`, `original_author_kind/name`
-- `unresolved_reason` — required when `original_sha` is unavailable; records the
-  exact history/evidence boundary instead of guessing an introducer
+- `unresolved_reason` — a non-empty reason is required when `original_sha` is
+  unavailable; records the exact history/evidence boundary instead of guessing
+  an introducer
 - `original_mechanism`, `original_sink`
 - `attempted_remediation` — the incomplete fix (candidate shas)
 - `residual_bypass` — how the path stayed open
@@ -84,6 +85,12 @@ Code evidence (`code_evidence`, present for published cases):
 - `candidate_url`, `fix_url`, `advisory_url` — primary sources
 - `candidate_patch_sha256` — content hash of the AI change
 - `candidate_hunks`, `fix_hunks`, `comparison_hunks` — line-level diffs
+- each hunk's `role` is `candidate` or `fix` when it belongs to that commit;
+  `before_after` identifies an editor/publisher-composed before/after comparison
+- hunk `annotation` may be empty; the UI then shows one clearly labeled case-level
+  context per role, but must not present it as a hunk-specific causal explanation
+- `unavailable_reason` is required when no code hunk can be published and explains
+  the exact public-history boundary to the reader
 - `ai_marker`, `fix_marker` — authorship signals on each side
 - unpatched findings may omit `fix_hunks` / `fix_url`; they still need candidate hunks
 

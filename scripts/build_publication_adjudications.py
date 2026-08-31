@@ -11,6 +11,7 @@ import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ _DEFAULT_BASE = _SCRIPT_DIR / "audit_adjudications.json"
 _DEFAULT_FINAL = _FP211_DIR / "final_mechanisms.jsonl"
 _DEFAULT_MANIFEST = _FP211_DIR / "manifest.jsonl"
 _DEFAULT_PUBLIC_CASES = _FP211_DIR / "public_cases.jsonl"
+_DEFAULT_SUPERSESSIONS = _SCRIPT_DIR / "publication-adjudication-supersessions.json"
 _DEFAULT_OUTPUT = _SCRIPT_DIR / "publication_adjudications.json"
 _HELPER = _SCRIPT_DIR / "cohort" / "publication_admission.py"
 _ALLOWED_LABELS = frozenset({"AI_CAUSAL", "NOT_AI_CAUSAL", "INCONCLUSIVE"})
@@ -110,11 +112,123 @@ def _label(final: Mapping[str, object], admission: Mapping[str, object]) -> str:
     return "INCONCLUSIVE"
 
 
+def _supersession_rows(payload: object) -> list[dict[str, Any]]:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != 1
+        or payload.get("artifact_kind")
+        != "publication_adjudication_supersessions"
+    ):
+        raise PublicationCorpusError(
+            "publication supersessions require schema_version 1"
+        )
+    rows = payload.get("supersessions")
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise PublicationCorpusError("publication supersessions must be an object array")
+    return rows
+
+
+def _apply_supersessions(
+    adjudications: list[dict[str, Any]],
+    payload: object,
+    *,
+    input_hashes: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    """Replace a prior label only when the complete public identity collides."""
+
+    rows = [deepcopy(row) for row in adjudications]
+    subjects_by_index = [
+        _subjects(row, canonical_field="cve_id") for row in rows
+    ]
+    superseded_indices: set[int] = set()
+    for override in _supersession_rows(payload):
+        subjects = _subjects(override, canonical_field="cve_id")
+        collisions = [
+            index
+            for index, existing_subjects in enumerate(subjects_by_index)
+            if subjects & existing_subjects
+        ]
+        if len(collisions) != 1:
+            raise PublicationCorpusError(
+                f"supersession must collide with exactly one identity: "
+                f"{override.get('cve_id')!r}"
+            )
+        index = collisions[0]
+        previous = rows[index]
+        if (
+            index in superseded_indices
+            or subjects != subjects_by_index[index]
+            or str(override.get("cve_id", "")).upper()
+            != str(previous.get("cve_id", "")).upper()
+        ):
+            raise PublicationCorpusError(
+                f"supersession identity must exactly match the prior row: "
+                f"{override.get('cve_id')!r}"
+            )
+        label = override.get("label")
+        source = override.get("source")
+        audited = override.get("audited")
+        reason = override.get("reason")
+        supersedes = override.get("supersedes")
+        if label not in _ALLOWED_LABELS or label == previous.get("label"):
+            raise PublicationCorpusError(
+                f"invalid supersession label for {override.get('cve_id')}"
+            )
+        if (
+            not isinstance(source, str)
+            or not source
+            or source == previous.get("source")
+            or source not in input_hashes
+        ):
+            raise PublicationCorpusError(
+                f"supersession source is not hashed for {override.get('cve_id')}"
+            )
+        try:
+            if (
+                not isinstance(audited, str)
+                or date.fromisoformat(audited).isoformat() != audited
+            ):
+                raise ValueError
+        except ValueError as exc:
+            raise PublicationCorpusError(
+                f"invalid supersession audit date for {override.get('cve_id')}"
+            ) from exc
+        if not isinstance(reason, str) or len(reason.strip()) < 24:
+            raise PublicationCorpusError(
+                f"supersession reason is too short for {override.get('cve_id')}"
+            )
+        if (
+            not isinstance(supersedes, dict)
+            or supersedes.get("label") != previous.get("label")
+            or supersedes.get("source") != previous.get("source")
+        ):
+            raise PublicationCorpusError(
+                f"supersession does not name the prior decision for "
+                f"{override.get('cve_id')}"
+            )
+
+        prior = {
+            key: previous[key]
+            for key in ("label", "source", "audited", "confidence")
+            if key in previous
+        }
+        previous["label"] = label
+        previous["source"] = source
+        previous["audited"] = audited
+        previous["supersession"] = {
+            "reason": reason.strip(),
+            "superseded": prior,
+        }
+        superseded_indices.add(index)
+    return rows
+
+
 def build_publication_corpus(
     base_payload: object,
     final_rows: list[dict[str, Any]],
     manifest_rows: list[dict[str, Any]],
     public_cases: list[dict[str, Any]],
+    supersessions_payload: object,
     *,
     input_hashes: Mapping[str, str],
 ) -> dict[str, Any]:
@@ -281,7 +395,11 @@ def build_publication_corpus(
                 f"fp211 kept and excluded aliases overlap at {row['cve_id']}"
             )
 
-    adjudications = [*preserved_base, *fp_rows]
+    adjudications = _apply_supersessions(
+        [*preserved_base, *fp_rows],
+        supersessions_payload,
+        input_hashes=input_hashes,
+    )
     labels = Counter(row["label"] for row in adjudications)
     canonical = json.dumps(
         adjudications, sort_keys=True, separators=(",", ":"), ensure_ascii=True
@@ -298,10 +416,11 @@ def build_publication_corpus(
             "replaced_base_count": replaced_base_count,
             "fp211_public_case_count": len(fp_rows),
             "fp211_mechanism_count": len(final_rows),
+            "supersession_count": len(_supersession_rows(supersessions_payload)),
             "removed_public_ids": sorted(removed_ids),
         },
         "provenance": {
-            "algorithm": "base-plus-fp211-public-cases-v1",
+            "algorithm": "base-plus-fp211-public-cases-with-supersessions-v2",
             "builder": "scripts/build_publication_adjudications.py",
             "input_sha256": dict(sorted(input_hashes.items())),
             "adjudications_sha256": hashlib.sha256(canonical).hexdigest(),
@@ -343,6 +462,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--final", type=Path, default=_DEFAULT_FINAL)
     parser.add_argument("--manifest", type=Path, default=_DEFAULT_MANIFEST)
     parser.add_argument("--public-cases", type=Path, default=_DEFAULT_PUBLIC_CASES)
+    parser.add_argument("--supersessions", type=Path, default=_DEFAULT_SUPERSESSIONS)
     parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     return parser
@@ -351,6 +471,26 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
+        supersessions_payload = json.loads(
+            args.supersessions.read_text(encoding="utf-8")
+        )
+        supersession_sources: dict[str, Path] = {}
+        for row in _supersession_rows(supersessions_payload):
+            source = row.get("source")
+            if not isinstance(source, str) or not source:
+                raise PublicationCorpusError("supersession source must be repo-relative")
+            source_path = Path(source)
+            if source_path.is_absolute() or ".." in source_path.parts:
+                raise PublicationCorpusError(
+                    f"supersession source must be repo-relative: {source!r}"
+                )
+            resolved = (_REPO_ROOT / source_path).resolve()
+            if not resolved.is_relative_to(_REPO_ROOT.resolve()):
+                raise PublicationCorpusError(
+                    f"supersession source escapes the repository: {source!r}"
+                )
+            supersession_sources[source] = resolved
+
         inputs = {
             "scripts/audit_adjudications.json": _sha256(args.base),
             "research/orchestrator-260813-fp211-audit/final_mechanisms.jsonl": _sha256(
@@ -364,12 +504,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             "scripts/build_publication_adjudications.py": _sha256(Path(__file__)),
             "scripts/cohort/publication_admission.py": _sha256(_HELPER),
+            "scripts/publication-adjudication-supersessions.json": _sha256(
+                args.supersessions
+            ),
+            **{
+                source: _sha256(path)
+                for source, path in sorted(supersession_sources.items())
+            },
         }
         artifact = build_publication_corpus(
             json.loads(args.base.read_text(encoding="utf-8")),
             _jsonl(args.final),
             _jsonl(args.manifest),
             _jsonl(args.public_cases),
+            supersessions_payload,
             input_hashes=inputs,
         )
         content = _encoded(artifact)

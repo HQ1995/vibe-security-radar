@@ -42,14 +42,15 @@ def test_generated_publication_corpus_is_current_and_conservative() -> None:
     assert payload["publication_ready"] is False
     assert len(rows) == 257
     assert Counter(row["label"] for row in rows) == {
-        "AI_CAUSAL": 53,
-        "NOT_AI_CAUSAL": 83,
+        "AI_CAUSAL": 55,
+        "NOT_AI_CAUSAL": 81,
         "INCONCLUSIVE": 121,
     }
     assert payload["summary"]["preserved_base_count"] == 45
     assert payload["summary"]["replaced_base_count"] == 33
     assert payload["summary"]["fp211_public_case_count"] == 212
     assert payload["summary"]["fp211_mechanism_count"] == 211
+    assert payload["summary"]["supersession_count"] == 2
     assert len(payload["summary"]["removed_public_ids"]) == 10
     assert all("excluded_aliases" in row for row in rows if "fp211" in row)
 
@@ -112,3 +113,83 @@ def test_release_only_failure_is_not_relabelled_noncausal() -> None:
     final["release_gate"] = "PASS"
     final["uniqueness_gate"] = "FAIL"
     assert builder._label(final, {"may_publish": False}) == "INCONCLUSIVE"
+
+
+def _supersession(**changes: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "cve_id": "GHSA-AAAA-BBBB-CCCC",
+        "aliases": ["CVE-2026-12345"],
+        "label": "AI_CAUSAL",
+        "audited": "2026-08-30",
+        "source": "research/current-review.jsonl",
+        "reason": "Later atomic-history evidence identifies the causal writer.",
+        "supersedes": {
+            "label": "NOT_AI_CAUSAL",
+            "source": "scripts/audit_results/old.json",
+        },
+    }
+    row.update(changes)
+    return row
+
+
+def _apply_supersession(row: dict[str, object]) -> list[dict[str, object]]:
+    return builder._apply_supersessions(
+        [
+            {
+                "cve_id": "GHSA-AAAA-BBBB-CCCC",
+                "aliases": ["CVE-2026-12345"],
+                "label": "NOT_AI_CAUSAL",
+                "source": "scripts/audit_results/old.json",
+                "audited": "2026-07-18",
+                "confidence": 0.99,
+            }
+        ],
+        {
+            "schema_version": 1,
+            "artifact_kind": "publication_adjudication_supersessions",
+            "supersessions": [row],
+        },
+        input_hashes={"research/current-review.jsonl": "a" * 64},
+    )
+
+
+def test_supersession_preserves_prior_provenance() -> None:
+    [updated] = _apply_supersession(_supersession())
+    assert updated["label"] == "AI_CAUSAL"
+    assert updated["source"] == "research/current-review.jsonl"
+    assert updated["audited"] == "2026-08-30"
+    assert updated["supersession"] == {
+        "reason": "Later atomic-history evidence identifies the causal writer.",
+        "superseded": {
+            "label": "NOT_AI_CAUSAL",
+            "source": "scripts/audit_results/old.json",
+            "audited": "2026-07-18",
+            "confidence": 0.99,
+        },
+    }
+
+
+def test_supersession_requires_exact_identity_and_prior_decision() -> None:
+    bad_rows = [
+        _supersession(aliases=[]),
+        _supersession(label="NOT_AI_CAUSAL"),
+        _supersession(supersedes={"label": "AI_CAUSAL", "source": "wrong"}),
+        _supersession(source="research/unhashed-review.jsonl"),
+    ]
+    for row in bad_rows:
+        try:
+            _apply_supersession(row)
+        except builder.PublicationCorpusError:
+            continue
+        raise AssertionError(f"supersession unexpectedly accepted: {row!r}")
+
+
+if __name__ == "__main__":
+    tests = [
+        value
+        for name, value in globals().copy().items()
+        if name.startswith("test_") and callable(value)
+    ]
+    for test in tests:
+        test()
+    print(f"{len(tests)} publication adjudication tests passed")

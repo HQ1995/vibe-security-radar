@@ -60,6 +60,10 @@ def violations(row: dict) -> list:
     bad = []
     if not row.get("advisory_ids"):
         bad.append("advisory_ids missing")
+    if row["status"] == "NOT_AI" and (
+        row.get("site_scope") is not None or row.get("site_tier") is not None
+    ):
+        bad.append("NOT_AI must not carry site_scope/site_tier")
     ps = payloads(row)
     bics = [p.get("introducer_sha") for p in ps if p.get("introducer_sha")]
     if row["status"] == "FALSE_POSITIVE":

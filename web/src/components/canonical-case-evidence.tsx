@@ -24,6 +24,20 @@ function commitUrl(repository: string | null, sha: string): string | null {
   return repository ? `https://github.com/${repository}/commit/${sha}` : null;
 }
 
+function commitSource(
+  value: string | null | undefined,
+  fallbackRepository: string | null,
+  fallbackSha: string,
+) {
+  const match = value?.match(
+    /^https?:\/\/github\.com\/([^/]+\/[^/]+)\/commit\/([0-9a-f]{7,40})(?:$|[/?#])/i,
+  );
+  return {
+    repository: match?.[1] ?? fallbackRepository,
+    sha: match?.[2] ?? fallbackSha,
+  };
+}
+
 function releaseLabel(release: ResearchRelease | null): string {
   if (!release) return "Not recorded";
   return (
@@ -50,6 +64,31 @@ function contributionHeadline(value: string): string {
         "AI-written code contained the vulnerability.",
     }[value] ?? "AI contributed to this vulnerability."
   );
+}
+
+type DiffRole = "AI change" | "Fix" | "Comparison";
+
+function compactPublicProse(
+  ...values: (string | null | undefined)[]
+): string | null {
+  for (const value of values) {
+    const text = stripMarkdown(value).trim();
+    if (text.length <= 360 && isPublicProse(text)) return text;
+  }
+  return null;
+}
+
+function usefulHunkAnnotation(value: string): string | null {
+  const text = compactPublicProse(value);
+  if (
+    !text ||
+    /^(?:AI introduced this behavior|AI removed a constraint|The fix adds):/i.test(
+      text,
+    )
+  ) {
+    return null;
+  }
+  return text;
 }
 
 function advisoryBlurb(item: ResearchCase): string | null {
@@ -110,20 +149,6 @@ function cardStepTitle(
 
 function whatClosedIt(item: ResearchCase): string | null {
   return item.ir_chain?.final_closure?.closed?.replace(/\.$/, "") || null;
-}
-
-function incompleteHeadline(item: ResearchCase): string {
-  const missed = item.ir_chain?.attempted_remediation?.missed?.replace(/\.$/, "");
-  if (missed) return `AI tried to fix this, but ${missed[0].toLowerCase()}${missed.slice(1)}.`;
-  const summary = item.code_evidence?.summary;
-  if (
-    summary &&
-    isPublicProse(summary) &&
-    /tried|missed|incomplete/i.test(summary)
-  ) {
-    return summary;
-  }
-  return contributionHeadline("AI_INCOMPLETE_REMEDIATION");
 }
 
 function rootCauseTitle(item: ResearchCase): string {
@@ -212,6 +237,32 @@ function FileLink({
   );
 }
 
+function SourceLink({
+  repository,
+  sha,
+}: {
+  readonly repository: string | null;
+  readonly sha: string;
+}) {
+  const href = commitUrl(repository, sha);
+  const label = repository && sha ? `${repository}@${shortSha(sha)}` : "unresolved";
+  if (!href) {
+    return <span className="font-mono text-muted-foreground">source {label}</span>;
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Source commit ${repository} ${sha}`}
+      className="inline-flex shrink-0 items-center gap-1 font-mono text-muted-foreground hover:text-primary hover:underline"
+    >
+      source {label}
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
+
 function CauseFixCard({
   tone,
   kicker,
@@ -220,6 +271,7 @@ function CauseFixCard({
   missed,
   repository,
   shas,
+  sources,
   files,
   authorship,
   badge,
@@ -232,6 +284,7 @@ function CauseFixCard({
   readonly missed?: string | null;
   readonly repository: string | null;
   readonly shas: readonly string[];
+  readonly sources?: ResearchCase["candidate_sources"];
   readonly files: readonly string[];
   readonly authorship: string;
   readonly badge?: string;
@@ -286,7 +339,14 @@ function CauseFixCard({
         <p className="text-muted-foreground">{authorship}</p>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {shas.map((sha) => (
-            <CommitLink key={sha} repository={repository} sha={sha} />
+            <CommitLink
+              key={sha}
+              repository={
+                sources?.find((source) => source.sha === sha)?.repository ??
+                repository
+              }
+              sha={sha}
+            />
           ))}
         </div>
         {files.length ? (
@@ -294,7 +354,10 @@ function CauseFixCard({
             {[...new Set(files)].map((file) => (
               <FileLink
                 key={file}
-                repository={repository}
+                repository={
+                  sources?.find((source) => source.sha === shas[0])?.repository ??
+                  repository
+                }
                 sha={shas[0]}
                 file={file}
               />
@@ -359,14 +422,8 @@ function MechanismDisclosure({
   );
 }
 
-/** Right-hand facts card: verification status, dates, severity, releases. */
+/** Right-hand facts card: dates, severity, releases. */
 function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
-  const statusLine =
-    item.publication_status === "confirmed"
-      ? "All seven evidence gates verified"
-      : item.publication_status === "qualified"
-        ? "Partially verified; remaining gates unresolved"
-        : "Provisional — gate verification in progress";
   const facts: { label: string; value: ReactNode }[] = [
     {
       label: "Published",
@@ -414,7 +471,6 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
   return (
     <aside className="h-fit rounded-lg border border-border bg-card p-5 text-sm shadow-sm xl:sticky xl:top-6">
       <p className="section-kicker">Case facts</p>
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">{statusLine}</p>
       <dl className="mt-4 space-y-3.5">
         {facts.map(({ label, value }) => (
           <div key={label} className="flex items-baseline justify-between gap-4">
@@ -638,12 +694,16 @@ function DiffHunk({
   repository,
   sha,
   label,
+  annotation,
+  readerContext,
   open,
 }: {
   readonly hunk: ResearchCodeHunk;
   readonly repository: string | null;
   readonly sha: string;
-  readonly label: "AI change" | "Fix" | "Comparison";
+  readonly label: DiffRole;
+  readonly annotation: string | null;
+  readonly readerContext: string;
   readonly open: boolean;
 }) {
   const lines = hunk.code.replace(/\n$/, "").split("\n");
@@ -663,8 +723,12 @@ function DiffHunk({
       className="group overflow-hidden border border-border bg-card"
     >
       <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 items-center text-[11px]">
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
+          <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
           <FileLink repository={repository} sha={sha} file={hunk.file} />
+          <SourceLink repository={repository} sha={sha} />
         </span>
         <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
           <span className="text-emerald-700">+{added}</span>
@@ -691,11 +755,21 @@ function DiffHunk({
           ))}
         </code>
       </pre>
-      {hunk.annotation ? (
-        <p className="border-t border-amber-200 bg-amber-50/70 px-4 py-3 text-xs leading-5 text-amber-950">
-          {hunk.annotation}
-        </p>
-      ) : null}
+      <p
+        className={`border-t px-4 py-3 text-xs leading-5 ${
+          annotation
+            ? "border-amber-200 bg-amber-50/70 text-amber-950"
+            : "border-border bg-muted/30 text-muted-foreground"
+        }`}
+      >
+        <span className="font-semibold text-foreground">
+          Why this change is shown
+          {annotation
+            ? ":"
+            : ` (case-level ${label.toLowerCase()} context; not a hunk-specific annotation):`}
+        </span>{" "}
+        {annotation ?? readerContext}
+      </p>
     </details>
   );
 }
@@ -714,46 +788,108 @@ export function CanonicalCaseEvidence({
   const comparisonHunks = evidence?.comparison_hunks ?? [];
   const candidateFiles = candidateHunks.map((hunk) => hunk.file);
   const fixFiles = fixHunks.map((hunk) => hunk.file);
+  const hasFix = item.minimum_fix_set.length > 0;
+  const incomplete =
+    item.contribution_class === "AI_INCOMPLETE_REMEDIATION" &&
+    Boolean(item.ir_chain);
+  const steps = evidence?.steps ?? [];
+  const rightStep =
+    [...steps].reverse().find((step) => /\bfix\b/i.test(step.title)) ??
+    (steps.length >= 3 ? steps[2] : steps[1]);
+  const leftStep =
+    steps.length >= 3
+      ? steps[1]
+      : steps.find((step) => !/\bfix\b/i.test(step.title));
+  const introStep = steps.length >= 3 ? steps[0] : null;
+  const summary = findingSummary(item);
+  const blurb = advisoryBlurb(item);
+  const attempt = item.ir_chain?.attempted_remediation;
+  const candidateExplanation =
+    incomplete && attempt
+      ? `What the AI patch changed: ${attempt.changed} What it still missed: ${attempt.missed}`
+      : (compactPublicProse(
+          evidence?.summary,
+          item.mechanism,
+          item.description,
+        ) ?? contributionHeadline(item.contribution_class));
+  const fixExplanation =
+    compactPublicProse(whatClosedIt(item), rightStep?.detail) ??
+    "This later patch closes the vulnerable path described above.";
+  const hunkAnnotation = (hunk: ResearchCodeHunk) => {
+    const annotation = usefulHunkAnnotation(hunk.annotation);
+    const repeated = [evidence?.summary, item.mechanism].some(
+      (value) => annotation && stripMarkdown(value).trim() === annotation,
+    );
+    return annotation && !repeated ? annotation : null;
+  };
   const markerMatch = evidence?.ai_marker?.match(
     /(?:Co-Authored-By|Assisted-by):\s*([^<]+)/i,
   );
   const candidateModel = markerMatch?.[1].trim() ?? getAiToolLabel(item);
+  const candidateSource = commitSource(
+    evidence?.candidate_url,
+    item.repository,
+    item.candidate_set[0] ?? "",
+  );
+  const fixSource = commitSource(
+    evidence?.fix_url,
+    item.repository,
+    item.minimum_fix_set[0] ?? candidateSource.sha,
+  );
   const codeHunks = comparisonHunks.length
-    ? comparisonHunks.map((hunk) => ({
-        hunk,
-        label: "Comparison" as const,
-        sha: item.minimum_fix_set[0] ?? item.candidate_set[0] ?? "",
-      }))
+    ? comparisonHunks.map((hunk) => {
+        const isCandidate =
+          hunk.role === "candidate" ||
+          candidateHunks.some(
+            (candidate) =>
+              candidate.file === hunk.file && candidate.code === hunk.code,
+          );
+        const isFix =
+          hunk.role === "fix" ||
+          fixHunks.some(
+            (fix) => fix.file === hunk.file && fix.code === hunk.code,
+          );
+        const label: DiffRole = isCandidate
+          ? "AI change"
+          : isFix
+            ? "Fix"
+            : "Comparison";
+        return {
+          hunk,
+          label,
+          ...(label === "AI change" ? candidateSource : fixSource),
+          annotation: hunkAnnotation(hunk),
+          readerContext:
+            label === "AI change"
+              ? candidateExplanation
+              : label === "Fix"
+                ? fixExplanation
+                : `${candidateExplanation} ${fixExplanation}`,
+        };
+      })
     : [
         ...candidateHunks.map((hunk) => ({
           hunk,
           label: "AI change" as const,
-          sha: item.candidate_set[0] ?? "",
+          ...candidateSource,
+          annotation: hunkAnnotation(hunk),
+          readerContext: candidateExplanation,
         })),
         ...fixHunks.map((hunk) => ({
           hunk,
           label: "Fix" as const,
-          sha: item.minimum_fix_set[0] ?? "",
+          ...fixSource,
+          annotation: hunkAnnotation(hunk),
+          readerContext: fixExplanation,
         })),
       ];
   const hasCode = codeHunks.length > 0;
-  const hasFix = item.minimum_fix_set.length > 0;
   const codeTitle =
     candidateHunks.length && fixHunks.length
       ? "Vulnerable code and fix"
       : candidateHunks.length
         ? "Candidate change"
         : "Security fix";
-  const incomplete =
-    item.contribution_class === "AI_INCOMPLETE_REMEDIATION" &&
-    Boolean(item.ir_chain);
-  const steps = evidence?.steps ?? [];
-  const leftStep = steps.length >= 3 ? steps[1] : steps[0];
-  const rightStep = steps.length >= 3 ? steps[2] : steps[1];
-  const introStep = steps.length >= 3 ? steps[0] : null;
-  const summary = findingSummary(item);
-  const blurb = advisoryBlurb(item);
-
   return (
     <section className="space-y-12 border-t border-border pt-8">
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -797,8 +933,9 @@ export function CanonicalCaseEvidence({
                   leftStep?.detail ??
                   "The candidate commit below is where the vulnerable behavior appears."
                 }
-                repository={item.repository}
+                repository={candidateSource.repository}
                 shas={item.candidate_set}
+                sources={item.candidate_sources}
                 files={candidateFiles}
                 authorship={`AI candidate: ${candidateModel}`}
               />
@@ -813,7 +950,7 @@ export function CanonicalCaseEvidence({
                       "The minimum fix commit below closes the same vulnerable path.")
                     : "No minimum fix commit has been established for this finding."
                 }
-                repository={item.repository}
+                repository={fixSource.repository}
                 shas={item.minimum_fix_set}
                 files={fixFiles}
                 authorship={hasFix ? fixAuthorship(item) : "Fix status unresolved"}
@@ -831,20 +968,52 @@ export function CanonicalCaseEvidence({
             <h3 id="code-comparison" className="mt-2 text-lg font-semibold">
               {codeTitle}
             </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Lines beginning with − were removed; lines beginning with + were
+              added. The badge shows whether a hunk belongs to the AI-linked
+              change, the later fix, or a curated comparison of the two.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="border-l-2 border-amber-400 pl-3">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  AI change context
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {candidateExplanation}
+                </p>
+              </div>
+              {hasFix ? (
+                <div className="border-l-2 border-emerald-500 pl-3">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Security fix context
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {fixExplanation}
+                  </p>
+                </div>
+              ) : null}
+            </div>
           </div>
-          {codeHunks.map(({ hunk, label, sha }, index) => (
-            <DiffHunk
-              key={`${label}-${index}-${hunk.file}`}
-              hunk={hunk}
-              repository={item.repository}
-              sha={sha}
-              label={label}
-              open={
-                index === 0 ||
-                (label === "Fix" && codeHunks[index - 1]?.label !== "Fix")
-              }
-            />
-          ))}
+          {codeHunks.map(
+            (
+              { hunk, label, repository, sha, annotation, readerContext },
+              index,
+            ) => (
+              <DiffHunk
+                key={`${label}-${index}-${hunk.file}`}
+                hunk={hunk}
+                repository={repository}
+                sha={sha}
+                label={label}
+                annotation={annotation}
+                readerContext={readerContext}
+                open={
+                  index === 0 ||
+                  (label === "Fix" && codeHunks[index - 1]?.label !== "Fix")
+                }
+              />
+            ),
+          )}
           {evidence.candidate_patch_sha256 && evidence.fix_patch_sha256 ? (
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer">Patch fingerprints</summary>
@@ -866,6 +1035,14 @@ export function CanonicalCaseEvidence({
           {blurb ? (
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
               {blurb}
+            </p>
+          ) : null}
+          {evidence?.unavailable_reason ? (
+            <p className="max-w-3xl border-l-2 border-amber-400 pl-3 text-sm leading-6 text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                Why no code diff is shown:
+              </span>{" "}
+              {evidence.unavailable_reason}
             </p>
           ) : null}
           <dl className="max-w-3xl space-y-4 text-sm">

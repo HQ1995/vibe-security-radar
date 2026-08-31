@@ -15,6 +15,7 @@ export interface ResearchCodeHunk {
   readonly file: string;
   readonly code: string;
   readonly annotation: string;
+  readonly role?: "candidate" | "fix" | "before_after";
 }
 
 export interface ResearchCodeEvidence {
@@ -33,6 +34,7 @@ export interface ResearchCodeEvidence {
   readonly comparison_hunks: readonly ResearchCodeHunk[];
   readonly candidate_patch_sha256: string | null;
   readonly fix_patch_sha256: string | null;
+  readonly unavailable_reason?: string | null;
 }
 
 export interface ResearchRelease {
@@ -67,7 +69,17 @@ export interface ResearchCase {
   readonly contribution_class: string;
   readonly ledger_status?: "AI_ROOT_CAUSE" | "AI_CODE_FLAWED";
   readonly candidate_set: readonly string[];
+  readonly candidate_sources?: readonly {
+    readonly sha: string;
+    readonly repository: string;
+  }[];
   readonly carrier_set: readonly string[];
+  readonly candidate_fix_edges?: readonly {
+    readonly candidate_sha: string;
+    readonly carrier_sha: string | null;
+    readonly fix_sha: string;
+    readonly origin_kind: string;
+  }[];
   readonly minimum_fix_set: readonly string[];
   readonly publication_status: "confirmed" | "qualified" | "provisional";
   readonly publication_issues: readonly string[];

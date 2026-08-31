@@ -44,6 +44,12 @@ class LedgerStoreContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "envelope gate"):
             validate_update(self.row, updated)
 
+    def test_rejects_not_ai_publication_fields(self):
+        updated = copy.deepcopy(self.row)
+        updated.update(status="NOT_AI", site_scope="AI_ROOT_CAUSE", site_tier="ALL_GATES_PASS")
+        with self.assertRaisesRegex(ValueError, "NOT_AI must not carry site_scope/site_tier"):
+            validate_update(self.row, updated)
+
     def test_batch_patches_are_sorted_before_locking(self):
         patches = [
             {"expected_revision": 1, "row": {"class_id": "alias-z"}},

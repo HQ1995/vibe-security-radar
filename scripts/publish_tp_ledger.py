@@ -14,6 +14,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from site_preflight import (
+    comparison_hunk_role,
+    is_pseudo_annotation,
+    public_explanation,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
@@ -25,6 +31,8 @@ ADVISORY_RELEASES = ROOT / "scripts/first-party-advisory-releases.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
 REPO_LANGUAGES = ROOT / "scripts/repo-language-map.json"
+SITE_PREFLIGHT_ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
+SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
@@ -402,7 +410,9 @@ def trim_mid_sentence(text: str) -> str:
     return stripped[: boundary + 1]
 
 
-def scrub_evidence(evidence: dict | None) -> dict | None:
+def scrub_evidence(
+    evidence: dict | None, case_context: tuple[object, ...] = ()
+) -> dict | None:
     if not isinstance(evidence, dict):
         return None
     cleaned = dict(evidence)
@@ -428,35 +438,100 @@ def scrub_evidence(evidence: dict | None) -> dict | None:
         else (cleaned.get("mechanism") or cleaned.get("summary") or "")
     )
     fulltexts = load_json(ANNOTATION_FULLTEXTS) or {}
+    annotation_context = tuple(
+        str(value).strip()
+        for value in (
+            cleaned.get("summary"),
+            cleaned.get("mechanism"),
+            *case_context,
+        )
+        if str(value or "").strip()
+    )
     for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
         hunks = []
         for hunk in evidence.get(key) or []:
             item = dict(hunk)
             annotation = str(item.get("annotation") or "")
             if CJK_RE.search(annotation):
-                item["annotation"] = ""
+                annotation = ""
             elif fulltext := fulltexts.get(annotation):
-                item["annotation"] = fulltext
+                annotation = fulltext
             elif (
                 len(annotation) == 180
                 and (prose := ANNOTATION_PROSE.get(annotation[:100]))
                 and prose.startswith(annotation[:100])
             ):
-                item["annotation"] = prose
+                annotation = prose
             elif (
                 len(annotation) == 180
                 and len(full_summary) > 180
                 and full_summary.startswith(annotation[:100])
             ):
-                item["annotation"] = full_summary
-            else:
-                trimmed = trim_mid_sentence(annotation)
-                if trimmed != annotation:
-                    item["annotation"] = trimmed
+                annotation = full_summary
+            annotation = trim_mid_sentence(annotation)
+            item["annotation"] = (
+                ""
+                if is_pseudo_annotation(annotation, annotation_context)
+                or (annotation and not public_explanation(annotation))
+                else annotation
+            )
             item["file"] = infer_hunk_file(item)
+            if key == "candidate_hunks":
+                item["role"] = "candidate"
+            elif key == "fix_hunks":
+                item["role"] = "fix"
             hunks.append(item)
         cleaned[key] = hunks
+    for hunk in cleaned["comparison_hunks"]:
+        hunk["role"] = comparison_hunk_role(cleaned, hunk)
+    displayed = cleaned["comparison_hunks"] or [
+        *cleaned["candidate_hunks"],
+        *cleaned["fix_hunks"],
+    ]
+    seen_annotations: set[str] = set()
+    for hunk in displayed:
+        annotation = str(hunk.get("annotation") or "").strip()
+        if annotation in seen_annotations:
+            hunk["annotation"] = ""
+        elif annotation:
+            seen_annotations.add(annotation)
     return cleaned
+
+
+def apply_security_fix_context(evidence: dict, context: object) -> None:
+    if not isinstance(context, dict):
+        return
+    raw_fix_files = context.get("fix_files")
+    fix_files = unique(
+        [str(path).strip() for path in raw_fix_files if str(path).strip()]
+        if isinstance(raw_fix_files, list)
+        else []
+    )
+    evidence["steps"] = [
+        step
+        for step in evidence.get("steps") or []
+        if str(step.get("title") or "").strip().lower()
+        not in {"fix", "security fix"}
+    ] + [
+        {
+            "title": "Security fix",
+            "detail": str(context.get("detail") or "").strip(),
+        }
+    ]
+    evidence["fix_url"] = str(context.get("fix_url") or "").strip()
+    evidence["fix_files"] = fix_files
+    allowed = set(fix_files)
+    evidence["fix_hunks"] = [
+        hunk
+        for hunk in evidence.get("fix_hunks") or []
+        if str(hunk.get("file") or "").strip() in allowed
+    ]
+    evidence["comparison_hunks"] = [
+        hunk
+        for hunk in evidence.get("comparison_hunks") or []
+        if hunk.get("role") != "fix"
+        or str(hunk.get("file") or "").strip() in allowed
+    ]
 
 
 def normalize_fix_authorship(value: object, fixes: list[str]) -> dict | None:
@@ -566,6 +641,37 @@ def _is_unpatched(case: dict) -> bool:
     )
 
 
+def strip_unpatched_fix_claims(case: dict) -> None:
+    record = case.get("unpatched")
+    if not isinstance(record, dict) or record.get("confirmed") is not True:
+        return
+    case["minimum_fix_set"] = []
+    case["fixed_release"] = None
+    case["fix_authorship"] = None
+    evidence = case.get("code_evidence")
+    if not isinstance(evidence, dict):
+        return
+    evidence["comparison_hunks"] = [
+        hunk
+        for hunk in evidence.get("comparison_hunks") or []
+        if (hunk.get("role") or comparison_hunk_role(evidence, hunk)) != "fix"
+    ]
+    evidence["fix_hunks"] = []
+    evidence["steps"] = [
+        step
+        for step in evidence.get("steps") or []
+        if not re.search(r"\bfix\b", str(step.get("title") or ""), re.I)
+    ]
+    for field in (
+        "fix_files",
+        "fix_marker",
+        "fix_patch_files",
+        "fix_patch_sha256",
+        "fix_url",
+    ):
+        evidence.pop(field, None)
+
+
 def publication_status(case: dict) -> str:
     gate_values = set((case.get("gates") or {}).values())
     if not gate_values or "UNKNOWN" in gate_values or not case.get("candidate_set"):
@@ -613,12 +719,15 @@ def find_cached(
     repo: str | None,
     official: dict[str, dict],
     by_class: dict[str, dict],
+    dropped_ids: set[str] | None = None,
 ) -> tuple[dict | None, bool]:
     for key in unique([*ghsas, *cves]):
         hit = official.get(key.upper())
         if hit and repo_matches(hit, repo):
             return hit, True
     hit = by_class.get(class_id.upper())
+    if hit and dropped_ids and set(official_ids_of(hit)) & dropped_ids:
+        hit = None
     if hit and repo_matches(hit, repo):
         return hit, False
     return None, False
@@ -651,11 +760,11 @@ def public_shas(
     final_shas = [str(item) for item in final if SHA_RE.match(str(item))]
     if attempted_shas:
         candidates = attempted_shas
-    elif url_candidate:
+    elif url_candidate and not sha_overlap([url_candidate], candidates):
         candidates = [url_candidate]
     if final_shas:
         fixes = final_shas
-    elif url_fix:
+    elif url_fix and not sha_overlap([url_fix], fixes):
         fixes = [url_fix]
     return unique(candidates), unique(fixes)
 
@@ -1134,10 +1243,15 @@ def apply_case_overrides(
     for field in (
         "severity",
         "cwes",
+        "mechanism",
         "description",
         "references",
         "scope_statement",
         "fix_authorship",
+        "vulnerable_release",
+        "fixed_release",
+        "candidate_sources",
+        "candidate_fix_edges",
     ):
         if field in spec:
             case[field] = spec[field]
@@ -1189,13 +1303,15 @@ def apply_case_overrides(
         case["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
     if spec.get("candidate_set"):
         case["candidate_set"] = list(spec["candidate_set"])
-    if spec.get("minimum_fix_set"):
+    if "carrier_set" in spec:
+        case["carrier_set"] = list(spec["carrier_set"])
+    if "minimum_fix_set" in spec:
         case["minimum_fix_set"] = list(spec["minimum_fix_set"])
     if case.get("ir_chain") and not spec.get("candidate_set"):
         aligned_candidates, aligned_fixes = public_shas(rec, case)
         if aligned_candidates:
             case["candidate_set"] = aligned_candidates
-        if aligned_fixes:
+        if aligned_fixes and "minimum_fix_set" not in spec:
             case["minimum_fix_set"] = aligned_fixes
     provenance = dict(case.get("ai_provenance") or {})
     provenance["candidate_count"] = len(case.get("candidate_set") or [])
@@ -1223,8 +1339,18 @@ def build_case(
     aliases = unique([*ghsas, *cves, row["class_id"]])
     aliases = [item for item in aliases if item.upper() != case_id]
     repo = repo_of(row, rec)
+    class_spec = (overrides.get("cases") or {}).get(str(row["class_id"])) or {}
+    dropped_ids = {
+        str(value).upper() for value in class_spec.get("drop_aliases") or []
+    }
     cached, official_hit = find_cached(
-        ghsas, cves, row["class_id"], repo, official, by_class
+        ghsas,
+        cves,
+        row["class_id"],
+        repo,
+        official,
+        by_class,
+        dropped_ids,
     )
     if cached and official_hit:
         if GHSA_RE.match(str(cached.get("case_id") or "")):
@@ -1280,6 +1406,36 @@ def build_case(
         if (cached or {}).get("ir_chain") or derived_class == "AI_INCOMPLETE_REMEDIATION"
         else derived_class
     )
+    if "carrier_set" in row:
+        carriers = unique(list(row.get("carrier_set") or []))
+    elif rec and "carrier_set" in rec:
+        carriers = unique(list(rec.get("carrier_set") or []))
+    else:
+        carriers = unique(
+            [
+                *([rec.get("carrier_sha")] if rec and rec.get("carrier_sha") else []),
+                *((cached or {}).get("carrier_set") or []),
+            ]
+        )
+    candidate_repo_match = REPO_RE.search(
+        str((case_evidence or {}).get("candidate_url") or "")
+    )
+    candidate_source_repo = (
+        candidate_repo_match.group(1) if candidate_repo_match else repo
+    )
+    candidate_sources = (
+        [
+            {"sha": sha, "repository": candidate_source_repo}
+            for sha in candidates
+        ]
+        if len(candidates) > 1
+        else None
+    )
+    candidate_fix_edges = (
+        row.get("candidate_fix_edges")
+        or (rec or {}).get("candidate_fix_edges")
+        or None
+    )
     case = {
         "case_id": case_id,
         "class_id": row["class_id"],
@@ -1293,7 +1449,7 @@ def build_case(
         "contribution_class": contribution,
         "ledger_status": row["status"],
         "candidate_set": candidates,
-        "carrier_set": list((cached or {}).get("carrier_set") or []),
+        "carrier_set": carriers,
         "minimum_fix_set": fixes,
         "gates": gates,
         "vulnerable_release": (cached or {}).get("vulnerable_release")
@@ -1368,10 +1524,15 @@ def build_case(
                 ),
                 None,
             )
-            or (cached or {}).get("code_evidence")
+            or (cached or {}).get("code_evidence"),
+            (mechanism, description),
         ),
         "ir_chain": (cached or {}).get("ir_chain"),
     }
+    if candidate_sources:
+        case["candidate_sources"] = candidate_sources
+    if candidate_fix_edges:
+        case["candidate_fix_edges"] = candidate_fix_edges
     case["research_status"] = " ".join(
         str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
     ).strip() or None
@@ -1380,6 +1541,7 @@ def build_case(
         or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes)
     )
     case = apply_case_overrides(case, row, rec, overrides, chains)
+    strip_unpatched_fix_claims(case)
     case["fix_authorship"] = normalize_fix_authorship(
         case.get("fix_authorship"), list(case.get("minimum_fix_set") or [])
     )
@@ -1446,8 +1608,38 @@ def main() -> None:
         ]
         cases.append(case)
     cases = merge_duplicate_identities(cases)
+    missing_diff_reasons = (load_json(SITE_PREFLIGHT_ALLOWLIST) or {}).get(
+        "missing_diff"
+    ) or {}
+    security_fix_contexts = load_json(SECURITY_FIX_CONTEXTS) or {}
     for case in cases:
         ai_summary_overlay(case)
+        case["code_evidence"] = scrub_evidence(
+            case.get("code_evidence"),
+            (case.get("mechanism"), case.get("description")),
+        )
+        evidence = case.get("code_evidence")
+        reason = str(
+            missing_diff_reasons.get(str(case.get("case_id") or "").upper()) or ""
+        ).strip()
+        if not isinstance(evidence, dict):
+            evidence = {}
+            case["code_evidence"] = evidence
+        fix_context = security_fix_contexts.get(
+            str(case.get("case_id") or "").upper()
+        )
+        if not (
+            isinstance(case.get("unpatched"), dict)
+            and case["unpatched"].get("confirmed") is True
+        ):
+            apply_security_fix_context(evidence, fix_context)
+        if any(
+            evidence.get(role)
+            for role in ("comparison_hunks", "candidate_hunks", "fix_hunks")
+        ):
+            evidence.pop("unavailable_reason", None)
+        elif reason and public_explanation(reason):
+            evidence["unavailable_reason"] = reason
 
     root_cause = sum(1 for item in cases if item["ledger_status"] == "AI_ROOT_CAUSE")
     code_flawed = sum(1 for item in cases if item["ledger_status"] == "AI_CODE_FLAWED")
