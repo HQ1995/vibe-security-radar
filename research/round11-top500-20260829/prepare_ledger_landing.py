@@ -17,6 +17,23 @@ from audit_envelope import violations  # noqa: E402
 from audit_record_gates import check_record  # noqa: E402
 from merge_funnel_lane import detect_duplicate_tps  # noqa: E402
 
+# Local mirror of the canonical ledger. The duplicate-TP gate needs every
+# row, but rows already live in this repo's canonical JSONL; re-fetching the
+# whole table (~26 MB egress) per invocation is unnecessary. Mirror integrity
+# is verified against the server-side snapshot digest (64 bytes of egress).
+LEDGER_MIRROR = ROOT / "artifacts/funnel-account-20260817.jsonl"
+
+
+def ledger_rows_from_mirror() -> list[dict]:
+    digest = ledger_store.snapshot_sha256()
+    mirror = LEDGER_MIRROR.read_bytes()
+    if ledger_store.sha256(mirror) != digest:
+        raise SystemExit(
+            f"{LEDGER_MIRROR}: stale mirror (sha256 mismatch vs snapshot "
+            f"{digest}); run `python3 scripts/ledger_store.py export` and retry"
+        )
+    return [json.loads(line) for line in mirror.decode().splitlines() if line.strip()]
+
 
 def read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
@@ -55,7 +72,7 @@ def main() -> int:
                 ([str(uuid.uuid5(uuid.NAMESPACE_URL, f"ai-slop/round11/{cid}")) for cid in ids],),
             ).fetchall()
         }
-        all_db = [json.loads(row[0]) for row in conn.execute("SELECT raw_json FROM ledger_rows ORDER BY ordinal")]
+        all_db = ledger_rows_from_mirror()
     assert len(db_rows) == 500
     assert not existing_assessments, f"assessment ids already exist: {len(existing_assessments)}"
     current = {cid: (revision, json.loads(raw)) for cid, revision, raw in db_rows}

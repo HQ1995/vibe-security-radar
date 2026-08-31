@@ -8,7 +8,7 @@ import json
 import os
 import sys
 import uuid
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -182,7 +182,92 @@ def snapshot_bytes() -> bytes:
     return "".join(f"{raw}\n" for raw, _, _ in database_records()).encode()
 
 
-def export_jsonl(path: Path) -> None:
+# Server-side equivalent of sha256(snapshot_bytes()): every raw_json joined with
+# a trailing newline (the join adds a separator after every row, including the
+# last), UTF-8 encoded, digested in the database. Verified byte-identical to
+# snapshot_bytes() on the production ledger 2026-08-31 (sha256 b7837fd8...).
+# Returns 64 bytes of egress instead of pulling the full table (~26 MB).
+SNAPSHOT_SHA256_SQL = """
+SELECT encode(
+    sha256(convert_to(coalesce(
+        string_agg(raw_json, E'\\n' ORDER BY ordinal) || E'\\n', ''
+    ), 'UTF8')),
+    'hex'
+)
+FROM ledger_rows
+"""
+
+
+def snapshot_sha256() -> str:
+    """Snapshot digest computed in the database; no full-table transfer."""
+    with connect() as conn:
+        return conn.execute(SNAPSHOT_SHA256_SQL).fetchone()[0]
+
+
+# Same aggregates check() used to compute by pulling every ledger row into
+# Python. Keys/values must match the historical `check` output exactly:
+# statuses is a status -> row-count map, cve/ghsa count rows whose
+# advisory_ids contain a CVE*/GHSA* identifier.
+SNAPSHOT_AGGREGATES_SQL = """
+WITH status_counts AS (
+    SELECT jsonb_object_agg(status, n) AS statuses
+    FROM (SELECT status, count(*) AS n FROM ledger_rows GROUP BY status) s
+),
+cve AS (
+    SELECT count(*) AS n FROM ledger_rows
+    WHERE EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(advisory_ids) AS a(value)
+        WHERE a.value LIKE 'CVE%'
+    )
+),
+ghsa AS (
+    SELECT count(*) AS n FROM ledger_rows
+    WHERE EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(advisory_ids) AS a(value)
+        WHERE a.value LIKE 'GHSA%'
+    )
+)
+SELECT
+    (SELECT count(*) FROM ledger_rows) AS rows,
+    COALESCE((SELECT statuses FROM status_counts), '{}'::jsonb) AS statuses,
+    (SELECT n FROM cve) AS cve,
+    (SELECT n FROM ghsa) AS ghsa,
+    encode(
+        sha256(convert_to(coalesce(
+            string_agg(raw_json, E'\\n' ORDER BY ordinal) || E'\\n', ''
+        ), 'UTF8')),
+        'hex'
+    ) AS sha256
+FROM ledger_rows
+"""
+
+
+def snapshot_aggregates() -> dict:
+    """Row/status/advisory counts plus the snapshot digest, all server-side."""
+    with connect() as conn:
+        rows, statuses, cve, ghsa, digest = conn.execute(
+            SNAPSHOT_AGGREGATES_SQL
+        ).fetchone()
+    return {
+        "rows": rows,
+        "statuses": statuses,
+        "cve": cve,
+        "ghsa": ghsa,
+        "sha256": digest,
+    }
+
+
+def export_jsonl(path: Path, *, force: bool = False) -> None:
+    # The ledger is append-mostly: between change sets the canonical JSONL is
+    # byte-identical, so gate the full ~26 MB transfer on the snapshot digest
+    # (64 bytes of egress) instead of re-exporting on every verification.
+    digest = snapshot_sha256()
+    if not force and path.exists() and sha256(path.read_bytes()) == digest:
+        print(
+            f"export skipped: {path} already matches snapshot sha256={digest} "
+            "(use --force to re-export)"
+        )
+        return
     content = snapshot_bytes()
     tmp = path.with_name(f".{path.name}.tmp")
     tmp.write_bytes(content)
@@ -356,7 +441,7 @@ def start_run(args: argparse.Namespace) -> None:
 
     prompt = args.prompt_file.read_text(encoding="utf-8")
     run_id = args.run_id or str(uuid.uuid4())
-    source_hash = sha256(snapshot_bytes())
+    source_hash = snapshot_sha256()
     with connect() as conn:
         conn.execute(
             """
@@ -603,7 +688,53 @@ def write_partitioned(directory: Path, records: list[tuple[str, dict]]) -> int:
     return written
 
 
-def export_history(directory: Path) -> None:
+# Fingerprint for export_history skip logic: per-table row counts plus the
+# max timestamps of every column later mutations touch (change-set commits,
+# run completion). All history inserts stamp created_at with now(), and
+# updates only ever advance committed_at/completed_at, so an unchanged
+# fingerprint implies byte-identical export output.
+HISTORY_FINGERPRINT_SQL = """
+SELECT
+    (SELECT count(*) FROM ledger_change_sets),
+    (SELECT max(created_at) FROM ledger_change_sets),
+    (SELECT max(committed_at) FROM ledger_change_sets),
+    (SELECT count(*) FROM ledger_versions),
+    (SELECT max(created_at) FROM ledger_versions),
+    (SELECT count(*) FROM scan_runs),
+    (SELECT max(started_at) FROM scan_runs),
+    (SELECT max(completed_at) FROM scan_runs),
+    (SELECT count(*) FROM case_assessments),
+    (SELECT max(created_at) FROM case_assessments)
+"""
+
+
+def history_fingerprint() -> dict:
+    with connect() as conn:
+        row = conn.execute(HISTORY_FINGERPRINT_SQL).fetchone()
+    keys = (
+        "change_sets", "change_sets_created_to", "change_sets_committed_to",
+        "versions", "versions_created_to",
+        "scan_runs", "scan_runs_started_to", "scan_runs_completed_to",
+        "assessments", "assessments_created_to",
+    )
+    return {
+        key: iso(value) if hasattr(value, "isoformat") else value
+        for key, value in zip(keys, row)
+    }
+
+
+def export_history(directory: Path, *, force: bool = False) -> None:
+    # Four-table full fetch used to cost ~50 MB per invocation; gate the
+    # transfer on a lightweight fingerprint instead (history is
+    # append-mostly, so unchanged fingerprints mean identical output).
+    current = history_fingerprint()
+    marker_path = directory / ".export-fingerprint.json"
+    if not force and marker_path.exists() and json.loads(marker_path.read_text()) == current:
+        print(
+            "history export skipped: fingerprint unchanged since last export "
+            f"({json.dumps(current, sort_keys=True)}); use --force to re-export"
+        )
+        return
     with connect() as conn:
         change_sets = conn.execute(
             """
@@ -721,21 +852,16 @@ def export_history(directory: Path) -> None:
         f"exported history: {len(change_sets)} change sets, {version_count} versions, "
         f"{len(runs)} runs, {assessment_count} assessments"
     )
+    marker_path.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
 
 
 def check(path: Path) -> None:
-    records = database_records()
-    rows = [row for _, _, row in records]
-    statuses = Counter(row.get("status") for row in rows)
-    cve = sum(
-        any(str(value).startswith("CVE") for value in row.get("advisory_ids") or [])
-        for row in rows
-    )
-    ghsa = sum(
-        any(str(value).startswith("GHSA") for value in row.get("advisory_ids") or [])
-        for row in rows
-    )
-    content = "".join(f"{raw}\n" for raw, _, _ in records).encode()
+    # All aggregates and the snapshot digest are computed server-side; the
+    # pre-optimization version pulled the full ledger table (~26 MB egress)
+    # on every verification. Aggregates are egress-equivalent to the old
+    # Python-side counting: status -> row-count map, CVE/GHSA row counts,
+    # sha256 over raw_json rows joined with a trailing newline.
+    agg = snapshot_aggregates()
     with connect() as conn:
         runs = conn.execute("SELECT count(*) FROM scan_runs").fetchone()[0]
         assessments = conn.execute("SELECT count(*) FROM case_assessments").fetchone()[0]
@@ -743,14 +869,16 @@ def check(path: Path) -> None:
     print(
         json.dumps(
             {
-                "rows": len(rows),
-                "statuses": statuses,
-                "cve": cve,
-                "ghsa": ghsa,
+                "rows": agg["rows"],
+                "statuses": agg["statuses"],
+                "cve": agg["cve"],
+                "ghsa": agg["ghsa"],
                 "scan_runs": runs,
                 "assessments": assessments,
-                "sha256": sha256(content),
-                "jsonl_byte_identical": local == content if local is not None else None,
+                "sha256": agg["sha256"],
+                "jsonl_byte_identical": sha256(local) == agg["sha256"]
+                if local is not None
+                else None,
             }
         )
     )
@@ -765,8 +893,10 @@ def build_parser() -> argparse.ArgumentParser:
     boot.add_argument("--actor", default="migration-20260828")
     exp = sub.add_parser("export")
     exp.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
+    exp.add_argument("--force", action="store_true")
     hist_export = sub.add_parser("export-history")
     hist_export.add_argument("--out", type=Path, default=DEFAULT_HISTORY)
+    hist_export.add_argument("--force", action="store_true")
     get = sub.add_parser("get")
     get.add_argument("class_id")
     patch = sub.add_parser("apply")
@@ -804,9 +934,9 @@ def main() -> int:
     elif args.command == "bootstrap":
         bootstrap(args.ledger, args.actor)
     elif args.command == "export":
-        export_jsonl(args.out)
+        export_jsonl(args.out, force=args.force)
     elif args.command == "export-history":
-        export_history(args.out)
+        export_history(args.out, force=args.force)
     elif args.command == "get":
         get_row(args.class_id)
     elif args.command == "apply":
