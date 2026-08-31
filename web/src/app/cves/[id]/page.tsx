@@ -59,18 +59,6 @@ function PageHeader({
   const owner = repository?.split("/")[0];
   const repoUrl = repository ? `https://github.com/${repository}` : undefined;
   const avatarUrl = owner ? `https://github.com/${owner}.png?size=32` : undefined;
-  const verificationStatus =
-    item.publication_status === "confirmed"
-      ? "AI contribution confirmed"
-      : item.publication_status === "qualified"
-        ? "AI contribution supported, with limits"
-        : "AI contribution still under review";
-  const verificationCopy =
-    item.publication_status === "confirmed"
-      ? "The evidence below connects a change attributed to an AI coding tool to the vulnerable behavior; no required evidence is missing."
-      : item.publication_status === "qualified"
-        ? "The evidence supports an AI contribution, but one or more checks are too limited for full confirmation."
-        : "At least one link in the causal chain is unresolved, so the attribution is not final.";
 
   return (
     <header className="space-y-4">
@@ -113,18 +101,6 @@ function PageHeader({
         </div>
       </div>
 
-      <div className="border-l-2 border-primary bg-primary/[0.04] px-4 py-3 text-sm">
-        <p className="font-semibold">{verificationStatus}</p>
-        <p className="mt-1 max-w-4xl leading-6 text-muted-foreground">
-          {verificationCopy}
-        </p>
-        <Link
-          href="/about"
-          className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
-        >
-          How we verify evidence →
-        </Link>
-      </div>
     </header>
   );
 }

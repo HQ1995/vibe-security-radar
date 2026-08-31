@@ -155,32 +155,20 @@ describe("how we verify page", () => {
 });
 
 describe("canonical case evidence", () => {
-  it("explains confirmed, qualified, and provisional attribution in plain language", async () => {
+  it("keeps internal publication status off reader-facing case pages", async () => {
     const cases = [
-      {
-        id: "GHSA-X98J-GH4V-7P7G",
-        status: "AI contribution confirmed",
-        detail: "no required evidence is missing",
-      },
-      {
-        id: "GHSA-WFX9-6H8H-F3GM",
-        status: "AI contribution supported, with limits",
-        detail: "too limited for full confirmation",
-      },
-      {
-        id: "GHSA-Q8HH-M6V5-4F3X",
-        status: "AI contribution still under review",
-        detail: "the attribution is not final",
-      },
+      "GHSA-X98J-GH4V-7P7G",
+      "GHSA-WFX9-6H8H-F3GM",
+      "GHSA-Q8HH-M6V5-4F3X",
     ];
 
-    for (const { id, status, detail } of cases) {
+    for (const id of cases) {
       const page = await CveDetailPage({ params: Promise.resolve({ id }) });
       const html = renderToStaticMarkup(page);
 
-      expect(html).toContain(status);
-      expect(html).toContain(detail);
-      expect(html).toContain("How we verify evidence");
+      expect(html).not.toContain("AI contribution confirmed");
+      expect(html).not.toContain("AI contribution supported, with limits");
+      expect(html).not.toContain("AI contribution still under review");
       expect(html).not.toContain("AI-contributed vulnerability");
       expect(html).not.toContain("all seven evidence gates");
     }
